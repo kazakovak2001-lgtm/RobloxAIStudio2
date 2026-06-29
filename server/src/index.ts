@@ -9,13 +9,18 @@ import { Server as SocketServer } from "socket.io";
 import { createProjectsRouter } from "./routes/projects";
 import { createGameGenerationRouter } from "./routes/game-generation";
 import { GameGenerationService } from "./projects/services/game-generation.service";
-import { InMemoryProjectRepository } from "./projects/repository/inMemoryProject.repository";
+
 import { InMemoryBlueprintRepository } from "./projects/repository/blueprint.repository";
 import { BlueprintCache } from "./projects/cache/blueprint.cache";
-import { StreamingUpdateHandler, PipelineEventEmitter } from "./socket/streaming";
+import {
+  StreamingUpdateHandler,
+  PipelineEventEmitter,
+} from "./socket/streaming";
 import { errorHandler } from "./common/middleware/errorHandler";
+import { AIPipelineIntegrator } from "./execution/aiPipelineIntegrator";
 
 const app: Express = express();
+
 const httpServer = createServer(app);
 const io = new SocketServer(httpServer, {
   cors: {
@@ -58,16 +63,87 @@ const events = new PipelineEventEmitter();
 const streaming = new StreamingUpdateHandler();
 const blueprintCache = new BlueprintCache();
 const blueprintRepo = new InMemoryBlueprintRepository();
-const projectRepo = new InMemoryProjectRepository();
+
+const pipelineIntegrator = new AIPipelineIntegrator(events);
+
 const gameService = new GameGenerationService(
   blueprintRepo,
   blueprintCache,
   streaming,
   events,
+  pipelineIntegrator,
 );
 
 // Connect event emitter to streaming handler
 events.setStreamingHandler(streaming);
+
+// Bridge pipeline lifecycle events to Socket.io so the existing Workspace UI (Socket.io-based) receives them.
+// This is a thin adapter only; it preserves the existing socket event names.
+events.onEvent(async (evt) => {
+  // Minimal bridge logging for E2E verification.
+  console.log(
+    `[pipeline-bridge] emitted ${evt.type} pipelineId=${evt.pipelineId} stepId=${evt.stepId ?? "-"}`,
+  );
+
+  switch (evt.type) {
+    case "pipeline.started": {
+      const payload = {
+        pipelineId: evt.pipelineId,
+        startedAt: evt.timestamp,
+      };
+      console.log("[pipeline-bridge] forwarding", "pipeline.started", payload);
+      io.emit("pipeline.started", payload);
+      break;
+    }
+    case "step.started": {
+      const payload = {
+        pipelineId: evt.pipelineId,
+        stepId: evt.stepId,
+        agentId: evt.data?.name,
+        startedAt: evt.timestamp,
+      };
+      console.log("[pipeline-bridge] forwarding", "step.started", payload);
+      io.emit("step.started", payload);
+      break;
+    }
+    case "step.completed": {
+      const payload = {
+        pipelineId: evt.pipelineId,
+        stepId: evt.stepId,
+        agentId: evt.data?.name,
+        finishedAt: evt.timestamp,
+        output: evt.data?.output,
+      };
+      console.log("[pipeline-bridge] forwarding", "step.completed", payload);
+      io.emit("step.completed", payload);
+      break;
+    }
+    case "pipeline.completed": {
+      const payload = {
+        pipelineId: evt.pipelineId,
+        outputs: evt.data?.outputs,
+      };
+      console.log(
+        "[pipeline-bridge] forwarding",
+        "pipeline.completed",
+        payload,
+      );
+      io.emit("pipeline.completed", payload);
+      break;
+    }
+    case "pipeline.failed": {
+      const payload = {
+        pipelineId: evt.pipelineId,
+        error: evt.data?.error,
+      };
+      console.log("[pipeline-bridge] forwarding", "pipeline.failed", payload);
+      io.emit("pipeline.failed", payload);
+      break;
+    }
+    default:
+      break;
+  }
+});
 
 // API Routes
 app.use("/api/projects", createProjectsRouter());

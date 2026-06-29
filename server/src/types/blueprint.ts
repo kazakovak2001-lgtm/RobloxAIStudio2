@@ -15,17 +15,32 @@ export interface GameplayMechanic {
 }
 
 export interface GameplaySystem {
-  mechanics: GameplayMechanic[];
-  progression: {
-    levels?: number;
-    difficulty_scaling?: string;
-    unlocking_system?: string;
-  };
-  balance: {
-    economy?: Record<string, unknown>;
-    difficulty_multipliers?: Record<string, number>;
-  };
-}
+   mechanics: GameplayMechanic[];
+   progression: {
+     levels?: number;
+     difficulty_scaling?: string;
+     unlocking_system?: string;
+     // Extended: seed-derived progression model
+     player_progression_model?: string;
+   };
+   balance: {
+     economy?: Record<string, unknown>;
+     difficulty_multipliers?: Record<string, number>;
+     // Extended: enriched balance fields
+     winCondition?: string;
+     loseCondition?: string;
+     interactionSystems?: string[];
+     economyOrScoring?: string;
+     theme?: string;
+   };
+   // Extended: direct access to seed-derived gameplay structure
+   loop?: string;
+   winCondition?: string;
+   loseCondition?: string;
+   progressionModel?: string;
+   interactionSystems?: string[];
+   economyOrScoring?: string;
+ }
 
 export interface UILayout {
   name: string;
@@ -40,48 +55,51 @@ export interface UILayout {
 }
 
 export interface GameArchitecture {
-  client_architecture: {
-    main_loop_frequency?: number;
-    rendering_engine?: string;
-    physics_engine?: string;
-  };
-  server_architecture: {
-    replication_model?: string;
-    update_rate?: number;
-    persistence_strategy?: string;
-  };
-  networking: {
-    protocol?: string;
-    bandwidth_optimization?: string;
-    latency_handling?: string;
-  };
-}
+   client_architecture: {
+     main_loop_frequency?: number;
+     rendering_engine?: string;
+     physics_engine?: string;
+   };
+   server_architecture: {
+     replication_model?: string;
+     update_rate?: number;
+     persistence_strategy?: string;
+   };
+   networking: {
+     protocol?: string;
+     bandwidth_optimization?: string;
+     latency_handling?: string;
+   };
+ }
 
-export interface AssetPlan {
-  models: Array<{
-    id: string;
-    name: string;
-    description: string;
-    complexity: "simple" | "medium" | "complex";
-    source?: "builtin" | "marketplace" | "custom";
-  }>;
-  textures: Array<{
-    id: string;
-    name: string;
-    resolution?: string;
-  }>;
-  sounds: Array<{
-    id: string;
-    name: string;
-    type: "sfx" | "music" | "ambient";
-  }>;
-  animations: Array<{
-    id: string;
-    name: string;
-    target: string;
-    frames?: number;
-  }>;
-}
+ export interface AssetPlan {
+   models: Array<{
+     id: string;
+     name: string;
+     description: string;
+     complexity: "simple" | "medium" | "complex";
+     source?: "builtin" | "marketplace" | "custom";
+   }>;
+   textures: Array<{
+     id: string;
+     name: string;
+     resolution?: string;
+   }>;
+   sounds: Array<{
+     id: string;
+     name: string;
+     type: "sfx" | "music" | "ambient";
+   }>;
+   animations: Array<{
+     id: string;
+     name: string;
+     target: string;
+     frames?: number;
+   }>;
+ }
+
+// Re-export GameDesignSeed for use in generation metadata
+export type { GameDesignSeed } from "./gameDesignSeed";
 
 export interface CodeGenSpec {
   modules: Array<{
@@ -143,15 +161,16 @@ export interface GameBlueprint {
   // Code Generation Spec
   code_spec: CodeGenSpec;
 
-  // Validation & Metadata
-  validation_errors?: string[];
-  warnings?: string[];
-  generation_metadata?: {
-    generated_at?: Date;
-    agents_involved?: string[];
-    total_duration_ms?: number;
-    step_durations?: Record<string, number>;
-  };
+// Validation & Metadata
+   validation_errors?: string[];
+   warnings?: string[];
+   generation_metadata?: {
+     generated_at?: Date;
+     agents_involved?: string[];
+     total_duration_ms?: number;
+     step_durations?: Record<string, number>;
+     gameDesignSeed?: import("./gameDesignSeed").GameDesignSeed;
+   };
 
   // Export metadata
   export_metadata?: {
