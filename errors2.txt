@@ -1,0 +1,76 @@
+server/src/agents/implementations/AssetPlannerAgent.ts(26,16): error TS2554: Expected 0-1 arguments, but got 2.
+server/src/providers/anthropic.ts(16,17): error TS6133: 'get' is declared but its value is never read.
+server/src/providers/anthropic.ts(11,18): error TS6133: 'prompt' is declared but its value is never read.
+server/src/providers/anthropic.ts(5,11): error TS6133: 'baseURL' is declared but its value is never read.
+server/src/providers/anthropic.ts(4,11): error TS6133: 'apiKey' is declared but its value is never read.
+server/src/providers/anthropic.ts(1,28): error TS2305: Module '"../ai/provider"' has no exported member 'LLMOptions'.
+server/src/projects/services/game-generation.service.ts(11,11): error TS6133: 'events' is declared but its value is never read.
+server/src/projects/repository/blueprint.repository.ts(201,7): error TS2698: Spread types may only be created from object types.
+server/src/projects/repository/blueprint.repository.ts(165,7): error TS2322: Type '{ id: string; projectId: string; userId: string; name: string; description?: string; gameType: string; genre: string; targetAudience?: string; difficulty: string; estimatedPlayers: string; ... 13 more ...; updatedAt: Date; }' is not assignable to type 'string'.
+server/src/projects/repository/blueprint.repository.ts(138,51): error TS18048: 'bVal' is possibly 'undefined'.
+server/src/projects/repository/blueprint.repository.ts(138,44): error TS18048: 'aVal' is possibly 'undefined'.
+server/src/projects/repository/blueprint.repository.ts(138,33): error TS18048: 'bVal' is possibly 'undefined'.
+server/src/projects/repository/blueprint.repository.ts(138,26): error TS18048: 'aVal' is possibly 'undefined'.
+server/src/projects/repository/blueprint.repository.ts(71,11): error TS2739: Type '{ id: string; userId: string; createdAt: Date; updatedAt: Date; status: string; version: number; name: string; game_type: string; description?: string | undefined; genre?: string | undefined; targetAudience?: string | undefined; difficulty?: string | undefined; estimated_players?: string | undefined; }' is missing the following properties from type 'GameBlueprint': projectId, gameType, estimatedPlayers
+server/src/pipeline/PipelineRunner.ts(12,21): error TS6133: 'input' is declared but its value is never read.
+  The last overload gave the following error.
+server/src/providers/anthropic.ts(20,17): error TS6133: 'post' is declared but its value is never read.
+server/src/index.ts(93,25): error TS2769: No overload matches this call.
+server/src/providers/gemini.ts(1,28): error TS2305: Module '"../ai/provider"' has no exported member 'LLMOptions'.
+server/src/providers/gemini.ts(5,11): error TS6133: 'baseURL' is declared but its value is never read.
+server/src/providers/openai.ts(20,17): error TS6133: 'post' is declared but its value is never read.
+server/src/providers/openai.ts(16,17): error TS6133: 'get' is declared but its value is never read.
+server/src/providers/openai.ts(11,18): error TS6133: 'prompt' is declared but its value is never read.
+server/src/providers/openai.ts(5,11): error TS6133: 'baseURL' is declared but its value is never read.
+server/src/providers/openai.ts(4,11): error TS6133: 'apiKey' is declared but its value is never read.
+server/src/providers/openai.ts(1,44): error TS2305: Module '"../ai/provider"' has no exported member 'LLMOptions'.
+server/src/providers/openai.ts(1,15): error TS6196: 'BaseAIProvider' is declared but never used.
+server/src/providers/ollama.ts(15,17): error TS6133: 'post' is declared but its value is never read.
+server/src/providers/ollama.ts(11,17): error TS6133: 'get' is declared but its value is never read.
+server/src/providers/ollama.ts(6,18): error TS6133: 'prompt' is declared but its value is never read.
+server/src/providers/ollama.ts(4,11): error TS6133: 'baseURL' is declared but its value is never read.
+server/src/providers/ollama.ts(1,28): error TS2305: Module '"../ai/provider"' has no exported member 'LLMOptions'.
+server/src/providers/gemini.ts(20,17): error TS6133: 'post' is declared but its value is never read.
+server/src/providers/gemini.ts(16,17): error TS6133: 'get' is declared but its value is never read.
+server/src/providers/gemini.ts(11,18): error TS6133: 'prompt' is declared but its value is never read.
+server/src/providers/gemini.ts(4,11): error TS6133: 'apiKey' is declared but its value is never read.
+server/src/index.ts(56,26): error TS2554: Expected 1 arguments, but got 0.
+server/src/index.ts(44,7): error TS6133: '_realtimeServer' is declared but its value is never read.
+server/src/execution/stepRunner.ts(57,21): error TS2339: Property 'markStepFailed' does not exist on type 'WorkflowState'.
+server/src/agents/implementations/OrchestratorAgent.ts(138,48): error TS2345: Argument of type '{ generate(prompt: string, options?: LLMOptions | undefined): Promise<string>; } | undefined' is not assignable to parameter of type 'LLMProvider'.
+server/src/agents/implementations/OrchestratorAgent.ts(114,47): error TS2345: Argument of type '{ generate(prompt: string, options?: LLMOptions | undefined): Promise<string>; } | undefined' is not assignable to parameter of type 'LLMProvider'.
+server/src/agents/implementations/OrchestratorAgent.ts(86,16): error TS2554: Expected 0-1 arguments, but got 2.
+server/src/agents/implementations/OrchestratorAgent.ts(27,7): error TS6133: 'agentOrder' is declared but its value is never read.
+server/src/agents/implementations/LuaGeneratorAgent.ts(29,27): error TS6133: 'input' is declared but its value is never read.
+server/src/agents/implementations/LuaGeneratorAgent.ts(26,16): error TS2554: Expected 0-1 arguments, but got 2.
+server/src/agents/implementations/GameDesignerAgent.ts(29,27): error TS6133: 'input' is declared but its value is never read.
+server/src/agents/implementations/GameDesignerAgent.ts(26,16): error TS2554: Expected 0-1 arguments, but got 2.
+server/src/agents/implementations/DocumentationAgent.ts(29,27): error TS6133: 'input' is declared but its value is never read.
+server/src/agents/implementations/DocumentationAgent.ts(26,16): error TS2554: Expected 0-1 arguments, but got 2.
+server/src/agents/implementations/DebugAgent.ts(29,27): error TS6133: 'input' is declared but its value is never read.
+server/src/agents/implementations/DebugAgent.ts(26,16): error TS2554: Expected 0-1 arguments, but got 2.
+server/src/agents/implementations/DatabaseAgent.ts(29,27): error TS6133: 'input' is declared but its value is never read.
+server/src/agents/implementations/DatabaseAgent.ts(26,16): error TS2554: Expected 0-1 arguments, but got 2.
+server/src/agents/implementations/AssetPlannerAgent.ts(29,27): error TS6133: 'input' is declared but its value is never read.
+server/src/agents/implementations/OrchestratorAgent.ts(161,45): error TS2345: Argument of type '{ generate(prompt: string, options?: LLMOptions | undefined): Promise<string>; } | undefined' is not assignable to parameter of type 'LLMProvider'.
+server/src/agents/implementations/PerformanceAgent.ts(26,16): error TS2554: Expected 0-1 arguments, but got 2.
+server/src/agents/implementations/PerformanceAgent.ts(29,27): error TS6133: 'input' is declared but its value is never read.
+server/src/agents/implementations/PlannerAgent.ts(25,16): error TS2554: Expected 0-1 arguments, but got 2.
+server/src/execution/stepRunner.ts(51,21): error TS2339: Property 'markStepCompleted' does not exist on type 'WorkflowState'.
+server/src/execution/stepRunner.ts(26,11): error TS6133: 'ai' is declared but its value is never read.
+server/src/execution/stepRunner.ts(21,23): error TS2344: Type 'RetryPolicy' does not satisfy the constraint '(...args: any) => any'.
+server/src/execution/pipelineEngine.ts(2,15): error TS2305: Module '"./pipelineTypes"' has no exported member 'PipelineContext'.
+server/src/execution/pipelineEngine.ts(1,32): error TS2307: Cannot find module './PipelineRunner' or its corresponding type declarations.
+server/src/execution/aiPipelineIntegrator.ts(8,14): error TS6133: 'event' is declared but its value is never read.
+server/src/engine/GameGenerationEngine.ts(1,1): error TS6133: 'AIPipelineIntegrator' is declared but its value is never read.
+server/src/routes/game-generation.ts(9,34): error TS6133: 'prompt' is declared but its value is never read.
+server/src/agents/implementations/UIGeneratorAgent.ts(29,27): error TS6133: 'input' is declared but its value is never read.
+server/src/agents/implementations/TesterAgent.ts(29,27): error TS6133: 'input' is declared but its value is never read.
+server/src/agents/implementations/TesterAgent.ts(26,16): error TS2554: Expected 0-1 arguments, but got 2.
+server/src/agents/implementations/RobloxArchitectAgent.ts(28,27): error TS6133: 'input' is declared but its value is never read.
+server/src/agents/implementations/RobloxArchitectAgent.ts(25,16): error TS2554: Expected 0-1 arguments, but got 2.
+server/src/agents/implementations/RequirementsAgent.ts(28,27): error TS6133: 'input' is declared but its value is never read.
+server/src/agents/implementations/RequirementsAgent.ts(25,16): error TS2554: Expected 0-1 arguments, but got 2.
+server/src/agents/implementations/PlannerAgent.ts(28,27): error TS6133: 'input' is declared but its value is never read.
+server/src/agents/implementations/UIGeneratorAgent.ts(26,16): error TS2554: Expected 0-1 arguments, but got 2.
+server/src/routes/projects.ts(2,10): error TS2724: '"../projects/controllers/project.controller"' has no exported member named 'ProjectsController'. Did you mean 'ProjectController'?

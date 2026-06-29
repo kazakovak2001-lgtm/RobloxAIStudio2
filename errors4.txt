@@ -1,0 +1,16 @@
+server/src/agents/implementations/OrchestratorAgent.ts(99,47): error TS2345: Argument of type '{ generate(prompt: string, options?: LLMOptions | undefined): Promise<string>; } | undefined' is not assignable to parameter of type 'LLMProvider'.
+server/src/agents/implementations/OrchestratorAgent.ts(123,48): error TS2345: Argument of type '{ generate(prompt: string, options?: LLMOptions | undefined): Promise<string>; } | undefined' is not assignable to parameter of type 'LLMProvider'.
+server/src/engine/GameGenerationEngine.ts(1,1): error TS6133: 'AIPipelineIntegrator' is declared but its value is never read.
+server/src/execution/aiPipelineIntegrator.ts(8,14): error TS6133: 'event' is declared but its value is never read.
+server/src/execution/pipelineEngine.ts(1,32): error TS2307: Cannot find module './PipelineRunner' or its corresponding type declarations.
+server/src/execution/pipelineEngine.ts(2,15): error TS2305: Module '"./pipelineTypes"' has no exported member 'PipelineContext'.
+server/src/execution/stepRunner.ts(21,23): error TS2344: Type 'RetryPolicy' does not satisfy the constraint '(...args: any) => any'.
+server/src/execution/stepRunner.ts(26,11): error TS6133: 'ai' is declared but its value is never read.
+server/src/execution/stepRunner.ts(51,21): error TS2339: Property 'markStepCompleted' does not exist on type 'WorkflowState'.
+server/src/execution/stepRunner.ts(57,21): error TS2339: Property 'markStepFailed' does not exist on type 'WorkflowState'.
+server/src/index.ts(44,7): error TS6133: '_realtimeServer' is declared but its value is never read.
+server/src/index.ts(56,26): error TS2554: Expected 1 arguments, but got 0.
+server/src/index.ts(93,25): error TS2769: No overload matches this call.
+  The last overload gave the following error.
+server/src/pipeline/PipelineRunner.ts(12,21): error TS6133: 'input' is declared but its value is never read.
+server/src/projects/repository/blueprint.repository.ts(34,38): error TS2352: Conversion of type '{ id: string; userId: string; createdAt: Date; updatedAt: Date; status: string; version: number; name: string; game_type: string; description?: string; genre?: string; targetAudience?: string; difficulty?: string; estimated_players?: string; }' to type 'GameBlueprint' may be a mistake because neither type sufficiently overlaps with the other. If this was intentional, convert the expression to 'unknown' first.

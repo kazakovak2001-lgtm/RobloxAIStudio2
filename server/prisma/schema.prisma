@@ -1,0 +1,133 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// User model
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  username  String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  projects           Project[]
+  blueprints         GameBlueprint[]
+  blueprintVersions  BlueprintVersion[]
+  generationExecutions GenerationExecution[]
+
+  @@map("users")
+}
+
+// Project model
+model Project {
+  id        String   @id @default(cuid())
+  userId    String
+  name      String
+  description String?
+  gameType  String?
+  genre     String?
+  difficulty String?
+  players   String?
+  targetAudience String?
+  status    String   @default("draft")
+  progress  Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  blueprints GameBlueprint[]
+  generationExecutions GenerationExecution[]
+
+  @@map("projects")
+}
+
+// Game Blueprint model
+model GameBlueprint {
+  id        String   @id @default(cuid())
+  projectId String
+  userId    String
+  name      String
+  description String?
+  gameType  String
+  genre     String   // JSON stringified array
+  targetAudience String?
+  difficulty String
+  estimatedPlayers String
+  status    String   @default("draft") // draft, validated, generation_in_progress, ready_for_export, exported, archived
+  version   Int      @default(1)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Detailed design as JSON
+  requirements String? // JSON stringified
+  gameplay String? // JSON stringified
+  uiLayouts String? // JSON stringified
+  architecture String? // JSON stringified
+  assets String? // JSON stringified
+  codeSpec String? // JSON stringified
+
+  // Validation
+  validationErrors String? // JSON stringified array
+  warnings String? // JSON stringified array
+
+  // Generation metadata
+  generationMetadata String? // JSON stringified
+  exportMetadata String? // JSON stringified
+
+  project     Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  versions    BlueprintVersion[]
+  executions  GenerationExecution[]
+
+  @@unique([projectId, version])
+  @@map("game_blueprints")
+}
+
+// Blueprint Version model for history tracking
+model BlueprintVersion {
+  id        String   @id @default(cuid())
+  blueprintId String
+  versionNumber Int
+  createdAt DateTime @default(now())
+  createdBy String
+  snapshot  String   // JSON stringified partial blueprint
+  changeDescription String?
+  isActive  Boolean  @default(false)
+
+  blueprint GameBlueprint @relation(fields: [blueprintId], references: [id], onDelete: Cascade)
+  user      User          @relation(fields: [createdBy], references: [id], onDelete: Cascade)
+
+  @@unique([blueprintId, versionNumber])
+  @@map("blueprint_versions")
+}
+
+// Generation Execution model for tracking pipeline runs
+model GenerationExecution {
+  id        String   @id @default(cuid())
+  blueprintId String
+  projectId String
+  userId    String
+  startedAt DateTime @default(now())
+  completedAt DateTime?
+  status    String   @default("running") // running, completed, failed, cancelled
+  totalDurationMs Int?
+  errorMessage String?
+  retryCount Int      @default(0)
+
+  // Pipeline steps as JSON
+  pipelineSteps String? // JSON stringified
+
+  blueprint GameBlueprint @relation(fields: [blueprintId], references: [id], onDelete: Cascade)
+  project   Project       @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  user      User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("generation_executions")
+}

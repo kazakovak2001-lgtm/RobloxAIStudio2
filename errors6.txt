@@ -1,0 +1,10 @@
+server/src/execution/aiPipelineIntegrator.ts(8,14): error TS6133: 'event' is declared but its value is never read.
+server/src/execution/pipelineEngine.ts(1,32): error TS2307: Cannot find module './PipelineRunner' or its corresponding type declarations.
+server/src/execution/pipelineEngine.ts(2,61): error TS2305: Module '"./pipelineTypes"' has no exported member 'PipelineStatus'.
+server/src/execution/retryPolicy.ts(1,15): error TS2305: Module '"./pipelineTypes"' has no exported member 'RetryPolicy'.
+server/src/execution/retryPolicy.ts(14,7): error TS2367: This comparison appears to be unintentional because the types '"pending" | "running" | "completed" | "failed"' and '"cancelled"' have no overlap.
+server/src/execution/retryPolicy.ts(14,38): error TS2367: This comparison appears to be unintentional because the types '"pending" | "running" | "completed" | "failed"' and '"skipped"' have no overlap.
+server/src/index.ts(57,3): error TS2345: Argument of type 'InMemoryProjectRepository' is not assignable to parameter of type 'IBlueprintRepository'.
+server/src/index.ts(98,25): error TS2769: No overload matches this call.
+  The last overload gave the following error.
+server/src/pipeline/PipelineRunner.ts(12,21): error TS6133: 'input' is declared but its value is never read.

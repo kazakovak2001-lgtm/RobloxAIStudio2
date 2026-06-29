@@ -1,0 +1,17 @@
+server/src/execution/aiPipelineIntegrator.ts(8,14): error TS6133: 'event' is declared but its value is never read.
+  The last overload gave the following error.
+server/src/index.ts(95,25): error TS2769: No overload matches this call.
+server/src/index.ts(57,7): error TS2304: Cannot find name 'PipelineEventEmitter'.
+server/src/index.ts(56,7): error TS2304: Cannot find name 'StreamingUpdateHandler'.
+server/src/index.ts(55,7): error TS2304: Cannot find name 'BlueprintCache'.
+server/src/index.ts(54,7): error TS2304: Cannot find name 'InMemoryProjectRepository'.
+server/src/pipeline/PipelineRunner.ts(12,21): error TS6133: 'input' is declared but its value is never read.
+server/src/index.ts(53,57): error TS2304: Cannot find name 'GameGenerationService'.
+server/src/execution/stepRunner.ts(1,88): error TS6196: 'WorkflowState' is declared but never used.
+server/src/execution/retryPolicy.ts(14,38): error TS2367: This comparison appears to be unintentional because the types '"pending" | "running" | "completed" | "failed"' and '"skipped"' have no overlap.
+server/src/execution/retryPolicy.ts(14,7): error TS2367: This comparison appears to be unintentional because the types '"pending" | "running" | "completed" | "failed"' and '"cancelled"' have no overlap.
+server/src/execution/retryPolicy.ts(1,15): error TS2305: Module '"./pipelineTypes"' has no exported member 'RetryPolicy'.
+server/src/execution/pipelineEngine.ts(2,61): error TS2305: Module '"./pipelineTypes"' has no exported member 'PipelineStatus'.
+server/src/execution/pipelineEngine.ts(1,32): error TS2307: Cannot find module './PipelineRunner' or its corresponding type declarations.
+server/src/index.ts(11,1): error TS6133: 'RealtimeServer' is declared but its value is never read.
+server/src/projects/repository/blueprint.repository.ts(34,38): error TS2352: Conversion of type '{ id: string; userId: string; createdAt: Date; updatedAt: Date; status: string; version: number; name: string; game_type: string; description?: string; genre?: string; targetAudience?: string; difficulty?: string; estimated_players?: string; }' to type 'GameBlueprint' may be a mistake because neither type sufficiently overlaps with the other. If this was intentional, convert the expression to 'unknown' first.
