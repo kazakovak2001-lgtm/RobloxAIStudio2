@@ -1,7 +1,9 @@
 import { Router } from "express";
 import { GameGenerationService } from "../projects/services/game-generation.service";
 
-export function createGameGenerationRouter(gameService: GameGenerationService): Router {
+export function createGameGenerationRouter(
+  gameService: GameGenerationService,
+): Router {
   const router = Router();
 
   // Start generation
@@ -9,8 +11,15 @@ export function createGameGenerationRouter(gameService: GameGenerationService): 
     try {
       const { projectId } = req.params;
       const { blueprintId, userId } = req.body;
-      const result = await gameService.startGeneration(blueprintId || projectId, userId || "default-user");
-      res.json({ success: true, executionId: result.id, status: "generation_started" });
+      const result = await gameService.startGeneration(
+        blueprintId || projectId,
+        userId || "default-user",
+      );
+      res.json({
+        success: true,
+        executionId: result.id,
+        status: "generation_started",
+      });
     } catch (error) {
       res.status(500).json({ success: false, error: "Generation failed" });
     }
@@ -21,10 +30,16 @@ export function createGameGenerationRouter(gameService: GameGenerationService): 
     try {
       const { projectId } = req.params;
       const { userId, ...input } = req.body;
-      const blueprint = await gameService.createBlueprint(userId || "default-user", projectId, input);
+      const blueprint = await gameService.createBlueprint(
+        userId || "default-user",
+        projectId,
+        input,
+      );
       res.json({ success: true, data: blueprint });
     } catch (error) {
-      res.status(500).json({ success: false, error: "Failed to create blueprint" });
+      res
+        .status(500)
+        .json({ success: false, error: "Failed to create blueprint" });
     }
   });
 
@@ -38,7 +53,9 @@ export function createGameGenerationRouter(gameService: GameGenerationService): 
       }
       res.json({ success: true, data: blueprint });
     } catch (error) {
-      res.status(500).json({ success: false, error: "Failed to fetch blueprint" });
+      res
+        .status(500)
+        .json({ success: false, error: "Failed to fetch blueprint" });
     }
   });
 
@@ -74,10 +91,14 @@ export function createGameGenerationRouter(gameService: GameGenerationService): 
   // List executions for blueprint
   router.get("/blueprints/:blueprintId/executions", async (req, res) => {
     try {
-      const executions = await gameService.getExecutions(req.params.blueprintId);
+      const executions = await gameService.getExecutions(
+        req.params.blueprintId,
+      );
       res.json({ success: true, data: executions });
     } catch (error) {
-      res.status(500).json({ success: false, error: "Failed to list executions" });
+      res
+        .status(500)
+        .json({ success: false, error: "Failed to list executions" });
     }
   });
 
@@ -87,8 +108,20 @@ export function createGameGenerationRouter(gameService: GameGenerationService): 
       const stats = gameService.getCacheStats();
       res.json({ success: true, data: stats });
     } catch (error) {
-      res.status(500).json({ success: false, error: "Failed to get cache stats" });
+      res
+        .status(500)
+        .json({ success: false, error: "Failed to get cache stats" });
     }
+  });
+
+  // Server-Sent Events stream for pipeline execution updates
+  // Clients subscribe with GET /api/projects/generation/stream?clientId=<id>
+  router.get("/generation/stream", (req, res) => {
+    const clientId =
+      typeof req.query.clientId === "string"
+        ? req.query.clientId
+        : `client-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
+    gameService.getStreamingHandler().registerClient(clientId, res);
   });
 
   return router;

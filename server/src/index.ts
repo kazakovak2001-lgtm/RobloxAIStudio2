@@ -18,6 +18,7 @@ import {
 } from "./socket/streaming";
 import { errorHandler } from "./common/middleware/errorHandler";
 import { AIPipelineIntegrator } from "./execution/aiPipelineIntegrator";
+import { AgentRegistry } from "./agents/core/AgentRegistry";
 
 const app: Express = express();
 
@@ -65,6 +66,7 @@ const blueprintCache = new BlueprintCache();
 const blueprintRepo = new InMemoryBlueprintRepository();
 
 const pipelineIntegrator = new AIPipelineIntegrator(events);
+const agentRegistry = new AgentRegistry();
 
 const gameService = new GameGenerationService(
   blueprintRepo,
@@ -72,6 +74,7 @@ const gameService = new GameGenerationService(
   streaming,
   events,
   pipelineIntegrator,
+  agentRegistry,
 );
 
 // Connect event emitter to streaming handler

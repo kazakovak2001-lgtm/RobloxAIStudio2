@@ -47,6 +47,16 @@ export abstract class BaseAgent {
     if (config?.timeout) this.timeout = config.timeout;
   }
 
+  /**
+   * Wire an LLM provider into this agent.
+   * Called by AgentRegistry after all agents are instantiated.
+   */
+  setLLM(llm: {
+    generate(prompt: string, options?: LLMOptions): Promise<string>;
+  }): void {
+    this.llm = llm;
+  }
+
   async execute(input: AgentInput): Promise<AgentResult<AgentOutput>> {
     const startTime = Date.now();
     let attempts = 0;
@@ -80,11 +90,16 @@ export abstract class BaseAgent {
     };
   }
 
-  async retry(input: AgentInput, _error?: string): Promise<AgentResult<AgentOutput>> {
+  async retry(
+    input: AgentInput,
+    _error?: string,
+  ): Promise<AgentResult<AgentOutput>> {
     return this.execute(input);
   }
 
-  protected abstract process(input: AgentInput): Promise<Record<string, unknown>>;
+  protected abstract process(
+    input: AgentInput,
+  ): Promise<Record<string, unknown>>;
 
   protected delay(ms: number): Promise<void> {
     return new Promise((resolve) => setTimeout(resolve, ms));

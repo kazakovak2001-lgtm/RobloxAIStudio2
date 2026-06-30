@@ -1,105 +1,207 @@
-import type { AgentInput, AgentOutput, AgentStatus, AgentType } from "../../types";
+import type {
+  AgentInput,
+  AgentOutput,
+  AgentStatus,
+  AgentType,
+} from "../../types";
 import { BaseAgent, type AgentConfig } from "../core/BaseAgent";
-import { RequirementsAgent } from "./RequirementsAgent";
-import { PlannerAgent } from "./PlannerAgent";
-import { GameDesignerAgent } from "./GameDesignerAgent";
-import { RobloxArchitectAgent } from "./RobloxArchitectAgent";
-import { LuaGeneratorAgent } from "./LuaGeneratorAgent";
-import { UIGeneratorAgent } from "./UIGeneratorAgent";
-import { AssetPlannerAgent } from "./AssetPlannerAgent";
-import { DatabaseAgent } from "./DatabaseAgent";
-import { DocumentationAgent } from "./DocumentationAgent";
-import { TesterAgent } from "./TesterAgent";
-import { DebugAgent } from "./DebugAgent";
-import { PerformanceAgent } from "./PerformanceAgent";
 
-const agentFactories: Record<string, () => BaseAgent> = {
-  requirements: () => new RequirementsAgent(),
-  planner: () => new PlannerAgent(),
-  game_designer: () => new GameDesignerAgent(),
-  roblox_architect: () => new RobloxArchitectAgent(),
-  lua_generator: () => new LuaGeneratorAgent(),
-  ui_generator: () => new UIGeneratorAgent(),
-  asset_planner: () => new AssetPlannerAgent(),
-  database_designer: () => new DatabaseAgent(),
-  documentation: () => new DocumentationAgent(),
-  tester: () => new TesterAgent(),
-  debugger: () => new DebugAgent(),
-  performance: () => new PerformanceAgent(),
-  orchestrator: () => { throw new Error("Orchestrator cannot be instantiated as a pipeline agent"); },
-};
-
+/**
+ * OrchestratorAgent
+ *
+ * Dual-mode final stage of the generation pipeline:
+ *
+ * Mode A — Final aggregation (default, when called by AIPipelineIntegrator):
+ *   Input contains `blueprint` + all accumulated step outputs from prior agents.
+ *   Produces a structured world/systems/metadata summary consumed by
+ *   `aggregateToGameGenerationResult` under the `orchestrator` key.
+ *
+ * Mode B — Coordination (when input contains `pipeline: AgentType[]`):
+ *   Runs a sub-sequence of agents via AgentRegistry (injected at runtime).
+ *   Used when the orchestrator is invoked standalone, not as a pipeline step.
+ */
 export class OrchestratorAgent extends BaseAgent {
   public readonly name = "Orchestrator";
-  public readonly description = "Coordinates the multi-agent pipeline execution with retry, logging, and error handling.";
+  public readonly description =
+    "Coordinates the multi-agent pipeline and produces the final game artifact summary.";
+
   public readonly inputSchema: Record<string, unknown> = {
     type: "object",
     properties: {
+      blueprint: { type: "object" },
       pipeline: { type: "array", items: { type: "string" } },
       input: { type: "object" },
     },
-    required: ["pipeline", "input"],
   };
+
   public readonly outputSchema: Record<string, unknown> = {
     type: "object",
     properties: {
+      name: { type: "string" },
+      description: { type: "string" },
+      world: { type: "object" },
+      systems: { type: "array" },
       pipelineRunId: { type: "string" },
       status: { type: "string" },
-      steps: { type: "array", items: { type: "object" } },
+      steps: { type: "array" },
       finalOutput: { type: "object" },
     },
-    required: ["pipelineRunId", "status", "steps"],
+    required: ["status"],
+  };
+
+  /** Optional registry injected at runtime for Mode B coordination. */
+  private registry?: {
+    executeAgent(
+      type: string,
+      input: Record<string, unknown>,
+    ): Promise<Record<string, unknown>>;
   };
 
   constructor(config?: Partial<AgentConfig>) {
     super(config);
   }
 
+  /**
+   * Inject an agent executor for Mode B (coordination) usage.
+   * Called externally only when the orchestrator is used standalone.
+   */
+  setRegistry(registry: {
+    executeAgent(
+      type: string,
+      input: Record<string, unknown>,
+    ): Promise<Record<string, unknown>>;
+  }): void {
+    this.registry = registry;
+  }
+
   protected async process(input: AgentInput): Promise<AgentOutput> {
+    // Mode B: coordination — explicit pipeline array provided
+    if (Array.isArray(input.pipeline)) {
+      return this.runCoordination(input);
+    }
+
+    // Mode A: final aggregation stage
+    return this.runFinalAggregation(input);
+  }
+
+  // ─── Mode A: Final aggregation ──────────────────────────────────────────────
+
+  private runFinalAggregation(input: AgentInput): AgentOutput {
+    const blueprint = input.blueprint as Record<string, unknown> | undefined;
+    const gameplay = input.game_designer as Record<string, unknown> | undefined;
+    const arch =
+      (input.roblox_architect as Record<string, unknown> | undefined) ??
+      (input.architecture as Record<string, unknown> | undefined);
+
+    const name =
+      typeof (blueprint as any)?.name === "string"
+        ? (blueprint as any).name
+        : "Generated Game";
+
+    const description =
+      typeof (blueprint as any)?.description === "string"
+        ? (blueprint as any).description
+        : "A Roblox game generated by the AI pipeline.";
+
+    // Derive world data from accumulated inputs
+    const world: Record<string, unknown> = {
+      name,
+      description,
+      places: [],
+      models: [],
+      systemsHooks:
+        typeof (arch as any)?.services === "object"
+          ? (arch as any).services
+          : {},
+    };
+
+    // Derive gameplay systems from game_designer output
+    const systems: Array<Record<string, unknown>> = [];
+    const mechanics = (gameplay as any)?.gameplay?.mechanics;
+    if (Array.isArray(mechanics)) {
+      for (const m of mechanics) {
+        if (m && typeof m === "object") {
+          systems.push({
+            name: String((m as any).name ?? "Mechanic"),
+            description: String((m as any).description ?? ""),
+          });
+        }
+      }
+    }
+
+    return {
+      status: "completed",
+      name,
+      description,
+      world,
+      systems,
+    };
+  }
+
+  // ─── Mode B: Coordination ───────────────────────────────────────────────────
+
+  private async runCoordination(input: AgentInput): Promise<AgentOutput> {
     const pipeline = input.pipeline as AgentType[];
-    const userInput = input.input as AgentInput;
+    const userInput = (input.input as AgentInput | undefined) ?? {};
     const pipelineRunId = `run_${Date.now()}`;
 
     const steps: Array<{
       agent: string;
       status: AgentStatus;
-      startedAt: Date;
-      finishedAt?: Date;
+      startedAt: string;
+      finishedAt?: string;
     }> = [];
 
-    let currentInput: AgentInput = userInput;
+    let currentInput: Record<string, unknown> = { ...userInput };
 
     for (const agentType of pipeline) {
-      const factory = agentFactories[agentType];
-      if (!factory) {
-        steps.push({ agent: agentType, status: "failed", startedAt: new Date(), finishedAt: new Date() });
-        break;
-      }
-
-      const agent = factory();
       const startedAt = new Date();
-      const result = await agent.execute(currentInput);
-      steps.push({
-        agent: agent.name,
-        status: result.success ? "completed" : "failed",
-        startedAt,
-        finishedAt: new Date(),
-      });
 
-      if (!result.success) {
+      if (!this.registry) {
+        steps.push({
+          agent: agentType,
+          status: "failed",
+          startedAt: startedAt.toISOString(),
+          finishedAt: new Date().toISOString(),
+        });
         break;
       }
 
-      currentInput = { ...currentInput, ...(result.data ?? {}) };
+      try {
+        const output = await this.registry.executeAgent(
+          agentType,
+          currentInput,
+        );
+        const failed = (output as any)._failed === true;
+        steps.push({
+          agent: agentType,
+          status: failed ? "failed" : "completed",
+          startedAt: startedAt.toISOString(),
+          finishedAt: new Date().toISOString(),
+        });
+
+        if (failed) break;
+        currentInput = { ...currentInput, ...output };
+      } catch (err) {
+        steps.push({
+          agent: agentType,
+          status: "failed",
+          startedAt: startedAt.toISOString(),
+          finishedAt: new Date().toISOString(),
+        });
+        break;
+      }
     }
 
-    const completedSteps = steps.filter((step) => step.status === "completed");
-    const status = steps.some((s) => s.status === "failed") ? "failed" : "completed";
+    const status = steps.some((s) => s.status === "failed")
+      ? "failed"
+      : "completed";
+    const completedSteps = steps.filter((s) => s.status === "completed");
 
     return {
       pipelineRunId,
       status,
-      steps: steps.map((s) => ({ agent: s.agent, status: s.status, startedAt: s.startedAt.toISOString(), finishedAt: s.finishedAt?.toISOString() })),
+      steps,
       finalOutput: completedSteps.length > 0 ? currentInput : {},
     };
   }

@@ -1,21 +1,25 @@
 import type {
-   GameBlueprint,
-   CreateBlueprintInput,
-   GenerationExecution,
- } from "../types/blueprint";
+  GameBlueprint,
+  CreateBlueprintInput,
+  GenerationExecution,
+} from "../types/blueprint";
 
- import type { IBlueprintRepository } from "../repository/blueprint.repository";
- import { BlueprintCache } from "../cache/blueprint.cache";
- import {
-   StreamingUpdateHandler,
-   PipelineEventEmitter,
- } from "../../socket/streaming";
- import { BlueprintValidator } from "./blueprint.validator";
- import { AIPipelineIntegrator } from "../../execution/aiPipelineIntegrator";
- import { generateGameDesignSeed } from "../../execution/gameDiversityEngine";
+import type { IBlueprintRepository } from "../repository/blueprint.repository";
+import { BlueprintCache } from "../cache/blueprint.cache";
+import {
+  StreamingUpdateHandler,
+  PipelineEventEmitter,
+} from "../../socket/streaming";
+import { BlueprintValidator } from "./blueprint.validator";
+import { AIPipelineIntegrator } from "../../execution/aiPipelineIntegrator";
+import { generateGameDesignSeed } from "../../execution/gameDiversityEngine";
+import { AgentRegistry } from "../../agents/core/AgentRegistry";
+import { ExecutionQueue } from "../../execution/executionQueue";
 
 export class GameGenerationService {
   private integrator: AIPipelineIntegrator;
+  private agentRegistry: AgentRegistry;
+  private executionQueue = new ExecutionQueue();
 
   private repository: IBlueprintRepository;
   private cache: BlueprintCache;
@@ -28,12 +32,15 @@ export class GameGenerationService {
     streaming: StreamingUpdateHandler,
     _events: PipelineEventEmitter,
     integrator: AIPipelineIntegrator,
+    agentRegistry?: AgentRegistry,
   ) {
     this.repository = repository;
     this.cache = cache;
     this.streaming = streaming;
     this.validator = new BlueprintValidator();
     this.integrator = integrator;
+    // Use provided registry or create a default one (no LLM wired until setLLM is called)
+    this.agentRegistry = agentRegistry ?? new AgentRegistry();
   }
 
   async createBlueprint(
@@ -76,7 +83,7 @@ export class GameGenerationService {
     return this.validator.validate(blueprint);
   }
 
-async startGeneration(
+  async startGeneration(
     blueprintId: string,
     userId: string,
   ): Promise<GenerationExecution> {
@@ -94,49 +101,54 @@ async startGeneration(
 
     await this.repository.recordExecution(execution);
 
-    // Trigger real pipeline execution after creation.
-    // Uses existing agentExecutor(agentType, input) pattern.
-    const run = async () => {
-      const blueprint = await this.repository.getBlueprint(blueprintId);
-      if (!blueprint) throw new Error(`Blueprint ${blueprintId} not found`);
+    // Queue the pipeline run so concurrent requests don't overwhelm the system.
+    void this.executionQueue.add(async () => {
+      try {
+        const blueprint = await this.repository.getBlueprint(blueprintId);
+        if (!blueprint) throw new Error(`Blueprint ${blueprintId} not found`);
 
-      // Generate diversity-aware GameDesignSeed and inject into blueprint
-      const gameDesignSeed = generateGameDesignSeed({
-        blueprint,
-        executionId: execution.id,
-        userId,
-      });
+        // Generate diversity-aware GameDesignSeed and inject into blueprint
+        const gameDesignSeed = generateGameDesignSeed({
+          blueprint,
+          executionId: execution.id,
+          userId,
+        });
 
-      const enrichedBlueprint: GameBlueprint = {
-        ...blueprint,
-        generation_metadata: {
-          ...blueprint.generation_metadata,
-          gameDesignSeed,
-        },
-      };
+        const enrichedBlueprint: GameBlueprint = {
+          ...blueprint,
+          generation_metadata: {
+            ...blueprint.generation_metadata,
+            gameDesignSeed,
+          },
+        };
 
-      // Minimal agent executor adapter using existing infrastructure.
-      const agentExecutor = async (
-        agent: string,
-        input: Record<string, unknown>,
-      ): Promise<Record<string, unknown>> => {
-        // The step runner expects agent outputs as plain records.
-        // Agent implementations are expected to be exposed via provider elsewhere.
-        // For now we reuse the pipeline's sequential loop contract.
-        // This repository adapter relies on the agent system being wired at runtime.
-        return this.runAgent(agent, input);
-      };
+        const agentExecutor = async (
+          agent: string,
+          input: Record<string, unknown>,
+        ): Promise<Record<string, unknown>> => this.runAgent(agent, input);
 
-      return this.integrator.executePipeline(
-        enrichedBlueprint,
-        agentExecutor,
-        execution.id,
-      );
-    };
+        await this.integrator.executePipeline(
+          enrichedBlueprint,
+          agentExecutor,
+          execution.id,
+        );
 
-    // Ensure it is async but guaranteed to start.
-    void run().catch((err) => {
-      console.error("Pipeline execution failed:", err);
+        // Mark execution as completed
+        await this.repository.updateExecution(execution.id, {
+          status: "completed",
+          completed_at: new Date(),
+        });
+      } catch (err) {
+        console.error(
+          `[GameGenerationService] Pipeline failed for execution ${execution.id}:`,
+          err,
+        );
+        // Mark execution as failed so status endpoint reflects reality
+        await this.repository.updateExecution(execution.id, {
+          status: "failed",
+          completed_at: new Date(),
+        });
+      }
     });
 
     return execution;
@@ -148,13 +160,7 @@ async startGeneration(
     agentType: string,
     input: Record<string, unknown>,
   ): Promise<Record<string, unknown>> {
-    const result = await (this as any).agentExecutor?.executeAgent?.(
-      agentType,
-      input,
-    );
-    if (result && typeof result === "object")
-      return result as Record<string, unknown>;
-    return { result };
+    return this.agentRegistry.executeAgent(agentType, input);
   }
 
   async getExecution(id: string): Promise<GenerationExecution | null> {
