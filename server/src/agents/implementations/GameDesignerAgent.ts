@@ -1,71 +1,114 @@
 import { BaseAgent, type AgentConfig } from "../core/BaseAgent";
 import type { AgentInput, GameDesignSeed } from "../../types";
+import { LLMOutputParser } from "../../ai/outputParser";
 
 export class GameDesignerAgent extends BaseAgent {
-   public readonly name = "GameDesigner";
-   public readonly description = "Designs game mechanics and gameplay";
-   public readonly inputSchema: Record<string, unknown> = {
-     type: "object",
-     properties: {
-       requirements: { type: "object" },
-       plan: { type: "object" },
-       gameDesignSeed: { type: "object" },
-     },
-     required: ["requirements", "plan"],
-   };
-   public readonly outputSchema: Record<string, unknown> = {
-     type: "object",
-     properties: {
-       gameplay: { type: "object" },
-       loop: { type: "string" },
-       winCondition: { type: "string" },
-       loseCondition: { type: "string" },
-       progressionModel: { type: "string" },
-       interactionSystems: { type: "array" },
-       economyOrScoring: { type: "string" },
-     },
-     required: ["gameplay"],
-   };
-   constructor(config?: Partial<AgentConfig>) { super(config); }
+  public readonly name = "GameDesigner";
+  public readonly description =
+    "Designs game mechanics, systems, and gameplay loop";
 
-   protected async process(input: AgentInput): Promise<Record<string, unknown>> {
-     const seed = input.gameDesignSeed as GameDesignSeed | undefined;
+  public readonly inputSchema: Record<string, unknown> = {
+    type: "object",
+    properties: {
+      requirements: { type: "object" },
+      plan: { type: "object" },
+      blueprint: { type: "object" },
+      gameDesignSeed: { type: "object" },
+    },
+  };
 
-     const seedDerived = seed
-       ? {
-           loop: seed.coreLoop,
-           winCondition: "Complete the core loop objective",
-           loseCondition: "Fail to maintain the progression constraints",
-           progressionModel: "Milestone-based unlocking with escalating difficulty",
-           interactionSystems: seed.mechanics.slice(0, 5),
-           economyOrScoring: "Points/credits earned from successful interactions",
-         }
-       : {
-           loop: undefined,
-           winCondition: "Reach the core objective",
-           loseCondition: "Fail the objective within the constraints",
-           progressionModel: "Milestone-based unlocking with escalating difficulty",
-           interactionSystems: [],
-           economyOrScoring: "Points/credits earned",
-         };
+  public readonly outputSchema: Record<string, unknown> = {
+    type: "object",
+    properties: {
+      gameplay: { type: "object" },
+      loop: { type: "string" },
+      winCondition: { type: "string" },
+      loseCondition: { type: "string" },
+      progressionModel: { type: "string" },
+      interactionSystems: { type: "array" },
+      economyOrScoring: { type: "string" },
+    },
+    required: ["gameplay"],
+  };
 
-     return {
-       gameplay: {
-         mechanics: seed?.mechanics?.map((m: string) => ({
-           name: m,
-           description: `Core mechanic: ${m}`,
-           parameters: {},
-         })) ?? [],
-         progression: { loop: seedDerived.loop, player_progression_model: seedDerived.progressionModel },
-         balance: {
-           winCondition: seedDerived.winCondition,
-           loseCondition: seedDerived.loseCondition,
-           interactionSystems: seedDerived.interactionSystems,
-           economyOrScoring: seedDerived.economyOrScoring,
-           theme: seed?.theme,
-         },
-       },
-       ...seedDerived,
-     };
-   }
+  constructor(config?: Partial<AgentConfig>) {
+    super(config);
+  }
+
+  protected async process(input: AgentInput): Promise<Record<string, unknown>> {
+    const bp = input.blueprint as Record<string, unknown> | undefined;
+    const seed = input.gameDesignSeed as GameDesignSeed | undefined;
+
+    const name = String(bp?.name ?? "Unnamed Game");
+    const genre = Array.isArray(bp?.genre)
+      ? (bp.genre as string[]).join(", ")
+      : String(bp?.genre ?? "Adventure");
+    const coreLoop = seed?.coreLoop ?? "explore → engage → reward";
+    const theme = seed?.theme ?? "fantasy";
+    const mechanics =
+      seed?.mechanics?.join(", ") ?? "movement, interaction, progression";
+    const innovations = seed?.innovationModifiers?.join("; ") ?? "";
+
+    // Deterministic seed-based fallback (always safe to return)
+    const fallback: Record<string, unknown> = {
+      gameplay: {
+        mechanics: (
+          seed?.mechanics ?? ["exploration", "combat", "progression"]
+        ).map((m: string) => ({
+          name: m,
+          description: `Core mechanic: ${m}`,
+          parameters: {},
+        })),
+        progression: {
+          loop: coreLoop,
+          player_progression_model:
+            "Milestone-based unlocking with escalating difficulty",
+          unlocking_system: "Level thresholds",
+        },
+        balance: {
+          winCondition: "Complete the core loop objective",
+          loseCondition: "Fail to maintain the progression constraints",
+          interactionSystems: seed?.mechanics?.slice(0, 5) ?? [],
+          economyOrScoring: "Points earned from successful interactions",
+          theme,
+        },
+      },
+      loop: coreLoop,
+      winCondition: "Complete the core loop objective",
+      loseCondition: "Fail to maintain the progression constraints",
+      progressionModel: "Milestone-based unlocking with escalating difficulty",
+      interactionSystems: seed?.mechanics?.slice(0, 5) ?? [],
+      economyOrScoring: "Points earned from successful interactions",
+    };
+
+    if (!this.llm) return fallback;
+
+    const prompt =
+      "You are a Roblox game designer. Design detailed gameplay systems. " +
+      "Respond with a single JSON object matching this schema:\n" +
+      '{ "gameplay": { "mechanics": Array<{name,description,parameters}>, ' +
+      '"progression": {loop,player_progression_model,unlocking_system}, ' +
+      '"balance": {winCondition,loseCondition,interactionSystems,economyOrScoring,theme} }, ' +
+      '"loop": string, "winCondition": string, "loseCondition": string, ' +
+      '"progressionModel": string, "interactionSystems": string[], "economyOrScoring": string }\n\n' +
+      `Game Name: ${name}\n` +
+      `Genre: ${genre}\n` +
+      `Core Loop: ${coreLoop}\n` +
+      `Theme: ${theme}\n` +
+      `Mechanics to include: ${mechanics}\n` +
+      (innovations ? `Innovation modifiers: ${innovations}\n` : "") +
+      "\nReturn only valid JSON.";
+
+    const raw = await this.llm.generate(prompt, {
+      temperature: 0.5,
+      maxTokens: 1800,
+    });
+
+    return LLMOutputParser.parseAndValidate(
+      raw,
+      ["gameplay"],
+      fallback,
+      this.name,
+    );
+  }
 }

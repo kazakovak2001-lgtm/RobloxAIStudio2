@@ -19,6 +19,7 @@ import {
 import { errorHandler } from "./common/middleware/errorHandler";
 import { AIPipelineIntegrator } from "./execution/aiPipelineIntegrator";
 import { AgentRegistry } from "./agents/core/AgentRegistry";
+import { LLMProviderFactory } from "./ai/providerFactory";
 
 const app: Express = express();
 
@@ -56,6 +57,7 @@ app.get("/health", (_req: Request, res: Response) => {
   res.json({
     status: "healthy",
     timestamp: new Date().toISOString(),
+    llm: llmResult.mode === "none" ? "stub" : llmResult.mode,
   });
 });
 
@@ -66,7 +68,12 @@ const blueprintCache = new BlueprintCache();
 const blueprintRepo = new InMemoryBlueprintRepository();
 
 const pipelineIntegrator = new AIPipelineIntegrator(events);
-const agentRegistry = new AgentRegistry();
+
+// Resolve LLM provider from environment variables
+const llmResult = LLMProviderFactory.create();
+console.log(`[LLM] ${llmResult.info}`);
+
+const agentRegistry = new AgentRegistry(llmResult.provider ?? undefined);
 
 const gameService = new GameGenerationService(
   blueprintRepo,
@@ -158,6 +165,7 @@ app.get("/", (_req: Request, res: Response) => {
     name: "Roblox AI Studio - Game Generation Engine",
     version: "1.0.0",
     status: "running",
+    llm: llmResult.mode === "none" ? "stub" : llmResult.mode,
   });
 });
 
