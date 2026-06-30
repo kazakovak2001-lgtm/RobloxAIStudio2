@@ -83,7 +83,17 @@ export class GameDesignerAgent extends BaseAgent {
 
     if (!this.llm) return fallback;
 
-    const prompt =
+    // Use PromptTemplateRegistry as single source of truth for prompt content.
+    const registryPrompt = this.buildPrompt({
+      name,
+      genre,
+      core_loop: coreLoop,
+      theme,
+      mechanics,
+      innovation_modifiers: innovations,
+    });
+
+    const inlinePrompt =
       "You are a Roblox game designer. Design detailed gameplay systems. " +
       "Respond with a single JSON object matching this schema:\n" +
       '{ "gameplay": { "mechanics": Array<{name,description,parameters}>, ' +
@@ -91,13 +101,12 @@ export class GameDesignerAgent extends BaseAgent {
       '"balance": {winCondition,loseCondition,interactionSystems,economyOrScoring,theme} }, ' +
       '"loop": string, "winCondition": string, "loseCondition": string, ' +
       '"progressionModel": string, "interactionSystems": string[], "economyOrScoring": string }\n\n' +
-      `Game Name: ${name}\n` +
-      `Genre: ${genre}\n` +
-      `Core Loop: ${coreLoop}\n` +
-      `Theme: ${theme}\n` +
+      `Game Name: ${name}\nGenre: ${genre}\nCore Loop: ${coreLoop}\nTheme: ${theme}\n` +
       `Mechanics to include: ${mechanics}\n` +
       (innovations ? `Innovation modifiers: ${innovations}\n` : "") +
       "\nReturn only valid JSON.";
+
+    const prompt = registryPrompt ?? inlinePrompt;
 
     const raw = await this.llm.generate(prompt, {
       temperature: 0.5,

@@ -1,3 +1,8 @@
+import {
+  createDefaultPromptTemplateRegistry,
+  type PromptTemplateRegistry,
+} from "../../ai/promptTemplates";
+
 export interface AgentConfig {
   name: string;
   description: string;
@@ -30,6 +35,15 @@ export interface LLMOptions {
   model?: string;
 }
 
+/** Shared registry instance — one per process, lazily initialised. */
+let _sharedRegistry: PromptTemplateRegistry | null = null;
+function getSharedRegistry(): PromptTemplateRegistry {
+  if (!_sharedRegistry) {
+    _sharedRegistry = createDefaultPromptTemplateRegistry();
+  }
+  return _sharedRegistry;
+}
+
 export abstract class BaseAgent {
   public abstract readonly name: string;
   public abstract readonly description: string;
@@ -41,6 +55,9 @@ export abstract class BaseAgent {
   protected llm?: {
     generate(prompt: string, options?: LLMOptions): Promise<string>;
   };
+
+  /** Per-agent override; falls back to shared default registry. */
+  private _templateRegistry?: PromptTemplateRegistry;
 
   constructor(config?: Partial<AgentConfig>) {
     if (config?.maxRetries) this.maxRetries = config.maxRetries;
@@ -55,6 +72,69 @@ export abstract class BaseAgent {
     generate(prompt: string, options?: LLMOptions): Promise<string>;
   }): void {
     this.llm = llm;
+  }
+
+  /**
+   * Override the prompt template registry for this agent.
+   * If not set, uses the shared default registry.
+   */
+  setTemplateRegistry(registry: PromptTemplateRegistry): void {
+    this._templateRegistry = registry;
+  }
+
+  /**
+   * Render a prompt from the registry for this agent's type.
+   * Agents call this instead of building prompts inline.
+   *
+   * @param vars   Variable map for {{key}} substitution
+   * @param part   "user" (default) or "system"
+   * @returns rendered string, or null if no template is registered
+   */
+  protected renderPrompt(
+    vars: Record<string, string>,
+    part: "user" | "system" = "user",
+  ): string | null {
+    const registry = this._templateRegistry ?? getSharedRegistry();
+    const agentType = this.agentTypeKey();
+    if (!agentType) return null;
+    return part === "system"
+      ? registry.renderSystem(agentType, vars)
+      : registry.render(agentType, vars);
+  }
+
+  /**
+   * Build a full prompt by combining system + user sections from the registry.
+   * Returns null if no template is registered for this agent type.
+   */
+  protected buildPrompt(vars: Record<string, string>): string | null {
+    const system = this.renderPrompt(vars, "system");
+    const user = this.renderPrompt(vars, "user");
+    if (!system && !user) return null;
+    return [system, user].filter(Boolean).join("\n\n");
+  }
+
+  /**
+   * Map this agent's display name to its registry key.
+   * Override in subclasses if the registry key differs from the name.
+   */
+  protected agentTypeKey(): string | null {
+    // Convention: registry keys are snake_case of the agent class name prefix
+    const map: Record<string, string> = {
+      Requirements: "requirements",
+      Planner: "planner",
+      GameDesigner: "game_designer",
+      RobloxArchitect: "roblox_architect",
+      LuaGenerator: "lua_generator",
+      UIGenerator: "ui_generator",
+      AssetPlanner: "asset_planner",
+      Orchestrator: "orchestrator",
+      Database: "database_designer",
+      Documentation: "documentation",
+      Tester: "tester",
+      Debug: "debugger",
+      Performance: "performance",
+    };
+    return map[this.name] ?? null;
   }
 
   async execute(input: AgentInput): Promise<AgentResult<AgentOutput>> {
@@ -100,6 +180,69 @@ export abstract class BaseAgent {
   protected abstract process(
     input: AgentInput,
   ): Promise<Record<string, unknown>>;
+
+  /**
+   * Call the LLM with automatic retry on invalid/incomplete JSON output.
+   *
+   * Execution contract (per task spec):
+   *   1. First call with the original prompt
+   *   2. If required keys are missing → retry once with a stricter repair prompt
+   *   3. If still missing after retry → throw so BaseAgent.execute() records failure
+   *
+   * Agents call this instead of `this.llm.generate()` directly.
+   */
+  protected async generateWithRetry(
+    prompt: string,
+    required: string[],
+    fallback: Record<string, unknown>,
+    options?: LLMOptions,
+  ): Promise<Record<string, unknown>> {
+    if (!this.llm) return fallback;
+
+    // Lazily import to avoid circular dep at module load time
+    const { LLMOutputParser } = await import("../../ai/outputParser");
+
+    // ── Attempt 1 ──────────────────────────────────────────────────────────
+    const raw1 = await this.llm.generate(prompt, options);
+    const result1 = LLMOutputParser.parseAndValidate(
+      raw1,
+      required,
+      fallback,
+      this.name,
+    );
+    const missing1 = LLMOutputParser.validateKeys(result1, required);
+    if (missing1.length === 0) return result1;
+
+    // ── Attempt 2: stricter repair prompt ──────────────────────────────────
+    console.warn(
+      `[${this.name}] First attempt missing keys [${missing1.join(", ")}] — retrying with strict prompt`,
+    );
+    const retryPrompt = LLMOutputParser.buildRetryPrompt(
+      prompt,
+      raw1,
+      required,
+    );
+    const raw2 = await this.llm.generate(retryPrompt, {
+      ...options,
+      temperature: 0.1,
+    });
+    const result2 = LLMOutputParser.parseAndValidate(
+      raw2,
+      required,
+      fallback,
+      this.name,
+    );
+    const missing2 = LLMOutputParser.validateKeys(result2, required);
+
+    if (missing2.length > 0) {
+      // Still invalid after retry — throw so the pipeline records step.failed
+      throw new Error(
+        `[${this.name}] LLM output still missing required keys after retry: [${missing2.join(", ")}]`,
+      );
+    }
+
+    return result2;
+  }
 
   protected delay(ms: number): Promise<void> {
     return new Promise((resolve) => setTimeout(resolve, ms));

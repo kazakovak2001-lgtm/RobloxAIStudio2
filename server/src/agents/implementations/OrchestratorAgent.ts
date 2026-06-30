@@ -130,7 +130,6 @@ export class OrchestratorAgent extends BaseAgent {
     // Summarise what was built for the synthesis prompt
     const systemsBuilt =
       systems.map((s) => String(s.name)).join(", ") || "none";
-
     const luaOutput = input.lua_generator as
       | Record<string, unknown>
       | undefined;
@@ -140,7 +139,15 @@ export class OrchestratorAgent extends BaseAgent {
           .join(", ")
       : "none";
 
-    const prompt =
+    // Use PromptTemplateRegistry as single source of truth for prompt content.
+    const registryPrompt = this.buildPrompt({
+      name,
+      description,
+      systems_built: systemsBuilt,
+      modules_built: serverScripts,
+    });
+
+    const inlinePrompt =
       "You are the final synthesis stage of a Roblox game generation pipeline. " +
       "Synthesise all prior agent outputs into a coherent world definition and system summary. " +
       "Respond with a single JSON object:\n" +
@@ -149,11 +156,11 @@ export class OrchestratorAgent extends BaseAgent {
       '"models": Array<{name,purpose}>, "systemsHooks": object }, ' +
       '"systems": Array<{name,description,config?: object}>, ' +
       '"status": "completed" }\n\n' +
-      `Game Name: ${name}\n` +
-      `Game Description: ${description}\n` +
-      `Gameplay Systems Built: ${systemsBuilt}\n` +
-      `Server Scripts: ${serverScripts}\n\n` +
+      `Game Name: ${name}\nGame Description: ${description}\n` +
+      `Gameplay Systems Built: ${systemsBuilt}\nServer Scripts: ${serverScripts}\n\n` +
       "Produce a coherent, complete world definition. Return only valid JSON.";
+
+    const prompt = registryPrompt ?? inlinePrompt;
 
     const raw = await this.llm.generate(prompt, {
       temperature: 0.5,

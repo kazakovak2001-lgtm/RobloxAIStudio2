@@ -89,7 +89,16 @@ export class LuaGeneratorAgent extends BaseAgent {
 
     if (!this.llm) return fallback;
 
-    const prompt =
+    // Use PromptTemplateRegistry as single source of truth for prompt content.
+    const registryPrompt = this.buildPrompt({
+      name,
+      architecture_summary: serviceNames.join(", "),
+      systems_summary: systemsSummary,
+      coding_standards:
+        "PascalCase modules, camelCase functions, server-authoritative, RemoteEvents",
+    });
+
+    const inlinePrompt =
       "You are a Roblox Luau developer. Generate structured module code. " +
       "Respond with a single JSON object:\n" +
       '{ "lua_generator": { ' +
@@ -104,6 +113,8 @@ export class LuaGeneratorAgent extends BaseAgent {
       "server-authoritative architecture, RemoteEvents for client communication.\n\n" +
       "Generate 2-3 server scripts, 1-2 client scripts, 1-2 shared modules. " +
       "Each script must be complete and runnable. Return only valid JSON.";
+
+    const prompt = registryPrompt ?? inlinePrompt;
 
     const raw = await this.llm.generate(prompt, {
       temperature: 0.4,

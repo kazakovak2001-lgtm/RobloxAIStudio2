@@ -64,6 +64,17 @@ export class RequirementsAgent extends BaseAgent {
 
     if (!this.llm) return fallback;
 
+    // Use PromptTemplateRegistry as single source of truth for prompt content.
+    // Falls back to inline prompt only if no template is registered.
+    const registryPrompt = this.buildPrompt({
+      name,
+      genre,
+      game_type: gameType,
+      description,
+      target_audience: targetAudience,
+      difficulty,
+    });
+
     const systemPrompt =
       "You are a game requirements analyst for Roblox. " +
       "Extract structured functional requirements, constraints, and success criteria. " +
@@ -73,15 +84,11 @@ export class RequirementsAgent extends BaseAgent {
 
     const userPrompt =
       `Analyze this game concept and extract structured requirements:\n\n` +
-      `Name: ${name}\n` +
-      `Genre: ${genre}\n` +
-      `Game Type: ${gameType}\n` +
-      `Description: ${description}\n` +
-      `Target Audience: ${targetAudience}\n` +
-      `Difficulty: ${difficulty}\n\n` +
-      `Return only valid JSON.`;
+      `Name: ${name}\nGenre: ${genre}\nGame Type: ${gameType}\n` +
+      `Description: ${description}\nTarget Audience: ${targetAudience}\n` +
+      `Difficulty: ${difficulty}\n\nReturn only valid JSON.`;
 
-    const prompt = `${systemPrompt}\n\n${userPrompt}`;
+    const prompt = registryPrompt ?? `${systemPrompt}\n\n${userPrompt}`;
 
     const raw = await this.llm.generate(prompt, {
       temperature: 0.3,
@@ -94,5 +101,3 @@ export class RequirementsAgent extends BaseAgent {
       fallback,
       this.name,
     );
-  }
-}

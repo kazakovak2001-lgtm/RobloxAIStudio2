@@ -82,7 +82,7 @@ export class LLMOutputParser {
 
   /**
    * Parse the response and apply a required-key check.
-   * If any keys are missing the fallback is returned and the issue is logged.
+   * If any keys are missing, fallback values fill the gaps and a warning is logged.
    */
   static parseAndValidate(
     raw: string,
@@ -97,7 +97,6 @@ export class LLMOutputParser {
       console.warn(
         `[${agentName}] LLM output missing required keys: ${missing.join(", ")} — using partial output`,
       );
-      // Merge fallback values for missing keys only
       const merged: Record<string, unknown> = { ...parsed };
       for (const key of missing) {
         merged[key] = fallback[key];
@@ -106,6 +105,25 @@ export class LLMOutputParser {
     }
 
     return parsed;
+  }
+
+  /**
+   * Build a stricter retry prompt that instructs the LLM to return only JSON.
+   * Appends the original prompt with explicit repair instructions.
+   */
+  static buildRetryPrompt(
+    originalPrompt: string,
+    previousRaw: string,
+    requiredKeys: string[],
+  ): string {
+    const truncated = previousRaw.slice(0, 300);
+    return (
+      `${originalPrompt}\n\n` +
+      `IMPORTANT: Your previous response was not valid JSON or was missing required fields.\n` +
+      `Required top-level keys: ${requiredKeys.join(", ")}\n` +
+      `Previous response (truncated): ${truncated}\n\n` +
+      `Respond with ONLY a valid JSON object. No markdown, no explanation, no code fences.`
+    );
   }
 
   private static tryParse(s: string): unknown | null {
