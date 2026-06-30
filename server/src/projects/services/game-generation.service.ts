@@ -127,16 +127,33 @@ export class GameGenerationService {
           input: Record<string, unknown>,
         ): Promise<Record<string, unknown>> => this.runAgent(agent, input);
 
-        await this.integrator.executePipeline(
+        const result = await this.integrator.executePipeline(
           enrichedBlueprint,
           agentExecutor,
           execution.id,
         );
 
-        // Mark execution as completed
+        // Build pipeline_steps summary from the generation metadata
+        const stepDurations = result.metadata.sourcePipelineOutputs
+          ? Object.keys(result.metadata.sourcePipelineOutputs).map(
+              (stepId) => ({
+                agent: stepId,
+                status: "completed" as const,
+              }),
+            )
+          : [];
+
+        // Mark execution as completed with step summary
         await this.repository.updateExecution(execution.id, {
           status: "completed",
           completed_at: new Date(),
+          pipeline_steps: stepDurations.map((s) => ({
+            agent: s.agent,
+            status: s.status,
+            started_at: execution.started_at,
+            completed_at: new Date(),
+          })),
+          total_duration_ms: Date.now() - execution.started_at.getTime(),
         });
       } catch (err) {
         console.error(
@@ -147,6 +164,9 @@ export class GameGenerationService {
         await this.repository.updateExecution(execution.id, {
           status: "failed",
           completed_at: new Date(),
+          error_message:
+            err instanceof Error ? err.message : "Unknown pipeline error",
+          total_duration_ms: Date.now() - execution.started_at.getTime(),
         });
       }
     });

@@ -9,7 +9,44 @@ type AgentExecutor = (
   input: Record<string, unknown>,
 ) => Promise<Record<string, unknown>>;
 
+/**
+ * Step execution result for internal tracking.
+ */
+interface StepResult {
+  stepId: string;
+  agent: string;
+  status: "completed" | "failed" | "skipped";
+  output: Record<string, unknown>;
+  durationMs: number;
+  error?: string;
+}
+
+/**
+ * AIPipelineIntegrator
+ *
+ * Drives the sequential agent pipeline for game generation.
+ * Responsibilities:
+ *  - Emits lifecycle events (pipeline.started, step.started/completed/failed, pipeline.completed/failed)
+ *  - Passes accumulated prior-step outputs to each agent as flat context
+ *  - Short-circuits on agent failure (does not continue after a failed step)
+ *  - Returns a deterministic GameGenerationResult regardless of success or failure
+ */
 export class AIPipelineIntegrator {
+  /** Ordered stage definitions for the core generation pipeline. */
+  static readonly PIPELINE_STAGES: ReadonlyArray<{
+    agent: string;
+    stepId: string;
+  }> = [
+    { agent: "requirements", stepId: "requirements" },
+    { agent: "planner", stepId: "planner" },
+    { agent: "game_designer", stepId: "game_designer" },
+    { agent: "roblox_architect", stepId: "roblox_architect" },
+    { agent: "lua_generator", stepId: "lua_generator" },
+    { agent: "ui_generator", stepId: "ui_generator" },
+    { agent: "asset_planner", stepId: "asset_planner" },
+    { agent: "orchestrator", stepId: "final" },
+  ];
+
   constructor(private readonly events: PipelineEventEmitter) {}
 
   async executePipeline(
@@ -18,22 +55,6 @@ export class AIPipelineIntegrator {
     executionId: string,
     _mode: "sequential" | "parallel" | "hybrid" = "sequential",
   ): Promise<GameGenerationResult> {
-    console.log("AI PATCH MODE ACTIVE - DIRECT WRITE ENABLED");
-
-    // Minimal sequential stage list (restoring missing orchestration).
-    // If later a real stage graph is discovered, this list can be replaced.
-    const stages: Array<{ agent: string; stepId: string }> = [
-      { agent: "requirements", stepId: "requirements" },
-      { agent: "planner", stepId: "planner" },
-      { agent: "game_designer", stepId: "game_designer" },
-      { agent: "roblox_architect", stepId: "roblox_architect" },
-      { agent: "lua_generator", stepId: "lua_generator" },
-      { agent: "ui_generator", stepId: "ui_generator" },
-      { agent: "asset_planner", stepId: "asset_planner" },
-      { agent: "orchestrator", stepId: "final" },
-    ];
-
-    // We use executionId as pipelineId everywhere.
     const pipelineId = executionId;
 
     await this.events.emit({
@@ -42,10 +63,19 @@ export class AIPipelineIntegrator {
       timestamp: new Date(),
     });
 
+    /**
+     * pipelineOutputs stores each step's output under its stepId key for the
+     * aggregator, and also spreads the output's own keys flat so that
+     * downstream agents can reference them directly (e.g. a GameDesigner
+     * reading `input.requirements` rather than `input.requirements.requirements`).
+     */
     let pipelineOutputs: Record<string, unknown> = {};
+    const stepResults: StepResult[] = [];
 
     try {
-      for (const stage of stages) {
+      for (const stage of AIPipelineIntegrator.PIPELINE_STAGES) {
+        const stepStart = Date.now();
+
         await this.events.emit({
           type: "step.started",
           pipelineId,
@@ -54,29 +84,87 @@ export class AIPipelineIntegrator {
           timestamp: new Date(),
         });
 
-        // Pass blueprint metadata + accumulated outputs to each agent.
-        // Reuses the existing agentExecutor(agentType, input) pattern.
+        // Build agent input: blueprint + seed context + all flat accumulated outputs.
         const input: Record<string, unknown> = {
           blueprint,
           executionId,
           ...pipelineOutputs,
         };
 
-        // Backward-compatible context injection for diversity (design-intelligence layer).
-        // (No contract changes; existing agents ignore unknown fields.)
         if (blueprint.generation_metadata?.gameDesignSeed) {
-          const seed = blueprint.generation_metadata.gameDesignSeed as GameDesignSeed;
-          (input as Record<string, unknown>).gameDesignSeed = seed;
+          input.gameDesignSeed = blueprint.generation_metadata
+            .gameDesignSeed as GameDesignSeed;
         }
 
-        const output = await agentExecutor(stage.agent, input);
-        pipelineOutputs = { ...pipelineOutputs, [stage.stepId]: output };
+        let output: Record<string, unknown>;
+        try {
+          output = await agentExecutor(stage.agent, input);
+        } catch (agentErr) {
+          const errMsg =
+            agentErr instanceof Error ? agentErr.message : "Agent threw";
+          output = { _failed: true, _error: errMsg, _agent: stage.agent };
+        }
+
+        const durationMs = Date.now() - stepStart;
+        const stepFailed = output._failed === true;
+
+        if (stepFailed) {
+          const errorMsg =
+            typeof output._error === "string"
+              ? output._error
+              : "Agent execution failed";
+
+          stepResults.push({
+            stepId: stage.stepId,
+            agent: stage.agent,
+            status: "failed",
+            output,
+            durationMs,
+            error: errorMsg,
+          });
+
+          await this.events.emit({
+            type: "step.failed",
+            pipelineId,
+            stepId: stage.stepId,
+            data: { error: errorMsg },
+            timestamp: new Date(),
+          });
+
+          // Store the failed step output under its stepId so the aggregator
+          // can still reference partial results, then abort the pipeline.
+          pipelineOutputs = {
+            ...pipelineOutputs,
+            [stage.stepId]: output,
+          };
+
+          throw new Error(
+            `Stage "${stage.agent}" (${stage.stepId}) failed: ${errorMsg}`,
+          );
+        }
+
+        // Success: store under stepId for aggregator AND spread output keys
+        // flat so the next agent receives domain keys directly (e.g. `requirements`,
+        // `plan`, `gameplay`) without additional nesting.
+        pipelineOutputs = {
+          ...pipelineOutputs, // prior accumulated flat keys
+          ...output, // this agent's output keys (flat, domain-level)
+          [stage.stepId]: output, // keyed copy for aggregator lookup
+        };
+
+        stepResults.push({
+          stepId: stage.stepId,
+          agent: stage.agent,
+          status: "completed",
+          output,
+          durationMs,
+        });
 
         await this.events.emit({
           type: "step.completed",
           pipelineId,
           stepId: stage.stepId,
-          data: { output },
+          data: { output, durationMs },
           timestamp: new Date(),
         });
       }
@@ -84,28 +172,24 @@ export class AIPipelineIntegrator {
       await this.events.emit({
         type: "pipeline.completed",
         pipelineId,
-        data: { outputs: pipelineOutputs },
+        data: { outputs: pipelineOutputs, steps: stepResults },
         timestamp: new Date(),
       });
 
-      // Deterministic final aggregation into canonical game artifact.
-      const result = aggregateToGameGenerationResult(pipelineOutputs, {
+      return aggregateToGameGenerationResult(pipelineOutputs, {
         blueprint,
         executionId,
       });
-      return result;
     } catch (err) {
       const message = err instanceof Error ? err.message : "Pipeline failed";
 
-      // Best-effort: emit pipeline failure (event flow unchanged).
       await this.events.emit({
         type: "pipeline.failed",
         pipelineId,
-        data: { error: message },
+        data: { error: message, steps: stepResults },
         timestamp: new Date(),
       });
 
-      // Return a deterministic, structured fallback (no raw unstructured final output).
       return {
         scripts: { server: [], client: [], shared: [] },
         world: {
@@ -121,16 +205,9 @@ export class AIPipelineIntegrator {
           executionId,
           blueprintId: blueprint.id,
           generatedAt: new Date(),
-          agentsInvolved: [
-            "requirements",
-            "planner",
-            "game_designer",
-            "roblox_architect",
-            "lua_generator",
-            "ui_generator",
-            "asset_planner",
-            "orchestrator",
-          ],
+          agentsInvolved: AIPipelineIntegrator.PIPELINE_STAGES.map(
+            (s) => s.agent,
+          ),
           sourcePipelineOutputs: pipelineOutputs,
         },
         blueprint,

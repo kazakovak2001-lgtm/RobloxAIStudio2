@@ -19,10 +19,8 @@ import { OrchestratorAgent } from "../implementations/OrchestratorAgent";
  *
  * Single source of truth for agent instantiation in the pipeline.
  * Agents are created once and optionally wired with an LLM provider.
- *
- * Orchestrator Core v1: resolves the broken runAgent() dispatch by providing
- * a concrete executeAgent(agentType, input) implementation that the
- * GameGenerationService's agentExecutor callback can delegate to.
+ * The OrchestratorAgent instance is also given a reference to the registry
+ * so its Mode B (coordination) path can delegate to other agents.
  */
 export class AgentRegistry {
   private agents = new Map<string, BaseAgent>();
@@ -40,7 +38,11 @@ export class AgentRegistry {
     this.register("tester", new TesterAgent());
     this.register("debugger", new DebugAgent());
     this.register("performance", new PerformanceAgent());
-    this.register("orchestrator", new OrchestratorAgent());
+
+    // OrchestratorAgent is created last so the registry reference below is valid.
+    const orchestrator = new OrchestratorAgent();
+    orchestrator.setRegistry(this);
+    this.register("orchestrator", orchestrator);
 
     if (llm) {
       this.setLLM(llm);
