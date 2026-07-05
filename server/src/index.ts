@@ -280,7 +280,10 @@ events.onEvent(async (evt) => {
     case "assembly.failed":
     case "assembly.replay.completed":
     case "assembly.diff.completed":
-    case "assembly.impact.analyzed": {
+    case "assembly.impact.analyzed":
+    case "assembly.governance.decision":
+    case "assembly.ci.blocked":
+    case "assembly.ci.passed": {
       io.emit(evt.type, { pipelineId: evt.pipelineId, ...evt.data });
       break;
     }

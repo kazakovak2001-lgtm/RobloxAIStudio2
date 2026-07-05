@@ -184,6 +184,41 @@ export class AssemblyRegistry {
     return analysis;
   }
 
+  // ─── Governance ────────────────────────────────────────────────────────────
+
+  /**
+   * Run governance check between two versions.
+   * Returns the GovernanceDecision (ALLOW/WARN/BLOCK).
+   */
+  runGovernanceCheck(
+    assemblyId: string,
+    fromVersion: string,
+    toVersion: string,
+  ): import("../governance/GovernancePolicyEngine").GovernanceDecision | null {
+    const analysis = this.getImpactAnalysis(assemblyId, fromVersion, toVersion);
+    if (!analysis) return null;
+    const { GovernancePolicyEngine } =
+      require("../governance/GovernancePolicyEngine") as typeof import("../governance/GovernancePolicyEngine");
+    const engine = new GovernancePolicyEngine();
+    return engine.evaluatePolicies(analysis);
+  }
+
+  /**
+   * Get the CI status for the latest build of an assembly.
+   * Returns "PASSED", "BLOCKED", or null if no versions to compare.
+   */
+  getCIStatus(assemblyId: string): "PASSED" | "BLOCKED" | "WARN" | null {
+    const versions = this.listVersions(assemblyId);
+    if (versions.length < 2) return "PASSED"; // first build always passes
+    const from = versions[versions.length - 2];
+    const to = versions[versions.length - 1];
+    const decision = this.runGovernanceCheck(assemblyId, from, to);
+    if (!decision) return null;
+    if (decision.status === "BLOCK") return "BLOCKED";
+    if (decision.status === "WARN") return "WARN";
+    return "PASSED";
+  }
+
   get size(): number {
     return Math.max(this.cache.size, this.persistence.listAll().length);
   }
