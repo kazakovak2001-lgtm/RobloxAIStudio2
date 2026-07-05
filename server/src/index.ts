@@ -150,6 +150,36 @@ events.onEvent(async (evt) => {
       io.emit("pipeline.failed", payload);
       break;
     }
+    case "evaluation.started": {
+      io.emit("evaluation.started", {
+        pipelineId: evt.pipelineId,
+        stepId: evt.stepId,
+        agentType: evt.data?.agentType,
+        timestamp: evt.timestamp,
+      });
+      break;
+    }
+    case "evaluation.completed": {
+      io.emit("evaluation.completed", {
+        pipelineId: evt.pipelineId,
+        stepId: evt.stepId,
+        qualityScore: evt.data?.qualityScore,
+        status: evt.data?.status,
+        issueCount: evt.data?.issueCount,
+        durationMs: evt.data?.durationMs,
+        recommendations: evt.data?.recommendations,
+      });
+      break;
+    }
+    case "evaluation.failed": {
+      io.emit("evaluation.failed", {
+        pipelineId: evt.pipelineId,
+        stepId: evt.stepId,
+        qualityScore: evt.data?.qualityScore,
+        issues: evt.data?.issues,
+      });
+      break;
+    }
     default:
       break;
   }

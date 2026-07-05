@@ -19,13 +19,16 @@ export interface PipelineStep {
   finishedAt?: Date;
 }
 
-export type PipelineEventType = 
+export type PipelineEventType =
   | "step.started"
   | "step.completed"
   | "step.failed"
   | "pipeline.started"
   | "pipeline.completed"
-  | "pipeline.failed";
+  | "pipeline.failed"
+  | "evaluation.started"
+  | "evaluation.completed"
+  | "evaluation.failed";
 
 export interface PipelineEvent {
   type: PipelineEventType;
@@ -51,4 +54,6 @@ export interface StepExecutionContext {
   previousOutputs: Record<string, unknown>;
 }
 
-export type PipelineEventHandler = (event: PipelineEvent) => void | Promise<void>;
+export type PipelineEventHandler = (
+  event: PipelineEvent,
+) => void | Promise<void>;

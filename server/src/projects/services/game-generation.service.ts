@@ -4,6 +4,7 @@ import type {
   GenerationExecution,
 } from "../types/blueprint";
 
+import type { PipelineEvent } from "../../execution/pipelineTypes";
 import type { IBlueprintRepository } from "../repository/blueprint.repository";
 import { BlueprintCache } from "../cache/blueprint.cache";
 import {
@@ -16,10 +17,19 @@ import { generateGameDesignSeed } from "../../execution/gameDiversityEngine";
 import { AgentRegistry } from "../../agents/core/AgentRegistry";
 import { ExecutionQueue } from "../../execution/executionQueue";
 
+type StepEvaluation = {
+  qualityScore: number;
+  status: "passed" | "warning" | "failed";
+  issueCount: number;
+  durationMs: number;
+};
+
 export class GameGenerationService {
   private integrator: AIPipelineIntegrator;
   private agentRegistry: AgentRegistry;
   private executionQueue = new ExecutionQueue();
+  /** Kept so startGeneration can register evaluation listeners. */
+  private events: PipelineEventEmitter;
 
   private repository: IBlueprintRepository;
   private cache: BlueprintCache;
@@ -30,16 +40,16 @@ export class GameGenerationService {
     repository: IBlueprintRepository,
     cache: BlueprintCache,
     streaming: StreamingUpdateHandler,
-    _events: PipelineEventEmitter,
+    events: PipelineEventEmitter,
     integrator: AIPipelineIntegrator,
     agentRegistry?: AgentRegistry,
   ) {
     this.repository = repository;
     this.cache = cache;
     this.streaming = streaming;
+    this.events = events;
     this.validator = new BlueprintValidator();
     this.integrator = integrator;
-    // Use provided registry or create a default one (no LLM wired until setLLM is called)
     this.agentRegistry = agentRegistry ?? new AgentRegistry();
   }
 
@@ -101,13 +111,33 @@ export class GameGenerationService {
 
     await this.repository.recordExecution(execution);
 
-    // Queue the pipeline run so concurrent requests don't overwhelm the system.
     void this.executionQueue.add(async () => {
+      // Collect evaluation summaries emitted by the integrator for each step.
+      const evalByStep = new Map<string, StepEvaluation>();
+
+      const evalListener = async (evt: PipelineEvent): Promise<void> => {
+        if (
+          (evt.type === "evaluation.completed" ||
+            evt.type === "evaluation.failed") &&
+          evt.stepId &&
+          evt.data
+        ) {
+          evalByStep.set(evt.stepId, {
+            qualityScore: Number(evt.data.qualityScore ?? 0),
+            status: (evt.data.status as StepEvaluation["status"]) ?? "failed",
+            issueCount: Number(evt.data.issueCount ?? 0),
+            durationMs: Number(evt.data.durationMs ?? 0),
+          });
+        }
+      };
+
+      // Register before execution so we capture all evaluation events.
+      this.events.onEvent(evalListener);
+
       try {
         const blueprint = await this.repository.getBlueprint(blueprintId);
         if (!blueprint) throw new Error(`Blueprint ${blueprintId} not found`);
 
-        // Generate diversity-aware GameDesignSeed and inject into blueprint
         const gameDesignSeed = generateGameDesignSeed({
           blueprint,
           executionId: execution.id,
@@ -133,26 +163,26 @@ export class GameGenerationService {
           execution.id,
         );
 
-        // Build pipeline_steps summary from the generation metadata
-        const stepDurations = result.metadata.sourcePipelineOutputs
-          ? Object.keys(result.metadata.sourcePipelineOutputs).map(
-              (stepId) => ({
-                agent: stepId,
-                status: "completed" as const,
-              }),
-            )
-          : [];
+        // Build pipeline_steps with evaluation summaries collected from events.
+        const pipelineSteps = AIPipelineIntegrator.PIPELINE_STAGES.map(
+          (stage) => {
+            const inOutput =
+              stage.stepId in (result.metadata.sourcePipelineOutputs ?? {});
+            const evalSummary = evalByStep.get(stage.stepId);
+            return {
+              agent: stage.agent,
+              status: inOutput ? ("completed" as const) : ("skipped" as const),
+              started_at: execution.started_at,
+              completed_at: new Date(),
+              evaluation: evalSummary,
+            };
+          },
+        );
 
-        // Mark execution as completed with step summary
         await this.repository.updateExecution(execution.id, {
           status: "completed",
           completed_at: new Date(),
-          pipeline_steps: stepDurations.map((s) => ({
-            agent: s.agent,
-            status: s.status,
-            started_at: execution.started_at,
-            completed_at: new Date(),
-          })),
+          pipeline_steps: pipelineSteps,
           total_duration_ms: Date.now() - execution.started_at.getTime(),
         });
       } catch (err) {
@@ -160,7 +190,6 @@ export class GameGenerationService {
           `[GameGenerationService] Pipeline failed for execution ${execution.id}:`,
           err,
         );
-        // Mark execution as failed so status endpoint reflects reality
         await this.repository.updateExecution(execution.id, {
           status: "failed",
           completed_at: new Date(),
@@ -174,8 +203,6 @@ export class GameGenerationService {
     return execution;
   }
 
-  // Adapter hook: reuse existing agent execution wiring if present.
-  // If agent execution isn't wired in this repo, integrator will still emit events but agent steps may fail.
   private async runAgent(
     agentType: string,
     input: Record<string, unknown>,

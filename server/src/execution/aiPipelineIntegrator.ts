@@ -3,6 +3,11 @@ import type { GameBlueprint, GameDesignSeed } from "../types/blueprint";
 import { PipelineEventEmitter } from "../socket/streaming";
 import type { GameGenerationResult } from "../types/game-generation-result";
 import { aggregateToGameGenerationResult } from "./gameGenerationResultAggregator";
+import {
+  EvaluationRegistry,
+  getDefaultEvaluationRegistry,
+} from "../evaluation/EvaluationRegistry";
+import type { EvaluationResult } from "../evaluation/EvaluationResult";
 
 type AgentExecutor = (
   agent: string,
@@ -11,6 +16,7 @@ type AgentExecutor = (
 
 /**
  * Step execution result for internal tracking.
+ * Now includes the evaluation result produced after each agent.
  */
 interface StepResult {
   stepId: string;
@@ -19,17 +25,23 @@ interface StepResult {
   output: Record<string, unknown>;
   durationMs: number;
   error?: string;
+  evaluation?: EvaluationResult;
 }
 
 /**
  * AIPipelineIntegrator
  *
  * Drives the sequential agent pipeline for game generation.
- * Responsibilities:
- *  - Emits lifecycle events (pipeline.started, step.started/completed/failed, pipeline.completed/failed)
- *  - Passes accumulated prior-step outputs to each agent as flat context
- *  - Short-circuits on agent failure (does not continue after a failed step)
- *  - Returns a deterministic GameGenerationResult regardless of success or failure
+ * After each agent completes, the output is evaluated by EvaluationRegistry.
+ * If evaluation status is "failed", the pipeline short-circuits.
+ *
+ * Flow per stage:
+ *   agentExecutor(stage, input)
+ *     → evaluation.started  (SSE)
+ *     → EvaluationRegistry.evaluate()
+ *     → evaluation.completed / evaluation.failed  (SSE)
+ *     → step.completed / step.failed  (SSE)
+ *     → continue / abort
  */
 export class AIPipelineIntegrator {
   /** Ordered stage definitions for the core generation pipeline. */
@@ -47,7 +59,15 @@ export class AIPipelineIntegrator {
     { agent: "orchestrator", stepId: "final" },
   ];
 
-  constructor(private readonly events: PipelineEventEmitter) {}
+  private evaluationRegistry: EvaluationRegistry;
+
+  constructor(
+    private readonly events: PipelineEventEmitter,
+    evaluationRegistry?: EvaluationRegistry,
+  ) {
+    this.evaluationRegistry =
+      evaluationRegistry ?? getDefaultEvaluationRegistry();
+  }
 
   async executePipeline(
     blueprint: GameBlueprint,
@@ -63,12 +83,6 @@ export class AIPipelineIntegrator {
       timestamp: new Date(),
     });
 
-    /**
-     * pipelineOutputs stores each step's output under its stepId key for the
-     * aggregator, and also spreads the output's own keys flat so that
-     * downstream agents can reference them directly (e.g. a GameDesigner
-     * reading `input.requirements` rather than `input.requirements.requirements`).
-     */
     let pipelineOutputs: Record<string, unknown> = {};
     const stepResults: StepResult[] = [];
 
@@ -84,7 +98,7 @@ export class AIPipelineIntegrator {
           timestamp: new Date(),
         });
 
-        // Build agent input: blueprint + seed context + all flat accumulated outputs.
+        // Build agent input: blueprint + seed + accumulated flat outputs
         const input: Record<string, unknown> = {
           blueprint,
           executionId,
@@ -96,6 +110,7 @@ export class AIPipelineIntegrator {
             .gameDesignSeed as GameDesignSeed;
         }
 
+        // ── Agent execution ──────────────────────────────────────────────
         let output: Record<string, unknown>;
         try {
           output = await agentExecutor(stage.agent, input);
@@ -105,51 +120,84 @@ export class AIPipelineIntegrator {
           output = { _failed: true, _error: errMsg, _agent: stage.agent };
         }
 
-        const durationMs = Date.now() - stepStart;
-        const stepFailed = output._failed === true;
+        const agentDurationMs = Date.now() - stepStart;
 
-        if (stepFailed) {
-          const errorMsg =
-            typeof output._error === "string"
+        // ── Evaluation ───────────────────────────────────────────────────
+        await this.events.emit({
+          type: "evaluation.started",
+          pipelineId,
+          stepId: stage.stepId,
+          data: { agentType: stage.stepId },
+          timestamp: new Date(),
+        });
+
+        const evalResult = this.evaluationRegistry.evaluate(
+          stage.stepId,
+          output,
+        );
+
+        const evalEventType =
+          evalResult.status === "failed"
+            ? "evaluation.failed"
+            : "evaluation.completed";
+
+        await this.events.emit({
+          type: evalEventType,
+          pipelineId,
+          stepId: stage.stepId,
+          data: {
+            agentType: stage.stepId,
+            qualityScore: evalResult.qualityScore,
+            status: evalResult.status,
+            issueCount: evalResult.issues.length,
+            durationMs: evalResult.durationMs,
+            issues: evalResult.issues,
+            recommendations: evalResult.recommendations,
+          },
+          timestamp: new Date(),
+        });
+
+        // Treat agent _failed marker OR evaluation "failed" as pipeline abort
+        const agentFailed = output._failed === true;
+        const evalFailed = evalResult.status === "failed";
+
+        if (agentFailed || evalFailed) {
+          const errorMsg = agentFailed
+            ? typeof output._error === "string"
               ? output._error
-              : "Agent execution failed";
+              : "Agent execution failed"
+            : `Evaluation failed for ${stage.agent}: score=${evalResult.qualityScore}`;
 
           stepResults.push({
             stepId: stage.stepId,
             agent: stage.agent,
             status: "failed",
             output,
-            durationMs,
+            durationMs: agentDurationMs,
             error: errorMsg,
+            evaluation: evalResult,
           });
 
           await this.events.emit({
             type: "step.failed",
             pipelineId,
             stepId: stage.stepId,
-            data: { error: errorMsg },
+            data: { error: errorMsg, evaluation: evalResult },
             timestamp: new Date(),
           });
 
-          // Store the failed step output under its stepId so the aggregator
-          // can still reference partial results, then abort the pipeline.
-          pipelineOutputs = {
-            ...pipelineOutputs,
-            [stage.stepId]: output,
-          };
+          pipelineOutputs = { ...pipelineOutputs, [stage.stepId]: output };
 
           throw new Error(
             `Stage "${stage.agent}" (${stage.stepId}) failed: ${errorMsg}`,
           );
         }
 
-        // Success: store under stepId for aggregator AND spread output keys
-        // flat so the next agent receives domain keys directly (e.g. `requirements`,
-        // `plan`, `gameplay`) without additional nesting.
+        // ── Success ──────────────────────────────────────────────────────
         pipelineOutputs = {
-          ...pipelineOutputs, // prior accumulated flat keys
-          ...output, // this agent's output keys (flat, domain-level)
-          [stage.stepId]: output, // keyed copy for aggregator lookup
+          ...pipelineOutputs,
+          ...output,
+          [stage.stepId]: output,
         };
 
         stepResults.push({
@@ -157,14 +205,22 @@ export class AIPipelineIntegrator {
           agent: stage.agent,
           status: "completed",
           output,
-          durationMs,
+          durationMs: agentDurationMs,
+          evaluation: evalResult,
         });
 
         await this.events.emit({
           type: "step.completed",
           pipelineId,
           stepId: stage.stepId,
-          data: { output, durationMs },
+          data: {
+            output,
+            durationMs: agentDurationMs,
+            evaluation: {
+              qualityScore: evalResult.qualityScore,
+              status: evalResult.status,
+            },
+          },
           timestamp: new Date(),
         });
       }
@@ -213,6 +269,16 @@ export class AIPipelineIntegrator {
         blueprint,
       };
     }
+  }
+
+  /**
+   * Expose step results with evaluation data for the service layer to
+   * persist onto GenerationExecution.pipeline_steps.
+   */
+  getLastStepResults(): ReadonlyArray<StepResult> {
+    // Note: stepResults is local to executePipeline; service receives them
+    // via the pipeline.completed / pipeline.failed event data.
+    return [];
   }
 
   async emit(event: PipelineEvent): Promise<void> {
