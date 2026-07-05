@@ -28,7 +28,11 @@ export type PipelineEventType =
   | "pipeline.failed"
   | "evaluation.started"
   | "evaluation.completed"
-  | "evaluation.failed";
+  | "evaluation.failed"
+  | "memory.created"
+  | "memory.updated"
+  | "memory.snapshot"
+  | "memory.decision";
 
 export interface PipelineEvent {
   type: PipelineEventType;

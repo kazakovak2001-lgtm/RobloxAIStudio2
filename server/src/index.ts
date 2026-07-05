@@ -180,6 +180,42 @@ events.onEvent(async (evt) => {
       });
       break;
     }
+    case "memory.created": {
+      io.emit("memory.created", {
+        pipelineId: evt.pipelineId,
+        executionId: evt.data?.executionId,
+        blueprintId: evt.data?.blueprintId,
+      });
+      break;
+    }
+    case "memory.updated": {
+      io.emit("memory.updated", {
+        pipelineId: evt.pipelineId,
+        stepId: evt.stepId,
+        agent: evt.data?.agent,
+        section: evt.data?.section,
+      });
+      break;
+    }
+    case "memory.snapshot": {
+      io.emit("memory.snapshot", {
+        pipelineId: evt.pipelineId,
+        stepId: evt.stepId,
+        snapshotId: evt.data?.snapshotId,
+        snapshotNumber: evt.data?.snapshotNumber,
+      });
+      break;
+    }
+    case "memory.decision": {
+      io.emit("memory.decision", {
+        pipelineId: evt.pipelineId,
+        stepId: evt.stepId,
+        category: evt.data?.category,
+        summary: evt.data?.summary,
+        agent: evt.data?.agent,
+      });
+      break;
+    }
     default:
       break;
   }
