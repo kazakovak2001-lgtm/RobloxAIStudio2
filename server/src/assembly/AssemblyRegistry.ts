@@ -10,6 +10,12 @@ import {
   type ReplayResult,
 } from "./AssemblyReplayEngine";
 import { AssemblyDiffEngine, type AssemblyDiff } from "./AssemblyDiffEngine";
+import { AssemblyChangeGraphBuilder } from "./AssemblyChangeGraph";
+import {
+  AssemblyImpactAnalyzer,
+  type ImpactAnalysis,
+} from "./AssemblyImpactAnalyzer";
+import type { GameBlueprint } from "../generation/GenerationBlueprint";
 import type { GameBlueprint } from "../generation/GenerationBlueprint";
 
 /**
@@ -25,10 +31,13 @@ export class AssemblyRegistry {
   private manifests = new Map<string, AssemblyManifest>();
   private replayCache = new Map<string, ReplayResult>();
   private diffCache = new Map<string, AssemblyDiff>();
+  private impactCache = new Map<string, ImpactAnalysis>();
   private persistence: AssemblyPersistenceStore;
   private history: AssemblyHistoryIndex;
   private replayEngine = new AssemblyReplayEngine();
   private diffEngine = new AssemblyDiffEngine();
+  private changeGraphBuilder = new AssemblyChangeGraphBuilder();
+  private impactAnalyzer = new AssemblyImpactAnalyzer();
 
   constructor(storageRoot?: string) {
     this.persistence = new AssemblyPersistenceStore(storageRoot);
@@ -150,6 +159,29 @@ export class AssemblyRegistry {
     );
     this.diffCache.set(cacheKey, diff);
     return diff;
+  }
+
+  // ─── Impact Analysis ────────────────────────────────────────────────────────
+
+  /**
+   * Compute impact analysis between two versions. Cached.
+   */
+  getImpactAnalysis(
+    assemblyId: string,
+    fromVersion: string,
+    toVersion: string,
+  ): ImpactAnalysis | null {
+    const cacheKey = `impact::${assemblyId}::${fromVersion}::${toVersion}`;
+    const cached = this.impactCache.get(cacheKey);
+    if (cached) return cached;
+
+    const diff = this.getDiff(assemblyId, fromVersion, toVersion);
+    if (!diff) return null;
+
+    const graph = this.changeGraphBuilder.buildChangeGraph(diff);
+    const analysis = this.impactAnalyzer.analyzeImpact(diff, graph);
+    this.impactCache.set(cacheKey, analysis);
+    return analysis;
   }
 
   get size(): number {

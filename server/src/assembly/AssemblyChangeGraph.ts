@@ -10,6 +10,10 @@ export interface GraphNode {
   name: string;
   changeKind: "added" | "removed" | "modified" | "moved" | "unchanged";
   service?: string;
+  /** Dependency weighting: higher = more dependents rely on this node. */
+  nodeWeight?: number;
+  /** Flag indicating this node lies on a critical dependency path. */
+  criticalPathFlag?: boolean;
 }
 
 /**

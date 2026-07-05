@@ -52,7 +52,8 @@ export type PipelineEventType =
   | "assembly.completed"
   | "assembly.failed"
   | "assembly.replay.completed"
-  | "assembly.diff.completed";
+  | "assembly.diff.completed"
+  | "assembly.impact.analyzed";
 
 export interface PipelineEvent {
   type: PipelineEventType;
