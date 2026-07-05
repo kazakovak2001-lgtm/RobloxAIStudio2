@@ -271,7 +271,13 @@ events.onEvent(async (evt) => {
     case "generation.validation.completed":
     case "generation.report.created":
     case "generation.completed":
-    case "generation.failed": {
+    case "generation.failed":
+    case "assembly.started":
+    case "assembly.workspace.created":
+    case "assembly.mapping.completed":
+    case "assembly.validation.completed":
+    case "assembly.completed":
+    case "assembly.failed": {
       io.emit(evt.type, { pipelineId: evt.pipelineId, ...evt.data });
       break;
     }

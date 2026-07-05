@@ -44,7 +44,13 @@ export type PipelineEventType =
   | "generation.validation.completed"
   | "generation.report.created"
   | "generation.completed"
-  | "generation.failed";
+  | "generation.failed"
+  | "assembly.started"
+  | "assembly.workspace.created"
+  | "assembly.mapping.completed"
+  | "assembly.validation.completed"
+  | "assembly.completed"
+  | "assembly.failed";
 
 export interface PipelineEvent {
   type: PipelineEventType;
