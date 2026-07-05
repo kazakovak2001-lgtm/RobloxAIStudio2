@@ -297,7 +297,13 @@ events.onEvent(async (evt) => {
     case "distributed.job.completed":
     case "distributed.job.failed":
     case "distributed.worker.registered":
-    case "distributed.worker.stopped": {
+    case "distributed.worker.stopped":
+    case "cloud.node.registered":
+    case "cloud.node.unregistered":
+    case "cloud.node.heartbeat":
+    case "cloud.job.routed":
+    case "cloud.node.failed":
+    case "cluster.topology.updated": {
       io.emit(evt.type, { pipelineId: evt.pipelineId, ...evt.data });
       break;
     }

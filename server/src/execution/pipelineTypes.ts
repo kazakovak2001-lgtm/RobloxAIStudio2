@@ -70,7 +70,13 @@ export type PipelineEventType =
   | "distributed.job.completed"
   | "distributed.job.failed"
   | "distributed.worker.registered"
-  | "distributed.worker.stopped";
+  | "distributed.worker.stopped"
+  | "cloud.node.registered"
+  | "cloud.node.unregistered"
+  | "cloud.node.heartbeat"
+  | "cloud.job.routed"
+  | "cloud.node.failed"
+  | "cluster.topology.updated";
 
 export interface PipelineEvent {
   type: PipelineEventType;
