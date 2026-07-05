@@ -32,7 +32,13 @@ export type PipelineEventType =
   | "memory.created"
   | "memory.updated"
   | "memory.snapshot"
-  | "memory.decision";
+  | "memory.decision"
+  | "planning.created"
+  | "planning.updated"
+  | "planning.step.selected"
+  | "planning.replanned"
+  | "planning.completed"
+  | "planning.failed";
 
 export interface PipelineEvent {
   type: PipelineEventType;

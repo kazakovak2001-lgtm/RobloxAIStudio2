@@ -216,6 +216,56 @@ events.onEvent(async (evt) => {
       });
       break;
     }
+    case "planning.created": {
+      io.emit("planning.created", {
+        pipelineId: evt.pipelineId,
+        planId: evt.data?.planId,
+        steps: evt.data?.steps,
+      });
+      break;
+    }
+    case "planning.updated": {
+      io.emit("planning.updated", {
+        pipelineId: evt.pipelineId,
+        completed: evt.data?.completed,
+        remaining: evt.data?.remaining,
+      });
+      break;
+    }
+    case "planning.step.selected": {
+      io.emit("planning.step.selected", {
+        pipelineId: evt.pipelineId,
+        stepId: evt.stepId,
+        agent: evt.data?.agent,
+        priority: evt.data?.priority,
+      });
+      break;
+    }
+    case "planning.replanned": {
+      io.emit("planning.replanned", {
+        pipelineId: evt.pipelineId,
+        stepId: evt.stepId,
+        reason: evt.data?.reason,
+        preserved: evt.data?.preserved,
+        remaining: evt.data?.remaining,
+      });
+      break;
+    }
+    case "planning.completed": {
+      io.emit("planning.completed", {
+        pipelineId: evt.pipelineId,
+        planId: evt.data?.planId,
+        metrics: evt.data?.metrics,
+      });
+      break;
+    }
+    case "planning.failed": {
+      io.emit("planning.failed", {
+        pipelineId: evt.pipelineId,
+        error: evt.data?.error,
+      });
+      break;
+    }
     default:
       break;
   }
