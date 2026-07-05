@@ -50,7 +50,9 @@ export type PipelineEventType =
   | "assembly.mapping.completed"
   | "assembly.validation.completed"
   | "assembly.completed"
-  | "assembly.failed";
+  | "assembly.failed"
+  | "assembly.replay.completed"
+  | "assembly.diff.completed";
 
 export interface PipelineEvent {
   type: PipelineEventType;

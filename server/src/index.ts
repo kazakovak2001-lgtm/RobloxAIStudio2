@@ -277,7 +277,9 @@ events.onEvent(async (evt) => {
     case "assembly.mapping.completed":
     case "assembly.validation.completed":
     case "assembly.completed":
-    case "assembly.failed": {
+    case "assembly.failed":
+    case "assembly.replay.completed":
+    case "assembly.diff.completed": {
       io.emit(evt.type, { pipelineId: evt.pipelineId, ...evt.data });
       break;
     }
