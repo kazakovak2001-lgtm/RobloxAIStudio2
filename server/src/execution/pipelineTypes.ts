@@ -64,7 +64,13 @@ export type PipelineEventType =
   | "compiler.governance.decision"
   | "project.created"
   | "project.deleted"
-  | "project.context.initialized";
+  | "project.context.initialized"
+  | "distributed.job.queued"
+  | "distributed.job.started"
+  | "distributed.job.completed"
+  | "distributed.job.failed"
+  | "distributed.worker.registered"
+  | "distributed.worker.stopped";
 
 export interface PipelineEvent {
   type: PipelineEventType;

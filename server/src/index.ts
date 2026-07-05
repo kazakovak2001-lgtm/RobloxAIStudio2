@@ -291,7 +291,13 @@ events.onEvent(async (evt) => {
     case "compiler.governance.decision":
     case "project.created":
     case "project.deleted":
-    case "project.context.initialized": {
+    case "project.context.initialized":
+    case "distributed.job.queued":
+    case "distributed.job.started":
+    case "distributed.job.completed":
+    case "distributed.job.failed":
+    case "distributed.worker.registered":
+    case "distributed.worker.stopped": {
       io.emit(evt.type, { pipelineId: evt.pipelineId, ...evt.data });
       break;
     }
