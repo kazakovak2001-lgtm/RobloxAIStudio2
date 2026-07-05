@@ -56,7 +56,12 @@ export type PipelineEventType =
   | "assembly.impact.analyzed"
   | "assembly.governance.decision"
   | "assembly.ci.blocked"
-  | "assembly.ci.passed";
+  | "assembly.ci.passed"
+  | "compiler.build.started"
+  | "compiler.build.completed"
+  | "compiler.build.failed"
+  | "compiler.stage.error"
+  | "compiler.governance.decision";
 
 export interface PipelineEvent {
   type: PipelineEventType;

@@ -283,7 +283,12 @@ events.onEvent(async (evt) => {
     case "assembly.impact.analyzed":
     case "assembly.governance.decision":
     case "assembly.ci.blocked":
-    case "assembly.ci.passed": {
+    case "assembly.ci.passed":
+    case "compiler.build.started":
+    case "compiler.build.completed":
+    case "compiler.build.failed":
+    case "compiler.stage.error":
+    case "compiler.governance.decision": {
       io.emit(evt.type, { pipelineId: evt.pipelineId, ...evt.data });
       break;
     }
