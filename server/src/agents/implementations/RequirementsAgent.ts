@@ -1,6 +1,5 @@
 import { BaseAgent, type AgentConfig } from "../core/BaseAgent";
 import type { AgentInput } from "../../types";
-import { LLMOutputParser } from "../../ai/outputParser";
 
 export class RequirementsAgent extends BaseAgent {
   public readonly name = "Requirements";
@@ -17,9 +16,7 @@ export class RequirementsAgent extends BaseAgent {
 
   public readonly outputSchema: Record<string, unknown> = {
     type: "object",
-    properties: {
-      requirements: { type: "object" },
-    },
+    properties: { requirements: { type: "object" } },
     required: ["requirements"],
   };
 
@@ -64,8 +61,7 @@ export class RequirementsAgent extends BaseAgent {
 
     if (!this.llm) return fallback;
 
-    // Use PromptTemplateRegistry as single source of truth for prompt content.
-    // Falls back to inline prompt only if no template is registered.
+    // PromptTemplateRegistry is the single source of truth; inline is the fallback.
     const registryPrompt = this.buildPrompt({
       name,
       genre,
@@ -75,29 +71,21 @@ export class RequirementsAgent extends BaseAgent {
       difficulty,
     });
 
-    const systemPrompt =
+    const inlinePrompt =
       "You are a game requirements analyst for Roblox. " +
       "Extract structured functional requirements, constraints, and success criteria. " +
-      "Respond with a single JSON object matching this schema: " +
-      '{ "requirements": { "functional": string[], "non_functional": Record<string,string>, ' +
-      '"constraints": string[], "success_criteria": string[] } }';
-
-    const userPrompt =
-      `Analyze this game concept and extract structured requirements:\n\n` +
+      'Respond with a JSON object only: { "requirements": { "functional": string[], ' +
+      '"non_functional": object, "constraints": string[], "success_criteria": string[] } }\n\n' +
       `Name: ${name}\nGenre: ${genre}\nGame Type: ${gameType}\n` +
       `Description: ${description}\nTarget Audience: ${targetAudience}\n` +
       `Difficulty: ${difficulty}\n\nReturn only valid JSON.`;
 
-    const prompt = registryPrompt ?? `${systemPrompt}\n\n${userPrompt}`;
+    const prompt = registryPrompt ?? inlinePrompt;
 
-    const raw = await this.llm.generate(prompt, {
+    // generateWithRetry: try → retry with strict prompt → throw on second failure
+    return this.generateWithRetry(prompt, ["requirements"], fallback, {
       temperature: 0.3,
       maxTokens: 1200,
     });
-
-    return LLMOutputParser.parseAndValidate(
-      raw,
-      ["requirements"],
-      fallback,
-      this.name,
-    );
+  }
+}

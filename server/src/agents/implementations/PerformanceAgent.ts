@@ -1,6 +1,5 @@
 import { BaseAgent, type AgentConfig } from "../core/BaseAgent";
 import type { AgentInput } from "../../types";
-import { LLMOutputParser } from "../../ai/outputParser";
 
 export class PerformanceAgent extends BaseAgent {
   public readonly name = "Performance";
@@ -60,21 +59,13 @@ export class PerformanceAgent extends BaseAgent {
 
     const prompt =
       "You are a Roblox performance engineer. Provide targeted optimization recommendations. " +
-      'Respond with: { "optimization": { ' +
-      '"recommendations": string[], "improvements": Array<{area,action}>, ' +
-      '"targetFPS": number, "targetPlayers": string } }\n\n' +
+      'Respond with: { "optimization": { "recommendations": string[], ' +
+      '"improvements": Array<{area,action}>, "targetFPS": number, "targetPlayers": string } }\n\n' +
       `Game: ${name}\nExpected concurrency: ${estimatedPlayers}\n\nReturn only valid JSON.`;
 
-    const raw = await this.llm.generate(prompt, {
+    return this.generateWithRetry(prompt, ["optimization"], fallback, {
       temperature: 0.3,
       maxTokens: 800,
     });
-
-    return LLMOutputParser.parseAndValidate(
-      raw,
-      ["optimization"],
-      fallback,
-      this.name,
-    );
   }
 }

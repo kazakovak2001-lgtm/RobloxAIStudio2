@@ -1,6 +1,5 @@
 import { BaseAgent, type AgentConfig } from "../core/BaseAgent";
 import type { AgentInput, GameDesignSeed } from "../../types";
-import { LLMOutputParser } from "../../ai/outputParser";
 
 export class GameDesignerAgent extends BaseAgent {
   public readonly name = "GameDesigner";
@@ -49,7 +48,6 @@ export class GameDesignerAgent extends BaseAgent {
       seed?.mechanics?.join(", ") ?? "movement, interaction, progression";
     const innovations = seed?.innovationModifiers?.join("; ") ?? "";
 
-    // Deterministic seed-based fallback (always safe to return)
     const fallback: Record<string, unknown> = {
       gameplay: {
         mechanics: (
@@ -83,7 +81,6 @@ export class GameDesignerAgent extends BaseAgent {
 
     if (!this.llm) return fallback;
 
-    // Use PromptTemplateRegistry as single source of truth for prompt content.
     const registryPrompt = this.buildPrompt({
       name,
       genre,
@@ -95,29 +92,22 @@ export class GameDesignerAgent extends BaseAgent {
 
     const inlinePrompt =
       "You are a Roblox game designer. Design detailed gameplay systems. " +
-      "Respond with a single JSON object matching this schema:\n" +
+      "Respond with a single JSON object:\n" +
       '{ "gameplay": { "mechanics": Array<{name,description,parameters}>, ' +
       '"progression": {loop,player_progression_model,unlocking_system}, ' +
       '"balance": {winCondition,loseCondition,interactionSystems,economyOrScoring,theme} }, ' +
       '"loop": string, "winCondition": string, "loseCondition": string, ' +
       '"progressionModel": string, "interactionSystems": string[], "economyOrScoring": string }\n\n' +
       `Game Name: ${name}\nGenre: ${genre}\nCore Loop: ${coreLoop}\nTheme: ${theme}\n` +
-      `Mechanics to include: ${mechanics}\n` +
+      `Mechanics: ${mechanics}\n` +
       (innovations ? `Innovation modifiers: ${innovations}\n` : "") +
       "\nReturn only valid JSON.";
 
     const prompt = registryPrompt ?? inlinePrompt;
 
-    const raw = await this.llm.generate(prompt, {
+    return this.generateWithRetry(prompt, ["gameplay"], fallback, {
       temperature: 0.5,
       maxTokens: 1800,
     });
-
-    return LLMOutputParser.parseAndValidate(
-      raw,
-      ["gameplay"],
-      fallback,
-      this.name,
-    );
   }
 }

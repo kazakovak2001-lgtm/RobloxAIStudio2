@@ -1,6 +1,5 @@
 import { BaseAgent, type AgentConfig } from "../core/BaseAgent";
 import type { AgentInput, GameDesignSeed } from "../../types";
-import { LLMOutputParser } from "../../ai/outputParser";
 
 export class AssetPlannerAgent extends BaseAgent {
   public readonly name = "AssetPlanner";
@@ -30,11 +29,11 @@ export class AssetPlannerAgent extends BaseAgent {
   protected async process(input: AgentInput): Promise<Record<string, unknown>> {
     const bp = input.blueprint as Record<string, unknown> | undefined;
     const seed = input.gameDesignSeed as GameDesignSeed | undefined;
+    const gameplay = input.gameplay as Record<string, unknown> | undefined;
 
     const name = String(bp?.name ?? "Unnamed Game");
     const theme = seed?.theme ?? "fantasy";
 
-    const gameplay = input.gameplay as Record<string, unknown> | undefined;
     const mechanicsArr = (gameplay as any)?.mechanics;
     const systemsSummary = Array.isArray(mechanicsArr)
       ? mechanicsArr
@@ -107,30 +106,29 @@ export class AssetPlannerAgent extends BaseAgent {
 
     if (!this.llm) return fallback;
 
-    const prompt =
-      "You are a Roblox asset planner. List all required assets for this game. " +
+    const registryPrompt = this.buildPrompt({
+      name,
+      theme,
+      locations: "main world area, player spawn",
+      systems_summary: systemsSummary,
+    });
+
+    const inlinePrompt =
+      "You are a Roblox asset planner. " +
       "Respond with a single JSON object:\n" +
       '{ "assetPlan": { ' +
       '"models": Array<{id,name,description,complexity:"simple"|"medium"|"complex",source:"builtin"|"marketplace"|"custom"}>, ' +
       '"textures": Array<{id,name,resolution}>, ' +
       '"sounds": Array<{id,name,type:"sfx"|"music"|"ambient"}>, ' +
       '"animations": Array<{id,name,target,frames}> } }\n\n' +
-      `Game: ${name}\n` +
-      `Theme: ${theme}\n` +
-      `Gameplay Systems: ${systemsSummary}\n\n` +
-      "Plan 3-5 models, 2-4 textures, 3-5 sounds, 2-4 animations. " +
-      "Return only valid JSON.";
+      `Game: ${name}\nTheme: ${theme}\nGameplay Systems: ${systemsSummary}\n\n` +
+      "Plan 3-5 models, 2-4 textures, 3-5 sounds, 2-4 animations. Return only valid JSON.";
 
-    const raw = await this.llm.generate(prompt, {
+    const prompt = registryPrompt ?? inlinePrompt;
+
+    return this.generateWithRetry(prompt, ["assetPlan"], fallback, {
       temperature: 0.4,
       maxTokens: 1500,
     });
-
-    return LLMOutputParser.parseAndValidate(
-      raw,
-      ["assetPlan"],
-      fallback,
-      this.name,
-    );
   }
 }

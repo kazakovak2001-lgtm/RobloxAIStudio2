@@ -1,6 +1,5 @@
 import { BaseAgent, type AgentConfig } from "../core/BaseAgent";
 import type { AgentInput } from "../../types";
-import { LLMOutputParser } from "../../ai/outputParser";
 
 export class RobloxArchitectAgent extends BaseAgent {
   public readonly name = "RobloxArchitect";
@@ -22,7 +21,7 @@ export class RobloxArchitectAgent extends BaseAgent {
       architecture: { type: "object" },
       roblox_architect: { type: "object" },
     },
-    required: ["architecture"],
+    required: ["architecture", "roblox_architect"],
   };
 
   constructor(config?: Partial<AgentConfig>) {
@@ -83,17 +82,23 @@ export class RobloxArchitectAgent extends BaseAgent {
         },
         networking: {
           protocol: "Roblox RemoteEvents",
-          bandwidth_optimization: "Delta compression for frequent updates",
-          latency_handling: "Client-side prediction with server reconciliation",
+          bandwidth_optimization: "Delta compression",
+          latency_handling: "Client-side prediction",
         },
       },
     };
 
     if (!this.llm) return fallback;
 
-    const prompt =
+    const registryPrompt = this.buildPrompt({
+      name,
+      game_type: gameType,
+      estimated_players: estimatedPlayers,
+      systems_summary: systemsSummary,
+    });
+
+    const inlinePrompt =
       "You are a Roblox Studio technical architect. " +
-      "Design a complete client/server architecture. " +
       "Respond with a single JSON object:\n" +
       '{ "architecture": { "folderStructure": object, "dataModels": object, ' +
       '"services": object, "apiContracts": object }, ' +
@@ -101,24 +106,17 @@ export class RobloxArchitectAgent extends BaseAgent {
       '"rendering_engine": string, "physics_engine": string }, ' +
       '"server_architecture": { "replication_model": string, "update_rate": number, ' +
       '"persistence_strategy": string }, ' +
-      '"networking": { "protocol": string, "bandwidth_optimization": string, ' +
-      '"latency_handling": string } } }\n\n' +
-      `Game: ${name}\n` +
-      `Game Type: ${gameType}\n` +
-      `Estimated Players: ${estimatedPlayers}\n` +
-      `Key Gameplay Systems: ${systemsSummary}\n\n` +
-      "Return only valid JSON.";
+      '"networking": { "protocol": string, "bandwidth_optimization": string, "latency_handling": string } } }\n\n' +
+      `Game: ${name}\nGame Type: ${gameType}\nEstimated Players: ${estimatedPlayers}\n` +
+      `Key Systems: ${systemsSummary}\n\nReturn only valid JSON.`;
 
-    const raw = await this.llm.generate(prompt, {
-      temperature: 0.3,
-      maxTokens: 1800,
-    });
+    const prompt = registryPrompt ?? inlinePrompt;
 
-    return LLMOutputParser.parseAndValidate(
-      raw,
+    return this.generateWithRetry(
+      prompt,
       ["architecture", "roblox_architect"],
       fallback,
-      this.name,
+      { temperature: 0.3, maxTokens: 1800 },
     );
   }
 }

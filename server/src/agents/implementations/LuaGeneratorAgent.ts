@@ -1,6 +1,5 @@
 import { BaseAgent, type AgentConfig } from "../core/BaseAgent";
 import type { AgentInput } from "../../types";
-import { LLMOutputParser } from "../../ai/outputParser";
 
 export class LuaGeneratorAgent extends BaseAgent {
   public readonly name = "LuaGenerator";
@@ -37,7 +36,6 @@ export class LuaGeneratorAgent extends BaseAgent {
     const gameplay = input.gameplay as Record<string, unknown> | undefined;
 
     const name = String(bp?.name ?? "UnnamedGame");
-
     const services = (arch as any)?.services ?? {};
     const serviceNames: string[] =
       typeof services === "object"
@@ -57,25 +55,18 @@ export class LuaGeneratorAgent extends BaseAgent {
       lua_generator: {
         server: serviceNames.map((svc) => ({
           name: `${svc}.server.lua`,
-          code:
-            `-- ${svc}\nlocal ${svc} = {}\n\nfunction ${svc}.init()\n` +
-            `\tprint("[${svc}] Initialized")\nend\n\nreturn ${svc}`,
+          code: `-- ${svc}\nlocal ${svc} = {}\n\nfunction ${svc}.init()\n\tprint("[${svc}] Initialized")\nend\n\nreturn ${svc}`,
         })),
         client: [
           {
             name: "LocalController.client.lua",
-            code:
-              `-- LocalController\nlocal LocalController = {}\n\n` +
-              `function LocalController.init()\n\tprint("[LocalController] Ready")\nend\n\n` +
-              `return LocalController`,
+            code: '-- LocalController\nlocal LocalController = {}\n\nfunction LocalController.init()\n\tprint("[LocalController] Ready")\nend\n\nreturn LocalController',
           },
         ],
         shared: [
           {
             name: "GameConfig.lua",
-            code:
-              `-- Shared game configuration\nlocal GameConfig = {\n` +
-              `\tGAME_NAME = "${name}",\n\tVERSION = "1.0.0",\n}\n\nreturn GameConfig`,
+            code: `-- Shared game configuration\nlocal GameConfig = {\n\tGAME_NAME = "${name}",\n\tVERSION = "1.0.0",\n}\n\nreturn GameConfig`,
           },
         ],
         modules: [],
@@ -89,50 +80,42 @@ export class LuaGeneratorAgent extends BaseAgent {
 
     if (!this.llm) return fallback;
 
-    // Use PromptTemplateRegistry as single source of truth for prompt content.
+    const codingStandards =
+      "PascalCase modules, camelCase functions, server-authoritative, RemoteEvents for client communication";
+
     const registryPrompt = this.buildPrompt({
       name,
       architecture_summary: serviceNames.join(", "),
       systems_summary: systemsSummary,
-      coding_standards:
-        "PascalCase modules, camelCase functions, server-authoritative, RemoteEvents",
+      coding_standards: codingStandards,
     });
 
     const inlinePrompt =
       "You are a Roblox Luau developer. Generate structured module code. " +
       "Respond with a single JSON object:\n" +
-      '{ "lua_generator": { ' +
-      '"server": Array<{name: string, code: string}>, ' +
-      '"client": Array<{name: string, code: string}>, ' +
-      '"shared": Array<{name: string, code: string}>, ' +
-      '"patterns": string[] } }\n\n' +
-      `Game Name: ${name}\n` +
-      `Services to implement: ${serviceNames.join(", ")}\n` +
-      `Gameplay Systems: ${systemsSummary}\n` +
-      "Coding standards: PascalCase modules, camelCase functions, " +
-      "server-authoritative architecture, RemoteEvents for client communication.\n\n" +
+      '{ "lua_generator": { "server": Array<{name,code}>, "client": Array<{name,code}>, ' +
+      '"shared": Array<{name,code}>, "patterns": string[] } }\n\n' +
+      `Game Name: ${name}\nServices: ${serviceNames.join(", ")}\n` +
+      `Gameplay Systems: ${systemsSummary}\nCoding Standards: ${codingStandards}\n\n` +
       "Generate 2-3 server scripts, 1-2 client scripts, 1-2 shared modules. " +
       "Each script must be complete and runnable. Return only valid JSON.";
 
     const prompt = registryPrompt ?? inlinePrompt;
 
-    const raw = await this.llm.generate(prompt, {
-      temperature: 0.4,
-      maxTokens: 3000,
-    });
-
-    const parsed = LLMOutputParser.parseAndValidate(
-      raw,
+    const result = await this.generateWithRetry(
+      prompt,
       ["lua_generator"],
       fallback,
-      this.name,
+      {
+        temperature: 0.4,
+        maxTokens: 3000,
+      },
     );
 
-    // Ensure generatedCode mirror exists for any consumers expecting the old key
-    if (!parsed.generatedCode) {
-      parsed.generatedCode = { scripts: [], modules: {} };
+    if (!result.generatedCode) {
+      result.generatedCode = { scripts: [], modules: {} };
     }
 
-    return parsed;
+    return result;
   }
 }

@@ -1,6 +1,5 @@
 import { BaseAgent, type AgentConfig } from "../core/BaseAgent";
 import type { AgentInput } from "../../types";
-import { LLMOutputParser } from "../../ai/outputParser";
 
 export class DebugAgent extends BaseAgent {
   public readonly name = "Debug";
@@ -57,23 +56,14 @@ export class DebugAgent extends BaseAgent {
     ].length;
 
     const prompt =
-      "You are a Roblox Lua debugger. Review the generated code structure and identify potential issues. " +
+      "You are a Roblox Lua debugger. Identify potential issues in the generated code. " +
       'Respond with: { "debugReport": { "issues": Array<{id,description,severity:"low"|"medium"|"high"}>, ' +
       '"fixes": Array<{issueId,fix}>, "warnings": string[], "severity": "low"|"medium"|"high" } }\n\n' +
-      `Game: ${name}\n` +
-      `Scripts generated: ${scriptCount}\n\n` +
-      "Return only valid JSON.";
+      `Game: ${name}\nScripts generated: ${scriptCount}\n\nReturn only valid JSON.`;
 
-    const raw = await this.llm.generate(prompt, {
+    return this.generateWithRetry(prompt, ["debugReport"], fallback, {
       temperature: 0.3,
       maxTokens: 800,
     });
-
-    return LLMOutputParser.parseAndValidate(
-      raw,
-      ["debugReport"],
-      fallback,
-      this.name,
-    );
   }
 }

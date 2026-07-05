@@ -1,6 +1,5 @@
 import { BaseAgent, type AgentConfig } from "../core/BaseAgent";
 import type { AgentInput, GameDesignSeed } from "../../types";
-import { LLMOutputParser } from "../../ai/outputParser";
 
 export class UIGeneratorAgent extends BaseAgent {
   public readonly name = "UIGenerator";
@@ -29,12 +28,12 @@ export class UIGeneratorAgent extends BaseAgent {
   protected async process(input: AgentInput): Promise<Record<string, unknown>> {
     const bp = input.blueprint as Record<string, unknown> | undefined;
     const seed = input.gameDesignSeed as GameDesignSeed | undefined;
+    const gameplay = input.gameplay as Record<string, unknown> | undefined;
 
     const name = String(bp?.name ?? "Unnamed Game");
     const gameType = String(bp?.game_type ?? "adventure");
     const theme = seed?.theme ?? "fantasy";
 
-    const gameplay = input.gameplay as Record<string, unknown> | undefined;
     const mechanicsArr = (gameplay as any)?.mechanics;
     const keyFeatures = Array.isArray(mechanicsArr)
       ? mechanicsArr
@@ -52,7 +51,6 @@ export class UIGeneratorAgent extends BaseAgent {
             elements: [
               { id: "health_bar", type: "ProgressBar", label: "Health" },
               { id: "score_display", type: "TextLabel", label: "Score: 0" },
-              { id: "minimap", type: "ImageLabel", label: "Minimap" },
             ],
           },
           {
@@ -72,39 +70,32 @@ export class UIGeneratorAgent extends BaseAgent {
             ],
           },
         ],
-        components: {
-          theme,
-          primaryColor: "#1a1a2e",
-          accentColor: "#e94560",
-        },
+        components: { theme, primaryColor: "#1a1a2e", accentColor: "#e94560" },
       },
     };
 
     if (!this.llm) return fallback;
 
-    const prompt =
-      "You are a Roblox UI/UX designer. Design screen layouts and HUD elements. " +
-      "Respond with a single JSON object:\n" +
-      '{ "uiDesign": { "screens": Array<{name, type, elements: Array<{id,type,label}>}>, ' +
-      '"components": {theme, primaryColor, accentColor} } }\n\n' +
-      `Game: ${name}\n` +
-      `Game Type: ${gameType}\n` +
-      `Theme: ${theme}\n` +
-      `Key Features: ${keyFeatures}\n\n` +
-      "Include: Main HUD (in-game overlays), Main Menu, Pause Menu. " +
-      "Add relevant HUD elements based on the game type. " +
-      "Return only valid JSON.";
+    const registryPrompt = this.buildPrompt({
+      name,
+      game_type: gameType,
+      key_features: keyFeatures,
+      theme,
+    });
 
-    const raw = await this.llm.generate(prompt, {
+    const inlinePrompt =
+      "You are a Roblox UI/UX designer. " +
+      "Respond with a single JSON object:\n" +
+      '{ "uiDesign": { "screens": Array<{name,type,elements:Array<{id,type,label}>}>, ' +
+      '"components": {theme,primaryColor,accentColor} } }\n\n' +
+      `Game: ${name}\nGame Type: ${gameType}\nTheme: ${theme}\nKey Features: ${keyFeatures}\n\n` +
+      "Include Main HUD, Main Menu, Pause Menu. Return only valid JSON.";
+
+    const prompt = registryPrompt ?? inlinePrompt;
+
+    return this.generateWithRetry(prompt, ["uiDesign"], fallback, {
       temperature: 0.4,
       maxTokens: 1500,
     });
-
-    return LLMOutputParser.parseAndValidate(
-      raw,
-      ["uiDesign"],
-      fallback,
-      this.name,
-    );
   }
 }

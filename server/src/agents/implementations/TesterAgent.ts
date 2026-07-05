@@ -1,6 +1,5 @@
 import { BaseAgent, type AgentConfig } from "../core/BaseAgent";
 import type { AgentInput } from "../../types";
-import { LLMOutputParser } from "../../ai/outputParser";
 
 export class TesterAgent extends BaseAgent {
   public readonly name = "Tester";
@@ -49,30 +48,21 @@ export class TesterAgent extends BaseAgent {
           { id: "t04", name: "Core gameplay loop executes", status: "pending" },
           { id: "t05", name: "UI renders on client", status: "pending" },
         ],
-        coverage:
-          "Manual validation required — automated test runner not yet integrated",
+        coverage: "Manual validation required",
       },
     };
 
     if (!this.llm) return fallback;
 
     const prompt =
-      "You are a Roblox QA engineer. Produce a test plan for the generated game. " +
+      "You are a Roblox QA engineer. Produce a test plan. " +
       'Respond with: { "testResults": { "passed": 0, "failed": 0, ' +
-      '"tests": Array<{id,name,status:"pending"|"passed"|"failed",description?}>, ' +
-      '"coverage": string } }\n\n' +
+      '"tests": Array<{id,name,status:"pending"|"passed"|"failed",description?}>, "coverage": string } }\n\n' +
       `Game: ${name}\n\nReturn only valid JSON.`;
 
-    const raw = await this.llm.generate(prompt, {
+    return this.generateWithRetry(prompt, ["testResults"], fallback, {
       temperature: 0.3,
       maxTokens: 800,
     });
-
-    return LLMOutputParser.parseAndValidate(
-      raw,
-      ["testResults"],
-      fallback,
-      this.name,
-    );
   }
 }

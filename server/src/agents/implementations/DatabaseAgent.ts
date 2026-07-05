@@ -1,6 +1,5 @@
 import { BaseAgent, type AgentConfig } from "../core/BaseAgent";
 import type { AgentInput } from "../../types";
-import { LLMOutputParser } from "../../ai/outputParser";
 
 export class DatabaseAgent extends BaseAgent {
   public readonly name = "Database";
@@ -66,16 +65,9 @@ export class DatabaseAgent extends BaseAgent {
       '"relationships": Array<{from,to,type,on}>, "datastoreKeys": string[], "cachingStrategy": string } }\n\n' +
       `Game: ${name}\n\nReturn only valid JSON.`;
 
-    const raw = await this.llm.generate(prompt, {
+    return this.generateWithRetry(prompt, ["database"], fallback, {
       temperature: 0.3,
       maxTokens: 800,
     });
-
-    return LLMOutputParser.parseAndValidate(
-      raw,
-      ["database"],
-      fallback,
-      this.name,
-    );
   }
 }

@@ -1,6 +1,5 @@
 import { BaseAgent, type AgentConfig } from "../core/BaseAgent";
 import type { AgentInput, GameDesignSeed } from "../../types";
-import { LLMOutputParser } from "../../ai/outputParser";
 
 export class PlannerAgent extends BaseAgent {
   public readonly name = "Planner";
@@ -33,7 +32,6 @@ export class PlannerAgent extends BaseAgent {
 
     const name = String(bp?.name ?? "Unnamed Game");
     const coreLoop = seed?.coreLoop ?? "explore → engage → reward";
-
     const reqSummary = req
       ? JSON.stringify(req).slice(0, 400)
       : "Core gameplay requirements";
@@ -76,21 +74,23 @@ export class PlannerAgent extends BaseAgent {
 
     if (!this.llm) return fallback;
 
-    const prompt =
-      "You are a Roblox game project planner. " +
-      "Given requirements, produce a phased development plan. " +
-      'Respond with a single JSON object: { "plan": { "phases": Array<{name,tasks,duration}>, ' +
-      '"timeline": string, "milestones": string[] } }\n\n' +
-      `Game: ${name}\n` +
-      `Core Loop: ${coreLoop}\n` +
-      `Requirements Summary: ${reqSummary}\n\n` +
-      "Return only valid JSON.";
+    const registryPrompt = this.buildPrompt({
+      name,
+      requirements_summary: reqSummary,
+      core_loop: coreLoop,
+    });
 
-    const raw = await this.llm.generate(prompt, {
+    const inlinePrompt =
+      "You are a Roblox game project planner. " +
+      'Respond with a JSON object: { "plan": { "phases": Array<{name,tasks,duration}>, ' +
+      '"timeline": string, "milestones": string[] } }\n\n' +
+      `Game: ${name}\nCore Loop: ${coreLoop}\nRequirements: ${reqSummary}\n\nReturn only valid JSON.`;
+
+    const prompt = registryPrompt ?? inlinePrompt;
+
+    return this.generateWithRetry(prompt, ["plan"], fallback, {
       temperature: 0.3,
       maxTokens: 1000,
     });
-
-    return LLMOutputParser.parseAndValidate(raw, ["plan"], fallback, this.name);
   }
 }
