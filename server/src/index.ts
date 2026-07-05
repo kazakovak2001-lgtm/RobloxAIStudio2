@@ -266,6 +266,15 @@ events.onEvent(async (evt) => {
       });
       break;
     }
+    case "generation.started":
+    case "generation.blueprint.updated":
+    case "generation.validation.completed":
+    case "generation.report.created":
+    case "generation.completed":
+    case "generation.failed": {
+      io.emit(evt.type, { pipelineId: evt.pipelineId, ...evt.data });
+      break;
+    }
     default:
       break;
   }

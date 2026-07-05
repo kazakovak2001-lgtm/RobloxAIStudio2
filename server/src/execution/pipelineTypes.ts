@@ -38,7 +38,13 @@ export type PipelineEventType =
   | "planning.step.selected"
   | "planning.replanned"
   | "planning.completed"
-  | "planning.failed";
+  | "planning.failed"
+  | "generation.started"
+  | "generation.blueprint.updated"
+  | "generation.validation.completed"
+  | "generation.report.created"
+  | "generation.completed"
+  | "generation.failed";
 
 export interface PipelineEvent {
   type: PipelineEventType;
