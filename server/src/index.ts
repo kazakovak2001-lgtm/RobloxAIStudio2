@@ -288,7 +288,10 @@ events.onEvent(async (evt) => {
     case "compiler.build.completed":
     case "compiler.build.failed":
     case "compiler.stage.error":
-    case "compiler.governance.decision": {
+    case "compiler.governance.decision":
+    case "project.created":
+    case "project.deleted":
+    case "project.context.initialized": {
       io.emit(evt.type, { pipelineId: evt.pipelineId, ...evt.data });
       break;
     }

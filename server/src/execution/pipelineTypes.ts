@@ -61,7 +61,10 @@ export type PipelineEventType =
   | "compiler.build.completed"
   | "compiler.build.failed"
   | "compiler.stage.error"
-  | "compiler.governance.decision";
+  | "compiler.governance.decision"
+  | "project.created"
+  | "project.deleted"
+  | "project.context.initialized";
 
 export interface PipelineEvent {
   type: PipelineEventType;
