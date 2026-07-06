@@ -1,0 +1,41 @@
+{
+  "reportType": "Generation Package Structure",
+  "version": "2.1.0",
+  "timestamp": "2026-07-06T23:22:00.000Z",
+  "packageStructure": {
+    "packageId": "pkg-{uuid}",
+    "sessionId": "gen-{uuid}",
+    "projectId": "string",
+    "blueprint": "object (plan output)",
+    "executionPlan": "object (stage list)",
+    "scripts": "GeneratedArtifact[] (type: lua-script)",
+    "configs": "GeneratedArtifact[] (type: config)",
+    "metadata": "GenerationManifest",
+    "validationReport": "PackageValidationReport",
+    "totalArtifacts": "number",
+    "totalSizeBytes": "number",
+    "generatedAt": "timestamp"
+  },
+  "manifestStructure": {
+    "generationId": "string",
+    "blueprintVersion": "string",
+    "plannerVersion": "string",
+    "agentVersions": "Record<string, string>",
+    "artifactVersions": "Record<string, string>",
+    "executionTimestamps": "Record<string, number>",
+    "validationResults": "Record<string, boolean>"
+  },
+  "validationChecks": [
+    "package-id",
+    "session-id",
+    "blueprint-exists",
+    "execution-plan-exists",
+    "artifacts-present",
+    "manifest-generation-id",
+    "manifest-blueprint-version",
+    "manifest-planner-version",
+    "validation-report-exists",
+    "no-duplicate-scripts",
+    "generated-at"
+  ]
+}

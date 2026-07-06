@@ -1,0 +1,26 @@
+{
+  "reportType": "Generation Metrics Baseline",
+  "version": "2.1.0",
+  "timestamp": "2026-07-06T23:22:00.000Z",
+  "note": "Baseline metrics structure. Values populate during actual generation with LLM-connected agents.",
+  "metricsSchema": {
+    "planningDurationMs": "Time to create execution plan",
+    "executionDurationMs": "Time to run all agents through PlanExecutor",
+    "artifactDurationMs": "Time to assemble and deduplicate artifacts",
+    "validationDurationMs": "Time to validate pipeline integrity and structure",
+    "totalDurationMs": "End-to-end generation duration",
+    "agentCallCount": "Number of agent invocations",
+    "artifactCount": "Number of generated artifacts",
+    "packageSizeBytes": "Total package size in bytes"
+  },
+  "testRunMetrics": {
+    "planningDurationMs": 1,
+    "executionDurationMs": 85,
+    "artifactDurationMs": 1,
+    "validationDurationMs": 0,
+    "totalDurationMs": 94,
+    "agentCallCount": 8,
+    "artifactCount": 8,
+    "note": "Stub agents (no LLM) — durations will be higher with real agents"
+  }
+}
