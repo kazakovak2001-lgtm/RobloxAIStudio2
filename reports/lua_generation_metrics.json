@@ -1,0 +1,31 @@
+{
+  "reportType": "Lua Generation Metrics",
+  "version": "2.5.0",
+  "timestamp": "2026-07-07T00:37:00.000Z",
+  "testRunMetrics": {
+    "generationDurationMs": 1,
+    "validationDurationMs": 0,
+    "formattingDurationMs": 0,
+    "dependencyResolutionMs": 0,
+    "totalDurationMs": 2,
+    "fileCount": 7,
+    "lineCount": 85
+  },
+  "builders": [
+    "ServerScriptBuilder",
+    "LocalScriptBuilder",
+    "ModuleScriptBuilder",
+    "ConfigurationScriptBuilder"
+  ],
+  "templates": [
+    "ScriptTemplate",
+    "ModuleTemplate",
+    "ServiceTemplate",
+    "ConfigurationTemplate"
+  ],
+  "validators": [
+    "LuaCodeValidator",
+    "LuaNamingValidator",
+    "LuaDependencyValidator"
+  ]
+}

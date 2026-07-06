@@ -1,0 +1,16 @@
+{
+  "reportType": "Lua Code Validation",
+  "version": "2.5.0",
+  "validationLayers": [
+    "CodeValidator (syntax + blocks)",
+    "NamingValidator (identifiers + duplicates)",
+    "DependencyValidator (require graph)"
+  ],
+  "testResults": {
+    "total": 14,
+    "passed": 14,
+    "failed": 0,
+    "allGeneratedCodeValid": true
+  },
+  "status": "OPERATIONAL"
+}

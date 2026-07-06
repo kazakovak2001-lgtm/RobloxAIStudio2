@@ -1,0 +1,12 @@
+{
+  "reportType": "Lua Dependency Resolution",
+  "version": "2.5.0",
+  "algorithm": "Kahn's topological sort",
+  "capabilities": [
+    "Module dependency ordering",
+    "Cycle detection",
+    "Script-module cross-references"
+  ],
+  "testResults": { "validResolution": "PASS", "cycleDetection": "PASS" },
+  "status": "OPERATIONAL"
+}
