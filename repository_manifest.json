@@ -1,0 +1,40 @@
+{
+  "name": "roblox-ai-studio-devkit",
+  "version": "1.9.0",
+  "architectureVersion": "2.0.0",
+  "governanceVersion": "1.0.0",
+  "contractVersion": "1.0.0",
+  "validationStatus": "PASS",
+  "buildStatus": "CLEAN",
+  "latestReports": [
+    "reports/v1.8_runtime_report.md",
+    "reports/v1.7_validation_summary.md",
+    "reports/e2e_simulation_report.json",
+    "reports/failure_mode_registry.json",
+    "reports/codebase_audit_report.json"
+  ],
+  "supportedNodeVersion": ">=18.0.0",
+  "supportedTypeScriptVersion": ">=5.6.0",
+  "runtimeEngine": "PlanExecutor",
+  "apiVersions": ["v1", "v2"],
+  "modules": {
+    "frontend": "src/",
+    "backend": "server/src/",
+    "shared": "shared/",
+    "scripts": "scripts/",
+    "docs": "docs/",
+    "reports": "reports/"
+  },
+  "governance": {
+    "document": "AI_DEVELOPMENT_GOVERNANCE.md",
+    "validator": "server/src/governance/GovernanceValidator.ts",
+    "manifest": "architecture.manifest.json"
+  },
+  "validation": {
+    "architecture": "scripts/validate-architecture.ts",
+    "boundaries": "scripts/validate-boundaries.ts",
+    "imports": "scripts/scan-imports.ts"
+  },
+  "lastValidated": "2026-07-06",
+  "lastVersion": "v1.9-governance"
+}

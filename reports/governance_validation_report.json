@@ -1,0 +1,125 @@
+{
+  "timestamp": 1783359046876,
+  "status": "COMPLIANT",
+  "totalChecks": 19,
+  "passed": 19,
+  "failed": 0,
+  "checks": [
+    {
+      "name": "AI Development Governance",
+      "category": "document",
+      "passed": true,
+      "path": "AI_DEVELOPMENT_GOVERNANCE.md"
+    },
+    {
+      "name": "Development Workflow",
+      "category": "document",
+      "passed": true,
+      "path": "docs/development/DEVELOPMENT_WORKFLOW.md"
+    },
+    {
+      "name": "Versioning Guide",
+      "category": "document",
+      "passed": true,
+      "path": "docs/development/VERSIONING.md"
+    },
+    {
+      "name": "Validation Process",
+      "category": "document",
+      "passed": true,
+      "path": "docs/development/VALIDATION_PROCESS.md"
+    },
+    {
+      "name": "Architecture Rules",
+      "category": "document",
+      "passed": true,
+      "path": "docs/development/ARCHITECTURE_RULES.md"
+    },
+    {
+      "name": "Architecture Manifest",
+      "category": "document",
+      "passed": true,
+      "path": "architecture.manifest.json"
+    },
+    {
+      "name": "Reports directory",
+      "category": "report",
+      "passed": true,
+      "path": "reports/"
+    },
+    {
+      "name": "Version reports exist",
+      "category": "report",
+      "passed": true,
+      "path": "reports/",
+      "detail": "6 report(s) found"
+    },
+    {
+      "name": "Frontend root",
+      "category": "structure",
+      "passed": true,
+      "path": "src"
+    },
+    {
+      "name": "Backend root",
+      "category": "structure",
+      "passed": true,
+      "path": "server/src"
+    },
+    {
+      "name": "Shared types",
+      "category": "structure",
+      "passed": true,
+      "path": "shared"
+    },
+    {
+      "name": "Scripts",
+      "category": "structure",
+      "passed": true,
+      "path": "scripts"
+    },
+    {
+      "name": "Core module",
+      "category": "structure",
+      "passed": true,
+      "path": "server/src/core"
+    },
+    {
+      "name": "Planning module",
+      "category": "structure",
+      "passed": true,
+      "path": "server/src/planning"
+    },
+    {
+      "name": "Runtime module",
+      "category": "structure",
+      "passed": true,
+      "path": "server/src/runtime"
+    },
+    {
+      "name": "API module",
+      "category": "structure",
+      "passed": true,
+      "path": "server/src/api"
+    },
+    {
+      "name": "Agents module",
+      "category": "structure",
+      "passed": true,
+      "path": "server/src/agents"
+    },
+    {
+      "name": "Repository manifest",
+      "category": "manifest",
+      "passed": true,
+      "path": "repository_manifest.json"
+    },
+    {
+      "name": "Manifest has version field",
+      "category": "manifest",
+      "passed": true,
+      "path": "repository_manifest.json",
+      "detail": "Version: 1.9.0"
+    }
+  ]
+}
