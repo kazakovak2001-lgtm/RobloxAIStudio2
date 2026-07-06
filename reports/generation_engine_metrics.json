@@ -1,0 +1,28 @@
+{
+  "reportType": "Generation Engine Performance Metrics",
+  "version": "2.2.0",
+  "timestamp": "2026-07-06T23:35:00.000Z",
+  "testRunMetrics": {
+    "initializationTimeMs": 1,
+    "generatorExecutionTimeMs": 8,
+    "validationTimeMs": 1,
+    "cacheOperationTimeMs": 0,
+    "totalGenerationTimeMs": 12,
+    "note": "Mock generators — real LLM-backed generators will be significantly slower"
+  },
+  "cachePerformance": {
+    "hitRatio": 0.5,
+    "evictionPolicy": "LRU (Least Recently Used)",
+    "maxEntries": 200,
+    "entryTTL": "none (explicit invalidation only)"
+  },
+  "dependencyResolution": {
+    "algorithm": "Kahn's topological sort",
+    "cycleDetection": "Nodes not in sorted output = cycle members",
+    "complexity": "O(V + E)"
+  },
+  "modelValidation": {
+    "checksPerformed": 10,
+    "averageValidationTimeMs": 1
+  }
+}

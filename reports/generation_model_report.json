@@ -1,0 +1,48 @@
+{
+  "reportType": "Generation Model Schema",
+  "version": "2.2.0",
+  "timestamp": "2026-07-06T23:35:00.000Z",
+  "modelSchema": {
+    "id": "string (model-{uuid})",
+    "version": "string (semver)",
+    "createdAt": "number (timestamp)",
+    "game": {
+      "title": "string",
+      "genre": "string",
+      "description": "string",
+      "targetAudience": "string",
+      "mechanics": "string[]",
+      "maxPlayers": "number"
+    },
+    "services": "ServiceDefinition[] (name, type, description, dependencies)",
+    "folders": "FolderDefinition[] (path, parent, purpose)",
+    "scripts": "ScriptDefinition[] (id, name, path, scriptType, content, dependencies, generatedBy)",
+    "modules": "ModuleDefinition[] (id, name, path, exports, dependencies, generatedBy)",
+    "assets": "AssetDefinition[] (id, name, assetType, path, metadata)",
+    "ui": "UIDefinition[] (id, name, screenType, elements, generatedBy)",
+    "networking": "{ remoteEvents[], remoteFunctions[] }",
+    "configuration": "{ gameSettings, serverSettings, clientSettings }",
+    "dependencies": "DependencyEntry[] (from, to, type)"
+  },
+  "defaultFolders": [
+    "ServerScriptService",
+    "StarterPlayerScripts",
+    "ReplicatedStorage",
+    "ServerStorage",
+    "StarterGui",
+    "Workspace"
+  ],
+  "defaultServices": ["DataStore", "Networking"],
+  "validationChecks": [
+    "model-id",
+    "game-title",
+    "game-genre",
+    "services-present",
+    "unique-script-ids",
+    "unique-module-ids",
+    "dependency-integrity",
+    "naming-consistency",
+    "reference-integrity",
+    "folders-defined"
+  ]
+}

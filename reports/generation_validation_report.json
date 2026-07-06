@@ -1,0 +1,37 @@
+{
+  "reportType": "Generation Engine Validation",
+  "version": "2.2.0",
+  "timestamp": "2026-07-06T23:35:00.000Z",
+  "testResults": {
+    "total": 16,
+    "passed": 16,
+    "failed": 0,
+    "suites": {
+      "successful-generation": { "tests": 2, "passed": 2 },
+      "invalid-blueprint": { "tests": 1, "passed": 1 },
+      "circular-dependencies": { "tests": 1, "passed": 1 },
+      "failing-generator": { "tests": 1, "passed": 1 },
+      "generator-registry": { "tests": 2, "passed": 2 },
+      "dependency-resolver": { "tests": 2, "passed": 2 },
+      "model-validator": { "tests": 2, "passed": 2 },
+      "generation-cache": { "tests": 5, "passed": 5 }
+    }
+  },
+  "buildValidation": {
+    "typescriptErrors": 0,
+    "boundaryViolations": 0,
+    "filesScanned": 277,
+    "importsAnalyzed": 668
+  },
+  "engineCapabilities": [
+    "Blueprint → GenerationModel transformation",
+    "Generator dependency resolution (topological sort)",
+    "Circular dependency detection and rejection",
+    "Model completeness validation (10 checks)",
+    "LRU cache with hit/miss statistics",
+    "Session lifecycle management",
+    "Event emission (6 event types)",
+    "Factory pattern for engine creation",
+    "Graceful handling of generator failures"
+  ]
+}
