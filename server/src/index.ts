@@ -303,7 +303,13 @@ events.onEvent(async (evt) => {
     case "cloud.node.heartbeat":
     case "cloud.job.routed":
     case "cloud.node.failed":
-    case "cluster.topology.updated": {
+    case "cluster.topology.updated":
+    case "studio.connected":
+    case "studio.disconnected":
+    case "studio.sync.update":
+    case "studio.asset.changed":
+    case "studio.scene.updated":
+    case "studio.import.completed": {
       io.emit(evt.type, { pipelineId: evt.pipelineId, ...evt.data });
       break;
     }

@@ -76,7 +76,13 @@ export type PipelineEventType =
   | "cloud.node.heartbeat"
   | "cloud.job.routed"
   | "cloud.node.failed"
-  | "cluster.topology.updated";
+  | "cluster.topology.updated"
+  | "studio.connected"
+  | "studio.disconnected"
+  | "studio.sync.update"
+  | "studio.asset.changed"
+  | "studio.scene.updated"
+  | "studio.import.completed";
 
 export interface PipelineEvent {
   type: PipelineEventType;
