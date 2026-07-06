@@ -1,4 +1,4 @@
-import type { ChangeGraph, GraphNode, GraphEdge } from "./AssemblyChangeGraph";
+import type { ChangeGraph } from "./AssemblyChangeGraph";
 
 /**
  * DependencyMap — resolved transitive dependency chains.
@@ -174,7 +174,7 @@ export class DependencyResolver {
   }
 
   private computeMaxDepth(
-    graph: ChangeGraph,
+    _graph: ChangeGraph,
     upstream: Map<string, Set<string>>,
   ): number {
     let max = 0;

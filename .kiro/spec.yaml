@@ -1,0 +1,223 @@
+name: roblox-ai-studio-devkit
+version: "1.0.0"
+description: Production-grade AI-driven Roblox game generation platform
+
+architecture:
+  subsystems:
+    - name: core-engine
+      path: server/src/core
+      description: Runtime, configuration, lifecycle management
+    - name: ai-agents
+      path: agents
+      description: Agent definitions, orchestration, provider interfaces
+    - name: generation-pipeline
+      path: server/src/execution
+      description: Execution stages, transforms, output assembly
+    - name: blueprint-system
+      path: server/src/blueprints
+      description: Templates, schemas, composition rules
+    - name: validation-layer
+      path: server/src/validation
+      description: Input/output validation, schema enforcement
+    - name: manifest-system
+      path: server/src/manifest
+      description: Package manifests, dependency resolution
+    - name: ci-cd-pipeline
+      path: .github/workflows
+      description: Build, test, deploy automation
+    - name: governance-layer
+      path: server/src/governance
+      description: Policy enforcement, access control, audit
+    - name: documentation-system
+      path: docs
+      description: API docs, architecture docs, guides
+    - name: test-suite
+      path: tests
+      description: Unit, integration, property-based tests
+    - name: tooling
+      path: .vscode
+      description: Extensions, commands, UI integrations
+
+commit:
+  format: conventional
+  types:
+    - feat
+    - fix
+    - refactor
+    - perf
+    - docs
+    - test
+    - build
+    - ci
+    - chore
+  rules:
+    subject_max_length: 72
+    subject_case: lower
+    subject_no_period: true
+    body_required_for_non_trivial: true
+    body_explain_why: true
+    no_vague_messages: true
+    vague_patterns:
+      - "fix stuff"
+      - "update"
+      - "wip"
+      - "misc"
+      - "changes"
+      - "temp"
+  atomicity:
+    one_logical_change_per_commit: true
+    no_mixed_concerns: true
+    split_unrelated_changes: true
+    separate_refactoring_from_features: true
+  breaking_changes:
+    indicator: "!"
+    footer: "BREAKING CHANGE:"
+
+code_organization:
+  group_by_subsystem: true
+  prevent_cross_subsystem_mixing: true
+  scope_must_match_subsystem: true
+  shared_utilities_path: server/src/shared
+  max_file_lines: 300
+
+code_quality:
+  architecture: modular
+  prefer_composition: true
+  dependency_injection: true
+  no_duplication: true
+  no_dead_code: true
+  no_commented_code: true
+  no_any_type: true
+  single_responsibility: true
+  pure_functions_preferred: true
+  naming:
+    variables: camelCase
+    functions: camelCase
+    types: PascalCase
+    classes: PascalCase
+    constants: UPPER_SNAKE_CASE
+
+refactoring:
+  incremental_only: true
+  preserve_public_apis: true
+  single_responsibility: true
+  must_pass_tests: true
+  separate_commit_type: refactor
+  require_rationale_in_body: true
+
+documentation:
+  update_on_api_change: true
+  update_on_architecture_change: true
+  sync_readme: true
+  require_jsdoc_on_public: true
+  commit_type: docs
+
+validation:
+  typescript_compile: true
+  lint_pass: true
+  format_consistent: true
+  no_secrets: true
+  no_generated_artifacts: true
+  blocked_files:
+    - "*.log"
+    - "*.env"
+    - "*.key"
+    - "*.pem"
+    - "*.secret"
+    - ".env*"
+  blocked_directories:
+    - node_modules
+    - dist
+    - build
+    - .cache
+    - coverage
+  blocked_patterns:
+    - api_key
+    - bearer_token
+    - connection_string_with_password
+
+repository_hygiene:
+  gitignore_enforced: true
+  no_binaries: true
+  no_credentials: true
+  max_file_size_kb: 500
+
+ai_behavior:
+  split_unrelated_changes: true
+  detect_subsystem_boundaries: true
+  architecture_aware_grouping: true
+  optimize_traceability: true
+  prevent_mixed_feature_commits: true
+  no_force_push: true
+  no_history_rewrite: true
+  no_bypass_validation: true
+  justify_new_dependencies: true
+
+pipeline:
+  stages:
+    - name: parse
+      input: RawBlueprint
+      output: ParsedBlueprint
+      validation: schema
+    - name: plan
+      input: ParsedBlueprint
+      output: GenerationPlan
+      validation: completeness
+    - name: generate
+      input: GenerationPlan
+      output: GeneratedArtifacts
+      validation: type_check
+    - name: validate
+      input: GeneratedArtifacts
+      output: ValidatedArtifacts
+      validation: full
+    - name: emit
+      input: ValidatedArtifacts
+      output: FinalOutput
+      validation: checksum
+  rules:
+    stages_are_pure_transforms: true
+    no_input_mutation: true
+    halt_on_postcondition_failure: true
+    idempotent_stages: true
+    emit_structured_logs: true
+
+blueprint_traceability:
+  require_blueprint_id: true
+  immutable_versions: true
+  build_manifest_required: true
+  manifest_fields:
+    - artifactPath
+    - blueprintId
+    - blueprintVersion
+    - generatedAt
+    - checksum
+  drift_detection: true
+  orphan_detection: true
+  cascade_on_delete: true
+
+orchestration:
+  agents:
+    - name: orchestrator
+      role: top-level-controller
+      coordinates_all: true
+    - name: generator
+      role: code-generation
+      output_validated: true
+    - name: validator
+      role: correctness-check
+      blocks_on_failure: true
+    - name: refactor
+      role: structure-improvement
+      incremental_only: true
+    - name: documentation
+      role: docs-maintenance
+      triggered_by_api_change: true
+  rules:
+    single_responsibility_per_agent: true
+    communication_format: json_events
+    all_outputs_validated: true
+    no_direct_commit_without_orchestration: true
+    stateless_between_invocations: true
+    parallel_only_when_independent: true
+    fail_gracefully: true

@@ -1,54 +1,78 @@
-import { Orchestrator } from "../../agents/orchestrator/Orchestrator";
-import { AssetPlannerAgent } from "../../agents/agents/AssetPlannerAgent";
-import { DatabaseAgent } from "../../agents/agents/DatabaseAgent";
-import { DebugAgent } from "../../agents/agents/DebugAgent";
-import { DocumentationAgent } from "../../agents/agents/DocumentationAgent";
-import { GameDesignerAgent } from "../../agents/agents/GameDesignerAgent";
-import { LuaGeneratorAgent } from "../../agents/agents/LuaGeneratorAgent";
-import { OrchestratorAgent } from "../../agents/agents/OrchestratorAgent";
-import { PerformanceAgent } from "../../agents/agents/PerformanceAgent";
-import { PlannerAgent } from "../../agents/agents/PlannerAgent";
-import { RequirementsAgent } from "../../agents/agents/RequirementsAgent";
-import { RobloxArchitectAgent } from "../../agents/agents/RobloxArchitectAgent";
-import { TesterAgent } from "../../agents/agents/TesterAgent";
-import { UIGeneratorAgent } from "../../agents/agents/UIGeneratorAgent";
-import { LocalModelProvider } from "../../agents/providers/LocalModelProvider";
+/**
+ * AI Engine Service — Frontend client for the Compiler API.
+ *
+ * Previously imported legacy agent implementations directly.
+ * Now delegates all execution to the backend server via HTTP API.
+ * Agents run server-side with full LLM, evaluation, memory, and governance.
+ */
 
-const provider = new LocalModelProvider();
+const API_BASE = "/api/projects";
 
-const agents = [
-  new OrchestratorAgent(),
-  new RequirementsAgent(),
-  new PlannerAgent(),
-  new GameDesignerAgent(),
-  new RobloxArchitectAgent(),
-  new LuaGeneratorAgent(),
-  new UIGeneratorAgent(),
-  new AssetPlannerAgent(),
-  new DatabaseAgent(),
-  new DocumentationAgent(),
-  new TesterAgent(),
-  new DebugAgent(),
-  new PerformanceAgent(),
-];
-
-export const aiOrchestrator = new Orchestrator(agents, {
-  stopOnError: true,
-  maxRetries: 2,
-});
-
-export async function runAgentPipeline(prompt: string) {
-  return aiOrchestrator.runPipeline({
-    prompt,
-    pipeline: [
-      "RequirementsAgent",
-      "PlannerAgent",
-      "GameDesignerAgent",
-      "RobloxArchitectAgent",
-    ],
-  } as { prompt: string; pipeline: string[] });
+export interface PipelineResult {
+  success: boolean;
+  executionId?: string;
+  status?: string;
+  error?: string;
 }
 
-export function getActiveProvider() {
-  return provider;
+/**
+ * Start a generation pipeline run via the backend API.
+ */
+export async function runAgentPipeline(
+  projectId: string,
+  blueprintId?: string,
+  userId = "default-user",
+): Promise<PipelineResult> {
+  try {
+    const response = await fetch(`${API_BASE}/${projectId}/generate`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ blueprintId: blueprintId ?? projectId, userId }),
+    });
+
+    if (!response.ok) {
+      return { success: false, error: `Server returned ${response.status}` };
+    }
+
+    const data = await response.json();
+    return {
+      success: true,
+      executionId: data.executionId,
+      status: data.status,
+    };
+  } catch (err) {
+    return {
+      success: false,
+      error: err instanceof Error ? err.message : "Network error",
+    };
+  }
+}
+
+/**
+ * Get generation execution status.
+ */
+export async function getExecutionStatus(
+  projectId: string,
+  executionId: string,
+): Promise<unknown> {
+  const response = await fetch(
+    `${API_BASE}/${projectId}/generation/${executionId}/status`,
+  );
+  if (!response.ok) return null;
+  const data = await response.json();
+  return data.data;
+}
+
+/**
+ * Get active provider info from the server health endpoint.
+ */
+export async function getActiveProvider(): Promise<string> {
+  try {
+    const response = await fetch("/health");
+    if (!response.ok) return "unknown";
+    const data = await response.json();
+    return data.llm ?? "stub";
+  } catch {
+    return "unavailable";
+  }
 }

@@ -1,5 +1,5 @@
 import type { AssemblyDiff, DiffNode } from "./AssemblyDiffEngine";
-import type { ChangeGraph, GraphNode } from "./AssemblyChangeGraph";
+import type { ChangeGraph } from "./AssemblyChangeGraph";
 import { DependencyResolver, type DependencyMap } from "./DependencyResolver";
 
 /**
@@ -298,7 +298,7 @@ export class AssemblyImpactAnalyzer {
   private buildRecommendation(
     score: number,
     affectedNodes: ImpactNode[],
-    depMap: DependencyMap,
+    _depMap: DependencyMap,
   ): string {
     if (score >= 75) {
       return "HIGH RISK: Review all critical paths before proceeding. Consider incremental changes.";

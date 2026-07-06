@@ -16,7 +16,6 @@ import {
   type ImpactAnalysis,
 } from "./AssemblyImpactAnalyzer";
 import type { GameBlueprint } from "../generation/GenerationBlueprint";
-import type { GameBlueprint } from "../generation/GenerationBlueprint";
 
 /**
  * AssemblyRegistry

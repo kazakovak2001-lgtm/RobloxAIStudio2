@@ -7,7 +7,6 @@
  */
 
 import type { JobResult } from "./CompilerWorkerNode";
-import type { CompilerJob } from "./JobQueueManager";
 
 export interface AggregatedResult {
   projectId: string;

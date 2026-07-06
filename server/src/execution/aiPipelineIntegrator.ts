@@ -500,13 +500,14 @@ export class AIPipelineIntegrator {
               "Gameplay",
             );
             if (typeof output.loop === "string")
-              memory.appendDecision({
-                category: "gameplay",
-                summary: `Core loop: ${(output.loop as string).slice(0, 60)}`,
-                details: JSON.stringify({ loop: output.loop }),
-                reason: "Selected by GameDesigner from seed",
-                impact: "Drives all downstream design",
-              });
+              memory.appendDecision(
+                agentName,
+                "gameplay",
+                `Core loop: ${(output.loop as string).slice(0, 60)}`,
+                JSON.stringify({ loop: output.loop }),
+                "Selected by GameDesigner from seed",
+                "Drives all downstream design",
+              );
           }
           break;
         case "roblox_architect":
@@ -514,8 +515,7 @@ export class AIPipelineIntegrator {
             const arch = (output.architecture ??
               output.roblox_architect) as Record<string, unknown>;
             const ra = output.roblox_architect as
-              | Record<string, unknown>
-              | undefined;
+              Record<string, unknown> | undefined;
             memory.writeContext(
               {
                 architecture: {
@@ -531,13 +531,14 @@ export class AIPipelineIntegrator {
               agentName,
               "Architecture",
             );
-            memory.appendDecision({
-              category: "architecture",
-              summary: "Client/server architecture defined",
-              details: JSON.stringify({ services: (arch as any).services }),
-              reason: "Derived from gameplay systems",
-              impact: "Determines folder structure and networking",
-            });
+            memory.appendDecision(
+              agentName,
+              "architecture",
+              "Client/server architecture defined",
+              JSON.stringify({ services: (arch as any).services }),
+              "Derived from gameplay systems",
+              "Determines folder structure and networking",
+            );
           }
           break;
         case "lua_generator":
@@ -605,13 +606,14 @@ export class AIPipelineIntegrator {
               agentName,
               "World",
             );
-            memory.appendDecision({
-              category: "world",
-              summary: `World synthesised: ${String(w.name ?? "Game")}`,
-              details: JSON.stringify({ systems: output.systems }),
-              reason: "Orchestrator final aggregation",
-              impact: "Canonical game artifact",
-            });
+            memory.appendDecision(
+              agentName,
+              "world",
+              `World synthesised: ${String(w.name ?? "Game")}`,
+              JSON.stringify({ systems: output.systems }),
+              "Orchestrator final aggregation",
+              "Canonical game artifact",
+            );
           }
           break;
       }

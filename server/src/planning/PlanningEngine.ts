@@ -6,7 +6,6 @@ import type {
   ReplanReason,
   PlanningMetrics,
 } from "./PlanningTypes";
-import type { PlanningContext } from "./PlanningContext";
 import { createExecutionPlan, clonePlan } from "./ExecutionPlan";
 import { DEFAULT_PLANNING_RULES, ruleToPlanStep } from "./PlanningRules";
 import { computePlanningMetrics } from "./PlanningMetrics";

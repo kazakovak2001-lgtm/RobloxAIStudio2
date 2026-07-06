@@ -13,7 +13,7 @@ import {
   getDefaultAssemblyRegistry,
 } from "../assembly/AssemblyRegistry";
 import { CIControlPipeline } from "../governance/CIControlPipeline";
-import { ExecutionGuard, type CompilerStage } from "./ExecutionGuard";
+import { ExecutionGuard } from "./ExecutionGuard";
 import {
   CompilerErrorBoundary,
   type CompilerError,

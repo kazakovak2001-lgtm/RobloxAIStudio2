@@ -62,7 +62,10 @@ export function mergeContextUpdate(
     evaluation?: EvaluationSummaryContext;
   },
 ): ProjectContext {
-  return MemorySerializer.deepMerge(ctx, update as Partial<ProjectContext>);
+  return MemorySerializer.deepMerge(
+    ctx as unknown as Record<string, unknown>,
+    update as unknown as Partial<Record<string, unknown>>,
+  ) as unknown as ProjectContext;
 }
 
 // Re-export section types for convenience

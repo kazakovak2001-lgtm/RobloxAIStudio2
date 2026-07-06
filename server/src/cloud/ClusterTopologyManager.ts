@@ -6,11 +6,7 @@
  * recommends scaling actions, and provides a unified health map.
  */
 
-import {
-  CloudNodeRegistry,
-  getCloudNodeRegistry,
-  type CloudNode,
-} from "./CloudNodeRegistry";
+import { CloudNodeRegistry, getCloudNodeRegistry } from "./CloudNodeRegistry";
 
 export interface RegionTopology {
   region: string;

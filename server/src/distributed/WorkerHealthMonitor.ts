@@ -99,7 +99,7 @@ export class WorkerHealthMonitor {
   /**
    * Requeue jobs assigned to dead workers.
    */
-  requeueStuckJobs(queue: JobQueueManager): number {
+  requeueStuckJobs(_queue: JobQueueManager): number {
     // The queue manager handles retry internally via fail() — this is a
     // detection layer only. In a distributed system this would trigger
     // reassignment. For now it logs dead workers for the coordinator.

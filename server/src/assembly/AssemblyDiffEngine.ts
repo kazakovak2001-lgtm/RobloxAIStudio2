@@ -64,8 +64,8 @@ export class AssemblyDiffEngine {
       ...target.ui,
     ];
     this.diffByPath(
-      allBaseScripts,
-      allTargetScripts,
+      allBaseScripts as any,
+      allTargetScripts as any,
       "script",
       added,
       removed,
@@ -75,8 +75,8 @@ export class AssemblyDiffEngine {
 
     // ── Folders ───────────────────────────────────────────────────────────
     this.diffByPath(
-      base.folders,
-      target.folders,
+      base.folders as any,
+      target.folders as any,
       "folder",
       added,
       removed,
@@ -86,8 +86,8 @@ export class AssemblyDiffEngine {
 
     // ── Workspace entries ─────────────────────────────────────────────────
     this.diffByPath(
-      base.world,
-      target.world,
+      base.world as any,
+      target.world as any,
       "workspace",
       added,
       removed,
@@ -97,8 +97,8 @@ export class AssemblyDiffEngine {
 
     // ── Network objects ───────────────────────────────────────────────────
     this.diffByPath(
-      base.network,
-      target.network,
+      base.network as any,
+      target.network as any,
       "network",
       added,
       removed,
@@ -108,8 +108,8 @@ export class AssemblyDiffEngine {
 
     // ── Asset placeholders ────────────────────────────────────────────────
     this.diffByPath(
-      base.assets,
-      target.assets,
+      base.assets as any,
+      target.assets as any,
       "asset",
       added,
       removed,
@@ -119,8 +119,8 @@ export class AssemblyDiffEngine {
 
     // ── Configuration ─────────────────────────────────────────────────────
     this.diffConfigs(
-      base.configuration,
-      target.configuration,
+      base.configuration as any,
+      target.configuration as any,
       added,
       removed,
       modified,

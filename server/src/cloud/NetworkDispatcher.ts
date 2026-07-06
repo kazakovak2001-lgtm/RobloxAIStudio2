@@ -86,7 +86,7 @@ export class NetworkDispatcher {
   /**
    * Select optimal node based on: region affinity → load → capacity.
    */
-  selectNode(job: CompilerJob): CloudNode | null {
+  selectNode(_job: CompilerJob): CloudNode | null {
     const available = this.registry.getAvailableNodes();
     if (available.length === 0) return null;
 
