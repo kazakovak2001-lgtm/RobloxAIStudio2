@@ -57,9 +57,30 @@ export function createCompileRouter(agentRegistry: AgentRegistry): Router {
       const assetGen = new AssetGenerator();
       const assets = assetGen.generate(blueprint);
 
-      // Stage 5: Validation
+      // Stage 5: Validation (HARD GATE — blocks pipeline if score < 70)
       const validator = new GameValidationEngine();
       const validation = validator.validate(blueprint, scripts, assets);
+
+      if (!validation.passed || validation.score < 70) {
+        res.json({
+          success: false,
+          error: "Compilation blocked by validation gate",
+          data: {
+            validation: {
+              score: validation.score,
+              passed: validation.passed,
+              errors: validation.errors,
+              warnings: validation.warnings,
+            },
+            pipeline: {
+              mode: "deterministic",
+              stoppedAt: "validation",
+              reason: `Score ${validation.score} < 70 threshold`,
+            },
+          },
+        });
+        return;
+      }
 
       // Stage 6: Simulation
       const simEngine = new GameSimulationEngine();
