@@ -6,8 +6,9 @@
   "scripts": {
     "dev": "vite",
     "dev:server": "tsx watch server/src/index.ts",
-    "build": "tsc -b && vite build",
-    "build:server": "tsc --project server/tsconfig.json",
+    "validate:arch": "tsx scripts/validate-architecture.ts",
+    "build": "tsx scripts/validate-architecture.ts && tsc -b && vite build",
+    "build:server": "tsx scripts/validate-architecture.ts && tsc --project server/tsconfig.json",
     "preview": "vite preview",
     "start": "node dist/server/index.js",
     "lint": "eslint . --ext .ts,.tsx --max-warnings 0",

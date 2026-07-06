@@ -131,7 +131,7 @@ export class PluginSandbox {
   }
 
   private detectMutation(
-    original: PluginContext,
+    _original: PluginContext,
     _frozen: PluginContext,
   ): boolean {
     // In strict mode we could deep-compare; for now frozen prevents direct mutation

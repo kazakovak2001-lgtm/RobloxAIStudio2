@@ -6,7 +6,7 @@
  * Session-based connections — one session per Studio instance.
  */
 
-import type { StudioEvent, CompilerUpdate, StudioState } from "./StudioTypes";
+import type { StudioEvent, CompilerUpdate } from "./StudioTypes";
 
 export type StudioEventHandler = (event: StudioEvent) => Promise<void> | void;
 

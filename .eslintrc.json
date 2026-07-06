@@ -1,0 +1,59 @@
+{
+  "root": true,
+  "parser": "@typescript-eslint/parser",
+  "parserOptions": {
+    "ecmaVersion": 2020,
+    "sourceType": "module"
+  },
+  "rules": {
+    "no-restricted-imports": [
+      "error",
+      {
+        "patterns": [
+          {
+            "group": ["**/app/src/**"],
+            "message": "Forbidden: no imports from app/src/ — use server/src/ for backend."
+          },
+          {
+            "group": ["**/lib/src/**"],
+            "message": "Forbidden: no imports from lib/src/."
+          }
+        ]
+      }
+    ]
+  },
+  "overrides": [
+    {
+      "files": ["server/src/**/*.ts"],
+      "rules": {
+        "no-restricted-imports": [
+          "error",
+          {
+            "patterns": [
+              {
+                "group": ["../../src/**", "../../../src/**"],
+                "message": "Backend (server/src/) must not import from frontend (src/). Cross-boundary violation."
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "files": ["src/**/*.ts", "src/**/*.tsx"],
+      "rules": {
+        "no-restricted-imports": [
+          "error",
+          {
+            "patterns": [
+              {
+                "group": ["../../server/src/**", "../../../server/src/**"],
+                "message": "Frontend (src/) must not import from backend (server/src/) directly. Use API calls."
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ]
+}

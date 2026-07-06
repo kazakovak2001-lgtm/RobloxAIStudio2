@@ -24,7 +24,7 @@ import { StudioRealtimeSyncManager } from "./StudioRealtimeSyncManager";
 
 export class StudioSyncEngine {
   private bridge: StudioBridgeServer;
-  private assetMapper: StudioAssetMapper;
+  private _assetMapper: StudioAssetMapper;
   private sceneTranslator: SceneGraphTranslator;
   private importer: StudioProjectImporter;
   private syncManager: StudioRealtimeSyncManager;
@@ -32,7 +32,7 @@ export class StudioSyncEngine {
 
   constructor() {
     this.bridge = new StudioBridgeServer();
-    this.assetMapper = new StudioAssetMapper();
+    this._assetMapper = new StudioAssetMapper();
     this.sceneTranslator = new SceneGraphTranslator();
     this.importer = new StudioProjectImporter();
     this.syncManager = new StudioRealtimeSyncManager(this.bridge);
@@ -155,6 +155,10 @@ export class StudioSyncEngine {
   }
 
   // ─── Status ────────────────────────────────────────────────────────────────
+
+  getAssetMapper(): StudioAssetMapper {
+    return this._assetMapper;
+  }
 
   getConnectedStudios(): StudioState[] {
     return Array.from(this.studioStates.values());

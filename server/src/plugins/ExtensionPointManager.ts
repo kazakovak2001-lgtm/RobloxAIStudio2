@@ -10,7 +10,6 @@ import {
   PluginRegistry,
   getPluginRegistry,
   type PluginHooks,
-  type CompilerPlugin,
 } from "./PluginRegistry";
 import {
   PluginSandbox,

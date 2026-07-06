@@ -65,7 +65,7 @@ export class StateReconstructor {
     const snapshot = this.snapshotManager.loadLatest("global");
     const startOffset = snapshot?.offset ?? 0;
     const baseState = snapshot
-      ? (snapshot.state as SystemState)
+      ? (snapshot.state as unknown as SystemState)
       : this.emptyState();
 
     // Replay events since snapshot
