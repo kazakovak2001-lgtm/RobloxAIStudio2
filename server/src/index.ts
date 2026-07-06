@@ -21,6 +21,8 @@ import { createDebugRouter } from "./routes/debug";
 import { ApiGateway } from "./api/gateway/ApiGateway";
 import { createV1Router } from "./api/v1";
 import { createV2Router } from "./api/v2";
+import { createDistributedRouter } from "./routes/distributed";
+import { ExecutionCoordinator } from "./distributed/execution/ExecutionCoordinator";
 import { GameGenerationService } from "./projects/services/game-generation.service";
 
 import { InMemoryBlueprintRepository } from "./projects/repository/blueprint.repository";
@@ -355,6 +357,11 @@ const gateway = new ApiGateway({ version: "1.0.0" });
 app.use("/api/v1", createV1Router(agentRegistry, gateway));
 app.use("/api/v2", createV2Router(agentRegistry, gateway));
 
+// ─── Distributed Execution Layer ────────────────────────────────────────────
+const executionCoordinator = new ExecutionCoordinator(agentRegistry);
+executionCoordinator.initialize();
+app.use("/api/distributed", createDistributedRouter(executionCoordinator));
+
 // Root endpoint
 app.get("/", (_req: Request, res: Response) => {
   res.json({
@@ -405,6 +412,7 @@ httpServer.listen(PORT, "0.0.0.0", () => {
 // Graceful shutdown
 process.on("SIGTERM", () => {
   console.log("\n📴 SIGTERM received, shutting down gracefully...");
+  executionCoordinator.shutdown();
   httpServer.close(() => {
     console.log("✅ Server closed");
     process.exit(0);
@@ -413,6 +421,7 @@ process.on("SIGTERM", () => {
 
 process.on("SIGINT", () => {
   console.log("\n📴 SIGINT received, shutting down gracefully...");
+  executionCoordinator.shutdown();
   httpServer.close(() => {
     console.log("✅ Server closed");
     process.exit(0);

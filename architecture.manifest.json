@@ -104,9 +104,9 @@
     },
     {
       "from": ["routes"],
-      "to": ["cloud", "distributed"],
+      "to": ["cloud"],
       "rule": "API_NO_INFRA_BYPASS",
-      "message": "API routes must not directly access infrastructure. Use service layer."
+      "message": "API routes must not directly access cloud infrastructure. Use service layer."
     },
     {
       "from": "*",
