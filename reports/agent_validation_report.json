@@ -1,0 +1,16 @@
+{
+  "reportType": "Agent Validation",
+  "version": "2.7.0",
+  "validators": [
+    "AgentExecutionValidator (plan integrity + result consistency)"
+  ],
+  "checks": [
+    "no empty plans",
+    "unique step IDs",
+    "dependency resolution",
+    "output presence on success",
+    "shared knowledge production"
+  ],
+  "testResults": { "planValidation": "PASS", "resultValidation": "PASS" },
+  "status": "OPERATIONAL"
+}

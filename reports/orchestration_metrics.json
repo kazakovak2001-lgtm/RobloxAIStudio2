@@ -1,0 +1,18 @@
+{
+  "reportType": "Orchestration Metrics",
+  "version": "2.7.0",
+  "testMetrics": {
+    "singleAgent": { "completedSteps": 1, "durationMs": 5 },
+    "multiAgent": { "completedSteps": 3, "durationMs": 12 },
+    "circularDetection": "immediate rejection"
+  },
+  "capabilities": [
+    "dependency resolution",
+    "circular detection",
+    "message passing",
+    "shared knowledge",
+    "artifact exchange",
+    "plan validation"
+  ],
+  "status": "OPERATIONAL"
+}

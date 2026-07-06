@@ -1,0 +1,19 @@
+{
+  "reportType": "Dependency Graph",
+  "version": "2.7.0",
+  "algorithm": "Kahn's topological sort",
+  "capabilities": [
+    "resolve execution order",
+    "detect circular dependencies",
+    "filter by supported tasks",
+    "priority-aware ordering"
+  ],
+  "exampleGraph": {
+    "gameplay-agent": [],
+    "lua-agent": ["gameplay-agent"],
+    "ui-agent": ["gameplay-agent"],
+    "asset-agent": ["gameplay-agent"]
+  },
+  "testResults": { "validPlan": "PASS", "cycleDetection": "PASS" },
+  "status": "OPERATIONAL"
+}
