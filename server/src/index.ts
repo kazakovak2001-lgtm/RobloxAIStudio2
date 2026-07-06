@@ -26,7 +26,6 @@ import {
   PipelineEventEmitter,
 } from "./socket/streaming";
 import { errorHandler } from "./common/middleware/errorHandler";
-import { AIPipelineIntegrator } from "./execution/aiPipelineIntegrator";
 import { AgentRegistry } from "./agents/core/AgentRegistry";
 import { LLMProviderFactory } from "./ai/providerFactory";
 
@@ -76,7 +75,7 @@ const streaming = new StreamingUpdateHandler();
 const blueprintCache = new BlueprintCache();
 const blueprintRepo = new InMemoryBlueprintRepository();
 
-const pipelineIntegrator = new AIPipelineIntegrator(events);
+const pipelineIntegrator = null; // Deprecated: PlanExecutor is now the canonical runtime
 
 // Resolve LLM provider from environment variables
 const llmResult = LLMProviderFactory.create();
