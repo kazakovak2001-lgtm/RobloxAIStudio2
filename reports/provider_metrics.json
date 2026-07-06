@@ -1,0 +1,14 @@
+{
+  "reportType": "Provider Metrics",
+  "version": "2.8.0",
+  "metricsTracked": [
+    "totalRequests",
+    "totalTokens",
+    "averageLatencyMs",
+    "successRate",
+    "providerBreakdown"
+  ],
+  "retryPolicy": { "maxRetries": 2, "backoffMs": 500, "fallbackEnabled": true },
+  "testResults": { "total": 15, "passed": 15 },
+  "status": "OPERATIONAL"
+}

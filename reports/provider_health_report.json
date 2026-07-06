@@ -1,0 +1,20 @@
+{
+  "reportType": "Provider Health",
+  "version": "2.8.0",
+  "healthTracking": {
+    "features": [
+      "latency tracking",
+      "failure rate",
+      "consecutive failure detection",
+      "auto-disable after 5 failures",
+      "degraded status after 2 failures"
+    ],
+    "maxConsecutiveFailures": 5
+  },
+  "testResults": {
+    "successTracking": "PASS",
+    "failureTracking": "PASS",
+    "autoDisable": "PASS"
+  },
+  "status": "OPERATIONAL"
+}
