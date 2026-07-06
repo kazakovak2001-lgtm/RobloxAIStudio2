@@ -88,6 +88,7 @@
     "pipeline": { "path": "server/src/pipeline", "layer": "infrastructure" },
     "routes": { "path": "server/src/routes", "layer": "api" },
     "projects": { "path": "server/src/projects", "layer": "api" },
+    "api": { "path": "server/src/api", "layer": "api" },
     "core": { "path": "server/src/core", "layer": "core" },
     "common": { "path": "server/src/common", "layer": "shared" },
     "types": { "path": "server/src/types", "layer": "shared" },

@@ -18,6 +18,9 @@ import { createWorldRouter } from "./routes/world";
 import { createLifecycleRouter } from "./routes/lifecycle";
 import { createCompileRouter } from "./routes/compile";
 import { createDebugRouter } from "./routes/debug";
+import { ApiGateway } from "./api/gateway/ApiGateway";
+import { createV1Router } from "./api/v1";
+import { createV2Router } from "./api/v2";
 import { GameGenerationService } from "./projects/services/game-generation.service";
 
 import { InMemoryBlueprintRepository } from "./projects/repository/blueprint.repository";
@@ -346,6 +349,11 @@ app.use("/api/world", createWorldRouter());
 app.use("/api/lifecycle", createLifecycleRouter());
 app.use("/api/compile", createCompileRouter(agentRegistry));
 app.use("/api/debug", createDebugRouter());
+
+// ─── Versioned API Gateway ──────────────────────────────────────────────────
+const gateway = new ApiGateway({ version: "1.0.0" });
+app.use("/api/v1", createV1Router(agentRegistry, gateway));
+app.use("/api/v2", createV2Router(agentRegistry, gateway));
 
 // Root endpoint
 app.get("/", (_req: Request, res: Response) => {

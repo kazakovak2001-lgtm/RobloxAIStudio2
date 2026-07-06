@@ -1,0 +1,174 @@
+/**
+ * API v2 — Experimental Features
+ *
+ * Endpoints under /api/v2/* are NOT contract-locked.
+ * They may change without notice between releases.
+ *
+ * Currently exposes:
+ *   /api/v2/compile/stream  — streamed compile with SSE
+ *   /api/v2/plan/dag        — full DAG introspection
+ */
+
+import { Router } from "express";
+import { ApiGateway, type RequestWithTrace } from "../gateway/ApiGateway";
+import { ResponseFormatter } from "../gateway/ResponseFormatter";
+import { PlannerEngine } from "../../planning/core/PlannerEngine";
+import { PlanExecutor } from "../../planning/execution/PlanExecutor";
+import { AgentRegistry } from "../../agents/core/AgentRegistry";
+import { ExecutionTracer } from "../../core/observability/ExecutionTracer";
+
+export function createV2Router(
+  agentRegistry: AgentRegistry,
+  gateway: ApiGateway,
+): Router {
+  const router = gateway.createVersionedRouter("v2");
+  const formatter = new ResponseFormatter("2.0.0-experimental");
+
+  // ─── POST /compile/stream — compile with SSE streaming ─────────────────
+  router.post("/compile/stream", async (req, res) => {
+    const traceId = (req as RequestWithTrace).traceId;
+
+    // Set SSE headers
+    res.setHeader("Content-Type", "text/event-stream");
+    res.setHeader("Cache-Control", "no-cache");
+    res.setHeader("Connection", "keep-alive");
+    res.setHeader("X-Trace-Id", traceId);
+    res.flushHeaders();
+
+    const sendEvent = (event: string, data: unknown): void => {
+      res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
+    };
+
+    const tracer = ExecutionTracer.instance();
+    const listener = (event: {
+      eventType: string;
+      nodeId: string;
+      agentId: string;
+      durationMs?: number;
+      evaluationScore?: number;
+      error?: string;
+    }) => {
+      sendEvent("trace", {
+        type: event.eventType,
+        node: event.nodeId,
+        agent: event.agentId,
+        durationMs: event.durationMs,
+        score: event.evaluationScore,
+        error: event.error,
+      });
+    };
+
+    tracer.addListener(listener);
+
+    try {
+      const { intent, constraints, projectId } = req.body;
+
+      sendEvent("start", { traceId, intent });
+
+      const planner = new PlannerEngine();
+      const executor = new PlanExecutor();
+      const plan = planner.createPlan({
+        intent: intent ?? "Generate a Roblox game",
+        constraints: constraints ?? [],
+        projectId,
+      });
+
+      sendEvent("plan.created", {
+        planId: plan.planId,
+        tasks: plan.estimatedSteps,
+      });
+
+      const result = await executor.executePlan(
+        plan.planId,
+        plan.graph,
+        (agent, input) => agentRegistry.executeAgent(agent, input),
+        { projectId, stopOnFailure: false },
+      );
+
+      sendEvent("complete", {
+        success: result.success,
+        completedNodes: result.completedNodes,
+        failedNodes: result.failedNodes,
+        totalDurationMs: result.totalDurationMs,
+      });
+    } catch (err) {
+      sendEvent("error", {
+        message: err instanceof Error ? err.message : "Unknown error",
+      });
+    } finally {
+      tracer.removeListener(listener);
+      res.end();
+    }
+  });
+
+  // ─── POST /plan/dag — full DAG with dependencies visible ───────────────
+  router.post("/plan/dag", (req, res) => {
+    const traceId = (req as RequestWithTrace).traceId;
+    const startTime = (req as RequestWithTrace).startTime;
+
+    try {
+      const planner = new PlannerEngine();
+      const plan = planner.createPlan({
+        intent: req.body.intent ?? "Generate a Roblox game",
+        constraints: req.body.constraints ?? [],
+        projectId: req.body.projectId,
+      });
+
+      const nodes = plan.graph.getAllNodes();
+      const edges: Array<{ from: string; to: string }> = [];
+      for (const node of nodes) {
+        for (const dep of node.dependencies) {
+          edges.push({ from: dep, to: node.id });
+        }
+      }
+
+      res.json(
+        formatter.success(
+          {
+            planId: plan.planId,
+            dag: {
+              nodes: nodes.map((n) => ({
+                id: n.id,
+                agent: n.agent,
+                type: n.type,
+                dependencies: n.dependencies,
+              })),
+              edges,
+              size: nodes.length,
+            },
+          },
+          { traceId, startTime },
+        ),
+      );
+    } catch (err) {
+      res
+        .status(500)
+        .json(
+          formatter.error(
+            "DAG_FAILED",
+            "DAG creation failed",
+            err instanceof Error ? err.message : undefined,
+            { traceId },
+          ),
+        );
+    }
+  });
+
+  // ─── GET /status ───────────────────────────────────────────────────────
+  router.get("/status", (req, res) => {
+    const traceId = (req as RequestWithTrace).traceId;
+    res.json(
+      formatter.success(
+        {
+          version: "2.0.0-experimental",
+          stability: "EXPERIMENTAL",
+          notice:
+            "v2 endpoints may change without notice. Use v1 for production.",
+        },
+        { traceId },
+      ),
+    );
+  });
+
+  return router;
+}
