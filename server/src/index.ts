@@ -22,6 +22,7 @@ import { ApiGateway } from "./api/gateway/ApiGateway";
 import { createV1Router } from "./api/v1";
 import { createV2Router } from "./api/v2";
 import { createDistributedRouter } from "./routes/distributed";
+import { createAnalyticsRouter } from "./routes/analytics";
 import { ExecutionCoordinator } from "./distributed/execution/ExecutionCoordinator";
 import { GameGenerationService } from "./projects/services/game-generation.service";
 
@@ -361,6 +362,7 @@ app.use("/api/v2", createV2Router(agentRegistry, gateway));
 const executionCoordinator = new ExecutionCoordinator(agentRegistry);
 executionCoordinator.initialize();
 app.use("/api/distributed", createDistributedRouter(executionCoordinator));
+app.use("/api/analytics", createAnalyticsRouter());
 
 // Root endpoint
 app.get("/", (_req: Request, res: Response) => {
