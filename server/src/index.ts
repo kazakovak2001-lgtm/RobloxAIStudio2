@@ -12,6 +12,7 @@ import { createEvaluationRouter } from "./routes/evaluation";
 import { createMemoryRouter } from "./routes/memory";
 import { createPlanningRouter } from "./routes/planning";
 import { createGenerationV2Router } from "./routes/generation-v2";
+import { createSimulationRouter } from "./routes/simulation";
 import { GameGenerationService } from "./projects/services/game-generation.service";
 
 import { InMemoryBlueprintRepository } from "./projects/repository/blueprint.repository";
@@ -334,6 +335,7 @@ app.use("/api/evaluation", createEvaluationRouter(agentRegistry));
 app.use("/api/memory", createMemoryRouter());
 app.use("/api/plan", createPlanningRouter(agentRegistry));
 app.use("/api/generate", createGenerationV2Router(agentRegistry));
+app.use("/api/simulate", createSimulationRouter());
 
 // Root endpoint
 app.get("/", (_req: Request, res: Response) => {
