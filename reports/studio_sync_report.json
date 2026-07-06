@@ -1,0 +1,34 @@
+{
+  "reportType": "Studio Synchronization",
+  "version": "2.4.0",
+  "timestamp": "2026-07-07T00:26:00.000Z",
+  "syncCapabilities": [
+    "Full package synchronization",
+    "Incremental diff-based sync (add/modify/remove)",
+    "Pre-sync package validation (8 checks)",
+    "Multiple Studio session support",
+    "Heartbeat-based connection tracking",
+    "Event emission for all sync lifecycle stages",
+    "Metrics collection (duration, items, size, success rate)"
+  ],
+  "validationChecks": [
+    "package-id",
+    "has-artifacts",
+    "scripts-valid",
+    "no-duplicate-paths",
+    "manifest-present",
+    "validation-report",
+    "size-reasonable",
+    "blueprint-present"
+  ],
+  "syncFlow": "Connect → Validate → Diff → Build Payload → Send via Bridge → Record Metrics → Emit Events",
+  "events": [
+    "StudioConnected",
+    "StudioDisconnected",
+    "SyncStarted",
+    "SyncProgress",
+    "SyncCompleted",
+    "SyncFailed",
+    "ImportValidated"
+  ]
+}

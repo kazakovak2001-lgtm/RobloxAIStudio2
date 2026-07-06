@@ -1,0 +1,13 @@
+{
+  "reportType": "Studio Import Validation",
+  "version": "2.4.0",
+  "timestamp": "2026-07-07T00:26:00.000Z",
+  "validatorChecks": 8,
+  "testResults": {
+    "validPackage": "PASS",
+    "emptyArtifacts": "PASS",
+    "missingId": "PASS",
+    "duplicatePaths": "PASS"
+  },
+  "status": "OPERATIONAL"
+}

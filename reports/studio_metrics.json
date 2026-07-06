@@ -1,0 +1,22 @@
+{
+  "reportType": "Studio Sync Metrics Baseline",
+  "version": "2.4.0",
+  "timestamp": "2026-07-07T00:26:00.000Z",
+  "metricsSchema": {
+    "totalSyncs": "number",
+    "successfulSyncs": "number",
+    "failedSyncs": "number",
+    "averageDurationMs": "number",
+    "averageItemCount": "number",
+    "averageSizeBytes": "number",
+    "lastSyncAt": "timestamp",
+    "successRate": "0-1"
+  },
+  "testMetrics": {
+    "totalSyncs": 2,
+    "successfulSyncs": 2,
+    "failedSyncs": 0,
+    "averageDurationMs": 1,
+    "successRate": 1.0
+  }
+}
