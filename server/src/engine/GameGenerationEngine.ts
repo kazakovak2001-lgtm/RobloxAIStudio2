@@ -5,8 +5,11 @@ import {
   StreamingUpdateHandler,
   PipelineEventEmitter,
 } from "../socket/streaming";
-import { AIPipelineIntegrator } from "../execution/aiPipelineIntegrator";
 
+/**
+ * @deprecated Legacy wrapper — prefer direct use of GameGenerationService
+ * with PlanExecutor (canonical runtime). Preserved for backward compat only.
+ */
 export class GameGenerationEngine {
   private service: GameGenerationService;
 
@@ -15,14 +18,12 @@ export class GameGenerationEngine {
     const streaming = new StreamingUpdateHandler();
     events.setStreamingHandler(streaming);
 
-    // Composition root for the standalone engine wrapper.
     this.service = new GameGenerationService(
       new InMemoryBlueprintRepository(),
       new BlueprintCache(),
       streaming,
       events,
-      // Uses the same event bus so pipeline events can stream.
-      new AIPipelineIntegrator(events),
+      null, // legacy integrator param — no longer used (PlanExecutor is canonical)
     );
   }
 

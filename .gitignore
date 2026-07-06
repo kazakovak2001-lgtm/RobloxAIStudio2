@@ -68,3 +68,7 @@ vite.config.d.ts.map
 
 # ─── Vite ─────────────────────────────────────────────────────────────────────
 .vite/
+
+# ─── Generated reports (CI artifacts, not committed) ──────────────────────────
+boundary-report.json
+import-graph.json

@@ -7,8 +7,10 @@
     "dev": "vite",
     "dev:server": "tsx watch server/src/index.ts",
     "validate:arch": "tsx scripts/validate-architecture.ts",
-    "build": "tsx scripts/validate-architecture.ts && tsc -b && vite build",
-    "build:server": "tsx scripts/validate-architecture.ts && tsc --project server/tsconfig.json",
+    "validate:boundaries": "tsx scripts/validate-boundaries.ts",
+    "scan:imports": "tsx scripts/scan-imports.ts",
+    "build": "tsx scripts/validate-architecture.ts && tsx scripts/validate-boundaries.ts && tsc -b && vite build",
+    "build:server": "tsx scripts/validate-architecture.ts && tsx scripts/validate-boundaries.ts && tsc --project server/tsconfig.json",
     "preview": "vite preview",
     "start": "node dist/server/index.js",
     "lint": "eslint . --ext .ts,.tsx --max-warnings 0",
@@ -18,7 +20,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "validate": "tsx scripts/validate.ts",
-    "ci": "npm run typecheck && npm run lint && npm run format:check && npm run test && npm run validate",
+    "ci": "npm run typecheck && npm run validate:arch && npm run validate:boundaries && npm run lint && npm run format:check && npm run test && npm run validate",
     "prepare": "husky"
   },
   "lint-staged": {
