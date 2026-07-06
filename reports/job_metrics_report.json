@@ -1,0 +1,42 @@
+{
+  "reportType": "Job Metrics Baseline",
+  "version": "2.0.0",
+  "timestamp": "2026-07-06T22:03:00.000Z",
+  "note": "Baseline report — no production jobs processed yet. Metrics will populate during runtime.",
+  "metrics": {
+    "averageExecutionTimeMs": 0,
+    "averageQueueWaitMs": 0,
+    "successRate": 0,
+    "failureRate": 0,
+    "timeoutRate": 0,
+    "cancellationRate": 0,
+    "stageDurations": {},
+    "totalJobsProcessed": 0,
+    "totalJobsFailed": 0,
+    "totalJobsCancelled": 0,
+    "totalJobsTimedOut": 0
+  },
+  "queueConfig": {
+    "maxConcurrency": 2,
+    "maxQueueSize": 50,
+    "defaultTimeoutMs": 300000,
+    "defaultMaxRetries": 2,
+    "defaultPriority": 5
+  },
+  "stateTransitions": {
+    "validStates": [
+      "QUEUED",
+      "VALIDATING",
+      "PLANNING",
+      "EXECUTING",
+      "EVALUATING",
+      "GENERATING_ARTIFACTS",
+      "COMPLETED",
+      "FAILED",
+      "CANCELLED",
+      "TIMEOUT"
+    ],
+    "terminalStates": ["COMPLETED", "FAILED", "CANCELLED", "TIMEOUT"],
+    "retryableStates": ["FAILED", "TIMEOUT"]
+  }
+}
