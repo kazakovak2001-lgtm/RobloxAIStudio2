@@ -1,3 +1,16 @@
+/**
+ * QUARANTINED MODULE — pending final deletion verification
+ *
+ * Status: QUARANTINED (2026-07-06)
+ * Reason: Zero inbound references (static/dynamic). Superseded by server/src/providers/.
+ * Evidence: LLM Domain Deep Trace Analysis confirmed 0 usage vectors.
+ * Decision: DELETE SAFE confirmed, quarantined per conservative policy.
+ * Canonical replacement: server/src/providers/openai.ts, anthropic.ts, ollama.ts, gemini.ts
+ * Wired via: server/src/ai/providerFactory.ts → AgentRegistry.setLLM()
+ *
+ * If no breakage is reported after 1 release cycle, this file can be permanently deleted.
+ */
+
 import type { LLMProvider, LLMOptions } from "../types";
 
 export class OpenAIProvider implements LLMProvider {
@@ -30,11 +43,16 @@ export class OpenAIProvider implements LLMProvider {
       throw new Error(`OpenAI API error: ${response.status} - ${errorText}`);
     }
 
-    const data = (await response.json()) as { choices: Array<{ message: { content: string } }> };
+    const data = (await response.json()) as {
+      choices: Array<{ message: { content: string } }>;
+    };
     return data.choices[0]?.message?.content ?? "";
   }
 
-  async stream(prompt: string, onChunk: (chunk: string) => void): Promise<void> {
+  async stream(
+    prompt: string,
+    onChunk: (chunk: string) => void,
+  ): Promise<void> {
     const response = await fetch(`${this.baseUrl}/chat/completions`, {
       method: "POST",
       headers: {
@@ -63,7 +81,9 @@ export class OpenAIProvider implements LLMProvider {
       if (done) break;
 
       const chunk = decoder.decode(value);
-      const lines = chunk.split("\n").filter((line) => line.startsWith("data: "));
+      const lines = chunk
+        .split("\n")
+        .filter((line) => line.startsWith("data: "));
 
       for (const line of lines) {
         const data = line.slice(6);
@@ -112,11 +132,16 @@ export class AnthropicProvider implements LLMProvider {
       throw new Error(`Anthropic API error: ${response.status} - ${errorText}`);
     }
 
-    const data = (await response.json()) as { content: Array<{ text: string }> };
+    const data = (await response.json()) as {
+      content: Array<{ text: string }>;
+    };
     return data.content[0]?.text ?? "";
   }
 
-  async stream(_prompt: string, _onChunk: (chunk: string) => void): Promise<void> {
+  async stream(
+    _prompt: string,
+    _onChunk: (chunk: string) => void,
+  ): Promise<void> {
     throw new Error("Streaming not yet implemented for Anthropic provider");
   }
 }
@@ -148,7 +173,10 @@ export class LocalLLMProvider implements LLMProvider {
     return data.response ?? "";
   }
 
-  async stream(_prompt: string, _onChunk: (chunk: string) => void): Promise<void> {
+  async stream(
+    _prompt: string,
+    _onChunk: (chunk: string) => void,
+  ): Promise<void> {
     throw new Error("Streaming not yet implemented for local provider");
   }
 }
