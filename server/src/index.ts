@@ -14,6 +14,7 @@ import { createPlanningRouter } from "./routes/planning";
 import { createGenerationV2Router } from "./routes/generation-v2";
 import { createSimulationRouter } from "./routes/simulation";
 import { createEconomyRouter } from "./routes/economy";
+import { createWorldRouter } from "./routes/world";
 import { GameGenerationService } from "./projects/services/game-generation.service";
 
 import { InMemoryBlueprintRepository } from "./projects/repository/blueprint.repository";
@@ -338,6 +339,7 @@ app.use("/api/plan", createPlanningRouter(agentRegistry));
 app.use("/api/generate", createGenerationV2Router(agentRegistry));
 app.use("/api/simulate", createSimulationRouter());
 app.use("/api/economy", createEconomyRouter());
+app.use("/api/world", createWorldRouter());
 
 // Root endpoint
 app.get("/", (_req: Request, res: Response) => {
