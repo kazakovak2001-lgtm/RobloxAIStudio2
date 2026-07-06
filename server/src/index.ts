@@ -9,6 +9,7 @@ import { Server as SocketServer } from "socket.io";
 import { createProjectsRouter } from "./routes/projects";
 import { createGameGenerationRouter } from "./routes/game-generation";
 import { createEvaluationRouter } from "./routes/evaluation";
+import { createMemoryRouter } from "./routes/memory";
 import { GameGenerationService } from "./projects/services/game-generation.service";
 
 import { InMemoryBlueprintRepository } from "./projects/repository/blueprint.repository";
@@ -328,6 +329,7 @@ events.onEvent(async (evt) => {
 app.use("/api/projects", createProjectsRouter());
 app.use("/api/projects", createGameGenerationRouter(gameService));
 app.use("/api/evaluation", createEvaluationRouter(agentRegistry));
+app.use("/api/memory", createMemoryRouter());
 
 // Root endpoint
 app.get("/", (_req: Request, res: Response) => {
