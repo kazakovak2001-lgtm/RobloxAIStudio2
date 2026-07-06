@@ -1,0 +1,58 @@
+{
+  "reportType": "Artifact Generation",
+  "version": "2.3.0",
+  "timestamp": "2026-07-06T23:57:00.000Z",
+  "artifactBuilders": {
+    "LuaScriptBuilder": {
+      "converts": "ScriptDefinition → ProjectNode (Script/LocalScript)",
+      "status": "operational"
+    },
+    "ModuleBuilder": {
+      "converts": "ModuleDefinition → ModuleScript with content",
+      "status": "operational"
+    },
+    "ConfigurationBuilder": {
+      "converts": "ConfigurationSet → Lua config modules",
+      "status": "operational"
+    },
+    "FolderBuilder": {
+      "converts": "FolderDefinition → Folder ProjectNodes",
+      "status": "operational"
+    },
+    "ManifestBuilder": {
+      "converts": "GenerationModel → GenerationManifestV2",
+      "status": "operational"
+    }
+  },
+  "robloxProjectModel": {
+    "services": [
+      "ServerScriptService",
+      "ReplicatedStorage",
+      "StarterPlayer",
+      "StarterGui",
+      "Workspace",
+      "Lighting",
+      "SoundService",
+      "ServerStorage"
+    ],
+    "starterPlayer": ["StarterPlayerScripts", "StarterCharacterScripts"],
+    "nodeTypes": [
+      "Script",
+      "LocalScript",
+      "ModuleScript",
+      "Folder",
+      "Configuration",
+      "Model"
+    ]
+  },
+  "generationCapabilities": [
+    "Server main game loop script",
+    "Client controller script",
+    "Per-mechanic handler scripts",
+    "Shared utility modules (Utils, Constants, EventBus)",
+    "Core game services (PlayerData, GameState, Network)",
+    "Game-type specific services (Inventory, Checkpoint)",
+    "Standard Roblox folder hierarchy (12 folders)",
+    "Game/Server/Client configuration as Lua modules"
+  ]
+}

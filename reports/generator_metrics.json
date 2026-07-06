@@ -1,0 +1,53 @@
+{
+  "reportType": "Generator Framework Metrics",
+  "version": "2.3.0",
+  "timestamp": "2026-07-06T23:57:00.000Z",
+  "generators": {
+    "folder-generator": {
+      "version": "1.0.0",
+      "produces": ["folders"],
+      "dependencies": [],
+      "avgDurationMs": 1
+    },
+    "service-generator": {
+      "version": "1.0.0",
+      "produces": ["services"],
+      "dependencies": ["folder-generator"],
+      "avgDurationMs": 1
+    },
+    "script-generator": {
+      "version": "1.0.0",
+      "produces": ["scripts"],
+      "dependencies": ["service-generator"],
+      "avgDurationMs": 2
+    },
+    "module-generator": {
+      "version": "1.0.0",
+      "produces": ["modules"],
+      "dependencies": ["script-generator"],
+      "avgDurationMs": 1
+    },
+    "configuration-generator": {
+      "version": "1.0.0",
+      "produces": ["configuration"],
+      "dependencies": ["service-generator"],
+      "avgDurationMs": 1
+    }
+  },
+  "executionOrder": [
+    "folder-generator",
+    "service-generator",
+    "script-generator",
+    "configuration-generator",
+    "module-generator"
+  ],
+  "testMetrics": {
+    "totalGenerationTimeMs": 8,
+    "luaValidationTimeMs": 1,
+    "scriptsGenerated": 5,
+    "modulesGenerated": 3,
+    "servicesGenerated": 5,
+    "foldersGenerated": 12,
+    "luaValidationErrors": 0
+  }
+}

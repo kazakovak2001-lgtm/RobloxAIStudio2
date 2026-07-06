@@ -1,0 +1,43 @@
+{
+  "reportType": "Lua Syntax Validation",
+  "version": "2.3.0",
+  "timestamp": "2026-07-06T23:57:00.000Z",
+  "validatorCapabilities": [
+    "Empty script detection",
+    "Duplicate module name detection",
+    "Unsupported character detection",
+    "Unbalanced block detection (function/if/for/while/do vs end/until)",
+    "Reserved word identifier detection",
+    "Long line warning (>200 chars)"
+  ],
+  "testResults": {
+    "generatedScriptsValidated": 5,
+    "errors": 0,
+    "warnings": 0,
+    "allPassed": true
+  },
+  "luaReservedWords": [
+    "and",
+    "break",
+    "do",
+    "else",
+    "elseif",
+    "end",
+    "false",
+    "for",
+    "function",
+    "goto",
+    "if",
+    "in",
+    "local",
+    "nil",
+    "not",
+    "or",
+    "repeat",
+    "return",
+    "then",
+    "true",
+    "until",
+    "while"
+  ]
+}
