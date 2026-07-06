@@ -10,6 +10,7 @@ import { TaskGraph, type TaskNode } from "../model/TaskGraph";
 import { AgentMemoryBridge } from "../../memory/agents/AgentMemoryBridge";
 import { AgentEvaluator } from "../../evaluation/agents/AgentEvaluator";
 import { ExecutionTracer } from "../../core/observability/ExecutionTracer";
+import { AgentDecisionEngine } from "../../core/agents/AgentDecisionEngine";
 
 export interface ExecutionOptions {
   projectId?: string;
@@ -32,15 +33,18 @@ export class PlanExecutor {
   private memoryBridge: AgentMemoryBridge;
   private evaluator: AgentEvaluator;
   private tracer: ExecutionTracer;
+  private decisionEngine: AgentDecisionEngine;
 
   constructor(
     memoryBridge?: AgentMemoryBridge,
     evaluator?: AgentEvaluator,
     tracer?: ExecutionTracer,
+    decisionEngine?: AgentDecisionEngine,
   ) {
     this.memoryBridge = memoryBridge ?? new AgentMemoryBridge();
     this.evaluator = evaluator ?? new AgentEvaluator();
     this.tracer = tracer ?? ExecutionTracer.instance();
+    this.decisionEngine = decisionEngine ?? new AgentDecisionEngine();
   }
 
   /**
@@ -64,6 +68,9 @@ export class PlanExecutor {
 
     // Emit trace: plan started
     this.tracer.startExecution(planId, planId, graph.goal, graph.size);
+
+    // Reset adaptive agent switch counts for this execution
+    this.decisionEngine.resetSwitchCounts();
 
     // Validate DAG before execution
     const { valid, cycles } = graph.validateDAG();
@@ -166,17 +173,34 @@ export class PlanExecutor {
       /* non-blocking */
     }
 
-    // Execute with retry
+    // Execute with retry + adaptive agent selection
     let attempts = 0;
+    let activeAgent = node.agent;
+
+    // Adaptive agent selection (non-breaking: falls back to assigned agent)
+    try {
+      const allAgents = graph.getAllNodes().map((n) => n.agent);
+      const uniqueAgents = [...new Set(allAgents)];
+      const selection = this.decisionEngine.selectAgent({
+        taskType: node.type,
+        assignedAgent: node.agent,
+        availableAgents: uniqueAgents,
+        contextKeys: Object.keys(input).slice(0, 10),
+      });
+      activeAgent = selection.selectedAgent;
+    } catch {
+      /* Decision engine errors are non-blocking — use assigned agent */
+    }
+
     while (attempts < maxRetries) {
       attempts++;
       try {
-        const output = await agentExecutor(node.agent, input);
+        const output = await agentExecutor(activeAgent, input);
         const durationMs = Date.now() - start;
 
         // Evaluate output quality
         const { evaluation } = await this.evaluator.evaluate(
-          node.agent,
+          activeAgent,
           output,
           {
             expectedKeys:
@@ -189,14 +213,27 @@ export class PlanExecutor {
         this.tracer.traceEvaluation(
           node.id,
           node.id,
-          node.agent,
+          activeAgent,
           evaluation.score.quality,
           evaluation.passed,
         );
 
+        // Record execution result for future adaptive decisions
+        this.decisionEngine.recordExecution({
+          agent: activeAgent,
+          taskType: node.type,
+          executionId: node.id,
+          nodeId: node.id,
+          success: true,
+          quality: evaluation.score.quality,
+          durationMs,
+          contextKeys: Object.keys(input).slice(0, 10),
+          timestamp: Date.now(),
+        });
+
         // Store in memory for future use
         await this.memoryBridge.storeFromAgent(
-          node.agent,
+          activeAgent,
           input,
           output,
           projectId,
@@ -211,7 +248,7 @@ export class PlanExecutor {
         this.tracer.traceNodeComplete(
           node.id,
           node.id,
-          node.agent,
+          activeAgent,
           output,
           durationMs,
           evaluation.score.quality,
@@ -220,8 +257,42 @@ export class PlanExecutor {
 
         return;
       } catch (err) {
+        const error = err instanceof Error ? err.message : String(err);
+
+        // Record failure for learning
+        this.decisionEngine.recordExecution({
+          agent: activeAgent,
+          taskType: node.type,
+          executionId: node.id,
+          nodeId: node.id,
+          success: false,
+          quality: 0,
+          durationMs: Date.now() - start,
+          contextKeys: Object.keys(input).slice(0, 10),
+          timestamp: Date.now(),
+        });
+
+        // Attempt adaptive fallback before exhausting retries
+        if (attempts < maxRetries) {
+          const allAgents = graph.getAllNodes().map((n) => n.agent);
+          const uniqueAgents = [...new Set(allAgents)];
+          const fallback = this.decisionEngine.requestFallback({
+            nodeId: node.id,
+            failedAgent: activeAgent,
+            taskType: node.type,
+            availableAgents: uniqueAgents,
+            contextKeys: Object.keys(input).slice(0, 10),
+          });
+
+          if (fallback) {
+            console.log(
+              `[PLAN-EXEC] Agent fallback | Node: ${node.id} | ${fallback.originalAgent} → ${fallback.fallbackAgent}`,
+            );
+            activeAgent = fallback.fallbackAgent;
+          }
+        }
+
         if (attempts >= maxRetries) {
-          const error = err instanceof Error ? err.message : String(err);
           const durationMs = Date.now() - start;
           graph.markFailed(node.id, error, durationMs);
 
@@ -229,7 +300,7 @@ export class PlanExecutor {
           this.tracer.traceNodeFailed(
             node.id,
             node.id,
-            node.agent,
+            activeAgent,
             error,
             durationMs,
           );
@@ -261,5 +332,9 @@ export class PlanExecutor {
 
   getMemoryBridge(): AgentMemoryBridge {
     return this.memoryBridge;
+  }
+
+  getDecisionEngine(): AgentDecisionEngine {
+    return this.decisionEngine;
   }
 }
