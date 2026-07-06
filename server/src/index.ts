@@ -309,7 +309,12 @@ events.onEvent(async (evt) => {
     case "studio.sync.update":
     case "studio.asset.changed":
     case "studio.scene.updated":
-    case "studio.import.completed": {
+    case "studio.import.completed":
+    case "agent.task.created":
+    case "agent.task.completed":
+    case "agent.decision.made":
+    case "agent.conflict.detected":
+    case "agent.conflict.resolved": {
       io.emit(evt.type, { pipelineId: evt.pipelineId, ...evt.data });
       break;
     }

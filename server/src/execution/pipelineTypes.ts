@@ -82,7 +82,12 @@ export type PipelineEventType =
   | "studio.sync.update"
   | "studio.asset.changed"
   | "studio.scene.updated"
-  | "studio.import.completed";
+  | "studio.import.completed"
+  | "agent.task.created"
+  | "agent.task.completed"
+  | "agent.decision.made"
+  | "agent.conflict.detected"
+  | "agent.conflict.resolved";
 
 export interface PipelineEvent {
   type: PipelineEventType;
