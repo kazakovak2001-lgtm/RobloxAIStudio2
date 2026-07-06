@@ -17,6 +17,7 @@ import { createEconomyRouter } from "./routes/economy";
 import { createWorldRouter } from "./routes/world";
 import { createLifecycleRouter } from "./routes/lifecycle";
 import { createCompileRouter } from "./routes/compile";
+import { createDebugRouter } from "./routes/debug";
 import { GameGenerationService } from "./projects/services/game-generation.service";
 
 import { InMemoryBlueprintRepository } from "./projects/repository/blueprint.repository";
@@ -28,6 +29,7 @@ import {
 import { errorHandler } from "./common/middleware/errorHandler";
 import { AgentRegistry } from "./agents/core/AgentRegistry";
 import { LLMProviderFactory } from "./ai/providerFactory";
+import { ExecutionTracer } from "./core/observability/ExecutionTracer";
 
 const app: Express = express();
 
@@ -343,6 +345,7 @@ app.use("/api/economy", createEconomyRouter());
 app.use("/api/world", createWorldRouter());
 app.use("/api/lifecycle", createLifecycleRouter());
 app.use("/api/compile", createCompileRouter(agentRegistry));
+app.use("/api/debug", createDebugRouter());
 
 // Root endpoint
 app.get("/", (_req: Request, res: Response) => {
@@ -351,6 +354,21 @@ app.get("/", (_req: Request, res: Response) => {
     version: "1.0.0",
     status: "running",
     llm: llmResult.mode === "none" ? "stub" : llmResult.mode,
+  });
+});
+
+// ─── Observability: Live execution trace streaming via Socket.io ────────────
+const tracer = ExecutionTracer.instance();
+tracer.addListener((event) => {
+  io.emit("trace.event", {
+    executionId: event.executionId,
+    nodeId: event.nodeId,
+    agentId: event.agentId,
+    eventType: event.eventType,
+    timestamp: event.timestamp,
+    durationMs: event.durationMs,
+    evaluationScore: event.evaluationScore,
+    error: event.error,
   });
 });
 

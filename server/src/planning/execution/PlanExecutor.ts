@@ -9,6 +9,7 @@
 import { TaskGraph, type TaskNode } from "../model/TaskGraph";
 import { AgentMemoryBridge } from "../../memory/agents/AgentMemoryBridge";
 import { AgentEvaluator } from "../../evaluation/agents/AgentEvaluator";
+import { ExecutionTracer } from "../../core/observability/ExecutionTracer";
 
 export interface ExecutionOptions {
   projectId?: string;
@@ -30,10 +31,16 @@ export interface PlanExecutionResult {
 export class PlanExecutor {
   private memoryBridge: AgentMemoryBridge;
   private evaluator: AgentEvaluator;
+  private tracer: ExecutionTracer;
 
-  constructor(memoryBridge?: AgentMemoryBridge, evaluator?: AgentEvaluator) {
+  constructor(
+    memoryBridge?: AgentMemoryBridge,
+    evaluator?: AgentEvaluator,
+    tracer?: ExecutionTracer,
+  ) {
     this.memoryBridge = memoryBridge ?? new AgentMemoryBridge();
     this.evaluator = evaluator ?? new AgentEvaluator();
+    this.tracer = tracer ?? ExecutionTracer.instance();
   }
 
   /**
@@ -55,13 +62,22 @@ export class PlanExecutor {
       `[PLAN-EXEC] Starting | Plan: ${planId} | Tasks: ${graph.size} | Goal: ${graph.goal.slice(0, 60)}`,
     );
 
+    // Emit trace: plan started
+    this.tracer.startExecution(planId, planId, graph.goal, graph.size);
+
     // Validate DAG before execution
     const { valid, cycles } = graph.validateDAG();
     if (!valid) {
       console.error(
         `[PLAN-EXEC] Invalid DAG — cycles detected: ${cycles.join(", ")}`,
       );
-      return this.buildResult(planId, graph, Date.now() - totalStart);
+      const failResult = this.buildResult(
+        planId,
+        graph,
+        Date.now() - totalStart,
+      );
+      this.tracer.completeExecution(planId, failResult.outputs, false);
+      return failResult;
     }
 
     // Execute until no more ready nodes
@@ -84,7 +100,13 @@ export class PlanExecutor {
 
         if (stopOnFailure && node.status === "failed") {
           console.log(`[PLAN-EXEC] Stopped on failure | Node: ${node.id}`);
-          return this.buildResult(planId, graph, Date.now() - totalStart);
+          const failResult = this.buildResult(
+            planId,
+            graph,
+            Date.now() - totalStart,
+          );
+          this.tracer.completeExecution(planId, failResult.outputs, false);
+          return failResult;
         }
       }
     }
@@ -93,6 +115,10 @@ export class PlanExecutor {
     console.log(
       `[PLAN-EXEC] Complete | Plan: ${planId} | Success: ${result.success} | Duration: ${result.totalDurationMs}ms`,
     );
+
+    // Emit trace: plan completed
+    this.tracer.completeExecution(planId, result.outputs, result.success);
+
     return result;
   }
 
@@ -108,6 +134,9 @@ export class PlanExecutor {
   ): Promise<void> {
     graph.markRunning(node.id);
     const start = Date.now();
+
+    // Trace: node started
+    this.tracer.traceNodeStart(node.id, node.id, node.agent, node.input);
 
     // Build input: node input + accumulated outputs from completed dependencies
     const accumulatedOutputs = graph.getAccumulatedOutputs();
@@ -125,6 +154,13 @@ export class PlanExecutor {
       );
       if (Object.keys(memory.merged).length > 0) {
         input = { ...input, _memory: memory.merged };
+        // Trace: memory injected
+        this.tracer.traceMemoryInjection(
+          node.id,
+          node.id,
+          node.agent,
+          memory.merged,
+        );
       }
     } catch {
       /* non-blocking */
@@ -149,6 +185,15 @@ export class PlanExecutor {
           },
         );
 
+        // Trace: evaluation scored
+        this.tracer.traceEvaluation(
+          node.id,
+          node.id,
+          node.agent,
+          evaluation.score.quality,
+          evaluation.passed,
+        );
+
         // Store in memory for future use
         await this.memoryBridge.storeFromAgent(
           node.agent,
@@ -162,11 +207,32 @@ export class PlanExecutor {
           passed: evaluation.passed,
         });
 
+        // Trace: node completed
+        this.tracer.traceNodeComplete(
+          node.id,
+          node.id,
+          node.agent,
+          output,
+          durationMs,
+          evaluation.score.quality,
+          evaluation.passed,
+        );
+
         return;
       } catch (err) {
         if (attempts >= maxRetries) {
           const error = err instanceof Error ? err.message : String(err);
-          graph.markFailed(node.id, error, Date.now() - start);
+          const durationMs = Date.now() - start;
+          graph.markFailed(node.id, error, durationMs);
+
+          // Trace: node failed
+          this.tracer.traceNodeFailed(
+            node.id,
+            node.id,
+            node.agent,
+            error,
+            durationMs,
+          );
         }
       }
     }
