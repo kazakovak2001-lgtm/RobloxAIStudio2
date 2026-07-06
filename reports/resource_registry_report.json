@@ -1,0 +1,22 @@
+{
+  "reportType": "Resource Registry",
+  "version": "2.6.0",
+  "assetRegistry": {
+    "features": [
+      "unique ID enforcement",
+      "duplicate path detection",
+      "category filtering",
+      "reference resolution"
+    ],
+    "maxDuplicatePolicy": "reject"
+  },
+  "uiRegistry": {
+    "features": [
+      "hierarchy validation",
+      "parent reference checking",
+      "depth calculation",
+      "duplicate ID detection"
+    ]
+  },
+  "status": "OPERATIONAL"
+}

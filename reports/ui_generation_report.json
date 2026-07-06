@@ -1,0 +1,21 @@
+{
+  "reportType": "UI Generation",
+  "version": "2.6.0",
+  "components": [
+    "ScreenGui",
+    "Frame",
+    "TextButton",
+    "TextLabel",
+    "TextBox",
+    "ImageLabel",
+    "ScrollingFrame",
+    "UIListLayout",
+    "UIPadding",
+    "UIAspectRatioConstraint"
+  ],
+  "screens": ["MainMenu", "GameHUD", "SettingsScreen"],
+  "builders": ["UIHierarchyBuilder", "UILayoutBuilder", "UIStyleBuilder"],
+  "validation": ["hierarchy", "duplicates", "parent references", "root type"],
+  "testResults": { "total": 8, "passed": 8 },
+  "status": "OPERATIONAL"
+}

@@ -1,0 +1,17 @@
+{
+  "reportType": "Package Metrics",
+  "version": "2.6.0",
+  "assetMetrics": {
+    "assetsGenerated": 4,
+    "categories": ["model", "ui", "branding", "sfx"],
+    "generationDurationMs": 1
+  },
+  "uiMetrics": {
+    "screensGenerated": 3,
+    "objectsGenerated": 25,
+    "generationDurationMs": 1,
+    "validationDurationMs": 0
+  },
+  "totalPackageEstimate": "assets + ui + lua + config = ~50KB per generation",
+  "status": "OPERATIONAL"
+}
