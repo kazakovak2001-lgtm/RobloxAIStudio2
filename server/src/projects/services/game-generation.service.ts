@@ -20,7 +20,6 @@ import { PlanExecutor } from "../../planning/execution/PlanExecutor";
 export class GameGenerationService {
   private agentRegistry: AgentRegistry;
   private executionQueue = new ExecutionQueue();
-  private _events: PipelineEventEmitter;
 
   private repository: IBlueprintRepository;
   private cache: BlueprintCache;
@@ -31,14 +30,13 @@ export class GameGenerationService {
     repository: IBlueprintRepository,
     cache: BlueprintCache,
     streaming: StreamingUpdateHandler,
-    events: PipelineEventEmitter,
+    _events: PipelineEventEmitter,
     _integrator: unknown, // preserved for backward-compatible constructor signature
     agentRegistry?: AgentRegistry,
   ) {
     this.repository = repository;
     this.cache = cache;
     this.streaming = streaming;
-    this._events = events;
     this.validator = new BlueprintValidator();
     this.agentRegistry = agentRegistry ?? new AgentRegistry();
   }

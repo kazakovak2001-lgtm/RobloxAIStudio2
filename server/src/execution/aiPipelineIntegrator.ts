@@ -1,3 +1,15 @@
+/**
+ * @deprecated RUNTIME USAGE FORBIDDEN
+ *
+ * This module is preserved ONLY for:
+ *   - PIPELINE_STAGES constant (consumed by assembly/generation modules)
+ *   - Type reference in comments/documentation
+ *
+ * PlanExecutor (planning/execution/PlanExecutor.ts) is the ONLY canonical
+ * runtime execution engine. Direct instantiation of AIPipelineIntegrator
+ * will throw in production mode.
+ */
+
 import type { PipelineEvent } from "./pipelineTypes";
 import type { GameBlueprint, GameDesignSeed } from "../types/blueprint";
 import { PipelineEventEmitter } from "../socket/streaming";
@@ -13,6 +25,20 @@ import {
   getDefaultMemoryRegistry,
 } from "../memory/MemoryRegistry";
 import { MemoryManager } from "../memory/MemoryManager";
+
+/**
+ * @deprecated RUNTIME DEPRECATION NOTICE
+ *
+ * AIPipelineIntegrator is NO LONGER the active runtime execution engine.
+ * PlanExecutor (planning/execution/PlanExecutor.ts) is the ONLY canonical runtime.
+ *
+ * This module is preserved ONLY for:
+ *   - PIPELINE_STAGES constant (used by legacy references)
+ *   - Type exports
+ *
+ * DO NOT instantiate this class in production code.
+ * Use PlanExecutor instead.
+ */
 import type { ProjectMemory } from "../memory/ProjectMemory";
 import {
   PlanningRegistry,
@@ -74,6 +100,18 @@ export class AIPipelineIntegrator {
     memoryRegistry?: MemoryRegistry,
     planningRegistry?: PlanningRegistry,
   ) {
+    // RUNTIME GUARD: Prevent instantiation in production
+    if (
+      process.env.NODE_ENV === "production" ||
+      process.env.RUNTIME_MODE === "production"
+    ) {
+      throw new Error(
+        "DEPRECATED: AIPipelineIntegrator must NOT be instantiated at runtime. " +
+          "Use PlanExecutor as the only execution engine. " +
+          "This module is preserved for PIPELINE_STAGES constant only.",
+      );
+    }
+
     this.evaluationRegistry =
       evaluationRegistry ?? getDefaultEvaluationRegistry();
     this.memoryRegistry = memoryRegistry ?? getDefaultMemoryRegistry();

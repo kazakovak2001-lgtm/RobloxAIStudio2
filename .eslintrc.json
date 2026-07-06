@@ -24,6 +24,38 @@
   },
   "overrides": [
     {
+      "files": [
+        "server/src/routes/**/*.ts",
+        "server/src/projects/services/**/*.ts",
+        "server/src/planning/**/*.ts",
+        "server/src/generation/**/*.ts",
+        "server/src/simulation/**/*.ts",
+        "server/src/economy/**/*.ts",
+        "server/src/world/**/*.ts",
+        "server/src/lifecycle/**/*.ts",
+        "server/src/artifacts/**/*.ts",
+        "server/src/export/**/*.ts",
+        "server/src/compiler/**/*.ts"
+      ],
+      "rules": {
+        "no-restricted-imports": [
+          "error",
+          {
+            "patterns": [
+              {
+                "group": ["**/execution/aiPipelineIntegrator*"],
+                "message": "FORBIDDEN: aiPipelineIntegrator is deprecated. Use PlanExecutor as the only runtime execution engine."
+              },
+              {
+                "group": ["../../src/**", "../../../src/**"],
+                "message": "Backend must not import from frontend."
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
       "files": ["server/src/**/*.ts"],
       "rules": {
         "no-restricted-imports": [
@@ -32,7 +64,7 @@
             "patterns": [
               {
                 "group": ["../../src/**", "../../../src/**"],
-                "message": "Backend (server/src/) must not import from frontend (src/). Cross-boundary violation."
+                "message": "Backend (server/src/) must not import from frontend (src/)."
               }
             ]
           }

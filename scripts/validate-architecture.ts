@@ -167,6 +167,68 @@ function collectTsFiles(dir: string): string[] {
   return files;
 }
 
+// ─── Runtime Enforcement: PlanExecutor is the only runtime ──────────────────
+
+function scanForDeprecatedRuntimeUsage(): Violation[] {
+  const violations: Violation[] = [];
+
+  // Files that MUST NOT import aiPipelineIntegrator (runtime code)
+  const runtimeDirs = [
+    join(ROOT, "server", "src", "routes"),
+    join(ROOT, "server", "src", "projects", "services"),
+    join(ROOT, "server", "src", "planning"),
+    join(ROOT, "server", "src", "generation"),
+    join(ROOT, "server", "src", "simulation"),
+    join(ROOT, "server", "src", "economy"),
+    join(ROOT, "server", "src", "world"),
+    join(ROOT, "server", "src", "lifecycle"),
+    join(ROOT, "server", "src", "artifacts"),
+    join(ROOT, "server", "src", "export"),
+    join(ROOT, "server", "src", "compiler"),
+  ];
+
+  for (const dir of runtimeDirs) {
+    const files = collectTsFiles(dir);
+    for (const file of files) {
+      const content = readFileSync(file, "utf-8");
+      // Check for runtime instantiation (new AIPipelineIntegrator)
+      if (content.includes("new AIPipelineIntegrator")) {
+        violations.push({
+          type: "cross-boundary",
+          path: relative(ROOT, file),
+          severity: "critical",
+          message:
+            "DEPRECATED: Runtime instantiation of AIPipelineIntegrator detected. Use PlanExecutor.",
+        });
+      }
+      // Check for import of the class (not just type)
+      if (content.match(/import\s+\{[^}]*AIPipelineIntegrator[^}]*\}\s+from/)) {
+        // Allow if it's only importing the PIPELINE_STAGES constant or types
+        if (
+          !content.includes("import type") ||
+          content.includes("new AIPipelineIntegrator")
+        ) {
+          // Check if it's a non-type import that could lead to instantiation
+          const importLine = content.match(
+            /import\s+\{[^}]*AIPipelineIntegrator[^}]*\}\s+from[^\n]*/,
+          );
+          if (importLine && !importLine[0].includes("import type")) {
+            violations.push({
+              type: "cross-boundary",
+              path: relative(ROOT, file),
+              severity: "warning",
+              message:
+                "Runtime import of AIPipelineIntegrator — should use 'import type' or remove.",
+            });
+          }
+        }
+      }
+    }
+  }
+
+  return violations;
+}
+
 // ─── Main ──────────────────────────────────────────────────────────────────
 
 function main(): void {
@@ -178,6 +240,7 @@ function main(): void {
     ...scanForForbiddenRoots(),
     ...scanForOrphanModules(),
     ...scanForCrossBoundaryImports(),
+    ...scanForDeprecatedRuntimeUsage(),
   ];
 
   // Status report
