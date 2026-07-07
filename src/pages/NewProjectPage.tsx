@@ -1,25 +1,50 @@
+import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { ArrowRight, Sparkles } from "lucide-react";
 import { AppLayout } from "../layouts/AppLayout";
 import { Button } from "../components/ui/Button";
 import { Card } from "../components/ui/Card";
-
-const fields = [
-  { label: "Project Name", placeholder: "Cosmic Miner" },
-  { label: "Game Type", placeholder: "Mining Simulator" },
-  {
-    label: "Description",
-    placeholder: "Create an approachable tycoon experience...",
-  },
-  { label: "Genre", placeholder: "Tycoon / Adventure" },
-  { label: "Difficulty", placeholder: "Medium" },
-  { label: "Players", placeholder: "Solo + multiplayer" },
-  {
-    label: "Target Audience",
-    placeholder: "Young creators and casual players",
-  },
-];
+import { createProject } from "../services/projectService";
 
 export default function NewProjectPage() {
+  const navigate = useNavigate();
+  const [name, setName] = useState("");
+  const [type, setType] = useState("");
+  const [description, setDescription] = useState("");
+  const [genre, setGenre] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!name.trim()) {
+      setError("Project name is required");
+      return;
+    }
+    if (!type.trim()) {
+      setError("Game type is required");
+      return;
+    }
+
+    setIsSubmitting(true);
+    setError(null);
+
+    const project = await createProject({
+      name: name.trim(),
+      type: type.trim(),
+      genre: genre.trim() || type.trim(),
+      description: description.trim(),
+    });
+
+    setIsSubmitting(false);
+
+    if (project) {
+      navigate(`/projects/${project.id}`);
+    } else {
+      setError("Failed to create project. Is the backend running?");
+    }
+  };
+
   return (
     <AppLayout>
       <div className="mx-auto max-w-6xl px-4 py-10 sm:px-6 lg:px-8">
@@ -31,36 +56,63 @@ export default function NewProjectPage() {
             Create a new Roblox concept draft
           </h1>
           <p className="mt-2 text-slate-400">
-            The form is ready for future AI generation and deeper project
-            orchestration.
+            Fill in the details and generate your game concept.
           </p>
         </div>
 
         <div className="grid gap-6 lg:grid-cols-[1fr_0.7fr]">
           <Card>
-            <form className="space-y-4">
-              {fields.map((field) => (
-                <label
-                  key={field.label}
-                  className="block text-sm text-slate-300"
-                >
-                  {field.label}
-                  {field.label === "Description" ? (
-                    <textarea
-                      className="mt-2 min-h-28 w-full rounded-2xl border border-white/10 bg-slate-950/70 px-3 py-3 text-sm outline-none"
-                      placeholder={field.placeholder}
-                    />
-                  ) : (
-                    <input
-                      className="mt-2 w-full rounded-2xl border border-white/10 bg-slate-950/70 px-3 py-3 text-sm outline-none"
-                      placeholder={field.placeholder}
-                    />
-                  )}
-                </label>
-              ))}
+            <form className="space-y-4" onSubmit={handleSubmit}>
+              <label className="block text-sm text-slate-300">
+                Project Name *
+                <input
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  className="mt-2 w-full rounded-2xl border border-white/10 bg-slate-950/70 px-3 py-3 text-sm text-white outline-none focus:border-brand-400"
+                  placeholder="Cosmic Miner"
+                />
+              </label>
 
-              <Button className="w-full" to="/projects">
-                Generate concept <ArrowRight className="ml-2 h-4 w-4" />
+              <label className="block text-sm text-slate-300">
+                Game Type *
+                <input
+                  value={type}
+                  onChange={(e) => setType(e.target.value)}
+                  className="mt-2 w-full rounded-2xl border border-white/10 bg-slate-950/70 px-3 py-3 text-sm text-white outline-none focus:border-brand-400"
+                  placeholder="Mining Simulator"
+                />
+              </label>
+
+              <label className="block text-sm text-slate-300">
+                Description
+                <textarea
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  className="mt-2 min-h-28 w-full rounded-2xl border border-white/10 bg-slate-950/70 px-3 py-3 text-sm text-white outline-none focus:border-brand-400"
+                  placeholder="Create an approachable tycoon experience..."
+                />
+              </label>
+
+              <label className="block text-sm text-slate-300">
+                Genre
+                <input
+                  value={genre}
+                  onChange={(e) => setGenre(e.target.value)}
+                  className="mt-2 w-full rounded-2xl border border-white/10 bg-slate-950/70 px-3 py-3 text-sm text-white outline-none focus:border-brand-400"
+                  placeholder="Tycoon / Adventure"
+                />
+              </label>
+
+              {error && <p className="text-sm text-red-400">{error}</p>}
+
+              <Button
+                className="w-full"
+                onClick={() =>
+                  handleSubmit({ preventDefault: () => {} } as React.FormEvent)
+                }
+              >
+                {isSubmitting ? "Creating..." : "Generate concept"}{" "}
+                <ArrowRight className="ml-2 h-4 w-4" />
               </Button>
             </form>
           </Card>
@@ -71,21 +123,21 @@ export default function NewProjectPage() {
                 <Sparkles className="h-5 w-5" />
               </div>
               <div>
-                <p className="text-sm text-slate-400">Prompt-ready</p>
+                <p className="text-sm text-slate-400">AI-Powered</p>
                 <h2 className="text-xl font-semibold text-white">
-                  Future AI pipeline
+                  Generation Pipeline
                 </h2>
               </div>
             </div>
             <div className="mt-6 space-y-3 text-sm text-slate-400">
               <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
-                Planner agent will structure gameplay loops and objectives.
+                Planner agent structures gameplay loops and objectives.
               </div>
               <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
-                Designer agent will define UI, progression, and economy hooks.
+                Designer agent defines UI, progression, and economy.
               </div>
               <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
-                Builder and QA agents will be chained in later phases.
+                Builder agents generate Lua scripts and assets.
               </div>
             </div>
           </Card>

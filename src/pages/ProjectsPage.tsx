@@ -1,40 +1,43 @@
+import { useEffect, useState } from "react";
 import { Copy, Filter, Plus, Search, Trash2 } from "lucide-react";
 import { AppLayout } from "../layouts/AppLayout";
 import { Button } from "../components/ui/Button";
 import { Card } from "../components/ui/Card";
-import type { ProjectItem } from "../types";
-
-const projects: ProjectItem[] = [
-  {
-    id: "mine-01",
-    name: "Mining Frontier",
-    type: "Simulator",
-    genre: "Tycoon",
-    lastUpdated: "12m ago",
-    status: "In review",
-    progress: 78,
-  },
-  {
-    id: "pet-02",
-    name: "Pet Royale",
-    type: "Adventure",
-    genre: "RPG",
-    lastUpdated: "1h ago",
-    status: "Draft",
-    progress: 41,
-  },
-  {
-    id: "battle-03",
-    name: "Battle Arena",
-    type: "Combat",
-    genre: "Action",
-    lastUpdated: "2d ago",
-    status: "Planning",
-    progress: 24,
-  },
-];
+import {
+  listProjects,
+  deleteProject,
+  type Project,
+} from "../services/projectService";
 
 export default function ProjectsPage() {
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [search, setSearch] = useState("");
+  const [loading, setLoading] = useState(true);
+
+  const fetchProjects = async () => {
+    setLoading(true);
+    const data = await listProjects();
+    setProjects(data);
+    setLoading(false);
+  };
+
+  useEffect(() => {
+    void fetchProjects();
+  }, []);
+
+  const handleDelete = async (id: string) => {
+    if (!confirm("Delete this project?")) return;
+    const success = await deleteProject(id);
+    if (success) setProjects((prev) => prev.filter((p) => p.id !== id));
+  };
+
+  const filtered = projects.filter(
+    (p) =>
+      p.name.toLowerCase().includes(search.toLowerCase()) ||
+      p.genre.toLowerCase().includes(search.toLowerCase()) ||
+      p.type.toLowerCase().includes(search.toLowerCase()),
+  );
+
   return (
     <AppLayout>
       <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
@@ -47,8 +50,7 @@ export default function ProjectsPage() {
               Your project library
             </h1>
             <p className="mt-2 text-slate-400">
-              Search, filter, duplicate, or archive concepts before they
-              advance.
+              {projects.length} project(s) • Search, open, or create new.
             </p>
           </div>
           <Button to="/new-project">
@@ -61,7 +63,9 @@ export default function ProjectsPage() {
             <div className="flex flex-1 items-center gap-3 rounded-2xl border border-white/10 bg-slate-950/70 px-3 py-3">
               <Search className="h-4 w-4 text-slate-500" />
               <input
-                className="w-full bg-transparent text-sm outline-none"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="w-full bg-transparent text-sm text-white outline-none"
                 placeholder="Search projects"
               />
             </div>
@@ -69,8 +73,9 @@ export default function ProjectsPage() {
               <button
                 className="flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-2 text-sm text-slate-300"
                 type="button"
+                onClick={fetchProjects}
               >
-                <Filter className="h-4 w-4" /> Filters
+                <Filter className="h-4 w-4" /> Refresh
               </button>
               <Button to="/new-project" variant="secondary" size="sm">
                 Create
@@ -79,8 +84,23 @@ export default function ProjectsPage() {
           </div>
         </Card>
 
+        {loading && (
+          <p className="text-center text-slate-400">Loading projects...</p>
+        )}
+
+        {!loading && filtered.length === 0 && (
+          <Card>
+            <p className="text-center text-slate-400 py-8">
+              No projects found.{" "}
+              <Button to="/new-project" variant="ghost" size="sm">
+                Create one
+              </Button>
+            </p>
+          </Card>
+        )}
+
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-          {projects.map((project) => (
+          {filtered.map((project) => (
             <Card key={project.id}>
               <div className="flex items-start justify-between">
                 <div>
@@ -97,7 +117,10 @@ export default function ProjectsPage() {
                 Genre: {project.genre}
               </p>
               <p className="mt-1 text-sm text-slate-400">
-                Updated {project.lastUpdated}
+                Updated:{" "}
+                {project.updatedAt
+                  ? new Date(project.updatedAt).toLocaleDateString()
+                  : "—"}
               </p>
               <div className="mt-4 h-2 rounded-full bg-slate-800">
                 <div
@@ -114,16 +137,17 @@ export default function ProjectsPage() {
                   Open
                 </Button>
                 <button
-                  className="rounded-full border border-white/10 bg-white/5 p-2 text-slate-300"
+                  className="rounded-full border border-white/10 bg-white/5 p-2 text-slate-300 hover:bg-white/10"
                   type="button"
                   aria-label="duplicate"
                 >
                   <Copy className="h-4 w-4" />
                 </button>
                 <button
-                  className="rounded-full border border-white/10 bg-white/5 p-2 text-slate-300"
+                  className="rounded-full border border-white/10 bg-white/5 p-2 text-red-400 hover:bg-red-500/10"
                   type="button"
                   aria-label="delete"
+                  onClick={() => handleDelete(project.id)}
                 >
                   <Trash2 className="h-4 w-4" />
                 </button>

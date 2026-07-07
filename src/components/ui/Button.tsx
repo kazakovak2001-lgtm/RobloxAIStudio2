@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import type { ReactNode, MouseEvent } from "react";
 import { Link } from "react-router-dom";
 
 type ButtonProps = {
@@ -7,7 +7,7 @@ type ButtonProps = {
   size?: "sm" | "md" | "lg";
   to?: string;
   className?: string;
-  onClick?: () => void;
+  onClick?: (e?: MouseEvent) => void;
 };
 
 const baseClasses =
