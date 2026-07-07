@@ -1,31 +1,33 @@
-import { BarChart3, Bot, PlusCircle } from "lucide-react";
+import { useEffect, useState } from "react";
+import { BarChart3, Bot, PlusCircle, Wifi, WifiOff } from "lucide-react";
 import { AppLayout } from "../layouts/AppLayout";
 import { Button } from "../components/ui/Button";
 import { Card } from "../components/ui/Card";
-import type { ProjectItem } from "../types";
-
-const projects: ProjectItem[] = [
-  {
-    id: "mine-01",
-    name: "Mining Frontier",
-    type: "Simulator",
-    genre: "Tycoon",
-    lastUpdated: "12m ago",
-    status: "In review",
-    progress: 78,
-  },
-  {
-    id: "pet-02",
-    name: "Pet Royale",
-    type: "Adventure",
-    genre: "RPG",
-    lastUpdated: "1h ago",
-    status: "Draft",
-    progress: 41,
-  },
-];
+import { listProjects, type Project } from "../services/projectService";
+import { getActiveProvider } from "../services/aiEngine";
 
 export default function DashboardPage() {
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [provider, setProvider] = useState("loading...");
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const load = async () => {
+      setLoading(true);
+      const [projs, prov] = await Promise.all([
+        listProjects(),
+        getActiveProvider(),
+      ]);
+      setProjects(projs);
+      setProvider(prov);
+      setLoading(false);
+    };
+    void load();
+  }, []);
+
+  const projectCount = projects.length;
+  const backendOnline = provider !== "unavailable";
+
   return (
     <AppLayout>
       <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
@@ -38,8 +40,8 @@ export default function DashboardPage() {
               Your studio command center
             </h1>
             <p className="mt-2 text-slate-400">
-              Coordinate projects, agent progress, and future AI handoffs from a
-              unified view.
+              Coordinate projects, agents, and AI generation from a unified
+              view.
             </p>
           </div>
           <Button to="/new-project">
@@ -48,17 +50,34 @@ export default function DashboardPage() {
         </div>
 
         <div className="grid gap-4 lg:grid-cols-4">
-          {[
-            ["Projects", "24 active"],
-            ["Agents", "8 queued"],
-            ["Exports", "3 ready"],
-            ["Revenue", "$12k"],
-          ].map(([label, value]) => (
-            <Card key={label}>
-              <p className="text-sm text-slate-400">{label}</p>
-              <p className="mt-3 text-2xl font-semibold text-white">{value}</p>
-            </Card>
-          ))}
+          <Card>
+            <p className="text-sm text-slate-400">Projects</p>
+            <p className="mt-3 text-2xl font-semibold text-white">
+              {loading ? "..." : projectCount}
+            </p>
+          </Card>
+          <Card>
+            <p className="text-sm text-slate-400">AI Provider</p>
+            <p className="mt-3 text-2xl font-semibold text-white">{provider}</p>
+          </Card>
+          <Card>
+            <p className="text-sm text-slate-400">Backend</p>
+            <p className="mt-3 flex items-center gap-2 text-2xl font-semibold text-white">
+              {backendOnline ? (
+                <>
+                  <Wifi className="h-5 w-5 text-green-400" /> Online
+                </>
+              ) : (
+                <>
+                  <WifiOff className="h-5 w-5 text-red-400" /> Offline
+                </>
+              )}
+            </p>
+          </Card>
+          <Card>
+            <p className="text-sm text-slate-400">Platform</p>
+            <p className="mt-3 text-2xl font-semibold text-white">v3.0 Beta</p>
+          </Card>
         </div>
 
         <div className="mt-8 grid gap-6 xl:grid-cols-[1.2fr_0.8fr]">
@@ -74,8 +93,17 @@ export default function DashboardPage() {
                 View all
               </Button>
             </div>
+            {loading && <p className="text-sm text-slate-400">Loading...</p>}
+            {!loading && projects.length === 0 && (
+              <p className="text-sm text-slate-400">
+                No projects yet.{" "}
+                <Button to="/new-project" variant="ghost" size="sm">
+                  Create one
+                </Button>
+              </p>
+            )}
             <div className="space-y-4">
-              {projects.map((project) => (
+              {projects.slice(0, 5).map((project) => (
                 <div
                   key={project.id}
                   className="rounded-2xl border border-white/10 bg-white/5 p-4"
@@ -90,10 +118,6 @@ export default function DashboardPage() {
                     <span className="rounded-full border border-brand-400/20 bg-brand-500/10 px-3 py-1 text-xs text-brand-200">
                       {project.status}
                     </span>
-                  </div>
-                  <div className="mt-4 flex items-center justify-between text-sm text-slate-400">
-                    <span>Updated {project.lastUpdated}</span>
-                    <span>{project.progress}%</span>
                   </div>
                   <div className="mt-3 h-2 rounded-full bg-slate-800">
                     <div
@@ -113,12 +137,18 @@ export default function DashboardPage() {
                   <Bot className="h-5 w-5" />
                 </div>
                 <div>
-                  <p className="text-sm text-slate-400">Quick actions</p>
-                  <h3 className="font-semibold text-white">Launch AI agents</h3>
+                  <p className="text-sm text-slate-400">AI Agents</p>
+                  <h3 className="font-semibold text-white">Pipeline Agents</h3>
                 </div>
               </div>
               <div className="mt-4 space-y-3">
-                {["Planner", "Designer", "Builder"].map((agent) => (
+                {[
+                  "Planner",
+                  "Designer",
+                  "Architect",
+                  "Builder",
+                  "Validator",
+                ].map((agent) => (
                   <div
                     key={agent}
                     className="flex items-center justify-between rounded-2xl border border-white/10 bg-white/5 px-3 py-3 text-sm text-slate-300"
@@ -129,29 +159,30 @@ export default function DashboardPage() {
                 ))}
               </div>
             </Card>
-
             <Card>
               <div className="flex items-center gap-3">
                 <div className="rounded-2xl bg-brand-500/10 p-2 text-brand-300">
                   <BarChart3 className="h-5 w-5" />
                 </div>
                 <div>
-                  <p className="text-sm text-slate-400">Stats</p>
-                  <h3 className="font-semibold text-white">Weekly momentum</h3>
+                  <p className="text-sm text-slate-400">Platform Status</p>
+                  <h3 className="font-semibold text-white">System Health</h3>
                 </div>
               </div>
               <div className="mt-4 space-y-4">
                 <div className="flex items-center justify-between text-sm text-slate-400">
-                  <span>Iterations</span>
-                  <span className="font-semibold text-white">+18%</span>
+                  <span>Generation Engine</span>
+                  <span className="font-semibold text-green-400">
+                    Operational
+                  </span>
                 </div>
                 <div className="flex items-center justify-between text-sm text-slate-400">
-                  <span>Automation</span>
-                  <span className="font-semibold text-white">+41%</span>
+                  <span>Job Queue</span>
+                  <span className="font-semibold text-green-400">Active</span>
                 </div>
                 <div className="flex items-center justify-between text-sm text-slate-400">
-                  <span>Export readiness</span>
-                  <span className="font-semibold text-white">82%</span>
+                  <span>Studio Bridge</span>
+                  <span className="font-semibold text-yellow-400">Standby</span>
                 </div>
               </div>
             </Card>
