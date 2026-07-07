@@ -1,0 +1,19 @@
+{
+  "reportType": "Platform Health",
+  "version": "3.0.0-beta",
+  "status": "running",
+  "components": {
+    "runtime": "healthy",
+    "jobEngine": "healthy",
+    "generationEngine": "healthy",
+    "luaEngine": "healthy",
+    "assetEngine": "healthy",
+    "uiEngine": "healthy",
+    "orchestrator": "healthy",
+    "providers": "healthy",
+    "memory": "healthy",
+    "studio": "healthy"
+  },
+  "allHealthy": true,
+  "timestamp": "2026-07-07T02:20:00.000Z"
+}

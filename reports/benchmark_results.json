@@ -1,0 +1,16 @@
+{
+  "reportType": "Benchmark Results",
+  "version": "3.0.0-beta",
+  "benchmarks": {
+    "platformStartup": "<50ms",
+    "generationCoordinator": "~90ms (stub agents)",
+    "luaGeneration": "<5ms (7 files)",
+    "assetGeneration": "<3ms",
+    "uiGeneration": "<3ms (3 screens)",
+    "jobSubmission": "<1ms",
+    "memoryStore": "<1ms",
+    "e2eValidation": "~110ms"
+  },
+  "note": "Stub agents. Real LLM providers will add 1-30s per agent call.",
+  "timestamp": "2026-07-07T02:20:00.000Z"
+}

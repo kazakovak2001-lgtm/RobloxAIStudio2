@@ -1,0 +1,18 @@
+{
+  "reportType": "End-to-End Validation",
+  "version": "3.0.0-beta",
+  "stagesValidated": [
+    "job-submission",
+    "generation-coordinator",
+    "generation-engine",
+    "lua-generation",
+    "asset-generation",
+    "ui-generation",
+    "provider-layer",
+    "memory-system"
+  ],
+  "stagesFailed": [],
+  "valid": true,
+  "totalDurationMs": 111,
+  "timestamp": "2026-07-07T02:20:00.000Z"
+}
