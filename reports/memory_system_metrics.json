@@ -1,0 +1,23 @@
+{
+  "reportType": "Memory System Metrics",
+  "version": "2.9.0",
+  "components": [
+    "KnowledgeMemoryManager",
+    "KnowledgeRepository",
+    "ArtifactIndex",
+    "ContextResolver",
+    "MemoryStorage",
+    "MemoryMetrics"
+  ],
+  "metricsTracked": [
+    "storedEntries",
+    "indexedArtifacts",
+    "knowledgeDocuments",
+    "retrievalLatencyMs",
+    "storageSizeEstimate",
+    "cacheHitRatio",
+    "retrievalSuccessRate"
+  ],
+  "testResults": { "total": 17, "passed": 17 },
+  "status": "OPERATIONAL"
+}

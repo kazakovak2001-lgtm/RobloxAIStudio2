@@ -1,0 +1,22 @@
+{
+  "reportType": "Knowledge Repository",
+  "version": "2.9.0",
+  "categories": [
+    "architecture",
+    "generation",
+    "validation",
+    "lua",
+    "ui",
+    "assets",
+    "gameplay",
+    "documentation",
+    "custom"
+  ],
+  "features": [
+    "category filtering",
+    "tag-based lookup",
+    "text search",
+    "version tracking"
+  ],
+  "status": "OPERATIONAL"
+}

@@ -1,0 +1,23 @@
+{
+  "reportType": "Artifact Index",
+  "version": "2.9.0",
+  "indexedTypes": [
+    "script",
+    "module",
+    "ui",
+    "asset",
+    "manifest",
+    "report",
+    "config"
+  ],
+  "lookupMethods": [
+    "byId",
+    "byPath",
+    "byProject",
+    "byType",
+    "byTags",
+    "search"
+  ],
+  "features": ["version tracking", "size tracking", "generator attribution"],
+  "status": "OPERATIONAL"
+}
