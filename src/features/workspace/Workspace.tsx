@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
 import { useParams } from "react-router-dom";
-import { Sparkles } from "lucide-react";
 import { AppLayout } from "../../layouts/AppLayout";
 import { useToast } from "../../components/ui/Toast";
 import { AgentBoard } from "./components/AgentBoard";
@@ -9,6 +8,11 @@ import { CostMonitor } from "./components/CostMonitor";
 import { TokenUsage } from "./components/TokenUsage";
 import { ProjectSummary } from "./components/ProjectSummary";
 import { ActivityFeed } from "./components/ActivityFeed";
+import { GenerateButton } from "./components/GenerateButton";
+import { ValidationResults } from "./components/ValidationResults";
+import { PipelineStatusBar } from "./components/PipelineStatusBar";
+import { PipelineStatusViewer } from "./components/PipelineStatusViewer";
+import { StudioBridgePanel } from "./components/StudioBridgePanel";
 import { PipelineView } from "./PipelineView";
 import { usePipelineStream } from "./usePipelineStream";
 import { Loader } from "../../components/ui/Loader";
@@ -106,21 +110,26 @@ export default function WorkspacePage() {
         ) : (
           <div className="grid gap-4 xl:grid-cols-[1fr_1.15fr_0.95fr]">
             <div className="space-y-4">
-              <div className="rounded-3xl border border-brand-400/20 bg-gradient-to-br from-slate-900/80 to-slate-950/60 p-4">
-                <div className="flex items-center gap-2">
-                  <div className="rounded-2xl bg-brand-500/10 p-2 text-brand-300">
-                    <Sparkles className="h-4 w-4" />
-                  </div>
-                  <div>
-                    <p className="text-sm font-semibold text-white">
-                      Execution pulse
-                    </p>
-                    <p className="text-xs text-slate-400">
-                      Streaming status and cost indicators.
-                    </p>
-                  </div>
-                </div>
-              </div>
+              <GenerateButton
+                projectId={id ?? ""}
+                pipelineStatus={status}
+                onStarted={(execId) =>
+                  toast({
+                    variant: "info",
+                    title: "Generation started",
+                    description: `Execution: ${execId}`,
+                  })
+                }
+                onError={(err) =>
+                  toast({
+                    variant: "error",
+                    title: "Generation failed",
+                    description: err,
+                  })
+                }
+              />
+              <PipelineStatusBar pipeline={state} status={status} />
+              <PipelineStatusViewer pipeline={state} status={status} />
               <AgentBoard agents={agents} />
               <CostMonitor
                 cost={cost}
@@ -138,6 +147,8 @@ export default function WorkspacePage() {
             </div>
             <div className="space-y-4">
               <ActivityFeed events={events} />
+              <ValidationResults />
+              <StudioBridgePanel projectId={id ?? ""} status={status} />
               <ProjectSummary
                 agents={agents.length}
                 runTimeSeconds={
