@@ -26,12 +26,23 @@ export function useSocket(projectId?: string) {
   }, []);
 
   const on = useCallback((event: string, callback: EventCallback) => {
-    socketRef.current?.on(event, callback);
-    return () => socketRef.current?.off(event, callback);
+    (
+      socketRef.current as unknown as {
+        on: (e: string, cb: EventCallback) => void;
+      }
+    )?.on(event, callback);
+    return () =>
+      (
+        socketRef.current as unknown as {
+          off: (e: string, cb: EventCallback) => void;
+        }
+      )?.off(event, callback);
   }, []);
 
   const emit = useCallback((event: string, data: unknown) => {
-    socketRef.current?.emit(event, data);
+    (
+      socketRef.current as unknown as { emit: (e: string, d: unknown) => void }
+    )?.emit(event, data);
   }, []);
 
   return { socket: socketRef.current, joinProject, leaveProject, on, emit };

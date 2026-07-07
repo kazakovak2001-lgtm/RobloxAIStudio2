@@ -1,6 +1,16 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { getSocket } from "../../services/socket";
-import type { PipelineStreamMessage, PipelineState, WorkspaceStatus } from "./workspace.types";
+import type {
+  PipelineStreamMessage,
+  PipelineState,
+  WorkspaceStatus,
+} from "./workspace.types";
+import type {
+  GenerationStartEvent,
+  GenerationProgressEvent,
+  GenerationCompleteEvent,
+  GenerationErrorEvent,
+} from "../../../shared/events";
 
 export function usePipelineStream(projectId?: string) {
   const [state, setState] = useState<PipelineState | null>(null);
@@ -32,74 +42,99 @@ export function usePipelineStream(projectId?: string) {
 
     socket.emit("project:join", { projectId });
 
-    const handlers = [
-      { event: "pipeline.started", handler: (payload: unknown) => {
-        const data = payload as Record<string, unknown>;
-        setState((prev) => ({
-          ...(prev ?? empty(projectId)),
-          status: "running",
-          startedAt: new Date((data.startedAt as string) ?? new Date().toISOString()),
-        }));
-        appendEvent("pipeline.started", data);
-      }},
-      { event: "step.started", handler: (payload: unknown) => {
-        const data = payload as Record<string, unknown>;
-        setState((prev) => {
-          if (!prev) return prev;
-          const agent = prev.agents.find((item) => item.id === (data.agentId as string));
-          if (agent) {
-            agent.status = "running";
-            agent.startedAt = new Date((data.startedAt as string) ?? new Date().toISOString());
-          }
-          return { ...prev, currentStep: data.stepId as string | undefined };
-        });
-        appendEvent("step.started", data);
-      }},
-      { event: "step.completed", handler: (payload: unknown) => {
-        const data = payload as Record<string, unknown>;
-        setState((prev) => {
-          if (!prev) return prev;
-          const agent = prev.agents.find((item) => item.id === (data.agentId as string));
-          if (agent) {
-            agent.status = "completed";
-            agent.progress = 100;
-            agent.finishedAt = new Date((data.finishedAt as string) ?? new Date().toISOString());
-          }
-          return prev;
-        });
-        appendEvent("step.completed", data);
-      }},
-      { event: "pipeline.progress", handler: (payload: unknown) => {
-        const data = payload as Record<string, unknown>;
-        setState((prev) => (prev ? { ...prev, progress: Number(data.progress ?? prev.progress) } : prev));
-        appendEvent("pipeline.progress", data);
-      }},
-      { event: "pipeline.completed", handler: (payload: unknown) => {
-        const data = payload as Record<string, unknown>;
-        setState((prev) => (prev ? { ...prev, status: "completed", finishedAt: new Date(), progress: 100 } : prev));
-        appendEvent("pipeline.completed", data);
-      }},
-      { event: "pipeline.failed", handler: (payload: unknown) => {
-        const data = payload as Record<string, unknown>;
-        setState((prev) => (prev ? { ...prev, status: "failed" } : prev));
-        appendEvent("pipeline.failed", data);
-      }},
-      { event: "ai.streaming", handler: (payload: unknown) => {
-        const data = payload as Record<string, unknown>;
-        appendEvent("ai.streaming", data);
-      }},
-    ];
+    // Pipeline started
+    const onStarted = (payload: GenerationStartEvent) => {
+      setState((prev) => ({
+        ...(prev ?? empty(projectId)),
+        status: "running",
+        startedAt: new Date(payload.startedAt ?? new Date().toISOString()),
+      }));
+      appendEvent(
+        "pipeline.started",
+        payload as unknown as Record<string, unknown>,
+      );
+    };
 
-    for (const item of handlers) {
-      socket.on(item.event, item.handler as never);
-    }
+    // Step started
+    const onStepStarted = (payload: GenerationProgressEvent) => {
+      setState((prev) => {
+        if (!prev) return prev;
+        const agent = prev.agents.find((item) => item.id === payload.agentId);
+        if (agent) {
+          agent.status = "running";
+          agent.startedAt = new Date(
+            payload.timestamp ?? new Date().toISOString(),
+          );
+        }
+        return { ...prev, currentStep: payload.stepId };
+      });
+      appendEvent(
+        "step.started",
+        payload as unknown as Record<string, unknown>,
+      );
+    };
+
+    // Step completed
+    const onStepCompleted = (payload: GenerationProgressEvent) => {
+      setState((prev) => {
+        if (!prev) return prev;
+        const agent = prev.agents.find((item) => item.id === payload.agentId);
+        if (agent) {
+          agent.status = "completed";
+          agent.progress = 100;
+          agent.finishedAt = new Date(
+            payload.timestamp ?? new Date().toISOString(),
+          );
+        }
+        return prev;
+      });
+      appendEvent(
+        "step.completed",
+        payload as unknown as Record<string, unknown>,
+      );
+    };
+
+    // Pipeline completed
+    const onCompleted = (payload: GenerationCompleteEvent) => {
+      setState((prev) =>
+        prev
+          ? {
+              ...prev,
+              status: "completed",
+              finishedAt: new Date(),
+              progress: 100,
+            }
+          : prev,
+      );
+      appendEvent(
+        "pipeline.completed",
+        payload as unknown as Record<string, unknown>,
+      );
+    };
+
+    // Pipeline failed
+    const onFailed = (payload: GenerationErrorEvent) => {
+      setState((prev) => (prev ? { ...prev, status: "failed" } : prev));
+      appendEvent(
+        "pipeline.failed",
+        payload as unknown as Record<string, unknown>,
+      );
+    };
+
+    socket.on("pipeline.started", onStarted as never);
+    socket.on("step.started", onStepStarted as never);
+    socket.on("step.completed", onStepCompleted as never);
+    socket.on("pipeline.completed", onCompleted as never);
+    socket.on("pipeline.failed", onFailed as never);
 
     appendEvent("connection", { projectId });
 
     return () => {
-      for (const item of handlers) {
-        socket.off(item.event, item.handler as never);
-      }
+      socket.off("pipeline.started", onStarted as never);
+      socket.off("step.started", onStepStarted as never);
+      socket.off("step.completed", onStepCompleted as never);
+      socket.off("pipeline.completed", onCompleted as never);
+      socket.off("pipeline.failed", onFailed as never);
       socket.emit("project:leave", { projectId });
     };
   }, [projectId]);
@@ -113,9 +148,15 @@ export function usePipelineStream(projectId?: string) {
     setEvents((prev) => [...prev.slice(-200), message]);
   };
 
-  const currentAgent = useMemo(() => state?.agents.find((item) => item.status === "running"), [state?.agents]);
+  const currentAgent = useMemo(
+    () => state?.agents.find((item) => item.status === "running"),
+    [state?.agents],
+  );
 
-  const status: WorkspaceStatus = useMemo(() => state?.status ?? "idle", [state?.status]);
+  const status: WorkspaceStatus = useMemo(
+    () => state?.status ?? "idle",
+    [state?.status],
+  );
 
   return { state, isConnected, events, status, currentAgent };
 }
