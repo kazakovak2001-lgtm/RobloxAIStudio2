@@ -1,0 +1,275 @@
+/**
+ * Agent metadata and capability definitions.
+ */
+
+export interface AgentCapability {
+  canGenerate: boolean;
+  canValidate: boolean;
+  canAnalyze: boolean;
+  canSynthesize: boolean;
+  supportsStreaming: boolean;
+}
+
+export interface AgentMetadata {
+  id: string;
+  name: string;
+  version: string;
+  description: string;
+  category: "generation" | "validation" | "analysis" | "synthesis" | "planning";
+  capabilities: AgentCapability;
+  requiredContext: string[];
+  outputSchema: string[];
+  promptId: string;
+  maxRetries: number;
+  timeoutMs: number;
+}
+
+export const AGENT_DEFINITIONS: AgentMetadata[] = [
+  {
+    id: "requirements",
+    name: "Requirements",
+    version: "1.0.0",
+    description: "Extracts structured requirements from game concept",
+    category: "analysis",
+    capabilities: {
+      canGenerate: false,
+      canValidate: false,
+      canAnalyze: true,
+      canSynthesize: false,
+      supportsStreaming: false,
+    },
+    requiredContext: ["name", "genre"],
+    outputSchema: ["requirements"],
+    promptId: "prompt-requirements-v1",
+    maxRetries: 3,
+    timeoutMs: 30000,
+  },
+  {
+    id: "planner",
+    name: "Planner",
+    version: "1.0.0",
+    description: "Creates phased development plan",
+    category: "planning",
+    capabilities: {
+      canGenerate: false,
+      canValidate: false,
+      canAnalyze: false,
+      canSynthesize: false,
+      supportsStreaming: false,
+    },
+    requiredContext: ["name", "requirements_summary"],
+    outputSchema: ["plan"],
+    promptId: "prompt-planner-v1",
+    maxRetries: 3,
+    timeoutMs: 30000,
+  },
+  {
+    id: "game_designer",
+    name: "GameDesigner",
+    version: "1.0.0",
+    description: "Designs gameplay systems and mechanics",
+    category: "generation",
+    capabilities: {
+      canGenerate: true,
+      canValidate: false,
+      canAnalyze: false,
+      canSynthesize: false,
+      supportsStreaming: false,
+    },
+    requiredContext: ["name", "genre", "core_loop"],
+    outputSchema: ["gameplay"],
+    promptId: "prompt-game-designer-v1",
+    maxRetries: 3,
+    timeoutMs: 45000,
+  },
+  {
+    id: "roblox_architect",
+    name: "RobloxArchitect",
+    version: "1.0.0",
+    description: "Designs technical architecture",
+    category: "generation",
+    capabilities: {
+      canGenerate: true,
+      canValidate: false,
+      canAnalyze: false,
+      canSynthesize: false,
+      supportsStreaming: false,
+    },
+    requiredContext: ["name", "game_type"],
+    outputSchema: ["architecture", "roblox_architect"],
+    promptId: "prompt-architect-v1",
+    maxRetries: 3,
+    timeoutMs: 45000,
+  },
+  {
+    id: "lua_generator",
+    name: "LuaGenerator",
+    version: "1.0.0",
+    description: "Generates Lua module code",
+    category: "generation",
+    capabilities: {
+      canGenerate: true,
+      canValidate: false,
+      canAnalyze: false,
+      canSynthesize: false,
+      supportsStreaming: true,
+    },
+    requiredContext: ["name", "architecture_summary"],
+    outputSchema: ["lua_generator"],
+    promptId: "prompt-lua-generator-v1",
+    maxRetries: 3,
+    timeoutMs: 60000,
+  },
+  {
+    id: "ui_generator",
+    name: "UIGenerator",
+    version: "1.0.0",
+    description: "Designs UI layouts",
+    category: "generation",
+    capabilities: {
+      canGenerate: true,
+      canValidate: false,
+      canAnalyze: false,
+      canSynthesize: false,
+      supportsStreaming: false,
+    },
+    requiredContext: ["name", "game_type"],
+    outputSchema: ["uiDesign"],
+    promptId: "prompt-ui-generator-v1",
+    maxRetries: 3,
+    timeoutMs: 45000,
+  },
+  {
+    id: "asset_planner",
+    name: "AssetPlanner",
+    version: "1.0.0",
+    description: "Plans game assets",
+    category: "generation",
+    capabilities: {
+      canGenerate: true,
+      canValidate: false,
+      canAnalyze: false,
+      canSynthesize: false,
+      supportsStreaming: false,
+    },
+    requiredContext: ["name", "theme"],
+    outputSchema: ["assetPlan"],
+    promptId: "prompt-asset-planner-v1",
+    maxRetries: 3,
+    timeoutMs: 30000,
+  },
+  {
+    id: "orchestrator",
+    name: "Orchestrator",
+    version: "1.0.0",
+    description: "Synthesizes final game definition",
+    category: "synthesis",
+    capabilities: {
+      canGenerate: false,
+      canValidate: false,
+      canAnalyze: false,
+      canSynthesize: true,
+      supportsStreaming: false,
+    },
+    requiredContext: ["name", "description"],
+    outputSchema: ["world"],
+    promptId: "prompt-orchestrator-v1",
+    maxRetries: 3,
+    timeoutMs: 60000,
+  },
+  {
+    id: "tester",
+    name: "Tester",
+    version: "1.0.0",
+    description: "Generates test plans",
+    category: "validation",
+    capabilities: {
+      canGenerate: false,
+      canValidate: true,
+      canAnalyze: false,
+      canSynthesize: false,
+      supportsStreaming: false,
+    },
+    requiredContext: ["name", "systems_summary"],
+    outputSchema: ["testResults"],
+    promptId: "prompt-tester-v1",
+    maxRetries: 2,
+    timeoutMs: 30000,
+  },
+  {
+    id: "performance",
+    name: "Performance",
+    version: "1.0.0",
+    description: "Performance optimization analysis",
+    category: "analysis",
+    capabilities: {
+      canGenerate: false,
+      canValidate: false,
+      canAnalyze: true,
+      canSynthesize: false,
+      supportsStreaming: false,
+    },
+    requiredContext: ["name", "script_count"],
+    outputSchema: ["optimization"],
+    promptId: "prompt-performance-v1",
+    maxRetries: 2,
+    timeoutMs: 30000,
+  },
+  {
+    id: "documentation",
+    name: "Documentation",
+    version: "1.0.0",
+    description: "Generates project documentation",
+    category: "synthesis",
+    capabilities: {
+      canGenerate: false,
+      canValidate: false,
+      canAnalyze: false,
+      canSynthesize: true,
+      supportsStreaming: false,
+    },
+    requiredContext: ["name", "systems_summary"],
+    outputSchema: ["documentation"],
+    promptId: "prompt-documentation-v1",
+    maxRetries: 2,
+    timeoutMs: 30000,
+  },
+  {
+    id: "debug",
+    name: "Debug",
+    version: "1.0.0",
+    description: "Identifies potential issues",
+    category: "validation",
+    capabilities: {
+      canGenerate: false,
+      canValidate: true,
+      canAnalyze: true,
+      canSynthesize: false,
+      supportsStreaming: false,
+    },
+    requiredContext: ["name", "script_count"],
+    outputSchema: ["debugReport"],
+    promptId: "prompt-debug-v1",
+    maxRetries: 2,
+    timeoutMs: 30000,
+  },
+  {
+    id: "database",
+    name: "Database",
+    version: "1.0.0",
+    description: "Designs data persistence",
+    category: "generation",
+    capabilities: {
+      canGenerate: true,
+      canValidate: false,
+      canAnalyze: false,
+      canSynthesize: false,
+      supportsStreaming: false,
+    },
+    requiredContext: ["name", "systems_summary"],
+    outputSchema: ["database"],
+    promptId: "prompt-database-v1",
+    maxRetries: 2,
+    timeoutMs: 30000,
+  },
+];

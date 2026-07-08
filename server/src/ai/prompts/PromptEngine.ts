@@ -48,6 +48,19 @@ export class PromptEngine {
   private prompts: Map<string, ManagedPrompt[]> = new Map(); // agentType → versions (latest last)
   private activeVersions: Map<string, string> = new Map(); // agentType → active version
 
+  // ─── Metrics ─────────────────────────────────────────────────────────────
+  private _metrics = {
+    renderCount: 0,
+    renderSuccess: 0,
+    renderFailure: 0,
+    validationErrors: 0,
+    totalRenderTimeMs: 0,
+  };
+
+  get metrics() {
+    return { ...this._metrics };
+  }
+
   /**
    * Register a prompt with full metadata.
    */
@@ -78,8 +91,12 @@ export class PromptEngine {
    * Render a prompt for an agent type using the active version.
    */
   render(agentType: string, variables: Record<string, string>): RenderResult {
+    const start = Date.now();
+    this._metrics.renderCount++;
+
     const prompt = this.getActive(agentType);
     if (!prompt) {
+      this._metrics.renderFailure++;
       return {
         success: false,
         prompt: "",
@@ -92,6 +109,9 @@ export class PromptEngine {
     // Validate variables
     const validation = this.validateVariables(prompt, variables);
     if (!validation.valid) {
+      this._metrics.renderFailure++;
+      this._metrics.validationErrors++;
+      this._metrics.totalRenderTimeMs += Date.now() - start;
       return {
         success: false,
         prompt: "",
@@ -106,6 +126,8 @@ export class PromptEngine {
     const system = this.interpolate(prompt.system, variables);
     const tokenEstimate = Math.ceil((system.length + rendered.length) / 4);
 
+    this._metrics.renderSuccess++;
+    this._metrics.totalRenderTimeMs += Date.now() - start;
     return { success: true, prompt: rendered, system, tokenEstimate };
   }
 
