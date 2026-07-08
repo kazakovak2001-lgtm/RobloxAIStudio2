@@ -206,3 +206,122 @@ export async function sendProtocolMessage(
     };
   }
 }
+
+// ─── Sync Layer API ─────────────────────────────────────────────────────────
+
+export interface ProjectSnapshot {
+  projectId: string;
+  version: string;
+  artifacts: Array<{
+    id: string;
+    type: string;
+    name: string;
+    stage: string;
+    size: number;
+    hash: string;
+    version: number;
+    createdAt: number;
+    reviewStatus: string;
+  }>;
+  generatedAt: number;
+  artifactCount: number;
+}
+
+export interface SyncStatusData {
+  lastSyncTimestamp: number | null;
+  pendingChanges: number;
+  conflictCount: number;
+  currentVersion: string;
+  projectId: string | null;
+}
+
+export interface ArtifactTransferResult {
+  artifacts: Array<{
+    id: string;
+    type: string;
+    name: string;
+    stage: string;
+    size: number;
+    createdAt: number;
+    reviewStatus: string;
+    content: unknown;
+  }>;
+  missing: string[];
+  totalSize: number;
+  payloadExceeded: boolean;
+}
+
+/**
+ * Get project snapshot for sync.
+ */
+export async function requestProjectSync(
+  projectId: string,
+): Promise<{ success: boolean; data?: ProjectSnapshot; error?: string }> {
+  try {
+    const res = await fetch("/api/studio/sync/project", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ projectId }),
+    });
+    const json = await res.json();
+    if (!res.ok)
+      return { success: false, error: json.error ?? `HTTP ${res.status}` };
+    return { success: true, data: json.data };
+  } catch (err) {
+    return {
+      success: false,
+      error: err instanceof Error ? err.message : "Network error",
+    };
+  }
+}
+
+/**
+ * Request specific artifacts for transfer.
+ */
+export async function requestArtifacts(
+  artifactIds: string[],
+): Promise<{
+  success: boolean;
+  data?: ArtifactTransferResult;
+  error?: string;
+}> {
+  try {
+    const res = await fetch("/api/studio/sync/artifacts", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ artifactIds }),
+    });
+    const json = await res.json();
+    if (!res.ok)
+      return { success: false, error: json.error ?? `HTTP ${res.status}` };
+    return { success: true, data: json.data };
+  } catch (err) {
+    return {
+      success: false,
+      error: err instanceof Error ? err.message : "Network error",
+    };
+  }
+}
+
+/**
+ * Get sync status.
+ */
+export async function getSyncStatus(
+  projectId?: string,
+): Promise<{ success: boolean; data?: SyncStatusData; error?: string }> {
+  try {
+    const url = projectId
+      ? `/api/studio/sync/status?projectId=${projectId}`
+      : "/api/studio/sync/status";
+    const res = await fetch(url);
+    const json = await res.json();
+    if (!res.ok)
+      return { success: false, error: json.error ?? `HTTP ${res.status}` };
+    return { success: true, data: json.data };
+  } catch (err) {
+    return {
+      success: false,
+      error: err instanceof Error ? err.message : "Network error",
+    };
+  }
+}

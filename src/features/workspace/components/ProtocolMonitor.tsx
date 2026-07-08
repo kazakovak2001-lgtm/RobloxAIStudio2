@@ -6,13 +6,17 @@ import {
   CheckCircle,
   XCircle,
   Clock,
+  AlertTriangle,
+  RefreshCw,
 } from "lucide-react";
 import { Card } from "../../../components/ui/Card";
 import {
   getProtocolLog,
   getProtocolInfo,
+  getSyncStatus,
   type ProtocolLogEntry,
   type ProtocolInfo,
+  type SyncStatusData,
 } from "../../../services/studioBridgeApi";
 
 interface ProtocolMonitorProps {
@@ -22,6 +26,7 @@ interface ProtocolMonitorProps {
 export function ProtocolMonitor({ isConnected }: ProtocolMonitorProps) {
   const [info, setInfo] = useState<ProtocolInfo | null>(null);
   const [log, setLog] = useState<ProtocolLogEntry[]>([]);
+  const [syncStatus, setSyncStatus] = useState<SyncStatusData | null>(null);
 
   useEffect(() => {
     const loadInfo = async () => {
@@ -33,12 +38,16 @@ export function ProtocolMonitor({ isConnected }: ProtocolMonitorProps) {
 
   useEffect(() => {
     if (!isConnected) return;
-    const loadLog = async () => {
-      const result = await getProtocolLog(20);
-      if (result.success && result.data) setLog(result.data);
+    const loadData = async () => {
+      const [logResult, syncResult] = await Promise.all([
+        getProtocolLog(20),
+        getSyncStatus(),
+      ]);
+      if (logResult.success && logResult.data) setLog(logResult.data);
+      if (syncResult.success && syncResult.data) setSyncStatus(syncResult.data);
     };
-    loadLog();
-    const interval = window.setInterval(loadLog, 5000);
+    loadData();
+    const interval = window.setInterval(loadData, 5000);
     return () => window.clearInterval(interval);
   }, [isConnected]);
 
@@ -111,6 +120,53 @@ export function ProtocolMonitor({ isConnected }: ProtocolMonitorProps) {
             .map((entry) => (
               <LogRow key={entry.messageId} entry={entry} />
             ))}
+        </div>
+      )}
+
+      {/* Sync status */}
+      {syncStatus && isConnected && (
+        <div className="mt-3 rounded-lg border border-white/5 bg-white/[0.02] px-3 py-2 text-xs">
+          <div className="flex items-center gap-1.5 mb-1.5">
+            <RefreshCw className="h-3 w-3 text-slate-400" />
+            <span className="font-medium text-slate-300">Sync Status</span>
+            {syncStatus.conflictCount > 0 && (
+              <AlertTriangle className="h-3 w-3 text-yellow-400" />
+            )}
+          </div>
+          <div className="space-y-0.5">
+            <div className="flex items-center justify-between">
+              <span className="text-slate-500">Version</span>
+              <span className="text-slate-300 text-[10px]">
+                {syncStatus.currentVersion.slice(0, 14)}
+              </span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-slate-500">Pending</span>
+              <span className="text-slate-300">
+                {syncStatus.pendingChanges}
+              </span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-slate-500">Conflicts</span>
+              <span
+                className={
+                  syncStatus.conflictCount > 0
+                    ? "text-yellow-400"
+                    : "text-slate-300"
+                }
+              >
+                {syncStatus.conflictCount}
+              </span>
+            </div>
+            {syncStatus.lastSyncTimestamp && (
+              <div className="flex items-center justify-between">
+                <span className="text-slate-500">Last sync</span>
+                <span className="text-slate-300 text-[10px]">
+                  {new Date(syncStatus.lastSyncTimestamp).toLocaleTimeString()}
+                </span>
+              </div>
+            )}
+          </div>
         </div>
       )}
 
