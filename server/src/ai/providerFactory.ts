@@ -1,9 +1,12 @@
 import type { LLMProvider } from "./provider";
 import { OpenAIProvider } from "../providers/openai";
 import { AnthropicProvider } from "../providers/anthropic";
+import { GeminiProvider } from "../providers/gemini";
+import { OpenRouterProvider } from "../providers/openrouter";
 import { OllamaProvider } from "../providers/ollama";
 
-export type ProviderMode = "openai" | "anthropic" | "ollama" | "none";
+export type ProviderMode =
+  "openai" | "anthropic" | "gemini" | "openrouter" | "ollama" | "none";
 
 export interface ProviderFactoryResult {
   provider: LLMProvider | null;
@@ -18,74 +21,99 @@ export interface ProviderFactoryResult {
  * Reads environment variables and instantiates the correct LLMProvider.
  *
  * Priority order:
- *   1. OPENAI_API_KEY   → OpenAI-compatible (also covers Azure via OPENAI_BASE_URL)
- *   2. ANTHROPIC_API_KEY → Anthropic Claude
- *   3. OLLAMA_URL        → Remote Ollama instance
- *   4. OLLAMA_LOCAL=true → Ollama on localhost:11434
- *   5. (none)            → Agents run in stub mode; pipeline still executes
- *
- * All config is read from process.env — no hardcoded keys.
+ *   1. OPENAI_API_KEY      → OpenAI
+ *   2. ANTHROPIC_API_KEY   → Anthropic Claude
+ *   3. GEMINI_API_KEY      → Google Gemini
+ *   4. OPENROUTER_API_KEY  → OpenRouter (multi-model)
+ *   5. OLLAMA_URL          → Remote Ollama
+ *   6. OLLAMA_LOCAL=true   → Ollama localhost
+ *   7. (none)              → Agents run in stub mode
  *
  * Environment variables:
- *   OPENAI_API_KEY     — OpenAI secret key
- *   OPENAI_BASE_URL    — Optional base URL override (Azure, proxies)
- *   OPENAI_MODEL       — Model name (default: gpt-4o-mini)
- *   ANTHROPIC_API_KEY  — Anthropic secret key
- *   ANTHROPIC_MODEL    — Model name (default: claude-3-5-sonnet-20241022)
- *   OLLAMA_URL         — Remote Ollama base URL
- *   OLLAMA_MODEL       — Model name (default: llama3)
- *   OLLAMA_LOCAL       — "true" to use localhost:11434
+ *   OPENAI_API_KEY, OPENAI_BASE_URL, OPENAI_MODEL
+ *   ANTHROPIC_API_KEY, ANTHROPIC_MODEL
+ *   GEMINI_API_KEY, GEMINI_MODEL
+ *   OPENROUTER_API_KEY, OPENROUTER_MODEL
+ *   OLLAMA_URL, OLLAMA_MODEL, OLLAMA_LOCAL
  */
 export class LLMProviderFactory {
   static create(): ProviderFactoryResult {
-    // ── 1. OpenAI ──────────────────────────────────────────────────────────
+    // 1. OpenAI
     const openaiKey = process.env.OPENAI_API_KEY;
-    const openaiBaseUrl = process.env.OPENAI_BASE_URL;
-    const openaiModel = process.env.OPENAI_MODEL ?? "gpt-4o-mini";
-
-    if (openaiKey && openaiKey.trim().length > 0) {
+    if (openaiKey?.trim()) {
+      const model = process.env.OPENAI_MODEL ?? "gpt-4o-mini";
       const provider = new OpenAIProvider({
         apiKey: openaiKey.trim(),
-        baseURL: openaiBaseUrl?.trim(),
+        baseURL: process.env.OPENAI_BASE_URL?.trim(),
+        model,
       });
       return {
         provider,
         mode: "openai",
-        model: openaiModel,
-        info: `OpenAI provider (model: ${openaiModel}${openaiBaseUrl ? `, base: ${openaiBaseUrl}` : ""})`,
+        model,
+        info: `OpenAI (model: ${model})`,
       };
     }
 
-    // ── 2. Anthropic ───────────────────────────────────────────────────────
+    // 2. Anthropic
     const anthropicKey = process.env.ANTHROPIC_API_KEY;
-    const anthropicModel =
-      process.env.ANTHROPIC_MODEL ?? "claude-3-5-sonnet-20241022";
-
-    if (anthropicKey && anthropicKey.trim().length > 0) {
-      const provider = new AnthropicProvider({ apiKey: anthropicKey.trim() });
+    if (anthropicKey?.trim()) {
+      const model = process.env.ANTHROPIC_MODEL ?? "claude-sonnet-4-20250514";
+      const provider = new AnthropicProvider({
+        apiKey: anthropicKey.trim(),
+        model,
+      });
       return {
         provider,
         mode: "anthropic",
-        model: anthropicModel,
-        info: `Anthropic provider (model: ${anthropicModel})`,
+        model,
+        info: `Anthropic (model: ${model})`,
       };
     }
 
-    // ── 3. Ollama (remote URL) ─────────────────────────────────────────────
+    // 3. Gemini
+    const geminiKey = process.env.GEMINI_API_KEY;
+    if (geminiKey?.trim()) {
+      const model = process.env.GEMINI_MODEL ?? "gemini-2.5-flash";
+      const provider = new GeminiProvider({ apiKey: geminiKey.trim(), model });
+      return {
+        provider,
+        mode: "gemini",
+        model,
+        info: `Gemini (model: ${model})`,
+      };
+    }
+
+    // 4. OpenRouter
+    const openrouterKey = process.env.OPENROUTER_API_KEY;
+    if (openrouterKey?.trim()) {
+      const model = process.env.OPENROUTER_MODEL ?? "openai/gpt-4o-mini";
+      const provider = new OpenRouterProvider({
+        apiKey: openrouterKey.trim(),
+        model,
+      });
+      return {
+        provider,
+        mode: "openrouter",
+        model,
+        info: `OpenRouter (model: ${model})`,
+      };
+    }
+
+    // 5. Ollama (remote)
     const ollamaUrl = process.env.OLLAMA_URL;
     const ollamaModel = process.env.OLLAMA_MODEL ?? "llama3";
-
-    if (ollamaUrl && ollamaUrl.trim().length > 0) {
+    if (ollamaUrl?.trim()) {
       const provider = new OllamaProvider({ baseURL: ollamaUrl.trim() });
       return {
         provider,
         mode: "ollama",
         model: ollamaModel,
-        info: `Ollama provider (url: ${ollamaUrl}, model: ${ollamaModel})`,
+        info: `Ollama (url: ${ollamaUrl}, model: ${ollamaModel})`,
       };
     }
 
-    // ── 4. Ollama (localhost) ──────────────────────────────────────────────
+    // 6. Ollama (localhost)
     if (process.env.OLLAMA_LOCAL === "true") {
       const provider = new OllamaProvider({
         baseURL: "http://localhost:11434",
@@ -94,18 +122,16 @@ export class LLMProviderFactory {
         provider,
         mode: "ollama",
         model: ollamaModel,
-        info: `Ollama provider (localhost:11434, model: ${ollamaModel})`,
+        info: `Ollama (localhost, model: ${ollamaModel})`,
       };
     }
 
-    // ── 5. No provider ─────────────────────────────────────────────────────
+    // 7. No provider
     return {
       provider: null,
       mode: "none",
       model: "",
-      info:
-        "No LLM provider configured — agents running in stub mode. " +
-        "Set OPENAI_API_KEY, ANTHROPIC_API_KEY, or OLLAMA_URL to activate.",
+      info: "No LLM provider configured — agents running in stub mode. Set OPENAI_API_KEY, ANTHROPIC_API_KEY, GEMINI_API_KEY, OPENROUTER_API_KEY, or OLLAMA_URL to activate.",
     };
   }
 }

@@ -6,8 +6,12 @@ import {
   parseProviderError,
 } from "../ai/llmUtils";
 
-export class OpenAIProvider implements LLMProvider {
-  readonly name = "openai";
+/**
+ * OpenRouter provider — routes to multiple LLMs via OpenRouter API.
+ * Uses OpenAI-compatible format.
+ */
+export class OpenRouterProvider implements LLMProvider {
+  readonly name = "openrouter";
   private apiKey: string;
   private baseUrl: string;
   private defaultModel: string;
@@ -22,9 +26,9 @@ export class OpenAIProvider implements LLMProvider {
     timeout?: number;
   }) {
     this.apiKey = config.apiKey;
-    this.baseUrl = config.baseURL ?? "https://api.openai.com/v1";
+    this.baseUrl = config.baseURL ?? "https://openrouter.ai/api/v1";
     this.defaultModel =
-      config.model ?? process.env.OPENAI_MODEL ?? "gpt-4o-mini";
+      config.model ?? process.env.OPENROUTER_MODEL ?? "openai/gpt-4o-mini";
     this.maxRetries = config.maxRetries ?? 2;
     this.defaultTimeout = config.timeout ?? 30000;
   }
@@ -51,8 +55,6 @@ export class OpenAIProvider implements LLMProvider {
           max_tokens: options?.maxTokens ?? 4096,
         };
         if (options?.stop) body.stop = options.stop;
-        if (options?.responseFormat === "json")
-          body.response_format = { type: "json_object" };
 
         const response = await fetchWithTimeout(
           `${this.baseUrl}/chat/completions`,
@@ -61,6 +63,8 @@ export class OpenAIProvider implements LLMProvider {
             headers: {
               "Content-Type": "application/json",
               Authorization: `Bearer ${this.apiKey}`,
+              "HTTP-Referer": "https://roblox-ai-studio.dev",
+              "X-Title": "Roblox AI Studio DevKit",
             },
             body: JSON.stringify(body),
           },
@@ -69,7 +73,7 @@ export class OpenAIProvider implements LLMProvider {
 
         if (!response.ok) {
           const errorBody = await response.json().catch(() => null);
-          throw parseProviderError("openai", response.status, errorBody);
+          throw parseProviderError("openrouter", response.status, errorBody);
         }
 
         const data = (await response.json()) as {
@@ -90,7 +94,7 @@ export class OpenAIProvider implements LLMProvider {
         };
       },
       this.maxRetries,
-      "openai",
+      "openrouter",
     );
   }
 
@@ -102,14 +106,6 @@ export class OpenAIProvider implements LLMProvider {
     const model = options?.model ?? this.defaultModel;
     const timeout = options?.timeout ?? 60000;
 
-    const body: Record<string, unknown> = {
-      model,
-      messages: [{ role: "user", content: prompt }],
-      temperature: options?.temperature ?? 0.7,
-      max_tokens: options?.maxTokens ?? 4096,
-      stream: true,
-    };
-
     const response = await fetchWithTimeout(
       `${this.baseUrl}/chat/completions`,
       {
@@ -118,25 +114,28 @@ export class OpenAIProvider implements LLMProvider {
           "Content-Type": "application/json",
           Authorization: `Bearer ${this.apiKey}`,
         },
-        body: JSON.stringify(body),
+        body: JSON.stringify({
+          model,
+          messages: [{ role: "user", content: prompt }],
+          temperature: options?.temperature ?? 0.7,
+          max_tokens: options?.maxTokens ?? 4096,
+          stream: true,
+        }),
       },
       timeout,
     );
 
     if (!response.ok)
       throw new LLMError(
-        `OpenAI stream error: ${response.status}`,
-        "openai",
+        `OpenRouter stream error: ${response.status}`,
+        "openrouter",
         response.status,
-        false,
       );
-    if (!response.body)
-      throw new LLMError("No response body for streaming", "openai");
+    if (!response.body) throw new LLMError("No response body", "openrouter");
 
     const reader = response.body.getReader();
     const decoder = new TextDecoder();
     let buffer = "";
-
     while (true) {
       const { done, value } = await reader.read();
       if (done) break;
@@ -152,7 +151,7 @@ export class OpenAIProvider implements LLMProvider {
           const content = json.choices[0]?.delta?.content;
           if (content) onChunk(content);
         } catch {
-          /* skip malformed */
+          /* skip */
         }
       }
     }
