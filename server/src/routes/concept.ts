@@ -135,6 +135,158 @@ export function createConceptRouter(agentRegistry: AgentRegistry): Router {
     res.json({ success: true, data: state });
   });
 
+  // POST /api/concept/experience/:pipelineId/pause
+  router.post("/experience/:pipelineId/pause", (req, res) => {
+    const success = pipelineEngine.pause(req.params.pipelineId);
+    if (!success) {
+      res
+        .status(400)
+        .json({ success: false, error: "Cannot pause pipeline (not running)" });
+      return;
+    }
+    res.json({ success: true, data: { status: "paused" } });
+  });
+
+  // POST /api/concept/experience/:pipelineId/resume
+  router.post("/experience/:pipelineId/resume", async (req, res) => {
+    const { pipelineId } = req.params;
+    const state = pipelineEngine.getState(pipelineId);
+    if (!state) {
+      res.status(404).json({ success: false, error: "Pipeline not found" });
+      return;
+    }
+    // Find the concept to get blueprint
+    const concept = concepts.get(state.projectId);
+    const blueprint = (concept as Record<string, unknown>) ?? {};
+
+    try {
+      const result = await pipelineEngine.resumePaused(
+        pipelineId,
+        blueprint,
+        (agentType, input) => agentRegistry.executeAgent(agentType, input),
+      );
+      if (!result) {
+        res
+          .status(400)
+          .json({
+            success: false,
+            error: "Cannot resume pipeline (not paused)",
+          });
+        return;
+      }
+      res.json({
+        success: true,
+        data: { status: result.state.status, pipelineId },
+      });
+    } catch (err) {
+      res
+        .status(500)
+        .json({
+          success: false,
+          error: err instanceof Error ? err.message : "Resume failed",
+        });
+    }
+  });
+
+  // POST /api/concept/experience/:pipelineId/cancel
+  router.post("/experience/:pipelineId/cancel", (req, res) => {
+    const success = pipelineEngine.cancel(req.params.pipelineId);
+    if (!success) {
+      res
+        .status(400)
+        .json({
+          success: false,
+          error: "Cannot cancel pipeline (not running or paused)",
+        });
+      return;
+    }
+    res.json({ success: true, data: { status: "cancelled" } });
+  });
+
+  // POST /api/concept/experience/:pipelineId/retry
+  router.post("/experience/:pipelineId/retry", async (req, res) => {
+    const { pipelineId } = req.params;
+    const state = pipelineEngine.getState(pipelineId);
+    if (!state) {
+      res.status(404).json({ success: false, error: "Pipeline not found" });
+      return;
+    }
+    const concept = concepts.get(state.projectId);
+    const blueprint = (concept as Record<string, unknown>) ?? {};
+
+    try {
+      const result = await pipelineEngine.retry(
+        pipelineId,
+        blueprint,
+        (agentType, input) => agentRegistry.executeAgent(agentType, input),
+      );
+      if (!result) {
+        res
+          .status(400)
+          .json({
+            success: false,
+            error: "Cannot retry pipeline (not failed)",
+          });
+        return;
+      }
+      res.json({
+        success: true,
+        data: { status: result.state.status, pipelineId },
+      });
+    } catch (err) {
+      res
+        .status(500)
+        .json({
+          success: false,
+          error: err instanceof Error ? err.message : "Retry failed",
+        });
+    }
+  });
+
+  // POST /api/concept/experience/:pipelineId/stage/:stage/retry
+  router.post(
+    "/experience/:pipelineId/stage/:stage/retry",
+    async (req, res) => {
+      const { pipelineId, stage } = req.params;
+      const state = pipelineEngine.getState(pipelineId);
+      if (!state) {
+        res.status(404).json({ success: false, error: "Pipeline not found" });
+        return;
+      }
+      const concept = concepts.get(state.projectId);
+      const blueprint = (concept as Record<string, unknown>) ?? {};
+
+      try {
+        const result = await pipelineEngine.retryStage(
+          pipelineId,
+          stage,
+          blueprint,
+          (agentType, input) => agentRegistry.executeAgent(agentType, input),
+        );
+        if (!result) {
+          res
+            .status(400)
+            .json({
+              success: false,
+              error: `Cannot retry stage ${stage} (not failed)`,
+            });
+          return;
+        }
+        res.json({
+          success: true,
+          data: { status: result.state.status, stage },
+        });
+      } catch (err) {
+        res
+          .status(500)
+          .json({
+            success: false,
+            error: err instanceof Error ? err.message : "Stage retry failed",
+          });
+      }
+    },
+  );
+
   // GET /api/concept/experience/history
   router.get("/experience/history", (_req, res) => {
     const history: Array<{

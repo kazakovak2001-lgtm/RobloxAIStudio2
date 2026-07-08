@@ -6,10 +6,21 @@ import {
   Loader2,
   AlertTriangle,
   Clock,
+  Pause,
+  Play,
+  RotateCcw,
+  Ban,
+  ChevronDown,
+  ChevronUp,
 } from "lucide-react";
 import { Card } from "../../../components/ui/Card";
 import {
   getExperienceStatus,
+  pausePipeline,
+  resumePipeline,
+  cancelPipeline,
+  retryPipeline,
+  retryStage,
   type PipelineStatus,
   type PipelineStageStatus,
 } from "../../../services/conceptApi";
@@ -29,6 +40,8 @@ export function GenerationStatusPanel({
 }: GenerationStatusPanelProps) {
   const [status, setStatus] = useState<PipelineStatus | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [isActionLoading, setIsActionLoading] = useState(false);
+  const [expandedStage, setExpandedStage] = useState<string | null>(null);
   const intervalRef = useRef<number | null>(null);
 
   useEffect(() => {
@@ -55,6 +68,11 @@ export function GenerationStatusPanel({
             failedStage?.error ?? "Pipeline failed at unknown stage";
           onFailed?.(errMsg);
           stopPolling();
+        } else if (
+          result.data.status === "cancelled" ||
+          result.data.status === "paused"
+        ) {
+          stopPolling();
         }
       } else {
         setError(result.error ?? "Failed to fetch status");
@@ -74,10 +92,73 @@ export function GenerationStatusPanel({
     }
   };
 
+  const startPolling = () => {
+    if (!pipelineId) return;
+    const poll = async () => {
+      const result = await getExperienceStatus(pipelineId);
+      if (result.success && result.data) {
+        setStatus(result.data);
+        if (
+          result.data.status === "completed" ||
+          result.data.status === "failed" ||
+          result.data.status === "cancelled"
+        ) {
+          stopPolling();
+        }
+      }
+    };
+    poll();
+    intervalRef.current = window.setInterval(poll, POLL_INTERVAL_MS);
+  };
+
+  const handlePause = async () => {
+    if (!pipelineId) return;
+    setIsActionLoading(true);
+    await pausePipeline(pipelineId);
+    setIsActionLoading(false);
+    // Refresh immediately
+    const result = await getExperienceStatus(pipelineId);
+    if (result.success && result.data) setStatus(result.data);
+  };
+
+  const handleResume = async () => {
+    if (!pipelineId) return;
+    setIsActionLoading(true);
+    await resumePipeline(pipelineId);
+    setIsActionLoading(false);
+    startPolling();
+  };
+
+  const handleCancel = async () => {
+    if (!pipelineId) return;
+    setIsActionLoading(true);
+    await cancelPipeline(pipelineId);
+    setIsActionLoading(false);
+    const result = await getExperienceStatus(pipelineId);
+    if (result.success && result.data) setStatus(result.data);
+  };
+
+  const handleRetry = async () => {
+    if (!pipelineId) return;
+    setIsActionLoading(true);
+    await retryPipeline(pipelineId);
+    setIsActionLoading(false);
+    startPolling();
+  };
+
+  const handleRetryStage = async (stageName: string) => {
+    if (!pipelineId) return;
+    setIsActionLoading(true);
+    await retryStage(pipelineId, stageName);
+    setIsActionLoading(false);
+    startPolling();
+  };
+
   if (!pipelineId && !status) {
     return null;
   }
 
+  const pipelineStatus = status?.status ?? "pending";
   const completedCount = status?.completedStages.length ?? 0;
   const totalCount = status?.stages.length ?? 0;
   const progressPct =
@@ -92,7 +173,7 @@ export function GenerationStatusPanel({
     <Card>
       <div className="flex items-center justify-between">
         <p className="text-sm font-semibold text-white">Generation Progress</p>
-        <StatusBadge status={status?.status ?? "pending"} />
+        <StatusBadge status={pipelineStatus} />
       </div>
 
       {/* Progress bar */}
@@ -106,21 +187,87 @@ export function GenerationStatusPanel({
         <div className="mt-1 h-2 w-full overflow-hidden rounded-full bg-white/10">
           <div
             className={`h-full rounded-full transition-all duration-500 ${
-              status?.status === "failed"
+              pipelineStatus === "failed"
                 ? "bg-red-500"
-                : status?.status === "completed"
+                : pipelineStatus === "completed"
                   ? "bg-green-500"
-                  : "bg-brand-500"
+                  : pipelineStatus === "paused"
+                    ? "bg-yellow-500"
+                    : pipelineStatus === "cancelled"
+                      ? "bg-slate-500"
+                      : "bg-brand-500"
             }`}
             style={{ width: `${progressPct}%` }}
           />
         </div>
       </div>
 
-      {/* Stage list */}
-      <div className="mt-3 max-h-64 space-y-1.5 overflow-y-auto">
+      {/* Control buttons */}
+      <div className="mt-3 flex flex-wrap gap-2">
+        {pipelineStatus === "running" && (
+          <>
+            <ControlButton
+              icon={Pause}
+              label="Pause"
+              onClick={handlePause}
+              disabled={isActionLoading}
+              color="text-yellow-400 bg-yellow-500/10 hover:bg-yellow-500/20"
+            />
+            <ControlButton
+              icon={Ban}
+              label="Cancel"
+              onClick={handleCancel}
+              disabled={isActionLoading}
+              color="text-red-400 bg-red-500/10 hover:bg-red-500/20"
+            />
+          </>
+        )}
+        {pipelineStatus === "paused" && (
+          <>
+            <ControlButton
+              icon={Play}
+              label="Resume"
+              onClick={handleResume}
+              disabled={isActionLoading}
+              color="text-green-400 bg-green-500/10 hover:bg-green-500/20"
+            />
+            <ControlButton
+              icon={Ban}
+              label="Cancel"
+              onClick={handleCancel}
+              disabled={isActionLoading}
+              color="text-red-400 bg-red-500/10 hover:bg-red-500/20"
+            />
+          </>
+        )}
+        {pipelineStatus === "failed" && (
+          <ControlButton
+            icon={RotateCcw}
+            label="Retry Failed"
+            onClick={handleRetry}
+            disabled={isActionLoading}
+            color="text-cyan-400 bg-cyan-500/10 hover:bg-cyan-500/20"
+          />
+        )}
+      </div>
+
+      {/* Stage list (timeline) */}
+      <div className="mt-3 max-h-72 space-y-1 overflow-y-auto">
         {status?.stages.map((stage) => (
-          <StageRow key={stage.name} stage={stage} />
+          <StageRow
+            key={stage.name}
+            stage={stage}
+            isExpanded={expandedStage === stage.name}
+            onToggle={() =>
+              setExpandedStage(expandedStage === stage.name ? null : stage.name)
+            }
+            onRetry={
+              stage.status === "failed"
+                ? () => handleRetryStage(stage.name)
+                : undefined
+            }
+            isActionLoading={isActionLoading}
+          />
         ))}
       </div>
 
@@ -146,35 +293,119 @@ export function GenerationStatusPanel({
   );
 }
 
-function StageRow({ stage }: { stage: PipelineStageStatus }) {
+function ControlButton({
+  icon: Icon,
+  label,
+  onClick,
+  disabled,
+  color,
+}: {
+  icon: typeof Pause;
+  label: string;
+  onClick: () => void;
+  disabled: boolean;
+  color: string;
+}) {
   return (
-    <div className="flex items-center justify-between text-xs">
-      <div className="flex items-center gap-2">
-        <StageIcon status={stage.status} />
-        <span
-          className={
-            stage.status === "completed"
-              ? "text-green-300"
-              : stage.status === "running"
-                ? "text-cyan-300"
-                : stage.status === "failed"
-                  ? "text-red-300"
-                  : "text-slate-500"
-          }
-        >
-          {formatStageName(stage.name)}
-        </span>
-      </div>
-      <div className="flex items-center gap-2">
-        {stage.agentId && (
-          <span className="text-slate-600">{stage.agentId}</span>
-        )}
-        {stage.durationMs !== undefined && (
-          <span className="text-slate-600">
-            {(stage.durationMs / 1000).toFixed(1)}s
+    <button
+      onClick={onClick}
+      disabled={disabled}
+      className={`flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-[11px] font-medium transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${color}`}
+    >
+      <Icon className="h-3 w-3" /> {label}
+    </button>
+  );
+}
+
+function StageRow({
+  stage,
+  isExpanded,
+  onToggle,
+  onRetry,
+  isActionLoading,
+}: {
+  stage: PipelineStageStatus;
+  isExpanded: boolean;
+  onToggle: () => void;
+  onRetry?: () => void;
+  isActionLoading: boolean;
+}) {
+  return (
+    <div>
+      <button
+        onClick={onToggle}
+        className="flex w-full items-center justify-between rounded-lg px-2 py-1.5 text-xs transition-colors hover:bg-white/5"
+      >
+        <div className="flex items-center gap-2">
+          <StageIcon status={stage.status} />
+          <span
+            className={
+              stage.status === "completed"
+                ? "text-green-300"
+                : stage.status === "running"
+                  ? "text-cyan-300"
+                  : stage.status === "failed"
+                    ? "text-red-300"
+                    : "text-slate-500"
+            }
+          >
+            {formatStageName(stage.name)}
           </span>
-        )}
-      </div>
+        </div>
+        <div className="flex items-center gap-2">
+          {stage.durationMs !== undefined && (
+            <span className="text-slate-600">
+              {(stage.durationMs / 1000).toFixed(1)}s
+            </span>
+          )}
+          {isExpanded ? (
+            <ChevronUp className="h-3 w-3 text-slate-500" />
+          ) : (
+            <ChevronDown className="h-3 w-3 text-slate-500" />
+          )}
+        </div>
+      </button>
+
+      {isExpanded && (
+        <div className="ml-6 mt-1 mb-1 space-y-1 rounded-lg border border-white/5 bg-white/[0.02] p-2 text-[11px]">
+          <p className="text-slate-400">
+            Agent:{" "}
+            <span className="text-slate-300">{stage.agentId ?? "none"}</span>
+          </p>
+          <p className="text-slate-400">
+            Status: <span className="text-slate-300">{stage.status}</span>
+          </p>
+          {stage.startedAt && (
+            <p className="text-slate-400">
+              Started:{" "}
+              <span className="text-slate-300">
+                {new Date(stage.startedAt).toLocaleTimeString()}
+              </span>
+            </p>
+          )}
+          {stage.durationMs !== undefined && (
+            <p className="text-slate-400">
+              Duration:{" "}
+              <span className="text-slate-300">
+                {(stage.durationMs / 1000).toFixed(2)}s
+              </span>
+            </p>
+          )}
+          {stage.error && <p className="text-red-400">Error: {stage.error}</p>}
+          {onRetry && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onRetry();
+              }}
+              disabled={isActionLoading}
+              className="mt-1 flex items-center gap-1 rounded-md bg-cyan-500/10 px-2 py-1 text-[10px] text-cyan-400 hover:bg-cyan-500/20 disabled:opacity-40"
+            >
+              <RotateCcw className="h-2.5 w-2.5" /> Retry this stage
+            </button>
+          )}
+        </div>
+      )}
     </div>
   );
 }
@@ -201,6 +432,8 @@ function StatusBadge({ status }: { status: string }) {
     completed: "text-green-400 bg-green-500/10",
     failed: "text-red-400 bg-red-500/10",
     recovering: "text-yellow-400 bg-yellow-500/10",
+    paused: "text-yellow-400 bg-yellow-500/10",
+    cancelled: "text-slate-400 bg-slate-500/10",
   };
   const color = colors[status] ?? colors.pending;
 

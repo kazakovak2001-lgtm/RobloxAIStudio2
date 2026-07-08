@@ -91,7 +91,14 @@ export interface PipelineStatus {
   completedStages: string[];
   failedStages: string[];
   stages: PipelineStageStatus[];
-  status: "pending" | "running" | "completed" | "failed" | "recovering";
+  status:
+    | "pending"
+    | "running"
+    | "completed"
+    | "failed"
+    | "recovering"
+    | "paused"
+    | "cancelled";
   startedAt: number;
   finishedAt?: number;
 }
@@ -356,6 +363,122 @@ export async function getReviewSummary(
     if (!res.ok)
       return { success: false, error: json.error ?? `HTTP ${res.status}` };
     return { success: true, data: json.data };
+  } catch (err) {
+    return {
+      success: false,
+      error: err instanceof Error ? err.message : "Network error",
+    };
+  }
+}
+
+/**
+ * Pause a running pipeline.
+ */
+export async function pausePipeline(
+  pipelineId: string,
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    const res = await fetch(`/api/concept/experience/${pipelineId}/pause`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+    });
+    const json = await res.json();
+    if (!res.ok)
+      return { success: false, error: json.error ?? `HTTP ${res.status}` };
+    return { success: true };
+  } catch (err) {
+    return {
+      success: false,
+      error: err instanceof Error ? err.message : "Network error",
+    };
+  }
+}
+
+/**
+ * Resume a paused pipeline.
+ */
+export async function resumePipeline(
+  pipelineId: string,
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    const res = await fetch(`/api/concept/experience/${pipelineId}/resume`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+    });
+    const json = await res.json();
+    if (!res.ok)
+      return { success: false, error: json.error ?? `HTTP ${res.status}` };
+    return { success: true };
+  } catch (err) {
+    return {
+      success: false,
+      error: err instanceof Error ? err.message : "Network error",
+    };
+  }
+}
+
+/**
+ * Cancel a running or paused pipeline.
+ */
+export async function cancelPipeline(
+  pipelineId: string,
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    const res = await fetch(`/api/concept/experience/${pipelineId}/cancel`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+    });
+    const json = await res.json();
+    if (!res.ok)
+      return { success: false, error: json.error ?? `HTTP ${res.status}` };
+    return { success: true };
+  } catch (err) {
+    return {
+      success: false,
+      error: err instanceof Error ? err.message : "Network error",
+    };
+  }
+}
+
+/**
+ * Retry a failed pipeline from the failed stage.
+ */
+export async function retryPipeline(
+  pipelineId: string,
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    const res = await fetch(`/api/concept/experience/${pipelineId}/retry`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+    });
+    const json = await res.json();
+    if (!res.ok)
+      return { success: false, error: json.error ?? `HTTP ${res.status}` };
+    return { success: true };
+  } catch (err) {
+    return {
+      success: false,
+      error: err instanceof Error ? err.message : "Network error",
+    };
+  }
+}
+
+/**
+ * Retry a specific failed stage.
+ */
+export async function retryStage(
+  pipelineId: string,
+  stage: string,
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    const res = await fetch(
+      `/api/concept/experience/${pipelineId}/stage/${stage}/retry`,
+      { method: "POST", headers: { "Content-Type": "application/json" } },
+    );
+    const json = await res.json();
+    if (!res.ok)
+      return { success: false, error: json.error ?? `HTTP ${res.status}` };
+    return { success: true };
   } catch (err) {
     return {
       success: false,

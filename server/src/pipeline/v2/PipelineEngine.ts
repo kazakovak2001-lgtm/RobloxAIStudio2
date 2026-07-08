@@ -176,4 +176,106 @@ export class PipelineEngine {
   getReviewSummary(pipelineId: string) {
     return this.artifactStore.getReviewSummary(pipelineId);
   }
+
+  /**
+   * Pause a running pipeline.
+   */
+  pause(pipelineId: string): boolean {
+    const state = this.runs.get(pipelineId);
+    if (!state || state.status !== "running") return false;
+    state.status = "paused";
+    this.events.emit({
+      type: "pipeline.paused",
+      pipelineId,
+      projectId: state.projectId,
+      timestamp: Date.now(),
+    });
+    return true;
+  }
+
+  /**
+   * Resume a paused pipeline. Requires agentExecutor and blueprint to continue execution.
+   */
+  async resumePaused(
+    pipelineId: string,
+    blueprint: Record<string, unknown>,
+    agentExecutor: AgentExecutorFn,
+  ): Promise<PipelineResult | null> {
+    const state = this.runs.get(pipelineId);
+    if (!state || state.status !== "paused") return null;
+    state.status = "running";
+    const result = await this.executor.resume(state, blueprint, agentExecutor);
+    this.runs.set(result.state.pipelineId, result.state);
+    this.storeArtifactsFromState(result.state);
+    return result;
+  }
+
+  /**
+   * Cancel a running or paused pipeline.
+   */
+  cancel(pipelineId: string): boolean {
+    const state = this.runs.get(pipelineId);
+    if (!state || (state.status !== "running" && state.status !== "paused")) {
+      return false;
+    }
+    state.status = "cancelled";
+    state.currentStage = null;
+    state.finishedAt = Date.now();
+    this.events.emit({
+      type: "pipeline.cancelled",
+      pipelineId,
+      projectId: state.projectId,
+      timestamp: Date.now(),
+    });
+    return true;
+  }
+
+  /**
+   * Retry a failed pipeline from the failed stage.
+   */
+  async retry(
+    pipelineId: string,
+    blueprint: Record<string, unknown>,
+    agentExecutor: AgentExecutorFn,
+  ): Promise<PipelineResult | null> {
+    const state = this.runs.get(pipelineId);
+    if (!state || state.status !== "failed") return null;
+    const result = await this.executor.resume(state, blueprint, agentExecutor);
+    this.runs.set(result.state.pipelineId, result.state);
+    this.storeArtifactsFromState(result.state);
+    return result;
+  }
+
+  /**
+   * Retry a specific stage within a pipeline.
+   */
+  async retryStage(
+    pipelineId: string,
+    stageName: string,
+    blueprint: Record<string, unknown>,
+    agentExecutor: AgentExecutorFn,
+  ): Promise<PipelineResult | null> {
+    const state = this.runs.get(pipelineId);
+    if (!state) return null;
+
+    const stage = state.stages.find((s) => s.name === stageName);
+    if (!stage || stage.status !== "failed") return null;
+
+    // Reset only this specific stage
+    stage.status = "pending";
+    stage.error = undefined;
+    stage.output = undefined;
+    state.failedStages = state.failedStages.filter((s) => s !== stageName);
+    state.status = "running";
+
+    const result = await this.executor.execute(
+      state.projectId,
+      blueprint,
+      agentExecutor,
+      state,
+    );
+    this.runs.set(result.state.pipelineId, result.state);
+    this.storeArtifactsFromState(result.state);
+    return result;
+  }
 }

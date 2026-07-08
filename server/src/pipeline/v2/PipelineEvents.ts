@@ -6,6 +6,8 @@ import type { StageName, PipelineStatus } from "./PipelineStage";
 
 export type PipelineEventType =
   | "pipeline.started"
+  | "pipeline.paused"
+  | "pipeline.cancelled"
   | "stage.started"
   | "stage.completed"
   | "stage.failed"

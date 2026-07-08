@@ -17,7 +17,13 @@ export type StageName =
   | "DOCUMENTATION"
   | "EXPORT";
 export type PipelineStatus =
-  "pending" | "running" | "completed" | "failed" | "recovering";
+  | "pending"
+  | "running"
+  | "completed"
+  | "failed"
+  | "recovering"
+  | "paused"
+  | "cancelled";
 export type StageStatus =
   "pending" | "running" | "completed" | "failed" | "skipped";
 
