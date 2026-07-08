@@ -5,21 +5,32 @@ import { Button } from "../components/ui/Button";
 import { Card } from "../components/ui/Card";
 import { listProjects, type Project } from "../services/projectService";
 import { getActiveProvider } from "../services/aiEngine";
+import {
+  getSystemStatus,
+  getAgents,
+  type AgentInfo,
+} from "../services/systemApi";
 
 export default function DashboardPage() {
   const [projects, setProjects] = useState<Project[]>([]);
   const [provider, setProvider] = useState("loading...");
+  const [agents, setAgents] = useState<AgentInfo[]>([]);
+  const [systemVersion, setSystemVersion] = useState("");
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const load = async () => {
       setLoading(true);
-      const [projs, prov] = await Promise.all([
+      const [projs, prov, status, agentList] = await Promise.all([
         listProjects(),
         getActiveProvider(),
+        getSystemStatus(),
+        getAgents(),
       ]);
       setProjects(projs);
       setProvider(prov);
+      setAgents(agentList);
+      if (status) setSystemVersion(status.version);
       setLoading(false);
     };
     void load();
@@ -76,7 +87,9 @@ export default function DashboardPage() {
           </Card>
           <Card>
             <p className="text-sm text-slate-400">Platform</p>
-            <p className="mt-3 text-2xl font-semibold text-white">v3.0 Beta</p>
+            <p className="mt-3 text-2xl font-semibold text-white">
+              {systemVersion || "v1.6"}
+            </p>
           </Card>
         </div>
 
@@ -142,21 +155,20 @@ export default function DashboardPage() {
                 </div>
               </div>
               <div className="mt-4 space-y-3">
-                {[
-                  "Planner",
-                  "Designer",
-                  "Architect",
-                  "Builder",
-                  "Validator",
-                ].map((agent) => (
+                {agents.slice(0, 6).map((agent) => (
                   <div
-                    key={agent}
+                    key={agent.id}
                     className="flex items-center justify-between rounded-2xl border border-white/10 bg-white/5 px-3 py-3 text-sm text-slate-300"
                   >
-                    <span>{agent}</span>
-                    <span className="text-brand-300">Ready</span>
+                    <span>{agent.name}</span>
+                    <span className="text-xs text-slate-500">
+                      v{agent.version}
+                    </span>
                   </div>
                 ))}
+                {agents.length === 0 && !loading && (
+                  <p className="text-xs text-slate-500">No agents loaded</p>
+                )}
               </div>
             </Card>
             <Card>

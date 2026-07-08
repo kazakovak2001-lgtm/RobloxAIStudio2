@@ -413,6 +413,10 @@ executionCoordinator.initialize();
 app.use("/api/distributed", createDistributedRouter(executionCoordinator));
 app.use("/api/analytics", createAnalyticsRouter());
 
+// System status API
+import { createSystemRouter } from "./routes/system";
+app.use("/api/system", createSystemRouter());
+
 // Root endpoint
 app.get("/", (_req: Request, res: Response) => {
   res.json({
