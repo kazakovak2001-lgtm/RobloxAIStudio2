@@ -1,10 +1,11 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowRight, Sparkles } from "lucide-react";
+import { ArrowRight, Sparkles, Loader2 } from "lucide-react";
 import { AppLayout } from "../layouts/AppLayout";
 import { Button } from "../components/ui/Button";
 import { Card } from "../components/ui/Card";
 import { createProject } from "../services/projectService";
+import { generateConcept, type GameConcept } from "../services/conceptApi";
 
 export default function NewProjectPage() {
   const navigate = useNavigate();
@@ -14,6 +15,7 @@ export default function NewProjectPage() {
   const [genre, setGenre] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [concept, setConcept] = useState<GameConcept | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -29,19 +31,33 @@ export default function NewProjectPage() {
     setIsSubmitting(true);
     setError(null);
 
-    const project = await createProject({
-      name: name.trim(),
-      type: type.trim(),
-      genre: genre.trim() || type.trim(),
-      description: description.trim(),
+    // Step 1: Generate AI concept
+    const conceptResult = await generateConcept({
+      gameDescription: `${name} - ${description || type}`,
+      genre: genre || type,
+      style: type,
     });
 
-    setIsSubmitting(false);
+    if (conceptResult.success && conceptResult.data) {
+      setConcept(conceptResult.data);
 
-    if (project) {
-      navigate(`/projects/${project.id}`);
+      // Step 2: Create project in backend
+      const project = await createProject({
+        name: name.trim(),
+        type: type.trim(),
+        genre: genre.trim() || type.trim(),
+        description: description.trim(),
+      });
+      setIsSubmitting(false);
+
+      if (project) {
+        navigate(`/projects/${project.id}`);
+      } else {
+        setError("Project created but failed to save. Check backend.");
+      }
     } else {
-      setError("Failed to create project. Is the backend running?");
+      setIsSubmitting(false);
+      setError(conceptResult.error ?? "Concept generation failed");
     }
   };
 
@@ -120,26 +136,57 @@ export default function NewProjectPage() {
           <Card>
             <div className="flex items-center gap-3">
               <div className="rounded-2xl bg-brand-500/10 p-2 text-brand-300">
-                <Sparkles className="h-5 w-5" />
+                {isSubmitting ? (
+                  <Loader2 className="h-5 w-5 animate-spin" />
+                ) : (
+                  <Sparkles className="h-5 w-5" />
+                )}
               </div>
               <div>
-                <p className="text-sm text-slate-400">AI-Powered</p>
+                <p className="text-sm text-slate-400">
+                  {concept ? "Concept Generated" : "AI-Powered"}
+                </p>
                 <h2 className="text-xl font-semibold text-white">
-                  Generation Pipeline
+                  {concept?.title ?? "Generation Pipeline"}
                 </h2>
               </div>
             </div>
-            <div className="mt-6 space-y-3 text-sm text-slate-400">
-              <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
-                Planner agent structures gameplay loops and objectives.
+            {concept ? (
+              <div className="mt-4 space-y-3 text-sm">
+                <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
+                  <p className="text-xs text-slate-500">Gameplay Loop</p>
+                  <p className="text-slate-300">{concept.gameplayLoop}</p>
+                </div>
+                <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
+                  <p className="text-xs text-slate-500">Features</p>
+                  <p className="text-slate-300">
+                    {concept.features.slice(0, 4).join(", ")}
+                  </p>
+                </div>
+                <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
+                  <p className="text-xs text-slate-500">Systems</p>
+                  <p className="text-slate-300">
+                    {concept.systemsPlan.join(", ")}
+                  </p>
+                </div>
+                <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
+                  <p className="text-xs text-slate-500">UI Screens</p>
+                  <p className="text-slate-300">{concept.uiPlan.join(", ")}</p>
+                </div>
               </div>
-              <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
-                Designer agent defines UI, progression, and economy.
+            ) : (
+              <div className="mt-6 space-y-3 text-sm text-slate-400">
+                <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
+                  Planner agent structures gameplay loops and objectives.
+                </div>
+                <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
+                  Designer agent defines UI, progression, and economy.
+                </div>
+                <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
+                  Builder agents generate Lua scripts and assets.
+                </div>
               </div>
-              <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
-                Builder agents generate Lua scripts and assets.
-              </div>
-            </div>
+            )}
           </Card>
         </div>
       </div>

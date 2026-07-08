@@ -417,6 +417,10 @@ app.use("/api/analytics", createAnalyticsRouter());
 import { createSystemRouter } from "./routes/system";
 app.use("/api/system", createSystemRouter());
 
+// Concept & Experience generation API
+import { createConceptRouter } from "./routes/concept";
+app.use("/api/concept", createConceptRouter(agentRegistry));
+
 // Root endpoint
 app.get("/", (_req: Request, res: Response) => {
   res.json({
