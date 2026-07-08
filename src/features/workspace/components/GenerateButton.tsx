@@ -1,12 +1,14 @@
 import { useEffect, useState } from "react";
 import { Sparkles, Loader2 } from "lucide-react";
 import { runAgentPipeline } from "../../../services/aiEngine";
+import { generateExperience } from "../../../services/conceptApi";
 
 type GenerationStatus =
   "idle" | "queued" | "running" | "validating" | "completed" | "failed";
 
 interface GenerateButtonProps {
   projectId: string;
+  conceptId?: string;
   pipelineStatus: string;
   onStarted?: (executionId: string) => void;
   onError?: (error: string) => void;
@@ -14,6 +16,7 @@ interface GenerateButtonProps {
 
 export function GenerateButton({
   projectId,
+  conceptId,
   pipelineStatus,
   onStarted,
   onError,
@@ -38,6 +41,22 @@ export function GenerateButton({
     setStatus("queued");
     setError(null);
 
+    // If we have a conceptId, use the concept experience pipeline
+    if (conceptId) {
+      const result = await generateExperience(conceptId);
+      if (result.success && result.data) {
+        setStatus("running");
+        onStarted?.(result.data.pipelineId);
+      } else {
+        setStatus("failed");
+        const msg = result.error ?? "Experience generation failed to start";
+        setError(msg);
+        onError?.(msg);
+      }
+      return;
+    }
+
+    // Fallback: use the classic project generate endpoint
     const result = await runAgentPipeline(projectId);
 
     if (result.success && result.executionId) {

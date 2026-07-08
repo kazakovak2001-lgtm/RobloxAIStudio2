@@ -29,12 +29,10 @@ export function createConceptRouter(agentRegistry: AgentRegistry): Router {
       typeof gameDescription !== "string" ||
       gameDescription.trim().length < 5
     ) {
-      res
-        .status(400)
-        .json({
-          success: false,
-          error: "gameDescription is required (min 5 chars)",
-        });
+      res.status(400).json({
+        success: false,
+        error: "gameDescription is required (min 5 chars)",
+      });
       return;
     }
 
@@ -94,12 +92,10 @@ export function createConceptRouter(agentRegistry: AgentRegistry): Router {
     const concept = concepts.get(conceptId);
 
     if (!concept) {
-      res
-        .status(404)
-        .json({
-          success: false,
-          error: "Concept not found. Generate a concept first.",
-        });
+      res.status(404).json({
+        success: false,
+        error: "Concept not found. Generate a concept first.",
+      });
       return;
     }
 
@@ -122,17 +118,14 @@ export function createConceptRouter(agentRegistry: AgentRegistry): Router {
         },
       });
     } catch (err) {
-      res
-        .status(500)
-        .json({
-          success: false,
-          error:
-            err instanceof Error ? err.message : "Pipeline execution failed",
-        });
+      res.status(500).json({
+        success: false,
+        error: err instanceof Error ? err.message : "Pipeline execution failed",
+      });
     }
   });
 
-  // GET /api/experience/status/:pipelineId
+  // GET /api/concept/experience/status/:pipelineId
   router.get("/experience/status/:pipelineId", (req, res) => {
     const state = pipelineEngine.getState(req.params.pipelineId);
     if (!state) {
@@ -140,6 +133,58 @@ export function createConceptRouter(agentRegistry: AgentRegistry): Router {
       return;
     }
     res.json({ success: true, data: state });
+  });
+
+  // GET /api/concept/experience/history
+  router.get("/experience/history", (_req, res) => {
+    const history: Array<{
+      pipelineId: string;
+      projectId: string;
+      status: string;
+      startedAt: number;
+      finishedAt?: number;
+      completedStages: string[];
+      failedStages: string[];
+      stageCount: number;
+    }> = [];
+
+    for (const [conceptId] of concepts.entries()) {
+      // Find all pipeline runs associated with this concept
+      const pipelineState = pipelineEngine.getState(conceptId);
+      if (!pipelineState) continue;
+      history.push({
+        pipelineId: pipelineState.pipelineId,
+        projectId: pipelineState.projectId,
+        status: pipelineState.status,
+        startedAt: pipelineState.startedAt,
+        finishedAt: pipelineState.finishedAt,
+        completedStages: pipelineState.completedStages,
+        failedStages: pipelineState.failedStages,
+        stageCount: pipelineState.stages.length,
+      });
+    }
+
+    // Also check all known pipeline runs
+    const allRuns = pipelineEngine.getAllStates();
+    for (const state of allRuns) {
+      if (!history.find((h) => h.pipelineId === state.pipelineId)) {
+        history.push({
+          pipelineId: state.pipelineId,
+          projectId: state.projectId,
+          status: state.status,
+          startedAt: state.startedAt,
+          finishedAt: state.finishedAt,
+          completedStages: state.completedStages,
+          failedStages: state.failedStages,
+          stageCount: state.stages.length,
+        });
+      }
+    }
+
+    // Sort by startedAt descending
+    history.sort((a, b) => b.startedAt - a.startedAt);
+
+    res.json({ success: true, data: history });
   });
 
   return router;

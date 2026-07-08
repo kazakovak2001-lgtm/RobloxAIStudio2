@@ -63,6 +63,13 @@ export class PipelineEngine {
   }
 
   /**
+   * Get all pipeline states (for history).
+   */
+  getAllStates(): PipelineState[] {
+    return Array.from(this.runs.values());
+  }
+
+  /**
    * Subscribe to pipeline events.
    */
   onEvent(handler: PipelineEventHandler): void {

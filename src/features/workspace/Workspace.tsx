@@ -9,6 +9,8 @@ import { TokenUsage } from "./components/TokenUsage";
 import { ProjectSummary } from "./components/ProjectSummary";
 import { ActivityFeed } from "./components/ActivityFeed";
 import { GenerateButton } from "./components/GenerateButton";
+import { GenerationStatusPanel } from "./components/GenerationStatusPanel";
+import { GenerationHistoryPanel } from "./components/GenerationHistoryPanel";
 import { ValidationResults } from "./components/ValidationResults";
 import { PipelineStatusBar } from "./components/PipelineStatusBar";
 import { PipelineStatusViewer } from "./components/PipelineStatusViewer";
@@ -28,6 +30,8 @@ export default function WorkspacePage() {
   const { state, events, status, isConnected } = usePipelineStream(id);
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(true);
+  const [activePipelineId, setActivePipelineId] = useState<string | null>(null);
+  const [historyRefresh, setHistoryRefresh] = useState(0);
 
   const agents = state?.agents ?? [];
   const logs = useMemo(() => {
@@ -113,17 +117,36 @@ export default function WorkspacePage() {
               <GenerateButton
                 projectId={id ?? ""}
                 pipelineStatus={status}
-                onStarted={(execId) =>
+                onStarted={(execId) => {
+                  setActivePipelineId(execId);
                   toast({
                     variant: "info",
                     title: "Generation started",
                     description: `Execution: ${execId}`,
-                  })
-                }
+                  });
+                }}
                 onError={(err) =>
                   toast({
                     variant: "error",
                     title: "Generation failed",
+                    description: err,
+                  })
+                }
+              />
+              <GenerationStatusPanel
+                pipelineId={activePipelineId}
+                onCompleted={() => {
+                  setHistoryRefresh((prev) => prev + 1);
+                  toast({
+                    variant: "success",
+                    title: "Generation complete",
+                    description: "All pipeline stages finished.",
+                  });
+                }}
+                onFailed={(err) =>
+                  toast({
+                    variant: "error",
+                    title: "Pipeline failed",
                     description: err,
                   })
                 }
@@ -148,6 +171,7 @@ export default function WorkspacePage() {
             <div className="space-y-4">
               <ActivityFeed events={events} />
               <ValidationResults />
+              <GenerationHistoryPanel refreshTrigger={historyRefresh} />
               <StudioBridgePanel projectId={id ?? ""} status={status} />
               <ProjectSummary
                 agents={agents.length}
