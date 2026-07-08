@@ -15,6 +15,8 @@ export {
   ArtifactStore,
   type PipelineArtifact,
   type ArtifactType,
+  type ReviewStatus,
+  type ReviewSummary,
 } from "./ArtifactStore";
 export {
   STAGE_ORDER,

@@ -126,4 +126,54 @@ export class PipelineEngine {
   getArtifact(artifactId: string): PipelineArtifact | null {
     return this.artifactStore.getById(artifactId);
   }
+
+  /**
+   * Approve an artifact.
+   */
+  approveArtifact(
+    artifactId: string,
+    reviewedBy: string,
+  ): PipelineArtifact | null {
+    return this.artifactStore.approve(artifactId, reviewedBy);
+  }
+
+  /**
+   * Reject an artifact.
+   */
+  rejectArtifact(
+    artifactId: string,
+    reviewedBy: string,
+    comment?: string,
+  ): PipelineArtifact | null {
+    return this.artifactStore.reject(artifactId, reviewedBy, comment);
+  }
+
+  /**
+   * Add a comment to an artifact.
+   */
+  commentArtifact(
+    artifactId: string,
+    reviewedBy: string,
+    comment: string,
+  ): PipelineArtifact | null {
+    return this.artifactStore.comment(artifactId, reviewedBy, comment);
+  }
+
+  /**
+   * Edit artifact content.
+   */
+  editArtifact(
+    artifactId: string,
+    newContent: unknown,
+    editedBy: string,
+  ): PipelineArtifact | null {
+    return this.artifactStore.edit(artifactId, newContent, editedBy);
+  }
+
+  /**
+   * Get review summary for a pipeline.
+   */
+  getReviewSummary(pipelineId: string) {
+    return this.artifactStore.getReviewSummary(pipelineId);
+  }
 }

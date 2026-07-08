@@ -16,7 +16,13 @@ export interface PipelineArtifact {
   content: unknown;
   sizeBytes: number;
   validated: boolean;
+  reviewStatus: ReviewStatus;
+  reviewComment?: string;
+  reviewedAt?: number;
+  reviewedBy?: string;
 }
+
+export type ReviewStatus = "pending" | "approved" | "rejected" | "edited";
 
 export type ArtifactType =
   | "json"
@@ -73,6 +79,7 @@ export class ArtifactStore {
       content,
       sizeBytes: Buffer.byteLength(serialized, "utf8"),
       validated: false,
+      reviewStatus: "pending",
     };
 
     this.artifacts.set(artifact.id, artifact);
@@ -117,4 +124,94 @@ export class ArtifactStore {
   get count(): number {
     return this.artifacts.size;
   }
+
+  /**
+   * Approve an artifact.
+   */
+  approve(artifactId: string, reviewedBy: string): PipelineArtifact | null {
+    const artifact = this.artifacts.get(artifactId);
+    if (!artifact) return null;
+    artifact.reviewStatus = "approved";
+    artifact.reviewedAt = Date.now();
+    artifact.reviewedBy = reviewedBy;
+    artifact.validated = true;
+    return artifact;
+  }
+
+  /**
+   * Reject an artifact.
+   */
+  reject(
+    artifactId: string,
+    reviewedBy: string,
+    comment?: string,
+  ): PipelineArtifact | null {
+    const artifact = this.artifacts.get(artifactId);
+    if (!artifact) return null;
+    artifact.reviewStatus = "rejected";
+    artifact.reviewedAt = Date.now();
+    artifact.reviewedBy = reviewedBy;
+    if (comment) artifact.reviewComment = comment;
+    return artifact;
+  }
+
+  /**
+   * Add a comment to an artifact.
+   */
+  comment(
+    artifactId: string,
+    reviewedBy: string,
+    comment: string,
+  ): PipelineArtifact | null {
+    const artifact = this.artifacts.get(artifactId);
+    if (!artifact) return null;
+    artifact.reviewComment = comment;
+    artifact.reviewedBy = reviewedBy;
+    artifact.reviewedAt = Date.now();
+    return artifact;
+  }
+
+  /**
+   * Update artifact content (marks as edited).
+   */
+  edit(
+    artifactId: string,
+    newContent: unknown,
+    editedBy: string,
+  ): PipelineArtifact | null {
+    const artifact = this.artifacts.get(artifactId);
+    if (!artifact) return null;
+    artifact.content = newContent;
+    artifact.sizeBytes = Buffer.byteLength(JSON.stringify(newContent), "utf8");
+    artifact.reviewStatus = "edited";
+    artifact.reviewedAt = Date.now();
+    artifact.reviewedBy = editedBy;
+    return artifact;
+  }
+
+  /**
+   * Get review summary for a pipeline.
+   */
+  getReviewSummary(pipelineId: string): ReviewSummary {
+    const artifacts = this.getByPipeline(pipelineId);
+    return {
+      total: artifacts.length,
+      approved: artifacts.filter((a) => a.reviewStatus === "approved").length,
+      rejected: artifacts.filter((a) => a.reviewStatus === "rejected").length,
+      edited: artifacts.filter((a) => a.reviewStatus === "edited").length,
+      pending: artifacts.filter((a) => a.reviewStatus === "pending").length,
+      allApproved: artifacts.every(
+        (a) => a.reviewStatus === "approved" || a.reviewStatus === "edited",
+      ),
+    };
+  }
+}
+
+export interface ReviewSummary {
+  total: number;
+  approved: number;
+  rejected: number;
+  edited: number;
+  pending: number;
+  allApproved: boolean;
 }

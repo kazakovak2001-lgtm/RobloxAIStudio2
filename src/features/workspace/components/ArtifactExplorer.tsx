@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import {
   FileJson,
   FileCode,
@@ -8,26 +8,50 @@ import {
   Image,
   ChevronRight,
   Loader2,
+  CheckCircle,
+  XCircle,
+  MessageSquare,
+  Pencil,
+  Save,
 } from "lucide-react";
 import { Card } from "../../../components/ui/Card";
 import {
   getArtifacts,
   getArtifactDetail,
+  approveArtifact,
+  rejectArtifact,
+  commentArtifact,
+  editArtifact,
   type ArtifactSummary,
   type ArtifactDetail,
   type ArtifactType,
+  type ReviewStatus,
 } from "../../../services/conceptApi";
 
 interface ArtifactExplorerProps {
   pipelineId: string | null;
+  onReviewChange?: () => void;
 }
 
-export function ArtifactExplorer({ pipelineId }: ArtifactExplorerProps) {
+export function ArtifactExplorer({
+  pipelineId,
+  onReviewChange,
+}: ArtifactExplorerProps) {
   const [artifacts, setArtifacts] = useState<ArtifactSummary[]>([]);
   const [selectedArtifact, setSelectedArtifact] =
     useState<ArtifactDetail | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isDetailLoading, setIsDetailLoading] = useState(false);
+
+  const loadArtifacts = useCallback(async () => {
+    if (!pipelineId) return;
+    setIsLoading(true);
+    const result = await getArtifacts(pipelineId);
+    if (result.success && result.data) {
+      setArtifacts(result.data);
+    }
+    setIsLoading(false);
+  }, [pipelineId]);
 
   useEffect(() => {
     if (!pipelineId) {
@@ -35,17 +59,8 @@ export function ArtifactExplorer({ pipelineId }: ArtifactExplorerProps) {
       setSelectedArtifact(null);
       return;
     }
-
-    const load = async () => {
-      setIsLoading(true);
-      const result = await getArtifacts(pipelineId);
-      if (result.success && result.data) {
-        setArtifacts(result.data);
-      }
-      setIsLoading(false);
-    };
-    load();
-  }, [pipelineId]);
+    loadArtifacts();
+  }, [pipelineId, loadArtifacts]);
 
   const handleSelect = async (artifactId: string) => {
     setIsDetailLoading(true);
@@ -54,6 +69,17 @@ export function ArtifactExplorer({ pipelineId }: ArtifactExplorerProps) {
       setSelectedArtifact(result.data);
     }
     setIsDetailLoading(false);
+  };
+
+  const handleReviewAction = async () => {
+    await loadArtifacts();
+    if (selectedArtifact) {
+      const refreshed = await getArtifactDetail(selectedArtifact.id);
+      if (refreshed.success && refreshed.data) {
+        setSelectedArtifact(refreshed.data);
+      }
+    }
+    onReviewChange?.();
   };
 
   if (!pipelineId) return null;
@@ -95,7 +121,10 @@ export function ArtifactExplorer({ pipelineId }: ArtifactExplorerProps) {
       )}
 
       {selectedArtifact && !isDetailLoading && (
-        <ArtifactDetailViewer artifact={selectedArtifact} />
+        <ArtifactDetailViewer
+          artifact={selectedArtifact}
+          onReviewAction={handleReviewAction}
+        />
       )}
     </Card>
   );
@@ -132,14 +161,84 @@ function ArtifactRow({
           </p>
         </div>
       </div>
-      <ChevronRight
-        className={`h-3 w-3 ${isSelected ? "text-brand-400" : "text-slate-600"}`}
-      />
+      <div className="flex items-center gap-1.5">
+        <ReviewBadge status={artifact.reviewStatus} />
+        <ChevronRight
+          className={`h-3 w-3 ${isSelected ? "text-brand-400" : "text-slate-600"}`}
+        />
+      </div>
     </button>
   );
 }
 
-function ArtifactDetailViewer({ artifact }: { artifact: ArtifactDetail }) {
+function ArtifactDetailViewer({
+  artifact,
+  onReviewAction,
+}: {
+  artifact: ArtifactDetail;
+  onReviewAction: () => void;
+}) {
+  const [isEditing, setIsEditing] = useState(false);
+  const [editContent, setEditContent] = useState("");
+  const [commentText, setCommentText] = useState("");
+  const [showComment, setShowComment] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const handleApprove = async () => {
+    setIsSubmitting(true);
+    await approveArtifact(artifact.id);
+    setIsSubmitting(false);
+    onReviewAction();
+  };
+
+  const handleReject = async () => {
+    setIsSubmitting(true);
+    await rejectArtifact(artifact.id, commentText || undefined);
+    setCommentText("");
+    setShowComment(false);
+    setIsSubmitting(false);
+    onReviewAction();
+  };
+
+  const handleComment = async () => {
+    if (!commentText.trim()) return;
+    setIsSubmitting(true);
+    await commentArtifact(artifact.id, commentText);
+    setCommentText("");
+    setShowComment(false);
+    setIsSubmitting(false);
+    onReviewAction();
+  };
+
+  const handleStartEdit = () => {
+    const content =
+      typeof artifact.content === "string"
+        ? artifact.content
+        : JSON.stringify(artifact.content, null, 2);
+    setEditContent(content);
+    setIsEditing(true);
+  };
+
+  const handleSaveEdit = async () => {
+    setIsSubmitting(true);
+    let parsedContent: unknown = editContent;
+    if (
+      artifact.type !== "lua" &&
+      artifact.type !== "markdown" &&
+      artifact.type !== "text"
+    ) {
+      try {
+        parsedContent = JSON.parse(editContent);
+      } catch {
+        parsedContent = editContent;
+      }
+    }
+    await editArtifact(artifact.id, parsedContent);
+    setIsEditing(false);
+    setIsSubmitting(false);
+    onReviewAction();
+  };
+
   return (
     <div className="mt-3 border-t border-white/5 pt-3">
       <div className="mb-2 flex items-center justify-between">
@@ -150,14 +249,96 @@ function ArtifactDetailViewer({ artifact }: { artifact: ArtifactDetail }) {
               {artifact.agent}
             </span>
           )}
-          <span
-            className={`rounded px-1.5 py-0.5 text-[10px] ${artifact.validated ? "bg-green-500/10 text-green-400" : "bg-slate-500/10 text-slate-400"}`}
-          >
-            {artifact.validated ? "validated" : "pending"}
-          </span>
+          <ReviewBadge status={artifact.reviewStatus} />
         </div>
       </div>
-      <ContentRenderer type={artifact.type} content={artifact.content} />
+
+      {/* Content viewer / editor */}
+      {isEditing ? (
+        <div className="space-y-2">
+          <textarea
+            value={editContent}
+            onChange={(e) => setEditContent(e.target.value)}
+            className="h-48 w-full resize-y rounded-lg border border-white/10 bg-slate-950 p-3 font-mono text-[11px] text-cyan-300 outline-none focus:border-brand-400"
+          />
+          <div className="flex gap-2">
+            <button
+              onClick={handleSaveEdit}
+              disabled={isSubmitting}
+              className="flex items-center gap-1 rounded-lg bg-brand-500/20 px-3 py-1.5 text-[11px] text-brand-300 hover:bg-brand-500/30 disabled:opacity-50"
+            >
+              <Save className="h-3 w-3" /> Save
+            </button>
+            <button
+              onClick={() => setIsEditing(false)}
+              className="rounded-lg bg-white/5 px-3 py-1.5 text-[11px] text-slate-400 hover:bg-white/10"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      ) : (
+        <ContentRenderer type={artifact.type} content={artifact.content} />
+      )}
+
+      {/* Review comment display */}
+      {artifact.reviewComment && (
+        <div className="mt-2 rounded-lg border border-white/5 bg-white/[0.02] px-3 py-2">
+          <p className="text-[10px] text-slate-500">Review comment:</p>
+          <p className="text-xs text-slate-300">{artifact.reviewComment}</p>
+        </div>
+      )}
+
+      {/* Review actions */}
+      {!isEditing && (
+        <div className="mt-3 flex flex-wrap gap-2">
+          <button
+            onClick={handleApprove}
+            disabled={isSubmitting || artifact.reviewStatus === "approved"}
+            className="flex items-center gap-1 rounded-lg bg-green-500/10 px-2.5 py-1.5 text-[11px] text-green-400 hover:bg-green-500/20 disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            <CheckCircle className="h-3 w-3" /> Approve
+          </button>
+          <button
+            onClick={handleReject}
+            disabled={isSubmitting || artifact.reviewStatus === "rejected"}
+            className="flex items-center gap-1 rounded-lg bg-red-500/10 px-2.5 py-1.5 text-[11px] text-red-400 hover:bg-red-500/20 disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            <XCircle className="h-3 w-3" /> Reject
+          </button>
+          <button
+            onClick={() => setShowComment(!showComment)}
+            className="flex items-center gap-1 rounded-lg bg-white/5 px-2.5 py-1.5 text-[11px] text-slate-400 hover:bg-white/10"
+          >
+            <MessageSquare className="h-3 w-3" /> Comment
+          </button>
+          <button
+            onClick={handleStartEdit}
+            className="flex items-center gap-1 rounded-lg bg-white/5 px-2.5 py-1.5 text-[11px] text-slate-400 hover:bg-white/10"
+          >
+            <Pencil className="h-3 w-3" /> Edit
+          </button>
+        </div>
+      )}
+
+      {/* Comment input */}
+      {showComment && (
+        <div className="mt-2 flex gap-2">
+          <input
+            value={commentText}
+            onChange={(e) => setCommentText(e.target.value)}
+            placeholder="Add a comment..."
+            className="flex-1 rounded-lg border border-white/10 bg-slate-950 px-3 py-1.5 text-xs text-white outline-none focus:border-brand-400"
+          />
+          <button
+            onClick={handleComment}
+            disabled={!commentText.trim() || isSubmitting}
+            className="rounded-lg bg-brand-500/20 px-3 py-1.5 text-[11px] text-brand-300 hover:bg-brand-500/30 disabled:opacity-50"
+          >
+            Send
+          </button>
+        </div>
+      )}
     </div>
   );
 }
@@ -189,13 +370,27 @@ function ContentRenderer({
     );
   }
 
-  // JSON, manifest, ui-layout, asset-plan, text
   const formatted =
     typeof content === "string" ? content : JSON.stringify(content, null, 2);
   return (
     <pre className="max-h-48 overflow-auto rounded-lg bg-slate-950 p-3 text-[11px] text-cyan-300">
       <code>{formatted}</code>
     </pre>
+  );
+}
+
+function ReviewBadge({ status }: { status: ReviewStatus }) {
+  const config: Record<ReviewStatus, { color: string; label: string }> = {
+    pending: { color: "bg-slate-500/10 text-slate-400", label: "pending" },
+    approved: { color: "bg-green-500/10 text-green-400", label: "approved" },
+    rejected: { color: "bg-red-500/10 text-red-400", label: "rejected" },
+    edited: { color: "bg-yellow-500/10 text-yellow-400", label: "edited" },
+  };
+  const c = config[status] ?? config.pending;
+  return (
+    <span className={`rounded px-1.5 py-0.5 text-[10px] ${c.color}`}>
+      {c.label}
+    </span>
   );
 }
 

@@ -208,6 +208,10 @@ export function createConceptRouter(agentRegistry: AgentRegistry): Router {
       createdAt: a.createdAt,
       sizeBytes: a.sizeBytes,
       validated: a.validated,
+      reviewStatus: a.reviewStatus,
+      reviewComment: a.reviewComment,
+      reviewedAt: a.reviewedAt,
+      reviewedBy: a.reviewedBy,
     }));
 
     res.json({ success: true, data: summaries });
@@ -221,6 +225,100 @@ export function createConceptRouter(agentRegistry: AgentRegistry): Router {
       return;
     }
     res.json({ success: true, data: artifact });
+  });
+
+  // POST /api/concept/experience/artifact/:artifactId/approve
+  router.post("/experience/artifact/:artifactId/approve", (req, res) => {
+    const { reviewedBy } = req.body;
+    const result = pipelineEngine.approveArtifact(
+      req.params.artifactId,
+      reviewedBy ?? "user",
+    );
+    if (!result) {
+      res.status(404).json({ success: false, error: "Artifact not found" });
+      return;
+    }
+    res.json({
+      success: true,
+      data: { id: result.id, reviewStatus: result.reviewStatus },
+    });
+  });
+
+  // POST /api/concept/experience/artifact/:artifactId/reject
+  router.post("/experience/artifact/:artifactId/reject", (req, res) => {
+    const { reviewedBy, comment } = req.body;
+    const result = pipelineEngine.rejectArtifact(
+      req.params.artifactId,
+      reviewedBy ?? "user",
+      comment,
+    );
+    if (!result) {
+      res.status(404).json({ success: false, error: "Artifact not found" });
+      return;
+    }
+    res.json({
+      success: true,
+      data: { id: result.id, reviewStatus: result.reviewStatus },
+    });
+  });
+
+  // POST /api/concept/experience/artifact/:artifactId/comment
+  router.post("/experience/artifact/:artifactId/comment", (req, res) => {
+    const { reviewedBy, comment } = req.body;
+    if (!comment || typeof comment !== "string") {
+      res.status(400).json({ success: false, error: "comment is required" });
+      return;
+    }
+    const result = pipelineEngine.commentArtifact(
+      req.params.artifactId,
+      reviewedBy ?? "user",
+      comment,
+    );
+    if (!result) {
+      res.status(404).json({ success: false, error: "Artifact not found" });
+      return;
+    }
+    res.json({
+      success: true,
+      data: { id: result.id, reviewComment: result.reviewComment },
+    });
+  });
+
+  // POST /api/concept/experience/artifact/:artifactId/edit
+  router.post("/experience/artifact/:artifactId/edit", (req, res) => {
+    const { content, editedBy } = req.body;
+    if (content === undefined) {
+      res.status(400).json({ success: false, error: "content is required" });
+      return;
+    }
+    const result = pipelineEngine.editArtifact(
+      req.params.artifactId,
+      content,
+      editedBy ?? "user",
+    );
+    if (!result) {
+      res.status(404).json({ success: false, error: "Artifact not found" });
+      return;
+    }
+    res.json({
+      success: true,
+      data: {
+        id: result.id,
+        reviewStatus: result.reviewStatus,
+        sizeBytes: result.sizeBytes,
+      },
+    });
+  });
+
+  // GET /api/concept/experience/:pipelineId/review
+  router.get("/experience/:pipelineId/review", (req, res) => {
+    const state = pipelineEngine.getState(req.params.pipelineId);
+    if (!state) {
+      res.status(404).json({ success: false, error: "Pipeline not found" });
+      return;
+    }
+    const summary = pipelineEngine.getReviewSummary(req.params.pipelineId);
+    res.json({ success: true, data: summary });
   });
 
   return router;

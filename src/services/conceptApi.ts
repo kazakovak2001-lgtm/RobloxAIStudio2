@@ -168,6 +168,10 @@ export interface ArtifactSummary {
   createdAt: number;
   sizeBytes: number;
   validated: boolean;
+  reviewStatus: ReviewStatus;
+  reviewComment?: string;
+  reviewedAt?: number;
+  reviewedBy?: string;
 }
 
 export interface ArtifactDetail extends ArtifactSummary {
@@ -202,6 +206,152 @@ export async function getArtifactDetail(
 ): Promise<{ success: boolean; data?: ArtifactDetail; error?: string }> {
   try {
     const res = await fetch(`/api/concept/experience/artifact/${artifactId}`);
+    const json = await res.json();
+    if (!res.ok)
+      return { success: false, error: json.error ?? `HTTP ${res.status}` };
+    return { success: true, data: json.data };
+  } catch (err) {
+    return {
+      success: false,
+      error: err instanceof Error ? err.message : "Network error",
+    };
+  }
+}
+
+export type ReviewStatus = "pending" | "approved" | "rejected" | "edited";
+
+export interface ReviewSummary {
+  total: number;
+  approved: number;
+  rejected: number;
+  edited: number;
+  pending: number;
+  allApproved: boolean;
+}
+
+/**
+ * Approve an artifact.
+ */
+export async function approveArtifact(
+  artifactId: string,
+  reviewedBy = "user",
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    const res = await fetch(
+      `/api/concept/experience/artifact/${artifactId}/approve`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ reviewedBy }),
+      },
+    );
+    const json = await res.json();
+    if (!res.ok)
+      return { success: false, error: json.error ?? `HTTP ${res.status}` };
+    return { success: true };
+  } catch (err) {
+    return {
+      success: false,
+      error: err instanceof Error ? err.message : "Network error",
+    };
+  }
+}
+
+/**
+ * Reject an artifact.
+ */
+export async function rejectArtifact(
+  artifactId: string,
+  comment?: string,
+  reviewedBy = "user",
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    const res = await fetch(
+      `/api/concept/experience/artifact/${artifactId}/reject`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ reviewedBy, comment }),
+      },
+    );
+    const json = await res.json();
+    if (!res.ok)
+      return { success: false, error: json.error ?? `HTTP ${res.status}` };
+    return { success: true };
+  } catch (err) {
+    return {
+      success: false,
+      error: err instanceof Error ? err.message : "Network error",
+    };
+  }
+}
+
+/**
+ * Add a comment to an artifact.
+ */
+export async function commentArtifact(
+  artifactId: string,
+  comment: string,
+  reviewedBy = "user",
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    const res = await fetch(
+      `/api/concept/experience/artifact/${artifactId}/comment`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ reviewedBy, comment }),
+      },
+    );
+    const json = await res.json();
+    if (!res.ok)
+      return { success: false, error: json.error ?? `HTTP ${res.status}` };
+    return { success: true };
+  } catch (err) {
+    return {
+      success: false,
+      error: err instanceof Error ? err.message : "Network error",
+    };
+  }
+}
+
+/**
+ * Edit artifact content.
+ */
+export async function editArtifact(
+  artifactId: string,
+  content: unknown,
+  editedBy = "user",
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    const res = await fetch(
+      `/api/concept/experience/artifact/${artifactId}/edit`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ content, editedBy }),
+      },
+    );
+    const json = await res.json();
+    if (!res.ok)
+      return { success: false, error: json.error ?? `HTTP ${res.status}` };
+    return { success: true };
+  } catch (err) {
+    return {
+      success: false,
+      error: err instanceof Error ? err.message : "Network error",
+    };
+  }
+}
+
+/**
+ * Get review summary for a pipeline.
+ */
+export async function getReviewSummary(
+  pipelineId: string,
+): Promise<{ success: boolean; data?: ReviewSummary; error?: string }> {
+  try {
+    const res = await fetch(`/api/concept/experience/${pipelineId}/review`);
     const json = await res.json();
     if (!res.ok)
       return { success: false, error: json.error ?? `HTTP ${res.status}` };

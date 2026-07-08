@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useCallback } from "react";
 import { useParams } from "react-router-dom";
 import { AppLayout } from "../../layouts/AppLayout";
 import { useToast } from "../../components/ui/Toast";
@@ -13,6 +13,7 @@ import { GenerationStatusPanel } from "./components/GenerationStatusPanel";
 import { GenerationHistoryPanel } from "./components/GenerationHistoryPanel";
 import { ArtifactExplorer } from "./components/ArtifactExplorer";
 import { ExportPreview } from "./components/ExportPreview";
+import { ReviewSummaryPanel } from "./components/ReviewSummaryPanel";
 import { ValidationResults } from "./components/ValidationResults";
 import { PipelineStatusBar } from "./components/PipelineStatusBar";
 import { PipelineStatusViewer } from "./components/PipelineStatusViewer";
@@ -20,7 +21,12 @@ import { StudioBridgePanel } from "./components/StudioBridgePanel";
 import { PipelineView } from "./PipelineView";
 import { usePipelineStream } from "./usePipelineStream";
 import { Loader } from "../../components/ui/Loader";
-import { getArtifacts, type ArtifactSummary } from "../../services/conceptApi";
+import {
+  getArtifacts,
+  getReviewSummary,
+  type ArtifactSummary,
+  type ReviewSummary,
+} from "../../services/conceptApi";
 
 const defaultLogs = [
   "[pipeline.started] Workspace initialized.",
@@ -36,6 +42,8 @@ export default function WorkspacePage() {
   const [activePipelineId, setActivePipelineId] = useState<string | null>(null);
   const [historyRefresh, setHistoryRefresh] = useState(0);
   const [artifactList, setArtifactList] = useState<ArtifactSummary[]>([]);
+  const [reviewData, setReviewData] = useState<ReviewSummary | null>(null);
+  const [reviewRefresh, setReviewRefresh] = useState(0);
 
   const agents = state?.agents ?? [];
   const logs = useMemo(() => {
@@ -55,6 +63,21 @@ export default function WorkspacePage() {
     [state?.agents.length],
   );
   const retries = 0;
+
+  const refreshReviewData = useCallback(async () => {
+    if (!activePipelineId) return;
+    const [artifactsRes, reviewRes] = await Promise.all([
+      getArtifacts(activePipelineId),
+      getReviewSummary(activePipelineId),
+    ]);
+    if (artifactsRes.success && artifactsRes.data) {
+      setArtifactList(artifactsRes.data);
+    }
+    if (reviewRes.success && reviewRes.data) {
+      setReviewData(reviewRes.data);
+    }
+    setReviewRefresh((prev) => prev + 1);
+  }, [activePipelineId]);
 
   useEffect(() => {
     const timer = window.setTimeout(() => setIsLoading(false), 250);
@@ -141,12 +164,7 @@ export default function WorkspacePage() {
                 pipelineId={activePipelineId}
                 onCompleted={async () => {
                   setHistoryRefresh((prev) => prev + 1);
-                  if (activePipelineId) {
-                    const result = await getArtifacts(activePipelineId);
-                    if (result.success && result.data) {
-                      setArtifactList(result.data);
-                    }
-                  }
+                  await refreshReviewData();
                   toast({
                     variant: "success",
                     title: "Generation complete",
@@ -177,10 +195,20 @@ export default function WorkspacePage() {
             <div className="space-y-4">
               <PipelineView pipeline={state} status={status} />
               <LiveConsole logs={logs} />
-              <ArtifactExplorer pipelineId={activePipelineId} />
-              <ExportPreview artifacts={artifactList} />
+              <ArtifactExplorer
+                pipelineId={activePipelineId}
+                onReviewChange={refreshReviewData}
+              />
+              <ExportPreview
+                artifacts={artifactList}
+                reviewSummary={reviewData}
+              />
             </div>
             <div className="space-y-4">
+              <ReviewSummaryPanel
+                pipelineId={activePipelineId}
+                refreshTrigger={reviewRefresh}
+              />
               <ActivityFeed events={events} />
               <ValidationResults />
               <GenerationHistoryPanel refreshTrigger={historyRefresh} />

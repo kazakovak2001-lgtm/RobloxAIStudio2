@@ -1,9 +1,21 @@
-import { FileCode, Layout, Image, FileText, Package } from "lucide-react";
+import {
+  FileCode,
+  Layout,
+  Image,
+  FileText,
+  Package,
+  Lock,
+  Unlock,
+} from "lucide-react";
 import { Card } from "../../../components/ui/Card";
-import type { ArtifactSummary } from "../../../services/conceptApi";
+import type {
+  ArtifactSummary,
+  ReviewSummary,
+} from "../../../services/conceptApi";
 
 interface ExportPreviewProps {
   artifacts: ArtifactSummary[];
+  reviewSummary?: ReviewSummary | null;
 }
 
 interface ExportCategory {
@@ -13,7 +25,10 @@ interface ExportCategory {
   items: ArtifactSummary[];
 }
 
-export function ExportPreview({ artifacts }: ExportPreviewProps) {
+export function ExportPreview({
+  artifacts,
+  reviewSummary,
+}: ExportPreviewProps) {
   if (artifacts.length === 0) return null;
 
   const categories: ExportCategory[] = [
@@ -50,7 +65,10 @@ export function ExportPreview({ artifacts }: ExportPreviewProps) {
   ];
 
   const totalSize = artifacts.reduce((sum, a) => sum + a.sizeBytes, 0);
-  const validatedCount = artifacts.filter((a) => a.validated).length;
+  const exportReady = reviewSummary?.allApproved ?? false;
+  const unapproved = artifacts.filter(
+    (a) => a.reviewStatus !== "approved" && a.reviewStatus !== "edited",
+  );
 
   return (
     <Card>
@@ -86,14 +104,73 @@ export function ExportPreview({ artifacts }: ExportPreviewProps) {
           })}
       </div>
 
-      <div className="mt-3 border-t border-white/5 pt-2 text-xs text-slate-400 space-y-1">
-        <p>
-          Validated: {validatedCount}/{artifacts.length}
-        </p>
-        <p>Ready for Roblox Studio export</p>
+      {/* Export lock status */}
+      <div className="mt-3 border-t border-white/5 pt-2">
+        {exportReady ? (
+          <div className="flex items-center gap-2 rounded-xl border border-green-500/20 bg-green-500/5 px-3 py-2">
+            <Unlock className="h-4 w-4 text-green-400" />
+            <div>
+              <p className="text-xs font-medium text-green-400">Export Ready</p>
+              <p className="text-[10px] text-green-400/70">
+                All artifacts approved. Ready for Roblox Studio export.
+              </p>
+            </div>
+          </div>
+        ) : (
+          <div className="flex items-center gap-2 rounded-xl border border-yellow-500/20 bg-yellow-500/5 px-3 py-2">
+            <Lock className="h-4 w-4 text-yellow-400" />
+            <div>
+              <p className="text-xs font-medium text-yellow-400">
+                Export Locked
+              </p>
+              <p className="text-[10px] text-yellow-400/70">
+                {unapproved.length} artifact{unapproved.length !== 1 ? "s" : ""}{" "}
+                require approval before export.
+              </p>
+            </div>
+          </div>
+        )}
       </div>
+
+      {/* Unapproved list */}
+      {!exportReady && unapproved.length > 0 && (
+        <div className="mt-2 space-y-1">
+          {unapproved.slice(0, 5).map((a) => (
+            <div
+              key={a.id}
+              className="flex items-center justify-between rounded-lg bg-white/[0.02] px-2.5 py-1.5 text-[10px]"
+            >
+              <span className="text-slate-400">{formatStageName(a.stage)}</span>
+              <span className="text-yellow-400">{a.reviewStatus}</span>
+            </div>
+          ))}
+          {unapproved.length > 5 && (
+            <p className="text-center text-[10px] text-slate-500">
+              +{unapproved.length - 5} more
+            </p>
+          )}
+        </div>
+      )}
+
+      {/* Review summary */}
+      {reviewSummary && (
+        <div className="mt-2 text-xs text-slate-400 space-y-0.5">
+          <p>
+            Approved: {reviewSummary.approved}/{reviewSummary.total} • Edited:{" "}
+            {reviewSummary.edited} • Pending: {reviewSummary.pending} •
+            Rejected: {reviewSummary.rejected}
+          </p>
+        </div>
+      )}
     </Card>
   );
+}
+
+function formatStageName(name: string): string {
+  return name
+    .replace(/_/g, " ")
+    .toLowerCase()
+    .replace(/^\w/, (c) => c.toUpperCase());
 }
 
 function formatBytes(bytes: number): string {
