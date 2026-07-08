@@ -148,3 +148,68 @@ export async function getExperienceHistory(): Promise<{
     };
   }
 }
+
+export type ArtifactType =
+  | "json"
+  | "lua"
+  | "markdown"
+  | "text"
+  | "manifest"
+  | "ui-layout"
+  | "asset-plan";
+
+export interface ArtifactSummary {
+  id: string;
+  pipelineId: string;
+  stage: string;
+  agent: string | null;
+  type: ArtifactType;
+  name: string;
+  createdAt: number;
+  sizeBytes: number;
+  validated: boolean;
+}
+
+export interface ArtifactDetail extends ArtifactSummary {
+  content: unknown;
+}
+
+/**
+ * Fetch all artifacts for a pipeline (summary without content).
+ */
+export async function getArtifacts(
+  pipelineId: string,
+): Promise<{ success: boolean; data?: ArtifactSummary[]; error?: string }> {
+  try {
+    const res = await fetch(`/api/concept/experience/${pipelineId}/artifacts`);
+    const json = await res.json();
+    if (!res.ok)
+      return { success: false, error: json.error ?? `HTTP ${res.status}` };
+    return { success: true, data: json.data };
+  } catch (err) {
+    return {
+      success: false,
+      error: err instanceof Error ? err.message : "Network error",
+    };
+  }
+}
+
+/**
+ * Fetch a single artifact with full content.
+ */
+export async function getArtifactDetail(
+  artifactId: string,
+): Promise<{ success: boolean; data?: ArtifactDetail; error?: string }> {
+  try {
+    const res = await fetch(`/api/concept/experience/artifact/${artifactId}`);
+    const json = await res.json();
+    if (!res.ok)
+      return { success: false, error: json.error ?? `HTTP ${res.status}` };
+    return { success: true, data: json.data };
+  } catch (err) {
+    return {
+      success: false,
+      error: err instanceof Error ? err.message : "Network error",
+    };
+  }
+}

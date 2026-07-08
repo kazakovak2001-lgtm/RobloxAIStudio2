@@ -187,6 +187,42 @@ export function createConceptRouter(agentRegistry: AgentRegistry): Router {
     res.json({ success: true, data: history });
   });
 
+  // GET /api/concept/experience/:pipelineId/artifacts
+  router.get("/experience/:pipelineId/artifacts", (req, res) => {
+    const { pipelineId } = req.params;
+    const state = pipelineEngine.getState(pipelineId);
+    if (!state) {
+      res.status(404).json({ success: false, error: "Pipeline not found" });
+      return;
+    }
+
+    const artifacts = pipelineEngine.getArtifacts(pipelineId);
+    // Return without full content for list view (summary only)
+    const summaries = artifacts.map((a) => ({
+      id: a.id,
+      pipelineId: a.pipelineId,
+      stage: a.stage,
+      agent: a.agent,
+      type: a.type,
+      name: a.name,
+      createdAt: a.createdAt,
+      sizeBytes: a.sizeBytes,
+      validated: a.validated,
+    }));
+
+    res.json({ success: true, data: summaries });
+  });
+
+  // GET /api/concept/experience/artifact/:artifactId
+  router.get("/experience/artifact/:artifactId", (req, res) => {
+    const artifact = pipelineEngine.getArtifact(req.params.artifactId);
+    if (!artifact) {
+      res.status(404).json({ success: false, error: "Artifact not found" });
+      return;
+    }
+    res.json({ success: true, data: artifact });
+  });
+
   return router;
 }
 

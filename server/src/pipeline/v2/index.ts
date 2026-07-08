@@ -12,6 +12,11 @@ export {
   type PipelineEventHandler,
 } from "./PipelineEvents";
 export {
+  ArtifactStore,
+  type PipelineArtifact,
+  type ArtifactType,
+} from "./ArtifactStore";
+export {
   STAGE_ORDER,
   STAGE_AGENT_MAP,
   createPipelineState,

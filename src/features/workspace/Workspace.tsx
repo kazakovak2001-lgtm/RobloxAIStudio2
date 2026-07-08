@@ -11,6 +11,8 @@ import { ActivityFeed } from "./components/ActivityFeed";
 import { GenerateButton } from "./components/GenerateButton";
 import { GenerationStatusPanel } from "./components/GenerationStatusPanel";
 import { GenerationHistoryPanel } from "./components/GenerationHistoryPanel";
+import { ArtifactExplorer } from "./components/ArtifactExplorer";
+import { ExportPreview } from "./components/ExportPreview";
 import { ValidationResults } from "./components/ValidationResults";
 import { PipelineStatusBar } from "./components/PipelineStatusBar";
 import { PipelineStatusViewer } from "./components/PipelineStatusViewer";
@@ -18,6 +20,7 @@ import { StudioBridgePanel } from "./components/StudioBridgePanel";
 import { PipelineView } from "./PipelineView";
 import { usePipelineStream } from "./usePipelineStream";
 import { Loader } from "../../components/ui/Loader";
+import { getArtifacts, type ArtifactSummary } from "../../services/conceptApi";
 
 const defaultLogs = [
   "[pipeline.started] Workspace initialized.",
@@ -32,6 +35,7 @@ export default function WorkspacePage() {
   const [isLoading, setIsLoading] = useState(true);
   const [activePipelineId, setActivePipelineId] = useState<string | null>(null);
   const [historyRefresh, setHistoryRefresh] = useState(0);
+  const [artifactList, setArtifactList] = useState<ArtifactSummary[]>([]);
 
   const agents = state?.agents ?? [];
   const logs = useMemo(() => {
@@ -135,8 +139,14 @@ export default function WorkspacePage() {
               />
               <GenerationStatusPanel
                 pipelineId={activePipelineId}
-                onCompleted={() => {
+                onCompleted={async () => {
                   setHistoryRefresh((prev) => prev + 1);
+                  if (activePipelineId) {
+                    const result = await getArtifacts(activePipelineId);
+                    if (result.success && result.data) {
+                      setArtifactList(result.data);
+                    }
+                  }
                   toast({
                     variant: "success",
                     title: "Generation complete",
@@ -167,6 +177,8 @@ export default function WorkspacePage() {
             <div className="space-y-4">
               <PipelineView pipeline={state} status={status} />
               <LiveConsole logs={logs} />
+              <ArtifactExplorer pipelineId={activePipelineId} />
+              <ExportPreview artifacts={artifactList} />
             </div>
             <div className="space-y-4">
               <ActivityFeed events={events} />
