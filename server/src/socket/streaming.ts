@@ -192,10 +192,12 @@ export class PipelineEventEmitter {
     pipelineId: string,
     stepId: string,
     stepName: string,
+    projectId?: string,
   ): Promise<void> {
     await this.emit({
       type: "step.started",
       pipelineId,
+      projectId,
       stepId,
       data: { name: stepName },
       timestamp: new Date(),
@@ -205,13 +207,16 @@ export class PipelineEventEmitter {
   async emitStepCompleted(
     pipelineId: string,
     stepId: string,
+    stepName: string,
     output?: unknown,
+    projectId?: string,
   ): Promise<void> {
     await this.emit({
       type: "step.completed",
       pipelineId,
+      projectId,
       stepId,
-      data: { output },
+      data: { name: stepName, output },
       timestamp: new Date(),
     });
   }
@@ -219,21 +224,28 @@ export class PipelineEventEmitter {
   async emitStepFailed(
     pipelineId: string,
     stepId: string,
+    stepName: string,
     error: string,
+    projectId?: string,
   ): Promise<void> {
     await this.emit({
       type: "step.failed",
       pipelineId,
+      projectId,
       stepId,
-      data: { error },
+      data: { name: stepName, error },
       timestamp: new Date(),
     });
   }
 
-  async emitPipelineStarted(pipelineId: string): Promise<void> {
+  async emitPipelineStarted(
+    pipelineId: string,
+    projectId?: string,
+  ): Promise<void> {
     await this.emit({
       type: "pipeline.started",
       pipelineId,
+      projectId,
       timestamp: new Date(),
     });
   }
@@ -241,20 +253,29 @@ export class PipelineEventEmitter {
   async emitPipelineCompleted(
     pipelineId: string,
     outputs?: Record<string, unknown>,
+    projectId?: string,
+    metadata?: Record<string, unknown>,
   ): Promise<void> {
     await this.emit({
       type: "pipeline.completed",
       pipelineId,
-      data: { outputs },
+      projectId,
+      data: { outputs, ...metadata },
       timestamp: new Date(),
     });
   }
 
-  async emitPipelineFailed(pipelineId: string, error: string): Promise<void> {
+  async emitPipelineFailed(
+    pipelineId: string,
+    error: string,
+    projectId?: string,
+    metadata?: Record<string, unknown>,
+  ): Promise<void> {
     await this.emit({
       type: "pipeline.failed",
       pipelineId,
-      data: { error },
+      projectId,
+      data: { error, ...metadata },
       timestamp: new Date(),
     });
   }

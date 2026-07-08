@@ -32,11 +32,12 @@ import {
   StreamingUpdateHandler,
   PipelineEventEmitter,
 } from "./socket/streaming";
+import { RealtimeServer } from "./socket/index";
 import { errorHandler } from "./common/middleware/errorHandler";
 import { AgentRegistry } from "./agents/core/AgentRegistry";
 import { LLMProviderFactory } from "./ai/providerFactory";
 import { ExecutionTracer } from "./core/observability/ExecutionTracer";
-
+import { StudioIntegrationManager } from "./studio/integration/StudioIntegrationManager";
 const app: Express = express();
 
 const httpServer = createServer(app);
@@ -90,6 +91,7 @@ const llmResult = LLMProviderFactory.create();
 console.log(`[LLM] ${llmResult.info}`);
 
 const agentRegistry = new AgentRegistry(llmResult.provider ?? undefined);
+const studioManager = new StudioIntegrationManager();
 
 const gameService = new GameGenerationService(
   blueprintRepo,
@@ -103,6 +105,9 @@ const gameService = new GameGenerationService(
 // Connect event emitter to streaming handler
 events.setStreamingHandler(streaming);
 
+// Real-time socket namespace and project room support
+new RealtimeServer(io);
+
 // Bridge pipeline lifecycle events to Socket.io so the existing Workspace UI (Socket.io-based) receives them.
 // This is a thin adapter only; it preserves the existing socket event names.
 events.onEvent(async (evt) => {
@@ -111,42 +116,76 @@ events.onEvent(async (evt) => {
     `[pipeline-bridge] emitted ${evt.type} pipelineId=${evt.pipelineId} stepId=${evt.stepId ?? "-"}`,
   );
 
+  const emitForProject = (
+    eventName: string,
+    payload: Record<string, unknown>,
+  ) => {
+    if (evt.projectId) {
+      io.to(`project:${evt.projectId}`).emit(eventName, payload);
+    } else {
+      io.emit(eventName, payload);
+    }
+  };
+
   switch (evt.type) {
     case "pipeline.started": {
       const payload = {
         pipelineId: evt.pipelineId,
-        startedAt: evt.timestamp,
+        projectId: evt.projectId,
+        startedAt: evt.timestamp.toISOString(),
       };
       console.log("[pipeline-bridge] forwarding", "pipeline.started", payload);
-      io.emit("pipeline.started", payload);
+      emitForProject("pipeline.started", payload);
       break;
     }
     case "step.started": {
       const payload = {
         pipelineId: evt.pipelineId,
+        projectId: evt.projectId,
         stepId: evt.stepId,
         agentId: evt.data?.name,
-        startedAt: evt.timestamp,
+        status: "started",
+        progress: 0,
+        timestamp: evt.timestamp.toISOString(),
       };
       console.log("[pipeline-bridge] forwarding", "step.started", payload);
-      io.emit("step.started", payload);
+      emitForProject("step.started", payload);
       break;
     }
     case "step.completed": {
       const payload = {
         pipelineId: evt.pipelineId,
+        projectId: evt.projectId,
         stepId: evt.stepId,
         agentId: evt.data?.name,
-        finishedAt: evt.timestamp,
+        status: "completed",
+        progress: 100,
+        timestamp: evt.timestamp.toISOString(),
         output: evt.data?.output,
       };
       console.log("[pipeline-bridge] forwarding", "step.completed", payload);
-      io.emit("step.completed", payload);
+      emitForProject("step.completed", payload);
+      break;
+    }
+    case "step.failed": {
+      const payload = {
+        pipelineId: evt.pipelineId,
+        projectId: evt.projectId,
+        stepId: evt.stepId,
+        agentId: evt.data?.name,
+        status: "failed",
+        progress: 0,
+        timestamp: evt.timestamp.toISOString(),
+        error: evt.data?.error,
+      };
+      console.log("[pipeline-bridge] forwarding", "step.failed", payload);
+      emitForProject("step.failed", payload);
       break;
     }
     case "pipeline.completed": {
       const payload = {
         pipelineId: evt.pipelineId,
+        projectId: evt.projectId,
         outputs: evt.data?.outputs,
       };
       console.log(
@@ -154,16 +193,23 @@ events.onEvent(async (evt) => {
         "pipeline.completed",
         payload,
       );
-      io.emit("pipeline.completed", payload);
+      emitForProject("pipeline.completed", payload);
       break;
     }
     case "pipeline.failed": {
       const payload = {
         pipelineId: evt.pipelineId,
+        projectId: evt.projectId,
         error: evt.data?.error,
+        stepId: evt.data?.stepId ?? evt.data?.failedStepId,
+        agentId: evt.data?.agentId ?? evt.data?.failedAgentId,
+        stage: evt.data?.stage,
+        failedReason: evt.data?.failedReason,
+        failedSteps: evt.data?.failedSteps,
+        completedSteps: evt.data?.completedSteps,
       };
       console.log("[pipeline-bridge] forwarding", "pipeline.failed", payload);
-      io.emit("pipeline.failed", payload);
+      emitForProject("pipeline.failed", payload);
       break;
     }
     case "evaluation.started": {
@@ -341,7 +387,10 @@ events.onEvent(async (evt) => {
 
 // API Routes
 app.use("/api/projects", createProjectsRouter());
-app.use("/api/projects", createGameGenerationRouter(gameService));
+app.use(
+  "/api/projects",
+  createGameGenerationRouter(gameService, studioManager),
+);
 app.use("/api/evaluation", createEvaluationRouter(agentRegistry));
 app.use("/api/memory", createMemoryRouter());
 app.use("/api/plan", createPlanningRouter(agentRegistry));
@@ -402,14 +451,34 @@ app.use((req: Request, res: Response) => {
 });
 
 // Start server
-const PORT = parseInt(process.env.PORT || "5000", 10);
+let PORT = parseInt(process.env.PORT || "5000", 10);
 
-httpServer.listen(PORT, "0.0.0.0", () => {
-  console.log(`\n🚀 Roblox AI Studio - Game Generation Engine`);
-  console.log(`📡 Server running on http://0.0.0.0:${PORT}`);
-  console.log(`🔌 WebSocket connected via Socket.io`);
-  console.log(`✅ Ready for incoming game generation requests\n`);
+const startServer = (port: number) => {
+  httpServer.listen(port, "0.0.0.0", () => {
+    PORT = port;
+    console.log(`\n🚀 Roblox AI Studio - Game Generation Engine`);
+    console.log(`📡 Server running on http://0.0.0.0:${port}`);
+    console.log(`🔌 WebSocket connected via Socket.io`);
+    console.log(`✅ Ready for incoming game generation requests\n`);
+  });
+};
+
+httpServer.on("error", (error: NodeJS.ErrnoException) => {
+  if (error.code === "EADDRINUSE") {
+    const fallbackPort = PORT + 1;
+    console.warn(
+      `⚠️ Port ${PORT} is already in use. Attempting fallback port ${fallbackPort}...`,
+    );
+    PORT = fallbackPort;
+    startServer(fallbackPort);
+    return;
+  }
+
+  console.error("Fatal server error:", error);
+  process.exit(1);
 });
+
+startServer(PORT);
 
 // Graceful shutdown
 process.on("SIGTERM", () => {

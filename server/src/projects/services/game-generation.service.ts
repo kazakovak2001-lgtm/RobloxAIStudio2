@@ -24,19 +24,21 @@ export class GameGenerationService {
   private repository: IBlueprintRepository;
   private cache: BlueprintCache;
   private streaming: StreamingUpdateHandler;
+  private events: PipelineEventEmitter;
   private validator: BlueprintValidator;
 
   constructor(
     repository: IBlueprintRepository,
     cache: BlueprintCache,
     streaming: StreamingUpdateHandler,
-    _events: PipelineEventEmitter,
+    events: PipelineEventEmitter,
     _integrator: unknown, // preserved for backward-compatible constructor signature
     agentRegistry?: AgentRegistry,
   ) {
     this.repository = repository;
     this.cache = cache;
     this.streaming = streaming;
+    this.events = events;
     this.validator = new BlueprintValidator();
     this.agentRegistry = agentRegistry ?? new AgentRegistry();
   }
@@ -82,14 +84,24 @@ export class GameGenerationService {
   }
 
   async startGeneration(
-    blueprintId: string,
+    blueprintIdOrProjectId: string,
     userId: string,
   ): Promise<GenerationExecution> {
+    const blueprint =
+      (await this.repository.getBlueprint(blueprintIdOrProjectId)) ??
+      (await this.repository.getBlueprintByProjectId(blueprintIdOrProjectId));
+
+    if (!blueprint) {
+      throw new Error(
+        `Blueprint not found for id/project ${blueprintIdOrProjectId}`,
+      );
+    }
+
     const now = new Date();
     const execution: GenerationExecution = {
       id: `exec-${Date.now()}`,
-      blueprint_id: blueprintId,
-      project_id: "",
+      blueprint_id: blueprint.id,
+      project_id: blueprint.project_id,
       user_id: userId,
       started_at: now,
       status: "running",
@@ -101,9 +113,6 @@ export class GameGenerationService {
 
     void this.executionQueue.add(async () => {
       try {
-        const blueprint = await this.repository.getBlueprint(blueprintId);
-        if (!blueprint) throw new Error(`Blueprint ${blueprintId} not found`);
-
         const gameDesignSeed = generateGameDesignSeed({
           blueprint,
           executionId: execution.id,
@@ -120,7 +129,13 @@ export class GameGenerationService {
 
         // === CANONICAL EXECUTION: PlanExecutor (single runtime) ===
         const planner = new PlannerEngine();
-        const executor = new PlanExecutor();
+        const executor = new PlanExecutor(
+          undefined,
+          undefined,
+          undefined,
+          undefined,
+          this.events,
+        );
 
         const plan = planner.createPlan({
           intent: `Generate game: ${enrichedBlueprint.name}`,

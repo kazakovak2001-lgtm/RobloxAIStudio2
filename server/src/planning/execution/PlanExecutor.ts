@@ -11,6 +11,7 @@ import { AgentMemoryBridge } from "../../memory/agents/AgentMemoryBridge";
 import { AgentEvaluator } from "../../evaluation/agents/AgentEvaluator";
 import { ExecutionTracer } from "../../core/observability/ExecutionTracer";
 import { AgentDecisionEngine } from "../../core/agents/AgentDecisionEngine";
+import type { PipelineEventEmitter } from "../../socket/streaming";
 
 export interface ExecutionOptions {
   projectId?: string;
@@ -34,17 +35,20 @@ export class PlanExecutor {
   private evaluator: AgentEvaluator;
   private tracer: ExecutionTracer;
   private decisionEngine: AgentDecisionEngine;
+  private events?: PipelineEventEmitter;
 
   constructor(
     memoryBridge?: AgentMemoryBridge,
     evaluator?: AgentEvaluator,
     tracer?: ExecutionTracer,
     decisionEngine?: AgentDecisionEngine,
+    events?: PipelineEventEmitter,
   ) {
     this.memoryBridge = memoryBridge ?? new AgentMemoryBridge();
     this.evaluator = evaluator ?? new AgentEvaluator();
     this.tracer = tracer ?? ExecutionTracer.instance();
     this.decisionEngine = decisionEngine ?? new AgentDecisionEngine();
+    this.events = events;
   }
 
   /**
@@ -68,6 +72,7 @@ export class PlanExecutor {
 
     // Emit trace: plan started
     this.tracer.startExecution(planId, planId, graph.goal, graph.size);
+    await this.emitPipelineStarted(planId);
 
     // Reset adaptive agent switch counts for this execution
     this.decisionEngine.resetSwitchCounts();
@@ -98,6 +103,7 @@ export class PlanExecutor {
       // Execute ready nodes (sequentially for now; parallel support is structural)
       for (const node of readyNodes) {
         await this.executeNode(
+          planId,
           node,
           graph,
           agentExecutor,
@@ -106,13 +112,26 @@ export class PlanExecutor {
         );
 
         if (stopOnFailure && node.status === "failed") {
-          console.log(`[PLAN-EXEC] Stopped on failure | Node: ${node.id}`);
+          console.log(
+            `[PLAN-EXEC] Stopped on failure | Node: ${node.id} | agent=${node.agent}`,
+          );
           const failResult = this.buildResult(
             planId,
             graph,
             Date.now() - totalStart,
           );
           this.tracer.completeExecution(planId, failResult.outputs, false);
+          await this.emitPipelineFailed(
+            planId,
+            "Pipeline stopped on node failure",
+            projectId,
+            {
+              stepId: node.id,
+              agentId: node.agent,
+              stage: node.type,
+              failedReason: node.error,
+            },
+          );
           return failResult;
         }
       }
@@ -125,11 +144,37 @@ export class PlanExecutor {
 
     // Emit trace: plan completed
     this.tracer.completeExecution(planId, result.outputs, result.success);
+    const metadata = {
+      success: result.success,
+      totalDurationMs: result.totalDurationMs,
+      completedSteps: result.completedNodes,
+      failedSteps: result.failedNodes,
+    };
+
+    if (result.success) {
+      await this.emitPipelineCompleted(
+        planId,
+        result.outputs,
+        projectId,
+        metadata,
+      );
+    } else {
+      console.error(
+        `[PLAN-EXEC] Pipeline failed | pipelineId=${planId} | projectId=${projectId ?? "unknown"} | failedSteps=${result.failedNodes} | completedSteps=${result.completedNodes}`,
+      );
+      await this.emitPipelineFailed(
+        planId,
+        "Pipeline completed with failures",
+        projectId,
+        metadata,
+      );
+    }
 
     return result;
   }
 
   private async executeNode(
+    pipelineId: string,
     node: TaskNode,
     graph: TaskGraph,
     agentExecutor: (
@@ -195,6 +240,7 @@ export class PlanExecutor {
     while (attempts < maxRetries) {
       attempts++;
       try {
+        await this.emitStepStarted(pipelineId, node.id, activeAgent);
         const output = await agentExecutor(activeAgent, input);
         const durationMs = Date.now() - start;
 
@@ -243,6 +289,14 @@ export class PlanExecutor {
           quality: evaluation.score.quality,
           passed: evaluation.passed,
         });
+
+        await this.emitStepCompleted(
+          pipelineId,
+          node.id,
+          activeAgent,
+          output,
+          projectId,
+        );
 
         // Trace: node completed
         this.tracer.traceNodeComplete(
@@ -295,6 +349,20 @@ export class PlanExecutor {
         if (attempts >= maxRetries) {
           const durationMs = Date.now() - start;
           graph.markFailed(node.id, error, durationMs);
+          console.error(
+            `[PLAN-EXEC] Step failed | pipelineId=${pipelineId} | projectId=${projectId ?? "unknown"} | stepId=${node.id} | agent=${activeAgent} | error=${error}`,
+          );
+          if (err instanceof Error && err.stack) {
+            console.error(err.stack);
+          }
+
+          await this.emitStepFailed(
+            pipelineId,
+            node.id,
+            activeAgent,
+            error,
+            projectId,
+          );
 
           // Trace: node failed
           this.tracer.traceNodeFailed(
@@ -324,6 +392,88 @@ export class PlanExecutor {
       totalDurationMs,
       outputs: graph.getAccumulatedOutputs(),
     };
+  }
+
+  private async emitPipelineStarted(
+    pipelineId: string,
+    projectId?: string,
+  ): Promise<void> {
+    if (!this.events) return;
+    await this.events.emitPipelineStarted(pipelineId, projectId);
+  }
+
+  private async emitStepStarted(
+    pipelineId: string,
+    stepId: string,
+    agentId: string,
+    projectId?: string,
+  ): Promise<void> {
+    if (!this.events) return;
+    await this.events.emitStepStarted(pipelineId, stepId, agentId, projectId);
+  }
+
+  private async emitStepCompleted(
+    pipelineId: string,
+    stepId: string,
+    agentId: string,
+    output?: Record<string, unknown>,
+    projectId?: string,
+  ): Promise<void> {
+    if (!this.events) return;
+    await this.events.emitStepCompleted(
+      pipelineId,
+      stepId,
+      agentId,
+      output,
+      projectId,
+    );
+  }
+
+  private async emitStepFailed(
+    pipelineId: string,
+    stepId: string,
+    agentId: string,
+    error: string,
+    projectId?: string,
+  ): Promise<void> {
+    if (!this.events) return;
+    await this.events.emitStepFailed(
+      pipelineId,
+      stepId,
+      agentId,
+      error,
+      projectId,
+    );
+  }
+
+  private async emitPipelineCompleted(
+    pipelineId: string,
+    outputs: Record<string, unknown>,
+    projectId?: string,
+    metadata?: Record<string, unknown>,
+  ): Promise<void> {
+    if (!this.events) return;
+    await this.events.emitPipelineCompleted(
+      pipelineId,
+      outputs,
+      projectId,
+      metadata,
+    );
+  }
+
+  private async emitPipelineFailed(
+    pipelineId: string,
+    error: string,
+    projectId?: string,
+    metadata?: Record<string, unknown>,
+  ): Promise<void> {
+    if (!this.events) return;
+    await this.events.emitPipelineFailed(
+      pipelineId,
+      error,
+      projectId,
+      metadata,
+    );
   }
 
   getEvaluator(): AgentEvaluator {

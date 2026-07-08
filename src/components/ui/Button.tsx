@@ -7,6 +7,7 @@ type ButtonProps = {
   size?: "sm" | "md" | "lg";
   to?: string;
   className?: string;
+  disabled?: boolean;
   onClick?: (e?: MouseEvent) => void;
 };
 
@@ -33,6 +34,7 @@ export function Button({
   size = "md",
   to,
   className = "",
+  disabled = false,
   onClick,
 }: ButtonProps) {
   const classes =
@@ -47,7 +49,12 @@ export function Button({
   }
 
   return (
-    <button className={classes} onClick={onClick} type="button">
+    <button
+      className={classes}
+      onClick={onClick}
+      type="button"
+      disabled={disabled}
+    >
       {children}
     </button>
   );

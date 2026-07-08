@@ -31,7 +31,14 @@ export async function runAgentPipeline(
     });
 
     if (!response.ok) {
-      return { success: false, error: `Server returned ${response.status}` };
+      const errorBody = await response.json().catch(() => null);
+      return {
+        success: false,
+        error:
+          errorBody?.error ??
+          errorBody?.message ??
+          `Server returned ${response.status}`,
+      };
     }
 
     const data = await response.json();

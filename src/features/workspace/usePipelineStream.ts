@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { getSocket } from "../../services/socket";
 import type {
+  AgentState,
   PipelineStreamMessage,
   PipelineState,
   WorkspaceStatus,
@@ -10,7 +11,7 @@ import type {
   GenerationProgressEvent,
   GenerationCompleteEvent,
   GenerationErrorEvent,
-} from "../../../shared/events";
+} from "../../../shared/events/index";
 
 export function usePipelineStream(projectId?: string) {
   const [state, setState] = useState<PipelineState | null>(null);
@@ -59,14 +60,43 @@ export function usePipelineStream(projectId?: string) {
     const onStepStarted = (payload: GenerationProgressEvent) => {
       setState((prev) => {
         if (!prev) return prev;
-        const agent = prev.agents.find((item) => item.id === payload.agentId);
-        if (agent) {
-          agent.status = "running";
-          agent.startedAt = new Date(
-            payload.timestamp ?? new Date().toISOString(),
-          );
-        }
-        return { ...prev, currentStep: payload.stepId };
+
+        const existingAgent = prev.agents.find(
+          (item) => item.id === payload.agentId,
+        );
+
+        const updatedAgents: AgentState[] = existingAgent
+          ? prev.agents.map((item) =>
+              item.id === payload.agentId
+                ? {
+                    ...item,
+                    status: "running",
+                    progress: payload.progress ?? 0,
+                    startedAt: new Date(
+                      payload.timestamp ?? new Date().toISOString(),
+                    ),
+                  }
+                : item,
+            )
+          : [
+              ...prev.agents,
+              {
+                id: payload.agentId,
+                name: payload.agentId,
+                status: "running",
+                progress: payload.progress ?? 0,
+                startedAt: new Date(
+                  payload.timestamp ?? new Date().toISOString(),
+                ),
+              },
+            ];
+
+        return {
+          ...prev,
+          agents: updatedAgents,
+          currentStep: payload.stepId,
+          status: "running",
+        };
       });
       appendEvent(
         "step.started",
@@ -78,15 +108,42 @@ export function usePipelineStream(projectId?: string) {
     const onStepCompleted = (payload: GenerationProgressEvent) => {
       setState((prev) => {
         if (!prev) return prev;
-        const agent = prev.agents.find((item) => item.id === payload.agentId);
-        if (agent) {
-          agent.status = "completed";
-          agent.progress = 100;
-          agent.finishedAt = new Date(
-            payload.timestamp ?? new Date().toISOString(),
-          );
-        }
-        return prev;
+
+        const existingAgent = prev.agents.find(
+          (item) => item.id === payload.agentId,
+        );
+
+        const updatedAgents: AgentState[] = existingAgent
+          ? prev.agents.map((item) =>
+              item.id === payload.agentId
+                ? {
+                    ...item,
+                    status: "completed",
+                    progress: payload.progress ?? 100,
+                    finishedAt: new Date(
+                      payload.timestamp ?? new Date().toISOString(),
+                    ),
+                  }
+                : item,
+            )
+          : [
+              ...prev.agents,
+              {
+                id: payload.agentId,
+                name: payload.agentId,
+                status: "completed",
+                progress: payload.progress ?? 100,
+                finishedAt: new Date(
+                  payload.timestamp ?? new Date().toISOString(),
+                ),
+              },
+            ];
+
+        return {
+          ...prev,
+          agents: updatedAgents,
+          status: prev.status === "failed" ? "failed" : prev.status,
+        };
       });
       appendEvent(
         "step.completed",
@@ -114,7 +171,29 @@ export function usePipelineStream(projectId?: string) {
 
     // Pipeline failed
     const onFailed = (payload: GenerationErrorEvent) => {
-      setState((prev) => (prev ? { ...prev, status: "failed" } : prev));
+      setState((prev) => {
+        if (!prev) return prev;
+        const errors = [...(prev.errors ?? [])];
+        const errorParts: string[] = [];
+        if (payload.stepId) {
+          errorParts.push(`Stage: ${payload.stepId}`);
+        }
+        if (payload.agentId) {
+          errorParts.push(`Agent: ${payload.agentId}`);
+        }
+        if (payload.error) {
+          errorParts.push(`Reason: ${payload.error}`);
+        }
+        if (errorParts.length > 0) {
+          errors.push(errorParts.join(" | "));
+        }
+        return {
+          ...prev,
+          status: "failed",
+          errors,
+          finishedAt: new Date(),
+        };
+      });
       appendEvent(
         "pipeline.failed",
         payload as unknown as Record<string, unknown>,

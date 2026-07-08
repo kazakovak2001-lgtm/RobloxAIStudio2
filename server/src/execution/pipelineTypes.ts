@@ -92,6 +92,7 @@ export type PipelineEventType =
 export interface PipelineEvent {
   type: PipelineEventType;
   pipelineId: string;
+  projectId?: string;
   stepId?: string;
   data?: Record<string, unknown>;
   timestamp: Date;

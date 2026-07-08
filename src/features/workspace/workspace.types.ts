@@ -1,4 +1,11 @@
-export type WorkspaceStatus = "idle" | "running" | "paused" | "retrying" | "completed" | "cancelled" | "failed";
+export type WorkspaceStatus =
+  | "idle"
+  | "running"
+  | "paused"
+  | "retrying"
+  | "completed"
+  | "cancelled"
+  | "failed";
 
 export interface AgentState {
   id: string;
@@ -25,6 +32,7 @@ export interface PipelineState {
   startedAt?: Date;
   finishedAt?: Date;
   estimatedRemaining?: number;
+  errors?: string[];
 }
 
 export interface PipelineStreamMessage {
