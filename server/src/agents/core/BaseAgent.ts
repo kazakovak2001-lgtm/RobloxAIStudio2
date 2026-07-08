@@ -2,6 +2,7 @@ import {
   createDefaultPromptTemplateRegistry,
   type PromptTemplateRegistry,
 } from "../../ai/promptTemplates";
+import { createDefaultPromptEngine, type PromptEngine } from "../../ai/prompts";
 
 export interface AgentConfig {
   name: string;
@@ -42,6 +43,15 @@ function getSharedRegistry(): PromptTemplateRegistry {
     _sharedRegistry = createDefaultPromptTemplateRegistry();
   }
   return _sharedRegistry;
+}
+
+/** Shared PromptEngine — production prompt source. */
+let _sharedEngine: PromptEngine | null = null;
+function getSharedEngine(): PromptEngine {
+  if (!_sharedEngine) {
+    _sharedEngine = createDefaultPromptEngine();
+  }
+  return _sharedEngine;
 }
 
 export abstract class BaseAgent {
@@ -103,10 +113,21 @@ export abstract class BaseAgent {
   }
 
   /**
-   * Build a full prompt by combining system + user sections from the registry.
-   * Returns null if no template is registered for this agent type.
+   * Build a full prompt by combining system + user sections.
+   * Priority: PromptEngine (versioned) → PromptTemplateRegistry (legacy) → null
    */
   protected buildPrompt(vars: Record<string, string>): string | null {
+    // 1. Try PromptEngine (production source with versioning + validation)
+    const agentType = this.agentTypeKey();
+    if (agentType) {
+      const engine = getSharedEngine();
+      const result = engine.render(agentType, vars);
+      if (result.success) {
+        return [result.system, result.prompt].filter(Boolean).join("\n\n");
+      }
+    }
+
+    // 2. Fallback to legacy PromptTemplateRegistry
     const system = this.renderPrompt(vars, "system");
     const user = this.renderPrompt(vars, "user");
     if (!system && !user) return null;
@@ -118,7 +139,6 @@ export abstract class BaseAgent {
    * Override in subclasses if the registry key differs from the name.
    */
   protected agentTypeKey(): string | null {
-    // Convention: registry keys are snake_case of the agent class name prefix
     const map: Record<string, string> = {
       Requirements: "requirements",
       Planner: "planner",
@@ -128,10 +148,10 @@ export abstract class BaseAgent {
       UIGenerator: "ui_generator",
       AssetPlanner: "asset_planner",
       Orchestrator: "orchestrator",
-      Database: "database_designer",
+      Database: "database",
       Documentation: "documentation",
       Tester: "tester",
-      Debug: "debugger",
+      Debug: "debug",
       Performance: "performance",
     };
     return map[this.name] ?? null;
