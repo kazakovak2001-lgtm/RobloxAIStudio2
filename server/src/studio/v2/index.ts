@@ -1,5 +1,6 @@
 export { StudioBridge } from "./StudioBridge";
 export { StudioEvents, type StudioEventHandler } from "./StudioEvents";
+export { StudioSessionManager, type BridgeSession } from "./StudioSession";
 export { CommandRegistry } from "./commands/CommandRegistry";
 export {
   ManifestBuilder,

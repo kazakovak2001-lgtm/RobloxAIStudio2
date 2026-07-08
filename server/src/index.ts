@@ -421,6 +421,10 @@ app.use("/api/system", createSystemRouter());
 import { createConceptRouter } from "./routes/concept";
 app.use("/api/concept", createConceptRouter(agentRegistry));
 
+// Studio Bridge API
+import { createStudioRouter } from "./routes/studio";
+app.use("/api/studio", createStudioRouter());
+
 // Root endpoint
 app.get("/", (_req: Request, res: Response) => {
   res.json({
