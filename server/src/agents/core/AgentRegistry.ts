@@ -1,4 +1,4 @@
-import type { LLMProvider } from "../../types";
+import type { LLMProvider } from "../../ai/provider";
 import type { BaseAgent } from "./BaseAgent";
 import { RequirementsAgent } from "../implementations/RequirementsAgent";
 import { PlannerAgent } from "../implementations/PlannerAgent";
