@@ -18,6 +18,7 @@ import { ValidationResults } from "./components/ValidationResults";
 import { PipelineStatusBar } from "./components/PipelineStatusBar";
 import { PipelineStatusViewer } from "./components/PipelineStatusViewer";
 import { StudioBridgePanel } from "./components/StudioBridgePanel";
+import { ProtocolMonitor } from "./components/ProtocolMonitor";
 import { PipelineView } from "./PipelineView";
 import { usePipelineStream } from "./usePipelineStream";
 import { Loader } from "../../components/ui/Loader";
@@ -213,6 +214,7 @@ export default function WorkspacePage() {
               <ValidationResults />
               <GenerationHistoryPanel refreshTrigger={historyRefresh} />
               <StudioBridgePanel projectId={id ?? ""} status={status} />
+              <ProtocolMonitor isConnected={isConnected} />
               <ProjectSummary
                 agents={agents.length}
                 runTimeSeconds={

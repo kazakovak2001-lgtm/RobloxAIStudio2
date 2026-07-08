@@ -118,3 +118,91 @@ export async function sendHeartbeat(
     };
   }
 }
+
+export interface ProtocolLogEntry {
+  messageId: string;
+  direction: "client_to_server" | "server_to_client";
+  type: string;
+  status: "ok" | "error" | "pending";
+  timestamp: number;
+  roundTripMs?: number;
+  payloadSize: number;
+  sessionId: string;
+}
+
+export interface ProtocolInfo {
+  protocolVersion: string;
+  supportedTypes: string[];
+  maxPayloadSize: number;
+  messageTimeoutMs: number;
+}
+
+/**
+ * Get protocol message log.
+ */
+export async function getProtocolLog(
+  limit = 50,
+): Promise<{ success: boolean; data?: ProtocolLogEntry[]; error?: string }> {
+  try {
+    const res = await fetch(`/api/studio/protocol/log?limit=${limit}`);
+    const json = await res.json();
+    if (!res.ok)
+      return { success: false, error: json.error ?? `HTTP ${res.status}` };
+    return { success: true, data: json.data };
+  } catch (err) {
+    return {
+      success: false,
+      error: err instanceof Error ? err.message : "Network error",
+    };
+  }
+}
+
+/**
+ * Get protocol info (version, supported types).
+ */
+export async function getProtocolInfo(): Promise<{
+  success: boolean;
+  data?: ProtocolInfo;
+  error?: string;
+}> {
+  try {
+    const res = await fetch("/api/studio/protocol/info");
+    const json = await res.json();
+    if (!res.ok)
+      return { success: false, error: json.error ?? `HTTP ${res.status}` };
+    return { success: true, data: json.data };
+  } catch (err) {
+    return {
+      success: false,
+      error: err instanceof Error ? err.message : "Network error",
+    };
+  }
+}
+
+/**
+ * Send a protocol message (for testing/debugging).
+ */
+export async function sendProtocolMessage(
+  message: Record<string, unknown>,
+): Promise<{
+  success: boolean;
+  data?: Record<string, unknown>;
+  error?: string;
+}> {
+  try {
+    const res = await fetch("/api/studio/protocol/message", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(message),
+    });
+    const json = await res.json();
+    if (!res.ok)
+      return { success: false, error: json.error ?? `HTTP ${res.status}` };
+    return { success: true, data: json.data };
+  } catch (err) {
+    return {
+      success: false,
+      error: err instanceof Error ? err.message : "Network error",
+    };
+  }
+}

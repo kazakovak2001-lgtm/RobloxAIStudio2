@@ -5,11 +5,18 @@
 import { Router } from "express";
 import { StudioBridge } from "../studio/v2/StudioBridge";
 import { StudioSessionManager } from "../studio/v2/StudioSession";
+import {
+  ProtocolDispatcher,
+  ProtocolValidator,
+  PROTOCOL_VERSION,
+} from "../studio/v2/protocol";
 
 export function createStudioRouter(): Router {
   const router = Router();
   const bridge = new StudioBridge();
   const sessionManager = new StudioSessionManager();
+  const dispatcher = new ProtocolDispatcher();
+  const validator = new ProtocolValidator();
 
   // Periodic timeout check (every 30s)
   setInterval(() => {
@@ -133,6 +140,73 @@ export function createStudioRouter(): Router {
   router.get("/events", (_req, res) => {
     const history = bridge.events.getHistory();
     res.json({ success: true, data: history.slice(-50) });
+  });
+
+  // ─── Protocol Layer ───────────────────────────────────────────────────────
+
+  // POST /api/studio/protocol/message — dispatch a protocol message
+  router.post("/protocol/message", async (req, res) => {
+    const message = req.body;
+    try {
+      const response = await dispatcher.dispatch(message);
+      res.json({ success: true, data: response });
+    } catch (err) {
+      res.status(500).json({
+        success: false,
+        error: err instanceof Error ? err.message : "Dispatch failed",
+      });
+    }
+  });
+
+  // POST /api/studio/protocol/register — register a plugin client
+  router.post("/protocol/register", (req, res) => {
+    const { pluginVersion, studioVersion, projectName, protocolVersion } =
+      req.body;
+
+    const validationError = validator.validateRegistration(req.body);
+    if (validationError) {
+      res.status(400).json({ success: false, error: validationError });
+      return;
+    }
+
+    const client = bridge.connect(studioVersion, projectName);
+    const session = sessionManager.create(client);
+
+    console.log(
+      `[studio-protocol] Plugin registered: ${client.clientId} (plugin ${pluginVersion}, protocol ${protocolVersion})`,
+    );
+
+    res.json({
+      success: true,
+      data: {
+        clientId: client.clientId,
+        sessionId: session.sessionId,
+        serverProtocol: PROTOCOL_VERSION,
+        compatible: true,
+        studioVersion,
+        pluginVersion,
+      },
+    });
+  });
+
+  // GET /api/studio/protocol/log — get message log
+  router.get("/protocol/log", (req, res) => {
+    const limit = parseInt((req.query.limit as string) ?? "50", 10);
+    const log = dispatcher.getLog(limit);
+    res.json({ success: true, data: log });
+  });
+
+  // GET /api/studio/protocol/info — protocol metadata
+  router.get("/protocol/info", (_req, res) => {
+    res.json({
+      success: true,
+      data: {
+        protocolVersion: PROTOCOL_VERSION,
+        supportedTypes: dispatcher.getSupportedTypes(),
+        maxPayloadSize: 1_048_576,
+        messageTimeoutMs: 30_000,
+      },
+    });
   });
 
   return router;
