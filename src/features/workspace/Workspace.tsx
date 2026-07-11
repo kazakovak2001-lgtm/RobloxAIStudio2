@@ -19,6 +19,7 @@ import { PipelineStatusBar } from "./components/PipelineStatusBar";
 import { PipelineStatusViewer } from "./components/PipelineStatusViewer";
 import { StudioBridgePanel } from "./components/StudioBridgePanel";
 import { ProtocolMonitor } from "./components/ProtocolMonitor";
+import { GameArchitectPanel } from "./components/GameArchitectPanel";
 import { PipelineView } from "./PipelineView";
 import { usePipelineStream } from "./usePipelineStream";
 import { Loader } from "../../components/ui/Loader";
@@ -196,6 +197,7 @@ export default function WorkspacePage() {
             <div className="space-y-4">
               <PipelineView pipeline={state} status={status} />
               <LiveConsole logs={logs} />
+              <GameArchitectPanel />
               <ArtifactExplorer
                 pipelineId={activePipelineId}
                 onReviewChange={refreshReviewData}

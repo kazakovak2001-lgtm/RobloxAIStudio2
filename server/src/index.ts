@@ -425,6 +425,10 @@ app.use("/api/concept", createConceptRouter(agentRegistry));
 import { createStudioRouter } from "./routes/studio";
 app.use("/api/studio", createStudioRouter());
 
+// AI Game Architect API
+import { createGameArchitectRouter } from "./routes/gameArchitect";
+app.use("/api/ai/game-architect", createGameArchitectRouter());
+
 // Root endpoint
 app.get("/", (_req: Request, res: Response) => {
   res.json({
