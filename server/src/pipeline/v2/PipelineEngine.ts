@@ -15,6 +15,24 @@ import { ArtifactStore, type PipelineArtifact } from "./ArtifactStore";
 import { createPipelineState, type PipelineState } from "./PipelineStage";
 import type { PipelineStore } from "./store/PipelineStore";
 import { InMemoryPipelineStore } from "./store/InMemoryPipelineStore";
+import {
+  type PipelineEventBus,
+  DefaultPipelineEventBus,
+  createPipelineEvent,
+} from "../events";
+import {
+  type PipelineAuditStore,
+  InMemoryAuditStore,
+  createAuditEntry,
+} from "../audit";
+import { PipelineMetricsCollector } from "../metrics";
+
+export interface PipelineEngineOptions {
+  store?: PipelineStore;
+  eventBus?: PipelineEventBus;
+  auditStore?: PipelineAuditStore;
+  metrics?: PipelineMetricsCollector;
+}
 
 export class PipelineEngine {
   private executor: PipelineExecutor;
@@ -22,12 +40,49 @@ export class PipelineEngine {
   private store: PipelineStore;
   private artifactStore: ArtifactStore;
   private activeExecutions: Set<string> = new Set();
+  private eventBus: PipelineEventBus;
+  private auditStore: PipelineAuditStore;
+  private metrics: PipelineMetricsCollector;
 
-  constructor(store?: PipelineStore) {
+  constructor(options?: PipelineEngineOptions) {
     this.events = new PipelineEventEmitterV2();
     this.executor = new PipelineExecutor(this.events);
-    this.store = store ?? new InMemoryPipelineStore();
+    this.store = options?.store ?? new InMemoryPipelineStore();
     this.artifactStore = new ArtifactStore();
+    this.eventBus = options?.eventBus ?? new DefaultPipelineEventBus();
+    this.auditStore = options?.auditStore ?? new InMemoryAuditStore();
+    this.metrics = options?.metrics ?? new PipelineMetricsCollector();
+
+    // Wire v2 events to the observability layer
+    this.events.on((evt) => {
+      this.eventBus.emit(
+        createPipelineEvent(
+          evt.pipelineId,
+          this.mapEventType(evt.type),
+          evt.stage,
+          evt,
+        ),
+      );
+      this.auditStore.append(
+        createAuditEntry(
+          evt.pipelineId,
+          evt.type,
+          `${evt.type} ${evt.stage ?? ""}`.trim(),
+          evt.stage,
+        ),
+      );
+      // Update metrics
+      if (evt.type === "stage.completed") {
+        this.metrics.stageCompleted(evt.pipelineId, evt.durationMs);
+      } else if (evt.type === "stage.failed") {
+        this.metrics.stageFailed(evt.pipelineId);
+      } else if (
+        evt.type === "pipeline.completed" ||
+        evt.type === "pipeline.failed"
+      ) {
+        this.metrics.finish(evt.pipelineId);
+      }
+    });
 
     const interrupted = this.store.markInterrupted();
     if (interrupted > 0) {
@@ -35,6 +90,20 @@ export class PipelineEngine {
         `[PipelineEngine] Recovered ${interrupted} interrupted pipeline(s)`,
       );
     }
+  }
+
+  private mapEventType(type: string): import("../events").PipelineEventType {
+    const map: Record<string, import("../events").PipelineEventType> = {
+      "pipeline.started": "PipelineStarted",
+      "stage.started": "StageStarted",
+      "stage.completed": "StageCompleted",
+      "stage.failed": "StageFailed",
+      "pipeline.completed": "PipelineCompleted",
+      "pipeline.failed": "PipelineFailed",
+      "pipeline.paused": "PipelinePaused",
+      "pipeline.cancelled": "PipelineCancelled",
+    };
+    return map[type] ?? "PipelineStarted";
   }
 
   async run(
@@ -47,8 +116,10 @@ export class PipelineEngine {
       blueprint,
       agentExecutor,
     );
+    this.metrics.start(result.state.pipelineId, result.state.stages.length);
     this.store.save(result.state);
     this.storeArtifactsFromState(result.state);
+    this.metrics.finish(result.state.pipelineId);
     return result;
   }
 
@@ -67,6 +138,7 @@ export class PipelineEngine {
     const state = createPipelineState(projectId);
     this.store.save(state);
     this.activeExecutions.add(projectId);
+    this.metrics.start(state.pipelineId, state.stages.length);
 
     void this.executor
       .execute(projectId, blueprint, agentExecutor, state)
@@ -269,5 +341,23 @@ export class PipelineEngine {
     this.store.save(result.state);
     this.storeArtifactsFromState(result.state);
     return result;
+  }
+
+  // ─── Observability Accessors ────────────────────────────────────────────
+
+  getMetrics(pipelineId: string) {
+    return this.metrics.get(pipelineId);
+  }
+
+  getAllMetrics() {
+    return this.metrics.getAll();
+  }
+
+  getAuditHistory(pipelineId: string) {
+    return this.auditStore.getHistory(pipelineId);
+  }
+
+  getObservabilityEventBus(): PipelineEventBus {
+    return this.eventBus;
   }
 }
