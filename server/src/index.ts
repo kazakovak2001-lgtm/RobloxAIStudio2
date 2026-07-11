@@ -445,6 +445,10 @@ app.use("/api/repair", createRepairRouter());
 import { createKnowledgeRouter } from "./routes/knowledge";
 app.use("/api/knowledge", createKnowledgeRouter());
 
+// Agent Collaboration API
+import { createAgentCollaborationRouter } from "./routes/agentCollaboration";
+app.use("/api/agents", createAgentCollaborationRouter());
+
 // Root endpoint
 app.get("/", (_req: Request, res: Response) => {
   res.json({
