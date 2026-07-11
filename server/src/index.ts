@@ -449,6 +449,10 @@ app.use("/api/knowledge", createKnowledgeRouter());
 import { createAgentCollaborationRouter } from "./routes/agentCollaboration";
 app.use("/api/agents", createAgentCollaborationRouter());
 
+// Domain Intelligence API
+import { createDomainRouter } from "./routes/domain";
+app.use("/api/domain", createDomainRouter());
+
 // Root endpoint
 app.get("/", (_req: Request, res: Response) => {
   res.json({
