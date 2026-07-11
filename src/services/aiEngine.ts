@@ -1,33 +1,29 @@
 /**
- * AI Engine Service — Frontend client for the Compiler API.
+ * AI Engine Service — Frontend client for the Generation Pipeline.
  *
- * Previously imported legacy agent implementations directly.
- * Now delegates all execution to the backend server via HTTP API.
- * Agents run server-side with full LLM, evaluation, memory, and governance.
+ * Uses the PipelineEngine v2 endpoint for generation.
+ * Returns pipelineId (not executionId) for consistent status polling.
  */
-
-const API_BASE = "/api/projects";
 
 export interface PipelineResult {
   success: boolean;
   executionId?: string;
+  pipelineId?: string;
   status?: string;
   error?: string;
 }
 
 /**
- * Start a generation pipeline run via the backend API.
+ * Start a generation pipeline run via PipelineEngine v2.
  */
 export async function runAgentPipeline(
   projectId: string,
-  blueprintId?: string,
-  userId = "default-user",
 ): Promise<PipelineResult> {
   try {
-    const response = await fetch(`${API_BASE}/${projectId}/generate`, {
+    const response = await fetch("/api/concept/experience/generate-direct", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ blueprintId: blueprintId ?? projectId, userId }),
+      body: JSON.stringify({ projectId }),
     });
 
     if (!response.ok) {
@@ -42,10 +38,12 @@ export async function runAgentPipeline(
     }
 
     const data = await response.json();
+    const pipelineId = data.data?.pipelineId ?? data.pipelineId;
     return {
       success: true,
-      executionId: data.executionId,
-      status: data.status,
+      executionId: pipelineId,
+      pipelineId,
+      status: data.data?.status ?? data.status,
     };
   } catch (err) {
     return {
@@ -56,15 +54,13 @@ export async function runAgentPipeline(
 }
 
 /**
- * Get generation execution status.
+ * Get generation execution status (via concept pipeline status API).
  */
 export async function getExecutionStatus(
-  projectId: string,
-  executionId: string,
+  _projectId: string,
+  pipelineId: string,
 ): Promise<unknown> {
-  const response = await fetch(
-    `${API_BASE}/${projectId}/generation/${executionId}/status`,
-  );
+  const response = await fetch(`/api/concept/experience/status/${pipelineId}`);
   if (!response.ok) return null;
   const data = await response.json();
   return data.data;

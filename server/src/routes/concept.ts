@@ -166,12 +166,10 @@ export function createConceptRouter(agentRegistry: AgentRegistry): Router {
         (agentType, input) => agentRegistry.executeAgent(agentType, input),
       );
       if (!result) {
-        res
-          .status(400)
-          .json({
-            success: false,
-            error: "Cannot resume pipeline (not paused)",
-          });
+        res.status(400).json({
+          success: false,
+          error: "Cannot resume pipeline (not paused)",
+        });
         return;
       }
       res.json({
@@ -179,12 +177,10 @@ export function createConceptRouter(agentRegistry: AgentRegistry): Router {
         data: { status: result.state.status, pipelineId },
       });
     } catch (err) {
-      res
-        .status(500)
-        .json({
-          success: false,
-          error: err instanceof Error ? err.message : "Resume failed",
-        });
+      res.status(500).json({
+        success: false,
+        error: err instanceof Error ? err.message : "Resume failed",
+      });
     }
   });
 
@@ -192,12 +188,10 @@ export function createConceptRouter(agentRegistry: AgentRegistry): Router {
   router.post("/experience/:pipelineId/cancel", (req, res) => {
     const success = pipelineEngine.cancel(req.params.pipelineId);
     if (!success) {
-      res
-        .status(400)
-        .json({
-          success: false,
-          error: "Cannot cancel pipeline (not running or paused)",
-        });
+      res.status(400).json({
+        success: false,
+        error: "Cannot cancel pipeline (not running or paused)",
+      });
       return;
     }
     res.json({ success: true, data: { status: "cancelled" } });
@@ -221,12 +215,10 @@ export function createConceptRouter(agentRegistry: AgentRegistry): Router {
         (agentType, input) => agentRegistry.executeAgent(agentType, input),
       );
       if (!result) {
-        res
-          .status(400)
-          .json({
-            success: false,
-            error: "Cannot retry pipeline (not failed)",
-          });
+        res.status(400).json({
+          success: false,
+          error: "Cannot retry pipeline (not failed)",
+        });
         return;
       }
       res.json({
@@ -234,12 +226,10 @@ export function createConceptRouter(agentRegistry: AgentRegistry): Router {
         data: { status: result.state.status, pipelineId },
       });
     } catch (err) {
-      res
-        .status(500)
-        .json({
-          success: false,
-          error: err instanceof Error ? err.message : "Retry failed",
-        });
+      res.status(500).json({
+        success: false,
+        error: err instanceof Error ? err.message : "Retry failed",
+      });
     }
   });
 
@@ -264,12 +254,10 @@ export function createConceptRouter(agentRegistry: AgentRegistry): Router {
           (agentType, input) => agentRegistry.executeAgent(agentType, input),
         );
         if (!result) {
-          res
-            .status(400)
-            .json({
-              success: false,
-              error: `Cannot retry stage ${stage} (not failed)`,
-            });
+          res.status(400).json({
+            success: false,
+            error: `Cannot retry stage ${stage} (not failed)`,
+          });
           return;
         }
         res.json({
@@ -277,12 +265,10 @@ export function createConceptRouter(agentRegistry: AgentRegistry): Router {
           data: { status: result.state.status, stage },
         });
       } catch (err) {
-        res
-          .status(500)
-          .json({
-            success: false,
-            error: err instanceof Error ? err.message : "Stage retry failed",
-          });
+        res.status(500).json({
+          success: false,
+          error: err instanceof Error ? err.message : "Stage retry failed",
+        });
       }
     },
   );
@@ -471,6 +457,49 @@ export function createConceptRouter(agentRegistry: AgentRegistry): Router {
     }
     const summary = pipelineEngine.getReviewSummary(req.params.pipelineId);
     res.json({ success: true, data: summary });
+  });
+
+  // POST /api/concept/experience/generate-direct
+  // Direct pipeline generation for workspace — no concept required.
+  router.post("/experience/generate-direct", async (req, res) => {
+    const { projectId } = req.body;
+
+    if (!projectId || typeof projectId !== "string") {
+      res.status(400).json({ success: false, error: "projectId is required" });
+      return;
+    }
+
+    const blueprint: Record<string, unknown> = {
+      projectId,
+      name: `Project ${projectId}`,
+      description: "Direct pipeline execution",
+      createdAt: Date.now(),
+    };
+
+    try {
+      const result = await pipelineEngine.run(
+        projectId,
+        blueprint,
+        (agentType, input) => agentRegistry.executeAgent(agentType, input),
+      );
+
+      res.json({
+        success: true,
+        data: {
+          pipelineId: result.state.pipelineId,
+          status: result.state.status,
+          completedStages: result.state.completedStages,
+          failedStages: result.state.failedStages,
+          durationMs: result.durationMs,
+          stageCount: result.state.stages.length,
+        },
+      });
+    } catch (err) {
+      res.status(500).json({
+        success: false,
+        error: err instanceof Error ? err.message : "Pipeline execution failed",
+      });
+    }
   });
 
   return router;
