@@ -437,6 +437,10 @@ app.use("/api/lua", createLuaGenerationRouter());
 import { createPlaytestRouter } from "./routes/playtest";
 app.use("/api/playtest", createPlaytestRouter());
 
+// Repair API
+import { createRepairRouter } from "./routes/repair";
+app.use("/api/repair", createRepairRouter());
+
 // Root endpoint
 app.get("/", (_req: Request, res: Response) => {
   res.json({
