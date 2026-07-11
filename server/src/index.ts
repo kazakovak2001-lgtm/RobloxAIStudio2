@@ -429,6 +429,10 @@ app.use("/api/studio", createStudioRouter());
 import { createGameArchitectRouter } from "./routes/gameArchitect";
 app.use("/api/ai/game-architect", createGameArchitectRouter());
 
+// Lua Generation API
+import { createLuaGenerationRouter } from "./routes/luaGeneration";
+app.use("/api/lua", createLuaGenerationRouter());
+
 // Root endpoint
 app.get("/", (_req: Request, res: Response) => {
   res.json({
