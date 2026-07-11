@@ -125,6 +125,22 @@ export function createGameGenerationRouter(
     try {
       const { projectId } = req.params;
       const { blueprintId, userId } = req.body;
+
+      // Auto-create a minimal blueprint if one doesn't exist yet.
+      // This enables the workflow: Create Project → Generate without manual blueprint creation.
+      const existingBlueprint =
+        (await gameService.getBlueprint(blueprintId || projectId)) ??
+        (await gameService.getBlueprintByProject(projectId));
+
+      if (!existingBlueprint) {
+        await gameService.createBlueprint(userId || "default-user", projectId, {
+          name: `Project ${projectId}`,
+          description: "Auto-generated blueprint for pipeline execution",
+          genre: "adventure",
+          type: "game",
+        } as never);
+      }
+
       const result = await gameService.startGeneration(
         blueprintId || projectId,
         userId || "default-user",
@@ -135,7 +151,10 @@ export function createGameGenerationRouter(
         status: "generation_started",
       });
     } catch (error) {
-      res.status(500).json({ success: false, error: "Generation failed" });
+      const message =
+        error instanceof Error ? error.message : "Generation failed";
+      console.error("[generate] Error:", message);
+      res.status(500).json({ success: false, error: message });
     }
   });
 
