@@ -433,6 +433,10 @@ app.use("/api/ai/game-architect", createGameArchitectRouter());
 import { createLuaGenerationRouter } from "./routes/luaGeneration";
 app.use("/api/lua", createLuaGenerationRouter());
 
+// Playtest API
+import { createPlaytestRouter } from "./routes/playtest";
+app.use("/api/playtest", createPlaytestRouter());
+
 // Root endpoint
 app.get("/", (_req: Request, res: Response) => {
   res.json({
