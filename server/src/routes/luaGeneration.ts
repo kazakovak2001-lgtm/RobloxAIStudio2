@@ -5,12 +5,14 @@
 import { Router } from "express";
 import { LuaGenerationEngine } from "../generation/lua";
 import { ExperienceAssembler } from "../generation/experience";
+import { AssetGenerationEngine } from "../generation/assets";
 import type { GameplaySystem } from "../generation/lua";
 
 export function createLuaGenerationRouter(): Router {
   const router = Router();
   const engine = new LuaGenerationEngine();
   const assembler = new ExperienceAssembler();
+  const assetEngine = new AssetGenerationEngine();
 
   // POST /api/lua/generate — generate scripts for specific systems
   router.post("/generate", (req, res) => {
@@ -87,6 +89,27 @@ export function createLuaGenerationRouter(): Router {
         },
       },
     });
+  });
+
+  // POST /api/lua/generate-assets — generate asset package
+  router.post("/generate-assets", (req, res) => {
+    const { projectId, gameName, genre, systems } = req.body;
+
+    if (!projectId || !gameName) {
+      res
+        .status(400)
+        .json({ success: false, error: "projectId and gameName required" });
+      return;
+    }
+
+    const result = assetEngine.generate({
+      projectId,
+      gameName,
+      genre: genre ?? "adventure",
+      systems: systems ?? ["gameplay"],
+    });
+
+    res.json({ success: true, data: result });
   });
 
   return router;
