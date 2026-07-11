@@ -109,7 +109,8 @@ export default function WorkspacePage() {
         description: "The pipeline hit an error state.",
       });
     }
-  }, [status, toast]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [status]);
 
   return (
     <AppLayout withSidebar>
