@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState, useCallback } from "react";
 import { useParams } from "react-router-dom";
 import { AppLayout } from "../../layouts/AppLayout";
 import { useToast } from "../../components/ui/Toast";
+import { ErrorBoundary } from "../../components/ErrorBoundary";
 import { AgentBoard } from "./components/AgentBoard";
 import { LiveConsole } from "./components/LiveConsole";
 import { CostMonitor } from "./components/CostMonitor";
@@ -142,98 +143,100 @@ export default function WorkspacePage() {
             <Loader label="Preparing workspace" size="lg" />
           </div>
         ) : (
-          <div className="grid gap-4 xl:grid-cols-[1fr_1.15fr_0.95fr]">
-            <div className="space-y-4">
-              <GenerateButton
-                projectId={id ?? ""}
-                pipelineStatus={status}
-                onStarted={(execId) => {
-                  setActivePipelineId(execId);
-                  toast({
-                    variant: "info",
-                    title: "Generation started",
-                    description: `Execution: ${execId}`,
-                  });
-                }}
-                onError={(err) =>
-                  toast({
-                    variant: "error",
-                    title: "Generation failed",
-                    description: err,
-                  })
-                }
-              />
-              <GenerationStatusPanel
-                pipelineId={activePipelineId}
-                onCompleted={async () => {
-                  setHistoryRefresh((prev) => prev + 1);
-                  await refreshReviewData();
-                  toast({
-                    variant: "success",
-                    title: "Generation complete",
-                    description: "All pipeline stages finished.",
-                  });
-                }}
-                onFailed={(err) =>
-                  toast({
-                    variant: "error",
-                    title: "Pipeline failed",
-                    description: err,
-                  })
-                }
-              />
-              <PipelineStatusBar pipeline={state} status={status} />
-              <PipelineStatusViewer pipeline={state} status={status} />
-              <AgentBoard agents={agents} />
-              <CostMonitor
-                cost={cost}
-                estimatedRemaining={Math.max(0, 2.5 - cost)}
-              />
-              <TokenUsage
-                promptTokens={Math.round(tokens * 0.6)}
-                completionTokens={Math.round(tokens * 0.4)}
-                totalTokens={tokens}
-              />
+          <ErrorBoundary>
+            <div className="grid gap-4 xl:grid-cols-[1fr_1.15fr_0.95fr]">
+              <div className="space-y-4">
+                <GenerateButton
+                  projectId={id ?? ""}
+                  pipelineStatus={status}
+                  onStarted={(execId) => {
+                    setActivePipelineId(execId);
+                    toast({
+                      variant: "info",
+                      title: "Generation started",
+                      description: `Execution: ${execId}`,
+                    });
+                  }}
+                  onError={(err) =>
+                    toast({
+                      variant: "error",
+                      title: "Generation failed",
+                      description: err,
+                    })
+                  }
+                />
+                <GenerationStatusPanel
+                  pipelineId={activePipelineId}
+                  onCompleted={async () => {
+                    setHistoryRefresh((prev) => prev + 1);
+                    await refreshReviewData();
+                    toast({
+                      variant: "success",
+                      title: "Generation complete",
+                      description: "All pipeline stages finished.",
+                    });
+                  }}
+                  onFailed={(err) =>
+                    toast({
+                      variant: "error",
+                      title: "Pipeline failed",
+                      description: err,
+                    })
+                  }
+                />
+                <PipelineStatusBar pipeline={state} status={status} />
+                <PipelineStatusViewer pipeline={state} status={status} />
+                <AgentBoard agents={agents} />
+                <CostMonitor
+                  cost={cost}
+                  estimatedRemaining={Math.max(0, 2.5 - cost)}
+                />
+                <TokenUsage
+                  promptTokens={Math.round(tokens * 0.6)}
+                  completionTokens={Math.round(tokens * 0.4)}
+                  totalTokens={tokens}
+                />
+              </div>
+              <div className="space-y-4">
+                <PipelineView pipeline={state} status={status} />
+                <LiveConsole logs={logs} />
+                <GameArchitectPanel />
+                <ArtifactExplorer
+                  pipelineId={activePipelineId}
+                  onReviewChange={refreshReviewData}
+                />
+                <ExportPreview
+                  artifacts={artifactList}
+                  reviewSummary={reviewData}
+                />
+              </div>
+              <div className="space-y-4">
+                <ReviewSummaryPanel
+                  pipelineId={activePipelineId}
+                  refreshTrigger={reviewRefresh}
+                />
+                <ActivityFeed events={events} />
+                <ValidationResults />
+                <GenerationHistoryPanel refreshTrigger={historyRefresh} />
+                <StudioBridgePanel projectId={id ?? ""} status={status} />
+                <ProtocolMonitor isConnected={isConnected} />
+                <ProjectSummary
+                  agents={agents.length}
+                  runTimeSeconds={
+                    state?.startedAt
+                      ? Math.round(
+                          (Date.now() - state.startedAt.getTime()) / 1000,
+                        )
+                      : 0
+                  }
+                  steps={steps}
+                  retries={retries}
+                  tokens={tokens}
+                  cost={cost}
+                />
+              </div>
             </div>
-            <div className="space-y-4">
-              <PipelineView pipeline={state} status={status} />
-              <LiveConsole logs={logs} />
-              <GameArchitectPanel />
-              <ArtifactExplorer
-                pipelineId={activePipelineId}
-                onReviewChange={refreshReviewData}
-              />
-              <ExportPreview
-                artifacts={artifactList}
-                reviewSummary={reviewData}
-              />
-            </div>
-            <div className="space-y-4">
-              <ReviewSummaryPanel
-                pipelineId={activePipelineId}
-                refreshTrigger={reviewRefresh}
-              />
-              <ActivityFeed events={events} />
-              <ValidationResults />
-              <GenerationHistoryPanel refreshTrigger={historyRefresh} />
-              <StudioBridgePanel projectId={id ?? ""} status={status} />
-              <ProtocolMonitor isConnected={isConnected} />
-              <ProjectSummary
-                agents={agents.length}
-                runTimeSeconds={
-                  state?.startedAt
-                    ? Math.round(
-                        (Date.now() - state.startedAt.getTime()) / 1000,
-                      )
-                    : 0
-                }
-                steps={steps}
-                retries={retries}
-                tokens={tokens}
-                cost={cost}
-              />
-            </div>
-          </div>
+          </ErrorBoundary>
         )}
       </div>
     </AppLayout>

@@ -12,7 +12,7 @@ import {
   type PipelineEventHandler,
 } from "./PipelineEvents";
 import { ArtifactStore, type PipelineArtifact } from "./ArtifactStore";
-import type { PipelineState } from "./PipelineStage";
+import { createPipelineState, type PipelineState } from "./PipelineStage";
 
 export class PipelineEngine {
   private executor: PipelineExecutor;
@@ -42,6 +42,38 @@ export class PipelineEngine {
     this.runs.set(result.state.pipelineId, result.state);
     this.storeArtifactsFromState(result.state);
     return result;
+  }
+
+  /**
+   * Start a pipeline asynchronously — returns the pipelineId immediately.
+   * The pipeline runs in the background; use getState() to check progress.
+   */
+  startAsync(
+    projectId: string,
+    blueprint: Record<string, unknown>,
+    agentExecutor: AgentExecutorFn,
+  ): string {
+    const state = createPipelineState(projectId);
+    this.runs.set(state.pipelineId, state);
+
+    // Fire-and-forget: run pipeline in background
+    void this.executor
+      .execute(projectId, blueprint, agentExecutor, state)
+      .then((result) => {
+        this.runs.set(result.state.pipelineId, result.state);
+        this.storeArtifactsFromState(result.state);
+      })
+      .catch((err) => {
+        state.status = "failed";
+        state.finishedAt = Date.now();
+        state.currentStage = null;
+        console.error(
+          `[pipeline] Async pipeline ${state.pipelineId} failed:`,
+          err,
+        );
+      });
+
+    return state.pipelineId;
   }
 
   /**

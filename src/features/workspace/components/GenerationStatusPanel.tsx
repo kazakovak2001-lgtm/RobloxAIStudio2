@@ -32,6 +32,7 @@ interface GenerationStatusPanelProps {
 }
 
 const POLL_INTERVAL_MS = 3000;
+const POLL_TIMEOUT_MS = 300_000; // 5 minute max polling time
 
 export function GenerationStatusPanel({
   pipelineId,
@@ -43,6 +44,7 @@ export function GenerationStatusPanel({
   const [isActionLoading, setIsActionLoading] = useState(false);
   const [expandedStage, setExpandedStage] = useState<string | null>(null);
   const intervalRef = useRef<number | null>(null);
+  const pollStartRef = useRef<number>(0);
 
   useEffect(() => {
     if (!pipelineId) {
@@ -51,31 +53,49 @@ export function GenerationStatusPanel({
       return;
     }
 
-    const poll = async () => {
-      const result = await getExperienceStatus(pipelineId);
-      if (result.success && result.data) {
-        setStatus(result.data);
-        setError(null);
+    pollStartRef.current = Date.now();
 
-        if (result.data.status === "completed") {
-          onCompleted?.();
-          stopPolling();
-        } else if (result.data.status === "failed") {
-          const failedStage = result.data.stages.find(
-            (s) => s.status === "failed",
-          );
-          const errMsg =
-            failedStage?.error ?? "Pipeline failed at unknown stage";
-          onFailed?.(errMsg);
-          stopPolling();
-        } else if (
-          result.data.status === "cancelled" ||
-          result.data.status === "paused"
-        ) {
-          stopPolling();
+    const poll = async () => {
+      // Timeout guard
+      if (Date.now() - pollStartRef.current > POLL_TIMEOUT_MS) {
+        setError("Polling timeout — pipeline may still be running on server");
+        stopPolling();
+        return;
+      }
+
+      try {
+        const result = await getExperienceStatus(pipelineId);
+        if (result.success && result.data) {
+          // Validate response shape before using
+          if (!result.data.status || !Array.isArray(result.data.stages)) {
+            setError("Invalid pipeline status response");
+            return;
+          }
+          setStatus(result.data);
+          setError(null);
+
+          if (result.data.status === "completed") {
+            onCompleted?.();
+            stopPolling();
+          } else if (result.data.status === "failed") {
+            const failedStage = result.data.stages.find(
+              (s) => s.status === "failed",
+            );
+            const errMsg =
+              failedStage?.error ?? "Pipeline failed at unknown stage";
+            onFailed?.(errMsg);
+            stopPolling();
+          } else if (
+            result.data.status === "cancelled" ||
+            result.data.status === "paused"
+          ) {
+            stopPolling();
+          }
+        } else {
+          setError(result.error ?? "Failed to fetch status");
         }
-      } else {
-        setError(result.error ?? "Failed to fetch status");
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Polling error");
       }
     };
 

@@ -476,30 +476,24 @@ export function createConceptRouter(agentRegistry: AgentRegistry): Router {
       createdAt: Date.now(),
     };
 
-    try {
-      const result = await pipelineEngine.run(
-        projectId,
-        blueprint,
-        (agentType, input) => agentRegistry.executeAgent(agentType, input),
-      );
+    // Start pipeline asynchronously — return pipelineId immediately
+    // so the frontend can begin polling without waiting for completion.
+    const pipelineId = pipelineEngine.startAsync(
+      projectId,
+      blueprint,
+      (agentType, input) => agentRegistry.executeAgent(agentType, input),
+    );
 
-      res.json({
-        success: true,
-        data: {
-          pipelineId: result.state.pipelineId,
-          status: result.state.status,
-          completedStages: result.state.completedStages,
-          failedStages: result.state.failedStages,
-          durationMs: result.durationMs,
-          stageCount: result.state.stages.length,
-        },
-      });
-    } catch (err) {
-      res.status(500).json({
-        success: false,
-        error: err instanceof Error ? err.message : "Pipeline execution failed",
-      });
-    }
+    res.json({
+      success: true,
+      data: {
+        pipelineId,
+        status: "running",
+        completedStages: [],
+        failedStages: [],
+        stageCount: 11,
+      },
+    });
   });
 
   return router;
