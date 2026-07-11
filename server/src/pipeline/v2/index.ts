@@ -28,3 +28,8 @@ export {
   type StageRecord,
   type PipelineState,
 } from "./PipelineStage";
+export {
+  type PipelineStore,
+  InMemoryPipelineStore,
+  FilePipelineStore,
+} from "./store";
