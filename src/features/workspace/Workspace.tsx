@@ -21,6 +21,8 @@ import { PipelineStatusViewer } from "./components/PipelineStatusViewer";
 import { StudioBridgePanel } from "./components/StudioBridgePanel";
 import { ProtocolMonitor } from "./components/ProtocolMonitor";
 import { GameArchitectPanel } from "./components/GameArchitectPanel";
+import { MetricsPanel } from "./components/MetricsPanel";
+import { AuditLogViewer } from "./components/AuditLogViewer";
 import { PipelineView } from "./PipelineView";
 import { usePipelineStream } from "./usePipelineStream";
 import { Loader } from "../../components/ui/Loader";
@@ -196,6 +198,7 @@ export default function WorkspacePage() {
                   completionTokens={Math.round(tokens * 0.4)}
                   totalTokens={tokens}
                 />
+                <MetricsPanel pipelineId={activePipelineId} />
               </div>
               <div className="space-y-4">
                 <PipelineView pipeline={state} status={status} />
@@ -216,6 +219,7 @@ export default function WorkspacePage() {
                   refreshTrigger={reviewRefresh}
                 />
                 <ActivityFeed events={events} />
+                <AuditLogViewer pipelineId={activePipelineId} />
                 <ValidationResults />
                 <GenerationHistoryPanel refreshTrigger={historyRefresh} />
                 <StudioBridgePanel projectId={id ?? ""} status={status} />

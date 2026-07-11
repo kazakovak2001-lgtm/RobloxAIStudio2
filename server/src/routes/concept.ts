@@ -496,6 +496,22 @@ export function createConceptRouter(agentRegistry: AgentRegistry): Router {
     });
   });
 
+  // GET /api/concept/experience/:pipelineId/metrics
+  router.get("/experience/:pipelineId/metrics", (req, res) => {
+    const metrics = pipelineEngine.getMetrics(req.params.pipelineId);
+    if (!metrics) {
+      res.status(404).json({ success: false, error: "Metrics not found" });
+      return;
+    }
+    res.json({ success: true, data: metrics });
+  });
+
+  // GET /api/concept/experience/:pipelineId/audit
+  router.get("/experience/:pipelineId/audit", (req, res) => {
+    const history = pipelineEngine.getAuditHistory(req.params.pipelineId);
+    res.json({ success: true, data: history });
+  });
+
   return router;
 }
 
