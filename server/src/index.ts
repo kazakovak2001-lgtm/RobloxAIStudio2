@@ -441,6 +441,10 @@ app.use("/api/playtest", createPlaytestRouter());
 import { createRepairRouter } from "./routes/repair";
 app.use("/api/repair", createRepairRouter());
 
+// Knowledge API
+import { createKnowledgeRouter } from "./routes/knowledge";
+app.use("/api/knowledge", createKnowledgeRouter());
+
 // Root endpoint
 app.get("/", (_req: Request, res: Response) => {
   res.json({
