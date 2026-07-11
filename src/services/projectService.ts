@@ -70,3 +70,32 @@ export async function deleteProject(id: string): Promise<boolean> {
     return false;
   }
 }
+
+export interface GenerationRecord {
+  id: string;
+  projectId: string;
+  pipelineId: string;
+  conceptId?: string;
+  status: string;
+  startedAt: number;
+  finishedAt?: number;
+  duration?: number;
+  stagesCompleted: number;
+  stagesTotal: number;
+  failures: number;
+  tokenUsage: number;
+  aiCost: number;
+}
+
+export async function getProjectHistory(
+  projectId: string,
+): Promise<GenerationRecord[]> {
+  try {
+    const res = await fetch(`${API_BASE}/${projectId}/history`);
+    if (!res.ok) return [];
+    const data = await res.json();
+    return data.data ?? [];
+  } catch {
+    return [];
+  }
+}

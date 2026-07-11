@@ -12,6 +12,11 @@ export interface Project {
   progress: number;
   createdAt: Date;
   updatedAt: Date;
+  conceptId?: string;
+  pipelineIds?: string[];
+  lastPipelineId?: string;
+  lastPipelineStatus?: string;
+  totalGenerations?: number;
 }
 
 export interface CreateProjectInput {

@@ -6,6 +6,7 @@ import { Router } from "express";
 import { randomUUID } from "crypto";
 import { PipelineEngine } from "../pipeline/v2/PipelineEngine";
 import { AgentRegistry } from "../agents/core/AgentRegistry";
+import { generationHistory } from "./projects";
 
 export function createConceptRouter(agentRegistry: AgentRegistry): Router {
   const router = Router();
@@ -483,6 +484,20 @@ export function createConceptRouter(agentRegistry: AgentRegistry): Router {
       blueprint,
       (agentType, input) => agentRegistry.executeAgent(agentType, input),
     );
+
+    // Record generation in project history
+    generationHistory.record({
+      id: `gen-${randomUUID().slice(0, 8)}`,
+      projectId,
+      pipelineId,
+      status: "running",
+      startedAt: Date.now(),
+      stagesCompleted: 0,
+      stagesTotal: 11,
+      failures: 0,
+      tokenUsage: 0,
+      aiCost: 0,
+    });
 
     res.json({
       success: true,
