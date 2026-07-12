@@ -457,6 +457,10 @@ app.use("/api/domain", createDomainRouter());
 import { createAutonomousRouter } from "./routes/autonomous";
 app.use("/api/autonomous", createAutonomousRouter());
 
+// Platform API (users, versions, registry)
+import { createPlatformRouter } from "./routes/platform";
+app.use("/api/platform", createPlatformRouter());
+
 // Root endpoint
 app.get("/", (_req: Request, res: Response) => {
   res.json({
