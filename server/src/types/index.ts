@@ -1,8 +1,11 @@
 export interface AgentInput {
-  [key: string]: unknown;
-}
+   [key: string]: unknown;
+ }
 
-export interface AgentOutput {
+ // Re-export GameDesignSeed for agent convenience
+ export type { GameDesignSeed } from "./gameDesignSeed";
+
+ export interface AgentOutput {
   [key: string]: unknown;
 }
 
