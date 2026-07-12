@@ -470,6 +470,8 @@ export function createConceptRouter(agentRegistry: AgentRegistry): Router {
       return;
     }
 
+    console.log(`[GENERATION_REQUEST] projectId=${projectId}`);
+
     const blueprint: Record<string, unknown> = {
       projectId,
       name: `Project ${projectId}`,
@@ -485,6 +487,10 @@ export function createConceptRouter(agentRegistry: AgentRegistry): Router {
       (agentType, input) => agentRegistry.executeAgent(agentType, input),
     );
 
+    console.log(
+      `[PIPELINE_CREATED] pipelineId=${pipelineId} projectId=${projectId}`,
+    );
+
     // Record generation in project history
     generationHistory.record({
       id: `gen-${randomUUID().slice(0, 8)}`,
@@ -498,6 +504,8 @@ export function createConceptRouter(agentRegistry: AgentRegistry): Router {
       tokenUsage: 0,
       aiCost: 0,
     });
+
+    console.log(`[JOB_ENQUEUED] pipelineId=${pipelineId}`);
 
     res.json({
       success: true,

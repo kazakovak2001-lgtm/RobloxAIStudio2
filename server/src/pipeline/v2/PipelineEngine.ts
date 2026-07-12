@@ -132,7 +132,12 @@ export class PipelineEngine {
       const existing = this.store
         .getAll()
         .find((p) => p.projectId === projectId && p.status === "running");
-      if (existing) return existing.pipelineId;
+      if (existing) {
+        console.log(
+          `[JOB_DUPLICATE] projectId=${projectId} existingPipeline=${existing.pipelineId}`,
+        );
+        return existing.pipelineId;
+      }
     }
 
     const state = createPipelineState(projectId);
@@ -140,12 +145,19 @@ export class PipelineEngine {
     this.activeExecutions.add(projectId);
     this.metrics.start(state.pipelineId, state.stages.length);
 
+    console.log(
+      `[JOB_STARTED] pipelineId=${state.pipelineId} projectId=${projectId}`,
+    );
+
     void this.executor
       .execute(projectId, blueprint, agentExecutor, state)
       .then((result) => {
         this.store.save(result.state);
         this.storeArtifactsFromState(result.state);
         this.activeExecutions.delete(projectId);
+        console.log(
+          `[JOB_COMPLETED] pipelineId=${state.pipelineId} status=${result.state.status} stages=${result.state.completedStages.length}`,
+        );
       })
       .catch((err) => {
         state.status = "failed";
@@ -153,10 +165,7 @@ export class PipelineEngine {
         state.currentStage = null;
         this.store.save(state);
         this.activeExecutions.delete(projectId);
-        console.error(
-          `[pipeline] Async pipeline ${state.pipelineId} failed:`,
-          err,
-        );
+        console.error(`[JOB_FAILED] pipelineId=${state.pipelineId}:`, err);
       });
 
     return state.pipelineId;
