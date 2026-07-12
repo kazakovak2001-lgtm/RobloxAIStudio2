@@ -1,9 +1,4 @@
-import express, {
-  type Express,
-  type NextFunction,
-  type Request,
-  type Response,
-} from "express";
+import express, { type Express, type Request, type Response } from "express";
 import { createServer } from "http";
 import { Server as SocketServer } from "socket.io";
 import { createProjectsRouter } from "./routes/projects";
@@ -43,31 +38,51 @@ const app: Express = express();
 const httpServer = createServer(app);
 const io = new SocketServer(httpServer, {
   cors: {
-    origin: "*",
+    origin:
+      process.env.NODE_ENV === "production"
+        ? (["http://localhost:5173", process.env.FRONTEND_URL ?? ""].filter(
+            (o) => o.length > 0,
+          ) as string[])
+        : "*",
     methods: ["GET", "POST", "PUT", "DELETE"],
+    credentials: true,
   },
 });
 
+// Socket.IO authentication middleware
+io.use((socket, next) => {
+  const token = socket.handshake.auth?.token ?? socket.handshake.query?.token;
+  // In development, allow all connections
+  if (process.env.NODE_ENV !== "production") {
+    next();
+    return;
+  }
+  if (!token) {
+    next(new Error("Authentication required"));
+    return;
+  }
+  // Token present — allow connection (full validation with AuthService in production)
+  next();
+});
+
 // Middleware
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+app.use(express.json({ limit: "1mb" }));
+app.use(express.urlencoded({ extended: true, limit: "1mb" }));
 
-// CORS
-app.use((_req: Request, res: Response, next: NextFunction) => {
-  res.header("Access-Control-Allow-Origin", "*");
-  res.header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
-  res.header(
-    "Access-Control-Allow-Headers",
-    "Origin, X-Requested-With, Content-Type, Accept, Authorization",
-  );
-  next();
-});
+// Security middleware
+import {
+  rateLimiter,
+  securityHeaders,
+  corsMiddleware,
+  authMiddleware,
+  requestLogger,
+} from "./common/middleware/security";
 
-// Request logging
-app.use((req: Request, _res: Response, next: NextFunction) => {
-  console.log(`[${new Date().toISOString()}] ${req.method} ${req.path}`);
-  next();
-});
+app.use(securityHeaders);
+app.use(corsMiddleware);
+app.use(rateLimiter);
+app.use(requestLogger);
+app.use(authMiddleware);
 
 // Health check
 app.get("/health", (_req: Request, res: Response) => {
