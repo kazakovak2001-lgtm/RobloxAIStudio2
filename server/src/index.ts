@@ -476,6 +476,24 @@ app.use("/api/autonomous", createAutonomousRouter());
 import { createPlatformRouter } from "./routes/platform";
 app.use("/api/platform", createPlatformRouter());
 
+// Database health endpoints
+app.get("/health/database", async (_req, res) => {
+  const { PostgresStorageProvider, DatabaseHealthCheck } =
+    await import("./platform/storage/postgres");
+  const provider = new PostgresStorageProvider();
+  const health = new DatabaseHealthCheck(provider);
+  const status = await health.check();
+  res.json({ success: true, data: status });
+});
+
+app.get("/health/storage", (_req, res) => {
+  const { getStorageType } = require("./platform/storage");
+  res.json({
+    success: true,
+    data: { provider: getStorageType(), status: "available" },
+  });
+});
+
 // Root endpoint
 app.get("/", (_req: Request, res: Response) => {
   res.json({
