@@ -1,0 +1,1 @@
+export { PermissionMiddleware } from "./PermissionMiddleware";
