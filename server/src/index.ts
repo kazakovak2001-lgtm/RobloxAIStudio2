@@ -453,6 +453,10 @@ app.use("/api/agents", createAgentCollaborationRouter());
 import { createDomainRouter } from "./routes/domain";
 app.use("/api/domain", createDomainRouter());
 
+// Autonomous Orchestrator API
+import { createAutonomousRouter } from "./routes/autonomous";
+app.use("/api/autonomous", createAutonomousRouter());
+
 // Root endpoint
 app.get("/", (_req: Request, res: Response) => {
   res.json({
