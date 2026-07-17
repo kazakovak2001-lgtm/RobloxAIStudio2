@@ -1,7 +1,7 @@
 import { memo } from "react";
 import { Activity as ActivityIcon } from "lucide-react";
-import { Card } from "../../../components/ui/Card";
-import type { PipelineStreamMessage } from "../workspace.types";
+import { Card } from "@/shared/ui/Card";
+import type { PipelineStreamMessage } from "../types";
 
 interface ActivityFeedProps {
   events: PipelineStreamMessage[];

@@ -1,5 +1,8 @@
 # Roblox AI Studio - Game Generation Engine Architecture
 
+**Version**: 1.3.3
+**Last Updated**: 2026-07-13
+
 ## System Overview
 
 The Game Generation Engine is a production-grade AI orchestration platform that transforms natural language prompts into complete, validated Roblox game blueprints. It follows **Clean Architecture** principles with strict separation of concerns.
@@ -32,15 +35,10 @@ The Game Generation Engine is a production-grade AI orchestration platform that 
 │  │   ├─ completeGeneration()                                  │
 │  │   └─ getBlueprint()                                        │
 │  │                                                             │
-│  ├─ BlueprintValidator                                        │
-│  │   ├─ validate()                                            │
-│  │   ├─ validateForGeneration()                               │
-│  │   └─ validateForExport()                                   │
-│  │                                                             │
-│  └─ IncrementalGenerator                                      │
-│      ├─ generateIncremental()                                 │
-│      ├─ resumeFromCheckpoint()                                │
-│      └─ saveCheckpoint()                                      │
+│  └─ BlueprintValidator                                        │
+│      ├─ validate()                                            │
+│      ├─ validateForGeneration()                               │
+│      └─ validateForExport()                                   │
 │                                                                 │
 │ Data Access Layer                                               │
 │  ├─ IBlueprintRepository (interface)                           │

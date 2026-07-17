@@ -1,0 +1,56 @@
+# Dependencies
+node_modules/
+
+# Build output (will be rebuilt in container)
+dist/
+build/
+out/
+
+# Git
+.git/
+.gitignore
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Environment files (secrets)
+.env
+.env.*
+!.env.example
+
+# Documentation and config
+docs/
+.kiro/
+.kilo/
+.agents/
+.snapshots/
+.husky/
+.github/
+
+# OS artifacts
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Logs
+*.log
+logs/
+
+# Test artifacts
+coverage/
+.nyc_output/
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+*.temp
+
+# Database backups
+backups/
+
+# TypeScript build info
+*.tsbuildinfo

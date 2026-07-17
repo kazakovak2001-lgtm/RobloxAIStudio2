@@ -7,11 +7,8 @@ import {
   Lock,
   Unlock,
 } from "lucide-react";
-import { Card } from "../../../components/ui/Card";
-import type {
-  ArtifactSummary,
-  ReviewSummary,
-} from "../../../services/conceptApi";
+import { Card } from "@/shared/ui/Card";
+import type { ArtifactSummary, ReviewSummary } from "@/services/conceptApi";
 
 interface ExportPreviewProps {
   artifacts: ArtifactSummary[];
@@ -107,23 +104,25 @@ export function ExportPreview({
       {/* Export lock status */}
       <div className="mt-3 border-t border-white/5 pt-2">
         {exportReady ? (
-          <div className="flex items-center gap-2 rounded-xl border border-green-500/20 bg-green-500/5 px-3 py-2">
-            <Unlock className="h-4 w-4 text-green-400" />
+          <div className="flex items-center gap-2 rounded-xl border border-success-500/20 bg-success-500/5 px-3 py-2">
+            <Unlock className="h-4 w-4 text-success-400" />
             <div>
-              <p className="text-xs font-medium text-green-400">Export Ready</p>
-              <p className="text-[10px] text-green-400/70">
+              <p className="text-xs font-medium text-success-400">
+                Export Ready
+              </p>
+              <p className="text-[10px] text-success-400/70">
                 All artifacts approved. Ready for Roblox Studio export.
               </p>
             </div>
           </div>
         ) : (
-          <div className="flex items-center gap-2 rounded-xl border border-yellow-500/20 bg-yellow-500/5 px-3 py-2">
-            <Lock className="h-4 w-4 text-yellow-400" />
+          <div className="flex items-center gap-2 rounded-xl border border-warning-500/20 bg-warning-500/5 px-3 py-2">
+            <Lock className="h-4 w-4 text-warning-400" />
             <div>
-              <p className="text-xs font-medium text-yellow-400">
+              <p className="text-xs font-medium text-warning-400">
                 Export Locked
               </p>
-              <p className="text-[10px] text-yellow-400/70">
+              <p className="text-[10px] text-warning-400/70">
                 {unapproved.length} artifact{unapproved.length !== 1 ? "s" : ""}{" "}
                 require approval before export.
               </p>
@@ -141,7 +140,7 @@ export function ExportPreview({
               className="flex items-center justify-between rounded-lg bg-white/[0.02] px-2.5 py-1.5 text-[10px]"
             >
               <span className="text-slate-400">{formatStageName(a.stage)}</span>
-              <span className="text-yellow-400">{a.reviewStatus}</span>
+              <span className="text-warning-400">{a.reviewStatus}</span>
             </div>
           ))}
           {unapproved.length > 5 && (

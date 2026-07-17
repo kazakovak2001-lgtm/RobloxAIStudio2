@@ -31,9 +31,9 @@ export class ErrorBoundary extends Component<Props, State> {
     if (this.state.hasError) {
       if (this.props.fallback) return this.props.fallback;
       return (
-        <div className="flex min-h-[40vh] items-center justify-center rounded-3xl border border-red-500/20 bg-red-500/5 p-10">
+        <div className="flex min-h-[40vh] items-center justify-center rounded-3xl border border-error-500/20 bg-error-500/5 p-10">
           <div className="text-center">
-            <p className="text-lg font-semibold text-red-400">
+            <p className="text-lg font-semibold text-error-400">
               Something went wrong
             </p>
             <p className="mt-2 text-sm text-slate-400">
@@ -41,7 +41,7 @@ export class ErrorBoundary extends Component<Props, State> {
             </p>
             <button
               onClick={() => this.setState({ hasError: false, error: null })}
-              className="mt-4 rounded-lg bg-red-500/20 px-4 py-2 text-sm text-red-300 hover:bg-red-500/30"
+              className="mt-4 rounded-lg bg-error-500/20 px-4 py-2 text-sm text-error-300 hover:bg-error-500/30"
             >
               Try again
             </button>

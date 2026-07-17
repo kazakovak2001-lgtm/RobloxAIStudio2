@@ -1,5 +1,5 @@
 import { CheckCircle, AlertTriangle, XCircle } from "lucide-react";
-import { Card } from "../../../components/ui/Card";
+import { Card } from "@/shared/ui/Card";
 
 interface ValidationResultsProps {
   score?: number;
@@ -28,10 +28,10 @@ export function ValidationResults({
   const status = passed ? "PASS" : errors.length > 0 ? "FAILED" : "WARNING";
   const statusColor =
     status === "PASS"
-      ? "text-green-400"
+      ? "text-success-400"
       : status === "WARNING"
-        ? "text-yellow-400"
-        : "text-red-400";
+        ? "text-warning-400"
+        : "text-error-400";
   const Icon =
     status === "PASS"
       ? CheckCircle
@@ -60,18 +60,18 @@ export function ValidationResults({
 
       <div className="mt-3 h-2 rounded-full bg-slate-800">
         <div
-          className={`h-2 rounded-full ${score >= 70 ? "bg-green-500" : score >= 50 ? "bg-yellow-500" : "bg-red-500"}`}
+          className={`h-2 rounded-full ${score >= 70 ? "bg-success-500" : score >= 50 ? "bg-warning-500" : "bg-error-500"}`}
           style={{ width: `${score}%` }}
         />
       </div>
 
       {errors.length > 0 && (
         <div className="mt-3 space-y-1">
-          <p className="text-xs font-medium text-red-400">
+          <p className="text-xs font-medium text-error-400">
             Errors ({errors.length})
           </p>
           {errors.slice(0, 3).map((err, i) => (
-            <p key={i} className="text-xs text-red-300/70">
+            <p key={i} className="text-xs text-error-300/70">
               • {err}
             </p>
           ))}
@@ -80,11 +80,11 @@ export function ValidationResults({
 
       {warnings.length > 0 && (
         <div className="mt-3 space-y-1">
-          <p className="text-xs font-medium text-yellow-400">
+          <p className="text-xs font-medium text-warning-400">
             Warnings ({warnings.length})
           </p>
           {warnings.slice(0, 3).map((w, i) => (
-            <p key={i} className="text-xs text-yellow-300/70">
+            <p key={i} className="text-xs text-warning-300/70">
               • {w}
             </p>
           ))}

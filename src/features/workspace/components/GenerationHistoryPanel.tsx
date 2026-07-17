@@ -1,10 +1,10 @@
 import { useEffect, useState } from "react";
 import { Clock, CheckCircle, XCircle, History } from "lucide-react";
-import { Card } from "../../../components/ui/Card";
+import { Card } from "@/shared/ui/Card";
 import {
   getExperienceHistory,
   type GenerationHistoryEntry,
-} from "../../../services/conceptApi";
+} from "@/services/conceptApi";
 
 interface GenerationHistoryPanelProps {
   refreshTrigger?: number;

@@ -1,0 +1,17 @@
+Always search the existing project before creating new files.
+
+Reuse existing services, modules and components whenever possible.
+
+Never duplicate functionality.
+
+Maintain clean architecture.
+
+Follow TypeScript best practices.
+
+Update documentation whenever architecture changes.
+
+Before implementing anything:
+1. Search the repository.
+2. Explain what already exists.
+3. Reuse it if possible.
+4. Only then implement missing functionality.

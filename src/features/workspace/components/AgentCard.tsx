@@ -1,8 +1,8 @@
 import { memo } from "react";
 import { motion } from "framer-motion";
 import { Activity, Bot, Clock3, Coins, Cpu } from "lucide-react";
-import { Badge } from "../../../components/ui/Badge";
-import type { AgentState } from "../workspace.types";
+import { Badge } from "@/shared/ui/Badge";
+import type { AgentState } from "../types";
 
 interface AgentCardProps {
   agent: AgentState;

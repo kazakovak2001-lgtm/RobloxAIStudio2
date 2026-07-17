@@ -4,10 +4,11 @@
 
 import { Router } from "express";
 import { AutonomousOrchestrator } from "../orchestrator";
+import type { PipelineEventEmitter } from "../socket/streaming";
 
-export function createAutonomousRouter(): Router {
+export function createAutonomousRouter(events?: PipelineEventEmitter): Router {
   const router = Router();
-  const orchestrator = new AutonomousOrchestrator();
+  const orchestrator = new AutonomousOrchestrator(events);
 
   // POST /api/autonomous/run — start autonomous generation
   router.post("/run", (req, res) => {

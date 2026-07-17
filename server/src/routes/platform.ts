@@ -4,14 +4,138 @@
 
 import { Router } from "express";
 import { UserRepository } from "../platform/users";
+import { AuthService } from "../platform/auth";
+import { authService } from "../platform/auth/authServiceInstance";
 import { VersionHistoryRepository } from "../platform/versioning";
 import { AgentRegistryService } from "../platform/registry";
+import {
+  setAuthCookies,
+  clearAuthCookies,
+  getTokenFromCookies,
+  getRefreshTokenFromCookies,
+} from "../common/middleware/cookies";
 
 export function createPlatformRouter(): Router {
   const router = Router();
   const users = new UserRepository();
+  const auth = authService;
   const versions = new VersionHistoryRepository();
   const registry = new AgentRegistryService();
+
+  // ─── Auth ─────────────────────────────────────────────────
+
+  router.post("/auth/register", (req, res) => {
+    const { email, password, displayName } = req.body;
+    if (!email || !password || !displayName) {
+      res.status(400).json({
+        success: false,
+        error: "email, password, and displayName required",
+      });
+      return;
+    }
+    const existing = users.getByEmail(email);
+    if (existing) {
+      res
+        .status(409)
+        .json({ success: false, error: "Email already registered" });
+      return;
+    }
+    const user = users.create({ email, displayName });
+    const registered = auth.register(email, password, user.id);
+    if (!registered) {
+      res
+        .status(409)
+        .json({ success: false, error: "Email already registered" });
+      return;
+    }
+    const loginResult = auth.login(email, password, user.id);
+    setAuthCookies(res, loginResult.token!, loginResult.refreshToken!);
+    res.json({
+      success: true,
+      data: {
+        user,
+        token: loginResult.token,
+        refreshToken: loginResult.refreshToken,
+      },
+    });
+  });
+
+  router.post("/auth/login", (req, res) => {
+    const { email, password } = req.body;
+    if (!email || !password) {
+      res
+        .status(400)
+        .json({ success: false, error: "email and password required" });
+      return;
+    }
+    const user = users.getByEmail(email);
+    if (!user) {
+      res.status(401).json({ success: false, error: "Invalid credentials" });
+      return;
+    }
+    const result = auth.login(email, password, user.id);
+    if (!result.success) {
+      res.status(401).json({ success: false, error: result.error });
+      return;
+    }
+    setAuthCookies(res, result.token!, result.refreshToken!);
+    res.json({
+      success: true,
+      data: {
+        user,
+        token: result.token,
+        refreshToken: result.refreshToken,
+        role: result.role,
+      },
+    });
+  });
+
+  router.post("/auth/logout", (req, res) => {
+    const token =
+      req.headers.authorization?.replace("Bearer ", "") ??
+      getTokenFromCookies(req);
+    if (token) auth.logout(token);
+    clearAuthCookies(res);
+    res.json({ success: true });
+  });
+
+  router.post("/auth/refresh", (req, res) => {
+    const refreshToken =
+      req.body.refreshToken ?? getRefreshTokenFromCookies(req);
+    if (!refreshToken) {
+      res.status(400).json({ success: false, error: "refreshToken required" });
+      return;
+    }
+    const result = auth.refreshSession(refreshToken);
+    if (!result.success) {
+      res.status(401).json({ success: false, error: result.error });
+      return;
+    }
+    setAuthCookies(res, result.token!, result.refreshToken!);
+    res.json({
+      success: true,
+      data: { token: result.token, refreshToken: result.refreshToken },
+    });
+  });
+
+  router.get("/auth/me", (req, res) => {
+    const token =
+      req.headers.authorization?.replace("Bearer ", "") ??
+      getTokenFromCookies(req);
+    if (!token) {
+      res.status(401).json({ success: false, error: "No token provided" });
+      return;
+    }
+    const session = auth.validateToken(token);
+    if (!session) {
+      res
+        .status(401)
+        .json({ success: false, error: "Invalid or expired token" });
+      return;
+    }
+    const user = users.getById(session.userId);
+    res.json({ success: true, data: { user, role: session.role } });
+  });
 
   // ─── Users ────────────────────────────────────────────────
 

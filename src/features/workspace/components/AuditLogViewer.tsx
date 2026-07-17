@@ -1,10 +1,10 @@
 import { useEffect, useState } from "react";
 import { ScrollText, CheckCircle, XCircle, Play, Pause } from "lucide-react";
-import { Card } from "../../../components/ui/Card";
+import { Card } from "@/shared/ui/Card";
 import {
   getPipelineAuditLog,
   type AuditLogEntry,
-} from "../../../services/generationMonitorApi";
+} from "@/services/generationMonitorApi";
 
 interface AuditLogViewerProps {
   pipelineId: string | null;
@@ -67,7 +67,7 @@ function AuditRow({ entry }: { entry: AuditLogEntry }) {
   });
 
   return (
-    <div className="flex items-start gap-2 rounded-md bg-white/[0.01] px-2 py-1.5 text-[10px]">
+    <div className="flex items-start gap-2 rounded-lg bg-white/[0.01] px-2 py-1.5 text-[10px]">
       <EventIcon type={entry.eventType} />
       <div className="flex-1 min-w-0">
         <div className="flex items-center justify-between">
@@ -87,14 +87,14 @@ function AuditRow({ entry }: { entry: AuditLogEntry }) {
 function EventIcon({ type }: { type: string }) {
   if (type.includes("Completed") || type.includes("completed")) {
     return (
-      <CheckCircle className="mt-0.5 h-3 w-3 flex-shrink-0 text-green-400" />
+      <CheckCircle className="mt-0.5 h-3 w-3 flex-shrink-0 text-success-400" />
     );
   }
   if (type.includes("Failed") || type.includes("failed")) {
-    return <XCircle className="mt-0.5 h-3 w-3 flex-shrink-0 text-red-400" />;
+    return <XCircle className="mt-0.5 h-3 w-3 flex-shrink-0 text-error-400" />;
   }
   if (type.includes("Paused") || type.includes("Cancelled")) {
-    return <Pause className="mt-0.5 h-3 w-3 flex-shrink-0 text-yellow-400" />;
+    return <Pause className="mt-0.5 h-3 w-3 flex-shrink-0 text-warning-400" />;
   }
   return <Play className="mt-0.5 h-3 w-3 flex-shrink-0 text-cyan-400" />;
 }

@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState, useCallback } from "react";
 import { useParams } from "react-router-dom";
-import { AppLayout } from "../../layouts/AppLayout";
-import { useToast } from "../../components/ui/Toast";
-import { ErrorBoundary } from "../../components/ErrorBoundary";
+import { useToast } from "@/shared/ui/Toast";
+import { Loader } from "@/shared/ui/Loader";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { AgentBoard } from "./components/AgentBoard";
 import { LiveConsole } from "./components/LiveConsole";
 import { CostMonitor } from "./components/CostMonitor";
@@ -21,17 +21,20 @@ import { PipelineStatusViewer } from "./components/PipelineStatusViewer";
 import { StudioBridgePanel } from "./components/StudioBridgePanel";
 import { ProtocolMonitor } from "./components/ProtocolMonitor";
 import { GameArchitectPanel } from "./components/GameArchitectPanel";
+import { SimulationPanel } from "./components/SimulationPanel";
+import { PlaytestPanel } from "./components/PlaytestPanel";
+import { EconomyPanel } from "./components/EconomyPanel";
+import { AutonomousPipelinePanel } from "./components/AutonomousPipelinePanel";
 import { MetricsPanel } from "./components/MetricsPanel";
 import { AuditLogViewer } from "./components/AuditLogViewer";
 import { PipelineView } from "./PipelineView";
-import { usePipelineStream } from "./usePipelineStream";
-import { Loader } from "../../components/ui/Loader";
+import { usePipelineStream } from "./hooks/usePipelineStream";
 import {
   getArtifacts,
   getReviewSummary,
   type ArtifactSummary,
   type ReviewSummary,
-} from "../../services/conceptApi";
+} from "@/services/conceptApi";
 
 const defaultLogs = [
   "[pipeline.started] Workspace initialized.",
@@ -116,133 +119,135 @@ export default function WorkspacePage() {
   }, [status]);
 
   return (
-    <AppLayout withSidebar>
-      <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
-        <div className="mb-6 flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
-          <div>
-            <p className="text-sm uppercase tracking-[0.3em] text-brand-300">
-              Workspace
-            </p>
-            <h1 className="text-3xl font-semibold text-white">
-              Live AI workspace
-            </h1>
-            <p className="mt-2 text-slate-400">
-              Realtime pipeline and agent observability for Roblox AI Studio.
-            </p>
-          </div>
-          <div className="flex items-center gap-2">
-            <div
-              className={`h-2.5 w-2.5 rounded-full ${isConnected ? "bg-emerald-400" : "bg-slate-500"}`}
-            />
-            <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-slate-300">
-              {status}
-            </span>
-          </div>
+    <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+      <div className="mb-6 flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+        <div>
+          <p className="text-sm uppercase tracking-[0.3em] text-brand-300">
+            Workspace
+          </p>
+          <h1 className="text-3xl font-semibold text-white">
+            Live AI workspace
+          </h1>
+          <p className="mt-2 text-slate-400">
+            Realtime pipeline and agent observability for Roblox AI Studio.
+          </p>
         </div>
-
-        {isLoading ? (
-          <div className="flex min-h-[50vh] items-center justify-center rounded-3xl border border-white/10 bg-slate-900/60 p-10">
-            <Loader label="Preparing workspace" size="lg" />
-          </div>
-        ) : (
-          <ErrorBoundary>
-            <div className="grid gap-4 xl:grid-cols-[1fr_1.15fr_0.95fr]">
-              <div className="space-y-4">
-                <GenerateButton
-                  projectId={id ?? ""}
-                  pipelineStatus={status}
-                  onStarted={(execId) => {
-                    setActivePipelineId(execId);
-                    toast({
-                      variant: "info",
-                      title: "Generation started",
-                      description: `Execution: ${execId}`,
-                    });
-                  }}
-                  onError={(err) =>
-                    toast({
-                      variant: "error",
-                      title: "Generation failed",
-                      description: err,
-                    })
-                  }
-                />
-                <GenerationStatusPanel
-                  pipelineId={activePipelineId}
-                  onCompleted={async () => {
-                    setHistoryRefresh((prev) => prev + 1);
-                    await refreshReviewData();
-                    toast({
-                      variant: "success",
-                      title: "Generation complete",
-                      description: "All pipeline stages finished.",
-                    });
-                  }}
-                  onFailed={(err) =>
-                    toast({
-                      variant: "error",
-                      title: "Pipeline failed",
-                      description: err,
-                    })
-                  }
-                />
-                <PipelineStatusBar pipeline={state} status={status} />
-                <PipelineStatusViewer pipeline={state} status={status} />
-                <AgentBoard agents={agents} />
-                <CostMonitor
-                  cost={cost}
-                  estimatedRemaining={Math.max(0, 2.5 - cost)}
-                />
-                <TokenUsage
-                  promptTokens={Math.round(tokens * 0.6)}
-                  completionTokens={Math.round(tokens * 0.4)}
-                  totalTokens={tokens}
-                />
-                <MetricsPanel pipelineId={activePipelineId} />
-              </div>
-              <div className="space-y-4">
-                <PipelineView pipeline={state} status={status} />
-                <LiveConsole logs={logs} />
-                <GameArchitectPanel />
-                <ArtifactExplorer
-                  pipelineId={activePipelineId}
-                  onReviewChange={refreshReviewData}
-                />
-                <ExportPreview
-                  artifacts={artifactList}
-                  reviewSummary={reviewData}
-                />
-              </div>
-              <div className="space-y-4">
-                <ReviewSummaryPanel
-                  pipelineId={activePipelineId}
-                  refreshTrigger={reviewRefresh}
-                />
-                <ActivityFeed events={events} />
-                <AuditLogViewer pipelineId={activePipelineId} />
-                <ValidationResults />
-                <GenerationHistoryPanel refreshTrigger={historyRefresh} />
-                <StudioBridgePanel projectId={id ?? ""} status={status} />
-                <ProtocolMonitor isConnected={isConnected} />
-                <ProjectSummary
-                  agents={agents.length}
-                  runTimeSeconds={
-                    state?.startedAt
-                      ? Math.round(
-                          (Date.now() - state.startedAt.getTime()) / 1000,
-                        )
-                      : 0
-                  }
-                  steps={steps}
-                  retries={retries}
-                  tokens={tokens}
-                  cost={cost}
-                />
-              </div>
-            </div>
-          </ErrorBoundary>
-        )}
+        <div className="flex items-center gap-2">
+          <div
+            className={`h-2.5 w-2.5 rounded-full ${isConnected ? "bg-success-400" : "bg-slate-500"}`}
+          />
+          <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-slate-300">
+            {status}
+          </span>
+        </div>
       </div>
-    </AppLayout>
+
+      {isLoading ? (
+        <div className="flex min-h-[50vh] items-center justify-center rounded-3xl border border-white/10 bg-slate-900/60 p-10">
+          <Loader label="Preparing workspace" size="lg" />
+        </div>
+      ) : (
+        <ErrorBoundary>
+          <div className="grid gap-4 xl:grid-cols-[1fr_1.15fr_0.95fr]">
+            <div className="space-y-4">
+              <GenerateButton
+                projectId={id ?? ""}
+                pipelineStatus={status}
+                onStarted={(execId) => {
+                  setActivePipelineId(execId);
+                  toast({
+                    variant: "info",
+                    title: "Generation started",
+                    description: `Execution: ${execId}`,
+                  });
+                }}
+                onError={(err) =>
+                  toast({
+                    variant: "error",
+                    title: "Generation failed",
+                    description: err,
+                  })
+                }
+              />
+              <GenerationStatusPanel
+                pipelineId={activePipelineId}
+                onCompleted={async () => {
+                  setHistoryRefresh((prev) => prev + 1);
+                  await refreshReviewData();
+                  toast({
+                    variant: "success",
+                    title: "Generation complete",
+                    description: "All pipeline stages finished.",
+                  });
+                }}
+                onFailed={(err) =>
+                  toast({
+                    variant: "error",
+                    title: "Pipeline failed",
+                    description: err,
+                  })
+                }
+              />
+              <PipelineStatusBar pipeline={state} status={status} />
+              <PipelineStatusViewer pipeline={state} status={status} />
+              <AgentBoard agents={agents} />
+              <CostMonitor
+                cost={cost}
+                estimatedRemaining={Math.max(0, 2.5 - cost)}
+              />
+              <TokenUsage
+                promptTokens={Math.round(tokens * 0.6)}
+                completionTokens={Math.round(tokens * 0.4)}
+                totalTokens={tokens}
+              />
+              <MetricsPanel pipelineId={activePipelineId} />
+            </div>
+            <div className="space-y-4">
+              <PipelineView pipeline={state} status={status} />
+              <LiveConsole logs={logs} />
+              <GameArchitectPanel />
+              <SimulationPanel projectId={id ?? ""} />
+              <EconomyPanel projectId={id ?? ""} />
+              <AutonomousPipelinePanel projectId={id ?? ""} />
+              <ArtifactExplorer
+                pipelineId={activePipelineId}
+                onReviewChange={refreshReviewData}
+              />
+              <ExportPreview
+                artifacts={artifactList}
+                reviewSummary={reviewData}
+              />
+            </div>
+            <div className="space-y-4">
+              <ReviewSummaryPanel
+                pipelineId={activePipelineId}
+                refreshTrigger={reviewRefresh}
+              />
+              <ActivityFeed events={events} />
+              <AuditLogViewer pipelineId={activePipelineId} />
+              <ValidationResults />
+              <PlaytestPanel projectId={id ?? ""} />
+              <GenerationHistoryPanel refreshTrigger={historyRefresh} />
+              <StudioBridgePanel projectId={id ?? ""} status={status} />
+              <ProtocolMonitor isConnected={isConnected} />
+              <ProjectSummary
+                agents={agents.length}
+                runTimeSeconds={
+                  state?.startedAt
+                    ? Math.round(
+                        (Date.now() - state.startedAt.getTime()) / 1000,
+                      )
+                    : 0
+                }
+                steps={steps}
+                retries={retries}
+                tokens={tokens}
+                cost={cost}
+              />
+            </div>
+          </div>
+        </ErrorBoundary>
+      )}
+    </div>
   );
 }

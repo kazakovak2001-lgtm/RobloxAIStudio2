@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Sparkles, Loader2 } from "lucide-react";
-import { runAgentPipeline } from "../../../services/aiEngine";
-import { generateExperience } from "../../../services/conceptApi";
+import { runAgentPipeline } from "@/services/aiEngine";
+import { generateExperience } from "@/services/conceptApi";
 
 type GenerationStatus =
   "idle" | "queued" | "running" | "validating" | "completed" | "failed";

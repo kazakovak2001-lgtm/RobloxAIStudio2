@@ -79,3 +79,88 @@ export async function getActiveProvider(): Promise<string> {
     return "unavailable";
   }
 }
+
+/**
+ * Lua code generation result.
+ */
+export interface LuaGenerationResult {
+  success: boolean;
+  data?: {
+    projectId: string;
+    gameName: string;
+    genre: string;
+    scripts: Array<{
+      name: string;
+      path: string;
+      content: string;
+      size: number;
+      type: string;
+    }>;
+    totalScripts: number;
+    totalSizeBytes: number;
+    generationTimeMs: number;
+    validationPassed: boolean;
+  };
+  error?: string;
+}
+
+/**
+ * Generate Lua code from a natural language prompt via /api/lua/generate.
+ */
+export async function generateLuaCode(params: {
+  prompt: string;
+  projectId?: string;
+  genre?: string;
+  systems?: string[];
+}): Promise<LuaGenerationResult> {
+  try {
+    const response = await fetch("/api/lua/generate", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        projectId: params.projectId ?? "ai-studio-session",
+        gameName: params.prompt,
+        genre: params.genre ?? "adventure",
+        systems: params.systems ?? [],
+        features: [params.prompt],
+      }),
+    });
+
+    if (!response.ok) {
+      const errorBody = await response.json().catch(() => null);
+      return {
+        success: false,
+        error: errorBody?.error ?? `Server returned ${response.status}`,
+      };
+    }
+
+    const json = await response.json();
+    const rawData = json.data;
+    return {
+      success: true,
+      data: {
+        projectId: rawData.projectId,
+        gameName: params.prompt,
+        genre: params.genre ?? "adventure",
+        scripts: (rawData.artifacts ?? []).map(
+          (a: Record<string, unknown>) => ({
+            name: a.name as string,
+            path: a.path as string,
+            content: a.content as string,
+            size: a.sizeBytes as number,
+            type: a.scriptType as string,
+          }),
+        ),
+        totalScripts: rawData.totalScripts,
+        totalSizeBytes: rawData.totalSizeBytes,
+        generationTimeMs: rawData.generationTimeMs,
+        validationPassed: rawData.validationPassed,
+      },
+    };
+  } catch (err) {
+    return {
+      success: false,
+      error: err instanceof Error ? err.message : "Network error",
+    };
+  }
+}

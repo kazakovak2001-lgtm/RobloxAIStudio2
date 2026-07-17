@@ -1,10 +1,10 @@
 import { useEffect, useState } from "react";
 import { Wifi, WifiOff, RefreshCcw, Loader2 } from "lucide-react";
-import { Card } from "../../../components/ui/Card";
+import { Card } from "@/shared/ui/Card";
 import {
-  getStudioStatus,
+  getProjectStudioStatus as getStudioStatus,
   type StudioSession,
-} from "../../../services/studioService";
+} from "@/services/studioBridgeApi";
 
 interface StudioConnectionStatusProps {
   projectId: string;
@@ -50,13 +50,13 @@ export function StudioConnectionStatus({
           <Loader2 className="h-4 w-4 animate-spin text-slate-400" />
         ) : connected ? (
           <Wifi
-            className={`h-4 w-4 ${syncing ? "text-yellow-400" : "text-green-400"}`}
+            className={`h-4 w-4 ${syncing ? "text-warning-400" : "text-success-400"}`}
           />
         ) : (
           <WifiOff className="h-4 w-4 text-slate-500" />
         )}
         <span
-          className={`text-sm font-medium ${loading ? "text-slate-400" : connected ? (syncing ? "text-yellow-400" : "text-green-400") : "text-slate-500"}`}
+          className={`text-sm font-medium ${loading ? "text-slate-400" : connected ? (syncing ? "text-warning-400" : "text-success-400") : "text-slate-500"}`}
         >
           {loading
             ? "Checking..."

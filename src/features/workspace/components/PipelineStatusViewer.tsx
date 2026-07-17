@@ -1,6 +1,6 @@
-import { Card } from "../../../components/ui/Card";
+import { Card } from "@/shared/ui/Card";
 import { CheckCircle, Circle, XCircle, Loader2 } from "lucide-react";
-import type { PipelineState, WorkspaceStatus } from "../workspace.types";
+import type { PipelineState, WorkspaceStatus } from "../types";
 
 interface PipelineStatusViewerProps {
   pipeline: PipelineState | null;

@@ -5,8 +5,8 @@ import {
   LoaderCircle,
   TriangleAlert,
 } from "lucide-react";
-import { Card } from "../../../components/ui/Card";
-import type { PipelineState } from "../workspace.types";
+import { Card } from "@/shared/ui/Card";
+import type { PipelineState } from "../types";
 
 interface ProgressTimelineProps {
   pipeline: PipelineState | null;

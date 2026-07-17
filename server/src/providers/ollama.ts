@@ -15,7 +15,7 @@ export class OllamaProvider implements LLMProvider {
     maxRetries?: number;
     timeout?: number;
   }) {
-    this.baseUrl = config?.baseURL ?? "http://localhost:11434";
+    this.baseUrl = config?.baseURL ?? "http://127.0.0.1:11434";
     this.defaultModel = config?.model ?? process.env.OLLAMA_MODEL ?? "llama3";
     this.maxRetries = config?.maxRetries ?? 1;
     this.defaultTimeout = config?.timeout ?? 120000;
@@ -36,23 +36,45 @@ export class OllamaProvider implements LLMProvider {
     return withRetry(
       async () => {
         const start = Date.now();
-        const response = await fetchWithTimeout(
-          `${this.baseUrl}/api/generate`,
-          {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              model,
-              prompt,
-              stream: false,
-              options: {
-                temperature: options?.temperature ?? 0.7,
-                num_predict: options?.maxTokens ?? 2000,
-              },
-            }),
+        const url = `${this.baseUrl}/api/generate`;
+        const requestBody = {
+          model,
+          prompt,
+          stream: false,
+          options: {
+            temperature: options?.temperature ?? 0.7,
+            num_predict: options?.maxTokens ?? 2000,
           },
-          timeout,
-        );
+        };
+
+        console.log(`[ollama-debug] URL: ${url}`);
+        console.log(`[ollama-debug] Method: POST`);
+        console.log(`[ollama-debug] Body: ${JSON.stringify(requestBody)}`);
+
+        let response: Response;
+        try {
+          response = await fetchWithTimeout(
+            url,
+            {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify(requestBody),
+            },
+            timeout,
+          );
+        } catch (fetchErr) {
+          console.error(`[ollama-debug] fetch() threw:`, fetchErr);
+          console.error(
+            `[ollama-debug] Stack:`,
+            fetchErr instanceof Error ? fetchErr.stack : "none",
+          );
+          throw fetchErr;
+        }
+
+        console.log(`[ollama-debug] HTTP status: ${response.status}`);
+
+        const rawText = await response.text();
+        console.log(`[ollama-debug] Raw response body: ${rawText}`);
 
         if (!response.ok) {
           throw new LLMError(
@@ -63,15 +85,29 @@ export class OllamaProvider implements LLMProvider {
           );
         }
 
-        const data = (await response.json()) as {
-          response: string;
-          eval_count?: number;
-        };
+        let data: { response: string; eval_count?: number };
+        try {
+          data = JSON.parse(rawText) as {
+            response: string;
+            eval_count?: number;
+          };
+        } catch (parseErr) {
+          console.error(`[ollama-debug] JSON parse failed:`, parseErr);
+          throw parseErr;
+        }
+
+        console.log(
+          `[ollama-debug] Parsed keys: ${Object.keys(data).join(", ")}`,
+        );
+        console.log(
+          `[ollama-debug] response length: ${data.response?.length ?? 0}`,
+        );
+
         return {
           content: data.response ?? "",
           model,
           tokensUsed: data.eval_count,
-          finishReason: "complete",
+          finishReason: "complete" as const,
           durationMs: Date.now() - start,
         };
       },

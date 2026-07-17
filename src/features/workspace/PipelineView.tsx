@@ -1,9 +1,9 @@
 import { memo } from "react";
 import { motion } from "framer-motion";
 import { Sparkles } from "lucide-react";
-import { Card } from "../../components/ui/Card";
+import { Card } from "@/shared/ui/Card";
 import { ProgressTimeline } from "./components/ProgressTimeline";
-import type { PipelineState } from "./workspace.types";
+import type { PipelineState } from "./types";
 
 interface PipelineViewProps {
   pipeline: PipelineState | null;

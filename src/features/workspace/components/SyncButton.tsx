@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Upload, Loader2, CheckCircle, XCircle } from "lucide-react";
-import { syncToStudio, type SyncResult } from "../../../services/studioService";
+import { syncToStudio, type SyncResult } from "@/services/studioBridgeApi";
 
 type SyncStatus = "idle" | "syncing" | "success" | "error";
 

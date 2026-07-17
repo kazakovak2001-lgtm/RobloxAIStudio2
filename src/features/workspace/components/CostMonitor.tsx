@@ -1,6 +1,6 @@
 import { memo } from "react";
 import { Coins } from "lucide-react";
-import { Card } from "../../../components/ui/Card";
+import { Card } from "@/shared/ui/Card";
 
 interface CostMonitorProps {
   cost?: number;

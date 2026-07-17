@@ -13,7 +13,7 @@ import {
   ChevronDown,
   ChevronUp,
 } from "lucide-react";
-import { Card } from "../../../components/ui/Card";
+import { Card } from "@/shared/ui/Card";
 import {
   getExperienceStatus,
   pausePipeline,
@@ -23,7 +23,7 @@ import {
   retryStage,
   type PipelineStatus,
   type PipelineStageStatus,
-} from "../../../services/conceptApi";
+} from "@/services/conceptApi";
 
 interface GenerationStatusPanelProps {
   pipelineId: string | null;
@@ -208,11 +208,11 @@ export function GenerationStatusPanel({
           <div
             className={`h-full rounded-full transition-all duration-500 ${
               pipelineStatus === "failed"
-                ? "bg-red-500"
+                ? "bg-error-500"
                 : pipelineStatus === "completed"
-                  ? "bg-green-500"
+                  ? "bg-success-500"
                   : pipelineStatus === "paused"
-                    ? "bg-yellow-500"
+                    ? "bg-warning-500"
                     : pipelineStatus === "cancelled"
                       ? "bg-slate-500"
                       : "bg-brand-500"
@@ -231,14 +231,14 @@ export function GenerationStatusPanel({
               label="Pause"
               onClick={handlePause}
               disabled={isActionLoading}
-              color="text-yellow-400 bg-yellow-500/10 hover:bg-yellow-500/20"
+              color="text-warning-400 bg-warning-500/10 hover:bg-warning-500/20"
             />
             <ControlButton
               icon={Ban}
               label="Cancel"
               onClick={handleCancel}
               disabled={isActionLoading}
-              color="text-red-400 bg-red-500/10 hover:bg-red-500/20"
+              color="text-error-400 bg-error-500/10 hover:bg-error-500/20"
             />
           </>
         )}
@@ -249,14 +249,14 @@ export function GenerationStatusPanel({
               label="Resume"
               onClick={handleResume}
               disabled={isActionLoading}
-              color="text-green-400 bg-green-500/10 hover:bg-green-500/20"
+              color="text-success-400 bg-success-500/10 hover:bg-success-500/20"
             />
             <ControlButton
               icon={Ban}
               label="Cancel"
               onClick={handleCancel}
               disabled={isActionLoading}
-              color="text-red-400 bg-red-500/10 hover:bg-red-500/20"
+              color="text-error-400 bg-error-500/10 hover:bg-error-500/20"
             />
           </>
         )}
@@ -302,12 +302,12 @@ export function GenerationStatusPanel({
           <p>Active agent: {currentStage.agentId ?? currentStage.name}</p>
         )}
         {failedStage && (
-          <p className="text-red-400">
+          <p className="text-error-400">
             <AlertTriangle className="mr-1 inline h-3 w-3" />
             {failedStage.error ?? `Failed at ${failedStage.name}`}
           </p>
         )}
-        {error && <p className="text-red-400">{error}</p>}
+        {error && <p className="text-error-400">{error}</p>}
       </div>
     </Card>
   );
@@ -411,7 +411,9 @@ function StageRow({
               </span>
             </p>
           )}
-          {stage.error && <p className="text-red-400">Error: {stage.error}</p>}
+          {stage.error && (
+            <p className="text-error-400">Error: {stage.error}</p>
+          )}
           {onRetry && (
             <button
               onClick={(e) => {
@@ -433,13 +435,13 @@ function StageRow({
 function StageIcon({ status }: { status: string }) {
   switch (status) {
     case "completed":
-      return <CheckCircle className="h-3.5 w-3.5 text-green-400" />;
+      return <CheckCircle className="h-3.5 w-3.5 text-success-400" />;
     case "running":
       return <Loader2 className="h-3.5 w-3.5 animate-spin text-cyan-400" />;
     case "failed":
-      return <XCircle className="h-3.5 w-3.5 text-red-400" />;
+      return <XCircle className="h-3.5 w-3.5 text-error-400" />;
     case "skipped":
-      return <Circle className="h-3.5 w-3.5 text-yellow-400" />;
+      return <Circle className="h-3.5 w-3.5 text-warning-400" />;
     default:
       return <Circle className="h-3.5 w-3.5 text-slate-600" />;
   }
@@ -449,10 +451,10 @@ function StatusBadge({ status }: { status: string }) {
   const colors: Record<string, string> = {
     pending: "text-slate-400 bg-slate-500/10",
     running: "text-cyan-400 bg-cyan-500/10",
-    completed: "text-green-400 bg-green-500/10",
-    failed: "text-red-400 bg-red-500/10",
-    recovering: "text-yellow-400 bg-yellow-500/10",
-    paused: "text-yellow-400 bg-yellow-500/10",
+    completed: "text-success-400 bg-success-500/10",
+    failed: "text-error-400 bg-error-500/10",
+    recovering: "text-warning-400 bg-warning-500/10",
+    paused: "text-warning-400 bg-warning-500/10",
     cancelled: "text-slate-400 bg-slate-500/10",
   };
   const color = colors[status] ?? colors.pending;

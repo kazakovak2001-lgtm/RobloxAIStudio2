@@ -33,6 +33,7 @@ import { AgentRegistry } from "./agents/core/AgentRegistry";
 import { LLMProviderFactory } from "./ai/providerFactory";
 import { ExecutionTracer } from "./core/observability/ExecutionTracer";
 import { StudioIntegrationManager } from "./studio/integration/StudioIntegrationManager";
+import { authService } from "./platform/auth/authServiceInstance";
 const app: Express = express();
 
 const httpServer = createServer(app);
@@ -51,23 +52,37 @@ const io = new SocketServer(httpServer, {
 
 // Socket.IO authentication middleware
 io.use((socket, next) => {
-  const token = socket.handshake.auth?.token ?? socket.handshake.query?.token;
-  // In development, allow all connections
+  // In development, allow all connections (preserve dev bypass)
   if (process.env.NODE_ENV !== "production") {
     next();
     return;
   }
+
+  // Extract token from handshake auth or query
+  const token = socket.handshake.auth?.token ?? socket.handshake.query?.token;
+
   if (!token) {
     next(new Error("Authentication required"));
     return;
   }
-  // Token present — allow connection (full validation with AuthService in production)
+
+  // Validate token using AuthService (same validation as HTTP middleware)
+  const session = authService.validateToken(token as string);
+  if (!session) {
+    next(new Error("Invalid or expired token"));
+    return;
+  }
+
+  // Attach authenticated user/session to socket.data
+  (socket as any).data = { ...((socket as any).data || {}), user: session };
   next();
 });
 
 // Middleware
+import cookieParser from "cookie-parser";
 app.use(express.json({ limit: "1mb" }));
 app.use(express.urlencoded({ extended: true, limit: "1mb" }));
+app.use(cookieParser());
 
 // Security middleware
 import {
@@ -470,7 +485,15 @@ app.use("/api/domain", createDomainRouter());
 
 // Autonomous Orchestrator API
 import { createAutonomousRouter } from "./routes/autonomous";
-app.use("/api/autonomous", createAutonomousRouter());
+app.use("/api/autonomous", createAutonomousRouter(events));
+
+// AI Project Controller API
+import { createControllerRouter } from "./routes/controller";
+app.use("/api/controller", createControllerRouter(agentRegistry));
+
+// AI Conversational Chat API
+import { createAiChatRouter } from "./routes/aiChat";
+app.use("/api/ai", createAiChatRouter(llmResult.provider, agentRegistry));
 
 // Platform API (users, versions, registry)
 import { createPlatformRouter } from "./routes/platform";
@@ -529,6 +552,13 @@ app.use((req: Request, res: Response) => {
     error: "Not Found",
     path: req.path,
   });
+});
+
+// Run database migrations on startup (only when STORAGE_PROVIDER=postgres)
+import { runMigrations } from "./platform/storage/postgres/migrationRunner";
+runMigrations().catch((err) => {
+  console.error("[startup] Migration runner failed:", err);
+  // Non-fatal: server can still start (existing tables may already exist)
 });
 
 // Start server

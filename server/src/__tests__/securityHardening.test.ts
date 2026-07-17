@@ -10,6 +10,7 @@ import {
   authMiddleware,
   requestLogger,
 } from "../common/middleware/security";
+import { authService } from "../platform/auth/authServiceInstance";
 
 describe("Security Hardening", () => {
   describe("Middleware exports", () => {
@@ -88,11 +89,19 @@ describe("Security Hardening", () => {
       const originalEnv = process.env.NODE_ENV;
       process.env.NODE_ENV = "production";
 
+      // Register and login to get a valid token from the shared authService
+      authService.register("sec-test@test.com", "password123", "user-sec-1");
+      const loginResult = authService.login(
+        "sec-test@test.com",
+        "password123",
+        "user-sec-1",
+      );
+
       let nextCalled = false;
       const req = {
         path: "/api/projects",
         method: "GET",
-        headers: { authorization: "Bearer tok_abc123" },
+        headers: { authorization: `Bearer ${loginResult.token}` },
       } as never;
       const res = {} as never;
       const next = () => {
@@ -102,6 +111,8 @@ describe("Security Hardening", () => {
       authMiddleware(req, res, next);
       expect(nextCalled).toBe(true);
 
+      // Cleanup
+      authService.logout(loginResult.token!);
       process.env.NODE_ENV = originalEnv;
     });
 

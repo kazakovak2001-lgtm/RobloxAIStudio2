@@ -2,7 +2,7 @@ import { io, Socket } from "socket.io-client";
 import type {
   ServerToClientEvents,
   ClientToServerEvents,
-} from "../../shared/events/index";
+} from "@/shared/events/index";
 
 const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || "http://localhost:5000";
 

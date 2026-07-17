@@ -91,20 +91,54 @@ export class LLMOutputParser {
     agentName: string,
   ): Record<string, unknown> {
     const parsed = LLMOutputParser.parseToRecord(raw, fallback);
-    const missing = LLMOutputParser.validateKeys(parsed, required);
+
+    // Normalize common key aliases before validation
+    const normalized = LLMOutputParser.normalizeKeys(parsed);
+
+    const missing = LLMOutputParser.validateKeys(normalized, required);
 
     if (missing.length > 0) {
       console.warn(
         `[${agentName}] LLM output missing required keys: ${missing.join(", ")} — using partial output`,
       );
-      const merged: Record<string, unknown> = { ...parsed };
+      const merged: Record<string, unknown> = { ...normalized };
       for (const key of missing) {
         merged[key] = fallback[key];
       }
       return merged;
     }
 
-    return parsed;
+    return normalized;
+  }
+
+  /**
+   * Normalize known key aliases to canonical names.
+   * Handles models that return slightly different key naming.
+   */
+  static normalizeKeys(obj: Record<string, unknown>): Record<string, unknown> {
+    const aliases: Record<string, string> = {
+      gameplaySystems: "gameplay",
+      gameplaysystems: "gameplay",
+      game_play: "gameplay",
+      gameDesign: "gameplay",
+      game_design: "gameplay",
+      coreLoop: "loop",
+      core_loop: "loop",
+      win_condition: "winCondition",
+      lose_condition: "loseCondition",
+      progression_model: "progressionModel",
+      interaction_systems: "interactionSystems",
+      economy_or_scoring: "economyOrScoring",
+    };
+
+    const result: Record<string, unknown> = {};
+    for (const [key, value] of Object.entries(obj)) {
+      const canonical = aliases[key] ?? key;
+      if (!(canonical in result)) {
+        result[canonical] = value;
+      }
+    }
+    return result;
   }
 
   /**

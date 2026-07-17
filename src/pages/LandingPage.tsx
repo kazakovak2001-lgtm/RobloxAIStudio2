@@ -1,12 +1,11 @@
 import { Bot, Cpu, Layers3, ShieldCheck, Sparkles } from "lucide-react";
-import { AppLayout } from "../layouts/AppLayout";
-import { Button } from "../components/ui/Button";
-import { Card } from "../components/ui/Card";
-import { featureCards, faqItems, pricingTiers } from "../constants";
+import { Button } from "@/shared/ui/Button";
+import { Card } from "@/shared/ui/Card";
+import { featureCards, faqItems, pricingTiers } from "@/shared/constants";
 
 export default function LandingPage() {
   return (
-    <AppLayout>
+    <>
       <section className="mx-auto flex max-w-7xl flex-col gap-16 px-4 py-20 sm:px-6 lg:px-8">
         <div className="grid items-center gap-10 lg:grid-cols-[1.1fr_0.9fr]">
           <div className="space-y-8">
@@ -78,7 +77,7 @@ export default function LandingPage() {
                         </div>
                         <div className="text-sm text-slate-500">Ready</div>
                       </div>
-                    )
+                    ),
                   )}
                 </div>
               </div>
@@ -231,6 +230,6 @@ export default function LandingPage() {
           </div>
         </div>
       </footer>
-    </AppLayout>
+    </>
   );
 }

@@ -14,7 +14,7 @@ import {
   Pencil,
   Save,
 } from "lucide-react";
-import { Card } from "../../../components/ui/Card";
+import { Card } from "@/shared/ui/Card";
 import {
   getArtifacts,
   getArtifactDetail,
@@ -26,7 +26,7 @@ import {
   type ArtifactDetail,
   type ArtifactType,
   type ReviewStatus,
-} from "../../../services/conceptApi";
+} from "@/services/conceptApi";
 
 interface ArtifactExplorerProps {
   pipelineId: string | null;

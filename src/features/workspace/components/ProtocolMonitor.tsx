@@ -9,7 +9,7 @@ import {
   AlertTriangle,
   RefreshCw,
 } from "lucide-react";
-import { Card } from "../../../components/ui/Card";
+import { Card } from "@/shared/ui/Card";
 import {
   getProtocolLog,
   getProtocolInfo,
@@ -17,7 +17,7 @@ import {
   type ProtocolLogEntry,
   type ProtocolInfo,
   type SyncStatusData,
-} from "../../../services/studioBridgeApi";
+} from "@/services/studioBridgeApi";
 
 interface ProtocolMonitorProps {
   isConnected: boolean;
@@ -87,7 +87,7 @@ export function ProtocolMonitor({ isConnected }: ProtocolMonitorProps) {
         <div className="rounded-lg bg-white/[0.02] px-2 py-1.5">
           <p className="text-[10px] text-slate-500">Errors</p>
           <p
-            className={`text-xs font-medium ${errorCount > 0 ? "text-red-400" : "text-slate-300"}`}
+            className={`text-xs font-medium ${errorCount > 0 ? "text-error-400" : "text-slate-300"}`}
           >
             {errorCount}
           </p>
@@ -179,23 +179,35 @@ export function ProtocolMonitor({ isConnected }: ProtocolMonitorProps) {
   );
 }
 
+const SYNC_MESSAGE_TYPES = new Set([
+  "GET_PROJECT",
+  "GET_ARTIFACTS",
+  "SYNC_REQUEST",
+  "SYNC_RESPONSE",
+  "VALIDATE",
+]);
+
 function LogRow({ entry }: { entry: ProtocolLogEntry }) {
+  const isSync = SYNC_MESSAGE_TYPES.has(entry.type);
   return (
-    <div className="flex items-center justify-between rounded-md bg-white/[0.01] px-2 py-1 text-[10px]">
+    <div className="flex items-center justify-between rounded-lg bg-white/[0.01] px-2 py-1 text-[10px]">
       <div className="flex items-center gap-1.5">
         {entry.direction === "client_to_server" ? (
           <ArrowUpRight className="h-2.5 w-2.5 text-cyan-400" />
         ) : (
           <ArrowDownLeft className="h-2.5 w-2.5 text-purple-400" />
         )}
-        <span className="text-slate-400">{entry.type}</span>
+        {isSync && <RefreshCw className="h-2.5 w-2.5 text-teal-400" />}
+        <span className={isSync ? "text-teal-300" : "text-slate-400"}>
+          {entry.type}
+        </span>
       </div>
       <div className="flex items-center gap-2">
         <span className="text-slate-600">{entry.payloadSize}B</span>
         {entry.status === "ok" ? (
-          <CheckCircle className="h-2.5 w-2.5 text-green-400" />
+          <CheckCircle className="h-2.5 w-2.5 text-success-400" />
         ) : (
-          <XCircle className="h-2.5 w-2.5 text-red-400" />
+          <XCircle className="h-2.5 w-2.5 text-error-400" />
         )}
       </div>
     </div>

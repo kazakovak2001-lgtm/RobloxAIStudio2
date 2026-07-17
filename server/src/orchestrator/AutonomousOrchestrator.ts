@@ -12,6 +12,21 @@ import type {
   CostTracker,
 } from "./OrchestratorTypes";
 import { DEFAULT_GOALS, createSessionId } from "./OrchestratorTypes";
+import type { PipelineEventEmitter } from "../socket/streaming";
+
+const PHASE_AGENT_NAMES: Record<string, string> = {
+  genre_detection: "Genre Detector",
+  knowledge_search: "Knowledge Search",
+  blueprint: "Blueprint Generator",
+  agent_collaboration: "Agent Collaboration",
+  lua_generation: "Lua Generator",
+  asset_generation: "Asset Generator",
+  experience_assembly: "Experience Assembler",
+  playtest: "Playtest Runner",
+  repair: "Repair Engine",
+  benchmark: "Benchmark Analyzer",
+  studio_sync: "Studio Sync",
+};
 
 const PHASE_ORDER: OrchestratorPhase[] = [
   "genre_detection",
@@ -30,6 +45,11 @@ const PHASE_ORDER: OrchestratorPhase[] = [
 
 export class AutonomousOrchestrator {
   private sessions: Map<string, OrchestratorSession> = new Map();
+  private events?: PipelineEventEmitter;
+
+  constructor(events?: PipelineEventEmitter) {
+    this.events = events;
+  }
 
   /**
    * Start autonomous generation from a single prompt.
@@ -63,6 +83,9 @@ export class AutonomousOrchestrator {
     };
 
     this.sessions.set(sessionId, session);
+
+    // Emit pipeline.started event
+    void this.events?.emitPipelineStarted(session.id, session.projectId);
 
     // Execute phases sequentially (async fire-and-forget)
     void this.executePhases(session);
@@ -128,6 +151,17 @@ export class AutonomousOrchestrator {
         session.status = "completed";
         session.currentPhase = "completed";
         session.finishedAt = Date.now();
+
+        // Emit pipeline.completed
+        void this.events?.emitPipelineCompleted(
+          session.id,
+          {
+            qualityScore: session.qualityScore,
+            genre: session.genre,
+            totalCost: session.cost.totalCost,
+          },
+          session.projectId,
+        );
         break;
       }
 
@@ -145,6 +179,31 @@ export class AutonomousOrchestrator {
         session.finishedAt = Date.now();
         node.status = "failed";
         node.error = "Budget or time limit exceeded";
+
+        // Emit step.failed for the budget-exceeded phase
+        const agentName = PHASE_AGENT_NAMES[node.phase] ?? node.phase;
+        const stepId = `auto-${node.phase}`;
+        void this.events?.emitStepFailed(
+          session.id,
+          stepId,
+          agentName,
+          node.error,
+          session.projectId,
+        );
+
+        // Emit pipeline.failed
+        void this.events?.emitPipelineFailed(
+          session.id,
+          node.error,
+          session.projectId,
+          {
+            failedStepId: stepId,
+            failedAgentId: agentName,
+            completedSteps: session.phases.filter(
+              (p) => p.status === "completed",
+            ).length,
+          },
+        );
         break;
       }
 
@@ -152,6 +211,16 @@ export class AutonomousOrchestrator {
       session.currentPhase = node.phase;
       node.status = "running";
       node.startedAt = Date.now();
+
+      // Emit step.started
+      const agentName = PHASE_AGENT_NAMES[node.phase] ?? node.phase;
+      const stepId = `auto-${node.phase}`;
+      void this.events?.emitStepStarted(
+        session.id,
+        stepId,
+        agentName,
+        session.projectId,
+      );
 
       try {
         const output = await this.executePhase(session, node.phase);
@@ -163,6 +232,20 @@ export class AutonomousOrchestrator {
         // Update cost tracking
         this.trackCost(session, node);
 
+        // Emit step.completed with cost data
+        const costData = session.cost.perPhase[node.phase];
+        void this.events?.emitStepCompleted(
+          session.id,
+          stepId,
+          agentName,
+          {
+            ...(node.output as Record<string, unknown>),
+            cost: costData,
+            durationMs: node.durationMs,
+          },
+          session.projectId,
+        );
+
         // Checkpoint after each phase
         this.checkpoint(session, node.phase);
       } catch (err) {
@@ -173,6 +256,29 @@ export class AutonomousOrchestrator {
         session.status = "failed";
         session.currentPhase = "failed";
         session.finishedAt = Date.now();
+
+        // Emit step.failed
+        void this.events?.emitStepFailed(
+          session.id,
+          stepId,
+          agentName,
+          node.error!,
+          session.projectId,
+        );
+
+        // Emit pipeline.failed
+        void this.events?.emitPipelineFailed(
+          session.id,
+          node.error ?? "Unknown error",
+          session.projectId,
+          {
+            failedStepId: stepId,
+            failedAgentId: agentName,
+            completedSteps: session.phases.filter(
+              (p) => p.status === "completed",
+            ).length,
+          },
+        );
         break;
       }
     }

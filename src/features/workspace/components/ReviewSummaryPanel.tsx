@@ -6,11 +6,8 @@ import {
   Pencil,
   Clock,
 } from "lucide-react";
-import { Card } from "../../../components/ui/Card";
-import {
-  getReviewSummary,
-  type ReviewSummary,
-} from "../../../services/conceptApi";
+import { Card } from "@/shared/ui/Card";
+import { getReviewSummary, type ReviewSummary } from "@/services/conceptApi";
 
 interface ReviewSummaryPanelProps {
   pipelineId: string | null;
@@ -54,8 +51,8 @@ export function ReviewSummaryPanel({
         <span
           className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${
             summary.allApproved
-              ? "bg-green-500/10 text-green-400"
-              : "bg-yellow-500/10 text-yellow-400"
+              ? "bg-success-500/10 text-success-400"
+              : "bg-warning-500/10 text-warning-400"
           }`}
         >
           {completionPct}% complete
@@ -67,7 +64,7 @@ export function ReviewSummaryPanel({
         <div className="h-2 w-full overflow-hidden rounded-full bg-white/10">
           <div
             className={`h-full rounded-full transition-all duration-500 ${
-              summary.allApproved ? "bg-green-500" : "bg-brand-500"
+              summary.allApproved ? "bg-success-500" : "bg-brand-500"
             }`}
             style={{ width: `${completionPct}%` }}
           />
@@ -78,13 +75,13 @@ export function ReviewSummaryPanel({
       <div className="mt-3 grid grid-cols-2 gap-2">
         <StatItem
           icon={CheckCircle}
-          color="text-green-400"
+          color="text-success-400"
           label="Approved"
           value={summary.approved}
         />
         <StatItem
           icon={Pencil}
-          color="text-yellow-400"
+          color="text-warning-400"
           label="Edited"
           value={summary.edited}
         />
@@ -96,7 +93,7 @@ export function ReviewSummaryPanel({
         />
         <StatItem
           icon={XCircle}
-          color="text-red-400"
+          color="text-error-400"
           label="Rejected"
           value={summary.rejected}
         />

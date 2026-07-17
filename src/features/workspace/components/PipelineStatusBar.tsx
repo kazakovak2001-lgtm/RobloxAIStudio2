@@ -1,5 +1,5 @@
 import { Clock, CheckCircle, XCircle, Loader2, Pause } from "lucide-react";
-import type { PipelineState, WorkspaceStatus } from "../workspace.types";
+import type { PipelineState, WorkspaceStatus } from "../types";
 
 interface PipelineStatusBarProps {
   pipeline: PipelineState | null;

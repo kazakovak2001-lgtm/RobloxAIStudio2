@@ -1,10 +1,10 @@
 import { useEffect, useState } from "react";
 import { BarChart3, Clock, Coins, Cpu } from "lucide-react";
-import { Card } from "../../../components/ui/Card";
+import { Card } from "@/shared/ui/Card";
 import {
   getPipelineMetrics,
   type PipelineMetricsData,
-} from "../../../services/generationMonitorApi";
+} from "@/services/generationMonitorApi";
 
 interface MetricsPanelProps {
   pipelineId: string | null;

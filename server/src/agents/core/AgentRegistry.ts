@@ -13,6 +13,9 @@ import { TesterAgent } from "../implementations/TesterAgent";
 import { DebugAgent } from "../implementations/DebugAgent";
 import { PerformanceAgent } from "../implementations/PerformanceAgent";
 import { OrchestratorAgent } from "../implementations/OrchestratorAgent";
+import { ArchitectureControllerAgent } from "../implementations/ArchitectureControllerAgent";
+import { CodeReviewControllerAgent } from "../implementations/CodeReviewControllerAgent";
+import { DuplicationDetectionAgent } from "../implementations/DuplicationDetectionAgent";
 
 /**
  * AgentRegistry
@@ -43,6 +46,11 @@ export class AgentRegistry {
     const orchestrator = new OrchestratorAgent();
     orchestrator.setRegistry(this);
     this.register("orchestrator", orchestrator);
+
+    // AI Project Controller agents
+    this.register("architecture_controller", new ArchitectureControllerAgent());
+    this.register("code_review_controller", new CodeReviewControllerAgent());
+    this.register("duplication_detector", new DuplicationDetectionAgent());
 
     if (llm) {
       this.setLLM(llm);

@@ -1,11 +1,11 @@
 import { useState } from "react";
 import { Brain, Loader2, CheckCircle, AlertTriangle } from "lucide-react";
-import { Card } from "../../../components/ui/Card";
+import { Card } from "@/shared/ui/Card";
 import {
   generateArchitectPlan,
   type GameIdeaInput,
   type GameArchitectResult,
-} from "../../../services/gameArchitectApi";
+} from "@/services/gameArchitectApi";
 
 export function GameArchitectPanel() {
   const [description, setDescription] = useState("");

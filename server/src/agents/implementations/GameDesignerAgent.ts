@@ -91,13 +91,16 @@ export class GameDesignerAgent extends BaseAgent {
     });
 
     const inlinePrompt =
-      "You are a Roblox game designer. Design detailed gameplay systems. " +
-      "Respond with a single JSON object:\n" +
-      '{ "gameplay": { "mechanics": Array<{name,description,parameters}>, ' +
+      "You are a Roblox game designer. Design detailed gameplay systems.\n" +
+      "RULES:\n" +
+      "- Return ONLY a valid JSON object. No markdown, no explanation, no code fences.\n" +
+      "- Use exactly this schema:\n" +
+      '{ "gameplay": { "mechanics": [{name,description,parameters}], ' +
       '"progression": {loop,player_progression_model,unlocking_system}, ' +
       '"balance": {winCondition,loseCondition,interactionSystems,economyOrScoring,theme} }, ' +
       '"loop": string, "winCondition": string, "loseCondition": string, ' +
-      '"progressionModel": string, "interactionSystems": string[], "economyOrScoring": string }\n\n' +
+      '"progressionModel": string, "interactionSystems": string[], "economyOrScoring": string }\n' +
+      '- The root key MUST be "gameplay" (not gameplaySystems or gameDesign).\n\n' +
       `Game Name: ${name}\nGenre: ${genre}\nCore Loop: ${coreLoop}\nTheme: ${theme}\n` +
       `Mechanics: ${mechanics}\n` +
       (innovations ? `Innovation modifiers: ${innovations}\n` : "") +

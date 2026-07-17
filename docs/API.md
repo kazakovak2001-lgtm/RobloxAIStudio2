@@ -1,5 +1,8 @@
 # Roblox AI Studio - Game Generation Engine API
 
+**Version**: 1.3.3
+**Last Updated**: 2026-07-13
+
 ## Overview
 
 The Game Generation Engine is a production-ready AI orchestration platform that transforms natural language prompts into complete Roblox game blueprints. It features:

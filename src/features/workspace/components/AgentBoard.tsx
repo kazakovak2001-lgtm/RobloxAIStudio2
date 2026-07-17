@@ -1,8 +1,8 @@
 import { memo, useMemo } from "react";
 import { Sparkles } from "lucide-react";
-import { Card } from "../../../components/ui/Card";
+import { Card } from "@/shared/ui/Card";
 import { AgentCard } from "./AgentCard";
-import type { AgentState } from "../workspace.types";
+import type { AgentState } from "../types";
 
 interface AgentBoardProps {
   agents: AgentState[];

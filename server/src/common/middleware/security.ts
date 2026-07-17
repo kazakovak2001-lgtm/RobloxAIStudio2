@@ -5,6 +5,7 @@
 import type { Request, Response, NextFunction } from "express";
 import rateLimit from "express-rate-limit";
 import helmet from "helmet";
+import { authService } from "../../platform/auth/authServiceInstance";
 
 // ─── Rate Limiting ──────────────────────────────────────────────────────────
 
@@ -80,6 +81,7 @@ const PUBLIC_PATHS = [
 
 const PUBLIC_PREFIXES = [
   "/api/platform/users", // Registration needs to be public (POST only handled below)
+  "/api/platform/auth", // Auth routes (login, register, refresh, logout) must be public
 ];
 
 export function authMiddleware(
@@ -107,15 +109,37 @@ export function authMiddleware(
     return;
   }
 
-  // Check Authorization header
+  // Check Authorization header first (priority)
   const authHeader = req.headers.authorization;
   const apiKey = req.headers["x-api-key"] as string | undefined;
 
   if (authHeader?.startsWith("Bearer ")) {
-    // JWT/token validation would go here in production
-    // For now, presence of valid-format token is sufficient
-    next();
+    const token = authHeader.slice(7); // Remove "Bearer " prefix
+    const session = authService.validateToken(token);
+    if (session) {
+      // Attach session/user info to request for downstream handlers
+      (req as any).user = session;
+      next();
+      return;
+    }
+    // Token present but invalid — reject
+    res.status(401).json({ success: false, error: "Invalid or expired token" });
     return;
+  }
+
+  // Fallback: check httpOnly cookie for browser clients
+  const cookieToken = (req as unknown as { cookies?: Record<string, string> })
+    .cookies?.roblox_ai_token;
+  if (cookieToken) {
+    const session = authService.validateToken(cookieToken);
+    if (session) {
+      (req as any).user = session;
+      // Attach token to Authorization header internally so downstream handlers can use it
+      req.headers.authorization = `Bearer ${cookieToken}`;
+      next();
+      return;
+    }
+    // Cookie token invalid — fall through to 401
   }
 
   if (apiKey && apiKey.length > 10) {

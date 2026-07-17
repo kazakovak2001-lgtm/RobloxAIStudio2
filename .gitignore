@@ -72,3 +72,36 @@ vite.config.d.ts.map
 # ─── Generated reports (CI artifacts, not committed) ──────────────────────────
 boundary-report.json
 import-graph.json
+
+# ─── Server TypeScript build output ─────────────────────────────────────────
+server/dist/
+server/**/*.js
+server/**/*.js.map
+server/**/*.d.ts
+server/**/*.d.ts.map
+
+# ─── Additional build directories ───────────────────────────────────────────
+.next/
+.nuxt/
+.cache/
+.parcel-cache/
+
+# ─── Test coverage ───────────────────────────────────────────────────────────
+coverage/
+.nyc_output/
+*.lcov
+
+# ─── Additional IDEs ───────────────────────────────────────────────────────
+.eclipse/
+.settings/
+*.sublime-project
+*.sublime-workspace
+
+# ─── Additional Windows artifacts ───────────────────────────────────────────
+$RECYCLE.BIN/
+*.cab
+*.msi
+*.msix
+*.msm
+*.msp
+*.lnk

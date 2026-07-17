@@ -12,15 +12,16 @@ import {
   Unplug,
   Heart,
 } from "lucide-react";
-import { Card } from "../../../components/ui/Card";
-import { syncToStudio, type SyncResult } from "../../../services/studioService";
+import { Card } from "@/shared/ui/Card";
 import {
+  syncToStudio,
   getStudioStatus,
   connectStudio,
   disconnectStudio,
   sendHeartbeat,
+  type SyncResult,
   type StudioStatusData,
-} from "../../../services/studioBridgeApi";
+} from "@/services/studioBridgeApi";
 
 interface StudioBridgePanelProps {
   projectId: string;
@@ -124,7 +125,7 @@ export function StudioBridgePanel({
       <div className="flex items-center justify-between">
         <p className="text-sm font-semibold text-white">Studio Bridge</p>
         {isStudioConnected ? (
-          <Wifi className="h-4 w-4 text-green-400" />
+          <Wifi className="h-4 w-4 text-success-400" />
         ) : (
           <WifiOff className="h-4 w-4 text-slate-500" />
         )}
@@ -135,7 +136,9 @@ export function StudioBridgePanel({
         <div className="flex items-center justify-between">
           <span className="text-slate-400">Status</span>
           <span
-            className={isStudioConnected ? "text-green-400" : "text-slate-500"}
+            className={
+              isStudioConnected ? "text-success-400" : "text-slate-500"
+            }
           >
             {isStudioConnected ? "Connected" : "Disconnected"}
           </span>
@@ -174,7 +177,7 @@ export function StudioBridgePanel({
           <button
             onClick={handleConnect}
             disabled={isConnecting}
-            className="flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-green-500/10 px-3 py-2 text-xs text-green-400 hover:bg-green-500/20 disabled:opacity-50"
+            className="flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-success-500/10 px-3 py-2 text-xs text-success-400 hover:bg-success-500/20 disabled:opacity-50"
           >
             {isConnecting ? (
               <Loader2 className="h-3 w-3 animate-spin" />
@@ -186,7 +189,7 @@ export function StudioBridgePanel({
         ) : (
           <button
             onClick={handleDisconnect}
-            className="flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-red-500/10 px-3 py-2 text-xs text-red-400 hover:bg-red-500/20"
+            className="flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-error-500/10 px-3 py-2 text-xs text-error-400 hover:bg-error-500/20"
           >
             <Unplug className="h-3 w-3" /> Disconnect
           </button>
@@ -201,9 +204,9 @@ export function StudioBridgePanel({
         }
         className={`mt-2 flex w-full items-center justify-center gap-2 rounded-xl px-3 py-2 text-xs font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed ${
           syncStatus === "success"
-            ? "bg-green-500/20 text-green-300"
+            ? "bg-success-500/20 text-success-300"
             : syncStatus === "error"
-              ? "bg-red-500/20 text-red-300"
+              ? "bg-error-500/20 text-error-300"
               : "bg-cyan-500/20 text-cyan-300 hover:bg-cyan-500/30"
         }`}
       >
@@ -231,14 +234,14 @@ export function StudioBridgePanel({
           <div key={stage.label} className="flex items-center">
             <div className="flex flex-col items-center">
               {stage.done ? (
-                <CheckCircle className="h-3 w-3 text-green-400" />
+                <CheckCircle className="h-3 w-3 text-success-400" />
               ) : (
                 <Circle
                   className={`h-3 w-3 ${stage.active ? "text-cyan-400" : "text-slate-600"}`}
                 />
               )}
               <span
-                className={`mt-0.5 text-[10px] ${stage.done ? "text-green-400" : stage.active ? "text-cyan-300" : "text-slate-500"}`}
+                className={`mt-0.5 text-[10px] ${stage.done ? "text-success-400" : stage.active ? "text-cyan-300" : "text-slate-500"}`}
               >
                 {stage.label}
               </span>
@@ -251,7 +254,7 @@ export function StudioBridgePanel({
       </div>
 
       {lastResult && !lastResult.success && (
-        <p className="mt-2 text-[10px] text-red-400">{lastResult.error}</p>
+        <p className="mt-2 text-[10px] text-error-400">{lastResult.error}</p>
       )}
     </Card>
   );

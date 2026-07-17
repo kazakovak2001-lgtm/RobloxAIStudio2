@@ -1,0 +1,16 @@
+{
+  "enabled": true,
+  "name": "AI Pre-Implementation Check",
+  "description": "Before implementing any new component, service, or module, runs the AI Project Controller pre-check to detect duplicates, check architecture impact, and verify prior decisions. Returns ALLOW/WARN/BLOCK recommendation.",
+  "version": "1",
+  "when": {
+    "type": "preToolUse",
+    "toolTypes": [
+      "write"
+    ]
+  },
+  "then": {
+    "type": "askAgent",
+    "prompt": "Before creating this file, check if similar functionality already exists. Run: npx tsx scripts/pre-check.ts with the file name or intent. If the result is BLOCK, stop and recommend reusing the existing implementation. If WARN, inform the user of potential duplicates before proceeding. Only proceed with file creation if ALLOW is returned or the user explicitly confirms."
+  }
+}

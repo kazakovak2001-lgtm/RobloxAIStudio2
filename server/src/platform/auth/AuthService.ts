@@ -1,8 +1,10 @@
 /**
  * AuthService — Authentication with JWT-like tokens and session management.
+ * Uses bcrypt (cost factor 12) for password hashing with automatic salt.
  */
 
 import { randomUUID, createHash } from "crypto";
+import bcrypt from "bcryptjs";
 import type {
   AuthSession,
   AuthCredentials,
@@ -14,6 +16,7 @@ import { ROLE_PERMISSIONS } from "./AuthTypes";
 
 const TOKEN_EXPIRY_MS = 24 * 60 * 60 * 1000; // 24h
 const REFRESH_EXPIRY_MS = 7 * 24 * 60 * 60 * 1000; // 7d
+const BCRYPT_COST_FACTOR = 12;
 
 export class AuthService {
   private credentials: Map<string, AuthCredentials> = new Map(); // email → creds
@@ -27,14 +30,36 @@ export class AuthService {
     role: UserRole = "creator",
   ): boolean {
     if (this.credentials.has(email)) return false;
-    this.credentials.set(email, { email, passwordHash: this.hash(password) });
+    const passwordHash = bcrypt.hashSync(password, BCRYPT_COST_FACTOR);
+    this.credentials.set(email, { email, passwordHash });
     this.userRoles.set(userId, role);
     return true;
   }
 
   login(email: string, password: string, userId: string): LoginResult {
     const creds = this.credentials.get(email);
-    if (!creds || creds.passwordHash !== this.hash(password)) {
+    if (!creds) {
+      return { success: false, error: "Invalid credentials" };
+    }
+
+    // Migration path: if stored hash is legacy SHA-256 (64 hex chars, no bcrypt prefix)
+    const isLegacySha256 = this.isLegacyHash(creds.passwordHash);
+
+    let passwordValid = false;
+    if (isLegacySha256) {
+      // Compare using SHA-256 for legacy hashes
+      const sha256Hash = createHash("sha256").update(password).digest("hex");
+      passwordValid = sha256Hash === creds.passwordHash;
+      if (passwordValid) {
+        // Transparent upgrade: re-hash with bcrypt
+        creds.passwordHash = bcrypt.hashSync(password, BCRYPT_COST_FACTOR);
+      }
+    } else {
+      // Compare using bcrypt for modern hashes
+      passwordValid = bcrypt.compareSync(password, creds.passwordHash);
+    }
+
+    if (!passwordValid) {
       return { success: false, error: "Invalid credentials" };
     }
 
@@ -108,7 +133,11 @@ export class AuthService {
     return session;
   }
 
-  private hash(input: string): string {
-    return createHash("sha256").update(input).digest("hex");
+  /**
+   * Determines if a stored hash is a legacy SHA-256 hash (64 hex characters)
+   * vs a bcrypt hash (starts with $2a$ or $2b$).
+   */
+  private isLegacyHash(hash: string): boolean {
+    return /^[a-f0-9]{64}$/.test(hash);
   }
 }

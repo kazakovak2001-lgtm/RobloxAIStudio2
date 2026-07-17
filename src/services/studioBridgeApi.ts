@@ -207,6 +207,78 @@ export async function sendProtocolMessage(
   }
 }
 
+// ─── Project Studio Session & Sync (merged from studioService) ──────────────
+
+export interface StudioSession {
+  sessionId: string;
+  studioId: string;
+  projectId: string;
+  status:
+    "idle" | "preparing" | "validating" | "syncing" | "completed" | "failed";
+  connectedAt?: number;
+  lastSyncAt?: number;
+  syncCount?: number;
+  version?: number;
+}
+
+export interface SyncResult {
+  success: boolean;
+  itemsSynced: number;
+  totalSize: number;
+  durationMs: number;
+  error?: string;
+}
+
+/**
+ * Get project-level Studio session status.
+ */
+export async function getProjectStudioStatus(
+  projectId: string,
+): Promise<StudioSession | null> {
+  try {
+    const res = await fetch(
+      `/api/studio/status?projectId=${encodeURIComponent(projectId)}`,
+    );
+    if (!res.ok) return null;
+    const data = await res.json();
+    return data.data ?? null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Sync a project to Roblox Studio.
+ */
+export async function syncToStudio(projectId: string): Promise<SyncResult> {
+  try {
+    const res = await fetch("/api/studio/sync", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ projectId }),
+    });
+    if (!res.ok) {
+      return {
+        success: false,
+        itemsSynced: 0,
+        totalSize: 0,
+        durationMs: 0,
+        error: `HTTP ${res.status}`,
+      };
+    }
+    const data = await res.json();
+    return data.data ?? data;
+  } catch (err) {
+    return {
+      success: false,
+      itemsSynced: 0,
+      totalSize: 0,
+      durationMs: 0,
+      error: err instanceof Error ? err.message : "Network error",
+    };
+  }
+}
+
 // ─── Sync Layer API ─────────────────────────────────────────────────────────
 
 export interface ProjectSnapshot {
@@ -233,6 +305,18 @@ export interface SyncStatusData {
   conflictCount: number;
   currentVersion: string;
   projectId: string | null;
+}
+
+/** Alias for SyncStatusData — exported as SyncStatus per Requirement 6.5. */
+export type SyncStatus = SyncStatusData;
+
+export interface SyncChange {
+  changeId: string;
+  artifactId: string;
+  artifactType: string;
+  changeType: "create" | "update" | "delete";
+  content: unknown;
+  timestamp: number;
 }
 
 export interface ArtifactTransferResult {
@@ -278,9 +362,7 @@ export async function requestProjectSync(
 /**
  * Request specific artifacts for transfer.
  */
-export async function requestArtifacts(
-  artifactIds: string[],
-): Promise<{
+export async function requestArtifacts(artifactIds: string[]): Promise<{
   success: boolean;
   data?: ArtifactTransferResult;
   error?: string;

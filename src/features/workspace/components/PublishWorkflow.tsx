@@ -1,5 +1,5 @@
 import { CheckCircle, Circle, ArrowRight } from "lucide-react";
-import { Card } from "../../../components/ui/Card";
+import { Card } from "@/shared/ui/Card";
 
 type StageStatus = "pending" | "active" | "done" | "failed";
 

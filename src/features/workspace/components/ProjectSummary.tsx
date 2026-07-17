@@ -1,6 +1,6 @@
 import { memo } from "react";
 import { BarChart3, Clock3, Coins, Sparkles, Zap } from "lucide-react";
-import { Card } from "../../../components/ui/Card";
+import { Card } from "@/shared/ui/Card";
 
 interface ProjectSummaryProps {
   agents: number;
