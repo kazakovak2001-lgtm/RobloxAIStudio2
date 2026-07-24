@@ -20,8 +20,11 @@ describe("STUDIO-1d canonical Roblox plugin contract", () => {
     );
     expect(entry.indexOf("local errorReporter = ErrorReporter.new()"))
       .toBeGreaterThan(-1);
-    expect(entry.indexOf("local artifactLoader = ArtifactLoader.new(errorReporter)"))
-      .toBeGreaterThan(entry.indexOf("local errorReporter = ErrorReporter.new()"));
+    expect(
+      entry.indexOf("local artifactLoader = ArtifactLoader.new(errorReporter)"),
+    ).toBeGreaterThan(
+      entry.indexOf("local errorReporter = ErrorReporter.new()"),
+    );
     expect(entry).not.toContain("RuntimeValidator.new()");
   });
 
@@ -78,6 +81,18 @@ describe("STUDIO-1d canonical Roblox plugin contract", () => {
     expect(sync).toContain("instancePath = loaded.instancePath");
     expect(sync).toContain("#receipts ~= #payload.snapshot.artifacts");
     expect(sync).toContain("result.data.verified ~= true");
+  });
+
+  it("requires the canonical backend project id before connecting", () => {
+    const connector = readPluginFile("src/services/StudioConnector.lua");
+    const panel = readPluginFile("src/ui/CommandPanel.lua");
+
+    expect(connector).toContain("local resolvedProjectId = projectId");
+    expect(connector).toContain("projectId = resolvedProjectId");
+    expect(panel).toContain('GetSetting("AIStudioProjectId")');
+    expect(panel).toContain('SetSetting("AIStudioProjectId", projectId)');
+    expect(panel).toContain('self:_textBox(frame, "Project ID"');
+    expect(panel).toContain('self:_updateStatus("Project ID required"');
   });
 
   it("keeps the active plugin modules syntactically coherent", () => {
