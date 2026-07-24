@@ -48,14 +48,30 @@ describe("STUDIO-1b shared Studio runtime", () => {
     expect(queued.success).toBe(true);
     if (!queued.success) return;
 
+    expect(queued.data.command).not.toBeNull();
+    expect(queued.data.noChanges).toBe(false);
     expect(runtime.bridge.getPendingCommandCount(client.clientId)).toBe(1);
     expect(runtime.getProjectSnapshot(projectId)?.artifactCount).toBe(2);
     expect(runtime.sessions.getByClient(client.clientId)).toMatchObject({
       syncCount: 1,
       lastExecutionId: executionId,
       lastArtifactCount: 2,
-      lastSyncAt: undefined,
     });
+    expect(
+      runtime.sessions.getByClient(client.clientId)?.lastSyncAt,
+    ).toBeUndefined();
+
+    const repeated = runtime.queueProjectExport(
+      client.clientId,
+      projectId,
+      executionId,
+    );
+    expect(repeated.success).toBe(true);
+    if (!repeated.success) return;
+    expect(repeated.data.noChanges).toBe(true);
+    expect(repeated.data.command).toBeNull();
+    expect(repeated.data.transfer.artifacts).toEqual([]);
+    expect(runtime.bridge.getPendingCommandCount(client.clientId)).toBe(1);
 
     const commands = runtime.drainCommands(client.clientId);
     expect(commands).toHaveLength(1);
