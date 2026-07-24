@@ -1,4 +1,5 @@
 import { Router, type Response } from "express";
+import type { StorageProvider } from "../platform/storage/StorageProvider";
 import {
   ChatPersistenceService,
   ChatValidationError,
@@ -6,12 +7,12 @@ import {
 } from "../services/ChatPersistenceService";
 import type { ProjectAccessControl } from "./projects";
 
-const chatPersistence = new ChatPersistenceService();
-
 export function createChatPersistenceRouter(
   access: ProjectAccessControl,
+  storage: StorageProvider,
 ): Router {
   const router = Router();
+  const chatPersistence = new ChatPersistenceService(storage);
 
   router.get("/:projectId/history", (req, res) => {
     try {
