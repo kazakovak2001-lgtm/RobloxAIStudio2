@@ -148,8 +148,7 @@ export class StudioIntegrationManager {
 
     const result: SyncResult = {
       success: true,
-      sessionId:
-        this.runtime.sessions.getByClient(studioId)?.sessionId ?? "",
+      sessionId: this.runtime.sessions.getByClient(studioId)?.sessionId ?? "",
       payloadId: queued.data.command.id,
       itemsSynced: queued.data.transfer.artifacts.length,
       totalSize: queued.data.transfer.totalSize,
@@ -224,14 +223,17 @@ export class StudioIntegrationManager {
   }
 
   private mapSession(session: BridgeSession): StudioProjectSession {
-    const pending = this.runtime.bridge.getPendingCommandCount(session.clientId);
+    const pending = this.runtime.bridge.getPendingCommandCount(
+      session.clientId,
+    );
     const syncCount = session.syncCount ?? 0;
     return {
       sessionId: session.sessionId,
       studioId: session.clientId,
       projectId: session.projectId ?? "",
       packageId: session.lastExecutionId,
-      status: pending > 0 ? "syncing" : session.lastSyncAt ? "completed" : "idle",
+      status:
+        pending > 0 ? "syncing" : session.lastSyncAt ? "completed" : "idle",
       connectedAt: session.createdAt,
       lastSyncAt: session.lastSyncAt,
       syncCount,
@@ -246,8 +248,7 @@ export class StudioIntegrationManager {
   ): SyncResult {
     const result: SyncResult = {
       success: false,
-      sessionId:
-        this.runtime.sessions.getByClient(studioId)?.sessionId ?? "",
+      sessionId: this.runtime.sessions.getByClient(studioId)?.sessionId ?? "",
       payloadId: "",
       itemsSynced: 0,
       totalSize: 0,
