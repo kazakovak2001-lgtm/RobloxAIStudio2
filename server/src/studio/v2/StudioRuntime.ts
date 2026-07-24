@@ -9,7 +9,11 @@ import {
   ProtocolValidator,
   createResponse,
 } from "./protocol";
-import { ProjectSyncManager, type ProjectSnapshot } from "./sync";
+import {
+  ProjectSyncManager,
+  type ProjectSnapshot,
+  type SyncChange,
+} from "./sync";
 import {
   createCommandId,
   type StudioClient,
@@ -58,13 +62,15 @@ export class StudioRuntime {
   private preparedByClient = new Map<string, PreparedStudioSync>();
   private timeoutTimer?: NodeJS.Timeout;
 
-  constructor(options: {
-    bridge?: StudioBridge;
-    sessions?: StudioSessionManager;
-    dispatcher?: ProtocolDispatcher;
-    validator?: ProtocolValidator;
-    artifactStore?: ArtifactStore;
-  } = {}) {
+  constructor(
+    options: {
+      bridge?: StudioBridge;
+      sessions?: StudioSessionManager;
+      dispatcher?: ProtocolDispatcher;
+      validator?: ProtocolValidator;
+      artifactStore?: ArtifactStore;
+    } = {},
+  ) {
     this.bridge = options.bridge ?? new StudioBridge();
     this.sessions = options.sessions ?? new StudioSessionManager();
     this.dispatcher = options.dispatcher ?? new ProtocolDispatcher();
@@ -90,7 +96,10 @@ export class StudioRuntime {
     this.timeoutTimer = undefined;
   }
 
-  connect(studioVersion: string, projectId?: string): {
+  connect(
+    studioVersion: string,
+    projectId?: string,
+  ): {
     client: StudioClient;
     session: BridgeSession;
   } {
@@ -180,6 +189,7 @@ export class StudioRuntime {
     if (!snapshot || snapshot.artifacts.length === 0) return null;
 
     const preparedAt = Date.now();
+    const artifactIds = snapshot.artifacts.map((artifact) => artifact.id);
     const command: StudioCommand = {
       id: createCommandId(),
       type: "EXPORT_PROJECT",
@@ -189,7 +199,7 @@ export class StudioRuntime {
       payload: {
         projectId,
         executionId,
-        artifactIds: snapshot.artifacts.map((artifact) => artifact.id),
+        artifactIds,
         snapshotVersion: snapshot.version,
       },
     };
@@ -201,9 +211,12 @@ export class StudioRuntime {
       sessionId: session.sessionId,
       projectId,
       executionId,
-      artifactIds: snapshot.artifacts.map((artifact) => artifact.id),
+      artifactIds,
       artifactCount: snapshot.artifactCount,
-      totalSizeBytes: snapshot.totalSizeBytes,
+      totalSizeBytes: snapshot.artifacts.reduce(
+        (total, artifact) => total + artifact.size,
+        0,
+      ),
       preparedAt,
     };
     this.preparedByClient.set(session.clientId, prepared);
@@ -275,7 +288,7 @@ export class StudioRuntime {
       }
       const result = this.syncManager.processSyncRequest(
         projectId,
-        changes as Array<Record<string, unknown>> as never,
+        changes as SyncChange[],
       );
       return createResponse(
         msg,
@@ -294,7 +307,7 @@ export class StudioRuntime {
       }
       const result = this.syncManager.validateOnly(
         projectId,
-        changes as Array<Record<string, unknown>> as never,
+        changes as SyncChange[],
       );
       return createResponse(
         msg,
