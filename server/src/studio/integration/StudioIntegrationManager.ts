@@ -225,6 +225,7 @@ export class StudioIntegrationManager {
 
   private mapSession(session: BridgeSession): StudioProjectSession {
     const pending = this.runtime.bridge.getPendingCommandCount(session.clientId);
+    const syncCount = session.syncCount ?? 0;
     return {
       sessionId: session.sessionId,
       studioId: session.clientId,
@@ -233,8 +234,8 @@ export class StudioIntegrationManager {
       status: pending > 0 ? "syncing" : session.lastSyncAt ? "completed" : "idle",
       connectedAt: session.createdAt,
       lastSyncAt: session.lastSyncAt,
-      syncCount: session.syncCount,
-      version: Math.max(1, session.syncCount + 1),
+      syncCount,
+      version: Math.max(1, syncCount + 1),
     };
   }
 
