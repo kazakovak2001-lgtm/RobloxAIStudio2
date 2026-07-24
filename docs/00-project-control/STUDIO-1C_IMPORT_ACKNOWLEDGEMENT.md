@@ -113,6 +113,7 @@ The STUDIO-1b runtime test is updated to protect the boundary that command deliv
 - PR #11 restored the canonical CI workflow, removed temporary diagnostic automation, applied repository formatting, and corrected optional-field assertions without changing runtime behavior.
 - The final canonical run passed TypeScript, ESLint, Prettier, the full test suite, repository validation, commitlint, PostgreSQL restart E2E, and the aggregate Merge Gate.
 - The integration branch contains the canonical CI workflow only; no STUDIO-1c diagnostic or self-modifying workflow remains.
+- PR #12 synchronizes the global project state and roadmap with this verified backend boundary while preserving the real-plugin acceptance gate.
 
 ## Connected-Repository Limitation
 
