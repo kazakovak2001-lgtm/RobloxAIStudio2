@@ -46,7 +46,29 @@ jobs:
           node-version: "22"
           cache: "npm"
       - run: npm ci
-      - run: npm run format:check
+      - name: Generate canonical formatter output
+        run: npm run format
+      - name: Pack formatted CORE-1b files
+        run: |
+          tar -czf prettier-output.tgz \
+            .github/workflows/ci.yml \
+            docs/00-project-control/CORE-1B_DURABLE_RUNTIME.md \
+            docs/00-project-control/ROADMAP_STATUS.md \
+            server/src/__tests__/core1b.persistence.test.ts \
+            server/src/__tests__/core1b.postgres.integration.test.ts \
+            server/src/platform/storage/StorageFactory.ts \
+            server/src/projects/repository/blueprint.repository.ts \
+            server/src/projects/repository/storageBlueprint.repository.ts \
+            server/src/routes/chatPersistence.ts \
+            server/src/services/ChatPersistenceService.ts
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: core-1b-prettier-output
+          path: prettier-output.tgz
+          retention-days: 1
+      - name: Verify formatter produced no diff
+        run: git diff --exit-code
 
   test:
     name: Test Suite
