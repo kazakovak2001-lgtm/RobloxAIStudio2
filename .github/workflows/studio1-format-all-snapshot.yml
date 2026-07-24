@@ -1,0 +1,32 @@
+name: STUDIO-1 Repository Format Snapshot
+
+on:
+  pull_request:
+    branches: [feature/plugin-merge]
+
+permissions:
+  contents: read
+
+jobs:
+  format-snapshot:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+      - run: npm ci
+      - name: Format repository
+        run: npm run format
+      - name: Package format delta
+        run: |
+          mkdir -p /tmp/studio1-format-snapshot
+          git diff --name-only > /tmp/studio1-format-snapshot/files.txt
+          tar -czf /tmp/studio1-format-snapshot/formatted-files.tgz \
+            --files-from /tmp/studio1-format-snapshot/files.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: studio1-repository-format-${{ github.sha }}
+          path: /tmp/studio1-format-snapshot
+          retention-days: 1
