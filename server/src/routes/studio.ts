@@ -3,36 +3,35 @@
  */
 
 import { Router } from "express";
-import { StudioBridge } from "../studio/v2/StudioBridge";
-import { StudioSessionManager } from "../studio/v2/StudioSession";
+import { ArtifactStore } from "../pipeline/v2";
+import {
+  getSharedStudioRuntime,
+  StudioRuntime,
+} from "../studio/v2/StudioRuntime";
 import {
   ProtocolDispatcher,
   ProtocolValidator,
   PROTOCOL_VERSION,
   createResponse,
 } from "../studio/v2/protocol";
-import { ProjectSyncManager } from "../studio/v2/sync";
-import { ArtifactStore } from "../pipeline/v2";
 
-// Shared artifact store instance (in production, inject via DI)
-const sharedArtifactStore = new ArtifactStore();
-
-export function createStudioRouter(artifactStore?: ArtifactStore): Router {
+export function createStudioRouter(
+  runtimeOrStore?: StudioRuntime | ArtifactStore,
+): Router {
   const router = Router();
-  const bridge = new StudioBridge();
-  const sessionManager = new StudioSessionManager();
+  const runtime =
+    runtimeOrStore instanceof StudioRuntime
+      ? runtimeOrStore
+      : runtimeOrStore
+        ? new StudioRuntime({ artifacts: runtimeOrStore })
+        : getSharedStudioRuntime();
+  const bridge = runtime.bridge;
+  const sessionManager = runtime.sessions;
+  const syncManager = runtime.sync;
   const dispatcher = new ProtocolDispatcher();
   const validator = new ProtocolValidator();
-  const store = artifactStore ?? sharedArtifactStore;
-  const syncManager = new ProjectSyncManager(store);
 
-  // Periodic timeout check (every 30s)
-  setInterval(() => {
-    const expired = sessionManager.checkTimeouts();
-    for (const sessionId of expired) {
-      console.log(`[studio] Session ${sessionId} expired (heartbeat timeout)`);
-    }
-  }, 30_000);
+  runtime.startTimeoutMonitor();
 
   // ─── Register Sync Protocol Handlers ────────────────────────────────────────
 
@@ -41,9 +40,9 @@ export function createStudioRouter(artifactStore?: ArtifactStore): Router {
     if (!projectId || typeof projectId !== "string") {
       return createResponse(msg, "error", {}, "Missing projectId in payload");
     }
-    const snapshot = syncManager.getProjectSnapshot(projectId as string);
+    const snapshot = runtime.getProjectSnapshot(projectId);
     if (!snapshot) {
-      return createResponse(msg, "error", {}, "Project not found");
+      return createResponse(msg, "error", {}, "Project artifacts not found");
     }
     return createResponse(
       msg,
@@ -87,7 +86,7 @@ export function createStudioRouter(artifactStore?: ArtifactStore): Router {
       return createResponse(msg, "error", {}, "Missing changes array");
     }
     const result = syncManager.processSyncRequest(
-      projectId as string,
+      projectId,
       changes as Array<Record<string, unknown>> as never,
     );
     return createResponse(
@@ -106,7 +105,7 @@ export function createStudioRouter(artifactStore?: ArtifactStore): Router {
       return createResponse(msg, "error", {}, "Missing changes array");
     }
     const result = syncManager.validateOnly(
-      projectId as string,
+      projectId,
       changes as Array<Record<string, unknown>> as never,
     );
     return createResponse(
@@ -127,13 +126,14 @@ export function createStudioRouter(artifactStore?: ArtifactStore): Router {
         connected: clients.length > 0,
         clientCount: clients.length,
         sessionCount: sessions.length,
-        clients: clients.map((c) => ({
-          clientId: c.clientId,
-          studioVersion: c.studioVersion,
-          projectId: c.projectId,
-          connectedAt: c.connectedAt,
-          lastHeartbeat: c.lastHeartbeat,
-          status: c.status,
+        clients: clients.map((client) => ({
+          clientId: client.clientId,
+          studioVersion: client.studioVersion,
+          projectId: client.projectId,
+          connectedAt: client.connectedAt,
+          lastHeartbeat: client.lastHeartbeat,
+          status: client.status,
+          pendingCommands: bridge.getPendingCommandCount(client.clientId),
         })),
       },
     });
@@ -221,9 +221,23 @@ export function createStudioRouter(artifactStore?: ArtifactStore): Router {
       return;
     }
 
-    // Return all active sessions
-    const sessions = sessionManager.getActiveSessions();
-    res.json({ success: true, data: sessions });
+    res.json({ success: true, data: sessionManager.getActiveSessions() });
+  });
+
+  // GET /api/studio/commands — plugin polling of the existing command queue
+  router.get("/commands", (req, res) => {
+    const clientId = req.query.clientId as string | undefined;
+    if (!clientId) {
+      res.status(400).json({ success: false, error: "clientId is required" });
+      return;
+    }
+    const client = bridge.getClient(clientId);
+    if (!client || client.status !== "connected") {
+      res.status(404).json({ success: false, error: "Client not found" });
+      return;
+    }
+    const commands = runtime.drainCommands(clientId);
+    res.json({ success: true, data: { clientId, commands } });
   });
 
   // GET /api/studio/events
@@ -303,12 +317,16 @@ export function createStudioRouter(artifactStore?: ArtifactStore): Router {
 
   // POST /api/studio/sync/project
   router.post("/sync/project", (req, res) => {
-    const { projectId } = req.body;
-    if (!projectId || typeof projectId !== "string") {
-      res.status(400).json({ success: false, error: "projectId is required" });
+    const { projectId, executionId } = req.body;
+    const lookupId = executionId ?? projectId;
+    if (!lookupId || typeof lookupId !== "string") {
+      res.status(400).json({
+        success: false,
+        error: "projectId or executionId is required",
+      });
       return;
     }
-    const snapshot = syncManager.getProjectSnapshot(projectId);
+    const snapshot = runtime.getProjectSnapshot(lookupId);
     if (!snapshot) {
       res.status(404).json({ success: false, error: "Project not found" });
       return;
@@ -329,8 +347,7 @@ export function createStudioRouter(artifactStore?: ArtifactStore): Router {
         .json({ success: false, error: "artifactIds array is required" });
       return;
     }
-    const transferManager = syncManager.getTransferManager();
-    const result = transferManager.transfer(artifactIds);
+    const result = syncManager.getTransferManager().transfer(artifactIds);
     if (result.payloadExceeded) {
       res.status(413).json({
         success: false,
@@ -345,7 +362,7 @@ export function createStudioRouter(artifactStore?: ArtifactStore): Router {
   // GET /api/studio/sync/status
   router.get("/sync/status", (req, res) => {
     const projectId = req.query.projectId as string | undefined;
-    const status = syncManager.getSyncStatus(projectId);
+    const status = runtime.getSyncStatus(projectId);
     res.json({ success: true, data: status });
   });
 

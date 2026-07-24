@@ -12,6 +12,11 @@ export interface BridgeSession {
   studioVersion: string;
   createdAt: number;
   lastActivity: number;
+  lastQueuedAt?: number;
+  lastSyncAt?: number;
+  syncCount?: number;
+  lastExecutionId?: string;
+  lastArtifactCount?: number;
   status: "active" | "expired" | "closed";
 }
 
@@ -25,6 +30,12 @@ export class StudioSessionManager {
    * Create a session for a connected client.
    */
   create(client: StudioClient): BridgeSession {
+    const previousSessionId = this.clientToSession.get(client.clientId);
+    if (previousSessionId) {
+      const previousSession = this.sessions.get(previousSessionId);
+      if (previousSession) previousSession.status = "closed";
+    }
+
     const session: BridgeSession = {
       sessionId: `session-${randomUUID().slice(0, 10)}`,
       clientId: client.clientId,
@@ -32,6 +43,7 @@ export class StudioSessionManager {
       studioVersion: client.studioVersion,
       createdAt: Date.now(),
       lastActivity: Date.now(),
+      syncCount: 0,
       status: "active",
     };
     this.sessions.set(session.sessionId, session);
@@ -57,11 +69,46 @@ export class StudioSessionManager {
    * Record activity (heartbeat).
    */
   recordActivity(clientId: string): boolean {
-    const sessionId = this.clientToSession.get(clientId);
-    if (!sessionId) return false;
-    const session = this.sessions.get(sessionId);
+    const session = this.getByClient(clientId);
     if (!session || session.status !== "active") return false;
     session.lastActivity = Date.now();
+    return true;
+  }
+
+  recordQueuedExport(
+    clientId: string,
+    executionId: string,
+    artifactCount: number,
+  ): boolean {
+    const session = this.getByClient(clientId);
+    if (!session || session.status !== "active") return false;
+    session.lastQueuedAt = Date.now();
+    session.syncCount = (session.syncCount ?? 0) + 1;
+    session.lastExecutionId = executionId;
+    session.lastArtifactCount = artifactCount;
+    return true;
+  }
+
+  recordNoopExport(clientId: string, executionId: string): boolean {
+    const session = this.getByClient(clientId);
+    if (!session || session.status !== "active") return false;
+    session.syncCount = (session.syncCount ?? 0) + 1;
+    session.lastExecutionId = executionId;
+    session.lastArtifactCount = 0;
+    return true;
+  }
+
+  recordDeliveredExport(
+    clientId: string,
+    executionId: string,
+    artifactCount: number,
+  ): boolean {
+    const session = this.getByClient(clientId);
+    if (!session || session.status !== "active") return false;
+    session.lastActivity = Date.now();
+    session.lastSyncAt = Date.now();
+    if (executionId) session.lastExecutionId = executionId;
+    session.lastArtifactCount = artifactCount;
     return true;
   }
 

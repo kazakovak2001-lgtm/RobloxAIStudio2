@@ -18,9 +18,13 @@ export class StudioBridge {
   /**
    * Register a new Studio client connection.
    */
-  connect(studioVersion: string, projectId?: string): StudioClient {
+  connect(
+    studioVersion: string,
+    projectId?: string,
+    requestedClientId?: string,
+  ): StudioClient {
     const client: StudioClient = {
-      clientId: createClientId(),
+      clientId: requestedClientId ?? createClientId(),
       studioVersion,
       projectId,
       connectedAt: Date.now(),
@@ -64,14 +68,15 @@ export class StudioBridge {
   }
 
   /**
-   * Queue a command for a client.
+   * Queue a command for a connected client.
    */
-  sendCommand(clientId: string, command: StudioCommand): void {
+  sendCommand(clientId: string, command: StudioCommand): boolean {
+    const client = this.clients.get(clientId);
     const queue = this.commandQueue.get(clientId);
-    if (queue) {
-      queue.push(command);
-      command.status = "sent";
-    }
+    if (!client || client.status !== "connected" || !queue) return false;
+    queue.push(command);
+    command.status = "sent";
+    return true;
   }
 
   /**
@@ -81,6 +86,10 @@ export class StudioBridge {
     const queue = this.commandQueue.get(clientId) ?? [];
     this.commandQueue.set(clientId, []);
     return queue;
+  }
+
+  getPendingCommandCount(clientId: string): number {
+    return this.commandQueue.get(clientId)?.length ?? 0;
   }
 
   /**
