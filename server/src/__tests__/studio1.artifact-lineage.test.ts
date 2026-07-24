@@ -56,9 +56,9 @@ describe("STUDIO-1a canonical artifact lineage", () => {
       "LUA_GENERATION",
       "EXPORT",
     ]);
-    expect(recorded.every((artifact) => artifact.pipelineId === executionId)).toBe(
-      true,
-    );
+    expect(
+      recorded.every((artifact) => artifact.pipelineId === executionId),
+    ).toBe(true);
     expect(recorded[1]?.content).toEqual(luaOutput);
     expect(store.count).toBe(3);
   });
