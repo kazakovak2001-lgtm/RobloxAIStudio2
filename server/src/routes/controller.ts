@@ -9,13 +9,13 @@ import { Router } from "express";
 import type { AgentRegistry } from "../agents/core/AgentRegistry";
 import { CodebaseKnowledge } from "../knowledge/CodebaseKnowledge";
 import { DecisionMemory } from "../knowledge/DecisionMemory";
-import { GCPSecretProvider } from "../cloud/secrets/GCPSecretProvider";
+import { ControllerSecretStatusService } from "../projects/services/controller-secret-status.service";
 
 export function createControllerRouter(agentRegistry: AgentRegistry): Router {
   const router = Router();
   const codebaseKnowledge = new CodebaseKnowledge();
   const decisionMemory = new DecisionMemory();
-  const secretProvider = new GCPSecretProvider();
+  const secretStatus = new ControllerSecretStatusService();
 
   // Fix #2: Index at startup (not lazily on first request) to avoid blocking event loop.
   codebaseKnowledge.indexSourceTree();
@@ -46,7 +46,7 @@ export function createControllerRouter(agentRegistry: AgentRegistry): Router {
       data: {
         status: "operational",
         agents: controllerAgents,
-        secretProvider: secretProvider.getStatus(),
+        secretProvider: secretStatus.getStatus(),
         indexed: true,
       },
     });
@@ -147,7 +147,7 @@ export function createControllerRouter(agentRegistry: AgentRegistry): Router {
 
   // GET /api/controller/secrets/status — Secret provider status (no secret values exposed)
   router.get("/secrets/status", (_req, res) => {
-    res.json({ success: true, data: secretProvider.getStatus() });
+    res.json({ success: true, data: secretStatus.getStatus() });
   });
 
   // ─── Architecture Graph Queries ────────────────────────────────────────────

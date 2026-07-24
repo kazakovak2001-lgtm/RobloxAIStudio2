@@ -72,7 +72,7 @@ export class PlanExecutor {
 
     // Emit trace: plan started
     this.tracer.startExecution(planId, planId, graph.goal, graph.size);
-    await this.emitPipelineStarted(planId);
+    await this.emitPipelineStarted(planId, projectId);
 
     // Reset adaptive agent switch counts for this execution
     this.decisionEngine.resetSwitchCounts();
@@ -240,7 +240,7 @@ export class PlanExecutor {
     while (attempts < maxRetries) {
       attempts++;
       try {
-        await this.emitStepStarted(pipelineId, node.id, activeAgent);
+        await this.emitStepStarted(pipelineId, node.id, activeAgent, projectId);
         const output = await agentExecutor(activeAgent, input);
         const durationMs = Date.now() - start;
 

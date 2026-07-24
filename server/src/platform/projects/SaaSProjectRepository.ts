@@ -10,7 +10,12 @@ export interface SaaSProject {
   ownerId: string;
   name: string;
   description: string;
+  gameType?: string;
   genre: string;
+  difficulty?: string;
+  players?: string;
+  targetAudience?: string;
+  coverUrl?: string;
   status:
     "draft" | "generating" | "testing" | "ready" | "published" | "archived";
   qualityScore: number;

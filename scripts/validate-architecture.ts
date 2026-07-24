@@ -4,7 +4,8 @@
  * Enforces:
  *   - Frontend: src/ (React/Vite SPA)
  *   - Backend: server/src/ (Node/Express AI compiler)
- *   - Shared: shared/ (types/DTOs only)
+ *   - Roblox Studio plugin: studio-plugin/src/ (isolated plugin runtime)
+ *   - Shared frontend contracts: src/shared/
  *
  * Detects:
  *   - Forbidden source roots
@@ -19,8 +20,6 @@ import { readdirSync, existsSync, statSync, readFileSync } from "fs";
 import { join, relative } from "path";
 
 const ROOT = process.cwd();
-
-const ALLOWED_SRC_ROOTS = ["server/src", "src", "shared"];
 
 const FORBIDDEN_PATTERNS = [
   "app/src",
@@ -68,7 +67,7 @@ function scanForForbiddenRoots(): Violation[] {
   });
 
   for (const dir of topLevel) {
-    if (["src", "server", "shared"].includes(dir)) continue;
+    if (["src", "server", "shared", "studio-plugin"].includes(dir)) continue;
     const potentialSrc = join(ROOT, dir, "src");
     if (existsSync(potentialSrc) && statSync(potentialSrc).isDirectory()) {
       violations.push({
@@ -246,12 +245,17 @@ function main(): void {
   // Status report
   const feExists = existsSync(join(ROOT, "src"));
   const beExists = existsSync(join(ROOT, "server", "src"));
-  const sharedExists = existsSync(join(ROOT, "shared"));
+  const sharedExists =
+    existsSync(join(ROOT, "shared")) || existsSync(join(ROOT, "src", "shared"));
+  const studioPluginExists = existsSync(join(ROOT, "studio-plugin", "src"));
 
   console.log("DUAL BOUNDARY ARCHITECTURE STATUS");
   console.log(`  Frontend (/src): ${feExists ? "ACTIVE" : "MISSING"}`);
   console.log(`  Backend (/server/src): ${beExists ? "ACTIVE" : "MISSING"}`);
-  console.log(`  Shared (/shared): ${sharedExists ? "ACTIVE" : "NOT CREATED"}`);
+  console.log(
+    `  Studio plugin (/studio-plugin/src): ${studioPluginExists ? "ACTIVE" : "NOT CREATED"}`,
+  );
+  console.log(`  Shared contracts: ${sharedExists ? "ACTIVE" : "NOT CREATED"}`);
   console.log("");
 
   if (violations.length === 0) {

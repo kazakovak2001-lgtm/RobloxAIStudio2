@@ -23,11 +23,20 @@ export function setAuthCookies(
 ): void {
   const isProduction = process.env.NODE_ENV === "production";
 
-  res.cookie(ACCESS_TOKEN_COOKIE, token, {
+  // Remove the legacy API-scoped cookie before issuing the root-scoped cookie.
+  // Socket.IO handshakes use /socket.io, so an /api-only access cookie can
+  // authenticate REST calls but can never authenticate browser realtime.
+  res.clearCookie(ACCESS_TOKEN_COOKIE, {
     httpOnly: true,
     secure: isProduction,
     sameSite: "lax",
     path: "/api",
+  });
+  res.cookie(ACCESS_TOKEN_COOKIE, token, {
+    httpOnly: true,
+    secure: isProduction,
+    sameSite: "lax",
+    path: "/",
     maxAge: ACCESS_TOKEN_MAX_AGE,
   });
 
@@ -44,13 +53,26 @@ export function setAuthCookies(
  * Clears auth cookies on logout.
  */
 export function clearAuthCookies(res: Response): void {
+  const isProduction = process.env.NODE_ENV === "production";
+
   res.clearCookie(ACCESS_TOKEN_COOKIE, {
     httpOnly: true,
+    secure: isProduction,
+    sameSite: "lax",
+    path: "/",
+  });
+  // Also clear pre-migration sessions that used the narrower path.
+  res.clearCookie(ACCESS_TOKEN_COOKIE, {
+    httpOnly: true,
+    secure: isProduction,
+    sameSite: "lax",
     path: "/api",
   });
 
   res.clearCookie(REFRESH_TOKEN_COOKIE, {
     httpOnly: true,
+    secure: isProduction,
+    sameSite: "lax",
     path: "/api/platform/auth/refresh",
   });
 }

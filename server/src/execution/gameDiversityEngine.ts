@@ -139,7 +139,7 @@ function buildSeed(
       ? blueprint.genre
       : pick(pool.genres, rnd);
 
-  // Ensure genre is a single string (GameDesignSeed.genre is string, not string[]). 
+  // Ensure genre is a single string (GameDesignSeed.genre is string, not string[]).
   // If pool.genres is empty, fall back to a deterministic placeholder.
   const safeGenre = typeof genre === "string" ? genre : "unique-genre";
   const coreLoop = pick(pool.coreLoops, rnd);
@@ -152,7 +152,7 @@ function buildSeed(
   const constraints = shuffle(pool.constraints, rnd).slice(0, 4);
 
   return {
-    genre,
+    genre: safeGenre,
     coreLoop,
     mechanics,
     constraints,

@@ -1,8 +1,13 @@
 import express, { type Express, type Request, type Response } from "express";
 import { createServer } from "http";
 import { Server as SocketServer } from "socket.io";
-import { createProjectsRouter } from "./routes/projects";
+import {
+  createProjectsRouter,
+  generationHistory,
+  projectRepository,
+} from "./routes/projects";
 import { createGameGenerationRouter } from "./routes/game-generation";
+import { createChatPersistenceRouter } from "./routes/chatPersistence";
 import { createEvaluationRouter } from "./routes/evaluation";
 import { createMemoryRouter } from "./routes/memory";
 import { createPlanningRouter } from "./routes/planning";
@@ -44,11 +49,20 @@ const io = new SocketServer(httpServer, {
         ? (["http://localhost:5173", process.env.FRONTEND_URL ?? ""].filter(
             (o) => o.length > 0,
           ) as string[])
-        : "*",
-    methods: ["GET", "POST", "PUT", "DELETE"],
+        : true,
+    methods: ["GET", "POST", "PUT", "PATCH", "DELETE"],
     credentials: true,
   },
 });
+
+function readSocketCookie(cookieHeader: string | undefined, name: string) {
+  if (!cookieHeader) return undefined;
+  for (const part of cookieHeader.split(";")) {
+    const [key, ...value] = part.trim().split("=");
+    if (key === name) return decodeURIComponent(value.join("="));
+  }
+  return undefined;
+}
 
 // Socket.IO authentication middleware
 io.use((socket, next) => {
@@ -58,8 +72,12 @@ io.use((socket, next) => {
     return;
   }
 
-  // Extract token from handshake auth or query
-  const token = socket.handshake.auth?.token ?? socket.handshake.query?.token;
+  // Browser clients authenticate with the same httpOnly cookie as HTTP.
+  // Explicit auth/query tokens remain supported for CLI and Studio clients.
+  const token =
+    socket.handshake.auth?.token ??
+    socket.handshake.query?.token ??
+    readSocketCookie(socket.handshake.headers.cookie, "roblox_ai_token");
 
   if (!token) {
     next(new Error("Authentication required"));
@@ -98,6 +116,39 @@ app.use(corsMiddleware);
 app.use(rateLimiter);
 app.use(requestLogger);
 app.use(authMiddleware);
+app.use((req, res, next) => {
+  const userId = (req as unknown as { user?: { userId?: string } }).user
+    ?.userId;
+  if (!userId) {
+    next();
+    return;
+  }
+
+  const body = req.body as
+    | {
+        projectId?: unknown;
+        gameId?: unknown;
+        blueprint?: { id?: unknown };
+      }
+    | undefined;
+  const candidates = [
+    body?.projectId,
+    body?.gameId,
+    body?.blueprint?.id,
+    req.query.projectId,
+  ].filter((value): value is string => typeof value === "string");
+
+  const denied = candidates.some(
+    (projectId) =>
+      projectRepository.get(projectId) !== null &&
+      !projectRepository.verifyOwnership(projectId, userId),
+  );
+  if (denied) {
+    res.status(403).json({ success: false, error: "Project access denied" });
+    return;
+  }
+  next();
+});
 
 // Health check
 app.get("/health", (_req: Request, res: Response) => {
@@ -135,8 +186,12 @@ const gameService = new GameGenerationService(
 // Connect event emitter to streaming handler
 events.setStreamingHandler(streaming);
 
-// Real-time socket namespace and project room support
-new RealtimeServer(io);
+// Real-time socket namespace and project room support. Authenticated browser
+// sessions may only join projects they own; development and trusted API-key
+// clients do not carry a userId and keep the compatibility path.
+new RealtimeServer(io, (projectId, userId) =>
+  userId ? projectRepository.verifyOwnership(projectId, userId) : true,
+);
 
 // Bridge pipeline lifecycle events to Socket.io so the existing Workspace UI (Socket.io-based) receives them.
 // This is a thin adapter only; it preserves the existing socket event names.
@@ -217,7 +272,31 @@ events.onEvent(async (evt) => {
         pipelineId: evt.pipelineId,
         projectId: evt.projectId,
         outputs: evt.data?.outputs,
+        timestamp: evt.timestamp.toISOString(),
       };
+      if (evt.projectId) {
+        projectRepository.update(evt.projectId, {
+          status: "ready",
+          qualityScore: 100,
+        });
+        const record = generationHistory.getByPipeline(evt.pipelineId);
+        if (record) {
+          const finishedAt = evt.timestamp.getTime();
+          const completed = Number(
+            evt.data?.completedSteps ?? record.stagesCompleted,
+          );
+          const failed = Number(evt.data?.failedSteps ?? record.failures);
+          generationHistory.record({
+            ...record,
+            status: "completed",
+            finishedAt,
+            duration: finishedAt - record.startedAt,
+            stagesCompleted: completed,
+            stagesTotal: Math.max(record.stagesTotal, completed + failed),
+            failures: failed,
+          });
+        }
+      }
       console.log(
         "[pipeline-bridge] forwarding",
         "pipeline.completed",
@@ -230,6 +309,7 @@ events.onEvent(async (evt) => {
       const payload = {
         pipelineId: evt.pipelineId,
         projectId: evt.projectId,
+        timestamp: evt.timestamp.toISOString(),
         error: evt.data?.error,
         stepId: evt.data?.stepId ?? evt.data?.failedStepId,
         agentId: evt.data?.agentId ?? evt.data?.failedAgentId,
@@ -238,6 +318,28 @@ events.onEvent(async (evt) => {
         failedSteps: evt.data?.failedSteps,
         completedSteps: evt.data?.completedSteps,
       };
+      if (evt.projectId) {
+        projectRepository.update(evt.projectId, { status: "draft" });
+        const record = generationHistory.getByPipeline(evt.pipelineId);
+        if (record) {
+          const finishedAt = evt.timestamp.getTime();
+          const completed = Number(
+            evt.data?.completedSteps ?? record.stagesCompleted,
+          );
+          const failed = Number(
+            evt.data?.failedSteps ?? (record.failures || 1),
+          );
+          generationHistory.record({
+            ...record,
+            status: "failed",
+            finishedAt,
+            duration: finishedAt - record.startedAt,
+            stagesCompleted: completed,
+            stagesTotal: Math.max(record.stagesTotal, completed + failed),
+            failures: failed,
+          });
+        }
+      }
       console.log("[pipeline-bridge] forwarding", "pipeline.failed", payload);
       emitForProject("pipeline.failed", payload);
       break;
@@ -407,7 +509,12 @@ events.onEvent(async (evt) => {
     case "agent.decision.made":
     case "agent.conflict.detected":
     case "agent.conflict.resolved": {
-      io.emit(evt.type, { pipelineId: evt.pipelineId, ...evt.data });
+      emitForProject(evt.type, {
+        pipelineId: evt.pipelineId,
+        projectId: evt.projectId,
+        timestamp: evt.timestamp.toISOString(),
+        ...evt.data,
+      });
       break;
     }
     default:
@@ -494,6 +601,7 @@ app.use("/api/controller", createControllerRouter(agentRegistry));
 // AI Conversational Chat API
 import { createAiChatRouter } from "./routes/aiChat";
 app.use("/api/ai", createAiChatRouter(llmResult.provider, agentRegistry));
+app.use("/api/chat", createChatPersistenceRouter());
 
 // Platform API (users, versions, registry)
 import { createPlatformRouter } from "./routes/platform";

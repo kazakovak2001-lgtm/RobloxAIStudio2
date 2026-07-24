@@ -136,23 +136,31 @@ export async function generateLuaCode(params: {
 
     const json = await response.json();
     const rawData = json.data;
+    const rawScripts = rawData.scripts ?? rawData.artifacts ?? [];
+    const scripts = rawScripts.map((script: Record<string, unknown>) => ({
+      name: String(script.name ?? script.path ?? "GeneratedScript.lua"),
+      path: String(script.path ?? script.name ?? "GeneratedScript.lua"),
+      content: String(script.content ?? ""),
+      size: Number(
+        script.size ?? script.sizeBytes ?? String(script.content ?? "").length,
+      ),
+      type: String(script.type ?? script.scriptType ?? "server"),
+    }));
     return {
       success: true,
       data: {
         projectId: rawData.projectId,
         gameName: params.prompt,
         genre: params.genre ?? "adventure",
-        scripts: (rawData.artifacts ?? []).map(
-          (a: Record<string, unknown>) => ({
-            name: a.name as string,
-            path: a.path as string,
-            content: a.content as string,
-            size: a.sizeBytes as number,
-            type: a.scriptType as string,
-          }),
+        scripts,
+        totalScripts: Number(rawData.totalScripts ?? scripts.length),
+        totalSizeBytes: Number(
+          rawData.totalSizeBytes ??
+            scripts.reduce(
+              (total: number, script: { size: number }) => total + script.size,
+              0,
+            ),
         ),
-        totalScripts: rawData.totalScripts,
-        totalSizeBytes: rawData.totalSizeBytes,
         generationTimeMs: rawData.generationTimeMs,
         validationPassed: rawData.validationPassed,
       },

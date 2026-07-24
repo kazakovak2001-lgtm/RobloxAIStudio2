@@ -56,7 +56,10 @@ export function corsMiddleware(
     return;
   }
 
-  res.header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
+  res.header(
+    "Access-Control-Allow-Methods",
+    "GET, POST, PUT, PATCH, DELETE, OPTIONS",
+  );
   res.header(
     "Access-Control-Allow-Headers",
     "Origin, X-Requested-With, Content-Type, Accept, Authorization, X-API-Key, X-Studio-Session",
@@ -80,7 +83,6 @@ const PUBLIC_PATHS = [
 ];
 
 const PUBLIC_PREFIXES = [
-  "/api/platform/users", // Registration needs to be public (POST only handled below)
   "/api/platform/auth", // Auth routes (login, register, refresh, logout) must be public
 ];
 

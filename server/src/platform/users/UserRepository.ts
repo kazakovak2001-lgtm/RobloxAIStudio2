@@ -49,6 +49,25 @@ export class UserRepository {
     return id ? (this.users.get(id) ?? null) : null;
   }
 
+  updateProfile(
+    userId: string,
+    updates: { email?: string; displayName?: string },
+  ): User | null {
+    const user = this.users.get(userId);
+    if (!user) return null;
+
+    if (updates.email && updates.email !== user.email) {
+      if (this.byEmail.has(updates.email)) return null;
+      this.byEmail.delete(user.email);
+      user.email = updates.email;
+      this.byEmail.set(user.email, userId);
+    }
+    if (updates.displayName?.trim()) {
+      user.displayName = updates.displayName.trim();
+    }
+    return user;
+  }
+
   updateTier(userId: string, tier: AccountTier): User | null {
     const user = this.users.get(userId);
     if (!user) return null;

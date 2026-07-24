@@ -38,56 +38,62 @@ export class GroqProvider implements LLMProvider {
     const model = options?.model ?? this.defaultModel;
     const timeout = options?.timeout ?? this.defaultTimeout;
 
-    return withRetry(async () => {
-      const start = Date.now();
-      const body: Record<string, unknown> = {
-        model,
-        messages: [{ role: "user", content: prompt }],
-        temperature: options?.temperature ?? 0.7,
-        max_tokens: options?.maxTokens ?? 4096,
-      };
-      if (options?.responseFormat === "json") {
-        body.response_format = { type: "json_object" };
-      }
+    return withRetry(
+      async () => {
+        const start = Date.now();
+        const body: Record<string, unknown> = {
+          model,
+          messages: [{ role: "user", content: prompt }],
+          temperature: options?.temperature ?? 0.7,
+          max_tokens: options?.maxTokens ?? 4096,
+        };
+        if (options?.responseFormat === "json") {
+          body.response_format = { type: "json_object" };
+        }
 
-      const response = await fetchWithTimeout(
-        "https://api.groq.com/openai/v1/chat/completions",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${this.apiKey}`,
+        const response = await fetchWithTimeout(
+          "https://api.groq.com/openai/v1/chat/completions",
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${this.apiKey}`,
+            },
+            body: JSON.stringify(body),
           },
-          body: JSON.stringify(body),
-        },
-        timeout,
-      );
-
-      if (!response.ok) {
-        throw new LLMError(
-          `Groq error ${response.status}`,
-          "groq",
-          response.status,
-          response.status >= 500 || response.status === 429,
+          timeout,
         );
-      }
 
-      const data = (await response.json()) as Record<string, unknown>;
-      const choice = (data.choices as Array<Record<string, unknown>>)?.[0];
-      const message = choice?.message as Record<string, unknown> | undefined;
-      const content = String(message?.content ?? "");
-      const usage = data.usage as Record<string, number> | undefined;
+        if (!response.ok) {
+          throw new LLMError(
+            `Groq error ${response.status}`,
+            "groq",
+            response.status,
+            response.status >= 500 || response.status === 429,
+          );
+        }
 
-      return {
-        content,
-        model,
-        tokensUsed:
-          (usage?.prompt_tokens ?? 0) + (usage?.completion_tokens ?? 0),
-        finishReason:
-          (choice?.finish_reason as string) === "stop" ? "complete" : "length",
-        durationMs: Date.now() - start,
-      };
-    }, this.maxRetries);
+        const data = (await response.json()) as Record<string, unknown>;
+        const choice = (data.choices as Array<Record<string, unknown>>)?.[0];
+        const message = choice?.message as Record<string, unknown> | undefined;
+        const content = String(message?.content ?? "");
+        const usage = data.usage as Record<string, number> | undefined;
+
+        return {
+          content,
+          model,
+          tokensUsed:
+            (usage?.prompt_tokens ?? 0) + (usage?.completion_tokens ?? 0),
+          finishReason:
+            (choice?.finish_reason as string) === "stop"
+              ? "complete"
+              : "length",
+          durationMs: Date.now() - start,
+        };
+      },
+      this.maxRetries,
+      this.name,
+    );
   }
 
   async healthCheck(): Promise<boolean> {
