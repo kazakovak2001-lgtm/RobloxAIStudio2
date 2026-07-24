@@ -4,6 +4,18 @@ All significant architectural and product decisions are recorded here.
 
 ---
 
+## 2026-07-24 — Standalone Frontend Cutover
+
+**Decision**: Make `kazakovak2001-lgtm/Frontend` the sole target web client for Roblox AI Studio. Freeze the embedded React/Vite application in this repository's root `src/` directory as a migration inventory; do not add new features or parallel integrations there.
+**Reason**: Maintaining two active frontends would duplicate routes, services, API contracts, and Workspace behavior. The standalone frontend already owns the connected REST/Socket.IO adapter and must become the single presentation layer.
+**Implementation direction**: Follow the ordered cutover sequence recorded in `FRONTEND_CUTOVER.md`: governance/CI, real persisted project data and contracts, workflow-oriented Workspace, Studio validation, then isolated legacy removal.
+**Dependency discovered**: The repository tracks generated `node_modules/` content, so a Linux CI install changes platform-specific files and the repository validator scans dependencies. `CI-BASELINE-1` must be completed before CORE-1; it will be isolated because removing tracked generated files is a large destructive cleanup.
+**Branch decision**: Treat `feature/plugin-merge` as the active integration baseline. Its large PR into `standing-pentaceratops` requires a dedicated release plan; do not mix routine work into that merge.
+**Preservation**: Backend domains, API routes, Socket.IO events, and `studio-plugin/` remain the canonical implementation. Legacy frontend code is retained only until migration gates are proven.
+**Status**: Active.
+
+---
+
 ## 2026-07-16 — Autonomous Pipeline Real-Time Integration
 
 **Decision**: Reuse existing PipelineEventEmitter + Socket.IO bridge for autonomous pipeline events. No parallel event system.  
