@@ -1,0 +1,50 @@
+name: Studio Plugin Documentation Format Autofix
+
+on:
+  push:
+    branches: [studio-1d-real-plugin-acceptance]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: studio-plugin-format-autofix
+  cancel-in-progress: true
+
+jobs:
+  format-and-clean:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: studio-1d-real-plugin-acceptance
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "npm"
+      - run: npm ci
+      - name: Apply repository formatting
+        run: |
+          npx prettier --write \
+            server/src/__tests__/studio1.plugin-contract.test.ts \
+            studio-plugin/README.md \
+            docs/00-project-control/STUDIO-1D_REAL_PLUGIN_ACCEPTANCE.md
+      - name: Remove this workflow
+        run: rm .github/workflows/studio-plugin-format-autofix.yml
+      - name: Commit formatted plugin contract
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add \
+            .github/workflows/studio-plugin-format-autofix.yml \
+            server/src/__tests__/studio1.plugin-contract.test.ts \
+            studio-plugin/README.md \
+            docs/00-project-control/STUDIO-1D_REAL_PLUGIN_ACCEPTANCE.md
+          if git diff --cached --quiet; then
+            exit 0
+          fi
+          git commit -m "style(studio): format plugin acceptance contract"
+          git push origin HEAD:studio-1d-real-plugin-acceptance
