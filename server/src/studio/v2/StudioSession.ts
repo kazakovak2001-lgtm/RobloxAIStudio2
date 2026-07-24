@@ -6,12 +6,7 @@ import { randomUUID } from "crypto";
 import type { StudioClient } from "./StudioTypes";
 
 export type StudioVerificationStatus =
-  | "idle"
-  | "queued"
-  | "delivered"
-  | "acknowledged"
-  | "verified"
-  | "failed";
+  "idle" | "queued" | "delivered" | "acknowledged" | "verified" | "failed";
 
 export interface BridgeSession {
   sessionId: string;
