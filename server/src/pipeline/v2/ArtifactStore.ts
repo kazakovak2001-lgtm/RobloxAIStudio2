@@ -113,7 +113,9 @@ export class ArtifactStore {
     const ids = this.byPipeline.get(pipelineId) ?? [];
     return ids
       .map((id) => this.artifacts.get(id))
-      .filter((artifact): artifact is PipelineArtifact => artifact !== undefined);
+      .filter(
+        (artifact): artifact is PipelineArtifact => artifact !== undefined,
+      );
   }
 
   /**
