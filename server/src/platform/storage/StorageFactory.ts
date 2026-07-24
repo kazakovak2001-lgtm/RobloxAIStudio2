@@ -11,6 +11,8 @@ import { PostgresStorageProvider } from "./postgres/PostgresStorageProvider";
 
 export type StorageProviderType = "inmemory" | "postgres";
 
+let configuredStorageProvider: StorageProvider | null = null;
+
 export function createStorageProvider(): StorageProvider {
   const providerType = (process.env.STORAGE_PROVIDER ??
     "inmemory") as StorageProviderType;
@@ -23,12 +25,25 @@ export function createStorageProvider(): StorageProvider {
         );
       }
       console.log("[Storage] Using PostgreSQL provider");
-      return new PostgresStorageProvider({ strict: true });
+      configuredStorageProvider = new PostgresStorageProvider({ strict: true });
+      break;
     case "inmemory":
     default:
       console.log("[Storage] Using InMemory provider");
-      return new InMemoryStorageProvider();
+      configuredStorageProvider = new InMemoryStorageProvider();
+      break;
   }
+
+  return configuredStorageProvider;
+}
+
+/**
+ * Returns the provider created during application bootstrap.
+ * Compatibility repositories use this accessor when an older constructor does
+ * not yet accept explicit dependency injection.
+ */
+export function getConfiguredStorageProvider(): StorageProvider | null {
+  return configuredStorageProvider;
 }
 
 export async function initializeStorageProvider(
