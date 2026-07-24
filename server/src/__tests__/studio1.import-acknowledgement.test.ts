@@ -9,19 +9,14 @@ function createQueuedExport() {
   const projectId = "project-import-ack";
   const executionId = "execution-import-ack";
 
-  runtime.artifacts.store(
-    executionId,
-    "LUA_GENERATION",
-    "lua_generator",
-    {
-      scripts: [
-        {
-          path: "ServerScriptService/Main.server.lua",
-          content: "return { imported = true }",
-        },
-      ],
-    },
-  );
+  runtime.artifacts.store(executionId, "LUA_GENERATION", "lua_generator", {
+    scripts: [
+      {
+        path: "ServerScriptService/Main.server.lua",
+        content: "return { imported = true }",
+      },
+    ],
+  });
   runtime.artifacts.store(executionId, "EXPORT", "orchestrator", {
     manifest: { scripts: 1 },
   });
@@ -56,23 +51,19 @@ function createQueuedExport() {
 
 describe("STUDIO-1c import acknowledgement", () => {
   it("verifies an import only after polling, acknowledgement, and exact receipts", () => {
-    const {
-      runtime,
-      projectId,
-      executionId,
-      clientId,
-      commandId,
-      receipts,
-    } = createQueuedExport();
+    const { runtime, projectId, executionId, clientId, commandId, receipts } =
+      createQueuedExport();
 
     expect(runtime.getCommand(commandId)).toMatchObject({
       status: "sent",
-      deliveredAt: undefined,
     });
+    expect(runtime.getCommand(commandId)?.deliveredAt).toBeUndefined();
     expect(runtime.sessions.getByClient(clientId)).toMatchObject({
       verificationStatus: "queued",
-      lastSyncAt: undefined,
     });
+    expect(
+      runtime.sessions.getByClient(clientId)?.lastSyncAt,
+    ).toBeUndefined();
 
     expect(runtime.drainCommands(clientId)).toHaveLength(1);
     expect(runtime.getCommand(commandId)).toMatchObject({
@@ -81,8 +72,10 @@ describe("STUDIO-1c import acknowledgement", () => {
     });
     expect(runtime.sessions.getByClient(clientId)).toMatchObject({
       verificationStatus: "delivered",
-      lastSyncAt: undefined,
     });
+    expect(
+      runtime.sessions.getByClient(clientId)?.lastSyncAt,
+    ).toBeUndefined();
 
     const acknowledged = runtime.acknowledgeProjectExport(clientId, commandId);
     expect(acknowledged).toMatchObject({
@@ -92,8 +85,10 @@ describe("STUDIO-1c import acknowledgement", () => {
     });
     expect(runtime.sessions.getByClient(clientId)).toMatchObject({
       verificationStatus: "acknowledged",
-      lastSyncAt: undefined,
     });
+    expect(
+      runtime.sessions.getByClient(clientId)?.lastSyncAt,
+    ).toBeUndefined();
 
     const completed = runtime.reportProjectExport(clientId, commandId, {
       status: "completed",
@@ -170,8 +165,10 @@ describe("STUDIO-1c import acknowledgement", () => {
     expect(runtime.sessions.getByClient(clientId)).toMatchObject({
       verificationStatus: "failed",
       verificationError: expect.stringContaining("hash mismatch"),
-      lastSyncAt: undefined,
     });
+    expect(
+      runtime.sessions.getByClient(clientId)?.lastSyncAt,
+    ).toBeUndefined();
     expect(runtime.bridge.events.getHistory()).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
@@ -213,8 +210,10 @@ describe("STUDIO-1c import acknowledgement", () => {
     expect(runtime.sessions.getByClient(clientId)).toMatchObject({
       verificationStatus: "failed",
       verificationError: "Roblox instance creation failed",
-      lastSyncAt: undefined,
     });
+    expect(
+      runtime.sessions.getByClient(clientId)?.lastSyncAt,
+    ).toBeUndefined();
   });
 
   it("rejects wrong clients and invalid lifecycle ordering", () => {
@@ -226,10 +225,12 @@ describe("STUDIO-1c import acknowledgement", () => {
     expect(
       runtime.acknowledgeProjectExport(otherClient.clientId, commandId),
     ).toMatchObject({ success: false, reason: "client_mismatch" });
-    expect(runtime.acknowledgeProjectExport(clientId, commandId)).toMatchObject({
-      success: false,
-      reason: "not_delivered",
-    });
+    expect(runtime.acknowledgeProjectExport(clientId, commandId)).toMatchObject(
+      {
+        success: false,
+        reason: "not_delivered",
+      },
+    );
 
     runtime.drainCommands(clientId);
     expect(
@@ -243,9 +244,11 @@ describe("STUDIO-1c import acknowledgement", () => {
     expect(runtime.acknowledgeProjectExport(clientId, commandId).success).toBe(
       true,
     );
-    expect(runtime.acknowledgeProjectExport(clientId, commandId)).toMatchObject({
-      success: true,
-      command: { status: "acknowledged" },
-    });
+    expect(runtime.acknowledgeProjectExport(clientId, commandId)).toMatchObject(
+      {
+        success: true,
+        command: { status: "acknowledged" },
+      },
+    );
   });
 });
