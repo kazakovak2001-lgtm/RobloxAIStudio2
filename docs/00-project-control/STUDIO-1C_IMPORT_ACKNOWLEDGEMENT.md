@@ -2,7 +2,7 @@
 
 **Repository:** `kazakovak2001-lgtm/RobloxAIStudio2`
 
-**Status:** Backend acknowledgement and evidence verification implemented on working branch; CI and real-plugin acceptance pending
+**Status:** Backend acknowledgement and evidence-verification slice merged and CI-verified; real-plugin acceptance pending
 
 ## Objective
 
@@ -107,6 +107,14 @@ Existing status, connection, pending-change, bridge-version, execution, and comm
 
 The STUDIO-1b runtime test is updated to protect the boundary that command delivery is not artifact verification.
 
+## Backend Verification Record
+
+- PR #10 merged the ACK/result state machine, exact artifact ID/hash verifier, REST and protocol entry points, session semantics, and regression tests.
+- PR #11 restored the canonical CI workflow, removed temporary diagnostic automation, applied repository formatting, and corrected optional-field assertions without changing runtime behavior.
+- The final canonical run passed TypeScript, ESLint, Prettier, the full test suite, repository validation, commitlint, PostgreSQL restart E2E, and the aggregate Merge Gate.
+- The integration branch contains the canonical CI workflow only; no STUDIO-1c diagnostic or self-modifying workflow remains.
+- PR #12 synchronizes the global project state and roadmap with this verified backend boundary while preserving the real-plugin acceptance gate.
+
 ## Connected-Repository Limitation
 
 The connected GitHub account currently exposes only:
@@ -118,7 +126,7 @@ No separate Roblox Studio plugin source repository is available in the connected
 
 ## Acceptance Boundary
 
-STUDIO-1c must not be marked complete solely because backend tests pass.
+The STUDIO-1c backend slice is complete, but the overall STUDIO-1 delivery item must not be marked complete solely because backend tests pass.
 
 Final real-plugin acceptance requires:
 
@@ -130,7 +138,7 @@ Final real-plugin acceptance requires:
 6. project status returning `artifactVerified=true` for the same execution ID;
 7. captured evidence from the real Studio session.
 
-Until that proof exists, roadmap status remains STUDIO-1c active and frontend verification must remain false for unacknowledged sessions.
+Until that proof exists, roadmap status remains STUDIO-1 real-plugin acceptance pending and frontend verification must remain false for unacknowledged sessions.
 
 ## Out of Scope
 
@@ -149,4 +157,5 @@ Until that proof exists, roadmap status remains STUDIO-1c active and frontend ve
 - failure and mismatch states remain unverified and retryable;
 - project status exposes accurate additive verification fields;
 - TypeScript, ESLint, Prettier, full tests, repository validation, commitlint, PostgreSQL restart E2E, and Merge Gate pass;
+- canonical CI contains no temporary diagnostic or self-modifying workflow;
 - documentation explicitly preserves the real-plugin acceptance requirement.

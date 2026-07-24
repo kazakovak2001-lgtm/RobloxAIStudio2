@@ -8,20 +8,21 @@
 
 This sequence is authoritative for work after the standalone frontend integration. It replaces the historical plan to further migrate the embedded frontend in this repository.
 
-| ID            | Delivery item                                                  | Priority | Status                              | Dependency            |
-| ------------- | -------------------------------------------------------------- | -------- | ----------------------------------- | --------------------- |
-| CUTOVER-0     | Standalone frontend governance and CI alignment                | Critical | ✅ Complete                         | —                     |
-| CI-BASELINE-1 | Portable green backend CI and repository hygiene               | Critical | ✅ Complete                         | CUTOVER-0             |
-| CORE-1        | Real project data, persistence, and API contract stabilization | Critical | ✅ Complete                         | CI-BASELINE-1         |
-| WORKSPACE-1   | Workflow-oriented standalone Workspace                         | High     | ✅ Complete                         | CORE-1                |
-| STUDIO-1      | Generated artifact → Roblox Studio end-to-end validation       | High     | 🟡 STUDIO-1a/1b complete; 1c active | CORE-1, WORKSPACE-1   |
-| CUTOVER-1     | Release promotion and legacy frontend removal                  | High     | ⏳ Planned                          | WORKSPACE-1, STUDIO-1 |
+| ID            | Delivery item                                                  | Priority | Status                                                  | Dependency            |
+| ------------- | -------------------------------------------------------------- | -------- | ------------------------------------------------------- | --------------------- |
+| CUTOVER-0     | Standalone frontend governance and CI alignment                | Critical | ✅ Complete                                             | —                     |
+| CI-BASELINE-1 | Portable green backend CI and repository hygiene               | Critical | ✅ Complete                                             | CUTOVER-0             |
+| CORE-1        | Real project data, persistence, and API contract stabilization | Critical | ✅ Complete                                             | CI-BASELINE-1         |
+| WORKSPACE-1   | Workflow-oriented standalone Workspace                         | High     | ✅ Complete                                             | CORE-1                |
+| STUDIO-1      | Generated artifact → Roblox Studio end-to-end validation       | High     | 🟡 1a/1b/1c backend complete; real-plugin proof pending | CORE-1, WORKSPACE-1   |
+| CUTOVER-1     | Release promotion and legacy frontend removal                  | High     | ⏳ Planned                                              | WORKSPACE-1, STUDIO-1 |
 
 See [FRONTEND_CUTOVER.md](./FRONTEND_CUTOVER.md) for ownership, branch, validation, and legacy-removal rules.
 See [CORE-1A_DURABLE_PROJECTS.md](./CORE-1A_DURABLE_PROJECTS.md) for the completed identity/project boundary.
 See [CORE-1B_DURABLE_RUNTIME.md](./CORE-1B_DURABLE_RUNTIME.md) for the verified blueprint, execution, chat, and PostgreSQL restart boundary.
 See [STUDIO-1A_ARTIFACT_LINEAGE.md](./STUDIO-1A_ARTIFACT_LINEAGE.md) for durable canonical generation artifacts.
 See [STUDIO-1B_RUNTIME_CONSOLIDATION.md](./STUDIO-1B_RUNTIME_CONSOLIDATION.md) for the shared Studio runtime, real artifact queue, and incremental no-op contract.
+See [STUDIO-1C_IMPORT_ACKNOWLEDGEMENT.md](./STUDIO-1C_IMPORT_ACKNOWLEDGEMENT.md) for the verified backend ACK/result contract and the remaining real-plugin acceptance boundary.
 See the standalone frontend documentation for the completed WORKSPACE-1 slices and production responsive QA:
 
 - [`WORKSPACE-1_WORKFLOW_SHELL.md`](https://github.com/kazakovak2001-lgtm/Frontend/blob/main/docs/WORKSPACE-1_WORKFLOW_SHELL.md)
@@ -29,6 +30,18 @@ See the standalone frontend documentation for the completed WORKSPACE-1 slices a
 - [`WORKSPACE-1_STAGE_COMPOSITION.md`](https://github.com/kazakovak2001-lgtm/Frontend/blob/main/docs/WORKSPACE-1_STAGE_COMPOSITION.md)
 - [`WORKSPACE-1_NATIVE_TESTS.md`](https://github.com/kazakovak2001-lgtm/Frontend/blob/main/docs/WORKSPACE-1_NATIVE_TESTS.md)
 - [`WORKSPACE-1_RESPONSIVE_QA.md`](https://github.com/kazakovak2001-lgtm/Frontend/blob/main/docs/WORKSPACE-1_RESPONSIVE_QA.md)
+
+## Active Acceptance Gate
+
+STUDIO-1 backend preparation is complete through STUDIO-1c. The next valid project step is real Roblox Studio plugin acceptance against the existing contract:
+
+1. poll the queued `EXPORT_PROJECT` command;
+2. acknowledge the command;
+3. create or update every expected Roblox instance;
+4. report the exact durable execution ID and artifact ID/SHA-256 receipts;
+5. capture project status with `artifactVerified=true` for that execution.
+
+CUTOVER-1 must not begin until this evidence exists. A synthetic success response, queue delivery, or backend-only test is not sufficient.
 
 ## Historical Roadmap: UX-4 Feature Development
 
@@ -93,8 +106,9 @@ See the standalone frontend documentation for the completed WORKSPACE-1 slices a
 
 ## Release Readiness
 
-- **Feature-Complete**: All 11 planned features (F-1 through F-11) are complete
+- **Feature-Complete**: All 11 historical UX-4 features (F-1 through F-11) are complete
 - **Security Status**: 12/12 hardening tasks completed (including final checkpoint)
-- **Release Decision**: ✅ APPROVED — v1.0 ready for production deployment
+- **Historical v1.0 Decision**: ✅ APPROVED for the embedded product baseline
+- **Current Cutover Decision**: ⏸️ CUTOVER-1 blocked by real Roblox Studio plugin acceptance
 - **Sign-Off Document**: `FINAL_V1_RELEASE_SIGN_OFF.md`
 - **Post-release**: F-12 (Collaborative Dev) deferred to post-launch
