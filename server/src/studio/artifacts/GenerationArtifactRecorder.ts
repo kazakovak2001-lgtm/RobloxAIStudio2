@@ -32,7 +32,8 @@ export class GenerationArtifactRecorder {
 
     for (const node of nodes) {
       const stage = getArtifactStage(node.agent);
-      if (!stage || node.status !== "done" || node.output === undefined) continue;
+      if (!stage || node.status !== "done" || node.output === undefined)
+        continue;
 
       recorded.push(
         this.artifactStore.store(executionId, stage, node.agent, node.output),
