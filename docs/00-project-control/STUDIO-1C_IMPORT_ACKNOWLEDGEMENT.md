@@ -2,7 +2,7 @@
 
 **Repository:** `kazakovak2001-lgtm/RobloxAIStudio2`
 
-**Status:** Backend acknowledgement and evidence-verification slice merged and CI-verified; real-plugin acceptance pending
+**Status:** Backend acknowledgement and evidence-verification slice merged and CI-verified; canonical plugin handoff implemented in STUDIO-1d; desktop evidence pending
 
 ## Objective
 
@@ -113,30 +113,37 @@ The STUDIO-1b runtime test is updated to protect the boundary that command deliv
 - PR #11 restored the canonical CI workflow, removed temporary diagnostic automation, applied repository formatting, and corrected optional-field assertions without changing runtime behavior.
 - The final canonical run passed TypeScript, ESLint, Prettier, the full test suite, repository validation, commitlint, PostgreSQL restart E2E, and the aggregate Merge Gate.
 - The integration branch contains the canonical CI workflow only; no STUDIO-1c diagnostic or self-modifying workflow remains.
-- PR #12 synchronizes the global project state and roadmap with this verified backend boundary while preserving the real-plugin acceptance gate.
+- PR #12 synchronized the global project state and roadmap with this verified backend boundary while preserving the real-plugin acceptance gate.
 
-## Connected-Repository Limitation
+## Canonical Plugin Handoff
 
-The connected GitHub account currently exposes only:
+The reuse audit originally looked only for a separate plugin repository. The canonical source is instead maintained inside this repository at `studio-plugin/`.
 
-- `kazakovak2001-lgtm/RobloxAIStudio2`;
-- `kazakovak2001-lgtm/Frontend`.
+STUDIO-1d upgrades that existing plugin in place to:
 
-No separate Roblox Studio plugin source repository is available in the connected project. Therefore this slice can implement and automatically validate the server contract, but it cannot honestly prove that a real installed Roblox plugin created or updated Roblox instances.
+- connect with the exact backend project ID;
+- poll the existing `EXPORT_PROJECT` queue;
+- acknowledge delivered commands;
+- materialize structured Lua scripts and non-Lua metadata as real Roblox instances;
+- report one exact ID/hash receipt per pipeline artifact;
+- show **Verified** only when the STUDIO-1c backend verifier accepts the result.
+
+See [STUDIO-1D_REAL_PLUGIN_ACCEPTANCE.md](./STUDIO-1D_REAL_PLUGIN_ACCEPTANCE.md).
 
 ## Acceptance Boundary
 
-The STUDIO-1c backend slice is complete, but the overall STUDIO-1 delivery item must not be marked complete solely because backend tests pass.
+The STUDIO-1c backend slice is complete. The canonical plugin implementation is covered by the STUDIO-1d contract test, but the overall STUDIO-1 delivery item must not be marked complete solely because repository tests pass.
 
 Final real-plugin acceptance requires:
 
-1. plugin polling of `EXPORT_PROJECT`;
-2. plugin acknowledgement using `COMMAND_ACK` or the REST equivalent;
-3. plugin application of every artifact to Roblox Studio;
-4. plugin computation/reporting of the expected artifact ID/hash receipts;
-5. server transition to `verified`;
-6. project status returning `artifactVerified=true` for the same execution ID;
-7. captured evidence from the real Studio session.
+1. installation of the canonical `studio-plugin` hierarchy in Roblox Studio;
+2. plugin polling of `EXPORT_PROJECT`;
+3. plugin acknowledgement through the REST or protocol contract;
+4. plugin application of every artifact to Roblox Studio;
+5. plugin reporting of the expected artifact ID/hash receipts;
+6. server transition to `verified`;
+7. project status returning `artifactVerified=true` for the same execution ID;
+8. captured evidence from the real Studio session.
 
 Until that proof exists, roadmap status remains STUDIO-1 real-plugin acceptance pending and frontend verification must remain false for unacknowledged sessions.
 
@@ -146,7 +153,7 @@ Until that proof exists, roadmap status remains STUDIO-1 real-plugin acceptance 
 - marking queue delivery as verified;
 - creating a new transport or protocol version;
 - persisting the transient command ledger across process restart;
-- implementing Roblox Lua plugin code without the canonical plugin source;
+- creating a second plugin instead of maintaining `studio-plugin/`;
 - completing CUTOVER-1 before real-plugin acceptance.
 
 ## Definition of Done for This Backend Slice
