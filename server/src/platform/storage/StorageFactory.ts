@@ -9,6 +9,7 @@ import type { StorageProvider } from "./StorageProvider";
 import { InMemoryStorageProvider } from "./StorageProvider";
 import { PostgresStorageProvider } from "./postgres/PostgresStorageProvider";
 
+export type { StorageProvider } from "./StorageProvider";
 export type StorageProviderType = "inmemory" | "postgres";
 
 let configuredStorageProvider: StorageProvider | null = null;
