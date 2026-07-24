@@ -362,7 +362,7 @@ export function createStudioRouter(
   // GET /api/studio/sync/status
   router.get("/sync/status", (req, res) => {
     const projectId = req.query.projectId as string | undefined;
-    const status = syncManager.getSyncStatus(projectId);
+    const status = runtime.getSyncStatus(projectId);
     res.json({ success: true, data: status });
   });
 
