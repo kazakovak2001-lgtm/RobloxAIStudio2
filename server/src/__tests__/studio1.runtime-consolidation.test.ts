@@ -104,19 +104,14 @@ describe("STUDIO-1b shared Studio runtime", () => {
     const executionId = "exec-shared-facade";
 
     manager.connect("studio-shared", projectId);
-    runtime.artifacts.store(
-      executionId,
-      "LUA_GENERATION",
-      "lua_generator",
-      {
-        scripts: [
-          {
-            path: "ReplicatedStorage/Shared/Config.lua",
-            content: "return { shared = true }",
-          },
-        ],
-      },
-    );
+    runtime.artifacts.store(executionId, "LUA_GENERATION", "lua_generator", {
+      scripts: [
+        {
+          path: "ReplicatedStorage/Shared/Config.lua",
+          content: "return { shared = true }",
+        },
+      ],
+    });
 
     const result = manager.synchronizeExecution(
       "studio-shared",
