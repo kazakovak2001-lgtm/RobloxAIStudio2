@@ -1,4 +1,5 @@
 import { randomUUID } from "crypto";
+import { getConfiguredStorageProvider } from "../platform/storage/StorageFactory";
 import {
   InMemoryStorageProvider,
   type StorageProvider,
@@ -41,11 +42,12 @@ const MESSAGES = "chat_messages";
 /**
  * Project chat persistence over the same process-wide StorageProvider used by
  * identity and projects. The optional in-memory default preserves isolated
- * unit-test construction; production bootstrap injects the configured provider.
+ * unit-test construction; production bootstrap resolves the configured provider.
  */
 export class ChatPersistenceService {
   constructor(
-    private readonly storage: StorageProvider = new InMemoryStorageProvider(),
+    private readonly storage: StorageProvider =
+      getConfiguredStorageProvider() ?? new InMemoryStorageProvider(),
   ) {}
 
   getHistory(projectId: string, limit = 50): Conversation[] {
