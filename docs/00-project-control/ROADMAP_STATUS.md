@@ -4,7 +4,22 @@
 
 ---
 
-## Active Roadmap: UX-4 Feature Development
+## Current Delivery Sequence: Two-Repository Cutover
+
+This sequence is authoritative for work after the standalone frontend integration. It replaces the historical plan to further migrate the embedded frontend in this repository.
+
+| ID            | Delivery item                                                  | Priority | Status       | Dependency            |
+| ------------- | -------------------------------------------------------------- | -------- | ------------ | --------------------- |
+| CUTOVER-0     | Standalone frontend governance and CI alignment                | Critical | 🟡 IN REVIEW | —                     |
+| CI-BASELINE-1 | Portable green backend CI and repository hygiene               | Critical | ⏭️ NEXT      | CUTOVER-0             |
+| CORE-1        | Real project data, persistence, and API contract stabilization | Critical | ⏳ Planned   | CI-BASELINE-1         |
+| WORKSPACE-1   | Workflow-oriented standalone Workspace                         | High     | ⏳ Planned   | CORE-1                |
+| STUDIO-1      | Generated artifact → Roblox Studio end-to-end validation       | High     | ⏳ Planned   | CORE-1, WORKSPACE-1   |
+| CUTOVER-1     | Release promotion and legacy frontend removal                  | High     | ⏳ Planned   | WORKSPACE-1, STUDIO-1 |
+
+See [FRONTEND_CUTOVER.md](./FRONTEND_CUTOVER.md) for ownership, branch, validation, and legacy-removal rules.
+
+## Historical Roadmap: UX-4 Feature Development
 
 | ID   | Feature                  | Priority     | Status      | Sprint |
 | ---- | ------------------------ | ------------ | ----------- | ------ |
