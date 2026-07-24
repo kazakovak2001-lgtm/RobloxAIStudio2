@@ -14,7 +14,7 @@ export interface BridgeSession {
   lastActivity: number;
   lastQueuedAt?: number;
   lastSyncAt?: number;
-  syncCount: number;
+  syncCount?: number;
   lastExecutionId?: string;
   lastArtifactCount?: number;
   status: "active" | "expired" | "closed";
@@ -83,7 +83,7 @@ export class StudioSessionManager {
     const session = this.getByClient(clientId);
     if (!session || session.status !== "active") return false;
     session.lastQueuedAt = Date.now();
-    session.syncCount += 1;
+    session.syncCount = (session.syncCount ?? 0) + 1;
     session.lastExecutionId = executionId;
     session.lastArtifactCount = artifactCount;
     return true;
