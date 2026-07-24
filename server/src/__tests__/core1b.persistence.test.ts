@@ -119,9 +119,9 @@ describe("CORE-1b durable runtime repositories", () => {
       Date,
     );
     expect(restoredConversation?.projectId).toBe(projectId);
-    expect(restoredConversation?.messages.map((message) => message.role)).toEqual(
-      ["user", "assistant"],
-    );
+    expect(
+      restoredConversation?.messages.map((message) => message.role),
+    ).toEqual(["user", "assistant"]);
   });
 
   it("deletes dependent versions, executions, and chat messages", async () => {
