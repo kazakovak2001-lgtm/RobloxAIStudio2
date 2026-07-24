@@ -40,6 +40,8 @@ export class StudioIntegrationManager {
   private readonly metrics = new StudioSyncMetrics();
   private listeners: StudioEventListener[] = [];
 
+  constructor(_legacyBridge?: unknown) {}
+
   // ─── Connection ───────────────────────────────────────────────────────
 
   connect(studioId: string, projectId: string): StudioProjectSession {
