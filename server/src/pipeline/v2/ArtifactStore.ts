@@ -3,7 +3,10 @@
  */
 
 import { randomUUID } from "crypto";
-import type { StorageProvider } from "../../platform/storage/StorageProvider";
+import {
+  getConfiguredStorageProvider,
+  type StorageProvider,
+} from "../../platform/storage/StorageFactory";
 import type { StageName } from "./PipelineStage";
 
 export interface PipelineArtifact {
@@ -57,7 +60,7 @@ export class ArtifactStore {
   private artifacts: Map<string, PipelineArtifact> = new Map();
   private byPipeline: Map<string, string[]> = new Map();
 
-  constructor(private readonly storage?: StorageProvider) {}
+  constructor(private readonly injectedStorage?: StorageProvider) {}
 
   /**
    * Store an artifact produced by a pipeline stage.
@@ -95,8 +98,9 @@ export class ArtifactStore {
    * Get all artifacts for a pipeline.
    */
   getByPipeline(pipelineId: string): PipelineArtifact[] {
-    if (this.storage) {
-      const artifacts = this.storage
+    const storage = this.storage;
+    if (storage) {
+      const artifacts = storage
         .list<PipelineArtifact>(
           ARTIFACT_COLLECTION,
           (artifact) => artifact.pipelineId === pipelineId,
@@ -120,7 +124,8 @@ export class ArtifactStore {
     if (cached) return cached;
 
     const artifact =
-      this.storage?.get<PipelineArtifact>(ARTIFACT_COLLECTION, artifactId) ?? null;
+      this.storage?.get<PipelineArtifact>(ARTIFACT_COLLECTION, artifactId) ??
+      null;
     if (artifact) this.cache(artifact);
     return artifact;
   }
@@ -226,6 +231,10 @@ export class ArtifactStore {
         (a) => a.reviewStatus === "approved" || a.reviewStatus === "edited",
       ),
     };
+  }
+
+  private get storage(): StorageProvider | undefined {
+    return this.injectedStorage ?? getConfiguredStorageProvider() ?? undefined;
   }
 
   private persist(artifact: PipelineArtifact): void {
