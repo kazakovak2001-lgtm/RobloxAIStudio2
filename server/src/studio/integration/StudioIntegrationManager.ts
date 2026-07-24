@@ -149,7 +149,7 @@ export class StudioIntegrationManager {
     const result: SyncResult = {
       success: true,
       sessionId: this.runtime.sessions.getByClient(studioId)?.sessionId ?? "",
-      payloadId: queued.data.command.id,
+      payloadId: queued.data.command?.id ?? "",
       itemsSynced: queued.data.transfer.artifacts.length,
       totalSize: queued.data.transfer.totalSize,
       durationMs: Date.now() - startedAt,
@@ -161,7 +161,8 @@ export class StudioIntegrationManager {
       timestamp: Date.now(),
       data: {
         executionId,
-        commandId: queued.data.command.id,
+        commandId: queued.data.command?.id,
+        noChanges: queued.data.noChanges,
         itemsSynced: result.itemsSynced,
         durationMs: result.durationMs,
       },
