@@ -2,18 +2,137 @@
  * Studio Bridge API — connection management and status.
  */
 
-import { Router } from "express";
+import { Router, type Response } from "express";
 import { ArtifactStore } from "../pipeline/v2";
 import {
   getSharedStudioRuntime,
   StudioRuntime,
+  type StudioCommandActionResult,
+  type StudioImportReportInput,
 } from "../studio/v2/StudioRuntime";
+import type { StudioArtifactReceipt } from "../studio/v2/StudioTypes";
 import {
   ProtocolDispatcher,
   ProtocolValidator,
   PROTOCOL_VERSION,
   createResponse,
 } from "../studio/v2/protocol";
+
+interface ParsedImportReport {
+  data?: StudioImportReportInput;
+  error?: string;
+}
+
+function parseImportReport(
+  payload: Record<string, unknown>,
+): ParsedImportReport {
+  const status = payload.status;
+  if (status !== "completed" && status !== "failed") {
+    return { error: "status must be completed or failed" };
+  }
+  if (!payload.executionId || typeof payload.executionId !== "string") {
+    return { error: "executionId is required" };
+  }
+  if (
+    payload.reportedAt !== undefined &&
+    typeof payload.reportedAt !== "number"
+  ) {
+    return { error: "reportedAt must be a number" };
+  }
+  if (payload.error !== undefined && typeof payload.error !== "string") {
+    return { error: "error must be a string" };
+  }
+  if (status === "completed" && !Array.isArray(payload.artifacts)) {
+    return { error: "artifacts array is required for completed results" };
+  }
+  if (payload.artifacts !== undefined && !Array.isArray(payload.artifacts)) {
+    return { error: "artifacts must be an array" };
+  }
+
+  const artifacts: StudioArtifactReceipt[] = [];
+  for (const item of payload.artifacts ?? []) {
+    if (!item || typeof item !== "object") {
+      return { error: "each artifact receipt must be an object" };
+    }
+    const receipt = item as Record<string, unknown>;
+    if (!receipt.artifactId || typeof receipt.artifactId !== "string") {
+      return { error: "each artifact receipt requires artifactId" };
+    }
+    if (!receipt.hash || typeof receipt.hash !== "string") {
+      return { error: "each artifact receipt requires hash" };
+    }
+    if (
+      receipt.instancePath !== undefined &&
+      typeof receipt.instancePath !== "string"
+    ) {
+      return { error: "artifact instancePath must be a string" };
+    }
+    artifacts.push({
+      artifactId: receipt.artifactId,
+      hash: receipt.hash,
+      instancePath: receipt.instancePath as string | undefined,
+    });
+  }
+
+  return {
+    data: {
+      status,
+      executionId: payload.executionId,
+      artifacts,
+      error: payload.error as string | undefined,
+      reportedAt: payload.reportedAt as number | undefined,
+    },
+  };
+}
+
+function commandFailureStatus(reason: string): number {
+  switch (reason) {
+    case "command_not_found":
+      return 404;
+    case "client_mismatch":
+      return 403;
+    case "invalid_command":
+      return 400;
+    case "invalid_status":
+    case "not_delivered":
+    case "verification_failed":
+      return 409;
+    default:
+      return 400;
+  }
+}
+
+function sendCommandAction(
+  res: Response,
+  result: StudioCommandActionResult,
+): void {
+  if (!result.success) {
+    res.status(commandFailureStatus(result.reason)).json({
+      success: false,
+      error: result.message,
+      reason: result.reason,
+      data: result.command
+        ? {
+            commandId: result.command.id,
+            status: result.command.status,
+            verified: false,
+          }
+        : undefined,
+    });
+    return;
+  }
+  res.json({
+    success: true,
+    data: {
+      commandId: result.command.id,
+      status: result.command.status,
+      verified: result.verified,
+      acknowledgedAt: result.command.acknowledgedAt,
+      completedAt: result.command.completedAt,
+      result: result.command.result,
+    },
+  });
+}
 
 export function createStudioRouter(
   runtimeOrStore?: StudioRuntime | ArtifactStore,
@@ -115,6 +234,71 @@ export function createStudioRouter(
     );
   });
 
+  dispatcher.register("COMMAND_ACK", (msg) => {
+    const { clientId, commandId } = msg.payload;
+    if (typeof clientId !== "string" || typeof commandId !== "string") {
+      return createResponse(
+        msg,
+        "error",
+        {},
+        "clientId and commandId are required",
+      );
+    }
+    const result = runtime.acknowledgeProjectExport(clientId, commandId);
+    return createResponse(
+      msg,
+      result.success ? "ok" : "error",
+      result.success
+        ? {
+            commandId: result.command.id,
+            status: result.command.status,
+            verified: result.verified,
+          }
+        : {
+            reason: result.reason,
+            commandStatus: result.command?.status,
+          },
+      result.success ? undefined : result.message,
+    );
+  });
+
+  dispatcher.register("COMMAND_RESULT", (msg) => {
+    const { clientId, commandId } = msg.payload;
+    if (typeof clientId !== "string" || typeof commandId !== "string") {
+      return createResponse(
+        msg,
+        "error",
+        {},
+        "clientId and commandId are required",
+      );
+    }
+    const parsed = parseImportReport(msg.payload);
+    if (!parsed.data) {
+      return createResponse(msg, "error", {}, parsed.error);
+    }
+    const result = runtime.reportProjectExport(
+      clientId,
+      commandId,
+      parsed.data,
+    );
+    return createResponse(
+      msg,
+      result.success ? "ok" : "error",
+      result.success
+        ? {
+            commandId: result.command.id,
+            status: result.command.status,
+            verified: result.verified,
+            result: result.command.result,
+          }
+        : {
+            reason: result.reason,
+            commandStatus: result.command?.status,
+          },
+      result.success ? undefined : result.message,
+    );
+  });
+
   // GET /api/studio/status
   router.get("/status", (_req, res) => {
     const clients = bridge.getConnectedClients();
@@ -134,6 +318,9 @@ export function createStudioRouter(
           lastHeartbeat: client.lastHeartbeat,
           status: client.status,
           pendingCommands: bridge.getPendingCommandCount(client.clientId),
+          verificationStatus:
+            sessionManager.getByClient(client.clientId)?.verificationStatus ??
+            "idle",
         })),
       },
     });
@@ -238,6 +425,63 @@ export function createStudioRouter(
     }
     const commands = runtime.drainCommands(clientId);
     res.json({ success: true, data: { clientId, commands } });
+  });
+
+  // GET /api/studio/commands/:commandId — command lifecycle status
+  router.get("/commands/:commandId", (req, res) => {
+    const clientId = req.query.clientId as string | undefined;
+    if (!clientId) {
+      res.status(400).json({ success: false, error: "clientId is required" });
+      return;
+    }
+    const command = runtime.getCommand(req.params.commandId);
+    if (!command) {
+      res.status(404).json({ success: false, error: "Command not found" });
+      return;
+    }
+    if (command.clientId !== clientId) {
+      res.status(403).json({
+        success: false,
+        error: "Command belongs to a different client",
+      });
+      return;
+    }
+    res.json({ success: true, data: command });
+  });
+
+  // POST /api/studio/commands/:commandId/acknowledge
+  router.post("/commands/:commandId/acknowledge", (req, res) => {
+    const { clientId } = req.body as { clientId?: unknown };
+    if (typeof clientId !== "string") {
+      res.status(400).json({ success: false, error: "clientId is required" });
+      return;
+    }
+    sendCommandAction(
+      res,
+      runtime.acknowledgeProjectExport(clientId, req.params.commandId),
+    );
+  });
+
+  // POST /api/studio/commands/:commandId/result
+  router.post("/commands/:commandId/result", (req, res) => {
+    const body = req.body as Record<string, unknown>;
+    if (typeof body.clientId !== "string") {
+      res.status(400).json({ success: false, error: "clientId is required" });
+      return;
+    }
+    const parsed = parseImportReport(body);
+    if (!parsed.data) {
+      res.status(400).json({ success: false, error: parsed.error });
+      return;
+    }
+    sendCommandAction(
+      res,
+      runtime.reportProjectExport(
+        body.clientId,
+        req.params.commandId,
+        parsed.data,
+      ),
+    );
   });
 
   // GET /api/studio/events
