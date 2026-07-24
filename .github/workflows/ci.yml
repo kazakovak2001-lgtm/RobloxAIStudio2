@@ -46,7 +46,23 @@ jobs:
           node-version: "22"
           cache: "npm"
       - run: npm ci
-      - run: npm run format:check
+      - name: Check formatting
+        run: npm run format:check
+      - name: Prepare formatted diagnostics
+        if: failure()
+        run: |
+          npm run format
+          git diff --name-only --diff-filter=ACMRT > formatted-files.txt
+          tar -czf formatted-files.tgz -T formatted-files.txt
+      - name: Publish formatted diagnostics
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: studio-1c-formatted-${{ github.sha }}
+          path: |
+            formatted-files.txt
+            formatted-files.tgz
+          retention-days: 2
 
   test:
     name: Test Suite
@@ -58,7 +74,18 @@ jobs:
           node-version: "22"
           cache: "npm"
       - run: npm ci
-      - run: npm run test
+      - name: Run full tests with preserved exit code
+        shell: bash
+        run: |
+          set -o pipefail
+          npm run test 2>&1 | tee test-output.log
+      - name: Publish full test log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: studio-1c-test-log-${{ github.sha }}
+          path: test-output.log
+          retention-days: 2
 
   postgres-e2e:
     name: PostgreSQL Restart E2E
