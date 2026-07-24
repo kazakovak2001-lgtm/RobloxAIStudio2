@@ -9,6 +9,9 @@ import { createStorageProvider } from "../platform/storage/StorageFactory";
 import { MIGRATIONS } from "../platform/storage/postgres/migrations";
 import { DatabaseHealthCheck } from "../platform/storage/postgres/DatabaseHealth";
 import type { StorageProvider } from "../platform/storage/StorageProvider";
+import { AuthService } from "../platform/auth/AuthService";
+import { UserRepository } from "../platform/users/UserRepository";
+import { StorageGenerationHistoryRepository } from "../projects/repository/generationHistory.repository";
 
 function runProviderSuite(name: string, createProvider: () => StorageProvider) {
   describe(`StorageProvider: ${name}`, () => {
@@ -106,14 +109,15 @@ describe("Persistence Infrastructure", () => {
     expect(provider.get("test", "1")).toEqual({ ok: true });
   });
 
-  it("migrations define 6 tables", () => {
-    expect(MIGRATIONS).toHaveLength(6);
+  it("migrations define durable core storage tables", () => {
+    expect(MIGRATIONS).toHaveLength(7);
     expect(MIGRATIONS[0].name).toBe("create_users");
     expect(MIGRATIONS[1].name).toBe("create_projects");
     expect(MIGRATIONS[2].name).toBe("create_generation_jobs");
     expect(MIGRATIONS[3].name).toBe("create_sessions");
     expect(MIGRATIONS[4].name).toBe("create_usage_records");
     expect(MIGRATIONS[5].name).toBe("create_audit_logs");
+    expect(MIGRATIONS[6].name).toBe("create_kv_store");
   });
 
   it("health check returns status", async () => {
@@ -134,5 +138,46 @@ describe("Persistence Infrastructure", () => {
       return provider.get("tx_test", "1");
     });
     expect(result).toEqual({ data: "txn" });
+  });
+
+  it("keeps identity, session, and user records across service recreation", () => {
+    const storage = new InMemoryStorageProvider();
+    const users = new UserRepository(storage);
+    const user = users.create({
+      email: "creator@example.com",
+      displayName: "Creator",
+    });
+    const auth = new AuthService(storage);
+    expect(auth.register(user.email, "password123", user.id)).toBe(true);
+    const login = auth.login(user.email, "password123", user.id);
+
+    expect(login.success).toBe(true);
+    expect(new UserRepository(storage).getByEmail(user.email)?.id).toBe(
+      user.id,
+    );
+    expect(new AuthService(storage).validateToken(login.token!)?.userId).toBe(
+      user.id,
+    );
+  });
+
+  it("keeps generation history across repository recreation", () => {
+    const storage = new InMemoryStorageProvider();
+    const history = new StorageGenerationHistoryRepository(storage);
+    history.record({
+      id: "run-1",
+      projectId: "project-1",
+      pipelineId: "pipeline-1",
+      status: "running",
+      startedAt: 100,
+      stagesCompleted: 1,
+      stagesTotal: 3,
+      failures: 0,
+      tokenUsage: 0,
+      aiCost: 0,
+    });
+
+    const restored = new StorageGenerationHistoryRepository(storage);
+    expect(restored.getByPipeline("pipeline-1")?.projectId).toBe("project-1");
+    expect(restored.getByProject("project-1")).toHaveLength(1);
   });
 });

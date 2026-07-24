@@ -4,6 +4,18 @@ All significant architectural and product decisions are recorded here.
 
 ---
 
+## 2026-07-24 — CORE-1a Durable Project Boundary
+
+**Decision**: Use one configured `StorageProvider` for server bootstrap, authentication, users, projects, generation history, and API keys; do not create route-local in-memory project state in production.
+**Reason**: The previous project router instantiated its own `InMemoryStorageProvider`, so configured PostgreSQL persistence was bypassed. Authentication and user state also reset independently, making persistent project ownership unusable after restart.
+**Implementation**: The server now runs migrations and hydrates storage before listening. `STORAGE_PROVIDER=postgres` requires `DATABASE_URL` and fails startup instead of quietly falling back to cache-only mode. Identity/session/user/project/history records use the configured provider, and shutdown flushes accepted writes. Project endpoints require an authenticated owner and accept only editable fields.
+**Contract review**: The standalone frontend already sends credentials and normalizes `type`/`gameType` and `progress`/`qualityScore`, so no parallel adapter, page, or legacy frontend change was added. Anonymous project access and caller-supplied generation ownership were intentionally removed.
+**Verification**: Clean Node.js 22 / npm 10 `npm run ci` passed with 62 test files / 709 tests. A live HTTP smoke flow verified owner creation/listing and 403/401 isolation behavior.
+**Remaining gate**: CORE-1b must persist blueprints, executions, and chat, then prove PostgreSQL restart durability before Workspace work begins.
+**Status**: Implemented; pending focused pull request review.
+
+---
+
 ## 2026-07-24 — Portable CI Baseline
 
 **Decision**: Use Node.js 22.12+ with npm 10+ as the supported runtime baseline, remove all tracked generated `node_modules/` files, and synchronize each repository lockfile before progressing to CORE-1.
@@ -11,7 +23,7 @@ All significant architectural and product decisions are recorded here.
 **Implementation**: Added `.nvmrc` and package engine declarations, updated backend CI and Docker runtime to Node.js 22, refreshed both lockfiles with npm 10, formatted the inherited backend baseline, and removed 9,386 tracked dependency files while preserving `.gitignore` protection.
 **Validation policy**: Security validation continues to block private keys, connection strings, GitHub/OpenAI-style credentials, and production-source credential literals. It now permits low-confidence credential vocabulary only in non-production documentation, test fixtures, and environment templates; this behavior is covered by dedicated validator tests.
 **Verification**: Clean Node.js 22 / npm 10 `npm ci` and full backend `npm run ci` pass with 61 test files and 706 tests. Standalone frontend clean install, TypeScript check, and production build also pass.
-**Status**: Ready for review. CORE-1 remains blocked until this isolated CI baseline is accepted and GitHub Actions confirms it.
+**Status**: Merged and verified on the active integration branch. CORE-1 is unblocked.
 
 ---
 

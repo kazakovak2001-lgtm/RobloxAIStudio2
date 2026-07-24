@@ -1,8 +1,8 @@
 # Current Project State
 
 **Last Updated**: July 24, 2026
-**Phase**: CI-BASELINE-1 — Portable CI & Repository Hygiene
-**Build Status**: Clean Node.js 22 / npm 10 backend CI passes locally; standalone frontend typecheck and production build pass locally
+**Phase**: CORE-1a — Durable Identity, Projects, and Project Contracts
+**Build Status**: Clean Node.js 22 / npm 10 backend CI passes (62 files / 709 tests); standalone frontend typecheck and production build pass
 
 ---
 
@@ -14,9 +14,9 @@
 - **Files**: 573 TypeScript files in 48 subsystems
 - **API Routes**: 28 registered endpoint groups (+ health, root)
 - **AI Providers**: 7 (OpenAI, Anthropic, Gemini, Groq, Ollama, OpenRouter, Mock)
-- **Storage**: PostgreSQL with cache-through layer (InMemory fallback when `STORAGE_PROVIDER=inmemory`)
+- **Storage**: One configured provider per process; PostgreSQL migrations and cache hydration complete before the server listens. `STORAGE_PROVIDER=postgres` requires `DATABASE_URL`.
 - **Real-time**: Socket.io with 50+ event types, project rooms, JWT-authenticated handshake (production)
-- **Authentication**: bcrypt password hashing (cost 12), JWT cryptographic validation, httpOnly cookie delivery
+- **Authentication**: bcrypt password hashing (cost 12), storage-backed sessions/roles, cryptographic validation, httpOnly cookie delivery
 
 ### Canonical Frontend
 
@@ -133,9 +133,9 @@
 ## Known Problems
 
 1. **ESLint Config**: v10 installed with legacy .eslintrc.json format (functional but deprecated config style)
-2. **Core data path**: projects, blueprints, and chat need a verified persistent end-to-end path before production cutover (CORE-1).
+2. **Core data path**: identity, projects, and generation history use the configured storage provider (CORE-1a). Blueprints and chat still need a verified persistent end-to-end path (CORE-1b).
 3. **Workflow fidelity**: several standalone Workspace operations currently use structural fixtures or fallback artifacts and must be connected to real generated project data (CORE-1 / STUDIO-1).
-4. **CI baseline review**: portable CI remediation is ready for review. Do not begin CORE-1 until the isolated cleanup is accepted and Actions confirms the same result.
+4. **PostgreSQL restart acceptance**: the provider is fail-fast and unit/smoke validated, but a running PostgreSQL restart test is still required with blueprints and chat in CORE-1b.
 
 ---
 
@@ -172,6 +172,8 @@ This template enforces:
 
 ## Last Changes
 
+- July 24, 2026: CORE-1a implemented — one configured storage provider now backs identities, users, projects, generation history, and API keys; project ownership is mandatory and browser patches are allow-listed. Full backend CI passes (62 files / 709 tests) and HTTP ownership smoke coverage passed. See `CORE-1A_DURABLE_PROJECTS.md`.
+- July 24, 2026: CUTOVER-0 and CI-BASELINE-1 merged — governance and portable CI are complete on the active backend integration branch; the standalone frontend CI is merged on `main`.
 - July 24, 2026: CI-BASELINE-1 prepared — synchronized lockfiles, standardized Node.js 22, removed tracked generated dependencies, formatted the inherited baseline, and verified clean backend CI (706 tests)
 - July 24, 2026: CUTOVER-0 started — standalone `Frontend` declared canonical, embedded `src/` frontend frozen, CI alignment initiated, and cross-repository delivery gates documented
 - July 16, 2026: Autonomous Pipeline real-time integration complete — events emitted via PipelineEventEmitter, AgentBoard shows phases live, Socket.IO primary transport with polling fallback, step.failed handling added

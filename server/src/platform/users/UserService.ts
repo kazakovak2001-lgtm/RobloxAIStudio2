@@ -11,11 +11,7 @@ export class UserService {
   private repo: UserRepository;
 
   constructor(storage?: StorageProvider) {
-    this.repo = new UserRepository();
-    // Storage param reserved for future DB-backed repo
-    if (storage) {
-      /* future: inject into repo */
-    }
+    this.repo = new UserRepository(storage);
   }
 
   createUser(
@@ -60,8 +56,7 @@ export class UserService {
   deactivateUser(id: string): boolean {
     const user = this.repo.getById(id);
     if (!user) return false;
-    user.status = "suspended";
-    return true;
+    return this.repo.updateStatus(id, "suspended") !== null;
   }
 
   validateAccess(id: string): { allowed: boolean; reason?: string } {

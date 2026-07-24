@@ -1,9 +1,13 @@
 /**
- * UserRepository — In-memory user storage with tier management.
+ * UserRepository — Storage-backed user management with tier limits.
  */
 
 import type { User, AccountTier } from "./UserTypes";
 import { TIER_LIMITS, createUserId } from "./UserTypes";
+import {
+  InMemoryStorageProvider,
+  type StorageProvider,
+} from "../storage/StorageProvider";
 
 export interface CreateUserInput {
   email: string;
@@ -12,14 +16,18 @@ export interface CreateUserInput {
 }
 
 export class UserRepository {
-  private users: Map<string, User> = new Map();
-  private byEmail: Map<string, string> = new Map();
+  private readonly collection = "users";
+
+  constructor(
+    private readonly storage: StorageProvider = new InMemoryStorageProvider(),
+  ) {}
 
   create(input: CreateUserInput): User {
     const tier = input.tier ?? "free";
+    const email = this.normalizeEmail(input.email);
     const user: User = {
       id: createUserId(),
-      email: input.email,
+      email,
       displayName: input.displayName,
       tier,
       status: "active",
@@ -35,60 +43,83 @@ export class UserRepository {
       },
       limits: TIER_LIMITS[tier],
     };
-    this.users.set(user.id, user);
-    this.byEmail.set(user.email, user.id);
+    this.storage.set(this.collection, user.id, user);
     return user;
   }
 
   getById(id: string): User | null {
-    return this.users.get(id) ?? null;
+    return this.storage.get<User>(this.collection, id);
   }
 
   getByEmail(email: string): User | null {
-    const id = this.byEmail.get(email);
-    return id ? (this.users.get(id) ?? null) : null;
+    const normalizedEmail = this.normalizeEmail(email);
+    return (
+      this.storage
+        .list<User>(this.collection)
+        .find((user) => this.normalizeEmail(user.email) === normalizedEmail) ??
+      null
+    );
   }
 
   updateProfile(
     userId: string,
     updates: { email?: string; displayName?: string },
   ): User | null {
-    const user = this.users.get(userId);
+    const user = this.getById(userId);
     if (!user) return null;
 
-    if (updates.email && updates.email !== user.email) {
-      if (this.byEmail.has(updates.email)) return null;
-      this.byEmail.delete(user.email);
-      user.email = updates.email;
-      this.byEmail.set(user.email, userId);
+    let email = user.email;
+    if (updates.email && this.normalizeEmail(updates.email) !== user.email) {
+      const existing = this.getByEmail(updates.email);
+      if (existing && existing.id !== userId) return null;
+      email = this.normalizeEmail(updates.email);
     }
-    if (updates.displayName?.trim()) {
-      user.displayName = updates.displayName.trim();
-    }
-    return user;
+    const updated: User = {
+      ...user,
+      email,
+      ...(updates.displayName?.trim()
+        ? { displayName: updates.displayName.trim() }
+        : {}),
+    };
+    this.storage.set(this.collection, userId, updated);
+    return updated;
   }
 
   updateTier(userId: string, tier: AccountTier): User | null {
-    const user = this.users.get(userId);
+    const user = this.getById(userId);
     if (!user) return null;
-    user.tier = tier;
-    user.limits = TIER_LIMITS[tier];
-    return user;
+    const updated = { ...user, tier, limits: TIER_LIMITS[tier] };
+    this.storage.set(this.collection, userId, updated);
+    return updated;
+  }
+
+  updateStatus(userId: string, status: User["status"]): User | null {
+    const user = this.getById(userId);
+    if (!user) return null;
+    const updated = { ...user, status };
+    this.storage.set(this.collection, userId, updated);
+    return updated;
   }
 
   recordGeneration(userId: string, tokens: number): boolean {
-    const user = this.users.get(userId);
+    const user = this.getById(userId);
     if (!user) return false;
-    user.usage.generationsToday++;
-    user.usage.generationsTotal++;
-    user.usage.tokensUsedToday += tokens;
-    user.usage.tokensUsedTotal += tokens;
-    user.lastLoginAt = Date.now();
+    this.storage.set(this.collection, userId, {
+      ...user,
+      lastLoginAt: Date.now(),
+      usage: {
+        ...user.usage,
+        generationsToday: user.usage.generationsToday + 1,
+        generationsTotal: user.usage.generationsTotal + 1,
+        tokensUsedToday: user.usage.tokensUsedToday + tokens,
+        tokensUsedTotal: user.usage.tokensUsedTotal + tokens,
+      },
+    });
     return true;
   }
 
   checkLimits(userId: string): { allowed: boolean; reason?: string } {
-    const user = this.users.get(userId);
+    const user = this.getById(userId);
     if (!user) return { allowed: false, reason: "User not found" };
     if (user.status !== "active")
       return { allowed: false, reason: "Account not active" };
@@ -109,10 +140,14 @@ export class UserRepository {
   }
 
   getAll(): User[] {
-    return [...this.users.values()];
+    return this.storage.list<User>(this.collection);
   }
 
   count(): number {
-    return this.users.size;
+    return this.storage.count(this.collection);
+  }
+
+  private normalizeEmail(email: string): string {
+    return email.trim().toLowerCase();
   }
 }

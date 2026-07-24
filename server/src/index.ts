@@ -1,11 +1,7 @@
 import express, { type Express, type Request, type Response } from "express";
 import { createServer } from "http";
 import { Server as SocketServer } from "socket.io";
-import {
-  createProjectsRouter,
-  generationHistory,
-  projectRepository,
-} from "./routes/projects";
+import { createProjectsRouter, createProjectRuntime } from "./routes/projects";
 import { createGameGenerationRouter } from "./routes/game-generation";
 import { createChatPersistenceRouter } from "./routes/chatPersistence";
 import { createEvaluationRouter } from "./routes/evaluation";
@@ -38,8 +34,27 @@ import { AgentRegistry } from "./agents/core/AgentRegistry";
 import { LLMProviderFactory } from "./ai/providerFactory";
 import { ExecutionTracer } from "./core/observability/ExecutionTracer";
 import { StudioIntegrationManager } from "./studio/integration/StudioIntegrationManager";
-import { authService } from "./platform/auth/authServiceInstance";
+import {
+  authService,
+  configureAuthService,
+} from "./platform/auth/authServiceInstance";
+import {
+  closeStorageProvider,
+  createStorageProvider,
+  flushStorageProvider,
+  getStorageType,
+  initializeStorageProvider,
+} from "./platform/storage";
+import {
+  DatabaseHealthCheck,
+  PostgresStorageProvider,
+} from "./platform/storage/postgres";
+import { runMigrations } from "./platform/storage/postgres/migrationRunner";
 const app: Express = express();
+const storageProvider = createStorageProvider();
+configureAuthService(storageProvider);
+const projectRuntime = createProjectRuntime(storageProvider, authService);
+const { projectRepository, generationHistory, access } = projectRuntime;
 
 const httpServer = createServer(app);
 const io = new SocketServer(httpServer, {
@@ -108,9 +123,12 @@ import {
   securityHeaders,
   corsMiddleware,
   authMiddleware,
+  configureApiKeyStore,
+  getApiKeyStore,
   requestLogger,
 } from "./common/middleware/security";
 
+configureApiKeyStore(storageProvider);
 app.use(securityHeaders);
 app.use(corsMiddleware);
 app.use(rateLimiter);
@@ -523,10 +541,10 @@ events.onEvent(async (evt) => {
 });
 
 // API Routes
-app.use("/api/projects", createProjectsRouter());
+app.use("/api/projects", createProjectsRouter(projectRuntime));
 app.use(
   "/api/projects",
-  createGameGenerationRouter(gameService, studioManager),
+  createGameGenerationRouter(gameService, studioManager, projectRuntime),
 );
 app.use("/api/evaluation", createEvaluationRouter(agentRegistry));
 app.use("/api/memory", createMemoryRouter());
@@ -556,7 +574,7 @@ app.use("/api/system", createSystemRouter());
 
 // Concept & Experience generation API
 import { createConceptRouter } from "./routes/concept";
-app.use("/api/concept", createConceptRouter(agentRegistry));
+app.use("/api/concept", createConceptRouter(agentRegistry, generationHistory));
 
 // Studio Bridge API
 import { createStudioRouter } from "./routes/studio";
@@ -601,24 +619,29 @@ app.use("/api/controller", createControllerRouter(agentRegistry));
 // AI Conversational Chat API
 import { createAiChatRouter } from "./routes/aiChat";
 app.use("/api/ai", createAiChatRouter(llmResult.provider, agentRegistry));
-app.use("/api/chat", createChatPersistenceRouter());
+app.use("/api/chat", createChatPersistenceRouter(access));
 
 // Platform API (users, versions, registry)
 import { createPlatformRouter } from "./routes/platform";
-app.use("/api/platform", createPlatformRouter());
+app.use(
+  "/api/platform",
+  createPlatformRouter({ storage: storageProvider, access }),
+);
 
 // Database health endpoints
 app.get("/health/database", async (_req, res) => {
-  const { PostgresStorageProvider, DatabaseHealthCheck } =
-    await import("./platform/storage/postgres");
-  const provider = new PostgresStorageProvider();
-  const health = new DatabaseHealthCheck(provider);
-  const status = await health.check();
+  if (!(storageProvider instanceof PostgresStorageProvider)) {
+    res.json({
+      success: true,
+      data: { status: "not_configured", connected: false, mode: "inmemory" },
+    });
+    return;
+  }
+  const status = await new DatabaseHealthCheck(storageProvider).check();
   res.json({ success: true, data: status });
 });
 
 app.get("/health/storage", (_req, res) => {
-  const { getStorageType } = require("./platform/storage");
   res.json({
     success: true,
     data: { provider: getStorageType(), status: "available" },
@@ -662,13 +685,6 @@ app.use((req: Request, res: Response) => {
   });
 });
 
-// Run database migrations on startup (only when STORAGE_PROVIDER=postgres)
-import { runMigrations } from "./platform/storage/postgres/migrationRunner";
-runMigrations().catch((err) => {
-  console.error("[startup] Migration runner failed:", err);
-  // Non-fatal: server can still start (existing tables may already exist)
-});
-
 // Start server
 let PORT = parseInt(process.env.PORT || "5000", 10);
 
@@ -697,25 +713,38 @@ httpServer.on("error", (error: NodeJS.ErrnoException) => {
   process.exit(1);
 });
 
-startServer(PORT);
+async function bootstrap(): Promise<void> {
+  // Migrations own the durable schema. The cache is loaded only after they
+  // succeed, so no route can observe an empty PostgreSQL cache at startup.
+  await runMigrations();
+  await initializeStorageProvider(storageProvider);
+  getApiKeyStore().seedFromEnvironment();
+  startServer(PORT);
+}
 
-// Graceful shutdown
-process.on("SIGTERM", () => {
-  console.log("\n📴 SIGTERM received, shutting down gracefully...");
+let shuttingDown = false;
+
+async function shutdown(signal: "SIGTERM" | "SIGINT"): Promise<void> {
+  if (shuttingDown) return;
+  shuttingDown = true;
+  console.log(`\n📴 ${signal} received, shutting down gracefully...`);
   executionCoordinator.shutdown();
-  httpServer.close(() => {
-    console.log("✅ Server closed");
-    process.exit(0);
+  await new Promise<void>((resolve) => {
+    httpServer.close(() => resolve());
   });
+  await flushStorageProvider(storageProvider);
+  await closeStorageProvider(storageProvider);
+  console.log("✅ Server closed");
+  process.exit(0);
+}
+
+void bootstrap().catch(async (error) => {
+  console.error("[startup] Durable storage bootstrap failed:", error);
+  await closeStorageProvider(storageProvider).catch(() => undefined);
+  process.exit(1);
 });
 
-process.on("SIGINT", () => {
-  console.log("\n📴 SIGINT received, shutting down gracefully...");
-  executionCoordinator.shutdown();
-  httpServer.close(() => {
-    console.log("✅ Server closed");
-    process.exit(0);
-  });
-});
+process.once("SIGTERM", () => void shutdown("SIGTERM"));
+process.once("SIGINT", () => void shutdown("SIGINT"));
 
 export { app, httpServer, io };

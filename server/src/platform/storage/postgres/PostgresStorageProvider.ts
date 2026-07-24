@@ -1,12 +1,10 @@
 /**
  * PostgresStorageProvider — Production persistence using cache-with-write-through.
  *
- * Architecture: Sync reads from in-memory cache, async writes to PostgreSQL.
- * The sync StorageProvider interface is preserved — consumers don't change.
- * On startup, all data is loaded from PostgreSQL into cache.
- *
- * Requires: DATABASE_URL environment variable and `pg` package.
- * If pg is unavailable, operates in cache-only mode (same as InMemory).
+ * Architecture: synchronous reads from an in-memory cache with durable,
+ * ordered write-through to PostgreSQL. The cache is populated before the
+ * server begins accepting requests, so existing synchronous repositories keep
+ * their contract without silently losing production data.
  */
 
 import type { StorageProvider } from "../StorageProvider";
@@ -15,6 +13,8 @@ export interface PostgresConfig {
   connectionString: string;
   poolSize: number;
   poolTimeout: number;
+  /** Reject startup instead of degrading to cache-only storage. */
+  strict?: boolean;
 }
 
 export const DEFAULT_POSTGRES_CONFIG: PostgresConfig = {
@@ -26,29 +26,25 @@ export const DEFAULT_POSTGRES_CONFIG: PostgresConfig = {
 };
 
 const KV_TABLE = "kv_store";
-const INIT_SQL = `
-  CREATE TABLE IF NOT EXISTS ${KV_TABLE} (
-    collection VARCHAR(64) NOT NULL,
-    id VARCHAR(64) NOT NULL,
-    data JSONB NOT NULL,
-    created_at TIMESTAMP NOT NULL DEFAULT NOW(),
-    updated_at TIMESTAMP NOT NULL DEFAULT NOW(),
-    PRIMARY KEY (collection, id)
-  );
-  CREATE INDEX IF NOT EXISTS idx_kv_collection ON ${KV_TABLE}(collection);
-`;
+interface QueryResult {
+  rows: Array<Record<string, unknown>>;
+}
+
+interface QueryablePool {
+  query(text: string, params?: unknown[]): Promise<QueryResult>;
+  end(): Promise<void>;
+}
 
 export class PostgresStorageProvider implements StorageProvider {
   private cache: Map<string, Map<string, unknown>> = new Map();
   private config: PostgresConfig;
-  private pool: unknown = null; // pg.Pool — dynamically loaded
+  private pool: QueryablePool | null = null;
   private connected = false;
-  private initialized = false;
+  private initialization: Promise<void> | null = null;
+  private pendingWrites = new Set<Promise<void>>();
 
   constructor(config?: Partial<PostgresConfig>) {
     this.config = { ...DEFAULT_POSTGRES_CONFIG, ...config };
-    // Attempt connection in background
-    void this.initialize();
   }
 
   // ─── StorageProvider Interface (sync — reads from cache) ──────────
@@ -59,13 +55,12 @@ export class PostgresStorageProvider implements StorageProvider {
 
   set<T>(collection: string, id: string, data: T): void {
     this.getCollection(collection).set(id, data);
-    // Write-through to PostgreSQL (fire-and-forget)
-    void this.persistSet(collection, id, data);
+    this.scheduleWrite(() => this.persistSet(collection, id, data));
   }
 
   delete(collection: string, id: string): boolean {
     const deleted = this.getCollection(collection).delete(id);
-    if (deleted) void this.persistDelete(collection, id);
+    if (deleted) this.scheduleWrite(() => this.persistDelete(collection, id));
     return deleted;
   }
 
@@ -85,6 +80,23 @@ export class PostgresStorageProvider implements StorageProvider {
     return fn();
   }
 
+  ready(): Promise<void> {
+    this.initialization ??= this.initialize();
+    return this.initialization;
+  }
+
+  async flush(): Promise<void> {
+    if (this.initialization) await this.initialization;
+    await Promise.all([...this.pendingWrites]);
+  }
+
+  async close(): Promise<void> {
+    await this.flush();
+    if (this.pool) await this.pool.end();
+    this.pool = null;
+    this.connected = false;
+  }
+
   isConnected(): boolean {
     return this.connected;
   }
@@ -96,6 +108,12 @@ export class PostgresStorageProvider implements StorageProvider {
     pendingTransactions: number;
     mode: string;
   }> {
+    try {
+      await this.ready();
+    } catch {
+      // A strict provider reports the unavailable state here; bootstrap is the
+      // boundary that turns the same failure into a rejected application start.
+    }
     if (!this.pool || !this.connected) {
       return {
         connected: false,
@@ -107,8 +125,7 @@ export class PostgresStorageProvider implements StorageProvider {
     }
     const start = Date.now();
     try {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      await (this.pool as any).query("SELECT 1");
+      await this.pool.query("SELECT 1");
       return {
         connected: true,
         latencyMs: Date.now() - start,
@@ -139,51 +156,76 @@ export class PostgresStorageProvider implements StorageProvider {
   }
 
   private async initialize(): Promise<void> {
-    if (this.initialized) return;
-    this.initialized = true;
-
+    let candidatePool: QueryablePool | null = null;
     try {
-      // Dynamic import — graceful if pg not installed
+      // Dynamic import preserves the dependency-free in-memory/test path.
       const pg = await import("pg").catch(() => null);
       if (!pg) {
-        console.log(
-          "[PostgresStorage] pg package not available — running in cache-only mode",
-        );
-        return;
+        throw new Error("The pg package is not available");
       }
 
-      const pool = new pg.Pool({
+      const Pool = pg.Pool ?? pg.default?.Pool;
+      if (!Pool) throw new Error("The pg Pool constructor is not available");
+
+      candidatePool = new Pool({
         connectionString: this.config.connectionString,
         max: this.config.poolSize,
         idleTimeoutMillis: this.config.poolTimeout,
-      });
+      }) as QueryablePool;
 
       // Test connection
-      await pool.query("SELECT 1");
-      this.pool = pool;
-      this.connected = true;
+      await candidatePool.query("SELECT 1");
 
-      // Create table if not exists
-      await pool.query(INIT_SQL);
-
-      // Load all data into cache
-      const { rows } = await pool.query(
+      // kv_store is owned by the migration registry. Loading only happens after
+      // bootstrap has successfully applied that registry.
+      const { rows } = await candidatePool.query(
         `SELECT collection, id, data FROM ${KV_TABLE}`,
       );
       for (const row of rows) {
-        this.getCollection(row.collection).set(row.id, row.data);
+        const collection = row.collection;
+        const id = row.id;
+        if (typeof collection !== "string" || typeof id !== "string") continue;
+        this.getCollection(collection).set(id, row.data);
       }
+
+      this.pool = candidatePool;
+      this.connected = true;
 
       console.log(
         `[PostgresStorage] Connected — loaded ${rows.length} records into cache (pool=${this.config.poolSize})`,
       );
     } catch (err) {
+      if (candidatePool) await candidatePool.end().catch(() => undefined);
+      this.connected = false;
+      this.pool = null;
+      const message = (err as Error).message;
+      if (this.config.strict) {
+        throw new Error(`PostgreSQL storage initialization failed: ${message}`);
+      }
       console.warn(
         "[PostgresStorage] Connection failed — running in cache-only mode:",
-        (err as Error).message,
+        message,
       );
-      this.connected = false;
     }
+  }
+
+  private scheduleWrite(write: () => Promise<void>): void {
+    // Unit and local cache-mode providers intentionally stay dependency-free
+    // until somebody explicitly requests ready(). Production bootstrap always
+    // calls ready() before routes are registered.
+    if (!this.initialization && !this.connected) return;
+
+    const pending = this.ready()
+      .then(write)
+      .catch((error: unknown) => {
+        this.connected = false;
+        console.error(
+          "[PostgresStorage] Durable write failed:",
+          error instanceof Error ? error.message : error,
+        );
+      });
+    this.pendingWrites.add(pending);
+    void pending.finally(() => this.pendingWrites.delete(pending));
   }
 
   private async persistSet(
@@ -191,35 +233,23 @@ export class PostgresStorageProvider implements StorageProvider {
     id: string,
     data: unknown,
   ): Promise<void> {
-    if (!this.pool || !this.connected) return;
-    try {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      await (this.pool as any).query(
-        `INSERT INTO ${KV_TABLE} (collection, id, data) VALUES ($1, $2, $3)
-         ON CONFLICT (collection, id) DO UPDATE SET data = $3, updated_at = NOW()`,
-        [collection, id, JSON.stringify(data)],
-      );
-    } catch (err) {
-      console.warn(
-        `[PostgresStorage] Write failed for ${collection}/${id}:`,
-        (err as Error).message,
-      );
+    if (!this.pool || !this.connected) {
+      throw new Error("PostgreSQL connection is unavailable");
     }
+    await this.pool.query(
+      `INSERT INTO ${KV_TABLE} (collection, id, data) VALUES ($1, $2, $3)
+       ON CONFLICT (collection, id) DO UPDATE SET data = $3, updated_at = NOW()`,
+      [collection, id, JSON.stringify(data)],
+    );
   }
 
   private async persistDelete(collection: string, id: string): Promise<void> {
-    if (!this.pool || !this.connected) return;
-    try {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      await (this.pool as any).query(
-        `DELETE FROM ${KV_TABLE} WHERE collection = $1 AND id = $2`,
-        [collection, id],
-      );
-    } catch (err) {
-      console.warn(
-        `[PostgresStorage] Delete failed for ${collection}/${id}:`,
-        (err as Error).message,
-      );
+    if (!this.pool || !this.connected) {
+      throw new Error("PostgreSQL connection is unavailable");
     }
+    await this.pool.query(
+      `DELETE FROM ${KV_TABLE} WHERE collection = $1 AND id = $2`,
+      [collection, id],
+    );
   }
 }

@@ -9,6 +9,12 @@ export interface StorageProvider {
   delete(collection: string, id: string): boolean;
   list<T>(collection: string, filter?: (item: T) => boolean): T[];
   count(collection: string): number;
+  /** Resolve once durable storage has loaded its read cache. */
+  ready?(): Promise<void>;
+  /** Wait for accepted write-through operations before shutdown. */
+  flush?(): Promise<void>;
+  /** Release storage resources during graceful shutdown. */
+  close?(): Promise<void>;
 }
 
 export class InMemoryStorageProvider implements StorageProvider {
@@ -37,4 +43,10 @@ export class InMemoryStorageProvider implements StorageProvider {
   count(collection: string): number {
     return this.store.get(collection)?.size ?? 0;
   }
+
+  async ready(): Promise<void> {}
+
+  async flush(): Promise<void> {}
+
+  async close(): Promise<void> {}
 }

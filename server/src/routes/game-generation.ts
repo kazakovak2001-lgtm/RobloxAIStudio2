@@ -3,11 +3,7 @@ import { GameGenerationService } from "../projects/services/game-generation.serv
 import type { GenerationPackage } from "../generation/coordinator/types";
 import type { StudioIntegrationManager } from "../studio/integration/StudioIntegrationManager";
 import type { StudioProjectSession } from "../studio/integration/types";
-import {
-  generationHistory,
-  projectRepository,
-  requireProjectAccess,
-} from "./projects";
+import type { ProjectRuntime } from "./projects";
 
 type StudioConnectionStatus =
   "connected" | "disconnected" | "syncing" | "error";
@@ -29,8 +25,10 @@ interface StudioSyncResult extends StudioConnectionInfo {
 export function createGameGenerationRouter(
   gameService: GameGenerationService,
   studioManager: StudioIntegrationManager,
+  projectRuntime: ProjectRuntime,
 ): Router {
   const router = Router();
+  const { projectRepository, generationHistory, access } = projectRuntime;
 
   const mapStudioStatus = (
     session: StudioProjectSession | null,
@@ -129,8 +127,10 @@ export function createGameGenerationRouter(
   router.post("/:projectId/generate", async (req, res) => {
     try {
       const { projectId } = req.params;
-      if (!requireProjectAccess(req, res, projectId)) return;
-      const { blueprintId, userId } = req.body;
+      if (!access.requireProjectAccess(req, res, projectId)) return;
+      const userId = access.getRequestUserId(req);
+      if (!userId) return;
+      const { blueprintId } = req.body;
 
       // Auto-create a minimal blueprint if one doesn't exist yet.
       // This enables the workflow: Create Project → Generate without manual blueprint creation.
@@ -139,7 +139,7 @@ export function createGameGenerationRouter(
         (await gameService.getBlueprintByProject(projectId));
 
       if (!existingBlueprint) {
-        await gameService.createBlueprint(userId || "default-user", projectId, {
+        await gameService.createBlueprint(userId, projectId, {
           name: `Project ${projectId}`,
           description: "Auto-generated blueprint for pipeline execution",
           genre: "adventure",
@@ -149,7 +149,7 @@ export function createGameGenerationRouter(
 
       const result = await gameService.startGeneration(
         blueprintId || projectId,
-        userId || "default-user",
+        userId,
       );
       projectRepository.update(projectId, {
         status: "generating",
@@ -185,12 +185,15 @@ export function createGameGenerationRouter(
   router.post("/:projectId/blueprints", async (req, res) => {
     try {
       const { projectId } = req.params;
-      if (!requireProjectAccess(req, res, projectId)) return;
-      const { userId, ...input } = req.body;
+      if (!access.requireProjectAccess(req, res, projectId)) return;
+      const userId = access.getRequestUserId(req);
+      if (!userId) return;
+      const input = { ...(req.body as Record<string, unknown>) };
+      delete input.userId;
       const blueprint = await gameService.createBlueprint(
-        userId || "default-user",
+        userId,
         projectId,
-        input,
+        input as never,
       );
       res.json({ success: true, data: blueprint });
     } catch (error) {
@@ -208,7 +211,7 @@ export function createGameGenerationRouter(
         res.status(404).json({ success: false, error: "Blueprint not found" });
         return;
       }
-      if (!requireProjectAccess(req, res, blueprint.project_id)) return;
+      if (!access.requireProjectAccess(req, res, blueprint.project_id)) return;
       res.json({ success: true, data: blueprint });
     } catch (error) {
       res
@@ -225,7 +228,7 @@ export function createGameGenerationRouter(
         res.status(404).json({ success: false, error: "Blueprint not found" });
         return;
       }
-      if (!requireProjectAccess(req, res, blueprint.project_id)) return;
+      if (!access.requireProjectAccess(req, res, blueprint.project_id)) return;
       const validation = gameService.validateBlueprint(blueprint);
       res.json({ success: true, ...validation });
     } catch (error) {
@@ -236,7 +239,7 @@ export function createGameGenerationRouter(
   // Get generation status
   router.get("/:projectId/generation/:executionId/status", async (req, res) => {
     try {
-      if (!requireProjectAccess(req, res, req.params.projectId)) return;
+      if (!access.requireProjectAccess(req, res, req.params.projectId)) return;
       const execution = await gameService.getExecution(req.params.executionId);
       if (!execution) {
         res.status(404).json({ success: false, error: "Execution not found" });
@@ -290,7 +293,7 @@ export function createGameGenerationRouter(
         res.status(404).json({ success: false, error: "Blueprint not found" });
         return;
       }
-      if (!requireProjectAccess(req, res, blueprint.project_id)) return;
+      if (!access.requireProjectAccess(req, res, blueprint.project_id)) return;
       const executions = await gameService.getExecutions(
         req.params.blueprintId,
       );
@@ -318,7 +321,7 @@ export function createGameGenerationRouter(
   router.get("/:projectId/studio/status", async (req, res) => {
     try {
       const { projectId } = req.params;
-      if (!requireProjectAccess(req, res, projectId)) return;
+      if (!access.requireProjectAccess(req, res, projectId)) return;
       const studioId = req.query.studioId as string | undefined;
       const session = findStudioSession(projectId, studioId);
 
@@ -349,7 +352,7 @@ export function createGameGenerationRouter(
   router.post("/:projectId/studio/sync", async (req, res) => {
     try {
       const { projectId } = req.params;
-      if (!requireProjectAccess(req, res, projectId)) return;
+      if (!access.requireProjectAccess(req, res, projectId)) return;
       const { studioId } = req.body;
       const session = findStudioSession(projectId, studioId);
 
@@ -408,7 +411,7 @@ export function createGameGenerationRouter(
   router.get("/:projectId/export", async (req, res) => {
     try {
       const { projectId } = req.params;
-      if (!requireProjectAccess(req, res, projectId)) return;
+      if (!access.requireProjectAccess(req, res, projectId)) return;
       const project = projectRepository.get(projectId);
       const blueprint = await gameService.getBlueprintByProject(projectId);
       if (!blueprint) {

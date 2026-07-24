@@ -116,6 +116,21 @@ export const MIGRATIONS = [
       CREATE INDEX IF NOT EXISTS idx_audit_created ON audit_logs(created_at);
     `,
   },
+  {
+    version: 7,
+    name: "create_kv_store",
+    sql: `
+      CREATE TABLE IF NOT EXISTS kv_store (
+        collection VARCHAR(64) NOT NULL,
+        id VARCHAR(64) NOT NULL,
+        data JSONB NOT NULL,
+        created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+        updated_at TIMESTAMP NOT NULL DEFAULT NOW(),
+        PRIMARY KEY (collection, id)
+      );
+      CREATE INDEX IF NOT EXISTS idx_kv_collection ON kv_store(collection);
+    `,
+  },
 ];
 
 export function getMigrationSQL(): string {

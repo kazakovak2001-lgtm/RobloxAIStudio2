@@ -5,6 +5,7 @@
 import { Router, type Request, type Response } from "express";
 import { UserRepository } from "../platform/users";
 import { authService } from "../platform/auth/authServiceInstance";
+import type { StorageProvider } from "../platform/storage/StorageProvider";
 import { VersionHistoryRepository } from "../platform/versioning";
 import { AgentRegistryService } from "../platform/registry";
 import {
@@ -13,7 +14,7 @@ import {
   getTokenFromCookies,
   getRefreshTokenFromCookies,
 } from "../common/middleware/cookies";
-import { getRequestUserId, requireProjectAccess } from "./projects";
+import type { ProjectAccessControl } from "./projects";
 import { loginRateLimiter } from "../common/middleware/security";
 
 interface UserPreferences {
@@ -25,15 +26,24 @@ interface UserPreferences {
   };
 }
 
-export function createPlatformRouter(): Router {
+export interface PlatformRouterDependencies {
+  storage: StorageProvider;
+  access: ProjectAccessControl;
+}
+
+export function createPlatformRouter({
+  storage,
+  access,
+}: PlatformRouterDependencies): Router {
   const router = Router();
-  const users = new UserRepository();
+  const users = new UserRepository(storage);
   const auth = authService;
   const versions = new VersionHistoryRepository();
   const registry = new AgentRegistryService();
   const preferences = new Map<string, UserPreferences>();
   const requireSelf = (req: Request, res: Response, userId: string) => {
-    const requestUserId = getRequestUserId(req);
+    const requestUserId = access.requireAuthenticatedUser(req, res);
+    if (!requestUserId) return false;
     if (requestUserId && requestUserId !== userId) {
       res.status(403).json({ success: false, error: "Access denied" });
       return false;
@@ -277,13 +287,13 @@ export function createPlatformRouter(): Router {
   // ─── Versions ─────────────────────────────────────────────
 
   router.get("/versions/:projectId", (req, res) => {
-    if (!requireProjectAccess(req, res, req.params.projectId)) return;
+    if (!access.requireProjectAccess(req, res, req.params.projectId)) return;
     const history = versions.getHistory(req.params.projectId);
     res.json({ success: true, data: history });
   });
 
   router.post("/versions/:projectId", (req, res) => {
-    if (!requireProjectAccess(req, res, req.params.projectId)) return;
+    if (!access.requireProjectAccess(req, res, req.params.projectId)) return;
     const {
       label,
       pipelineId,
