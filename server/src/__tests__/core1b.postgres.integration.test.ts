@@ -187,9 +187,9 @@ describePostgres("CORE-1b PostgreSQL restart acceptance", () => {
     expect(
       (await blueprintsAfterRestart.getBlueprint(blueprint.id))?.project_id,
     ).toBe(project.id);
-    expect(await blueprintsAfterRestart.listVersions(blueprint.id)).toHaveLength(
-      1,
-    );
+    expect(
+      await blueprintsAfterRestart.listVersions(blueprint.id),
+    ).toHaveLength(1);
     expect(
       (await blueprintsAfterRestart.getExecution(execution.id))?.started_at,
     ).toBeInstanceOf(Date);
