@@ -9,8 +9,8 @@ import {
 } from "./StudioTypes";
 import { PROTOCOL_VERSION } from "./protocol";
 import { ProjectSyncManager } from "./sync/ProjectSyncManager";
-import type { ProjectSnapshot } from "./sync/SyncTypes";
 import type { TransferResult } from "./sync/ArtifactTransferManager";
+import type { ProjectSnapshot, SyncStatus } from "./sync/SyncTypes";
 
 export interface QueuedProjectExport {
   command: StudioCommand;
@@ -54,8 +54,7 @@ export class StudioRuntime {
   private readonly latestExecutionByProject = new Map<string, string>();
 
   constructor(options: StudioRuntimeOptions = {}) {
-    this.artifacts =
-      options.artifacts ?? new ArtifactStore(options.storage);
+    this.artifacts = options.artifacts ?? new ArtifactStore(options.storage);
     this.bridge = options.bridge ?? new StudioBridge();
     this.sessions = options.sessions ?? new StudioSessionManager();
     this.sync = new ProjectSyncManager(this.artifacts);
@@ -109,7 +108,13 @@ export class StudioRuntime {
     const executionId = this.resolveExecutionId(projectOrExecutionId);
     if (!executionId) return null;
     const snapshot = this.sync.getProjectSnapshot(executionId);
-    return snapshot.artifactCount > 0 ? snapshot : null;
+    return snapshot && snapshot.artifactCount > 0 ? snapshot : null;
+  }
+
+  getSyncStatus(projectOrExecutionId?: string): SyncStatus {
+    if (!projectOrExecutionId) return this.sync.getSyncStatus();
+    const executionId = this.resolveExecutionId(projectOrExecutionId);
+    return this.sync.getSyncStatus(executionId ?? projectOrExecutionId);
   }
 
   queueProjectExport(
@@ -134,7 +139,7 @@ export class StudioRuntime {
     }
 
     const snapshot = this.sync.getProjectSnapshot(executionId);
-    if (snapshot.artifactCount === 0) {
+    if (!snapshot || snapshot.artifactCount === 0) {
       return {
         success: false,
         reason: "no_artifacts",
