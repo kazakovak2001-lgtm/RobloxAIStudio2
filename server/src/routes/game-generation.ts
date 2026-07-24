@@ -356,7 +356,9 @@ export function createGameGenerationRouter(
         executionId: execution.id,
         commandId: syncResult.payloadId || undefined,
         message: syncResult.success
-          ? "Generated project export queued for Roblox Studio."
+          ? syncResult.itemsSynced > 0
+            ? "Generated project export queued for Roblox Studio."
+            : "No artifact changes detected; the Studio export is already current."
           : syncResult.error,
       };
 
