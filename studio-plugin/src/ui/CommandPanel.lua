@@ -2,6 +2,8 @@
   CommandPanel — Minimal plugin UI for Studio integration.
 ]]
 
+local Config = require(script.Parent.Parent.core.Config)
+
 local CommandPanel = {}
 CommandPanel.__index = CommandPanel
 
@@ -22,7 +24,7 @@ function CommandPanel.new(plugin, connManager, syncManager, events, errors)
 end
 
 function CommandPanel:_build()
-    local info = DockWidgetPluginGuiInfo.new(Enum.InitialDockState.Right, false, false, 280, 350, 200, 200)
+    local info = DockWidgetPluginGuiInfo.new(Enum.InitialDockState.Right, false, false, 300, 400, 220, 260)
     self._widget = self._plugin:CreateDockWidgetPluginGui("AIStudioAlpha", info)
     self._widget.Title = "AI Studio"
 
@@ -38,26 +40,41 @@ function CommandPanel:_build()
     layout.Parent = frame
 
     local pad = Instance.new("UIPadding")
-    pad.PaddingAll = UDim.new(0, 10)
+    pad.PaddingTop = UDim.new(0, 10)
+    pad.PaddingBottom = UDim.new(0, 10)
+    pad.PaddingLeft = UDim.new(0, 10)
+    pad.PaddingRight = UDim.new(0, 10)
     pad.Parent = frame
 
-    self:_label(frame, "AI Studio v1.7", 16, 0)
+    local savedProjectId = self._plugin:GetSetting("AIStudioProjectId")
+    local defaultProjectId = type(savedProjectId) == "string" and savedProjectId or ""
+
+    self:_label(frame, "AI Studio v" .. Config.PLUGIN_VERSION, 16, 0)
     self._elements.statusLabel = self:_label(frame, "Disconnected", 12, 1)
-    self._elements.sessionLabel = self:_label(frame, "Session: —", 11, 2)
-    self._elements.syncLabel = self:_label(frame, "Last sync: Never", 11, 3)
-    self:_btn(frame, "Connect", 4, function() self:_onConnect() end)
-    self:_btn(frame, "Generate", 5, function() self:_onGenerate() end)
-    self:_btn(frame, "Sync Project", 6, function() self:_onSync() end)
-    self:_btn(frame, "Disconnect", 7, function() self:_onDisconnect() end)
-    self:_btn(frame, "Show Errors", 8, function() self:_onShowErrors() end)
+    self._elements.projectInput = self:_textBox(frame, "Project ID", defaultProjectId, 2)
+    self._elements.sessionLabel = self:_label(frame, "Session: —", 11, 3)
+    self._elements.syncLabel = self:_label(frame, "Import: Waiting", 11, 4)
+    self:_btn(frame, "Connect", 5, function() self:_onConnect() end)
+    self:_btn(frame, "Generate in Workspace", 6, function() self:_onGenerate() end)
+    self:_btn(frame, "Check Export Queue", 7, function() self:_onSync() end)
+    self:_btn(frame, "Disconnect", 8, function() self:_onDisconnect() end)
+    self:_btn(frame, "Show Errors", 9, function() self:_onShowErrors() end)
 end
 
 function CommandPanel:_onConnect()
-    local projectId = game.Name ~= "" and game.Name or "untitled-project"
+    local projectId = self._elements.projectInput.Text
+    projectId = projectId:match("^%s*(.-)%s*$") or ""
+    if projectId == "" then
+        self:_updateStatus("Project ID required", Color3.fromRGB(255, 100, 100))
+        return
+    end
+
+    self._plugin:SetSetting("AIStudioProjectId", projectId)
     self:_updateStatus("Connecting...", Color3.fromRGB(255, 200, 100))
     task.spawn(function()
         if self._conn:connect(projectId) then
             self:_updateStatus("Connected", Color3.fromRGB(100, 255, 100))
+            self._elements.syncLabel.Text = "Import: Waiting for export"
         else
             self:_updateStatus("Connection Failed", Color3.fromRGB(255, 100, 100))
         end
@@ -65,18 +82,20 @@ function CommandPanel:_onConnect()
 end
 
 function CommandPanel:_onGenerate()
-    self._statusLabel.Text = "Generating..."
-end:updaeSt(, Color3.fromRGB(200, 200, 100))
+    self:_updateStatus("Generate from web Workspace", Color3.fromRGB(200, 200, 100))
+end
 
 function CommandPanel:_onSync()
     if not self._conn:isConnected() then
         self:_updateStatus("Connect first", Color3.fromRGB(255, 100, 100))
         return
     end
-    self._elements.syncLabel.Text = "Syncing..."
+    self._elements.syncLabel.Text = "Import: Checking queue..."
     task.spawn(function()
         local ok = self._sync:syncProject(self._conn:getProjectId() or "default")
-        self._elements.syncLabel.Text = ok and "Synced!" or "Sync Failed"
+        if not ok then
+            self._elements.syncLabel.Text = "Import: Check failed"
+        end
     end)
 end
 
@@ -86,7 +105,7 @@ end
 
 function CommandPanel:_onShowErrors()
     for _, err in ipairs(self._errors:getErrors()) do
-        print("[Error]", err.message)
+        print("[AI Studio Error]", err.message)
     end
 end
 
@@ -99,19 +118,41 @@ function CommandPanel:_bindEvents()
     self._events:on("STUDIO_CONNECTED", function(payload)
         self:_updateStatus("Connected", Color3.fromRGB(100, 255, 100))
         self._elements.sessionLabel.Text = "Session: " .. (payload.sessionId or "—"):sub(1, 16)
+        self._elements.syncLabel.Text = "Import: Waiting for export"
     end)
 
     self._events:on("STUDIO_DISCONNECTED", function()
         self:_updateStatus("Disconnected", Color3.fromRGB(150, 150, 150))
         self._elements.sessionLabel.Text = "Session: —"
+        self._elements.syncLabel.Text = "Import: Waiting"
+    end)
+
+    self._events:on("COMMAND_RECEIVED", function(payload)
+        self._elements.syncLabel.Text = "Import: Command " .. (payload.commandId or "received")
+    end)
+
+    self._events:on("COMMAND_ACKNOWLEDGED", function()
+        self._elements.syncLabel.Text = "Import: Applying artifacts..."
+    end)
+
+    self._events:on("COMMAND_QUEUE_EMPTY", function()
+        if self._conn:isConnected() then
+            self._elements.syncLabel.Text = "Import: Waiting for export"
+        end
     end)
 
     self._events:on("PROJECT_SYNC_COMPLETED", function(payload)
+        self:_updateStatus("Verified", Color3.fromRGB(100, 255, 100))
         self._elements.syncLabel.Text = string.format(
-            "Last sync: %s (%d artifacts)",
+            "Verified: %s (%d artifacts)",
             os.date("%H:%M:%S"),
             payload.artifactCount or 0
         )
+    end)
+
+    self._events:on("PROJECT_SYNC_FAILED", function(payload)
+        self:_updateStatus("Import Failed", Color3.fromRGB(255, 100, 100))
+        self._elements.syncLabel.Text = "Import: " .. (payload.error or "Failed")
     end)
 
     self._events:on("RECONNECTING", function(payload)
@@ -123,40 +164,72 @@ function CommandPanel:_bindEvents()
     end)
 end
 
-function CommandPanel:show() self._widget.Enabled = true end
-function CommandPanel:hide() self._widget.Enabled = false end
-function CommandPanel:toggle() self._widget.Enabled = not self._widget.Enabled end
-function CommandPanel:destroy() if self._widget then self._widget:Destroy() end end
+function CommandPanel:show()
+    self._widget.Enabled = true
+end
+
+function CommandPanel:hide()
+    self._widget.Enabled = false
+end
+
+function CommandPanel:toggle()
+    self._widget.Enabled = not self._widget.Enabled
+end
+
+function CommandPanel:destroy()
+    if self._widget then self._widget:Destroy() end
+end
 
 function CommandPanel:_label(parent, text, size, order)
-    local l = Instance.new("TextLabel")
-    l.Size = UDim2.new(1, 0, 0, size + 8)
-    l.BackgroundTransparency = 1
-    l.Text = text
-    l.TextSize = size
-    l.TextColor3 = Color3.fromRGB(200, 200, 220)
-    l.Font = Enum.Font.GothamMedium
-    l.TextXAlignment = Enum.TextXAlignment.Left
-    l.LayoutOrder = order
-    l.Parent = parent
-    return l
+    local label = Instance.new("TextLabel")
+    label.Size = UDim2.new(1, 0, 0, size + 8)
+    label.BackgroundTransparency = 1
+    label.Text = text
+    label.TextSize = size
+    label.TextColor3 = Color3.fromRGB(200, 200, 220)
+    label.Font = Enum.Font.GothamMedium
+    label.TextXAlignment = Enum.TextXAlignment.Left
+    label.TextTruncate = Enum.TextTruncate.AtEnd
+    label.LayoutOrder = order
+    label.Parent = parent
+    return label
+end
+
+function CommandPanel:_textBox(parent, placeholder, text, order)
+    local input = Instance.new("TextBox")
+    input.Size = UDim2.new(1, 0, 0, 30)
+    input.BackgroundColor3 = Color3.fromRGB(38, 38, 52)
+    input.TextColor3 = Color3.fromRGB(225, 225, 240)
+    input.PlaceholderColor3 = Color3.fromRGB(125, 125, 145)
+    input.PlaceholderText = placeholder
+    input.Text = text
+    input.ClearTextOnFocus = false
+    input.TextSize = 12
+    input.Font = Enum.Font.Code
+    input.TextXAlignment = Enum.TextXAlignment.Left
+    input.LayoutOrder = order
+    input.Parent = parent
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0, 5)
+    corner.Parent = input
+    return input
 end
 
 function CommandPanel:_btn(parent, text, order, callback)
-    local b = Instance.new("TextButton")
-    b.Size = UDim2.new(1, 0, 0, 28)
-    b.BackgroundColor3 = Color3.fromRGB(50, 50, 70)
-    b.TextColor3 = Color3.fromRGB(210, 210, 240)
-    b.Text = text
-    b.TextSize = 12
-    b.Font = Enum.Font.GothamMedium
-    b.LayoutOrder = order
-    b.Parent = parent
-    local c = Instance.new("UICorner")
-    c.CornerRadius = UDim.new(0, 5)
-    c.Parent = b
-    b.MouseButton1Click:Connect(callback)
-    return b
+    local button = Instance.new("TextButton")
+    button.Size = UDim2.new(1, 0, 0, 28)
+    button.BackgroundColor3 = Color3.fromRGB(50, 50, 70)
+    button.TextColor3 = Color3.fromRGB(210, 210, 240)
+    button.Text = text
+    button.TextSize = 12
+    button.Font = Enum.Font.GothamMedium
+    button.LayoutOrder = order
+    button.Parent = parent
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0, 5)
+    corner.Parent = button
+    button.MouseButton1Click:Connect(callback)
+    return button
 end
 
 return CommandPanel

@@ -2,25 +2,27 @@
   ConnectionManager — Lifecycle management with heartbeat and auto-reconnect.
 ]]
 
-local Config = require(script.Parent.core.Config)
+local Config = require(script.Parent.Parent.core.Config)
 
 local ConnectionManager = {}
 ConnectionManager.__index = ConnectionManager
 
-function ConnectionManager.new(connector, errorReporter)
+function ConnectionManager.new(connector, events, errorReporter)
     local self = setmetatable({}, ConnectionManager)
     self._connector = connector
+    self._events = events
     self._errors = errorReporter
     self._heartbeatThread = nil
     self._reconnectAttempts = 0
     self._status = "disconnected"
+    self._projectId = nil
     return self
 end
 
 function ConnectionManager:connect(projectId)
     self._projectId = projectId
     self._status = "connecting"
-    local ok = self._connector:connect()
+    local ok = self._connector:connect(projectId)
     if ok then
         self._status = "connected"
         self._reconnectAttempts = 0
@@ -33,16 +35,16 @@ function ConnectionManager:connect(projectId)
             })
         end
         return true
-    else
-        self._status = "failed"
-        self._errors:report("Connection failed")
-        if self._events then
-            self._events:fire("CONNECTION_FAILED", {
-                error = "Connection failed",
-            })
-        end
-        return false
     end
+
+    self._status = "failed"
+    self:_reportError("Connection failed")
+    if self._events then
+        self._events:fire("CONNECTION_FAILED", {
+            error = "Connection failed",
+        })
+    end
+    return false
 end
 
 function ConnectionManager:disconnect()
@@ -100,7 +102,7 @@ function ConnectionManager:_attemptReconnect()
             })
         end
         self._status = "failed"
-        self._errors:report("Reconnect failed after " .. Config.RECONNECT_MAX_ATTEMPTS .. " attempts")
+        self:_reportError("Reconnect failed after " .. Config.RECONNECT_MAX_ATTEMPTS .. " attempts")
         return
     end
 
@@ -112,20 +114,29 @@ function ConnectionManager:_attemptReconnect()
     end
 
     task.wait(2 * self._reconnectAttempts)
-    if self._projectId then
-        if self._connector:connect() then
-            self._status = "connected"
-            self._reconnectAttempts = 0
-            self:_startHeartbeat()
-            if self._events then
-                self._events:fire("STUDIO_CONNECTED", {
-                    clientId = self._connector:getClientId(),
-                    sessionId = self._connector:getSessionId(),
-                    projectId = self._projectId,
-                })
-            end
-            return
+    if self._projectId and self._connector:connect(self._projectId) then
+        self._status = "connected"
+        self._reconnectAttempts = 0
+        self:_startHeartbeat()
+        if self._events then
+            self._events:fire("STUDIO_CONNECTED", {
+                clientId = self._connector:getClientId(),
+                sessionId = self._connector:getSessionId(),
+                projectId = self._projectId,
+                reconnected = true,
+            })
         end
+        return
+    end
+
+    self:_attemptReconnect()
+end
+
+function ConnectionManager:_reportError(message)
+    if self._errors then
+        self._errors:report(message)
+    else
+        warn("[AI Studio] " .. message)
     end
 end
 
