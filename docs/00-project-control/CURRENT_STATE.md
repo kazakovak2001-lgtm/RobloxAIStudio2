@@ -1,8 +1,8 @@
 # Current Project State
 
 **Last Updated**: July 24, 2026
-**Phase**: WORKSPACE-1 — Workflow-Oriented Standalone Workspace Audit and Design
-**Build Status**: Backend CI is green on Node.js 22 / npm 10, including the full test suite and real PostgreSQL restart acceptance; standalone frontend typecheck and production build pass
+**Phase**: STUDIO-1 — Generated Artifact → Roblox Studio End-to-End Validation
+**Build Status**: Backend CI is green on Node.js 22 / npm 10, including the full test suite and real PostgreSQL restart acceptance; standalone frontend CI passes TypeScript, Workspace logic tests, production build, and production-artifact responsive browser QA
 
 ---
 
@@ -25,7 +25,7 @@
 - **Framework**: React 19 + TypeScript + Vite + Tailwind CSS
 - **Routing and state**: TanStack Router/Query, typed backend adapter, Socket.IO realtime client
 - **Ownership**: All new user-facing web functionality belongs in the standalone repository.
-- **Current Workspace**: `/projects/$projectId` already contains overview, modules, manifest, chat, agents, live logs, settings, and export surfaces. WORKSPACE-1 will reorganize and connect these existing surfaces rather than create a parallel Workspace.
+- **Current Workspace**: `/projects/$projectId` is organized as Define → Generate → Validate → Integrate → Operate. It uses one persisted Workspace read model, one stage-scoped backend tool registry, typed run/context summaries, durable history, existing chat/realtime/Studio contracts, and production responsive QA at 1440 px, 1024 px, and 390 px. No parallel Workspace or duplicate transport layer was introduced.
 
 ### Legacy Frontend
 
@@ -68,6 +68,7 @@
 | CI-BASELINE-1    | Portable CI and repository hygiene                | July 24, 2026 |
 | CORE-1a          | Durable identity, projects, and ownership         | July 24, 2026 |
 | CORE-1b          | Durable blueprints, executions, chat, restart E2E | July 24, 2026 |
+| WORKSPACE-1      | Workflow Workspace, scoped tools, logic and QA    | July 24, 2026 |
 
 ---
 
@@ -139,15 +140,13 @@
 ## Known Problems
 
 1. **ESLint Config**: v10 installed with legacy `.eslintrc.json` format (functional but deprecated config style).
-2. **Workspace information architecture**: the canonical project route exposes eight tabs and `WorkspaceModules` exposes many backend domains as an undifferentiated module grid. The data is connected, but the workflow is fragmented and operational priority is unclear.
-3. **Workspace data presentation**: several module actions render raw JSON payloads instead of stable, task-oriented views; loading, refresh, history, and failure recovery are repeated inside one large component.
-4. **Studio artifact fidelity**: Studio synchronization must be validated against real generated artifact packages during STUDIO-1, not temporary or fallback payloads.
+2. **Studio artifact fidelity**: the existing Studio status/sync route is connected, but STUDIO-1 must prove that a real generated package—not a placeholder or fallback manifest—is delivered, acknowledged, and attributable to the durable project execution.
 
 ---
 
 ## Technical Debt (2 items)
 
-1. **Minimal frontend test coverage** (MEDIUM) — Foundation established. Expand coverage incrementally around the canonical Workspace route and backend adapter.
+1. **Broader frontend interaction coverage** (MEDIUM) — Workspace logic and production responsive gates are established. Expand coverage incrementally to authenticated mutations and long-running generation/realtime recovery.
 2. **Missing JSDoc** (MEDIUM) — Components and services lack JSDoc documentation.
 
 ---
@@ -178,6 +177,7 @@ This template enforces:
 
 ## Last Changes
 
+- July 24, 2026: WORKSPACE-1 complete — the standalone project route now uses five workflow stages, one persisted read model, stage-scoped advanced tools, typed context and result presenters, native workflow regression tests, and production-artifact responsive browser QA. Responsive QA found and fixed document-level chat scrolling, workflow shrink issues, and mobile manifest overflow.
 - July 24, 2026: CORE-1b verified — blueprints, versions, generation executions, conversations, and messages now use the configured storage boundary. GitHub Actions passed TypeScript, lint, formatting, full tests, repository validation, commitlint, real PostgreSQL restart recovery, ownership isolation, and the merge gate. See `CORE-1B_DURABLE_RUNTIME.md`.
 - July 24, 2026: CORE-1a implemented — one configured storage provider now backs identities, users, projects, generation history, and API keys; project ownership is mandatory and browser patches are allow-listed. See `CORE-1A_DURABLE_PROJECTS.md`.
 - July 24, 2026: CUTOVER-0 and CI-BASELINE-1 merged — governance and portable CI are complete on the active backend integration branch; the standalone frontend CI is merged on `main`.
