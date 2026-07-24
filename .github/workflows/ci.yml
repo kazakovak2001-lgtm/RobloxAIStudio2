@@ -116,7 +116,23 @@ jobs:
           node-version: "22"
           cache: "npm"
       - run: npm ci
-      - run: npx commitlint --from ${{ github.event.pull_request.base.sha }} --to ${{ github.event.pull_request.head.sha }}
+      - name: Capture commitlint output
+        run: |
+          set +e
+          npx commitlint --from ${{ github.event.pull_request.base.sha }} --to ${{ github.event.pull_request.head.sha }} > commitlint-output.txt 2>&1
+          echo "$?" > commitlint-exit-code.txt
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: core-1b-commitlint-output
+          path: |
+            commitlint-output.txt
+            commitlint-exit-code.txt
+          retention-days: 1
+      - name: Enforce commitlint result
+        run: |
+          cat commitlint-output.txt
+          test "$(cat commitlint-exit-code.txt)" -eq 0
 
   gate:
     name: Merge Gate
