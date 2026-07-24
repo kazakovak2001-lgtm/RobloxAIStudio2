@@ -2,7 +2,10 @@ name: CI Pipeline
 
 on:
   push:
-    branches: [standing-pentaceratops, feature/plugin-merge]
+    branches:
+      - standing-pentaceratops
+      - feature/plugin-merge
+      - studio-1b-runtime-consolidation
   pull_request:
   workflow_dispatch:
 
