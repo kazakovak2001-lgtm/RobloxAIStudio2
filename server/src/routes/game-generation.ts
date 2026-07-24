@@ -5,10 +5,7 @@ import type { StudioProjectSession } from "../studio/integration/types";
 import type { ProjectRuntime } from "./projects";
 
 type StudioConnectionStatus =
-  | "connected"
-  | "disconnected"
-  | "syncing"
-  | "error";
+  "connected" | "disconnected" | "syncing" | "error";
 
 interface StudioConnectionInfo {
   status: StudioConnectionStatus;
