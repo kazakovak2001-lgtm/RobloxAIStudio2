@@ -61,9 +61,7 @@ describe("STUDIO-1c import acknowledgement", () => {
     expect(runtime.sessions.getByClient(clientId)).toMatchObject({
       verificationStatus: "queued",
     });
-    expect(
-      runtime.sessions.getByClient(clientId)?.lastSyncAt,
-    ).toBeUndefined();
+    expect(runtime.sessions.getByClient(clientId)?.lastSyncAt).toBeUndefined();
 
     expect(runtime.drainCommands(clientId)).toHaveLength(1);
     expect(runtime.getCommand(commandId)).toMatchObject({
@@ -73,9 +71,7 @@ describe("STUDIO-1c import acknowledgement", () => {
     expect(runtime.sessions.getByClient(clientId)).toMatchObject({
       verificationStatus: "delivered",
     });
-    expect(
-      runtime.sessions.getByClient(clientId)?.lastSyncAt,
-    ).toBeUndefined();
+    expect(runtime.sessions.getByClient(clientId)?.lastSyncAt).toBeUndefined();
 
     const acknowledged = runtime.acknowledgeProjectExport(clientId, commandId);
     expect(acknowledged).toMatchObject({
@@ -86,9 +82,7 @@ describe("STUDIO-1c import acknowledgement", () => {
     expect(runtime.sessions.getByClient(clientId)).toMatchObject({
       verificationStatus: "acknowledged",
     });
-    expect(
-      runtime.sessions.getByClient(clientId)?.lastSyncAt,
-    ).toBeUndefined();
+    expect(runtime.sessions.getByClient(clientId)?.lastSyncAt).toBeUndefined();
 
     const completed = runtime.reportProjectExport(clientId, commandId, {
       status: "completed",
@@ -166,9 +160,7 @@ describe("STUDIO-1c import acknowledgement", () => {
       verificationStatus: "failed",
       verificationError: expect.stringContaining("hash mismatch"),
     });
-    expect(
-      runtime.sessions.getByClient(clientId)?.lastSyncAt,
-    ).toBeUndefined();
+    expect(runtime.sessions.getByClient(clientId)?.lastSyncAt).toBeUndefined();
     expect(runtime.bridge.events.getHistory()).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
@@ -211,9 +203,7 @@ describe("STUDIO-1c import acknowledgement", () => {
       verificationStatus: "failed",
       verificationError: "Roblox instance creation failed",
     });
-    expect(
-      runtime.sessions.getByClient(clientId)?.lastSyncAt,
-    ).toBeUndefined();
+    expect(runtime.sessions.getByClient(clientId)?.lastSyncAt).toBeUndefined();
   });
 
   it("rejects wrong clients and invalid lifecycle ordering", () => {
