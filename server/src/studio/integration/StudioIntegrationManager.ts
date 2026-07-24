@@ -1,16 +1,15 @@
 /**
  * StudioIntegrationManager.ts
  *
- * Top-level coordinator for Roblox Studio integration.
- * Connects: ConnectionRegistry → ImportValidator → PackageSynchronizer → Bridge
+ * Compatibility facade over the canonical Studio v2 runtime. Existing callers
+ * keep their public contract, while sessions, artifacts, and outbound commands
+ * are owned by one shared runtime.
  */
 
-import { StudioBridgeServer } from "../StudioBridgeServer";
-import { StudioConnectionRegistry } from "./StudioConnectionRegistry";
-import { PackageSynchronizer } from "./PackageSynchronizer";
+import type { GenerationPackage } from "../../generation/coordinator/types";
+import { getSharedStudioRuntime } from "../v2/StudioRuntime";
 import { StudioImportValidator } from "./StudioImportValidator";
 import { StudioSyncMetrics } from "./StudioSyncMetrics";
-import type { GenerationPackage } from "../../generation/coordinator/types";
 import type {
   SyncResult,
   ImportValidationReport,
@@ -35,38 +34,32 @@ export interface StudioEvent {
 export type StudioEventListener = (event: StudioEvent) => void;
 
 export class StudioIntegrationManager {
-  private bridge: StudioBridgeServer;
-  private registry: StudioConnectionRegistry;
-  private synchronizer: PackageSynchronizer;
-  private validator: StudioImportValidator;
-  private metrics: StudioSyncMetrics;
+  private readonly runtime = getSharedStudioRuntime();
+  private readonly validator = new StudioImportValidator();
+  private readonly metrics = new StudioSyncMetrics();
   private listeners: StudioEventListener[] = [];
-
-  constructor(bridge?: StudioBridgeServer) {
-    this.bridge = bridge ?? new StudioBridgeServer();
-    this.registry = new StudioConnectionRegistry();
-    this.synchronizer = new PackageSynchronizer(this.bridge, this.registry);
-    this.validator = new StudioImportValidator();
-    this.metrics = new StudioSyncMetrics();
-  }
 
   // ─── Connection ───────────────────────────────────────────────────────
 
   connect(studioId: string, projectId: string): StudioProjectSession {
-    const session = this.registry.connect(studioId, projectId);
-    this.bridge.connectSession(studioId, projectId);
+    const client = this.runtime.bridge.connect(
+      "legacy-compatible",
+      projectId,
+      studioId,
+    );
+    const session = this.runtime.sessions.create(client);
     this.emit({
       type: "StudioConnected",
       studioId,
       timestamp: Date.now(),
       data: { sessionId: session.sessionId, projectId },
     });
-    return session;
+    return this.mapSession(session);
   }
 
   disconnect(studioId: string): void {
-    this.registry.disconnect(studioId);
-    this.bridge.disconnectSession(studioId);
+    this.runtime.bridge.disconnect(studioId);
+    this.runtime.sessions.close(studioId);
     this.emit({
       type: "StudioDisconnected",
       studioId,
@@ -76,20 +69,19 @@ export class StudioIntegrationManager {
   }
 
   heartbeat(studioId: string): boolean {
-    return this.registry.heartbeat(studioId);
+    const bridgeOk = this.runtime.bridge.heartbeat(studioId);
+    const sessionOk = this.runtime.sessions.recordActivity(studioId);
+    return bridgeOk && sessionOk;
   }
 
   // ─── Synchronization ──────────────────────────────────────────────────
 
+  /**
+   * Compatibility path for callers that already hold a real GenerationPackage.
+   * The package is recorded into the canonical ArtifactStore and queued through
+   * the same v2 command transport used by project synchronization.
+   */
   synchronize(studioId: string, pkg: GenerationPackage): SyncResult {
-    this.emit({
-      type: "SyncStarted",
-      studioId,
-      timestamp: Date.now(),
-      data: { packageId: pkg.packageId },
-    });
-
-    // Validate first
     const validation = this.validator.validate(pkg);
     this.emit({
       type: "ImportValidated",
@@ -97,50 +89,81 @@ export class StudioIntegrationManager {
       timestamp: Date.now(),
       data: { valid: validation.valid, errors: validation.errors.length },
     });
-
     if (!validation.valid) {
-      const failResult: SyncResult = {
-        success: false,
-        sessionId: "",
-        payloadId: "",
-        itemsSynced: 0,
-        totalSize: 0,
-        durationMs: 0,
-        error: validation.errors.join("; "),
-      };
-      this.metrics.record(failResult);
-      this.emit({
-        type: "SyncFailed",
+      return this.recordFailure(
         studioId,
-        timestamp: Date.now(),
-        data: { error: failResult.error },
-      });
-      return failResult;
+        validation.errors.join("; "),
+        Date.now(),
+      );
     }
 
-    // Synchronize
-    const result = this.synchronizer.sync(studioId, pkg);
-    this.metrics.record(result);
-
-    if (result.success) {
-      this.emit({
-        type: "SyncCompleted",
-        studioId,
-        timestamp: Date.now(),
-        data: {
-          itemsSynced: result.itemsSynced,
-          durationMs: result.durationMs,
+    if (this.runtime.artifacts.getByPipeline(pkg.packageId).length === 0) {
+      if (pkg.scripts.length > 0) {
+        this.runtime.artifacts.store(
+          pkg.packageId,
+          "LUA_GENERATION",
+          "legacy-package-adapter",
+          { scripts: pkg.scripts },
+        );
+      }
+      this.runtime.artifacts.store(
+        pkg.packageId,
+        "EXPORT",
+        "legacy-package-adapter",
+        {
+          configs: pkg.configs,
+          metadata: pkg.metadata,
+          validationReport: pkg.validationReport,
         },
-      });
-    } else {
-      this.emit({
-        type: "SyncFailed",
-        studioId,
-        timestamp: Date.now(),
-        data: { error: result.error },
-      });
+      );
     }
 
+    return this.synchronizeExecution(studioId, pkg.projectId, pkg.packageId);
+  }
+
+  synchronizeExecution(
+    studioId: string,
+    projectId: string,
+    executionId: string,
+  ): SyncResult {
+    const startedAt = Date.now();
+    this.emit({
+      type: "SyncStarted",
+      studioId,
+      timestamp: startedAt,
+      data: { projectId, executionId },
+    });
+
+    const queued = this.runtime.queueProjectExport(
+      studioId,
+      projectId,
+      executionId,
+    );
+    if (!queued.success) {
+      return this.recordFailure(studioId, queued.message, startedAt);
+    }
+
+    const result: SyncResult = {
+      success: true,
+      sessionId:
+        this.runtime.sessions.getByClient(studioId)?.sessionId ?? "",
+      payloadId: queued.data.command.id,
+      itemsSynced: queued.data.transfer.artifacts.length,
+      totalSize: queued.data.transfer.totalSize,
+      durationMs: Date.now() - startedAt,
+    };
+    this.metrics.record(result);
+    this.emit({
+      type: "SyncCompleted",
+      studioId,
+      timestamp: Date.now(),
+      data: {
+        executionId,
+        commandId: queued.data.command.id,
+        itemsSynced: result.itemsSynced,
+        durationMs: result.durationMs,
+      },
+    });
     return result;
   }
 
@@ -149,17 +172,36 @@ export class StudioIntegrationManager {
   validatePackage(pkg: GenerationPackage): ImportValidationReport {
     return this.validator.validate(pkg);
   }
+
   getSession(studioId: string): StudioProjectSession | null {
-    return this.registry.getSession(studioId);
+    const session = this.runtime.sessions.getByClient(studioId);
+    return session?.projectId ? this.mapSession(session) : null;
   }
+
   getActiveSessions(): StudioProjectSession[] {
-    return this.registry.getActiveSessions();
+    return this.runtime.sessions
+      .getActiveSessions()
+      .filter(
+        (session): session is typeof session & { projectId: string } =>
+          typeof session.projectId === "string",
+      )
+      .map((session) => this.mapSession(session));
   }
+
   getMetrics(): StudioSyncMetricsData {
     return this.metrics.getMetrics();
   }
+
   getConnectionCount(): number {
-    return this.registry.size;
+    return this.runtime.bridge.getConnectedClients().length;
+  }
+
+  getPendingCommandCount(studioId: string): number {
+    return this.runtime.bridge.getPendingCommandCount(studioId);
+  }
+
+  get protocolVersion(): string {
+    return this.runtime.protocolVersion;
   }
 
   // ─── Events ───────────────────────────────────────────────────────────
@@ -167,14 +209,59 @@ export class StudioIntegrationManager {
   on(listener: StudioEventListener): void {
     this.listeners.push(listener);
   }
+
   off(listener: StudioEventListener): void {
-    this.listeners = this.listeners.filter((l) => l !== listener);
+    this.listeners = this.listeners.filter((listener) => listener !== listener);
+  }
+
+  private mapSession(
+    session: ReturnType<typeof this.runtime.sessions.getByClient> extends infer T
+      ? Exclude<T, null>
+      : never,
+  ): StudioProjectSession {
+    const pending = this.runtime.bridge.getPendingCommandCount(session.clientId);
+    return {
+      sessionId: session.sessionId,
+      studioId: session.clientId,
+      projectId: session.projectId ?? "",
+      packageId: session.lastExecutionId,
+      status: pending > 0 ? "syncing" : session.lastSyncAt ? "completed" : "idle",
+      connectedAt: session.createdAt,
+      lastSyncAt: session.lastSyncAt,
+      syncCount: session.syncCount,
+      version: Math.max(1, session.syncCount + 1),
+    };
+  }
+
+  private recordFailure(
+    studioId: string,
+    error: string,
+    startedAt: number,
+  ): SyncResult {
+    const result: SyncResult = {
+      success: false,
+      sessionId:
+        this.runtime.sessions.getByClient(studioId)?.sessionId ?? "",
+      payloadId: "",
+      itemsSynced: 0,
+      totalSize: 0,
+      durationMs: Date.now() - startedAt,
+      error,
+    };
+    this.metrics.record(result);
+    this.emit({
+      type: "SyncFailed",
+      studioId,
+      timestamp: Date.now(),
+      data: { error },
+    });
+    return result;
   }
 
   private emit(event: StudioEvent): void {
-    for (const l of this.listeners) {
+    for (const listener of this.listeners) {
       try {
-        l(event);
+        listener(event);
       } catch {
         /* non-blocking */
       }
