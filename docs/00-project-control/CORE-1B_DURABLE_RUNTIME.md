@@ -4,7 +4,7 @@
 
 **Dependencies:** CORE-1a merged into `feature/plugin-merge`.
 
-**Status:** Implemented on draft PR; full CI validation pending.
+**Status:** Complete and verified. Draft PR #6 is ready for integration.
 
 ## Reuse Audit
 
@@ -68,6 +68,19 @@ The CI workflow starts PostgreSQL 16 and performs this sequence:
 
 The E2E test is skipped in the ordinary dependency-free test path and runs only when `RUN_POSTGRES_E2E=true` with a real `DATABASE_URL`.
 
+## Verification Result
+
+GitHub Actions run `30110367078` passed every required gate:
+
+- TypeScript Check;
+- ESLint;
+- Prettier Check;
+- full Test Suite;
+- Repository Validation;
+- Commit Message Lint;
+- PostgreSQL Restart E2E;
+- Merge Gate.
+
 ## Contract Impact
 
 No endpoint paths or response fields change. Production deployments using PostgreSQL now retain blueprint, generation-execution, and chat state across application restarts.
@@ -86,4 +99,4 @@ Revert the CORE-1b change set. Existing records remain isolated in `kv_store`; r
 
 ## Next Objective
 
-After all CI gates pass and CORE-1b is merged, mark CORE-1 complete and begin WORKSPACE-1. WORKSPACE-1 must consume real persisted project, blueprint, execution, and chat data without introducing duplicate frontend services or backend stores.
+Merge CORE-1b into `feature/plugin-merge`, mark CORE-1 complete, then begin WORKSPACE-1 in the standalone `Frontend` repository. WORKSPACE-1 must consume real persisted project, blueprint, execution, and chat data without introducing duplicate frontend services or backend stores.
