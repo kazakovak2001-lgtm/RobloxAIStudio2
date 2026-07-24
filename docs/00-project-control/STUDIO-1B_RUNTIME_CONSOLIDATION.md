@@ -60,6 +60,17 @@ New project synchronization calls `synchronizeExecution(studioId, projectId, exe
 
 Completed historical executions without artifacts are skipped. Projects without an artifact-bearing completed generation return `409` instead of receiving synthetic content.
 
+### Incremental no-op preservation
+
+The shared runtime derives a deterministic signature from the artifact IDs and content hashes in the Studio snapshot. The signature is scoped to the current active client session.
+
+- the first or changed snapshot queues one authoritative `EXPORT_PROJECT` command containing the real artifacts;
+- repeating the same snapshot succeeds with `itemsSynced: 0` and does not queue a duplicate command;
+- a newly created session with a reused client ID ignores the previous session's signature and receives a full export;
+- an edited artifact changes its hash and therefore queues a new authoritative export.
+
+This preserves the previous incremental synchronization contract without restoring the retired parallel `PackageSynchronizer` runtime.
+
 ### Existing command queue is now pollable
 
 `GET /api/studio/commands?clientId=...` drains the existing `StudioBridge` command queue. Draining an `EXPORT_PROJECT` command records delivery metadata on the existing session:
@@ -80,9 +91,12 @@ Queueing is not treated as proof that Roblox Studio imported the artifacts. Plug
 - a real Lua output is present unchanged in the queued export payload;
 - no `studio-sync-fallback` or placeholder script content is introduced;
 - project snapshot lookup and sync status resolve to the durable execution after queueing;
+- identical repeated snapshots are successful no-ops and do not duplicate commands;
 - command polling drains the queue and records delivery metadata;
 - disconnected clients, project mismatches, and artifact-free executions are rejected;
 - the compatibility manager and v2 runtime observe the same session and artifact state.
+
+The pre-existing `StudioIntegrationManager` incremental test also verifies that a repeated package with unchanged content returns `itemsSynced: 0`.
 
 ## CI Validation
 
@@ -91,7 +105,7 @@ The draft PR passed:
 - root and server TypeScript checks;
 - ESLint with zero warnings;
 - repository Prettier check;
-- the complete Vitest suite;
+- the complete Vitest suite (717 tests, with the PostgreSQL-only test skipped in the normal suite);
 - repository architecture and boundary validation;
 - conventional commit lint;
 - strict PostgreSQL close/recreate/reload acceptance;
@@ -126,6 +140,7 @@ Those acceptance steps belong to STUDIO-1c. Legacy source deletion is deferred u
 - project sync contains only real persisted artifacts;
 - project and plugin routes share one v2 runtime;
 - no placeholder package remains in the active project route;
+- unchanged repeated snapshots do not enqueue duplicate commands;
 - existing command queue is reachable by plugin polling;
 - TypeScript, ESLint, Prettier, full tests, repository validation, commitlint, PostgreSQL restart E2E, and merge gate pass;
 - no parallel Studio transport or artifact implementation is introduced.
