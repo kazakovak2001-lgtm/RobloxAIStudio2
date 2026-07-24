@@ -11,7 +11,7 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  format-and-clean:
+  format-and-commit:
     if: github.actor != 'github-actions[bot]'
     runs-on: ubuntu-latest
     steps:
@@ -31,14 +31,11 @@ jobs:
             server/src/__tests__/studio1.plugin-contract.test.ts \
             studio-plugin/README.md \
             docs/00-project-control/STUDIO-1D_REAL_PLUGIN_ACCEPTANCE.md
-      - name: Remove this workflow
-        run: rm .github/workflows/studio-plugin-format-autofix.yml
       - name: Commit formatted plugin contract
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add \
-            .github/workflows/studio-plugin-format-autofix.yml \
             server/src/__tests__/studio1.plugin-contract.test.ts \
             studio-plugin/README.md \
             docs/00-project-control/STUDIO-1D_REAL_PLUGIN_ACCEPTANCE.md
