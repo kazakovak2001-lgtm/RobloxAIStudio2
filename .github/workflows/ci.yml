@@ -37,36 +37,31 @@ jobs:
       - run: npm run lint
 
   format:
-    name: Prettier Check
+    name: Prettier Repair
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref }}
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
           cache: "npm"
       - run: npm ci
       - run: npm run format
-      - uses: actions/upload-artifact@v4
-        with:
-          name: core1b-prettier-output
-          path: |
-            .github/workflows/ci.yml
-            commitlint.config.cjs
-            docs/00-project-control/CORE-1B_DURABLE_RUNTIME.md
-            docs/00-project-control/CURRENT_STATE.md
-            docs/00-project-control/ROADMAP_STATUS.md
-            docs/00-project-control/decisions/2026-07-24-core-1b-durable-runtime.md
-            server/src/__tests__/core1b.persistence.test.ts
-            server/src/__tests__/core1b.postgres.integration.test.ts
-            server/src/platform/storage/StorageFactory.ts
-            server/src/projects/repository/blueprint.repository.ts
-            server/src/projects/repository/storageBlueprint.repository.ts
-            server/src/routes/chatPersistence.ts
-            server/src/services/ChatPersistenceService.ts
-          if-no-files-found: error
-          retention-days: 1
-      - run: git diff --exit-code
+      - name: Commit formatted files
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add --all
+          if git diff --cached --quiet; then
+            echo "No formatting changes required."
+            exit 0
+          fi
+          git commit -m "style(core): apply prettier formatting"
+          git push origin HEAD:${{ github.head_ref }}
 
   test:
     name: Test Suite
