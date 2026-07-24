@@ -1,12 +1,14 @@
 import { Router } from "express";
 import { GameGenerationService } from "../projects/services/game-generation.service";
-import type { GenerationPackage } from "../generation/coordinator/types";
 import type { StudioIntegrationManager } from "../studio/integration/StudioIntegrationManager";
 import type { StudioProjectSession } from "../studio/integration/types";
 import type { ProjectRuntime } from "./projects";
 
 type StudioConnectionStatus =
-  "connected" | "disconnected" | "syncing" | "error";
+  | "connected"
+  | "disconnected"
+  | "syncing"
+  | "error";
 
 interface StudioConnectionInfo {
   status: StudioConnectionStatus;
@@ -20,6 +22,8 @@ interface StudioConnectionInfo {
 interface StudioSyncResult extends StudioConnectionInfo {
   itemsSynced: number;
   durationMs: number;
+  executionId?: string;
+  commandId?: string;
 }
 
 export function createGameGenerationRouter(
@@ -61,66 +65,23 @@ export function createGameGenerationRouter(
     );
   };
 
-  const buildStudioSyncPackage = (
-    projectId: string,
-    blueprint: unknown,
-  ): GenerationPackage => {
-    const now = Date.now();
-    return {
-      packageId: `studio-pkg-${now}`,
-      sessionId: `studio-sync-${now}`,
-      projectId,
-      blueprint,
-      executionPlan: { source: "studio-sync-fallback" },
-      scripts: [
-        {
-          id: `script-${now}`,
-          type: "lua-script",
-          path: "src/Main.server.lua",
-          content:
-            "-- Roblox AI Studio bridge sync placeholder script\nreturn {}",
-          size: 1024,
-          generatedBy: "studio-sync-fallback",
-          timestamp: now,
-        },
-      ],
-      configs: [
-        {
-          id: `config-${now}`,
-          type: "config",
-          path: "src/Config.lua",
-          content: "return {}",
-          size: 128,
-          generatedBy: "studio-sync-fallback",
-          timestamp: now,
-        },
-      ],
-      metadata: {
-        generationId: `studio-sync-${now}`,
-        blueprintVersion: "1.0.0",
-        plannerVersion: "1.0.0",
-        agentVersions: {},
-        artifactVersions: {
-          ["src/Main.server.lua"]: "1.0.0",
-          ["src/Config.lua"]: "1.0.0",
-        },
-        executionTimestamps: {},
-        validationResults: { integrity: true },
-      },
-      validationReport: {
-        valid: true,
-        stagesExecuted: 1,
-        stagesExpected: 1,
-        artifactsGenerated: 2,
-        missingDependencies: [],
-        duplicatedOutputs: [],
-        unresolvedReferences: [],
-        structureValid: true,
-      },
-      totalArtifacts: 2,
-      totalSizeBytes: 1152,
-      generatedAt: now,
-    };
+  const findLatestStudioExecution = async (projectId: string) => {
+    const blueprint = await gameService.getBlueprintByProject(projectId);
+    if (!blueprint) return null;
+    const executions = await gameService.getExecutions(blueprint.id);
+    return (
+      executions
+        .filter(
+          (execution) =>
+            execution.status === "completed" &&
+            studioManager.getArtifactCount(execution.id) > 0,
+        )
+        .sort(
+          (left, right) =>
+            (right.completed_at?.getTime() ?? right.started_at.getTime()) -
+            (left.completed_at?.getTime() ?? left.started_at.getTime()),
+        )[0] ?? null
+    );
   };
 
   // Start generation
@@ -324,6 +285,9 @@ export function createGameGenerationRouter(
       if (!access.requireProjectAccess(req, res, projectId)) return;
       const studioId = req.query.studioId as string | undefined;
       const session = findStudioSession(projectId, studioId);
+      const pendingChanges = session
+        ? studioManager.getPendingCommandCount(session.studioId)
+        : 0;
 
       const response: StudioConnectionInfo = {
         status: mapStudioStatus(session),
@@ -331,12 +295,14 @@ export function createGameGenerationRouter(
         lastSyncAt: session?.lastSyncAt
           ? new Date(session.lastSyncAt).toISOString()
           : undefined,
-        bridgeVersion: "1.0.0",
-        pendingChanges: session?.syncCount ?? 0,
+        bridgeVersion: studioManager.protocolVersion,
+        pendingChanges,
         message: session
           ? session.status === "failed"
             ? "Studio session has reported a sync failure."
-            : "Roblox Studio is connected to the project."
+            : pendingChanges > 0
+              ? "Generated project export is queued for Roblox Studio."
+              : "Roblox Studio is connected to the project."
           : "No connected Studio instance found for this project.",
       };
 
@@ -348,7 +314,7 @@ export function createGameGenerationRouter(
     }
   });
 
-  // Synchronize the latest project package to Roblox Studio
+  // Queue the latest canonical execution artifacts for Roblox Studio
   router.post("/:projectId/studio/sync", async (req, res) => {
     try {
       const { projectId } = req.params;
@@ -364,29 +330,36 @@ export function createGameGenerationRouter(
         return;
       }
 
-      const blueprint = await gameService.getBlueprintByProject(projectId);
-      if (!blueprint) {
-        res.status(404).json({
+      const execution = await findLatestStudioExecution(projectId);
+      if (!execution) {
+        res.status(409).json({
           success: false,
-          error: "No blueprint available to synchronize.",
+          error:
+            "No completed generation with Studio artifacts is available. Generate the project first.",
         });
         return;
       }
 
-      const pkg = buildStudioSyncPackage(projectId, blueprint);
-      const syncResult = studioManager.synchronize(session.studioId, pkg);
+      const syncResult = studioManager.synchronizeExecution(
+        session.studioId,
+        projectId,
+        execution.id,
+      );
+      const refreshedSession = studioManager.getSession(session.studioId);
       const response: StudioSyncResult = {
-        status: mapStudioStatus(session),
+        status: mapStudioStatus(refreshedSession),
         studioId: session.studioId,
-        lastSyncAt: session.lastSyncAt
-          ? new Date(session.lastSyncAt).toISOString()
+        lastSyncAt: refreshedSession?.lastSyncAt
+          ? new Date(refreshedSession.lastSyncAt).toISOString()
           : undefined,
-        bridgeVersion: "1.0.0",
-        pendingChanges: session.syncCount,
+        bridgeVersion: studioManager.protocolVersion,
+        pendingChanges: studioManager.getPendingCommandCount(session.studioId),
         itemsSynced: syncResult.itemsSynced,
         durationMs: syncResult.durationMs,
+        executionId: execution.id,
+        commandId: syncResult.payloadId || undefined,
         message: syncResult.success
-          ? "Synchronization completed successfully."
+          ? "Generated project export queued for Roblox Studio."
           : syncResult.error,
       };
 
