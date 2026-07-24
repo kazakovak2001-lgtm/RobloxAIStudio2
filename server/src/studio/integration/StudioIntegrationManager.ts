@@ -7,6 +7,7 @@
  */
 
 import type { GenerationPackage } from "../../generation/coordinator/types";
+import type { BridgeSession } from "../v2/StudioSession";
 import { getSharedStudioRuntime } from "../v2/StudioRuntime";
 import { StudioImportValidator } from "./StudioImportValidator";
 import { StudioSyncMetrics } from "./StudioSyncMetrics";
@@ -182,7 +183,7 @@ export class StudioIntegrationManager {
     return this.runtime.sessions
       .getActiveSessions()
       .filter(
-        (session): session is typeof session & { projectId: string } =>
+        (session): session is BridgeSession & { projectId: string } =>
           typeof session.projectId === "string",
       )
       .map((session) => this.mapSession(session));
@@ -200,6 +201,10 @@ export class StudioIntegrationManager {
     return this.runtime.bridge.getPendingCommandCount(studioId);
   }
 
+  getArtifactCount(executionId: string): number {
+    return this.runtime.artifacts.getByPipeline(executionId).length;
+  }
+
   get protocolVersion(): string {
     return this.runtime.protocolVersion;
   }
@@ -211,14 +216,12 @@ export class StudioIntegrationManager {
   }
 
   off(listener: StudioEventListener): void {
-    this.listeners = this.listeners.filter((listener) => listener !== listener);
+    this.listeners = this.listeners.filter(
+      (registered) => registered !== listener,
+    );
   }
 
-  private mapSession(
-    session: ReturnType<typeof this.runtime.sessions.getByClient> extends infer T
-      ? Exclude<T, null>
-      : never,
-  ): StudioProjectSession {
+  private mapSession(session: BridgeSession): StudioProjectSession {
     const pending = this.runtime.bridge.getPendingCommandCount(session.clientId);
     return {
       sessionId: session.sessionId,
