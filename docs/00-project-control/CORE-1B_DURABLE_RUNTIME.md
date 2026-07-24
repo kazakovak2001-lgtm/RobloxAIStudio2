@@ -30,13 +30,13 @@ CORE-1b therefore adds no second persistence framework, no new frontend adapter,
 
 ## Collections
 
-| Collection | Record type | Primary key |
-| --- | --- | --- |
-| `game_blueprints` | `GameBlueprint` | blueprint ID |
-| `blueprint_versions` | `BlueprintVersion` | version record ID |
-| `generation_executions` | `GenerationExecution` | execution ID |
-| `chat_conversations` | `Conversation` | conversation ID |
-| `chat_messages` | `ConversationMessage` | message ID |
+| Collection              | Record type           | Primary key       |
+| ----------------------- | --------------------- | ----------------- |
+| `game_blueprints`       | `GameBlueprint`       | blueprint ID      |
+| `blueprint_versions`    | `BlueprintVersion`    | version record ID |
+| `generation_executions` | `GenerationExecution` | execution ID      |
+| `chat_conversations`    | `Conversation`        | conversation ID   |
+| `chat_messages`         | `ConversationMessage` | message ID        |
 
 All collections use the existing `kv_store` write-through mechanism. No parallel database schema or ORM was introduced.
 
