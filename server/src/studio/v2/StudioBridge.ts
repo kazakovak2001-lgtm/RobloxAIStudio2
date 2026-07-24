@@ -18,9 +18,13 @@ export class StudioBridge {
   /**
    * Register a new Studio client connection.
    */
-  connect(studioVersion: string, projectId?: string): StudioClient {
+  connect(
+    studioVersion: string,
+    projectId?: string,
+    requestedClientId?: string,
+  ): StudioClient {
     const client: StudioClient = {
-      clientId: createClientId(),
+      clientId: requestedClientId ?? createClientId(),
       studioVersion,
       projectId,
       connectedAt: Date.now(),
