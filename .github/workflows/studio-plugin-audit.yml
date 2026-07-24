@@ -3,6 +3,7 @@ name: Studio Plugin Source Audit
 on:
   push:
     branches: [studio-1d-real-plugin-acceptance]
+  pull_request:
 
 permissions:
   contents: read
