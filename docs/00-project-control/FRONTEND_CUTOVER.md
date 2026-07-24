@@ -68,13 +68,13 @@ The embedded `src/` frontend may be removed only when all conditions are true:
 
 ## CI-BASELINE-1 Verification
 
-**Status**: Ready for review.
+**Status**: Merged and verified.
 
 The backend cleanup removes 9,386 tracked generated `node_modules/` files while retaining the existing ignore rule. It also synchronizes `package-lock.json` with `package.json`, standardizes local, CI, and Docker runtime on Node.js 22, and keeps security validation strict for real credentials while allowing low-confidence example strings only in non-production documentation and test fixtures.
 
 Verified on a clean Node.js 22 / npm 10 install:
 
 - `npm ci`
-- `npm run ci` — 61 test files, 706 tests, architecture, boundary, lint, formatting, and repository validation all pass
+- `npm run ci` — 61 test files, 706 tests, architecture, boundary, lint, formatting, and repository validation all passed before merge; the first CORE-1a validation now passes 62 test files / 709 tests
 
 This remediation remains an isolated CI baseline review. It does not change product behavior, API contracts, or legacy frontend removal gates.

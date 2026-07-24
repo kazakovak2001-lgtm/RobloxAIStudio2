@@ -17,13 +17,36 @@ export function createStorageProvider(): StorageProvider {
 
   switch (providerType) {
     case "postgres":
+      if (!process.env.DATABASE_URL) {
+        throw new Error(
+          "STORAGE_PROVIDER=postgres requires DATABASE_URL; refusing cache-only production storage.",
+        );
+      }
       console.log("[Storage] Using PostgreSQL provider");
-      return new PostgresStorageProvider();
+      return new PostgresStorageProvider({ strict: true });
     case "inmemory":
     default:
       console.log("[Storage] Using InMemory provider");
       return new InMemoryStorageProvider();
   }
+}
+
+export async function initializeStorageProvider(
+  provider: StorageProvider,
+): Promise<void> {
+  await provider.ready?.();
+}
+
+export async function flushStorageProvider(
+  provider: StorageProvider,
+): Promise<void> {
+  await provider.flush?.();
+}
+
+export async function closeStorageProvider(
+  provider: StorageProvider,
+): Promise<void> {
+  await provider.close?.();
 }
 
 export function getStorageType(): StorageProviderType {

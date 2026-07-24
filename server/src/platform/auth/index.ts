@@ -1,5 +1,5 @@
 export { AuthService } from "./AuthService";
-export { authService } from "./authServiceInstance";
+export { authService, configureAuthService } from "./authServiceInstance";
 export {
   ROLE_PERMISSIONS,
   type UserRole,

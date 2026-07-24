@@ -6,9 +6,12 @@ import { Router } from "express";
 import { randomUUID } from "crypto";
 import { PipelineEngine } from "../pipeline/v2/PipelineEngine";
 import { AgentRegistry } from "../agents/core/AgentRegistry";
-import { generationHistory } from "./projects";
+import type { GenerationHistoryRepository } from "../projects/repository/generationHistory.repository";
 
-export function createConceptRouter(agentRegistry: AgentRegistry): Router {
+export function createConceptRouter(
+  agentRegistry: AgentRegistry,
+  generationHistory: GenerationHistoryRepository,
+): Router {
   const router = Router();
   const pipelineEngine = new PipelineEngine();
 

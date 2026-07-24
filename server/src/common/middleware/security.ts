@@ -7,12 +7,23 @@ import rateLimit from "express-rate-limit";
 import helmet from "helmet";
 import { authService } from "../../platform/auth/authServiceInstance";
 import { ApiKeyStore } from "../../platform/security/ApiKeyStore";
-import { createStorageProvider } from "../../platform/storage/StorageFactory";
+import {
+  InMemoryStorageProvider,
+  type StorageProvider,
+} from "../../platform/storage/StorageProvider";
 
-const apiKeyStore = new ApiKeyStore(createStorageProvider());
-apiKeyStore.seedFromEnvironment();
+let apiKeyStore: ApiKeyStore | null = null;
+
+/** Use the same configured storage provider as the rest of the API process. */
+export function configureApiKeyStore(storage: StorageProvider): ApiKeyStore {
+  apiKeyStore = new ApiKeyStore(storage);
+  return apiKeyStore;
+}
 
 export function getApiKeyStore(): ApiKeyStore {
+  // Keeps isolated middleware tests dependency-free. The server bootstrap always
+  // configures a shared provider before it starts accepting requests.
+  apiKeyStore ??= new ApiKeyStore(new InMemoryStorageProvider());
   return apiKeyStore;
 }
 
@@ -167,7 +178,7 @@ export function authMiddleware(
     // Cookie token invalid — fall through to 401
   }
 
-  if (apiKey && apiKeyStore.validate(apiKey)) {
+  if (apiKey && getApiKeyStore().validate(apiKey)) {
     // Registered API key authentication (Studio plugin, CI/CD)
     next();
     return;

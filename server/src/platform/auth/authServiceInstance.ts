@@ -7,5 +7,15 @@
  */
 
 import { AuthService } from "./AuthService";
+import {
+  InMemoryStorageProvider,
+  type StorageProvider,
+} from "../storage/StorageProvider";
 
-export const authService = new AuthService();
+export let authService = new AuthService(new InMemoryStorageProvider());
+
+/** Configure the process-wide authentication boundary with the app storage. */
+export function configureAuthService(storage: StorageProvider): AuthService {
+  authService = new AuthService(storage);
+  return authService;
+}

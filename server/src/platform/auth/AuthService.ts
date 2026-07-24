@@ -5,6 +5,10 @@
 
 import { randomUUID, createHash } from "crypto";
 import bcrypt from "bcryptjs";
+import {
+  InMemoryStorageProvider,
+  type StorageProvider,
+} from "../storage/StorageProvider";
 import type {
   AuthSession,
   AuthCredentials,
@@ -17,11 +21,18 @@ import { ROLE_PERMISSIONS } from "./AuthTypes";
 const TOKEN_EXPIRY_MS = 24 * 60 * 60 * 1000; // 24h
 const REFRESH_EXPIRY_MS = 7 * 24 * 60 * 60 * 1000; // 7d
 const BCRYPT_COST_FACTOR = 12;
+const CREDENTIALS_COLLECTION = "auth_credentials";
+const SESSIONS_COLLECTION = "auth_sessions";
+const ROLES_COLLECTION = "auth_roles";
+
+interface StoredCredentials extends AuthCredentials {
+  userId: string;
+}
 
 export class AuthService {
-  private credentials: Map<string, AuthCredentials> = new Map(); // email → creds
-  private sessions: Map<string, AuthSession> = new Map(); // token → session
-  private userRoles: Map<string, UserRole> = new Map(); // userId → role
+  constructor(
+    private readonly storage: StorageProvider = new InMemoryStorageProvider(),
+  ) {}
 
   register(
     email: string,
@@ -29,16 +40,39 @@ export class AuthService {
     userId: string,
     role: UserRole = "creator",
   ): boolean {
-    if (this.credentials.has(email)) return false;
+    const normalizedEmail = this.normalizeEmail(email);
+    if (
+      this.storage.get<StoredCredentials>(
+        CREDENTIALS_COLLECTION,
+        normalizedEmail,
+      )
+    ) {
+      return false;
+    }
     const passwordHash = bcrypt.hashSync(password, BCRYPT_COST_FACTOR);
-    this.credentials.set(email, { email, passwordHash });
-    this.userRoles.set(userId, role);
+    this.storage.set<StoredCredentials>(
+      CREDENTIALS_COLLECTION,
+      normalizedEmail,
+      {
+        email: normalizedEmail,
+        passwordHash,
+        userId,
+      },
+    );
+    this.storage.set<UserRole>(ROLES_COLLECTION, userId, role);
     return true;
   }
 
   login(email: string, password: string, userId: string): LoginResult {
-    const creds = this.credentials.get(email);
+    const normalizedEmail = this.normalizeEmail(email);
+    const creds = this.storage.get<StoredCredentials>(
+      CREDENTIALS_COLLECTION,
+      normalizedEmail,
+    );
     if (!creds) {
+      return { success: false, error: "Invalid credentials" };
+    }
+    if (creds.userId !== userId) {
       return { success: false, error: "Invalid credentials" };
     }
 
@@ -52,7 +86,14 @@ export class AuthService {
       passwordValid = sha256Hash === creds.passwordHash;
       if (passwordValid) {
         // Transparent upgrade: re-hash with bcrypt
-        creds.passwordHash = bcrypt.hashSync(password, BCRYPT_COST_FACTOR);
+        this.storage.set<StoredCredentials>(
+          CREDENTIALS_COLLECTION,
+          normalizedEmail,
+          {
+            ...creds,
+            passwordHash: bcrypt.hashSync(password, BCRYPT_COST_FACTOR),
+          },
+        );
       }
     } else {
       // Compare using bcrypt for modern hashes
@@ -63,7 +104,8 @@ export class AuthService {
       return { success: false, error: "Invalid credentials" };
     }
 
-    const role = this.userRoles.get(userId) ?? "creator";
+    const role =
+      this.storage.get<UserRole>(ROLES_COLLECTION, userId) ?? "creator";
     const session = this.createSession(userId, role);
     return {
       success: true,
@@ -75,28 +117,29 @@ export class AuthService {
   }
 
   logout(token: string): boolean {
-    return this.sessions.delete(token);
+    return this.storage.delete(SESSIONS_COLLECTION, token);
   }
 
   validateToken(token: string): AuthSession | null {
-    const session = this.sessions.get(token);
+    const session = this.storage.get<AuthSession>(SESSIONS_COLLECTION, token);
     if (!session) return null;
     if (Date.now() > session.expiresAt) {
-      this.sessions.delete(token);
+      this.storage.delete(SESSIONS_COLLECTION, token);
       return null;
     }
-    session.lastActivity = Date.now();
-    return session;
+    const updated = { ...session, lastActivity: Date.now() };
+    this.storage.set(SESSIONS_COLLECTION, token, updated);
+    return updated;
   }
 
   refreshSession(refreshToken: string): LoginResult {
-    for (const session of this.sessions.values()) {
+    for (const session of this.storage.list<AuthSession>(SESSIONS_COLLECTION)) {
       if (
         session.refreshToken === refreshToken &&
         Date.now() < session.expiresAt + REFRESH_EXPIRY_MS
       ) {
         const newSession = this.createSession(session.userId, session.role);
-        this.sessions.delete(session.token);
+        this.storage.delete(SESSIONS_COLLECTION, session.token);
         return {
           success: true,
           token: newSession.token,
@@ -110,12 +153,13 @@ export class AuthService {
   }
 
   hasPermission(userId: string, permission: Permission): boolean {
-    const role = this.userRoles.get(userId) ?? "guest";
+    const role =
+      this.storage.get<UserRole>(ROLES_COLLECTION, userId) ?? "guest";
     return ROLE_PERMISSIONS[role].includes(permission);
   }
 
   setRole(userId: string, role: UserRole): void {
-    this.userRoles.set(userId, role);
+    this.storage.set<UserRole>(ROLES_COLLECTION, userId, role);
   }
 
   private createSession(userId: string, role: UserRole): AuthSession {
@@ -129,8 +173,12 @@ export class AuthService {
       expiresAt: Date.now() + TOKEN_EXPIRY_MS,
       lastActivity: Date.now(),
     };
-    this.sessions.set(session.token, session);
+    this.storage.set<AuthSession>(SESSIONS_COLLECTION, session.token, session);
     return session;
+  }
+
+  private normalizeEmail(email: string): string {
+    return email.trim().toLowerCase();
   }
 
   /**

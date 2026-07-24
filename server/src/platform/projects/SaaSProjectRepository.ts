@@ -26,6 +26,10 @@ export interface SaaSProject {
   updatedAt: number;
 }
 
+export type SaaSProjectUpdate = Partial<
+  Omit<SaaSProject, "id" | "ownerId" | "createdAt" | "updatedAt">
+>;
+
 export class SaaSProjectRepository {
   private storage: StorageProvider;
   private collection = "projects";
@@ -69,7 +73,7 @@ export class SaaSProjectRepository {
     );
   }
 
-  update(projectId: string, updates: Partial<SaaSProject>): SaaSProject | null {
+  update(projectId: string, updates: SaaSProjectUpdate): SaaSProject | null {
     const existing = this.get(projectId);
     if (!existing) return null;
     const updated = { ...existing, ...updates, updatedAt: Date.now() };

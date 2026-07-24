@@ -4,16 +4,18 @@ import {
   ChatValidationError,
   type ConversationRole,
 } from "../services/ChatPersistenceService";
-import { requireProjectAccess } from "./projects";
+import type { ProjectAccessControl } from "./projects";
 
 const chatPersistence = new ChatPersistenceService();
 
-export function createChatPersistenceRouter(): Router {
+export function createChatPersistenceRouter(
+  access: ProjectAccessControl,
+): Router {
   const router = Router();
 
   router.get("/:projectId/history", (req, res) => {
     try {
-      if (!requireProjectAccess(req, res, req.params.projectId)) return;
+      if (!access.requireProjectAccess(req, res, req.params.projectId)) return;
       const limit =
         typeof req.query.limit === "string"
           ? Number.parseInt(req.query.limit, 10)
@@ -36,7 +38,8 @@ export function createChatPersistenceRouter(): Router {
           .json({ success: false, error: "Conversation not found" });
         return;
       }
-      if (!requireProjectAccess(req, res, conversation.projectId)) return;
+      if (!access.requireProjectAccess(req, res, conversation.projectId))
+        return;
       res.json({ success: true, data: conversation });
     } catch (error) {
       handleChatError(error, res);
@@ -54,8 +57,9 @@ export function createChatPersistenceRouter(): Router {
             .json({ success: false, error: "Conversation not found" });
           return;
         }
-        if (!requireProjectAccess(req, res, conversation.projectId)) return;
-      } else if (!requireProjectAccess(req, res, projectId)) {
+        if (!access.requireProjectAccess(req, res, conversation.projectId))
+          return;
+      } else if (!access.requireProjectAccess(req, res, projectId)) {
         return;
       }
       const message = chatPersistence.createMessage({
@@ -80,7 +84,8 @@ export function createChatPersistenceRouter(): Router {
           .json({ success: false, error: "Conversation not found" });
         return;
       }
-      if (!requireProjectAccess(req, res, conversation.projectId)) return;
+      if (!access.requireProjectAccess(req, res, conversation.projectId))
+        return;
       const deleted = chatPersistence.deleteConversation(req.params.id);
       res.json({ success: true, data: { deleted } });
     } catch (error) {
