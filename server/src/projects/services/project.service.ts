@@ -1,4 +1,9 @@
-import type { IProjectRepository, Project, CreateProjectInput, ProjectQueryOptions } from "../repository/project.repository";
+import type {
+  IProjectRepository,
+  Project,
+  CreateProjectInput,
+  ProjectQueryOptions,
+} from "../repository/project.repository";
 
 export class ProjectService {
   constructor(private repository: IProjectRepository) {}

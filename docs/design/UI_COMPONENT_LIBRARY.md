@@ -1,4 +1,5 @@
 # UI COMPONENT LIBRARY
+
 **Generated**: 2026-07-13
 **Project**: Roblox AI Studio DevKit
 **Phase**: UX-2 - Component Library
@@ -10,6 +11,7 @@
 This document defines the reusable UI component library for the Roblox AI Studio Control Center. Components are organized by category and follow the design system defined in DESIGN_SYSTEM.md.
 
 **Component Status**: ⏸️ DOCUMENTED (Implementation Pending)
+
 - **Total Components**: 35
 - **Layout Components**: 5
 - **Data Components**: 5
@@ -27,6 +29,7 @@ This document defines the reusable UI component library for the Roblox AI Studio
 **Purpose**: Main application shell with sidebar, top bar, workspace, and status bar
 
 **Props**:
+
 ```typescript
 interface AppShellProps {
   children: React.ReactNode;
@@ -39,6 +42,7 @@ interface AppShellProps {
 ```
 
 **Features**:
+
 - Responsive sidebar with collapse toggle
 - Fixed top bar with navigation
 - Scrollable workspace area
@@ -46,6 +50,7 @@ interface AppShellProps {
 - Keyboard shortcut hints
 
 **Design Tokens**:
+
 - Sidebar width: 256px (expanded), 64px (collapsed)
 - Top bar height: 56px
 - Status bar height: 32px
@@ -59,6 +64,7 @@ interface AppShellProps {
 **Purpose**: Main navigation sidebar
 
 **Props**:
+
 ```typescript
 interface SidebarProps {
   collapsed?: boolean;
@@ -78,6 +84,7 @@ interface NavigationItem {
 ```
 
 **Features**:
+
 - Collapsible with animation
 - Active state indicator
 - Badge support
@@ -85,6 +92,7 @@ interface NavigationItem {
 - Hover effects
 
 **Design Tokens**:
+
 - Item height: 40px
 - Item padding: 12px
 - Active background: `brand-500/10`
@@ -97,6 +105,7 @@ interface NavigationItem {
 **Purpose**: Top navigation bar with breadcrumbs, actions, and user menu
 
 **Props**:
+
 ```typescript
 interface TopBarProps {
   breadcrumbs?: BreadcrumbItem[];
@@ -112,6 +121,7 @@ interface BreadcrumbItem {
 ```
 
 **Features**:
+
 - Breadcrumb navigation
 - Action buttons
 - User menu
@@ -119,6 +129,7 @@ interface BreadcrumbItem {
 - Notifications
 
 **Design Tokens**:
+
 - Height: 56px
 - Padding: 16px
 - Background: `slate-900/80` with backdrop blur
@@ -131,6 +142,7 @@ interface BreadcrumbItem {
 **Purpose**: Main content area with tabs and panels
 
 **Props**:
+
 ```typescript
 interface WorkspaceProps {
   tabs?: Tab[];
@@ -157,12 +169,14 @@ interface WorkspacePanel {
 ```
 
 **Features**:
+
 - Tab management
 - Resizable panels
 - Panel collapse
 - Drag and drop reordering
 
 **Design Tokens**:
+
 - Tab height: 40px
 - Panel min width: 200px
 - Panel min height: 150px
@@ -175,6 +189,7 @@ interface WorkspacePanel {
 **Purpose**: Status bar at bottom with system information
 
 **Props**:
+
 ```typescript
 interface StatusBarProps {
   left?: React.ReactNode;
@@ -184,6 +199,7 @@ interface StatusBarProps {
 ```
 
 **Features**:
+
 - Connection status
 - Branch information
 - Line/column position
@@ -191,6 +207,7 @@ interface StatusBarProps {
 - Language mode
 
 **Design Tokens**:
+
 - Height: 32px
 - Background: `slate-900`
 - Border: `border-t border-white/10`
@@ -205,6 +222,7 @@ interface StatusBarProps {
 **Purpose**: Container for content with optional hover effects
 
 **Props**:
+
 ```typescript
 interface CardProps {
   children: React.ReactNode;
@@ -217,11 +235,13 @@ interface CardProps {
 ```
 
 **Variants**:
+
 - Default: `border border-white/10 bg-slate-900/70 shadow-glow`
 - Elevated: `border border-white/10 bg-slate-900/70 shadow-2xl`
 - Flat: `border-0 bg-transparent`
 
 **Design Tokens**:
+
 - Border radius: `rounded-2xl`
 - Padding: `p-6`
 - Hover: `hover:-translate-y-1 hover:border-brand-400/40`
@@ -233,6 +253,7 @@ interface CardProps {
 **Purpose**: Data table with sorting, filtering, and pagination
 
 **Props**:
+
 ```typescript
 interface TableProps<T> {
   columns: Column<T>[];
@@ -254,6 +275,7 @@ interface Column<T> {
 ```
 
 **Features**:
+
 - Column sorting
 - Column filtering
 - Row selection
@@ -261,6 +283,7 @@ interface Column<T> {
 - Export
 
 **Design Tokens**:
+
 - Header background: `slate-800/50`
 - Row hover: `hover:bg-white/5`
 - Border: `border border-white/10`
@@ -272,6 +295,7 @@ interface Column<T> {
 **Purpose**: Timeline visualization for events or history
 
 **Props**:
+
 ```typescript
 interface TimelineProps {
   events: TimelineEvent[];
@@ -289,12 +313,14 @@ interface TimelineEvent {
 ```
 
 **Features**:
+
 - Vertical/horizontal orientation
 - Status indicators
 - Timestamp formatting
 - Expandable details
 
 **Design Tokens**:
+
 - Line color: `border-white/10`
 - Dot size: 12px
 - Spacing: `gap-4`
@@ -306,6 +332,7 @@ interface TimelineEvent {
 **Purpose**: Data visualization with charts
 
 **Props**:
+
 ```typescript
 interface GraphProps {
   type: "line" | "bar" | "area" | "pie";
@@ -322,6 +349,7 @@ interface GraphData {
 ```
 
 **Features**:
+
 - Multiple chart types
 - Responsive sizing
 - Tooltips
@@ -329,6 +357,7 @@ interface GraphData {
 - Export
 
 **Design Tokens**:
+
 - Line color: `brand-400`
 - Fill color: `brand-400/20`
 - Grid color: `white/5`
@@ -340,6 +369,7 @@ interface GraphData {
 **Purpose**: Hierarchical data display (file explorer, etc.)
 
 **Props**:
+
 ```typescript
 interface TreeViewProps {
   nodes: TreeNode[];
@@ -359,6 +389,7 @@ interface TreeNode {
 ```
 
 **Features**:
+
 - Expand/collapse
 - Selection
 - Drag and drop
@@ -366,6 +397,7 @@ interface TreeNode {
 - Search
 
 **Design Tokens**:
+
 - Indent: 20px per level
 - Item height: 32px
 - Hover: `hover:bg-white/5`
@@ -380,6 +412,7 @@ interface TreeNode {
 **Purpose**: Chat interface for AI interactions
 
 **Props**:
+
 ```typescript
 interface AIChatPanelProps {
   messages: ChatMessage[];
@@ -397,6 +430,7 @@ interface ChatMessage {
 ```
 
 **Features**:
+
 - Message bubbles
 - Typing indicator
 - Markdown rendering
@@ -405,6 +439,7 @@ interface ChatMessage {
 - Message actions
 
 **Design Tokens**:
+
 - User message: `bg-brand-500 text-white`
 - Assistant message: `bg-slate-800 text-slate-100`
 - System message: `bg-slate-900/50 text-slate-400`
@@ -417,6 +452,7 @@ interface ChatMessage {
 **Purpose**: Dedicated input for AI prompts
 
 **Props**:
+
 ```typescript
 interface PromptInputProps {
   value: string;
@@ -429,6 +465,7 @@ interface PromptInputProps {
 ```
 
 **Features**:
+
 - Multi-line input
 - Token counter
 - Auto-resize
@@ -437,6 +474,7 @@ interface PromptInputProps {
 - History navigation
 
 **Design Tokens**:
+
 - Background: `slate-900/70`
 - Border: `border border-white/10`
 - Focus: `focus:border-brand-400/50`
@@ -449,6 +487,7 @@ interface PromptInputProps {
 **Purpose**: Display AI agent information
 
 **Props**:
+
 ```typescript
 interface AgentCardProps {
   agent: Agent;
@@ -467,6 +506,7 @@ interface Agent {
 ```
 
 **Features**:
+
 - Status indicator
 - Version display
 - Configure button
@@ -474,6 +514,7 @@ interface Agent {
 - Hover effects
 
 **Design Tokens**:
+
 - Background: `bg-slate-900/70`
 - Border: `border border-white/10`
 - Status colors: success/warning/error
@@ -486,6 +527,7 @@ interface Agent {
 **Purpose**: Display code differences
 
 **Props**:
+
 ```typescript
 interface CodeDiffViewerProps {
   before: string;
@@ -497,6 +539,7 @@ interface CodeDiffViewerProps {
 ```
 
 **Features**:
+
 - Side-by-side view
 - Unified view
 - Line numbers
@@ -505,6 +548,7 @@ interface CodeDiffViewerProps {
 - Copy to clipboard
 
 **Design Tokens**:
+
 - Added line: `bg-success-500/10 text-success-400`
 - Removed line: `bg-error-500/10 text-error-400`
 - Changed line: `bg-warning-500/10 text-warning-400`
@@ -517,6 +561,7 @@ interface CodeDiffViewerProps {
 **Purpose**: Display AI generation history
 
 **Props**:
+
 ```typescript
 interface GenerationHistoryProps {
   generations: Generation[];
@@ -535,6 +580,7 @@ interface Generation {
 ```
 
 **Features**:
+
 - List view
 - Status indicators
 - Token usage
@@ -543,6 +589,7 @@ interface Generation {
 - View details
 
 **Design Tokens**:
+
 - Item height: 64px
 - Hover: `hover:bg-white/5`
 - Status colors: success/warning/error
@@ -557,6 +604,7 @@ interface Generation {
 **Purpose**: Display system status
 
 **Props**:
+
 ```typescript
 interface StatusIndicatorProps {
   status: "online" | "offline" | "warning" | "error";
@@ -566,12 +614,14 @@ interface StatusIndicatorProps {
 ```
 
 **Variants**:
+
 - Online: Green dot
 - Offline: Gray dot
 - Warning: Yellow dot
 - Error: Red dot
 
 **Design Tokens**:
+
 - Dot size: 8px (sm), 12px (md), 16px (lg)
 - Animation: `animate-pulse` for online
 - Colors: success-400, slate-400, warning-400, error-400
@@ -583,6 +633,7 @@ interface StatusIndicatorProps {
 **Purpose**: Display connection status with details
 
 **Props**:
+
 ```typescript
 interface ConnectionBadgeProps {
   connected: boolean;
@@ -593,6 +644,7 @@ interface ConnectionBadgeProps {
 ```
 
 **Features**:
+
 - Connection status
 - Latency display
 - Last heartbeat
@@ -600,6 +652,7 @@ interface ConnectionBadgeProps {
 - Hover details
 
 **Design Tokens**:
+
 - Connected: `bg-success-500/10 text-success-400 border-success-400/20`
 - Disconnected: `bg-slate-500/10 text-slate-400 border-slate-400/20`
 - Border radius: `rounded-full`
@@ -611,6 +664,7 @@ interface ConnectionBadgeProps {
 **Purpose**: Display synchronization progress
 
 **Props**:
+
 ```typescript
 interface SyncProgressProps {
   progress: number;
@@ -621,6 +675,7 @@ interface SyncProgressProps {
 ```
 
 **Features**:
+
 - Progress bar
 - Percentage display
 - Current operation
@@ -628,6 +683,7 @@ interface SyncProgressProps {
 - Estimated time
 
 **Design Tokens**:
+
 - Progress bar: `h-2 bg-slate-800 rounded-full`
 - Progress fill: `bg-gradient-to-r from-brand-500 to-cyan-400`
 - Text: `text-sm text-slate-400`
@@ -639,6 +695,7 @@ interface SyncProgressProps {
 **Purpose**: Display error with explanation and solution
 
 **Error Structure**:
+
 ```typescript
 interface ErrorPanelProps {
   error: {
@@ -656,6 +713,7 @@ interface ErrorPanelProps {
 ```
 
 **Features**:
+
 - Error title
 - Error message
 - Root cause
@@ -664,6 +722,7 @@ interface ErrorPanelProps {
 - Dismiss button
 
 **Design Tokens**:
+
 - Background: `bg-error-500/10 border-error-400/20`
 - Icon: `text-error-400`
 - Border radius: `rounded-2xl`
@@ -675,6 +734,7 @@ interface ErrorPanelProps {
 **Purpose**: Display notifications
 
 **Props**:
+
 ```typescript
 interface NotificationProps {
   type: "success" | "warning" | "error" | "info";
@@ -690,6 +750,7 @@ interface NotificationProps {
 ```
 
 **Features**:
+
 - Auto-dismiss
 - Manual dismiss
 - Action button
@@ -697,6 +758,7 @@ interface NotificationProps {
 - Animation
 
 **Design Tokens**:
+
 - Success: `bg-success-500/10 border-success-400/20`
 - Warning: `bg-warning-500/10 border-warning-400/20`
 - Error: `bg-error-500/10 border-error-400/20`
@@ -711,6 +773,7 @@ interface NotificationProps {
 **Purpose**: Display code with syntax highlighting
 
 **Props**:
+
 ```typescript
 interface CodeViewerProps {
   code: string;
@@ -721,6 +784,7 @@ interface CodeViewerProps {
 ```
 
 **Features**:
+
 - Syntax highlighting
 - Line numbers
 - Copy to clipboard
@@ -728,6 +792,7 @@ interface CodeViewerProps {
 - Word wrap toggle
 
 **Design Tokens**:
+
 - Background: `bg-slate-950`
 - Line numbers: `text-slate-600`
 - Border radius: `rounded-lg`
@@ -740,6 +805,7 @@ interface CodeViewerProps {
 **Purpose**: Terminal output display
 
 **Props**:
+
 ```typescript
 interface TerminalPanelProps {
   output: TerminalOutput[];
@@ -755,6 +821,7 @@ interface TerminalOutput {
 ```
 
 **Features**:
+
 - Color-coded output
 - Timestamp display
 - Clear button
@@ -762,6 +829,7 @@ interface TerminalOutput {
 - Copy to clipboard
 
 **Design Tokens**:
+
 - Background: `bg-slate-950`
 - Font: `font-mono text-sm`
 - Info: `text-slate-400`
@@ -776,6 +844,7 @@ interface TerminalOutput {
 **Purpose**: Display application logs
 
 **Props**:
+
 ```typescript
 interface LogViewerProps {
   logs: LogEntry[];
@@ -798,6 +867,7 @@ interface LogFilter {
 ```
 
 **Features**:
+
 - Log level filtering
 - Search
 - Expandable details
@@ -805,6 +875,7 @@ interface LogFilter {
 - Export
 
 **Design Tokens**:
+
 - Debug: `text-slate-500`
 - Info: `text-slate-400`
 - Warn: `text-warning-400`
@@ -817,6 +888,7 @@ interface LogFilter {
 ### 6.1 Button
 
 **Enhancements Needed**:
+
 - Add loading state
 - Add icon-only variant
 - Add danger variant
@@ -828,6 +900,7 @@ interface LogFilter {
 ### 6.2 Card
 
 **Enhancements Needed**:
+
 - Add variant prop (default, elevated, flat)
 - Add clickable prop
 - Add size prop
@@ -838,6 +911,7 @@ interface LogFilter {
 ### 6.3 Loader
 
 **Enhancements Needed**:
+
 - Add skeleton variant
 - Add progress variant
 - Add dots variant
@@ -848,6 +922,7 @@ interface LogFilter {
 ### 6.4 Modal
 
 **Enhancements Needed**:
+
 - Add size prop (sm, md, lg, xl)
 - Add backdrop blur
 - Add animation variants
@@ -858,6 +933,7 @@ interface LogFilter {
 ### 6.5 Toast
 
 **Enhancements Needed**:
+
 - Add position prop (top, bottom, left, right)
 - Add stack support
 - Add progress bar
@@ -870,6 +946,7 @@ interface LogFilter {
 ### 7.1 High Priority
 
 **Layout Components**:
+
 1. AppShell
 2. Sidebar
 3. TopBar
@@ -877,11 +954,13 @@ interface LogFilter {
 5. StatusBar
 
 **AI Components**:
+
 1. AIChatPanel
 2. PromptInput
 3. AgentCard
 
 **System Components**:
+
 1. StatusIndicator
 2. ConnectionBadge
 3. SyncProgress
@@ -890,11 +969,13 @@ interface LogFilter {
 ### 7.2 Medium Priority
 
 **Data Components**:
+
 1. Table
 2. TreeView
 3. Timeline
 
 **Developer Components**:
+
 1. CodeViewer
 2. TerminalPanel
 3. LogViewer
@@ -902,9 +983,11 @@ interface LogFilter {
 ### 7.3 Low Priority
 
 **Data Components**:
+
 1. Graph (use library like Recharts)
 
 **AI Components**:
+
 1. CodeDiffViewer (use library like react-diff-viewer)
 2. GenerationHistory
 
@@ -927,6 +1010,7 @@ interface LogFilter {
 ### 8.3 Next Steps
 
 **Phase UX-3**: Redesign Main Screens
+
 - Apply new components to screens
 - Ensure consistency
 - Validate accessibility

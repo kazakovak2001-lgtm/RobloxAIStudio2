@@ -13,7 +13,12 @@ export type DropdownProps = {
   className?: string;
 };
 
-export function Dropdown({ trigger, items, align = "left", className = "" }: DropdownProps) {
+export function Dropdown({
+  trigger,
+  items,
+  align = "left",
+  className = "",
+}: DropdownProps) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 

@@ -23,36 +23,40 @@ This report provides a detailed, atomic execution plan for upgrading all remaini
 
 ## Task Overview
 
-| Task ID | Description | Files Affected | Effort | Risk |
-|---------|-------------|----------------|--------|------|
-| DS-1 | Audit workspace components for design violations | src/features/workspace/* | 4 hours | LOW |
-| DS-2 | Fix color violations in workspace components | src/features/workspace/* | 8 hours | MEDIUM |
-| DS-3 | Fix spacing violations in workspace components | src/features/workspace/* | 8 hours | MEDIUM |
-| DS-4 | Fix typography violations in workspace components | src/features/workspace/* | 6 hours | MEDIUM |
-| DS-5 | Fix radius violations in workspace components | src/features/workspace/* | 4 hours | LOW |
-| DS-6 | Fix shadow violations in workspace components | src/features/workspace/* | 4 hours | LOW |
-| DS-7 | Fix animation violations in workspace components | src/features/workspace/* | 4 hours | LOW |
-| DS-8 | Add responsive classes to workspace components | src/features/workspace/* | 12 hours | MEDIUM |
-| DS-9 | Add ARIA labels to workspace components | src/features/workspace/* | 8 hours | MEDIUM |
-| DS-10 | Add keyboard navigation to workspace components | src/features/workspace/* | 8 hours | MEDIUM |
-| DS-11 | Run design system compliance audit | All components | 4 hours | LOW |
-| DS-12: Final validation and cleanup | Multiple | 2 hours | LOW |
+| Task ID                             | Description                                       | Files Affected           | Effort   | Risk   |
+| ----------------------------------- | ------------------------------------------------- | ------------------------ | -------- | ------ |
+| DS-1                                | Audit workspace components for design violations  | src/features/workspace/* | 4 hours  | LOW    |
+| DS-2                                | Fix color violations in workspace components      | src/features/workspace/* | 8 hours  | MEDIUM |
+| DS-3                                | Fix spacing violations in workspace components    | src/features/workspace/* | 8 hours  | MEDIUM |
+| DS-4                                | Fix typography violations in workspace components | src/features/workspace/* | 6 hours  | MEDIUM |
+| DS-5                                | Fix radius violations in workspace components     | src/features/workspace/* | 4 hours  | LOW    |
+| DS-6                                | Fix shadow violations in workspace components     | src/features/workspace/* | 4 hours  | LOW    |
+| DS-7                                | Fix animation violations in workspace components  | src/features/workspace/* | 4 hours  | LOW    |
+| DS-8                                | Add responsive classes to workspace components    | src/features/workspace/* | 12 hours | MEDIUM |
+| DS-9                                | Add ARIA labels to workspace components           | src/features/workspace/* | 8 hours  | MEDIUM |
+| DS-10                               | Add keyboard navigation to workspace components   | src/features/workspace/* | 8 hours  | MEDIUM |
+| DS-11                               | Run design system compliance audit                | All components           | 4 hours  | LOW    |
+| DS-12: Final validation and cleanup | Multiple                                          | 2 hours                  | LOW      |
 
 ---
 
 ## Task DS-1: Audit Workspace Components for Design Violations
 
 ### Task Description
+
 Audit all workspace components to identify design system violations.
 
 ### Exact Files Affected
+
 - src/features/workspace/components/* (all workspace components)
 
 ### Dependency Analysis
+
 **Incoming Dependencies**: None
 **Outgoing Dependencies**: None (audit only)
 
 ### Implementation Order
+
 1. Process each workspace component
 2. Check for color violations (custom colors vs design tokens)
 3. Check for spacing violations (arbitrary spacing vs 4px base unit)
@@ -65,15 +69,19 @@ Audit all workspace components to identify design system violations.
 10. Document all violations
 
 ### Risk Assessment
+
 **Risk Level**: LOW
+
 - Audit only
 - No code changes
 - Documentation
 
 ### Rollback Strategy
+
 N/A (audit only)
 
 ### Validation Checklist
+
 - [ ] All workspace components audited
 - [ ] Color violations documented
 - [ ] Spacing violations documented
@@ -85,9 +93,11 @@ N/A (audit only)
 - [ ] Accessibility violations documented
 
 ### Estimated Effort
+
 4 hours
 
 ### Expected Repository State After Completion
+
 - Design violations documented
 - Build stable
 
@@ -96,16 +106,20 @@ N/A (audit only)
 ## Task DS-2: Fix Color Violations in Workspace Components
 
 ### Task Description
+
 Fix color violations in workspace components to use design tokens.
 
 ### Exact Files Affected
+
 - src/features/workspace/components/* (components with color violations)
 
 ### Dependency Analysis
+
 **Incoming Dependencies**: DS-1 (audit complete)
 **Outgoing Dependencies**: None
 
 ### Implementation Order
+
 1. Process each component with color violations
 2. Replace custom colors with design tokens:
    - Custom blue → brand-500
@@ -120,6 +134,7 @@ Fix color violations in workspace components to use design tokens.
 7. Validate build
 
 ### Color Token Mapping
+
 ```typescript
 // Custom colors → Design tokens
 custom-blue → brand-500
@@ -135,18 +150,22 @@ custom-gray-300 → slate-300
 ```
 
 ### Risk Assessment
+
 **Risk Level**: MEDIUM
+
 - Affects visual appearance
 - Must match design system
 - Visual testing required
 
 ### Rollback Strategy
+
 ```bash
 # Rollback command
 git checkout HEAD -- src/features/workspace/components/
 ```
 
 ### Validation Checklist
+
 - [ ] Color violations fixed
 - [ ] All colors use design tokens
 - [ ] No custom colors remain
@@ -157,9 +176,11 @@ git checkout HEAD -- src/features/workspace/components/
 - [ ] Visual appearance correct
 
 ### Estimated Effort
+
 8 hours
 
 ### Expected Repository State After Completion
+
 - Color violations fixed
 - All colors use design tokens
 - Build stable
@@ -169,16 +190,20 @@ git checkout HEAD -- src/features/workspace/components/
 ## Task DS-3: Fix Spacing Violations in Workspace Components
 
 ### Task Description
+
 Fix spacing violations in workspace components to use 4px base unit.
 
 ### Exact Files Affected
+
 - src/features/workspace/components/* (components with spacing violations)
 
 ### Dependency Analysis
+
 **Incoming Dependencies**: DS-1 (audit complete)
 **Outgoing Dependencies**: None
 
 ### Implementation Order
+
 1. Process each component with spacing violations
 2. Replace arbitrary spacing with 4px base unit:
    - Custom padding → p-4, p-6, p-8, etc.
@@ -189,6 +214,7 @@ Fix spacing violations in workspace components to use 4px base unit.
 5. Validate build
 
 ### Spacing Token Mapping
+
 ```typescript
 // Arbitrary spacing → 4px base unit
 padding: 8px → p-2
@@ -202,18 +228,22 @@ padding: 48px → p-12
 ```
 
 ### Risk Assessment
+
 **Risk Level**: MEDIUM
+
 - Affects layout
 - Must match design system
 - Visual testing required
 
 ### Rollback Strategy
+
 ```bash
 # Rollback command
 git checkout HEAD -- src/features/workspace/components/
 ```
 
 ### Validation Checklist
+
 - [ ] Spacing violations fixed
 - [ ] All spacing uses 4px base unit
 - [ ] No arbitrary spacing remains
@@ -224,9 +254,11 @@ git checkout HEAD -- src/features/workspace/components/
 - [ ] Layout correct
 
 ### Estimated Effort
+
 8 hours
 
 ### Expected Repository State After Completion
+
 - Spacing violations fixed
 - All spacing uses 4px base unit
 - Build stable
@@ -236,16 +268,20 @@ git checkout HEAD -- src/features/workspace/components/
 ## Task DS-4: Fix Typography Violations in Workspace Components
 
 ### Task Description
+
 Fix typography violations in workspace components to use design tokens.
 
 ### Exact Files Affected
+
 - src/features/workspace/components/* (components with typography violations)
 
 ### Dependency Analysis
+
 **Incoming Dependencies**: DS-1 (audit complete)
 **Outgoing Dependencies**: None
 
 ### Implementation Order
+
 1. Process each component with typography violations
 2. Replace custom fonts with design tokens:
    - Custom font → font-sans (Inter)
@@ -258,6 +294,7 @@ Fix typography violations in workspace components to use design tokens.
 6. Validate build
 
 ### Typography Token Mapping
+
 ```typescript
 // Custom typography → Design tokens
 font-family: Arial → font-sans
@@ -275,18 +312,22 @@ font-weight: 700 → font-bold
 ```
 
 ### Risk Assessment
+
 **Risk Level**: MEDIUM
+
 - Affects typography
 - Must match design system
 - Visual testing required
 
 ### Rollback Strategy
+
 ```bash
 # Rollback command
 git checkout HEAD -- src/features/workspace/components/
 ```
 
 ### Validation Checklist
+
 - [ ] Typography violations fixed
 - [ ] All fonts use design tokens
 - [ ] All font sizes use design tokens
@@ -299,9 +340,11 @@ git checkout HEAD -- src/features/workspace/components/
 - [ ] Typography correct
 
 ### Estimated Effort
+
 6 hours
 
 ### Expected Repository State After Completion
+
 - Typography violations fixed
 - All typography uses design tokens
 - Build stable
@@ -311,16 +354,20 @@ git checkout HEAD -- src/features/workspace/components/
 ## Task DS-5: Fix Radius Violations in Workspace Components
 
 ### Task Description
+
 Fix radius violations in workspace components to use design tokens.
 
 ### Exact Files Affected
+
 - src/features/workspace/components/* (components with radius violations)
 
 ### Dependency Analysis
+
 **Incoming Dependencies**: DS-1 (audit complete)
 **Outgoing Dependencies**: None
 
 ### Implementation Order
+
 1. Process each component with radius violations
 2. Replace custom radius with design tokens:
    - Custom radius → rounded-sm, rounded-md, rounded-lg, rounded-xl, rounded-full
@@ -328,6 +375,7 @@ Fix radius violations in workspace components to use design tokens.
 4. Validate build
 
 ### Radius Token Mapping
+
 ```typescript
 // Custom radius → Design tokens
 border-radius: 4px → rounded-sm
@@ -338,18 +386,22 @@ border-radius: 9999px → rounded-full
 ```
 
 ### Risk Assessment
+
 **Risk Level**: LOW
+
 - Affects border radius
 - Simple change
 - Low risk
 
 ### Rollback Strategy
+
 ```bash
 # Rollback command
 git checkout HEAD -- src/features/workspace/components/
 ```
 
 ### Validation Checklist
+
 - [ ] Radius violations fixed
 - [ ] All radius uses design tokens
 - [ ] No custom radius remains
@@ -359,9 +411,11 @@ git checkout HEAD -- src/features/workspace/components/
 - [ ] Application runs: `npm run dev`
 
 ### Estimated Effort
+
 4 hours
 
 ### Expected Repository State After Completion
+
 - Radius violations fixed
 - All radius uses design tokens
 - Build stable
@@ -371,16 +425,20 @@ git checkout HEAD -- src/features/workspace/components/
 ## Task DS-6: Fix Shadow Violations in Workspace Components
 
 ### Task Description
+
 Fix shadow violations in workspace components to use design tokens.
 
 ### Exact Files Affected
+
 - src/features/workspace/components/* (components with shadow violations)
 
 ### Dependency Analysis
+
 **Incoming Dependencies**: DS-1 (audit complete)
 **Outgoing Dependencies**: None
 
 ### Implementation Order
+
 1. Process each component with shadow violations
 2. Replace custom shadows with design tokens:
    - Elevated elements → shadow-glow
@@ -389,6 +447,7 @@ Fix shadow violations in workspace components to use design tokens.
 4. Validate build
 
 ### Shadow Token Mapping
+
 ```typescript
 // Custom shadows → Design tokens
 custom-glow → shadow-glow
@@ -397,18 +456,22 @@ no shadow → no class
 ```
 
 ### Risk Assessment
+
 **Risk Level**: LOW
+
 - Affects shadows
 - Simple change
 - Low risk
 
 ### Rollback Strategy
+
 ```bash
 # Rollback command
 git checkout HEAD -- src/features/workspace/components/
 ```
 
 ### Validation Checklist
+
 - [ ] Shadow violations fixed
 - [ ] All shadows use design tokens
 - [ ] No custom shadows remain
@@ -418,9 +481,11 @@ git checkout HEAD -- src/features/workspace/components/
 - [ ] Application runs: `npm run dev`
 
 ### Estimated Effort
+
 4 hours
 
 ### Expected Repository State After Completion
+
 - Shadow violations fixed
 - All shadows use design tokens
 - Build stable
@@ -430,16 +495,20 @@ git checkout HEAD -- src/features/workspace/components/
 ## Task DS-7: Fix Animation Violations in Workspace Components
 
 ### Task Description
+
 Fix animation violations in workspace components to use design tokens.
 
 ### Exact Files Affected
+
 - src/features/workspace/components/* (components with animation violations)
 
 ### Dependency Analysis
+
 **Incoming Dependencies**: DS-1 (audit complete)
 **Outgoing Dependencies**: None
 
 ### Implementation Order
+
 1. Process each component with animation violations
 2. Replace custom animations with design tokens:
    - Custom durations → duration-150, duration-200, duration-300, duration-500
@@ -448,6 +517,7 @@ Fix animation violations in workspace components to use design tokens.
 4. Validate build
 
 ### Animation Token Mapping
+
 ```typescript
 // Custom animations → Design tokens
 transition: 150ms → duration-150
@@ -459,18 +529,22 @@ ease-out → ease-out
 ```
 
 ### Risk Assessment
+
 **Risk Level**: LOW
+
 - Affects animations
 - Simple change
 - Low risk
 
 ### Rollback Strategy
+
 ```bash
 # Rollback command
 git checkout HEAD -- src/features/workspace/components/
 ```
 
 ### Validation Checklist
+
 - [ ] Animation violations fixed
 - [ ] All animations use design tokens
 - [ ] No custom animations remain
@@ -480,9 +554,11 @@ git checkout HEAD -- src/features/workspace/components/
 - [ ] Application runs: `npm run dev`
 
 ### Estimated Effort
+
 4 hours
 
 ### Expected Repository State After Completion
+
 - Animation violations fixed
 - All animations use design tokens
 - Build stable
@@ -492,16 +568,20 @@ git checkout HEAD -- src/features/workspace/components/
 ## Task DS-8: Add Responsive Classes to Workspace Components
 
 ### Task Description
+
 Add responsive classes to workspace components for mobile, tablet, and desktop.
 
 ### Exact Files Affected
+
 - src/features/workspace/components/* (all workspace components)
 
 ### Dependency Analysis
+
 **Incoming Dependencies**: DS-1 (audit complete)
 **Outgoing Dependencies**: None
 
 ### Implementation Order
+
 1. Process each workspace component
 2. Add responsive classes for:
    - Padding: p-4 md:p-6 lg:p-8
@@ -515,6 +595,7 @@ Add responsive classes to workspace components for mobile, tablet, and desktop.
 7. Validate build
 
 ### Responsive Breakpoints
+
 ```typescript
 // Breakpoints
 Mobile: < 768px
@@ -528,18 +609,22 @@ grid-cols-1 → grid-cols-1 md:grid-cols-2 lg:grid-cols-3
 ```
 
 ### Risk Assessment
+
 **Risk Level**: MEDIUM
+
 - Affects responsive behavior
 - Requires testing on multiple devices
 - Complex change
 
 ### Rollback Strategy
+
 ```bash
 # Rollback command
 git checkout HEAD -- src/features/workspace/components/
 ```
 
 ### Validation Checklist
+
 - [ ] Responsive classes added
 - [ ] Mobile layout correct
 - [ ] Tablet layout correct
@@ -551,9 +636,11 @@ git checkout HEAD -- src/features/workspace/components/
 - [ ] Application runs: `npm run dev`
 
 ### Estimated Effort
+
 12 hours
 
 ### Expected Repository State After Completion
+
 - Responsive classes added
 - All breakpoints tested
 - Build stable
@@ -563,16 +650,20 @@ git checkout HEAD -- src/features/workspace/components/
 ## Task DS-9: Add ARIA Labels to Workspace Components
 
 ### Task Description
+
 Add ARIA labels to workspace components for accessibility.
 
 ### Exact Files Affected
+
 - src/features/workspace/components/* (all interactive components)
 
 ### Dependency Analysis
+
 **Incoming Dependencies**: DS-1 (audit complete)
 **Outgoing Dependencies**: None
 
 ### Implementation Order
+
 1. Process each interactive component
 2. Add aria-label to buttons without text
 3. Add aria-label to icon-only buttons
@@ -585,6 +676,7 @@ Add ARIA labels to workspace components for accessibility.
 10. Validate build
 
 ### ARIA Label Examples
+
 ```typescript
 // Button with icon
 <button aria-label="Close dialog">
@@ -608,18 +700,22 @@ Add ARIA labels to workspace components for accessibility.
 ```
 
 ### Risk Assessment
+
 **Risk Level**: MEDIUM
+
 - Affects accessibility
 - Requires screen reader testing
 - Important for compliance
 
 ### Rollback Strategy
+
 ```bash
 # Rollback command
 git checkout HEAD -- src/features/workspace/components/
 ```
 
 ### Validation Checklist
+
 - [ ] ARIA labels added to all interactive elements
 - [ ] aria-label added to icon-only buttons
 - [ ] aria-describedby added to modals
@@ -635,9 +731,11 @@ git checkout HEAD -- src/features/workspace/components/
 - [ ] Screen reader test passes (if available)
 
 ### Estimated Effort
+
 8 hours
 
 ### Expected Repository State After Completion
+
 - ARIA labels added
 - Accessibility improved
 - Build stable
@@ -647,16 +745,20 @@ git checkout HEAD -- src/features/workspace/components/
 ## Task DS-10: Add Keyboard Navigation to Workspace Components
 
 ### Task Description
+
 Add keyboard navigation to workspace components for accessibility.
 
 ### Exact Files Affected
+
 - src/features/workspace/components/* (all interactive components)
 
 ### Dependency Analysis
+
 **Incoming Dependencies**: DS-1 (audit complete)
 **Outgoing Dependencies**: None
 
 ### Implementation Order
+
 1. Process each interactive component
 2. Add onKeyDown handlers to buttons
 3. Add Enter key support to buttons
@@ -669,6 +771,7 @@ Add keyboard navigation to workspace components for accessibility.
 10. Validate build
 
 ### Keyboard Navigation Examples
+
 ```typescript
 // Button
 <button
@@ -696,18 +799,22 @@ useEffect(() => {
 ```
 
 ### Risk Assessment
+
 **Risk Level**: MEDIUM
+
 - Affects keyboard navigation
 - Requires keyboard testing
 - Important for accessibility
 
 ### Rollback Strategy
+
 ```bash
 # Rollback command
 git checkout HEAD -- src/features/workspace/components/
 ```
 
 ### Validation Checklist
+
 - [ ] Keyboard navigation added to all interactive elements
 - [ ] Enter key works on buttons
 - [ ] Space key works on buttons
@@ -723,9 +830,11 @@ git checkout HEAD -- src/features/workspace/components/
 - [ ] Keyboard navigation test passes
 
 ### Estimated Effort
+
 8 hours
 
 ### Expected Repository State After Completion
+
 - Keyboard navigation added
 - Accessibility improved
 - Build stable
@@ -735,16 +844,20 @@ git checkout HEAD -- src/features/workspace/components/
 ## Task DS-11: Run Design System Compliance Audit
 
 ### Task Description
+
 Run a comprehensive design system compliance audit on all components.
 
 ### Exact Files Affected
+
 - All components (validation only)
 
 ### Dependency Analysis
+
 **Incoming Dependencies**: All previous tasks
 **Outgoing Dependencies**: None
 
 ### Implementation Order
+
 1. Audit all shared/ui components
 2. Audit all workspace components
 3. Verify design token usage
@@ -762,15 +875,19 @@ Run a comprehensive design system compliance audit on all components.
 15. Document results
 
 ### Risk Assessment
+
 **Risk Level**: LOW
+
 - Audit only
 - No code changes
 - Documentation
 
 ### Rollback Strategy
+
 N/A (audit only)
 
 ### Validation Checklist
+
 - [ ] All components audited
 - [ ] Design token usage verified
 - [ ] Color compliance verified
@@ -787,9 +904,11 @@ N/A (audit only)
 - [ ] Compliance score ≥ 9.5/10
 
 ### Estimated Effort
+
 4 hours
 
 ### Expected Repository State After Completion
+
 - Design system compliance documented
 - Compliance score ≥ 9.5/10
 - Build stable
@@ -799,16 +918,20 @@ N/A (audit only)
 ## Task DS-12: Final Validation and Cleanup
 
 ### Task Description
+
 Perform final validation of all design system migration changes.
 
 ### Exact Files Affected
+
 - Multiple (validation only)
 
 ### Dependency Analysis
+
 **Incoming Dependencies**: All previous tasks
 **Outgoing Dependencies**: None
 
 ### Implementation Order
+
 1. Run TypeScript build
 2. Run lint
 3. Run full build
@@ -822,14 +945,18 @@ Perform final validation of all design system migration changes.
 11. Generate completion summary
 
 ### Risk Assessment
+
 **Risk Level**: LOW
+
 - Validation only
 - No code changes
 
 ### Rollback Strategy
+
 N/A (validation only)
 
 ### Validation Checklist
+
 - [ ] TypeScript build passes: `npm run typecheck`
 - [ ] Lint passes: `npm run lint`
 - [ ] Build passes: `npm run build`
@@ -843,9 +970,11 @@ N/A (validation only)
 - [ ] DESIGN_SYSTEM_MIGRATION_REPORT.md updated
 
 ### Estimated Effort
+
 2 hours
 
 ### Expected Repository State After Completion
+
 - Design system compliance ≥ 9.5/10
 - All violations fixed
 - Responsive behavior implemented
@@ -858,26 +987,16 @@ N/A (validation only)
 ## Execution Order Summary
 
 **Phase 1: Audit (Low Risk)**
+
 1. DS-1: Audit workspace components
 
-**Phase 2: Fix Visual Violations (Medium Risk)**
-2. DS-2: Fix color violations
-3. DS-3: Fix spacing violations
-4. DS-4: Fix typography violations
+**Phase 2: Fix Visual Violations (Medium Risk)** 2. DS-2: Fix color violations 3. DS-3: Fix spacing violations 4. DS-4: Fix typography violations
 
-**Phase 3: Fix Design Token Violations (Low Risk)**
-5. DS-5: Fix radius violations
-6. DS-6: Fix shadow violations
-7. DS-7: Fix animation violations
+**Phase 3: Fix Design Token Violations (Low Risk)** 5. DS-5: Fix radius violations 6. DS-6: Fix shadow violations 7. DS-7: Fix animation violations
 
-**Phase 4: Add Responsive and Accessibility (Medium Risk)**
-8. DS-8: Add responsive classes
-9. DS-9: Add ARIA labels
-10. DS-10: Add keyboard navigation
+**Phase 4: Add Responsive and Accessibility (Medium Risk)** 8. DS-8: Add responsive classes 9. DS-9: Add ARIA labels 10. DS-10: Add keyboard navigation
 
-**Phase 5: Validation (Low Risk)**
-11. DS-11: Run design system compliance audit
-12. DS-12: Final validation and cleanup
+**Phase 5: Validation (Low Risk)** 11. DS-11: Run design system compliance audit 12. DS-12: Final validation and cleanup
 
 ---
 

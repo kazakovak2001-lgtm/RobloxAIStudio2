@@ -42,6 +42,7 @@ This Engineering Handbook defines the standards, workflows, and best practices f
 ### 1.2 Scope
 
 This handbook applies to:
+
 - Frontend development (React/TypeScript)
 - Backend development (Node.js/Express)
 - Plugin development (Lua)
@@ -138,73 +139,85 @@ studio-plugin/
 ### 3.1 File Naming
 
 **Components**: PascalCase
+
 - `Button.tsx`
 - `UserProfile.tsx`
 - `DashboardPage.tsx`
 
 **Hooks**: camelCase with `use` prefix
+
 - `useSocket.ts`
 - `usePipelineStream.ts`
 - `useAuth.ts`
 
 **Services**: camelCase
+
 - `projectService.ts`
 - `aiEngine.ts`
 - `socket.ts`
 
 **Types**: camelCase
+
 - `user.types.ts`
 - `project.types.ts`
 
 **Utilities**: camelCase
+
 - `cn.ts`
 - `formatDate.ts`
 
 **Constants**: UPPER_SNAKE_CASE
+
 - `API_URL.ts`
 - `CONFIG.ts`
 
 **Tests**: camelCase with `.test.ts` or `.spec.ts` suffix
+
 - `Button.test.ts`
 - `projectService.spec.ts`
 
 ### 3.2 Variable Naming
 
 **Variables**: camelCase
+
 ```typescript
-const userName = 'John';
+const userName = "John";
 const isActive = true;
 const maxRetries = 3;
 ```
 
 **Constants**: UPPER_SNAKE_CASE
+
 ```typescript
 const MAX_RETRIES = 3;
-const API_BASE_URL = 'https://api.example.com';
+const API_BASE_URL = "https://api.example.com";
 ```
 
 **Types/Interfaces**: PascalCase
+
 ```typescript
 interface UserProfile {
   name: string;
   email: string;
 }
 
-type Status = 'active' | 'inactive';
+type Status = "active" | "inactive";
 ```
 
 **Enums**: PascalCase
+
 ```typescript
 enum UserRole {
-  Admin = 'admin',
-  User = 'user',
-  Guest = 'guest',
+  Admin = "admin",
+  User = "user",
+  Guest = "guest",
 }
 ```
 
 ### 3.3 Component Naming
 
 **Component Names**: PascalCase, descriptive
+
 ```typescript
 // Good
 <UserProfileCard />
@@ -218,6 +231,7 @@ enum UserRole {
 ```
 
 **Prop Names**: camelCase
+
 ```typescript
 interface ButtonProps {
   onClick: () => void;
@@ -229,6 +243,7 @@ interface ButtonProps {
 ### 3.4 Function Naming
 
 **Functions**: camelCase, descriptive verbs
+
 ```typescript
 // Good
 function getUserById(id: string) {}
@@ -244,6 +259,7 @@ function check(data: FormData) {}
 ### 3.5 CSS Class Naming
 
 **Tailwind Classes**: Use utility classes, avoid custom classes
+
 ```typescript
 // Good
 <div className="bg-slate-900 p-4 rounded-lg">
@@ -253,14 +269,19 @@ function check(data: FormData) {}
 ```
 
 **Custom Classes**: kebab-case
+
 ```css
 /* Good */
-.user-profile-card {}
-.status-indicator {}
+.user-profile-card {
+}
+.status-indicator {
+}
 
 /* Bad */
-.userProfileCard {}
-.statusIndicator {}
+.userProfileCard {
+}
+.statusIndicator {
+}
 ```
 
 ---
@@ -270,6 +291,7 @@ function check(data: FormData) {}
 ### 4.1 Component Principles
 
 **Single Responsibility**: Each component should have one clear purpose
+
 ```typescript
 // Good - Single responsibility
 function UserAvatar({ src, alt }: AvatarProps) {
@@ -289,6 +311,7 @@ function User({ user, onUpdate, onDelete }: UserProps) {
 ```
 
 **Composition over Inheritance**: Prefer composition
+
 ```typescript
 // Good - Composition
 function Card({ children, header, footer }: CardProps) {
@@ -308,15 +331,21 @@ class Card extends BaseCard {
 ```
 
 **Props Interface**: Always define props interface
+
 ```typescript
 interface ButtonProps {
   children: React.ReactNode;
-  variant?: 'primary' | 'secondary';
-  size?: 'sm' | 'md' | 'lg';
+  variant?: "primary" | "secondary";
+  size?: "sm" | "md" | "lg";
   onClick?: () => void;
 }
 
-export function Button({ children, variant = 'primary', size = 'md', onClick }: ButtonProps) {
+export function Button({
+  children,
+  variant = "primary",
+  size = "md",
+  onClick,
+}: ButtonProps) {
   // ...
 }
 ```
@@ -324,6 +353,7 @@ export function Button({ children, variant = 'primary', size = 'md', onClick }: 
 ### 4.2 Component Organization
 
 **Feature Components**: Organize by feature
+
 ```
 src/features/workspace/
 ├── components/
@@ -341,6 +371,7 @@ src/features/workspace/
 ```
 
 **Shared Components**: Organize by category
+
 ```
 src/shared/ui/
 ├── layout/
@@ -359,12 +390,14 @@ src/shared/ui/
 ### 4.3 Component Size Guidelines
 
 **Maximum Lines**: 500 lines per component
+
 - If component exceeds 500 lines, consider splitting
 - Extract sub-components
 - Extract hooks
 - Extract utilities
 
 **Example**:
+
 ```typescript
 // Before - 800 lines
 function GenerationStatusPanel({ pipeline }: Props) {
@@ -386,6 +419,7 @@ function GenerationStatusPanel({ pipeline }: Props) {
 ### 4.4 State Management
 
 **Local State**: Use useState for component-local state
+
 ```typescript
 function Counter() {
   const [count, setCount] = useState(0);
@@ -394,6 +428,7 @@ function Counter() {
 ```
 
 **Global State**: Use Context for app-wide state
+
 ```typescript
 const AuthContext = createContext<AuthContextValue | null>(null);
 
@@ -404,13 +439,14 @@ function AuthProvider({ children }: { children: React.ReactNode }) {
 ```
 
 **Server State**: Use services for API data
+
 ```typescript
 function ProjectList() {
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    listProjects().then(data => {
+    listProjects().then((data) => {
       setProjects(data);
       setLoading(false);
     });
@@ -423,6 +459,7 @@ function ProjectList() {
 ### 4.5 Component Exports
 
 **Named Exports**: Use named exports for components
+
 ```typescript
 // Good
 export function Button({ children }: ButtonProps) {
@@ -440,12 +477,13 @@ export default function Button({ children }: ButtonProps) {
 ```
 
 **Barrel Exports**: Use index.ts for feature exports
+
 ```typescript
 // src/features/workspace/index.ts
-export { Workspace } from './Workspace';
-export { PipelineView } from './PipelineView';
-export { usePipelineStream } from './hooks/usePipelineStream';
-export type { PipelineState } from './types';
+export { Workspace } from "./Workspace";
+export { PipelineView } from "./PipelineView";
+export { usePipelineStream } from "./hooks/usePipelineStream";
+export type { PipelineState } from "./types";
 ```
 
 ---
@@ -455,6 +493,7 @@ export type { PipelineState } from './types';
 ### 5.1 Design Token Usage
 
 **Colors**: Use design tokens only
+
 ```typescript
 // Good
 <div className="bg-brand-500 text-white">
@@ -468,6 +507,7 @@ export type { PipelineState } from './types';
 ```
 
 **Spacing**: Use 4px base unit
+
 ```typescript
 // Good
 <div className="p-4 m-2 gap-4">
@@ -479,6 +519,7 @@ export type { PipelineState } from './types';
 ```
 
 **Typography**: Use design system fonts
+
 ```typescript
 // Good
 <div className="font-sans text-sm">
@@ -492,6 +533,7 @@ export type { PipelineState } from './types';
 ### 5.2 Component Compliance
 
 **All Components Must**:
+
 - Use design tokens for colors
 - Use design tokens for spacing
 - Use design tokens for typography
@@ -505,27 +547,32 @@ export type { PipelineState } from './types';
 ### 5.3 Dark Theme
 
 **Background Colors**:
+
 - Primary: `bg-slate-950`
 - Elevated: `bg-slate-900`
 - Nested: `bg-slate-800`
 
 **Text Colors**:
+
 - Primary: `text-slate-100`
 - Secondary: `text-slate-400`
 - Muted: `text-slate-500`
 
 **Border Colors**:
+
 - Default: `border-white/10`
 - Active: `border-brand-500/30`
 
 ### 5.4 Responsive Design
 
 **Breakpoints**:
+
 - Mobile: < 768px
 - Tablet: 768px - 1023px
 - Desktop: ≥ 1024px
 
 **Responsive Classes**:
+
 ```typescript
 // Good
 <div className="p-4 md:p-6 lg:p-8">
@@ -540,6 +587,7 @@ export type { PipelineState } from './types';
 ### 5.5 Accessibility
 
 **ARIA Labels**: Add to all interactive elements
+
 ```typescript
 // Good
 <button aria-label="Close dialog" onClick={onClose}>
@@ -553,6 +601,7 @@ export type { PipelineState } from './types';
 ```
 
 **Keyboard Navigation**: Ensure all interactive elements are keyboard accessible
+
 ```typescript
 // Good
 <button
@@ -566,6 +615,7 @@ export type { PipelineState } from './types';
 ```
 
 **Focus Management**: Manage focus for modals and dialogs
+
 ```typescript
 function Modal({ open, onClose }: ModalProps) {
   const dialogRef = useRef<HTMLDivElement>(null);
@@ -587,19 +637,21 @@ function Modal({ open, onClose }: ModalProps) {
 ### 6.1 Path Aliases
 
 **Always Use Path Aliases**: Never use relative imports for internal modules
+
 ```typescript
 // Good
-import { Button } from '@/shared/ui/Button';
-import { listProjects } from '@/services/projectService';
-import { useSocket } from '@/hooks/useSocket';
+import { Button } from "@/shared/ui/Button";
+import { listProjects } from "@/services/projectService";
+import { useSocket } from "@/hooks/useSocket";
 
 // Bad
-import { Button } from '../../shared/ui/Button';
-import { listProjects } from '../services/projectService';
-import { useSocket } from '../hooks/useSocket';
+import { Button } from "../../shared/ui/Button";
+import { listProjects } from "../services/projectService";
+import { useSocket } from "../hooks/useSocket";
 ```
 
 **Available Aliases**:
+
 - `@/` → src/
 - `@/app` → src/app/
 - `@/components` → src/components/
@@ -617,50 +669,54 @@ import { useSocket } from '../hooks/useSocket';
 ### 6.2 Import Ordering
 
 **Standard Order**:
+
 1. React and third-party libraries
 2. Internal imports (grouped by category)
 3. Type imports
 4. Styles
 
 **Example**:
+
 ```typescript
 // 1. React and third-party
-import { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
-import { Bot, Settings } from 'lucide-react';
+import { useState, useEffect } from "react";
+import { Link } from "react-router-dom";
+import { Bot, Settings } from "lucide-react";
 
 // 2. Internal - Layout
-import { AppShell } from '@/shared/ui/layout';
+import { AppShell } from "@/shared/ui/layout";
 
 // 2. Internal - Components
-import { Button } from '@/shared/ui/Button';
+import { Button } from "@/shared/ui/Button";
 
 // 2. Internal - Services
-import { listProjects } from '@/services/projectService';
+import { listProjects } from "@/services/projectService";
 
 // 3. Type imports
-import type { Project } from '@/types';
+import type { Project } from "@/types";
 
 // 4. Styles
-import './styles.css';
+import "./styles.css";
 ```
 
 ### 6.3 Type Imports
 
 **Use `import type` for type-only imports**:
+
 ```typescript
 // Good
-import type { Project } from '@/types';
-import type { ButtonProps } from '@/shared/ui/Button';
+import type { Project } from "@/types";
+import type { ButtonProps } from "@/shared/ui/Button";
 
 // Bad
-import { Project } from '@/types';
-import { ButtonProps } from '@/shared/ui/Button';
+import { Project } from "@/types";
+import { ButtonProps } from "@/shared/ui/Button";
 ```
 
 ### 6.4 Named vs Default Exports
 
 **Prefer Named Exports**:
+
 ```typescript
 // Good
 export function Button({ children }: ButtonProps) {
@@ -680,17 +736,19 @@ export default function Button({ children }: ButtonProps) {
 ### 7.1 Component Documentation
 
 **Every Component Must Have**:
+
 - JSDoc comment describing purpose
 - Props interface with descriptions
 - Usage example (if complex)
 - Accessibility notes (if applicable)
 
 **Example**:
+
 ```typescript
 /**
  * Button component for user interactions.
  * Supports multiple variants and sizes.
- * 
+ *
  * @example
  * <Button variant="primary" size="md" onClick={handleClick}>
  *   Click me
@@ -700,16 +758,22 @@ interface ButtonProps {
   /** Button content */
   children: React.ReactNode;
   /** Visual variant */
-  variant?: 'primary' | 'secondary' | 'ghost';
+  variant?: "primary" | "secondary" | "ghost";
   /** Button size */
-  size?: 'sm' | 'md' | 'lg';
+  size?: "sm" | "md" | "lg";
   /** Disabled state */
   disabled?: boolean;
   /** Click handler */
   onClick?: () => void;
 }
 
-export function Button({ children, variant = 'primary', size = 'md', disabled, onClick }: ButtonProps) {
+export function Button({
+  children,
+  variant = "primary",
+  size = "md",
+  disabled,
+  onClick,
+}: ButtonProps) {
   // ...
 }
 ```
@@ -717,19 +781,21 @@ export function Button({ children, variant = 'primary', size = 'md', disabled, o
 ### 7.2 Function Documentation
 
 **Every Function Must Have**:
+
 - JSDoc comment describing purpose
 - Parameter descriptions
 - Return type description
 - Usage example (if complex)
 
 **Example**:
+
 ```typescript
 /**
  * Fetches all projects from the API.
- * 
+ *
  * @param options - Query options for filtering
  * @returns Promise resolving to array of projects
- * 
+ *
  * @example
  * const projects = await listProjects({ limit: 10 });
  */
@@ -741,6 +807,7 @@ export async function listProjects(options?: QueryOptions): Promise<Project[]> {
 ### 7.3 Architecture Documentation
 
 **Update Documentation When**:
+
 - Adding new features
 - Changing folder structure
 - Adding new components
@@ -748,6 +815,7 @@ export async function listProjects(options?: QueryOptions): Promise<Project[]> {
 - Resolving technical debt
 
 **Documents to Update**:
+
 - Component Registry (component changes)
 - Feature Registry (feature changes)
 - Architecture Map (structural changes)
@@ -756,28 +824,36 @@ export async function listProjects(options?: QueryOptions): Promise<Project[]> {
 ### 7.4 README Files
 
 **Feature README**: Each feature should have a README
-```markdown
+
+````markdown
 # Workspace Feature
 
 ## Purpose
+
 Manages game generation workspace.
 
 ## Components
+
 - GenerationStatusPanel
 - ArtifactExplorer
 - ...
 
 ## Hooks
+
 - usePipelineStream
 
 ## Services
+
 - workspaceService
 
 ## Usage
+
 ```typescript
-import { Workspace } from '@/features/workspace';
+import { Workspace } from "@/features/workspace";
 ```
-```
+````
+
+````
 
 ---
 
@@ -821,11 +897,12 @@ const response = await fetch('/api/ai/generate', {
   method: 'POST',
   body: JSON.stringify({ prompt }),
 });
-```
+````
 
 ### 8.3 AI Error Handling
 
 **Always Handle AI Errors**:
+
 ```typescript
 try {
   const result = await generateCode(prompt);
@@ -834,7 +911,7 @@ try {
   if (error instanceof AIError) {
     setError(error.message);
   } else {
-    setError('Failed to generate code');
+    setError("Failed to generate code");
   }
 }
 ```
@@ -842,6 +919,7 @@ try {
 ### 8.4 AI Loading States
 
 **Always Show Loading State**:
+
 ```typescript
 const [loading, setLoading] = useState(false);
 const [result, setResult] = useState(null);
@@ -872,6 +950,7 @@ return (
 ### 9.1 Feature Development Process
 
 **Phase 1: Analysis**
+
 1. Check Component Registry for existing components
 2. Check Feature Registry for existing features
 3. Review Architecture Map for structural implications
@@ -879,6 +958,7 @@ return (
 5. Identify reusable services
 
 **Phase 2: Design**
+
 1. Design component interface
 2. Design service interface
 3. Design data flow
@@ -886,6 +966,7 @@ return (
 5. Design loading states
 
 **Phase 3: Implementation**
+
 1. Create feature directory structure
 2. Implement components (use shared/ui where possible)
 3. Implement services
@@ -894,12 +975,14 @@ return (
 6. Create feature index.ts
 
 **Phase 4: Integration**
+
 1. Integrate with routing
 2. Integrate with providers
 3. Integrate with services
 4. Test feature end-to-end
 
 **Phase 5: Documentation**
+
 1. Update Component Registry
 2. Update Feature Registry
 3. Update Architecture Map
@@ -909,6 +992,7 @@ return (
 ### 9.2 Feature Structure
 
 **Standard Feature Structure**:
+
 ```
 src/features/[feature-name]/
 ├── components/
@@ -931,13 +1015,14 @@ src/features/[feature-name]/
 ### 9.3 Feature Exports
 
 **Export from Feature Index**:
+
 ```typescript
 // src/features/workspace/index.ts
-export { Workspace } from './Workspace';
-export { PipelineView } from './PipelineView';
-export { usePipelineStream } from './hooks/usePipelineStream';
-export { getPipelineStatus } from './services/pipelineService';
-export type { PipelineState, PipelineStep } from './types';
+export { Workspace } from "./Workspace";
+export { PipelineView } from "./PipelineView";
+export { usePipelineStream } from "./hooks/usePipelineStream";
+export { getPipelineStatus } from "./services/pipelineService";
+export type { PipelineState, PipelineStep } from "./types";
 ```
 
 ---
@@ -947,6 +1032,7 @@ export type { PipelineState, PipelineStep } from './types';
 ### 10.1 When to Refactor
 
 **Refactor When**:
+
 - Component exceeds 500 lines
 - Function exceeds 50 lines
 - Cyclomatic complexity > 10
@@ -958,18 +1044,21 @@ export type { PipelineState, PipelineStep } from './types';
 ### 10.2 Refactoring Process
 
 **Step 1: Analysis**
+
 1. Identify refactoring opportunity
 2. Assess impact
 3. Create feature branch
 4. Write tests (if none exist)
 
 **Step 2: Refactoring**
+
 1. Make small, incremental changes
 2. Run tests after each change
 3. Verify functionality
 4. Check for regressions
 
 **Step 3: Validation**
+
 1. Run all tests
 2. Run TypeScript check
 3. Run lint
@@ -977,6 +1066,7 @@ export type { PipelineState, PipelineStep } from './types';
 5. Update documentation
 
 **Step 4: Integration**
+
 1. Create pull request
 2. Code review
 3. Address feedback
@@ -985,6 +1075,7 @@ export type { PipelineState, PipelineStep } from './types';
 ### 10.3 Refactoring Guidelines
 
 **Extract Components**: Break down large components
+
 ```typescript
 // Before - Large component
 function LargeComponent() {
@@ -1010,6 +1101,7 @@ function LargeComponent() {
 ```
 
 **Extract Hooks**: Extract logic into hooks
+
 ```typescript
 // Before - Logic in component
 function Component() {
@@ -1017,7 +1109,7 @@ function Component() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetchData().then(result => {
+    fetchData().then((result) => {
       setData(result);
       setLoading(false);
     });
@@ -1032,7 +1124,7 @@ function useData() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetchData().then(result => {
+    fetchData().then((result) => {
       setData(result);
       setLoading(false);
     });
@@ -1048,15 +1140,16 @@ function Component() {
 ```
 
 **Extract Services**: Extract API calls into services
+
 ```typescript
 // Before - API call in component
 function Component() {
   const [projects, setProjects] = useState([]);
 
   useEffect(() => {
-    fetch('/api/projects')
-      .then(res => res.json())
-      .then(data => setProjects(data));
+    fetch("/api/projects")
+      .then((res) => res.json())
+      .then((data) => setProjects(data));
   }, []);
 
   // ...
@@ -1065,7 +1158,7 @@ function Component() {
 // After - Extracted service
 // src/services/projectService.ts
 export async function listProjects(): Promise<Project[]> {
-  const response = await fetch('/api/projects');
+  const response = await fetch("/api/projects");
   return response.json();
 }
 
@@ -1087,6 +1180,7 @@ function Component() {
 ### 11.1 Before Submitting PR
 
 **Code Quality**:
+
 - [ ] Code follows naming conventions
 - [ ] Code follows folder structure
 - [ ] Code uses path aliases
@@ -1096,6 +1190,7 @@ function Component() {
 - [ ] No commented-out code
 
 **Functionality**:
+
 - [ ] Feature works as expected
 - [ ] Error handling implemented
 - [ ] Loading states implemented
@@ -1103,12 +1198,14 @@ function Component() {
 - [ ] Accessibility requirements met
 
 **Testing**:
+
 - [ ] Unit tests written (if applicable)
 - [ ] Tests pass
 - [ ] Manual testing completed
 - [ ] Cross-browser testing completed
 
 **Documentation**:
+
 - [ ] Component documentation added
 - [ ] Function documentation added
 - [ ] Component Registry updated
@@ -1118,6 +1215,7 @@ function Component() {
 ### 11.2 During Code Review
 
 **Review Checklist**:
+
 - [ ] Code is readable and maintainable
 - [ ] Code follows handbook guidelines
 - [ ] No security vulnerabilities
@@ -1131,6 +1229,7 @@ function Component() {
 ### 11.3 After Code Review
 
 **Integration Checklist**:
+
 - [ ] All feedback addressed
 - [ ] Tests pass
 - [ ] TypeScript build passes
@@ -1146,6 +1245,7 @@ function Component() {
 ### 12.1 Feature Requirements
 
 **Before Starting Feature Development**:
+
 - [ ] Feature requirements documented
 - [ ] Feature design approved
 - [ ] Technical feasibility verified
@@ -1158,6 +1258,7 @@ function Component() {
 ### 12.2 Component Requirements
 
 **Before Starting Component Development**:
+
 - [ ] Component purpose defined
 - [ ] Component interface designed
 - [ ] Component props interface defined
@@ -1169,6 +1270,7 @@ function Component() {
 ### 12.3 Task Requirements
 
 **Before Starting Any Task**:
+
 - [ ] Task clearly defined
 - [ ] Acceptance criteria defined
 - [ ] Effort estimated
@@ -1183,6 +1285,7 @@ function Component() {
 ### 13.1 Feature Done
 
 **Feature is Done When**:
+
 - [ ] All requirements implemented
 - [ ] All acceptance criteria met
 - [ ] Code reviewed and approved
@@ -1199,6 +1302,7 @@ function Component() {
 ### 13.2 Component Done
 
 **Component is Done When**:
+
 - [ ] Component implements requirements
 - [ ] Component follows design system
 - [ ] Component is accessible
@@ -1211,6 +1315,7 @@ function Component() {
 ### 13.3 Bug Fix Done
 
 **Bug Fix is Done When**:
+
 - [ ] Bug reproduced
 - [ ] Root cause identified
 - [ ] Fix implemented
@@ -1226,17 +1331,20 @@ function Component() {
 ### 14.1 Core Principles
 
 **Separation of Concerns**:
+
 - UI components should not contain business logic
 - Services should not contain UI logic
 - Features should be self-contained
 
 **DRY (Don't Repeat Yourself)**:
+
 - Reuse existing components
 - Reuse existing services
 - Reuse existing hooks
 - Extract common logic
 
 **SOLID Principles**:
+
 - **S**ingle Responsibility: Each module has one reason to change
 - **O**pen/Closed: Open for extension, closed for modification
 - **L**iskov Substitution: Subtypes must be substitutable
@@ -1246,17 +1354,20 @@ function Component() {
 ### 14.2 Frontend Principles
 
 **Component Composition**:
+
 - Prefer composition over inheritance
 - Use slot-based composition
 - Keep components small and focused
 
 **State Management**:
+
 - Local state for component-specific state
 - Context for app-wide state
 - Services for server state
 - Avoid prop drilling
 
 **Performance**:
+
 - Use React.memo for expensive components
 - Use useMemo for expensive computations
 - Use useCallback for stable function references
@@ -1266,12 +1377,14 @@ function Component() {
 ### 14.3 Backend Principles
 
 **Clean Architecture**:
+
 - Routes → Services → Repositories
 - Depend on abstractions
 - Business logic in services
 - Data access in repositories
 
 **API Design**:
+
 - RESTful endpoints
 - Consistent response format
 - Proper error handling
@@ -1281,6 +1394,7 @@ function Component() {
 ### 14.4 Plugin Principles
 
 **Plugin Architecture**:
+
 - Plugin should be self-contained
 - Plugin should not depend on specific UI
 - Plugin should use standard communication protocol
@@ -1293,21 +1407,25 @@ function Component() {
 ### 15.1 Branch Strategy
 
 **Main Branch**:
+
 - Always deployable
 - No direct commits
 - Only merged via pull requests
 
 **Feature Branches**:
+
 - Named: `feature/[feature-name]`
 - Created from main
 - Merged to main via pull request
 
 **Bugfix Branches**:
+
 - Named: `bugfix/[bug-description]`
 - Created from main
 - Merged to main via pull request
 
 **Hotfix Branches**:
+
 - Named: `hotfix/[hotfix-description]`
 - Created from main
 - Merged to main and release branches
@@ -1317,6 +1435,7 @@ function Component() {
 **Format**: `type(scope): description`
 
 **Types**:
+
 - `feat`: New feature
 - `fix`: Bug fix
 - `docs`: Documentation changes
@@ -1326,6 +1445,7 @@ function Component() {
 - `chore`: Maintenance tasks
 
 **Examples**:
+
 ```bash
 feat(workspace): add generation status panel
 fix(auth): resolve login token expiration
@@ -1337,6 +1457,7 @@ refactor(components): extract button component
 
 **PR Title**: Follow commit message format
 **PR Description**: Include:
+
 - Description of changes
 - Related issue number
 - Screenshots (if UI changes)
@@ -1344,6 +1465,7 @@ refactor(components): extract button component
 - Breaking changes (if any)
 
 **PR Checklist**:
+
 - [ ] Code follows handbook
 - [ ] Tests pass
 - [ ] TypeScript build passes
@@ -1354,11 +1476,13 @@ refactor(components): extract button component
 ### 15.4 Release Process
 
 **Versioning**: Semantic Versioning (SemVer)
+
 - MAJOR: Breaking changes
 - MINOR: New features (backwards compatible)
 - PATCH: Bug fixes (backwards compatible)
 
 **Release Steps**:
+
 1. Update version in package.json
 2. Update CHANGELOG.md
 3. Create git tag
@@ -1368,18 +1492,21 @@ refactor(components): extract button component
 ### 15.5 Code of Conduct
 
 **Be Respectful**:
+
 - Treat all team members with respect
 - Provide constructive feedback
 - Accept feedback gracefully
 - Collaborate effectively
 
 **Be Professional**:
+
 - Write clear, professional code
 - Write clear, professional documentation
 - Communicate clearly and effectively
 - Meet commitments
 
 **Be Inclusive**:
+
 - Welcome new team members
 - Share knowledge
 - Help others learn
@@ -1392,18 +1519,21 @@ refactor(components): extract button component
 ### A. Quick Reference
 
 **Path Aliases**:
+
 - `@/shared/ui/Button` - Shared UI components
 - `@/services/projectService` - API services
 - `@/hooks/useSocket` - React hooks
 - `@/features/workspace` - Feature modules
 
 **Design Tokens**:
+
 - Colors: brand-500, accent-500, success-400, error-400
 - Spacing: p-4, m-4, gap-4 (4px base unit)
 - Typography: font-sans, font-mono
 - Radius: rounded-lg, rounded-xl, rounded-full
 
 **Component Naming**:
+
 - Components: PascalCase (Button, UserProfile)
 - Hooks: camelCase with use prefix (useSocket)
 - Services: camelCase (projectService)
@@ -1412,12 +1542,14 @@ refactor(components): extract button component
 ### B. Resources
 
 **Documentation**:
+
 - Component Registry: docs/COMPONENT_REGISTRY.md
 - Feature Registry: docs/FEATURE_REGISTRY.md
 - Architecture Map: docs/PROJECT_ARCHITECTURE_MAP.md
 - Design System: docs/design/DESIGN_SYSTEM.md
 
 **Tools**:
+
 - TypeScript: https://www.typescriptlang.org/
 - React: https://react.dev/
 - Tailwind CSS: https://tailwindcss.com/

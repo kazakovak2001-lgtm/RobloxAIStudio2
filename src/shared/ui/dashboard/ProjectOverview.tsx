@@ -59,7 +59,9 @@ export function ProjectOverview({
 
   return (
     <div className="rounded-2xl border border-white/10 bg-slate-900/70 p-6 shadow-glow backdrop-blur-xl">
-      <h3 className="mb-4 text-h3 font-semibold text-white">Project Overview</h3>
+      <h3 className="mb-4 text-h3 font-semibold text-white">
+        Project Overview
+      </h3>
       <div className="grid grid-cols-2 gap-4">
         {stats.map((stat) => (
           <div
@@ -70,7 +72,9 @@ export function ProjectOverview({
               {stat.icon}
               <span className="text-sm text-slate-400">{stat.label}</span>
             </div>
-            <div className="mb-1 text-2xl font-semibold text-white">{stat.value}</div>
+            <div className="mb-1 text-2xl font-semibold text-white">
+              {stat.value}
+            </div>
             <div className="text-xs text-success-400">{stat.trend}</div>
           </div>
         ))}

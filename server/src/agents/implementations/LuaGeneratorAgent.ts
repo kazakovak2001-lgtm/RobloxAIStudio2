@@ -31,8 +31,7 @@ export class LuaGeneratorAgent extends BaseAgent {
   protected async process(input: AgentInput): Promise<Record<string, unknown>> {
     const bp = input.blueprint as Record<string, unknown> | undefined;
     const arch = (input.architecture ?? input.roblox_architect) as
-      | Record<string, unknown>
-      | undefined;
+      Record<string, unknown> | undefined;
     const gameplay = input.gameplay as Record<string, unknown> | undefined;
 
     const name = String(bp?.name ?? "UnnamedGame");

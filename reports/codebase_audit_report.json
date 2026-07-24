@@ -9,21 +9,9 @@
   },
   "violations": [],
   "circularDependencies": [
-    [
-      "ai",
-      "providers",
-      "ai"
-    ],
-    [
-      "execution",
-      "socket",
-      "execution"
-    ],
-    [
-      "assembly",
-      "governance",
-      "assembly"
-    ]
+    ["ai", "providers", "ai"],
+    ["execution", "socket", "execution"],
+    ["assembly", "governance", "assembly"]
   ],
   "dependencyGraph": {
     "agents тЖТ types": 14,

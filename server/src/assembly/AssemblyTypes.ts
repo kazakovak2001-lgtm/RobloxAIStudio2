@@ -93,10 +93,7 @@ export interface AssetPlaceholder {
 // ─── Networking ───────────────────────────────────────────────────────────────
 
 export type NetworkObjectType =
-  | "RemoteEvent"
-  | "RemoteFunction"
-  | "BindableEvent"
-  | "BindableFunction";
+  "RemoteEvent" | "RemoteFunction" | "BindableEvent" | "BindableFunction";
 
 export interface NetworkObject {
   id: string;
@@ -105,10 +102,7 @@ export interface NetworkObject {
   service: "ReplicatedStorage";
   path: string;
   direction:
-    | "client-to-server"
-    | "server-to-client"
-    | "bidirectional"
-    | "internal";
+    "client-to-server" | "server-to-client" | "bidirectional" | "internal";
   description?: string;
 }
 

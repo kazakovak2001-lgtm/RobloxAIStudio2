@@ -61,7 +61,10 @@ export type { AIChatPanelProps, ChatMessage } from "./ai/AIChatPanel";
 export type { PromptInputProps } from "./ai/PromptInput";
 export type { AgentCardProps, Agent } from "./ai/AgentCard";
 export type { CodeDiffViewerProps } from "./ai/CodeDiffViewer";
-export type { GenerationHistoryProps, Generation } from "./ai/GenerationHistory";
+export type {
+  GenerationHistoryProps,
+  Generation,
+} from "./ai/GenerationHistory";
 export type { ProjectOverviewProps } from "./dashboard/ProjectOverview";
 export type { AIStatusProps } from "./dashboard/AIStatus";
 export type { PluginStatusProps } from "./dashboard/PluginStatus";

@@ -1,4 +1,5 @@
 # DESIGN SYSTEM
+
 **Generated**: 2026-07-13
 **Project**: Roblox AI Studio DevKit
 **Phase**: UX-1 - Design System
@@ -10,6 +11,7 @@
 This design system defines the visual identity for the Roblox AI Studio Control Center. It provides a comprehensive set of design tokens, components, and guidelines to ensure consistency across the application.
 
 **Design Philosophy**: Dark Developer Environment
+
 - Professional
 - Modern
 - Minimal
@@ -25,6 +27,7 @@ This design system defines the visual identity for the Roblox AI Studio Control 
 ### 1.1 Semantic Colors
 
 **Primary Colors**:
+
 ```javascript
 // Brand Blue
 brand-50:  #eef8ff
@@ -52,6 +55,7 @@ accent-900: #4c1d95
 ```
 
 **Semantic Status Colors**:
+
 ```javascript
 // Success (Green)
 success-50:  #f0fdf4
@@ -103,6 +107,7 @@ info-900: #164e63
 ```
 
 **Neutral Colors**:
+
 ```javascript
 // Slate (Backgrounds, borders, text)
 slate-50:  #f8fafc
@@ -121,18 +126,21 @@ slate-950: #020617  // Primary background
 ### 1.2 Color Usage Guidelines
 
 **Backgrounds**:
+
 - Primary: `slate-950` (#020617)
 - Secondary: `slate-900` (#0f172a)
 - Tertiary: `slate-800` (#1e293b)
 - Card: `slate-900/70` (with backdrop blur)
 
 **Text**:
+
 - Primary: `slate-50` (#f8fafc)
 - Secondary: `slate-400` (#94a3b8)
 - Tertiary: `slate-500` (#64748b)
 - Disabled: `slate-600` (#475569)
 
 **Borders**:
+
 - Primary: `white/10`
 - Secondary: `white/5`
 - Accent: `brand-400/40`
@@ -141,6 +149,7 @@ slate-950: #020617  // Primary background
 - Error: `error-400/40`
 
 **Interactive Elements**:
+
 - Primary action: `brand-500` to `accent-500` gradient
 - Secondary action: `white/10` background
 - Hover: `white/15` background
@@ -153,11 +162,19 @@ slate-950: #020617  // Primary background
 ### 2.1 Font Family
 
 **Primary**: Inter
+
 ```css
-font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+font-family:
+  "Inter",
+  -apple-system,
+  BlinkMacSystemFont,
+  "Segoe UI",
+  Roboto,
+  sans-serif;
 ```
 
 **Monospace**: JetBrains Mono (for code)
+
 ```css
 font-family: "JetBrains Mono", "Fira Code", monospace;
 ```
@@ -165,6 +182,7 @@ font-family: "JetBrains Mono", "Fira Code", monospace;
 ### 2.2 Type Scale
 
 **Display**:
+
 ```css
 text-display-xl: 4.5rem / 5rem (72px / 80px) - font-weight 800
 text-display-lg: 3.75rem / 4.5rem (60px / 72px) - font-weight 700
@@ -173,6 +191,7 @@ text-display-sm: 2.25rem / 2.5rem (36px / 40px) - font-weight 600
 ```
 
 **Headings**:
+
 ```css
 text-h1: 2rem / 2.5rem (32px / 40px) - font-weight 600
 text-h2: 1.5rem / 2rem (24px / 32px) - font-weight 600
@@ -181,6 +200,7 @@ text-h4: 1rem / 1.5rem (16px / 24px) - font-weight 500
 ```
 
 **Body**:
+
 ```css
 text-lg: 1.125rem / 1.75rem (18px / 28px) - font-weight 400
 text-base: 1rem / 1.5rem (16px / 24px) - font-weight 400
@@ -189,6 +209,7 @@ text-xs: 0.75rem / 1rem (12px / 16px) - font-weight 400
 ```
 
 **Code**:
+
 ```css
 text-code-lg: 0.875rem / 1.25rem (14px / 20px) - font-weight 400
 text-code-base: 0.8125rem / 1.25rem (13px / 20px) - font-weight 400
@@ -198,26 +219,31 @@ text-code-sm: 0.75rem / 1rem (12px / 16px) - font-weight 400
 ### 2.3 Typography Usage Guidelines
 
 **Page Titles**: `text-display-sm` or `text-h1`
+
 - Dashboard: "Your studio command center"
 - Projects: "Your project library"
 - AI Studio: "AI Workspace"
 
 **Section Titles**: `text-h2` or `text-h3`
+
 - Card titles
 - Section headers
 - Widget titles
 
 **Body Text**: `text-base` or `text-sm`
+
 - Descriptions
 - Labels
 - Content
 
 **Code**: `text-code-base` with monospace font
+
 - Code snippets
 - API endpoints
 - File paths
 
 **Labels**: `text-xs` uppercase with tracking
+
 - Section labels
 - Status labels
 - Metadata
@@ -231,6 +257,7 @@ text-code-sm: 0.75rem / 1rem (12px / 16px) - font-weight 400
 **Base Unit**: 4px (0.25rem)
 
 **Scale**:
+
 ```css
 space-0: 0
 space-1: 0.25rem (4px)
@@ -250,18 +277,21 @@ space-24: 6rem (96px)
 ### 3.2 Spacing Usage Guidelines
 
 **Component Padding**:
+
 - Small: `p-3` (12px)
 - Medium: `p-4` (16px)
 - Large: `p-6` (24px)
 - Extra Large: `p-8` (32px)
 
 **Component Gap**:
+
 - Tight: `gap-2` (8px)
 - Normal: `gap-3` (12px)
 - Loose: `gap-4` (16px)
 - Extra Loose: `gap-6` (24px)
 
 **Section Spacing**:
+
 - Between sections: `gap-6` (24px) or `gap-8` (32px)
 - Between cards: `gap-4` (16px)
 - Between list items: `gap-3` (12px)
@@ -303,6 +333,7 @@ border-8: 8px
 **Code blocks**: `rounded-lg`
 
 **Border Width**:
+
 - Default: `border` (1px)
 - Emphasis: `border-2` (2px)
 - Heavy: `border-4` (4px)
@@ -323,6 +354,7 @@ shadow-2xl: 0 25px 50px -12px rgb(0 0 0 / 0.25)
 ```
 
 **Custom Shadows**:
+
 ```css
 shadow-glow: 0 0 0 1px rgba(255,255,255,0.06), 0 18px 60px rgba(12, 20, 40, 0.45)
 shadow-glow-sm: 0 0 0 1px rgba(255,255,255,0.06), 0 10px 40px rgba(12, 20, 40, 0.35)
@@ -367,6 +399,7 @@ ease-bounce: cubic-bezier(0.68, -0.55, 0.265, 1.55)
 ### 6.3 Animation Presets
 
 **Transitions**:
+
 ```css
 transition-all: all 200ms ease-in-out
 transition-colors: color 150ms ease-in-out
@@ -375,6 +408,7 @@ transition-transform: transform 200ms ease-out
 ```
 
 **Hover Effects**:
+
 ```css
 hover-lift: hover:-translate-y-1
 hover-scale: hover:scale-1.02
@@ -382,6 +416,7 @@ hover-brightness: hover:brightness-110
 ```
 
 **Loading**:
+
 ```css
 animate-spin: spin 1s linear infinite
 animate-pulse: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite
@@ -396,6 +431,7 @@ animate-bounce: bounce 1s infinite
 **Loading states**: `animate-spin` or `animate-pulse`
 
 **Easing**:
+
 - Default: `ease-out`
 - Enter: `ease-out`
 - Exit: `ease-in`
@@ -407,11 +443,13 @@ animate-bounce: bounce 1s infinite
 ### 7.1 Icon Library
 
 **Primary**: Lucide React
+
 - Modern, consistent icon set
 - Tree-shakeable
 - Customizable stroke width
 
 **Icon Sizes**:
+
 ```css
 icon-xs: 12px
 icon-sm: 16px
@@ -429,6 +467,7 @@ icon-2xl: 48px
 **Hero**: `icon-xl` (32px) or `icon-2xl` (48px)
 
 **Icon Colors**:
+
 - Primary: `brand-400`
 - Secondary: `slate-400`
 - Success: `success-400`
@@ -452,6 +491,7 @@ container-2xl: 1536px
 ### 8.2 Grid System
 
 **Default Grid**: 12 columns
+
 ```css
 grid-cols-1: 1 column
 grid-cols-2: 2 columns
@@ -542,6 +582,7 @@ xl: 1280px
 ## 11. DARK MODE
 
 **Primary Theme**: Dark mode only
+
 - No light mode support
 - Optimized for long development sessions
 - High contrast for readability
@@ -567,7 +608,8 @@ export default {
       },
       boxShadow: {
         glow: "0 0 0 1px rgba(255,255,255,0.06), 0 18px 60px rgba(12, 20, 40, 0.45)",
-        "glow-sm": "0 0 0 1px rgba(255,255,255,0.06), 0 10px 40px rgba(12, 20, 40, 0.35)",
+        "glow-sm":
+          "0 0 0 1px rgba(255,255,255,0.06), 0 10px 40px rgba(12, 20, 40, 0.35)",
         "inner-glow": "inset 0 0 20px rgba(52, 124, 255, 0.1)",
       },
       animation: {
@@ -640,11 +682,13 @@ export default {
 ### 13.2 Next Steps
 
 **Phase UX-2**: Create Component Library
+
 - Implement design tokens in Tailwind config
 - Create reusable UI components
 - Document component patterns
 
 **Phase UX-3**: Redesign Main Screens
+
 - Apply design system to screens
 - Ensure consistency
 - Validate accessibility

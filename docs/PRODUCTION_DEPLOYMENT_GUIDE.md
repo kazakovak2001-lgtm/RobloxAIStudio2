@@ -3,7 +3,7 @@
 ## Prerequisites
 
 - **Docker** 20.10+ and Docker Compose v2
-- **Node.js** 20 LTS (for local builds without Docker)
+- **Node.js** 22 LTS (for local builds without Docker)
 - **PostgreSQL** 14+ (if not using the Docker Compose setup)
 - At least one AI provider API key (OpenAI, Anthropic, or Ollama for local inference)
 

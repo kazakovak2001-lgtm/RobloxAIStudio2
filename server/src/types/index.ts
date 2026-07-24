@@ -1,11 +1,11 @@
 export interface AgentInput {
-   [key: string]: unknown;
- }
+  [key: string]: unknown;
+}
 
- // Re-export GameDesignSeed for agent convenience
- export type { GameDesignSeed } from "./gameDesignSeed";
+// Re-export GameDesignSeed for agent convenience
+export type { GameDesignSeed } from "./gameDesignSeed";
 
- export interface AgentOutput {
+export interface AgentOutput {
   [key: string]: unknown;
 }
 
@@ -53,7 +53,8 @@ export interface LLMOptions {
   stop?: string[];
 }
 
-export type AgentStatus = "idle" | "running" | "completed" | "failed" | "retrying";
+export type AgentStatus =
+  "idle" | "running" | "completed" | "failed" | "retrying";
 
 export type AgentType =
   | "orchestrator"

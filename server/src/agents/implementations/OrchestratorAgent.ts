@@ -123,8 +123,7 @@ export class OrchestratorAgent extends BaseAgent {
     const systemsBuilt =
       systems.map((s) => String(s.name)).join(", ") || "none";
     const luaOutput = input.lua_generator as
-      | Record<string, unknown>
-      | undefined;
+      Record<string, unknown> | undefined;
     const serverScripts = Array.isArray((luaOutput as any)?.server)
       ? (luaOutput as any).server
           .map((s: any) => String(s?.name ?? s))

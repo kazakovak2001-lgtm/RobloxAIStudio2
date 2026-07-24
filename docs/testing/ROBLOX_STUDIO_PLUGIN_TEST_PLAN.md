@@ -1,4 +1,5 @@
 # ROBLOX STUDIO PLUGIN TEST PLAN
+
 **Generated**: 2026-07-13
 **Project**: Roblox AI Studio DevKit
 **Phase**: 2.5.F - Runtime Test Preparation
@@ -10,6 +11,7 @@
 This test plan provides comprehensive testing procedures for the merged Roblox Studio plugin. It covers loading, connection, sync, UI, and error handling tests to ensure the plugin functions correctly in the Roblox Studio environment.
 
 **Test Status**: ⏸️ READY FOR EXECUTION
+
 - **Test Categories**: 5
 - **Total Test Cases**: 30+
 - **Prerequisites**: Roblox Studio, Backend server
@@ -21,16 +23,19 @@ This test plan provides comprehensive testing procedures for the merged Roblox S
 ### 1.1 Environment Setup
 
 **Roblox Studio**:
+
 - [ ] Roblox Studio installed and running
 - [ ] HttpService enabled (Game Settings → Security → Allow HTTP Requests)
 - [ ] Place created or opened
 
 **Backend Server**:
+
 - [ ] DevKit backend running at http://localhost:5000
 - [ ] Backend API endpoints accessible
 - [ ] Backend database operational
 
 **Plugin Files**:
+
 - [ ] studio-plugin/ directory in correct location
 - [ ] plugin.lua in root of studio-plugin/
 - [ ] All module files present (core/, services/, ui/, utils/)
@@ -39,6 +44,7 @@ This test plan provides comprehensive testing procedures for the merged Roblox S
 ### 1.2 Plugin Installation
 
 **Installation Steps**:
+
 1. Copy studio-plugin/ directory to Roblox Studio plugins location
 2. Restart Roblox Studio
 3. Navigate to Plugins → Manage Plugins
@@ -55,12 +61,14 @@ This test plan provides comprehensive testing procedures for the merged Roblox S
 **Test Case**: Plugin loads without errors
 
 **Steps**:
+
 1. Open Roblox Studio
 2. Open a place
 3. Check console for load message
 4. Check toolbar for AI Studio button
 
 **Expected Result**:
+
 - Console shows: `[AI Studio] Plugin v1.7.0 loaded. Backend: http://localhost:5000`
 - Toolbar shows "AI Studio" button
 - No errors in console
@@ -74,11 +82,13 @@ This test plan provides comprehensive testing procedures for the merged Roblox S
 **Test Case**: All modules load correctly
 
 **Steps**:
+
 1. Check console for require errors
 2. Verify no "module not found" errors
 3. Verify no syntax errors
 
 **Expected Result**:
+
 - No require errors
 - No syntax errors
 - All modules loaded successfully
@@ -92,11 +102,13 @@ This test plan provides comprehensive testing procedures for the merged Roblox S
 **Test Case**: Plugin initializes correctly
 
 **Steps**:
+
 1. Check console for initialization messages
 2. Verify no initialization errors
 3. Verify toolbar button is clickable
 
 **Expected Result**:
+
 - No initialization errors
 - Toolbar button responds to hover
 - No warnings in console
@@ -114,12 +126,14 @@ This test plan provides comprehensive testing procedures for the merged Roblox S
 **Prerequisites**: Backend server running
 
 **Steps**:
+
 1. Click toolbar button to open plugin widget
 2. Click "Connect" button
 3. Observe status label
 4. Observe session label
 
 **Expected Result**:
+
 - Status changes to "Connecting..." (orange)
 - Status changes to "Connected" (green)
 - Session label shows session ID (truncated to 16 chars)
@@ -135,12 +149,14 @@ This test plan provides comprehensive testing procedures for the merged Roblox S
 **Test Case**: Disconnect from backend successfully
 
 **Steps**:
+
 1. Ensure connected to backend
 2. Click "Disconnect" button
 3. Observe status label
 4. Observe session label
 
 **Expected Result**:
+
 - Status changes to "Disconnected" (gray)
 - Session label shows "Session: —"
 - Console shows: `[AI Studio] Disconnected from backend.`
@@ -157,12 +173,14 @@ This test plan provides comprehensive testing procedures for the merged Roblox S
 **Prerequisites**: Backend server NOT running
 
 **Steps**:
+
 1. Stop backend server
 2. Click "Connect" button
 3. Observe status label
 4. Observe console
 
 **Expected Result**:
+
 - Status changes to "Failed: <error message>" (red)
 - Console shows: `[AI Studio] Connection failed: <error>`
 - No plugin crash
@@ -179,6 +197,7 @@ This test plan provides comprehensive testing procedures for the merged Roblox S
 **Prerequisites**: Backend server running
 
 **Steps**:
+
 1. Connect to backend
 2. Stop backend server
 3. Wait for heartbeat failure (15 seconds)
@@ -187,6 +206,7 @@ This test plan provides comprehensive testing procedures for the merged Roblox S
 6. Observe reconnection
 
 **Expected Result**:
+
 - Status shows "Reconnecting (1)..." (orange)
 - Status shows "Reconnecting (2)..." (orange)
 - After 5 attempts: "Failed: Reconnect failed after 5 attempts" (red)
@@ -204,12 +224,14 @@ This test plan provides comprehensive testing procedures for the merged Roblox S
 **Prerequisites**: Backend server running
 
 **Steps**:
+
 1. Connect to backend
 2. Wait 30 seconds
 3. Verify connection remains active
 4. Check console for heartbeat logs
 
 **Expected Result**:
+
 - Connection remains active
 - Status remains "Connected" (green)
 - No disconnect events
@@ -228,12 +250,14 @@ This test plan provides comprehensive testing procedures for the merged Roblox S
 **Prerequisites**: Backend server running, connected to backend
 
 **Steps**:
+
 1. Connect to backend
 2. Click "Sync Project" button
 3. Observe sync label
 4. Observe console
 
 **Expected Result**:
+
 - Sync label shows "Syncing..."
 - Sync label shows "Last sync: <time> (<count> artifacts)"
 - Console shows: `[AI Studio] Sync completed: <count> artifacts`
@@ -251,12 +275,14 @@ This test plan provides comprehensive testing procedures for the merged Roblox S
 **Prerequisites**: Backend server running, connected to backend, empty project
 
 **Steps**:
+
 1. Connect to backend
 2. Click "Sync Project" button
 3. Observe sync label
 4. Observe console
 
 **Expected Result**:
+
 - Sync label shows "Last sync: <time> (0 artifacts)"
 - Console shows: `[AI Studio] Sync completed: 0 artifacts`
 - No errors in console
@@ -272,6 +298,7 @@ This test plan provides comprehensive testing procedures for the merged Roblox S
 **Prerequisites**: Backend server running, connected to backend
 
 **Steps**:
+
 1. Connect to backend
 2. Stop backend server
 3. Click "Sync Project" button
@@ -279,6 +306,7 @@ This test plan provides comprehensive testing procedures for the merged Roblox S
 5. Observe console
 
 **Expected Result**:
+
 - Sync label shows "Sync Failed"
 - Console shows error message
 - No plugin crash
@@ -295,11 +323,13 @@ This test plan provides comprehensive testing procedures for the merged Roblox S
 **Prerequisites**: Not connected to backend
 
 **Steps**:
+
 1. Ensure disconnected from backend
 2. Click "Sync Project" button
 3. Observe status label
 
 **Expected Result**:
+
 - Status shows "Connect first" (red)
 - No sync attempt made
 - No errors in console
@@ -315,12 +345,14 @@ This test plan provides comprehensive testing procedures for the merged Roblox S
 **Test Case**: Widget opens correctly
 
 **Steps**:
+
 1. Click toolbar button
 2. Observe widget appearance
 3. Verify widget title
 4. Verify widget size
 
 **Expected Result**:
+
 - Widget opens in dock panel
 - Widget title is "AI Studio"
 - Widget size is approximately 280x350
@@ -335,11 +367,13 @@ This test plan provides comprehensive testing procedures for the merged Roblox S
 **Test Case**: Widget closes correctly
 
 **Steps**:
+
 1. Click toolbar button to open widget
 2. Click toolbar button again to close widget
 3. Observe widget disappearance
 
 **Expected Result**:
+
 - Widget closes
 - Widget can be reopened
 - No errors in console
@@ -353,6 +387,7 @@ This test plan provides comprehensive testing procedures for the merged Roblox S
 **Test Case**: All buttons respond to clicks
 
 **Steps**:
+
 1. Click "Connect" button
 2. Click "Generate" button
 3. Click "Sync Project" button
@@ -360,6 +395,7 @@ This test plan provides comprehensive testing procedures for the merged Roblox S
 5. Click "Show Errors" button
 
 **Expected Result**:
+
 - All buttons respond to clicks
 - All buttons show visual feedback
 - No buttons are unresponsive
@@ -373,6 +409,7 @@ This test plan provides comprehensive testing procedures for the merged Roblox S
 **Test Case**: Status label updates correctly
 
 **Steps**:
+
 1. Observe initial status ("Disconnected")
 2. Click "Connect" button
 3. Observe status change to "Connecting..."
@@ -381,6 +418,7 @@ This test plan provides comprehensive testing procedures for the merged Roblox S
 6. Observe status change to "Disconnected" (gray)
 
 **Expected Result**:
+
 - Status label updates correctly
 - Status color changes correctly
 - No status label errors
@@ -394,6 +432,7 @@ This test plan provides comprehensive testing procedures for the merged Roblox S
 **Test Case**: Session label updates correctly
 
 **Steps**:
+
 1. Observe initial session label ("Session: —")
 2. Connect to backend
 3. Observe session label update
@@ -401,6 +440,7 @@ This test plan provides comprehensive testing procedures for the merged Roblox S
 5. Observe session label reset
 
 **Expected Result**:
+
 - Session label shows "Session: —" when disconnected
 - Session label shows session ID when connected (truncated to 16 chars)
 - Session label resets to "Session: —" on disconnect
@@ -414,11 +454,13 @@ This test plan provides comprehensive testing procedures for the merged Roblox S
 **Test Case**: Sync label updates correctly
 
 **Steps**:
+
 1. Observe initial sync label ("Last sync: Never")
 2. Sync project
 3. Observe sync label update
 
 **Expected Result**:
+
 - Sync label shows "Last sync: Never" initially
 - Sync label shows "Last sync: <time> (<count> artifacts)" after sync
 - Sync label shows "Syncing..." during sync
@@ -432,10 +474,12 @@ This test plan provides comprehensive testing procedures for the merged Roblox S
 **Test Case**: Generate button shows stub behavior
 
 **Steps**:
+
 1. Click "Generate" button
 2. Observe status label
 
 **Expected Result**:
+
 - Status shows "Generating..." (yellow)
 - No actual generation (stub behavior)
 - No errors in console
@@ -451,10 +495,12 @@ This test plan provides comprehensive testing procedures for the merged Roblox S
 **Test Case**: Error reporter captures errors
 
 **Steps**:
+
 1. Click "Show Errors" button
 2. Observe console output
 
 **Expected Result**:
+
 - Errors printed to console
 - Error messages formatted correctly
 - No error reporter crashes
@@ -468,11 +514,13 @@ This test plan provides comprehensive testing procedures for the merged Roblox S
 **Test Case**: Event handler errors don't crash plugin
 
 **Steps**:
+
 1. Force an event handler error (if possible)
 2. Observe plugin behavior
 3. Check console for error handler warnings
 
 **Expected Result**:
+
 - Plugin continues to function
 - Console shows: `[AIStudio Events] Handler error: <error>`
 - No plugin crash
@@ -488,11 +536,13 @@ This test plan provides comprehensive testing procedures for the merged Roblox S
 **Prerequisites**: Backend server NOT running
 
 **Steps**:
+
 1. Attempt to connect
 2. Observe error handling
 3. Check console
 
 **Expected Result**:
+
 - Error reported via ErrorReporter
 - Event fired: CONNECTION_FAILED
 - Status updated with error message
@@ -509,12 +559,14 @@ This test plan provides comprehensive testing procedures for the merged Roblox S
 **Test Case**: Plugin unloads cleanly
 
 **Steps**:
+
 1. Connect to backend
 2. Close Roblox Studio
 3. Reopen Roblox Studio
 4. Check for errors
 
 **Expected Result**:
+
 - Plugin unloads cleanly
 - Console shows: `[AI Studio] Plugin unloaded.`
 - No errors on reload
@@ -529,12 +581,14 @@ This test plan provides comprehensive testing procedures for the merged Roblox S
 **Test Case**: No memory leaks on repeated operations
 
 **Steps**:
+
 1. Connect and disconnect 10 times
 2. Sync project 10 times
 3. Open and close widget 10 times
 4. Monitor memory usage
 
 **Expected Result**:
+
 - Memory usage stable
 - No significant memory increase
 - No memory leak warnings
@@ -550,6 +604,7 @@ This test plan provides comprehensive testing procedures for the merged Roblox S
 **Test Case**: Events fire correctly
 
 **Steps**:
+
 1. Connect to backend
 2. Check console for STUDIO_CONNECTED event
 3. Disconnect from backend
@@ -558,6 +613,7 @@ This test plan provides comprehensive testing procedures for the merged Roblox S
 6. Check console for PROJECT_SYNC_COMPLETED event
 
 **Expected Result**:
+
 - All events fire at correct times
 - Event payloads contain correct data
 - Console logs all events
@@ -571,12 +627,14 @@ This test plan provides comprehensive testing procedures for the merged Roblox S
 **Test Case**: Event handlers execute correctly
 
 **Steps**:
+
 1. Connect to backend
 2. Observe UI updates (status, session)
 3. Sync project
 4. Observe UI updates (sync label)
 
 **Expected Result**:
+
 - UI updates correctly on events
 - Event handlers execute in correct order
 - No handler errors
@@ -590,11 +648,13 @@ This test plan provides comprehensive testing procedures for the merged Roblox S
 ### 9.1 Test Categories
 
 **Loading Tests**: 3
+
 - Plugin load test
 - Module load test
 - Initialization test
 
 **Connection Tests**: 5
+
 - Connect test
 - Disconnect test
 - Connection failure test
@@ -602,12 +662,14 @@ This test plan provides comprehensive testing procedures for the merged Roblox S
 - Heartbeat test
 
 **Sync Tests**: 4
+
 - Sync success test
 - Sync empty project test
 - Sync failure test
 - Sync without connection test
 
 **UI Tests**: 7
+
 - Widget open test
 - Widget close test
 - Button test
@@ -617,15 +679,18 @@ This test plan provides comprehensive testing procedures for the merged Roblox S
 - Generate button test
 
 **Error Handling Tests**: 3
+
 - Error reporter test
 - Event handler error test
 - Network error test
 
 **Cleanup Tests**: 2
+
 - Plugin unload test
 - Memory leak test
 
 **Event Tests**: 2
+
 - Event firing test
 - Event handler test
 
@@ -660,11 +725,13 @@ This test plan provides comprehensive testing procedures for the merged Roblox S
 ### 10.2 Medium Risk Areas
 
 **Event System Integration**:
+
 - **Risk**: Event handlers may not fire correctly
 - **Mitigation**: Comprehensive event testing
 - **Risk Level**: MEDIUM
 
 **Network Reliability**:
+
 - **Risk**: Network errors may cause plugin instability
 - **Mitigation**: Error handling and reconnection logic
 - **Risk Level**: MEDIUM
@@ -672,11 +739,13 @@ This test plan provides comprehensive testing procedures for the merged Roblox S
 ### 10.3 Low Risk Areas
 
 **RuntimeValidator Unused**:
+
 - **Risk**: Unused code
 - **Mitigation**: Remove or integrate later
 - **Risk Level**: LOW
 
 **Generate Button Stub**:
+
 - **Risk**: Button does nothing
 - **Mitigation**: Expected for current version
 - **Risk Level**: LOW

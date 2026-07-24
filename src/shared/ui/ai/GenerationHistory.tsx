@@ -1,4 +1,11 @@
-import { Trash2, Clock, CheckCircle, AlertCircle, Loader2, DollarSign } from "lucide-react";
+import {
+  Trash2,
+  Clock,
+  CheckCircle,
+  AlertCircle,
+  Loader2,
+  DollarSign,
+} from "lucide-react";
 
 export interface Generation {
   id: string;
@@ -66,7 +73,9 @@ export function GenerationHistory({
       {/* Header */}
       <div className="flex items-center justify-between border-b border-white/10 p-4">
         <h3 className="text-h3 font-semibold text-white">Generation History</h3>
-        <span className="text-sm text-slate-400">{generations.length} items</span>
+        <span className="text-sm text-slate-400">
+          {generations.length} items
+        </span>
       </div>
 
       {/* List */}
@@ -111,7 +120,9 @@ export function GenerationHistory({
                       </div>
                       {generation.tokens && (
                         <div className="flex items-center gap-1">
-                          <span>{generation.tokens.toLocaleString()} tokens</span>
+                          <span>
+                            {generation.tokens.toLocaleString()} tokens
+                          </span>
                         </div>
                       )}
                       {generation.cost && (

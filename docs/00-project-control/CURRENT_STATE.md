@@ -1,8 +1,8 @@
 # Current Project State
 
 **Last Updated**: July 24, 2026
-**Phase**: CUTOVER-0 — Standalone Frontend Governance & CI
-**Build Status**: Backend baseline stable; cross-repository validation is being established
+**Phase**: CI-BASELINE-1 — Portable CI & Repository Hygiene
+**Build Status**: Clean Node.js 22 / npm 10 backend CI passes locally; standalone frontend typecheck and production build pass locally
 
 ---
 
@@ -135,7 +135,7 @@
 1. **ESLint Config**: v10 installed with legacy .eslintrc.json format (functional but deprecated config style)
 2. **Core data path**: projects, blueprints, and chat need a verified persistent end-to-end path before production cutover (CORE-1).
 3. **Workflow fidelity**: several standalone Workspace operations currently use structural fixtures or fallback artifacts and must be connected to real generated project data (CORE-1 / STUDIO-1).
-4. **CI baseline blocker**: generated `node_modules/` content is tracked in Git, making the backend checkout platform-dependent and causing repository validation to scan dependencies. Resolve through CI-BASELINE-1 before CORE-1.
+4. **CI baseline review**: portable CI remediation is ready for review. Do not begin CORE-1 until the isolated cleanup is accepted and Actions confirms the same result.
 
 ---
 
@@ -161,7 +161,7 @@ This template enforces:
 
 ## Production Infrastructure
 
-- **Dockerfile**: Multi-stage build (Node.js 20 alpine builder → production image)
+- **Dockerfile**: Multi-stage build (Node.js 22 alpine builder → production image)
 - **Migration Runner**: `server/src/platform/storage/postgres/migrationRunner.ts` — auto-applies pending migrations on startup (skips when STORAGE_PROVIDER=inmemory)
 - **Nginx Config**: `deploy/nginx.conf` — reverse proxy with WebSocket support, gzip, security headers
 - **Docker Compose**: `deploy/docker-compose.yml` — full stack (app + postgres + nginx)
@@ -172,6 +172,7 @@ This template enforces:
 
 ## Last Changes
 
+- July 24, 2026: CI-BASELINE-1 prepared — synchronized lockfiles, standardized Node.js 22, removed tracked generated dependencies, formatted the inherited baseline, and verified clean backend CI (706 tests)
 - July 24, 2026: CUTOVER-0 started — standalone `Frontend` declared canonical, embedded `src/` frontend frozen, CI alignment initiated, and cross-repository delivery gates documented
 - July 16, 2026: Autonomous Pipeline real-time integration complete — events emitted via PipelineEventEmitter, AgentBoard shows phases live, Socket.IO primary transport with polling fallback, step.failed handling added
 - July 16, 2026: Checkpoint — all tests pass (Task 12) — tsc ✅, vite build ✅, vitest 652/654 pass (2 pre-existing), all PBT pass, security source-code verified, FINAL_V1_RELEASE_SIGN_OFF.md generated

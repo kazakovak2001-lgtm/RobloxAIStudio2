@@ -24,11 +24,15 @@ export function incrementRetry(step: PipelineStep): Partial<PipelineStep> {
   };
 }
 
-export function nextRetryDelay(step: PipelineStep, policy: RetryPolicy): number {
+export function nextRetryDelay(
+  step: PipelineStep,
+  policy: RetryPolicy,
+): number {
   const attempt = step.retryCount ?? 0;
-  const delay = policy.backoff === "exponential"
-    ? policy.initialDelay * Math.pow(2, attempt)
-    : policy.initialDelay * (attempt + 1);
+  const delay =
+    policy.backoff === "exponential"
+      ? policy.initialDelay * Math.pow(2, attempt)
+      : policy.initialDelay * (attempt + 1);
 
   return Math.min(delay, policy.maxDelay);
 }

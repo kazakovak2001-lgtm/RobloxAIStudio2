@@ -1,7 +1,11 @@
 export interface AIProvider {
   initialize(): Promise<void>;
   generate(prompt: string, options: AIRequestOptions): Promise<AIResponse>;
-  stream?(prompt: string, options: AIRequestOptions, onChunk: (chunk: string) => void): Promise<void>;
+  stream?(
+    prompt: string,
+    options: AIRequestOptions,
+    onChunk: (chunk: string) => void,
+  ): Promise<void>;
   healthCheck(): Promise<boolean>;
   estimateCost(promptTokens: number, completionTokens: number): number;
   tokenUsage?(response: AIResponse): TokenUsage;

@@ -44,7 +44,10 @@ export function PromptInput({
     }
   };
 
-  const handleTemplateSelect = (template: { name: string; content: string }) => {
+  const handleTemplateSelect = (template: {
+    name: string;
+    content: string;
+  }) => {
     onChange(template.content);
     setShowTemplates(false);
   };
@@ -108,8 +111,8 @@ export function PromptInput({
                   tokenPercentage >= 90
                     ? "bg-error-400"
                     : tokenPercentage >= 70
-                    ? "bg-warning-400"
-                    : "bg-success-400"
+                      ? "bg-warning-400"
+                      : "bg-success-400"
                 }`}
                 style={{ width: `${Math.min(tokenPercentage, 100)}%` }}
               />

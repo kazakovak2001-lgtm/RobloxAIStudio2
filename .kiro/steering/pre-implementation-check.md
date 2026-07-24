@@ -77,4 +77,4 @@ You may skip pre-check for:
 - Configuration files
 - Documentation files (.md)
 - Style files (.css)
-AI Workspace Conversational Arc
+  AI Workspace Conversational Arc

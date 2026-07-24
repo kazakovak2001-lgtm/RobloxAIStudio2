@@ -1,4 +1,5 @@
 # PLUGIN MERGE EXECUTION PLAN
+
 **Generated**: 2026-07-13
 **Project**: Roblox AI Studio DevKit
 **Phase**: 2.5 - Plugin Merge Execution Plan
@@ -27,12 +28,14 @@ This document provides the detailed execution plan for merging the two Roblox St
 **Entry Point**: `plugin.lua`
 
 **Dependencies**:
+
 - HttpService (Roblox)
 - No external dependencies
 
 **Build System**: None (Lua files directly loaded by Roblox Studio)
 
 **Runtime Behavior**:
+
 - Direct REST API communication
 - Session-based authentication
 - Heartbeat keep-alive (15s interval)
@@ -40,6 +43,7 @@ This document provides the detailed execution plan for merging the two Roblox St
 - Artifact loading
 
 **File Structure**:
+
 ```
 RobloxAIStudioPlugin/
 ├── plugin.lua              (5,155 bytes)  — Entry point
@@ -53,6 +57,7 @@ RobloxAIStudioPlugin/
 ```
 
 **API Endpoints Used**:
+
 - `POST /api/studio/connect`
 - `POST /api/studio/heartbeat`
 - `POST /api/studio/disconnect`
@@ -71,12 +76,14 @@ RobloxAIStudioPlugin/
 **Entry Point**: None (needs creation)
 
 **Dependencies**:
+
 - HttpService (Roblox)
 - No external dependencies
 
 **Build System**: None (Lua files directly loaded by Roblox Studio)
 
 **Runtime Behavior**:
+
 - Protocol-based messaging (HELLO, PING, PONG, STATUS, etc.)
 - Structured message format with protocol version
 - Session-based authentication
@@ -87,6 +94,7 @@ RobloxAIStudioPlugin/
 - Centralized error reporting
 
 **File Structure**:
+
 ```
 studio-plugin/
 ├── src/
@@ -102,6 +110,7 @@ studio-plugin/
 ```
 
 **API Endpoints Used**:
+
 - `POST /api/studio/connect`
 - `POST /api/studio/disconnect`
 - Protocol-based message endpoints
@@ -154,30 +163,30 @@ studio-plugin/
 
 ### 3.1 File Migration Table
 
-| Current File | Destination | Action | Risk | Notes |
-|--------------|-------------|--------|------|-------|
-| `RobloxAIStudioPlugin/plugin.lua` | `studio-plugin/plugin.lua` | MOVE & ADAPT | LOW | Adapt to use studio-plugin modules |
-| `RobloxAIStudioPlugin/src/Events.lua` | `studio-plugin/src/core/Events.lua` | MOVE | LOW | Integrate with studio-plugin architecture |
-| `RobloxAIStudioPlugin/src/ConnectionManager.lua` | `studio-plugin/src/services/ConnectionManager.lua` | MERGE | MEDIUM | Merge with existing ConnectionManager.lua |
-| `RobloxAIStudioPlugin/src/SyncManager.lua` | `studio-plugin/src/services/SyncManager.lua` | MERGE | MEDIUM | Merge with existing SyncManager.lua |
-| `RobloxAIStudioPlugin/src/UI.lua` | `studio-plugin/src/ui/CommandPanel.lua` | MERGE | MEDIUM | Merge features into CommandPanel.lua |
-| `RobloxAIStudioPlugin/src/ApiClient.lua` | `studio-plugin/src/legacy/ApiClient.lua` | MOVE | LOW | Deprecate, keep for compatibility |
-| `studio-plugin/src/Config.lua` | `studio-plugin/src/core/Config.lua` | MOVE | LOW | Move to core/ |
-| `studio-plugin/src/StudioConnector.lua` | `studio-plugin/src/services/StudioConnector.lua` | MOVE | LOW | Move to services/ |
-| `studio-plugin/src/ArtifactLoader.lua` | `studio-plugin/src/utils/ArtifactLoader.lua` | MOVE | LOW | Move to utils/ |
-| `studio-plugin/src/ErrorReporter.lua` | `studio-plugin/src/utils/ErrorReporter.lua` | MOVE | LOW | Move to utils/ |
-| `studio-plugin/src/RuntimeValidator.lua` | `studio-plugin/src/utils/RuntimeValidator.lua` | MOVE | LOW | Move to utils/ |
-| `studio-plugin/src/CommandPanel.lua` | `studio-plugin/src/ui/CommandPanel.lua` | MOVE | LOW | Move to ui/ |
-| `RobloxAIStudioPlugin/README.md` | `docs/archive/RobloxAIStudioPlugin_README.md` | ARCHIVE | LOW | Preserve for reference |
-| `studio-plugin/README.md` | `studio-plugin/README.md` | UPDATE | LOW | Update with new structure |
+| Current File                                     | Destination                                        | Action       | Risk   | Notes                                     |
+| ------------------------------------------------ | -------------------------------------------------- | ------------ | ------ | ----------------------------------------- |
+| `RobloxAIStudioPlugin/plugin.lua`                | `studio-plugin/plugin.lua`                         | MOVE & ADAPT | LOW    | Adapt to use studio-plugin modules        |
+| `RobloxAIStudioPlugin/src/Events.lua`            | `studio-plugin/src/core/Events.lua`                | MOVE         | LOW    | Integrate with studio-plugin architecture |
+| `RobloxAIStudioPlugin/src/ConnectionManager.lua` | `studio-plugin/src/services/ConnectionManager.lua` | MERGE        | MEDIUM | Merge with existing ConnectionManager.lua |
+| `RobloxAIStudioPlugin/src/SyncManager.lua`       | `studio-plugin/src/services/SyncManager.lua`       | MERGE        | MEDIUM | Merge with existing SyncManager.lua       |
+| `RobloxAIStudioPlugin/src/UI.lua`                | `studio-plugin/src/ui/CommandPanel.lua`            | MERGE        | MEDIUM | Merge features into CommandPanel.lua      |
+| `RobloxAIStudioPlugin/src/ApiClient.lua`         | `studio-plugin/src/legacy/ApiClient.lua`           | MOVE         | LOW    | Deprecate, keep for compatibility         |
+| `studio-plugin/src/Config.lua`                   | `studio-plugin/src/core/Config.lua`                | MOVE         | LOW    | Move to core/                             |
+| `studio-plugin/src/StudioConnector.lua`          | `studio-plugin/src/services/StudioConnector.lua`   | MOVE         | LOW    | Move to services/                         |
+| `studio-plugin/src/ArtifactLoader.lua`           | `studio-plugin/src/utils/ArtifactLoader.lua`       | MOVE         | LOW    | Move to utils/                            |
+| `studio-plugin/src/ErrorReporter.lua`            | `studio-plugin/src/utils/ErrorReporter.lua`        | MOVE         | LOW    | Move to utils/                            |
+| `studio-plugin/src/RuntimeValidator.lua`         | `studio-plugin/src/utils/RuntimeValidator.lua`     | MOVE         | LOW    | Move to utils/                            |
+| `studio-plugin/src/CommandPanel.lua`             | `studio-plugin/src/ui/CommandPanel.lua`            | MOVE         | LOW    | Move to ui/                               |
+| `RobloxAIStudioPlugin/README.md`                 | `docs/archive/RobloxAIStudioPlugin_README.md`      | ARCHIVE      | LOW    | Preserve for reference                    |
+| `studio-plugin/README.md`                        | `studio-plugin/README.md`                          | UPDATE       | LOW    | Update with new structure                 |
 
 ### 3.2 New Files to Create
 
-| File | Purpose | Risk |
-|------|---------|------|
-| `studio-plugin/plugin.lua` | Entry point | LOW |
-| `studio-plugin/assets/` | Plugin assets | LOW |
-| `studio-plugin/package.json` | Metadata | LOW |
+| File                         | Purpose       | Risk |
+| ---------------------------- | ------------- | ---- |
+| `studio-plugin/plugin.lua`   | Entry point   | LOW  |
+| `studio-plugin/assets/`      | Plugin assets | LOW  |
+| `studio-plugin/package.json` | Metadata      | LOW  |
 
 ---
 
@@ -205,6 +214,7 @@ studio-plugin/
 ### 4.2 Import Changes
 
 **Before (RobloxAIStudioPlugin/plugin.lua)**:
+
 ```lua
 local ApiClient = require(script.Parent.src.ApiClient)
 local ConnectionManager = require(script.Parent.src.ConnectionManager)
@@ -214,6 +224,7 @@ local UI = require(script.Parent.src.UI)
 ```
 
 **After (studio-plugin/plugin.lua)**:
+
 ```lua
 local Config = require(script.Parent.src.core.Config)
 local Events = require(script.Parent.src.core.Events)
@@ -233,12 +244,14 @@ No build scripts required (Lua files loaded directly by Roblox Studio).
 ### 4.4 Configuration Changes
 
 **Config.lua Updates**:
+
 - Add configuration options from legacy plugin.lua
 - Add protocol version configuration
 - Add heartbeat configuration
 - Add reconnection configuration
 
 **New Configuration Options**:
+
 ```lua
 Config.BACKEND_URL = "http://localhost:5000"
 Config.API_KEY = ""
@@ -258,9 +271,11 @@ Config.ENABLE_LEGACY_API = false  -- For backward compatibility
 ### 5.1 Roblox Studio Tests
 
 #### Test 1: Plugin Loading
+
 **Objective**: Verify plugin loads without errors in Roblox Studio
 
 **Steps**:
+
 1. Open Roblox Studio
 2. Navigate to Plugins folder
 3. Copy merged plugin files
@@ -275,9 +290,11 @@ Config.ENABLE_LEGACY_API = false  -- For backward compatibility
 ---
 
 #### Test 2: UI Functionality
+
 **Objective**: Verify UI widget displays and functions correctly
 
 **Steps**:
+
 1. Click toolbar button
 2. Verify UI panel opens
 3. Verify all UI elements display
@@ -291,9 +308,11 @@ Config.ENABLE_LEGACY_API = false  -- For backward compatibility
 ---
 
 #### Test 3: Commands
+
 **Objective**: Verify plugin commands execute correctly
 
 **Steps**:
+
 1. Test connect command
 2. Test disconnect command
 3. Test sync command
@@ -307,9 +326,11 @@ Config.ENABLE_LEGACY_API = false  -- For backward compatibility
 ---
 
 #### Test 4: Events
+
 **Objective**: Verify event system works correctly
 
 **Steps**:
+
 1. Trigger connection event
 2. Trigger heartbeat event
 3. Trigger sync event
@@ -325,9 +346,11 @@ Config.ENABLE_LEGACY_API = false  -- For backward compatibility
 ### 5.2 Backend Tests
 
 #### Test 1: Authentication
+
 **Objective**: Verify plugin authenticates with backend
 
 **Steps**:
+
 1. Start backend server
 2. Connect plugin
 3. Verify authentication succeeds
@@ -341,9 +364,11 @@ Config.ENABLE_LEGACY_API = false  -- For backward compatibility
 ---
 
 #### Test 2: API Communication
+
 **Objective**: Verify plugin communicates with backend API
 
 **Steps**:
+
 1. Test connect endpoint
 2. Test heartbeat endpoint
 3. Test sync endpoint
@@ -357,9 +382,11 @@ Config.ENABLE_LEGACY_API = false  -- For backward compatibility
 ---
 
 #### Test 3: AI Requests
+
 **Objective**: Verify plugin can trigger AI generation
 
 **Steps**:
+
 1. Create test project
 2. Trigger generation via plugin
 3. Verify request sent to backend
@@ -375,9 +402,11 @@ Config.ENABLE_LEGACY_API = false  -- For backward compatibility
 ### 5.3 Build Tests
 
 #### Test 1: Installation
+
 **Objective**: Verify plugin can be installed
 
 **Steps**:
+
 1. Copy plugin to Roblox Studio plugins folder
 2. Restart Roblox Studio
 3. Verify plugin appears in plugin manager
@@ -390,9 +419,11 @@ Config.ENABLE_LEGACY_API = false  -- For backward compatibility
 ---
 
 #### Test 2: Build (if applicable)
+
 **Objective**: Verify build process works (if build system added)
 
 **Steps**:
+
 1. Run build script (if exists)
 2. Verify no errors
 3. Verify output files generated
@@ -409,6 +440,7 @@ Config.ENABLE_LEGACY_API = false  -- For backward compatibility
 ### 6.1 Backup Point
 
 **Before Merge**:
+
 1. Create git branch: `feature/plugin-merge`
 2. Tag current state: `pre-plugin-merge-v1.3.3`
 3. Copy both plugin directories to temporary backup:
@@ -416,6 +448,7 @@ Config.ENABLE_LEGACY_API = false  -- For backward compatibility
    - `backup/studio-plugin/`
 
 **Commands**:
+
 ```bash
 git checkout -b feature/plugin-merge
 git tag pre-plugin-merge-v1.3.3
@@ -429,12 +462,14 @@ cp -r studio-plugin backup/
 ### 6.2 Git Strategy
 
 **Branch Strategy**:
+
 - Work on `feature/plugin-merge` branch
 - Commit frequently with descriptive messages
 - Use atomic commits (one logical change per commit)
 - Squash commits before merge if needed
 
 **Merge Strategy**:
+
 - Create pull request after completion
 - Require code review
 - Require all tests to pass
@@ -447,6 +482,7 @@ cp -r studio-plugin backup/
 If merge fails or causes issues:
 
 **Option 1: Git Rollback**
+
 ```bash
 # Discard changes on branch
 git reset --hard pre-plugin-merge-v1.3.3
@@ -457,6 +493,7 @@ git branch -D feature/plugin-merge
 ```
 
 **Option 2: File Restoration**
+
 ```bash
 # Restore from backup
 rm -rf studio-plugin
@@ -466,6 +503,7 @@ cp -r backup/RobloxAIStudioPlugin RobloxAIStudioPlugin
 ```
 
 **Option 3: Selective Rollback**
+
 ```bash
 # Restore specific files from backup
 cp backup/studio-plugin/src/ConnectionManager.lua studio-plugin/src/
@@ -477,6 +515,7 @@ cp backup/studio-plugin/src/SyncManager.lua studio-plugin/src/
 ### 6.4 Rollback Triggers
 
 **Trigger Rollback If**:
+
 - Plugin fails to load in Roblox Studio
 - Critical functionality broken
 - Backend communication fails
@@ -489,6 +528,7 @@ cp backup/studio-plugin/src/SyncManager.lua studio-plugin/src/
 ## 7. EXECUTION CHECKLIST
 
 ### Phase 2.1: Preparation
+
 - [ ] Create git branch `feature/plugin-merge`
 - [ ] Tag current state `pre-plugin-merge-v1.3.3`
 - [ ] Create backup directories
@@ -497,6 +537,7 @@ cp backup/studio-plugin/src/SyncManager.lua studio-plugin/src/
 - [ ] Review this execution plan
 
 ### Phase 2.2: Create Entry Point
+
 - [ ] Create `studio-plugin/plugin.lua`
 - [ ] Adapt from `RobloxAIStudioPlugin/plugin.lua`
 - [ ] Update to use studio-plugin modules
@@ -505,6 +546,7 @@ cp backup/studio-plugin/src/SyncManager.lua studio-plugin/src/
 - [ ] Test plugin loads
 
 ### Phase 2.3: Reorganize Directory Structure
+
 - [ ] Create `studio-plugin/src/core/`
 - [ ] Create `studio-plugin/src/commands/`
 - [ ] Create `studio-plugin/src/services/`
@@ -514,6 +556,7 @@ cp backup/studio-plugin/src/SyncManager.lua studio-plugin/src/
 - [ ] Create `studio-plugin/assets/`
 
 ### Phase 2.4: Move Files
+
 - [ ] Move `Config.lua` to `core/`
 - [ ] Move `Events.lua` to `core/`
 - [ ] Move `StudioConnector.lua` to `services/`
@@ -524,6 +567,7 @@ cp backup/studio-plugin/src/SyncManager.lua studio-plugin/src/
 - [ ] Move `ApiClient.lua` to `legacy/`
 
 ### Phase 2.5: Merge ConnectionManager.lua
+
 - [ ] Compare both implementations
 - [ ] Identify features in legacy not in current
 - [ ] Add missing features to studio-plugin version
@@ -531,6 +575,7 @@ cp backup/studio-plugin/src/SyncManager.lua studio-plugin/src/
 - [ ] Test heartbeat and reconnection
 
 ### Phase 2.6: Merge SyncManager.lua
+
 - [ ] Compare both implementations
 - [ ] Identify features in legacy not in current
 - [ ] Add missing features to studio-plugin version
@@ -538,12 +583,14 @@ cp backup/studio-plugin/src/SyncManager.lua studio-plugin/src/
 - [ ] Test artifact handling
 
 ### Phase 2.7: Integrate Events.lua
+
 - [ ] Copy Events.lua from legacy
 - [ ] Integrate with studio-plugin architecture
 - [ ] Update all modules to use event system
 - [ ] Test event propagation
 
 ### Phase 2.8: Enhance UI
+
 - [ ] Compare UI.lua with CommandPanel.lua
 - [ ] Identify UI features in legacy not in current
 - [ ] Add missing features to CommandPanel.lua
@@ -551,18 +598,21 @@ cp backup/studio-plugin/src/SyncManager.lua studio-plugin/src/
 - [ ] Test user interactions
 
 ### Phase 2.9: Update Configuration
+
 - [ ] Ensure Config.lua has all necessary settings
 - [ ] Add any missing configuration from legacy
 - [ ] Document all configuration options
 - [ ] Test configuration loading
 
 ### Phase 2.10: Create package.json
+
 - [ ] Create `studio-plugin/package.json`
 - [ ] Add metadata
 - [ ] Add version information
 - [ ] Add dependencies (if any)
 
 ### Phase 2.11: Update Documentation
+
 - [ ] Update `studio-plugin/README.md`
 - [ ] Document new architecture
 - [ ] Document configuration options
@@ -570,6 +620,7 @@ cp backup/studio-plugin/src/SyncManager.lua studio-plugin/src/
 - [ ] Create migration guide for users
 
 ### Phase 2.12: Testing
+
 - [ ] Load plugin in Roblox Studio
 - [ ] Test connection to backend
 - [ ] Test heartbeat
@@ -580,6 +631,7 @@ cp backup/studio-plugin/src/SyncManager.lua studio-plugin/src/
 - [ ] Test reconnection logic
 
 ### Phase 2.13: Cleanup
+
 - [ ] Remove `RobloxAIStudioPlugin/` directory
 - [ ] Update any references in documentation
 - [ ] Update any references in server code
@@ -587,6 +639,7 @@ cp backup/studio-plugin/src/SyncManager.lua studio-plugin/src/
 - [ ] Commit changes
 
 ### Phase 2.14: Final Validation
+
 - [ ] All tests pass
 - [ ] Plugin loads successfully
 - [ ] No console errors
@@ -599,29 +652,32 @@ cp backup/studio-plugin/src/SyncManager.lua studio-plugin/src/
 
 ### 8.1 Risk Assessment
 
-| Risk | Probability | Impact | Mitigation |
-|------|-------------|--------|------------|
-| Plugin fails to load | LOW | HIGH | Test incrementally, keep backup |
-| Merge conflicts | MEDIUM | MEDIUM | Careful comparison, manual review |
-| Broken functionality | LOW | HIGH | Comprehensive testing |
-| Performance degradation | LOW | MEDIUM | Benchmark before/after |
-| Documentation errors | LOW | LOW | Peer review of docs |
+| Risk                    | Probability | Impact | Mitigation                        |
+| ----------------------- | ----------- | ------ | --------------------------------- |
+| Plugin fails to load    | LOW         | HIGH   | Test incrementally, keep backup   |
+| Merge conflicts         | MEDIUM      | MEDIUM | Careful comparison, manual review |
+| Broken functionality    | LOW         | HIGH   | Comprehensive testing             |
+| Performance degradation | LOW         | MEDIUM | Benchmark before/after            |
+| Documentation errors    | LOW         | LOW    | Peer review of docs               |
 
 ### 8.2 Mitigation Strategies
 
 **Incremental Approach**:
+
 - Complete one phase at a time
 - Test after each phase
 - Commit after each phase
 - Rollback if phase fails
 
 **Testing Strategy**:
+
 - Test in isolated Roblox Studio environment
 - Test with backend running locally
 - Test with backend running remotely
 - Test with various project sizes
 
 **Documentation**:
+
 - Document all changes
 - Update README files
 - Create migration guide

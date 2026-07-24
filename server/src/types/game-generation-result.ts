@@ -62,4 +62,3 @@ export interface GameGenerationResult {
   /** Optional: link back to the blueprint used as the generation base. */
   blueprint?: GameBlueprint;
 }
-

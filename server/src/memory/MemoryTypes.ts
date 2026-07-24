@@ -8,10 +8,7 @@
 // ─── Decision History ─────────────────────────────────────────────────────────
 
 export type DecisionStatus =
-  | "proposed"
-  | "accepted"
-  | "rejected"
-  | "superseded";
+  "proposed" | "accepted" | "rejected" | "superseded";
 export type DecisionCategory =
   | "gameplay"
   | "architecture"

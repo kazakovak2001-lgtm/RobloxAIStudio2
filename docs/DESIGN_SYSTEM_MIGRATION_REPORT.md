@@ -24,16 +24,19 @@ This report documents the current design system compliance status and provides a
 ### 1.1 Color Tokens
 
 **Primary Colors**:
+
 - brand-500 (#347cff) - Primary action color
 - accent-500 (#8b5cf6) - Secondary action color
 
 **Status Colors**:
+
 - success-400 (#4ade80) - Success state
 - warning-400 (#facc15) - Warning state
 - error-400 (#f87171) - Error state
 - info-400 (#22d3ee) - Info state
 
 **Background Colors**:
+
 - slate-950 (#020617) - Primary background
 - slate-900 (#0f172a) - Elevated surface
 - slate-800 (#1e293b) - Nested surface
@@ -41,14 +44,17 @@ This report documents the current design system compliance status and provides a
 ### 1.2 Typography
 
 **Font Families**:
+
 - Inter - Sans-serif for UI
 - JetBrains Mono - Monospace for code
 
 **Font Sizes**:
+
 - Base: 16px
 - Scale: 12px, 14px, 16px, 18px, 20px, 24px, 32px
 
 **Font Weights**:
+
 - Normal: 400
 - Medium: 500
 - Semibold: 600
@@ -63,6 +69,7 @@ This report documents the current design system compliance status and provides a
 ### 1.4 Radius
 
 **Scale**:
+
 - sm: rounded-sm
 - md: rounded-md
 - lg: rounded-lg
@@ -87,52 +94,52 @@ This report documents the current design system compliance status and provides a
 
 All UX-3 components in shared/ui/ are fully compliant:
 
-| Component | Location | Compliance |
-|-----------|----------|------------|
-| AppShell | shared/ui/layout/ | ✅ 100% |
-| Sidebar | shared/ui/layout/ | ✅ 100% |
-| TopBar | shared/ui/layout/ | ✅ 100% |
-| Workspace | shared/ui/layout/ | ✅ 100% |
-| StatusBar | shared/ui/layout/ | ✅ 100% |
-| ProjectOverview | shared/ui/dashboard/ | ✅ 100% |
-| AIStatus | shared/ui/dashboard/ | ✅ 100% |
-| PluginStatus | shared/ui/dashboard/ | ✅ 100% |
-| SyncMonitor | shared/ui/dashboard/ | ✅ 100% |
-| SystemHealth | shared/ui/dashboard/ | ✅ 100% |
-| AIChatPanel | shared/ui/ai/ | ✅ 100% |
-| PromptInput | shared/ui/ai/ | ✅ 100% |
-| AgentCard | shared/ui/ai/ | ✅ 100% |
-| CodeDiffViewer | shared/ui/ai/ | ✅ 100% |
-| GenerationHistory | shared/ui/ai/ | ✅ 100% |
-| TreeView | shared/ui/data/ | ✅ 100% |
-| ProjectExplorer | shared/ui/projects/ | ✅ 100% |
-| ConnectionBadge | shared/ui/system/ | ✅ 100% |
-| StatusIndicator | shared/ui/system/ | ✅ 100% |
-| SyncProgress | shared/ui/system/ | ✅ 100% |
+| Component         | Location             | Compliance |
+| ----------------- | -------------------- | ---------- |
+| AppShell          | shared/ui/layout/    | ✅ 100%    |
+| Sidebar           | shared/ui/layout/    | ✅ 100%    |
+| TopBar            | shared/ui/layout/    | ✅ 100%    |
+| Workspace         | shared/ui/layout/    | ✅ 100%    |
+| StatusBar         | shared/ui/layout/    | ✅ 100%    |
+| ProjectOverview   | shared/ui/dashboard/ | ✅ 100%    |
+| AIStatus          | shared/ui/dashboard/ | ✅ 100%    |
+| PluginStatus      | shared/ui/dashboard/ | ✅ 100%    |
+| SyncMonitor       | shared/ui/dashboard/ | ✅ 100%    |
+| SystemHealth      | shared/ui/dashboard/ | ✅ 100%    |
+| AIChatPanel       | shared/ui/ai/        | ✅ 100%    |
+| PromptInput       | shared/ui/ai/        | ✅ 100%    |
+| AgentCard         | shared/ui/ai/        | ✅ 100%    |
+| CodeDiffViewer    | shared/ui/ai/        | ✅ 100%    |
+| GenerationHistory | shared/ui/ai/        | ✅ 100%    |
+| TreeView          | shared/ui/data/      | ✅ 100%    |
+| ProjectExplorer   | shared/ui/projects/  | ✅ 100%    |
+| ConnectionBadge   | shared/ui/system/    | ✅ 100%    |
+| StatusIndicator   | shared/ui/system/    | ✅ 100%    |
+| SyncProgress      | shared/ui/system/    | ✅ 100%    |
 
 ### 2.2 Non-Compliant Components (17)
 
 Legacy components in src/components/ui/ do not follow the design system:
 
-| Component | Location | Compliance | Issues |
-|-----------|----------|------------|--------|
-| Button | src/components/ui/ | ⚠️ 60% | Custom variants, missing responsive |
-| Card | src/components/ui/ | ⚠️ 70% | Custom hover, missing responsive |
-| Avatar | src/components/ui/ | ⚠️ 50% | Inconsistent sizing |
-| Badge | src/components/ui/ | ❌ 30% | Custom colors, missing ARIA |
-| Breadcrumb | src/components/ui/ | ❌ 20% | No design tokens |
-| Dialog | src/components/ui/ | ⚠️ 60% | Inconsistent spacing |
-| Dropdown | src/components/ui/ | ⚠️ 50% | Custom styling |
-| Input | src/components/ui/ | ⚠️ 60% | Inconsistent focus states |
-| Loader | src/components/ui/ | ❌ 30% | Custom animation |
-| Modal | src/components/ui/ | ⚠️ 60% | Inconsistent backdrop |
-| Pagination | src/components/ui/ | ❌ 30% | Custom styling |
-| Table | src/components/ui/ | ❌ 30% | Custom styling, not responsive |
-| Tabs | src/components/ui/ | ⚠️ 50% | Inconsistent active state |
-| Toast | src/components/ui/ | ⚠️ 70% | Custom positioning |
-| Tooltip | src/components/ui/ | ❌ 30% | Custom animation |
-| Navbar | src/components/layout/ | ⚠️ 50% | Inconsistent with TopBar |
-| Sidebar (legacy) | src/components/layout/ | ❌ 20% | Duplicate, not following design system |
+| Component        | Location               | Compliance | Issues                                 |
+| ---------------- | ---------------------- | ---------- | -------------------------------------- |
+| Button           | src/components/ui/     | ⚠️ 60%     | Custom variants, missing responsive    |
+| Card             | src/components/ui/     | ⚠️ 70%     | Custom hover, missing responsive       |
+| Avatar           | src/components/ui/     | ⚠️ 50%     | Inconsistent sizing                    |
+| Badge            | src/components/ui/     | ❌ 30%     | Custom colors, missing ARIA            |
+| Breadcrumb       | src/components/ui/     | ❌ 20%     | No design tokens                       |
+| Dialog           | src/components/ui/     | ⚠️ 60%     | Inconsistent spacing                   |
+| Dropdown         | src/components/ui/     | ⚠️ 50%     | Custom styling                         |
+| Input            | src/components/ui/     | ⚠️ 60%     | Inconsistent focus states              |
+| Loader           | src/components/ui/     | ❌ 30%     | Custom animation                       |
+| Modal            | src/components/ui/     | ⚠️ 60%     | Inconsistent backdrop                  |
+| Pagination       | src/components/ui/     | ❌ 30%     | Custom styling                         |
+| Table            | src/components/ui/     | ❌ 30%     | Custom styling, not responsive         |
+| Tabs             | src/components/ui/     | ⚠️ 50%     | Inconsistent active state              |
+| Toast            | src/components/ui/     | ⚠️ 70%     | Custom positioning                     |
+| Tooltip          | src/components/ui/     | ❌ 30%     | Custom animation                       |
+| Navbar           | src/components/layout/ | ⚠️ 50%     | Inconsistent with TopBar               |
+| Sidebar (legacy) | src/components/layout/ | ❌ 20%     | Duplicate, not following design system |
 
 ---
 
@@ -143,6 +150,7 @@ Legacy components in src/components/ui/ do not follow the design system:
 **Issue**: Custom color usage instead of design tokens
 
 **Components Affected**:
+
 - Badge: Uses custom color palette
 - Breadcrumb: No design tokens
 - Loader: Custom colors
@@ -159,6 +167,7 @@ Legacy components in src/components/ui/ do not follow the design system:
 **Issue**: Arbitrary spacing values instead of 4px base unit
 
 **Components Affected**:
+
 - Dialog: Inconsistent spacing
 - Dropdown: Arbitrary padding
 - Modal: Inconsistent spacing
@@ -173,6 +182,7 @@ Legacy components in src/components/ui/ do not follow the design system:
 **Issue**: Inconsistent font weights and sizes
 
 **Components Affected**:
+
 - Avatar: Inconsistent sizing
 - Badge: Inconsistent font weights
 - Pagination: Inconsistent font sizes
@@ -187,6 +197,7 @@ Legacy components in src/components/ui/ do not follow the design system:
 **Issue**: Inconsistent border radius values
 
 **Components Affected**:
+
 - Button: Uses rounded-full (correct)
 - Card: Uses rounded-3xl (custom)
 - Input: Inconsistent radius
@@ -201,6 +212,7 @@ Legacy components in src/components/ui/ do not follow the design system:
 **Issue**: Missing shadow-glow for elevated elements
 
 **Components Affected**:
+
 - Card: Has custom shadow
 - Modal: Missing shadow-glow
 - Dialog: Missing shadow-glow
@@ -214,6 +226,7 @@ Legacy components in src/components/ui/ do not follow the design system:
 **Issue**: Custom animation durations and easing
 
 **Components Affected**:
+
 - Loader: Custom animation
 - Tooltip: Custom animation
 - Modal: Custom transitions
@@ -227,6 +240,7 @@ Legacy components in src/components/ui/ do not follow the design system:
 **Issue**: Missing responsive classes
 
 **Components Affected**:
+
 - Button: Fixed padding
 - Card: Fixed padding
 - Input: Fixed width
@@ -242,6 +256,7 @@ Legacy components in src/components/ui/ do not follow the design system:
 **Issue**: Missing ARIA labels and keyboard navigation
 
 **Components Affected**:
+
 - Badge: Missing ARIA labels
 - Button: Missing aria-label for icon-only
 - Dialog: Missing ARIA attributes
@@ -261,6 +276,7 @@ Legacy components in src/components/ui/ do not follow the design system:
 **Effort**: 53 hours
 
 **Components to Create**:
+
 1. Button (4 hours)
 2. Input (4 hours)
 3. Dropdown (6 hours)
@@ -285,6 +301,7 @@ Legacy components in src/components/ui/ do not follow the design system:
 **Effort**: 24 hours
 
 **Pages to Migrate**:
+
 1. LoginPage (4 hours)
 2. RegisterPage (3 hours)
 3. SettingsPage (3 hours)
@@ -303,6 +320,7 @@ Legacy components in src/components/ui/ do not follow the design system:
 **Effort**: 32 hours
 
 **Components to Update**:
+
 1. Workspace.tsx (8 hours)
 2. GenerationStatusPanel.tsx (8 hours)
 3. ArtifactExplorer.tsx (8 hours)
@@ -319,6 +337,7 @@ Legacy components in src/components/ui/ do not follow the design system:
 **Effort**: 3 hours
 
 **Components to Delete**:
+
 - src/components/ui/ (entire directory)
 - src/components/layout/ (entire directory)
 - src/layouts/ (entire directory)
@@ -334,11 +353,12 @@ Legacy components in src/components/ui/ do not follow the design system:
 **Location**: shared/ui/ui/Button.tsx
 
 **Props**:
+
 ```typescript
 interface ButtonProps {
   children: ReactNode;
-  variant?: 'primary' | 'secondary' | 'ghost' | 'danger';
-  size?: 'sm' | 'md' | 'lg';
+  variant?: "primary" | "secondary" | "ghost" | "danger";
+  size?: "sm" | "md" | "lg";
   disabled?: boolean;
   loading?: boolean;
   onClick?: () => void;
@@ -347,21 +367,22 @@ interface ButtonProps {
 
 // Variants
 const variants = {
-  primary: 'bg-brand-500 text-white shadow-glow hover:bg-brand-600',
-  secondary: 'bg-white/10 text-slate-100 hover:bg-white/15',
-  ghost: 'text-slate-300 hover:bg-white/10 hover:text-white',
-  danger: 'bg-error-500 text-white hover:bg-error-600',
+  primary: "bg-brand-500 text-white shadow-glow hover:bg-brand-600",
+  secondary: "bg-white/10 text-slate-100 hover:bg-white/15",
+  ghost: "text-slate-300 hover:bg-white/10 hover:text-white",
+  danger: "bg-error-500 text-white hover:bg-error-600",
 };
 
 // Sizes
 const sizes = {
-  sm: 'px-3 py-2 text-sm',
-  md: 'px-4 py-2.5 text-sm',
-  lg: 'px-5 py-3 text-base',
+  sm: "px-3 py-2 text-sm",
+  md: "px-4 py-2.5 text-sm",
+  lg: "px-5 py-3 text-base",
 };
 ```
 
 **Design System Compliance**:
+
 - ✅ Colors: brand-500, error-500
 - ✅ Spacing: 4px base unit
 - ✅ Radius: rounded-full
@@ -376,9 +397,10 @@ const sizes = {
 **Location**: shared/ui/ui/Input.tsx
 
 **Props**:
+
 ```typescript
 interface InputProps {
-  type?: 'text' | 'password' | 'email' | 'number';
+  type?: "text" | "password" | "email" | "number";
   placeholder?: string;
   value?: string;
   onChange?: (value: string) => void;
@@ -389,6 +411,7 @@ interface InputProps {
 ```
 
 **Design System Compliance**:
+
 - ✅ Colors: slate-900 background, brand-500 focus
 - ✅ Spacing: 4px base unit
 - ✅ Radius: rounded-lg
@@ -403,28 +426,30 @@ interface InputProps {
 **Location**: shared/ui/ui/Card.tsx (enhance existing)
 
 **Additional Props**:
+
 ```typescript
 interface CardProps {
   children: ReactNode;
-  variant?: 'default' | 'elevated' | 'bordered';
-  padding?: 'none' | 'sm' | 'md' | 'lg';
+  variant?: "default" | "elevated" | "bordered";
+  padding?: "none" | "sm" | "md" | "lg";
 }
 
 const variants = {
-  default: 'border border-white/10 bg-slate-900/70',
-  elevated: 'border border-white/10 bg-slate-900/70 shadow-glow',
-  bordered: 'border-2 border-brand-500/30 bg-slate-900/70',
+  default: "border border-white/10 bg-slate-900/70",
+  elevated: "border border-white/10 bg-slate-900/70 shadow-glow",
+  bordered: "border-2 border-brand-500/30 bg-slate-900/70",
 };
 
 const padding = {
-  none: 'p-0',
-  sm: 'p-4',
-  md: 'p-6',
-  lg: 'p-8',
+  none: "p-0",
+  sm: "p-4",
+  md: "p-6",
+  lg: "p-8",
 };
 ```
 
 **Design System Compliance**:
+
 - ✅ Colors: slate-900 background
 - ✅ Spacing: 4px base unit
 - ✅ Radius: rounded-3xl
@@ -438,6 +463,7 @@ const padding = {
 **Location**: shared/ui/ui/Modal.tsx
 
 **Props**:
+
 ```typescript
 interface ModalProps {
   open: boolean;
@@ -448,6 +474,7 @@ interface ModalProps {
 ```
 
 **Design System Compliance**:
+
 - ✅ Colors: slate-950 background, slate-900 modal
 - ✅ Spacing: 4px base unit
 - ✅ Radius: rounded-xl
@@ -462,6 +489,7 @@ interface ModalProps {
 **Location**: shared/ui/ui/Dropdown.tsx
 
 **Props**:
+
 ```typescript
 interface DropdownProps {
   trigger: ReactNode;
@@ -477,6 +505,7 @@ interface DropdownItem {
 ```
 
 **Design System Compliance**:
+
 - ✅ Colors: slate-900 background
 - ✅ Spacing: 4px base unit
 - ✅ Radius: rounded-lg
@@ -491,6 +520,7 @@ interface DropdownItem {
 **Location**: shared/ui/ui/Tabs.tsx
 
 **Props**:
+
 ```typescript
 interface TabsProps {
   tabs: Tab[];
@@ -506,6 +536,7 @@ interface Tab {
 ```
 
 **Design System Compliance**:
+
 - ✅ Colors: slate-900 background, brand-500 active
 - ✅ Spacing: 4px base unit
 - ✅ Radius: rounded-lg
@@ -520,6 +551,7 @@ interface Tab {
 ### 6.1 Design Token Updates
 
 **Components to Update**:
+
 - All workspace components should use:
   - slate-950 for backgrounds
   - brand-500 for primary actions
@@ -531,16 +563,19 @@ interface Tab {
 ### 6.2 Specific Updates
 
 **GenerationStatusPanel.tsx**:
+
 - Replace custom colors with design tokens
 - Use consistent spacing
 - Add responsive classes
 
 **ArtifactExplorer.tsx**:
+
 - Replace custom colors with design tokens
 - Use consistent spacing
 - Add responsive classes
 
 **StudioBridgePanel.tsx**:
+
 - Replace custom colors with design tokens
 - Use consistent spacing
 - Add responsive classes
@@ -552,6 +587,7 @@ interface Tab {
 ### 7.1 ARIA Labels
 
 **Required for All Interactive Components**:
+
 - Button: aria-label for icon-only buttons
 - Modal: aria-describedby, aria-labelledby
 - Dialog: aria-describedby, aria-labelledby
@@ -562,6 +598,7 @@ interface Tab {
 ### 7.2 Keyboard Navigation
 
 **Required for All Interactive Components**:
+
 - Button: Enter/Space to activate
 - Modal: Escape to close
 - Dropdown: Arrow keys to navigate
@@ -570,6 +607,7 @@ interface Tab {
 ### 7.3 Focus Management
 
 **Required for All Interactive Components**:
+
 - Modal: Focus trap
 - Dialog: Focus trap
 - Dropdown: Focus management
@@ -587,23 +625,27 @@ interface Tab {
 ### 8.2 Responsive Patterns
 
 **Button**:
+
 ```typescript
-className="px-4 py-2.5 text-sm md:px-5 md:py-3 md:text-base"
+className = "px-4 py-2.5 text-sm md:px-5 md:py-3 md:text-base";
 ```
 
 **Card**:
+
 ```typescript
-className="p-4 md:p-6 lg:p-8"
+className = "p-4 md:p-6 lg:p-8";
 ```
 
 **Modal**:
+
 ```typescript
-className="w-full max-w-md md:max-w-lg lg:max-w-xl"
+className = "w-full max-w-md md:max-w-lg lg:max-w-xl";
 ```
 
 **Table**:
+
 ```typescript
-className="overflow-x-auto"
+className = "overflow-x-auto";
 ```
 
 ---
@@ -611,6 +653,7 @@ className="overflow-x-auto"
 ## 9. Migration Timeline
 
 ### Week 1-2: Create Missing Components
+
 - Day 1-2: Button, Input
 - Day 3-4: Dropdown, Tabs
 - Day 5-6: Modal, Avatar
@@ -621,6 +664,7 @@ className="overflow-x-auto"
 **Effort**: 53 hours
 
 ### Week 3-4: Migrate Pages
+
 - Day 1-2: LoginPage, RegisterPage
 - Day 3-4: SettingsPage, NewProjectPage
 - Day 5-6: LandingPage, AiEngineDemoPage
@@ -629,6 +673,7 @@ className="overflow-x-auto"
 **Effort**: 24 hours
 
 ### Week 5: Update Workspace Components
+
 - Day 1-2: Workspace.tsx
 - Day 3-4: GenerationStatusPanel.tsx
 - Day 5: ArtifactExplorer.tsx
@@ -637,6 +682,7 @@ className="overflow-x-auto"
 **Effort**: 32 hours
 
 ### Week 6: Cleanup and Validation
+
 - Day 1-2: Delete legacy components
 - Day 3-4: Accessibility audit
 - Day 5-6: Responsive testing
@@ -649,15 +695,18 @@ className="overflow-x-auto"
 ## 10. Risk Assessment
 
 ### High Risk
+
 - Component creation (breaking changes if not done correctly)
 - Page migration (affects many files)
 - Workspace component updates (complex logic)
 
 ### Medium Risk
+
 - Accessibility improvements (may affect screen readers)
 - Responsive design (may affect mobile experience)
 
 ### Low Risk
+
 - Deleting legacy components (after migration)
 - Design token updates (cosmetic)
 
@@ -714,6 +763,7 @@ After completing all migrations, verify:
    - Check color consistency
 
 2. **Accessibility Audit**
+
    ```bash
    npm run lint
    ```

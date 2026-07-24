@@ -1,4 +1,5 @@
 # FRONTEND CURRENT STATE AUDIT
+
 **Generated**: 2026-07-13
 **Project**: Roblox AI Studio DevKit
 **Phase**: FE-0 - Frontend Audit
@@ -10,6 +11,7 @@
 This document provides a comprehensive audit of the current frontend architecture before the migration to a new Feature-Sliced Design (FSD) architecture.
 
 **Current Frontend Status**: ✅ FUNCTIONAL
+
 - **Location**: `src/` directory (root level, not separate frontend/)
 - **Tech Stack**: React 18.3.1, TypeScript 5.6.3, Vite 5.4.10, Tailwind CSS 3.4.16
 - **Architecture**: Traditional component-based (not FSD)
@@ -82,6 +84,7 @@ src/
 **Current Architecture Pattern**: Traditional Component-Based
 
 **Characteristics**:
+
 - Flat directory structure
 - Pages directly in `pages/` directory
 - Components in `components/ui/` and `components/layout/`
@@ -92,6 +95,7 @@ src/
 - No app layer
 
 **FSD Compliance**: ❌ NOT COMPLIANT
+
 - Missing `app/` layer (providers, router, store, config)
 - Missing `shared/` layer (shared UI, hooks, types, utils)
 - Missing `entities/` layer (business entities)
@@ -108,6 +112,7 @@ src/
 **Location**: `src/components/ui/`
 
 **Components**:
+
 1. **Avatar.tsx** - User avatar display
 2. **Badge.tsx** - Status badges
 3. **Breadcrumb.tsx** - Navigation breadcrumbs
@@ -125,12 +130,14 @@ src/
 15. **Tooltip.tsx** - Tooltip
 
 **Quality Assessment**: ✅ GOOD
+
 - Components are reusable
 - Components have TypeScript types
 - Components use Tailwind CSS
 - Components are self-contained
 
 **Migration Strategy**: ✅ KEEP
+
 - Move to `shared/ui/` in new FSD structure
 - Add shadcn/ui components where appropriate
 - Enhance with additional variants
@@ -144,6 +151,7 @@ src/
 **Components**: 3 items (not fully audited)
 
 **Migration Strategy**: ✅ KEEP
+
 - Move to `shared/ui/` in new FSD structure
 - Or move to `app/` layer if app-specific
 
@@ -154,17 +162,20 @@ src/
 **Location**: `src/hooks/`
 
 **Hooks**:
+
 1. **useMediaQuery** - Responsive design
 2. **useDebounce** - Debounced values
 3. **useLocalStorage** - Local storage persistence
 4. **useSocket** - Socket.io integration
 
 **Quality Assessment**: ✅ GOOD
+
 - Hooks are reusable
 - Hooks have TypeScript types
 - Hooks are well-documented
 
 **Migration Strategy**: ✅ KEEP
+
 - Move to `shared/hooks/` in new FSD structure
 - Add TanStack Query hooks for API calls
 
@@ -175,15 +186,18 @@ src/
 **Location**: `src/contexts/`
 
 **Contexts**:
+
 1. **AuthContext.tsx** - Authentication state
 2. **ToastProvider.tsx** - Toast notifications
 
 **Quality Assessment**: ⚠️ NEEDS IMPROVEMENT
+
 - AuthContext is a stub (demo implementation)
 - No real authentication integration
 - ToastProvider is functional
 
 **Migration Strategy**: ⚠️ REFACTOR
+
 - Move to `app/providers/` in new FSD structure
 - Implement real authentication
 - Add Zustand for global state
@@ -250,12 +264,14 @@ src/
     - **Status**: ⚠️ NEEDS AUDIT
 
 **API Quality Assessment**: ✅ GENERALLY GOOD
+
 - Most services have TypeScript types
 - Error handling is consistent
 - Services are modular
 - Some services need further audit
 
 **Migration Strategy**: ✅ REORGANIZE
+
 - Move to `shared/api/` with subdirectories by domain
 - Add TanStack Query integration
 - Add proper error boundaries
@@ -268,6 +284,7 @@ src/
 **Current Endpoints**:
 
 **Projects**:
+
 - `GET /api/projects` - List projects
 - `GET /api/projects/:id` - Get project
 - `POST /api/projects` - Create project
@@ -275,11 +292,13 @@ src/
 - `GET /api/projects/:id/history` - Get history
 
 **AI**:
+
 - `POST /api/concept/experience/generate-direct` - Generate
 - `GET /api/concept/experience/status/:pipelineId` - Status
 - `GET /health` - Health check (provider info)
 
 **Studio**:
+
 - `GET /api/studio/status` - Connection status
 - `POST /api/studio/connect` - Connect
 - `POST /api/studio/disconnect` - Disconnect
@@ -292,6 +311,7 @@ src/
 - `GET /api/studio/sync/status` - Sync status
 
 **Status**: ✅ WELL-DEFINED
+
 - Endpoints are RESTful
 - Endpoints are consistent
 - Endpoints are documented in code
@@ -303,12 +323,14 @@ src/
 ### 4.1 Stub Implementations
 
 **AuthContext.tsx**:
+
 - Login is a stub (setTimeout simulation)
 - Register is a stub
 - No real authentication
 - **Status**: ⚠️ DEPRECATED - Needs real implementation
 
 **Migration Strategy**: ⚠️ REPLACE
+
 - Implement real authentication
 - Add JWT token handling
 - Add session management
@@ -318,10 +340,12 @@ src/
 ### 4.2 Unused Code
 
 **RuntimeValidator**:
+
 - Created in plugin but not used
 - **Status**: ⚠️ UNUSED - Remove or integrate
 
 **Generate Button**:
+
 - Stub in CommandPanel
 - **Status**: ⚠️ STUB - Expected for current version
 
@@ -330,10 +354,12 @@ src/
 ### 4.3 Outdated Patterns
 
 **Direct fetch calls**:
+
 - Some services use direct fetch instead of centralized apiFetch
 - **Status**: ⚠️ INCONSISTENT - Should use apiFetch
 
 **No TypeScript strict mode**:
+
 - tsconfig.json has strict mode enabled ✅
 - Some files may have `any` types
 - **Status**: ⚠️ NEEDS REVIEW
@@ -345,18 +371,21 @@ src/
 ### 5.1 High Risk Areas
 
 **Authentication System**:
+
 - **Risk**: Current auth is a stub
 - **Impact**: Cannot migrate without real auth
 - **Mitigation**: Implement real auth before or during migration
 - **Risk Level**: HIGH
 
 **State Management**:
+
 - **Risk**: No global state management (no Redux, Zustand, etc.)
 - **Impact**: Complex state may be difficult to manage
 - **Mitigation**: Implement Zustand during migration
 - **Risk Level**: HIGH
 
 **API Service Reorganization**:
+
 - **Risk**: Moving 11 services to new structure
 - **Impact**: Breaking changes if not careful
 - **Mitigation**: Use git mv to preserve history, test thoroughly
@@ -367,18 +396,21 @@ src/
 ### 5.2 Medium Risk Areas
 
 **Component Migration**:
+
 - **Risk**: Moving 17 UI components
 - **Impact**: Breaking changes if imports not updated
 - **Mitigation**: Update all imports, use path aliases
 - **Risk Level**: MEDIUM
 
 **Routing Changes**:
+
 - **Risk**: Changing routing structure
 - **Impact**: All routes may break
 - **Mitigation**: Test all routes, update navigation
 - **Risk Level**: MEDIUM
 
 **Workspace Feature**:
+
 - **Risk**: Complex feature with 29 components
 - **Impact**: High complexity migration
 - **Mitigation**: Migrate as a single unit, test thoroughly
@@ -389,18 +421,21 @@ src/
 ### 5.3 Low Risk Areas
 
 **Hooks Migration**:
+
 - **Risk**: Moving 4 hooks
 - **Impact**: Minimal
 - **Mitigation**: Straightforward move
 - **Risk Level**: LOW
 
 **Types Migration**:
+
 - **Risk**: Moving type definitions
 - **Impact**: Minimal
 - **Mitigation**: Straightforward move
 - **Risk Level**: LOW
 
 **Styles Migration**:
+
 - **Risk**: Moving styles.css
 - **Impact**: Minimal
 - **Mitigation**: Straightforward move
@@ -413,36 +448,45 @@ src/
 ### 6.1 Current Tech Stack
 
 **Core**:
+
 - React 18.3.1 ✅
 - TypeScript 5.6.3 ✅
 - Vite 5.4.10 ✅
 
 **Styling**:
+
 - Tailwind CSS 3.4.16 ✅
 - PostCSS 8.4.49 ✅
 - Autoprefixer 10.4.20 ✅
 
 **Routing**:
+
 - react-router-dom 6.21.0 ✅
 
 **State Management**:
+
 - None ❌ (needs Zustand)
 
 **Data Fetching**:
+
 - Native fetch ✅ (needs TanStack Query)
 
 **Real-time**:
+
 - socket.io 4.8.3 ✅
 - socket.io-client 4.8.3 ✅
 
 **UI Components**:
+
 - framer-motion 12.42.0 ✅
 - lucide-react 0.468.0 ✅
 
 **Testing**:
+
 - vitest 4.1.9 ✅
 
 **Linting**:
+
 - eslint 10.6.0 ✅
 - prettier 3.9.4 ✅
 
@@ -451,15 +495,19 @@ src/
 ### 6.2 Missing Dependencies
 
 **State Management**:
+
 - ❌ Zustand (needs to be added)
 
 **Data Fetching**:
+
 - ❌ TanStack Query (needs to be added)
 
 **UI Components**:
+
 - ❌ shadcn/ui (needs to be added)
 
 **Forms**:
+
 - ❌ React Hook Form (optional)
 - ❌ Zod (optional for validation)
 
@@ -494,31 +542,37 @@ src/
 ### 7.2 Migration Strategy
 
 **Phase FE-1**: Create new structure
+
 - Create `frontend-new/` directory
 - Set up FSD structure
 - Install missing dependencies
 
 **Phase FE-2**: API integration
+
 - Move services to `shared/api/`
 - Add TanStack Query
 - Create typed API clients
 
 **Phase FE-3**: Core screens
+
 - Create pages in FSD structure
 - Migrate existing pages
 - Create new screens
 
 **Phase FE-4**: State management
+
 - Implement Zustand stores
 - Migrate contexts to Zustand
 - Add TanStack Query hooks
 
 **Phase FE-5**: Documentation
+
 - Document new architecture
 - Document migration process
 - Update API documentation
 
 **Phase FE-6**: Cleanup
+
 - Move old frontend to `frontend-legacy/`
 - Validate new frontend
 - Remove old frontend
@@ -530,6 +584,7 @@ src/
 ### 8.1 Current State
 
 **Strengths**:
+
 - ✅ Functional frontend
 - ✅ Good tech stack (React, TypeScript, Vite, Tailwind)
 - ✅ Reusable components
@@ -538,6 +593,7 @@ src/
 - ✅ Socket.io integration
 
 **Weaknesses**:
+
 - ❌ Not FSD compliant
 - ❌ No global state management
 - ❌ No TanStack Query
@@ -552,6 +608,7 @@ src/
 **Overall Complexity**: MEDIUM-HIGH
 
 **Estimated Effort**:
+
 - Phase FE-0 (Audit): ✅ COMPLETE
 - Phase FE-1 (Structure): 2-3 days
 - Phase FE-2 (API): 2-3 days
@@ -569,11 +626,13 @@ src/
 **Overall Risk**: MEDIUM
 
 **High Risk Items**:
+
 - Authentication system (stub implementation)
 - State management (none exists)
 - Complex workspace feature (29 components)
 
 **Mitigation**:
+
 - Implement auth before migration
 - Add Zustand early in migration
 - Migrate workspace as a single unit

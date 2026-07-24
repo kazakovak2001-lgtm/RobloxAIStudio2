@@ -1,4 +1,5 @@
 # TECH DEBT MASTER
+
 **Generated**: 2026-07-13
 **Project**: Roblox AI Studio DevKit
 **Current Version**: v1.3.3
@@ -10,6 +11,7 @@
 This document consolidates all technical debt items across the project into a single master tracking document. It serves as the definitive source for prioritizing remediation efforts during the architectural refactoring.
 
 **Overall Debt Score**: 27/100 (Acceptable for v1.x project)
+
 - Critical: 0 items
 - High: 3 items
 - Medium: 6 items
@@ -27,6 +29,7 @@ This document consolidates all technical debt items across the project into a si
 ## 2. HIGH DEBT (3)
 
 ### TD-H1: Large File - aiPipelineIntegrator.ts
+
 - **ID**: TD-H1
 - **File**: `server/src/execution/aiPipelineIntegrator.ts`
 - **Lines**: 628
@@ -37,8 +40,9 @@ This document consolidates all technical debt items across the project into a si
 - **Phase**: Phase 5 (Server Refactor)
 
 ### TD-H2: Dead Code Files
+
 - **ID**: TD-H2
-- **Files**: 
+- **Files**:
   - `server/src/engine/GameGenerationEngine.ts`
   - `server/src/pipeline/PipelineRunner.ts`
   - `server/src/execution/pipelineEngine.ts`
@@ -52,8 +56,9 @@ This document consolidates all technical debt items across the project into a si
 - **Phase**: Phase 0 (immediate cleanup)
 
 ### TD-H3: Stale Documentation
+
 - **ID**: TD-H3
-- **Files**: 
+- **Files**:
   - `docs/API.md`
   - `docs/ARCHITECTURE.md`
   - `IMPLEMENTATION_COMPLETE.md`
@@ -70,6 +75,7 @@ This document consolidates all technical debt items across the project into a si
 ## 3. MEDIUM DEBT (6)
 
 ### TD-M1: Verbose Socket.io Bridge
+
 - **ID**: TD-M1
 - **File**: `server/src/index.ts`
 - **Issue**: Socket.io bridge is 100+ lines of switch/case
@@ -80,6 +86,7 @@ This document consolidates all technical debt items across the project into a si
 - **Phase**: Phase 5 (Server Refactor)
 
 ### TD-M2: Type Safety - `as any` Casts
+
 - **ID**: TD-M2
 - **Files**: Various assembly/ files
 - **Count**: 15 instances
@@ -90,8 +97,9 @@ This document consolidates all technical debt items across the project into a si
 - **Phase**: Phase 5 (Server Refactor)
 
 ### TD-M3: Synchronous File Operations
+
 - **ID**: TD-M3
-- **Files**: 
+- **Files**:
   - `server/src/assembly/AssemblyPersistenceStore.ts`
   - `server/src/assembly/AssemblyHistoryIndex.ts`
 - **Issue**: Sync FS in persistence layer
@@ -102,6 +110,7 @@ This document consolidates all technical debt items across the project into a si
 - **Phase**: Phase 5 (Server Refactor)
 
 ### TD-M4: Misplaced File - aiGovernance.ts
+
 - **ID**: TD-M4
 - **File**: `server/src/governance/aiGovernance.ts`
 - **Issue**: Should be in `validation/` folder
@@ -112,8 +121,9 @@ This document consolidates all technical debt items across the project into a si
 - **Phase**: Phase 5 (Server Refactor)
 
 ### TD-M5: Partially Superseded File
+
 - **ID**: TD-M5
-- **Files**: 
+- **Files**:
   - `server/src/compiler/CompilerOrchestrator.ts` (v1.0)
   - `server/src/compiler/CompilerAPI.ts` (v1.1)
 - **Issue**: Both exist with overlapping functionality
@@ -124,6 +134,7 @@ This document consolidates all technical debt items across the project into a si
 - **Phase**: Phase 5 (Server Refactor)
 
 ### TD-M6: ESLint Configuration
+
 - **ID**: TD-M6
 - **File**: `.eslintrc.json`
 - **Issue**: ESLint exists but may not cover all rules
@@ -138,6 +149,7 @@ This document consolidates all technical debt items across the project into a si
 ## 4. LOW DEBT (5)
 
 ### TD-L1: Repeated Singleton Pattern
+
 - **ID**: TD-L1
 - **Files**: Various `*Registry.ts` files
 - **Count**: 8 instances
@@ -148,8 +160,9 @@ This document consolidates all technical debt items across the project into a si
 - **Phase**: Phase 5 (Server Refactor)
 
 ### TD-L2: Duplicated Event Emission Helper
+
 - **ID**: TD-L2
-- **Files**: 
+- **Files**:
   - `server/src/execution/aiPipelineIntegrator.ts`
   - `server/src/assembly/AssemblyBuilder.ts`
   - `server/src/generation/GenerationPipeline.ts`
@@ -160,6 +173,7 @@ This document consolidates all technical debt items across the project into a si
 - **Phase**: Phase 5 (Server Refactor)
 
 ### TD-L3: Husky Pre-commit Not Enforced
+
 - **ID**: TD-L3
 - **File**: `.husky/`
 - **Issue**: commitlint exists but not enforced for dev
@@ -170,8 +184,9 @@ This document consolidates all technical debt items across the project into a si
 - **Phase**: Phase 6 (Project Quality)
 
 ### TD-L4: Generated Build Artifacts
+
 - **ID**: TD-L4
-- **Files**: 
+- **Files**:
   - `vite.config.js`
   - `vite.config.d.ts`
   - `vite.config.js.map`
@@ -184,8 +199,9 @@ This document consolidates all technical debt items across the project into a si
 - **Phase**: Phase 0 (immediate)
 
 ### TD-L5: Stale Root Documentation
+
 - **ID**: TD-L5
-- **Files**: 
+- **Files**:
   - `IMPLEMENTATION_COMPLETE.md`
   - `IMPLEMENTATION_SUMMARY.md`
   - `QUICK_REFERENCE.md`
@@ -201,6 +217,7 @@ This document consolidates all technical debt items across the project into a si
 ## 5. INFORMATIONAL DEBT (3)
 
 ### TD-I1: No Test Suite
+
 - **ID**: TD-I1
 - **Issue**: No comprehensive test suite exists
 - **Impact**: Cannot verify behavior during refactoring
@@ -210,6 +227,7 @@ This document consolidates all technical debt items across the project into a si
 - **Phase**: Phase 6 (Project Quality)
 
 ### TD-I2: CI/CD Pipeline Inactive
+
 - **ID**: TD-I2
 - **File**: `.github/workflows/ci.yml`
 - **Issue**: CI/CD YAML exists but may not be active
@@ -220,6 +238,7 @@ This document consolidates all technical debt items across the project into a si
 - **Phase**: Phase 6 (Project Quality)
 
 ### TD-I3: Storage Directory Creation
+
 - **ID**: TD-I3
 - **Directory**: `storage/`
 - **Issue**: Directory doesn't exist until first assembly build
@@ -234,25 +253,30 @@ This document consolidates all technical debt items across the project into a si
 ## 6. DEBT BY PHASE
 
 ### Phase 0: Immediate Cleanup
+
 - TD-H2: Dead code removal (2h)
 - TD-L4: Update .gitignore (0.25h)
 - **Total**: 2.25 hours
 
 ### Phase 2: Plugin Merge
+
 - No direct debt items
 - **Total**: 0 hours
 
 ### Phase 3: Documentation Cleanup
+
 - TD-H3: Stale documentation (6h)
 - TD-L5: Archive root docs (0.5h)
 - TD-I3: Document storage behavior (0.25h)
 - **Total**: 6.75 hours
 
 ### Phase 4: Frontend Migration
+
 - No direct debt items
 - **Total**: 0 hours
 
 ### Phase 5: Server Refactor
+
 - TD-H1: Extract aiPipelineIntegrator (4h)
 - TD-M1: Extract socket bridge (3h)
 - TD-M2: Fix `as any` casts (4h)
@@ -264,6 +288,7 @@ This document consolidates all technical debt items across the project into a si
 - **Total**: 22 hours
 
 ### Phase 6: Project Quality
+
 - TD-M6: Enhance ESLint (2h)
 - TD-L3: Add commit-msg hook (0.5h)
 - TD-I1: Add test suite (40h)
@@ -275,6 +300,7 @@ This document consolidates all technical debt items across the project into a si
 ## 7. DEBT BY CATEGORY
 
 ### Code Quality
+
 - TD-H1: Large file
 - TD-M2: Type safety
 - TD-M6: ESLint
@@ -283,26 +309,31 @@ This document consolidates all technical debt items across the project into a si
 - **Total**: 5 items
 
 ### Architecture
+
 - TD-M5: Superseded files
 - TD-M4: Misplaced file
 - **Total**: 2 items
 
 ### Performance
+
 - TD-M3: Sync file operations
 - **Total**: 1 item
 
 ### Documentation
+
 - TD-H3: Stale docs
 - TD-L5: Stale root docs
 - TD-I3: Storage behavior
 - **Total**: 3 items
 
 ### Dead Code
+
 - TD-H2: Dead files
 - TD-L4: Build artifacts
 - **Total**: 2 items
 
 ### Infrastructure
+
 - TD-M1: Socket bridge
 - TD-L3: Husky hooks
 - TD-I1: Test suite
@@ -314,6 +345,7 @@ This document consolidates all technical debt items across the project into a si
 ## 8. REMEDIATION PRIORITY MATRIX
 
 ### Do First (High Impact, Low Effort)
+
 1. TD-L4: Update .gitignore (0.25h)
 2. TD-H2: Dead code removal (2h)
 3. TD-M4: Move aiGovernance (1h)
@@ -321,18 +353,21 @@ This document consolidates all technical debt items across the project into a si
 5. TD-L5: Archive root docs (0.5h)
 
 ### Do Second (High Impact, Medium Effort)
+
 1. TD-H1: Extract aiPipelineIntegrator (4h)
 2. TD-M1: Extract socket bridge (3h)
 3. TD-M3: Async file operations (2h)
 4. TD-M2: Fix `as any` casts (4h)
 
 ### Do Third (Medium Impact, Medium Effort)
+
 1. TD-M5: Merge compiler files (4h)
 2. TD-M6: Enhance ESLint (2h)
 3. TD-L1: Singleton factory (3h)
 4. TD-L2: Event emission helper (1h)
 
 ### Do Later (High Effort)
+
 1. TD-H3: Stale documentation (6h)
 2. TD-I2: Activate CI/CD (4h)
 3. TD-I1: Add test suite (40h)
@@ -344,6 +379,7 @@ This document consolidates all technical debt items across the project into a si
 **Formula**: (Critical × 10) + (High × 5) + (Medium × 1.5) + (Low × 0.5)
 
 **Calculation**:
+
 - Critical: 0 × 10 = 0
 - High: 3 × 5 = 15
 - Medium: 6 × 1.5 = 9
@@ -359,15 +395,19 @@ This document consolidates all technical debt items across the project into a si
 ## 10. TRACKING
 
 ### Completed
+
 - None
 
 ### In Progress
+
 - None
 
 ### Blocked
+
 - None
 
 ### Deferred
+
 - TD-I1: Test suite (deferred to Phase 6 due to large effort)
 
 ---
@@ -375,21 +415,25 @@ This document consolidates all technical debt items across the project into a si
 ## 11. RECOMMENDATIONS
 
 ### Immediate Actions
+
 1. Update .gitignore to exclude build artifacts
 2. Remove confirmed dead code
 3. Add commit-msg hook for conventional commits
 
 ### Short-term Actions (Next Sprint)
+
 1. Extract large file (aiPipelineIntegrator)
 2. Move misplaced file (aiGovernance)
 3. Extract socket bridge logic
 
 ### Medium-term Actions (Next Quarter)
+
 1. Fix type safety issues (`as any` casts)
 2. Convert sync file operations to async
 3. Merge or deprecate superseded compiler files
 
 ### Long-term Actions (Next 6 Months)
+
 1. Add comprehensive test suite
 2. Activate and enhance CI/CD pipeline
 3. Create singleton factory for registries

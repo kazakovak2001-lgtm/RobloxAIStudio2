@@ -1,4 +1,5 @@
 # UX FLOW MAP
+
 **Generated**: 2026-07-13
 **Project**: Roblox AI Studio DevKit
 **Phase**: UX-7 - Documentation
@@ -10,6 +11,7 @@
 This document maps the user experience flows for the Roblox AI Studio Control Center. It covers onboarding, core workflows, error handling, and navigation patterns.
 
 **UX Flow Status**: ✅ DOCUMENTED
+
 - **Total Flows**: 8
 - **Onboarding Flows**: 2
 - **Core Workflows**: 4
@@ -53,6 +55,7 @@ This document maps the user experience flows for the Roblox AI Studio Control Ce
    - Button: "Go to Dashboard"
 
 **Design Considerations**:
+
 - Progress indicator at top
 - Back button on each step
 - Skip option for experienced users
@@ -80,6 +83,7 @@ This document maps the user experience flows for the Roblox AI Studio Control Ce
    - Quick actions
 
 **Design Considerations**:
+
 - Auto-focus on email input
 - Enter key submits form
 - Loading state on submit
@@ -114,6 +118,7 @@ This document maps the user experience flows for the Roblox AI Studio Control Ce
    - Redirect to project detail
 
 **Error Handling**:
+
 - Validation errors inline
 - Network error with retry
 - Duplicate name error
@@ -157,6 +162,7 @@ This document maps the user experience flows for the Roblox AI Studio Control Ce
    - Download button
 
 **Error Handling**:
+
 - Validation errors inline
 - API error with retry
 - Timeout error with cancel
@@ -189,6 +195,7 @@ This document maps the user experience flows for the Roblox AI Studio Control Ce
    - Apply changes
 
 **Error Handling**:
+
 - Connection error with reconnect
 - Sync error with retry
 - Conflict resolution UI
@@ -215,6 +222,7 @@ This document maps the user experience flows for the Roblox AI Studio Control Ce
    - Success message
 
 **Error Handling**:
+
 - Validation errors inline
 - Deployment error with retry
 - Studio connection error
@@ -226,6 +234,7 @@ This document maps the user experience flows for the Roblox AI Studio Control Ce
 ### 3.1 Connection Error Flow
 
 **Error Types**:
+
 - Backend offline
 - Network timeout
 - Authentication failure
@@ -255,6 +264,7 @@ This document maps the user experience flows for the Roblox AI Studio Control Ce
    - Success notification
 
 **Error Panel Content**:
+
 - Title: "Connection Error"
 - Message: "Unable to connect to backend"
 - Cause: "Backend is offline or network issue"
@@ -266,6 +276,7 @@ This document maps the user experience flows for the Roblox AI Studio Control Ce
 ### 3.2 Generation Error Flow
 
 **Error Types**:
+
 - Invalid prompt
 - Rate limit exceeded
 - API error
@@ -290,10 +301,12 @@ This document maps the user experience flows for the Roblox AI Studio Control Ce
 
 4. **Recovery**
    - Retry with same prompt
+
 - Modify prompt and retry
 - Contact support
 
 **Error Panel Content**:
+
 - Title: "Generation Failed"
 - Message: "Unable to generate code"
 - Cause: "API error or invalid prompt"
@@ -307,6 +320,7 @@ This document maps the user experience flows for the Roblox AI Studio Control Ce
 ### 4.1 Keyboard Shortcuts
 
 **Global Shortcuts**:
+
 - `Ctrl+K`: Command palette
 - `Ctrl+P`: Projects
 - `Ctrl+A`: AI Studio
@@ -317,12 +331,14 @@ This document maps the user experience flows for the Roblox AI Studio Control Ce
 - `Escape`: Close modal/palette
 
 **AI Studio Shortcuts**:
+
 - `Ctrl+Enter`: Submit prompt
 - `Ctrl+Shift+Enter`: New line in prompt
 - `Ctrl+K`: Command palette
 - `Ctrl+H`: History
 
 **Project Shortcuts**:
+
 - `Ctrl+N`: New project
 - `Ctrl+F`: Search projects
 - `Ctrl+D`: Duplicate project
@@ -333,6 +349,7 @@ This document maps the user experience flows for the Roblox AI Studio Control Ce
 **Trigger**: `Ctrl+K`
 
 **Features**:
+
 - Search commands
 - Search projects
 - Search files
@@ -340,6 +357,7 @@ This document maps the user experience flows for the Roblox AI Studio Control Ce
 - Keyboard navigation
 
 **Commands**:
+
 - "Generate script"
 - "Open project"
 - "Sync Roblox"
@@ -351,11 +369,13 @@ This document maps the user experience flows for the Roblox AI Studio Control Ce
 ### 4.3 Breadcrumb Navigation
 
 **Pattern**:
+
 - Home > Projects > Project Name
 - Home > AI Studio
 - Home > Plugin Manager
 
 **Behavior**:
+
 - Click breadcrumb to navigate
 - Last item is current page
 - Truncate long paths
@@ -369,6 +389,7 @@ This document maps the user experience flows for the Roblox AI Studio Control Ce
 **Pattern**: Skeleton screens
 
 **Components**:
+
 - Card skeleton
 - Table skeleton
 - List skeleton
@@ -381,6 +402,7 @@ This document maps the user experience flows for the Roblox AI Studio Control Ce
 **Pattern**: Button loading state
 
 **Components**:
+
 - Button spinner
 - Button text change
 - Button disabled
@@ -392,6 +414,7 @@ This document maps the user experience flows for the Roblox AI Studio Control Ce
 **Pattern**: Inline loading indicator
 
 **Components**:
+
 - Spinner in card
 - Progress bar
 - Loading text
@@ -405,6 +428,7 @@ This document maps the user experience flows for the Roblox AI Studio Control Ce
 ### 6.1 No Projects
 
 **Content**:
+
 - Illustration
 - Title: "No projects yet"
 - Description: "Create your first project to get started"
@@ -413,6 +437,7 @@ This document maps the user experience flows for the Roblox AI Studio Control Ce
 ### 6.2 No Generation History
 
 **Content**:
+
 - Illustration
 - Title: "No generations yet"
 - Description: "Generate code to see history"
@@ -421,6 +446,7 @@ This document maps the user experience flows for the Roblox AI Studio Control Ce
 ### 6.3 No Connection
 
 **Content**:
+
 - Illustration
 - Title: "Not connected"
 - Description: "Connect to Roblox Studio to sync projects"
@@ -433,21 +459,25 @@ This document maps the user experience flows for the Roblox AI Studio Control Ce
 ### 7.1 Notification Types
 
 **Success**:
+
 - Green background
 - Auto-dismiss after 3s
 - Icon: Check
 
 **Warning**:
+
 - Yellow background
 - Auto-dismiss after 5s
 - Icon: Alert
 
 **Error**:
+
 - Red background
 - No auto-dismiss
 - Icon: X
 
 **Info**:
+
 - Blue background
 - Auto-dismiss after 3s
 - Icon: Info
@@ -480,6 +510,7 @@ This document maps the user experience flows for the Roblox AI Studio Control Ce
 ### 8.3 Next Steps
 
 **Phase UX-3**: Redesign Main Screens
+
 - Apply flows to screens
 - Implement command palette
 - Implement keyboard shortcuts

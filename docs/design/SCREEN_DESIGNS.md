@@ -1,4 +1,5 @@
 # SCREEN DESIGNS
+
 **Generated**: 2026-07-13
 **Project**: Roblox AI Studio DevKit
 **Phase**: UX-7 - Documentation
@@ -10,6 +11,7 @@
 This document describes the screen designs for the Roblox AI Studio Control Center. Each screen includes layout, components, and interaction patterns.
 
 **Screen Designs Status**: ✅ DOCUMENTED
+
 - **Total Screens**: 5
 - **Layout Patterns**: 3
 - **Component Usage**: 35+
@@ -21,6 +23,7 @@ This document describes the screen designs for the Roblox AI Studio Control Cent
 ### 1.1 Layout
 
 **Structure**:
+
 ```
 ┌─────────────────────────────────────────────────┐
 │ Top Bar                                        │
@@ -40,6 +43,7 @@ This document describes the screen designs for the Roblox AI Studio Control Cent
 ### 1.2 Components
 
 **Stats Grid**:
+
 - 4 cards in 2x2 grid
 - Card: Projects count
 - Card: AI Provider
@@ -47,16 +51,19 @@ This document describes the screen designs for the Roblox AI Studio Control Cent
 - Card: Platform version
 
 **Projects List**:
+
 - Recent projects (max 5)
 - Project card with progress bar
 - "View all" button
 
 **AI Agents Panel**:
+
 - Agent list with status
 - Version display
 - Agent count
 
 **System Health Panel**:
+
 - Generation Engine status
 - Job Queue status
 - Studio Bridge status
@@ -64,16 +71,19 @@ This document describes the screen designs for the Roblox AI Studio Control Cent
 ### 1.3 Design Tokens
 
 **Spacing**:
+
 - Section gap: `gap-6`
 - Card gap: `gap-4`
 - Grid gap: `gap-4`
 
 **Colors**:
+
 - Background: `slate-950`
 - Card background: `slate-900/70`
 - Accent: `brand-400`
 
 **Typography**:
+
 - Page title: `text-display-sm`
 - Section title: `text-h2`
 - Card label: `text-sm text-slate-400`
@@ -86,6 +96,7 @@ This document describes the screen designs for the Roblox AI Studio Control Cent
 ### 2.1 Layout
 
 **Structure**:
+
 ```
 ┌─────────────────────────────────────────────────┐
 │ Top Bar                                        │
@@ -106,6 +117,7 @@ This document describes the screen designs for the Roblox AI Studio Control Cent
 ### 2.2 Components
 
 **Prompt Input**:
+
 - Large textarea
 - Character count
 - Token estimate
@@ -113,6 +125,7 @@ This document describes the screen designs for the Roblox AI Studio Control Cent
 - Generate button
 
 **Configuration Panel**:
+
 - Agent selection
 - Model selection
 - Temperature slider
@@ -120,6 +133,7 @@ This document describes the screen designs for the Roblox AI Studio Control Cent
 - Advanced options toggle
 
 **Chat Panel**:
+
 - Message bubbles
 - Typing indicator
 - Markdown rendering
@@ -127,12 +141,14 @@ This document describes the screen designs for the Roblox AI Studio Control Cent
 - Copy code button
 
 **Code Preview**:
+
 - Syntax highlighted code
 - Line numbers
 - Copy to clipboard
 - Fullscreen toggle
 
 **Diff Viewer**:
+
 - Side-by-side view
 - Unified view
 - Apply/Reject buttons
@@ -141,15 +157,18 @@ This document describes the screen designs for the Roblox AI Studio Control Cent
 ### 2.3 Design Tokens
 
 **Spacing**:
+
 - Panel gap: `gap-4`
 - Section gap: `gap-6`
 
 **Colors**:
+
 - Background: `slate-950`
 - Panel background: `slate-900/70`
 - Accent: `brand-400`
 
 **Typography**:
+
 - Page title: `text-display-sm`
 - Section title: `text-h2`
 - Body: `text-base`
@@ -161,6 +180,7 @@ This document describes the screen designs for the Roblox AI Studio Control Cent
 ### 3.1 Layout
 
 **Structure**:
+
 ```
 ┌─────────────────────────────────────────────────┐
 │ Top Bar                                        │
@@ -180,24 +200,28 @@ This document describes the screen designs for the Roblox AI Studio Control Cent
 ### 3.2 Components
 
 **Search Bar**:
+
 - Search input
 - Filter button
 - Refresh button
 - Create button
 
 **Filter Panel**:
+
 - Type filter
 - Genre filter
 - Status filter
 - Sort options
 
 **Project Grid**:
+
 - Responsive grid (1-3 columns)
 - Project card
 - Hover effects
 - Quick actions
 
 **Project Card**:
+
 - Project type
 - Project name
 - Genre
@@ -211,15 +235,18 @@ This document describes the screen designs for the Roblox AI Studio Control Cent
 ### 3.3 Design Tokens
 
 **Spacing**:
+
 - Card gap: `gap-4`
 - Section gap: `gap-6`
 
 **Colors**:
+
 - Background: `slate-950`
 - Card background: `slate-900/70`
 - Accent: `brand-400`
 
 **Typography**:
+
 - Page title: `text-display-sm`
 - Section title: `text-h2`
 - Card title: `text-xl font-semibold`
@@ -231,6 +258,7 @@ This document describes the screen designs for the Roblox AI Studio Control Cent
 ### 4.1 Layout
 
 **Structure**:
+
 ```
 ┌─────────────────────────────────────────────────┐
 │ Top Bar                                        │
@@ -250,6 +278,7 @@ This document describes the screen designs for the Roblox AI Studio Control Cent
 ### 4.2 Components
 
 **Connection Status Panel**:
+
 - Connection badge
 - Latency display
 - Last heartbeat
@@ -257,12 +286,14 @@ This document describes the screen designs for the Roblox AI Studio Control Cent
 - Client count
 
 **Services Status Panel**:
+
 - Service list
 - Status indicators
 - Uptime display
 - Error count
 
 **Events Log**:
+
 - Timeline view
 - Event type
 - Timestamp
@@ -270,6 +301,7 @@ This document describes the screen designs for the Roblox AI Studio Control Cent
 - Filter options
 
 **Sync History**:
+
 - Sync list
 - Timestamp
 - Artifact count
@@ -279,15 +311,18 @@ This document describes the screen designs for the Roblox AI Studio Control Cent
 ### 4.3 Design Tokens
 
 **Spacing**:
+
 - Panel gap: `gap-4`
 - Section gap: `gap-6`
 
 **Colors**:
+
 - Background: `slate-950`
 - Panel background: `slate-900/70`
 - Accent: `brand-400`
 
 **Typography**:
+
 - Page title: `text-display-sm`
 - Section title: `text-h2`
 - Body: `text-base`
@@ -299,6 +334,7 @@ This document describes the screen designs for the Roblox AI Studio Control Cent
 ### 5.1 Layout
 
 **Structure**:
+
 ```
 ┌─────────────────────────────────────────────────┐
 │ Top Bar                                        │
@@ -318,17 +354,20 @@ This document describes the screen designs for the Roblox AI Studio Control Cent
 ### 5.2 Components
 
 **Time Range Selector**:
+
 - Presets (7 days, 30 days, 90 days)
 - Custom range picker
 - Apply button
 
 **Usage Graph**:
+
 - Line chart
 - Bar chart
 - Area chart
 - Export button
 
 **Generation Statistics**:
+
 - Total generations
 - Success rate
 - Average tokens
@@ -336,6 +375,7 @@ This document describes the screen designs for the Roblox AI Studio Control Cent
 - Trend indicators
 
 **Project Metrics**:
+
 - Project count
 - Active projects
 - Completed projects
@@ -344,15 +384,18 @@ This document describes the screen designs for the Roblox AI Studio Control Cent
 ### 5.3 Design Tokens
 
 **Spacing**:
+
 - Panel gap: `gap-4`
 - Section gap: `gap-6`
 
 **Colors**:
+
 - Background: `slate-950`
 - Panel background: `slate-900/70`
 - Accent: `brand-400`
 
 **Typography**:
+
 - Page title: `text-display-sm`
 - Section title: `text-h2`
 - Body: `text-base`
@@ -409,6 +452,7 @@ This document describes the screen designs for the Roblox AI Studio Control Cent
 ### 8.1 Screen Count
 
 **Total Screens**: 5
+
 - Dashboard
 - AI Studio
 - Project Explorer
@@ -425,6 +469,7 @@ This document describes the screen designs for the Roblox AI Studio Control Cent
 ### 8.3 Next Steps
 
 **Phase UX-4**: Advanced Interactions
+
 - Implement command palette
 - Implement keyboard shortcuts
 - Implement smooth transitions

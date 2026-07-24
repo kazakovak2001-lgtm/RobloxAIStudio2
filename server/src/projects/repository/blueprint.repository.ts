@@ -8,20 +8,41 @@ import type {
 } from "../types/blueprint";
 
 export interface IBlueprintRepository {
-  createBlueprint(userId: string, input: CreateBlueprintInput): Promise<GameBlueprint>;
+  createBlueprint(
+    userId: string,
+    input: CreateBlueprintInput,
+  ): Promise<GameBlueprint>;
   getBlueprint(id: string): Promise<GameBlueprint | null>;
   getBlueprintByProjectId(projectId: string): Promise<GameBlueprint | null>;
-  updateBlueprint(id: string, input: UpdateBlueprintInput): Promise<GameBlueprint | null>;
+  updateBlueprint(
+    id: string,
+    input: UpdateBlueprintInput,
+  ): Promise<GameBlueprint | null>;
   deleteBlueprint(id: string): Promise<boolean>;
-  listBlueprints(options: BlueprintQueryOptions): Promise<{ items: GameBlueprint[]; total: number }>;
-  saveVersion(blueprintId: string, userId: string, description?: string): Promise<BlueprintVersion>;
-  getVersion(blueprintId: string, versionNumber: number): Promise<BlueprintVersion | null>;
+  listBlueprints(
+    options: BlueprintQueryOptions,
+  ): Promise<{ items: GameBlueprint[]; total: number }>;
+  saveVersion(
+    blueprintId: string,
+    userId: string,
+    description?: string,
+  ): Promise<BlueprintVersion>;
+  getVersion(
+    blueprintId: string,
+    versionNumber: number,
+  ): Promise<BlueprintVersion | null>;
   listVersions(blueprintId: string): Promise<BlueprintVersion[]>;
-  restoreVersion(blueprintId: string, versionNumber: number): Promise<GameBlueprint | null>;
+  restoreVersion(
+    blueprintId: string,
+    versionNumber: number,
+  ): Promise<GameBlueprint | null>;
   recordExecution(execution: GenerationExecution): Promise<GenerationExecution>;
   getExecution(id: string): Promise<GenerationExecution | null>;
   listExecutions(blueprintId: string): Promise<GenerationExecution[]>;
-  updateExecution(id: string, updates: Partial<GenerationExecution>): Promise<GenerationExecution | null>;
+  updateExecution(
+    id: string,
+    updates: Partial<GenerationExecution>,
+  ): Promise<GenerationExecution | null>;
 }
 
 export class InMemoryBlueprintRepository implements IBlueprintRepository {
@@ -29,7 +50,10 @@ export class InMemoryBlueprintRepository implements IBlueprintRepository {
   private versions = new Map<string, BlueprintVersion[]>();
   private executions = new Map<string, GenerationExecution>();
 
-  async createBlueprint(userId: string, input: CreateBlueprintInput): Promise<GameBlueprint> {
+  async createBlueprint(
+    userId: string,
+    input: CreateBlueprintInput,
+  ): Promise<GameBlueprint> {
     const id = this.generateId();
     const now = new Date();
     const blueprint: GameBlueprint = {
@@ -49,7 +73,9 @@ export class InMemoryBlueprintRepository implements IBlueprintRepository {
     return this.blueprints.get(id) ?? null;
   }
 
-  async getBlueprintByProjectId(projectId: string): Promise<GameBlueprint | null> {
+  async getBlueprintByProjectId(
+    projectId: string,
+  ): Promise<GameBlueprint | null> {
     for (const blueprint of this.blueprints.values()) {
       if (blueprint.project_id === projectId) {
         return blueprint;
@@ -58,7 +84,10 @@ export class InMemoryBlueprintRepository implements IBlueprintRepository {
     return null;
   }
 
-  async updateBlueprint(id: string, input: UpdateBlueprintInput): Promise<GameBlueprint | null> {
+  async updateBlueprint(
+    id: string,
+    input: UpdateBlueprintInput,
+  ): Promise<GameBlueprint | null> {
     const blueprint = this.blueprints.get(id);
     if (!blueprint) return null;
 
@@ -104,7 +133,11 @@ export class InMemoryBlueprintRepository implements IBlueprintRepository {
     return { items: paged, total: items.length };
   }
 
-  async saveVersion(blueprintId: string, userId: string, description?: string): Promise<BlueprintVersion> {
+  async saveVersion(
+    blueprintId: string,
+    userId: string,
+    description?: string,
+  ): Promise<BlueprintVersion> {
     const blueprint = this.blueprints.get(blueprintId);
     if (!blueprint) throw new Error(`Blueprint ${blueprintId} not found`);
 
@@ -126,7 +159,10 @@ export class InMemoryBlueprintRepository implements IBlueprintRepository {
     return version;
   }
 
-  async getVersion(blueprintId: string, versionNumber: number): Promise<BlueprintVersion | null> {
+  async getVersion(
+    blueprintId: string,
+    versionNumber: number,
+  ): Promise<BlueprintVersion | null> {
     const versions = this.versions.get(blueprintId);
     return versions?.find((v) => v.version_number === versionNumber) ?? null;
   }
@@ -135,7 +171,10 @@ export class InMemoryBlueprintRepository implements IBlueprintRepository {
     return this.versions.get(blueprintId) ?? [];
   }
 
-  async restoreVersion(blueprintId: string, versionNumber: number): Promise<GameBlueprint | null> {
+  async restoreVersion(
+    blueprintId: string,
+    versionNumber: number,
+  ): Promise<GameBlueprint | null> {
     const blueprint = this.blueprints.get(blueprintId);
     if (!blueprint) return null;
 
@@ -152,7 +191,9 @@ export class InMemoryBlueprintRepository implements IBlueprintRepository {
     return restored;
   }
 
-  async recordExecution(execution: GenerationExecution): Promise<GenerationExecution> {
+  async recordExecution(
+    execution: GenerationExecution,
+  ): Promise<GenerationExecution> {
     this.executions.set(execution.id, execution);
     return execution;
   }
@@ -162,10 +203,15 @@ export class InMemoryBlueprintRepository implements IBlueprintRepository {
   }
 
   async listExecutions(blueprintId: string): Promise<GenerationExecution[]> {
-    return Array.from(this.executions.values()).filter((e) => e.blueprint_id === blueprintId);
+    return Array.from(this.executions.values()).filter(
+      (e) => e.blueprint_id === blueprintId,
+    );
   }
 
-  async updateExecution(id: string, updates: Partial<GenerationExecution>): Promise<GenerationExecution | null> {
+  async updateExecution(
+    id: string,
+    updates: Partial<GenerationExecution>,
+  ): Promise<GenerationExecution | null> {
     const execution = this.executions.get(id);
     if (!execution) return null;
 

@@ -1,4 +1,5 @@
 # PLUGIN MERGE BASELINE REPORT
+
 **Generated**: 2026-07-13
 **Project**: Roblox AI Studio DevKit
 **Phase**: 2.5.A - Backup and Baseline
@@ -10,6 +11,7 @@
 This report documents the pre-merge baseline state of both Roblox Studio plugins before executing the merge plan.
 
 **Baseline Status**: ✅ RECORDED
+
 - **Git Branch**: main (pre-merge)
 - **Tag**: pre-plugin-merge-v1.3.3 (to be created)
 - **Backup**: To be created
@@ -25,6 +27,7 @@ This report documents the pre-merge baseline state of both Roblox Studio plugins
 **Location**: `RobloxAIStudioPlugin/`
 
 **File Structure**:
+
 ```
 RobloxAIStudioPlugin/
 ├── README.md               (1,666 bytes)
@@ -43,6 +46,7 @@ RobloxAIStudioPlugin/
 **Entry Point**: `plugin.lua`
 
 **Dependencies**:
+
 - HttpService (Roblox built-in)
 - No external dependencies
 
@@ -57,6 +61,7 @@ RobloxAIStudioPlugin/
 **Location**: `studio-plugin/`
 
 **File Structure**:
+
 ```
 studio-plugin/
 ├── README.md               (1,735 bytes)
@@ -77,6 +82,7 @@ studio-plugin/
 **Entry Point**: None (needs creation)
 
 **Dependencies**:
+
 - HttpService (Roblox built-in)
 - No external dependencies
 
@@ -89,21 +95,25 @@ studio-plugin/
 ### 2.1 Project Build Status
 
 **Frontend Build**:
+
 - Status: Not verified (requires npm run build)
 - Command: `npm run build`
 - Expected: Success
 
 **Server Build**:
+
 - Status: Not verified (requires npm run build:server)
 - Command: `npm run build:server`
 - Expected: Success
 
 **TypeScript Check**:
+
 - Status: Not verified (requires npm run typecheck)
 - Command: `npm run typecheck`
 - Expected: Success
 
 **Tests**:
+
 - Status: Not verified (requires npm run test)
 - Command: `npm run test`
 - Expected: Success
@@ -113,11 +123,13 @@ studio-plugin/
 **Note**: Lua plugins do not have a build process. They are loaded directly by Roblox Studio.
 
 **RobloxAIStudioPlugin**:
+
 - Build: N/A (Lua files)
 - Load Test: Not verified (requires Roblox Studio)
 - Expected: Loads successfully
 
 **studio-plugin**:
+
 - Build: N/A (Lua files)
 - Load Test: Not verified (requires Roblox Studio, no entry point)
 - Expected: Cannot load (no entry point)
@@ -129,6 +141,7 @@ studio-plugin/
 ### 3.1 Project Dependencies
 
 **Frontend** (from package.json):
+
 - React 18
 - Vite
 - TailwindCSS
@@ -136,12 +149,14 @@ studio-plugin/
 - Socket.io-client
 
 **Backend** (from package.json):
+
 - Express
 - Socket.io
 - TypeScript 5.6
 - Prisma ORM
 
 **DevDependencies**:
+
 - ESLint
 - Prettier
 - Vitest
@@ -151,10 +166,12 @@ studio-plugin/
 ### 3.2 Plugin Dependencies
 
 **RobloxAIStudioPlugin**:
+
 - HttpService (Roblox built-in)
 - No external dependencies
 
 **studio-plugin**:
+
 - HttpService (Roblox built-in)
 - No external dependencies
 
@@ -204,6 +221,7 @@ studio-plugin/
 **Current Branch**: main
 **Uncommitted Changes**: Yes (from Phase 3 documentation cleanup)
 **Files Changed**:
+
 - 22 files moved to docs/archive/
 - 2 files updated (API.md, ARCHITECTURE.md)
 - 3 files created (documentation reports)
@@ -213,12 +231,14 @@ studio-plugin/
 ### 5.2 File Integrity
 
 **RobloxAIStudioPlugin Files**:
+
 - ✅ README.md exists
 - ✅ plugin.lua exists
 - ✅ src/ directory exists
 - ✅ All 5 Lua files in src/ exist
 
 **studio-plugin Files**:
+
 - ✅ README.md exists
 - ✅ src/ directory exists
 - ✅ All 8 Lua files in src/ exist
@@ -234,11 +254,13 @@ studio-plugin/
 ### 6.1 Git Backup
 
 **Actions**:
+
 1. Commit current changes (Phase 3)
 2. Create git branch: `feature/plugin-merge`
 3. Tag current state: `pre-plugin-merge-v1.3.3`
 
 **Commands**:
+
 ```bash
 git add .
 git commit -m "Phase 3: Documentation cleanup"
@@ -249,10 +271,12 @@ git tag pre-plugin-merge-v1.3.3
 ### 6.2 File System Backup
 
 **Actions**:
+
 1. Create backup directory: `backup/`
 2. Copy both plugin directories to backup
 
 **Commands**:
+
 ```bash
 mkdir -p backup
 cp -r RobloxAIStudioPlugin backup/
@@ -266,6 +290,7 @@ cp -r studio-plugin backup/
 ### 7.1 Git Rollback
 
 **If merge fails**:
+
 ```bash
 # Discard changes on branch
 git reset --hard pre-plugin-merge-v1.3.3
@@ -278,6 +303,7 @@ git branch -D feature/plugin-merge
 ### 7.2 File Restoration
 
 **If merge fails**:
+
 ```bash
 # Restore from backup
 rm -rf studio-plugin

@@ -74,12 +74,10 @@ export class RealtimeServer {
       socket.on("disconnect", () => {
         if (player.projectId) {
           this.untrackProjectRoom(player.projectId, socket.id);
-          socket
-            .to(`project:${player.projectId}`)
-            .emit("player:left", {
-              userId: player.userId,
-              projectId: player.projectId,
-            });
+          socket.to(`project:${player.projectId}`).emit("player:left", {
+            userId: player.userId,
+            projectId: player.projectId,
+          });
         }
         this.players.delete(socket.id);
       });

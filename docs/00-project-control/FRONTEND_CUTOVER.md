@@ -41,7 +41,7 @@ This policy supersedes historical documentation that planned to evolve the embed
 ## Delivery Order
 
 1. **CUTOVER-0** — governance, repository ownership, and CI alignment.
-2. **CI-BASELINE-1** — restore a portable, green backend CI baseline by removing tracked generated dependencies and correcting validation scope. This is a prerequisite discovered during CUTOVER-0.
+2. **CI-BASELINE-1** — restore a portable, green backend CI baseline by removing tracked generated dependencies, synchronizing lockfiles, and correcting validation false positives. This is a prerequisite discovered during CUTOVER-0.
 3. **CORE-1** — persist project/blueprint/chat state, remove production fixtures, and stabilize API contracts.
 4. **WORKSPACE-1** — evolve the standalone Workspace around the creator flow: Define → Generate → Validate → Studio/Export.
 5. **STUDIO-1** — validate generated artifacts through the Roblox Studio plugin and remove verified legacy plugin files.
@@ -66,8 +66,15 @@ The embedded `src/` frontend may be removed only when all conditions are true:
 - Project-control documents and the decision log reflect the verified state.
 - The next sprint has a single objective, dependencies, validation plan, and rollback plan.
 
-## Known CUTOVER-0 Blocker
+## CI-BASELINE-1 Verification
 
-The backend repository currently tracks generated `node_modules/` files despite ignoring that directory for new files. A clean Linux install rewrites Windows-specific binaries and causes `scripts/validate.ts` to scan dependencies as project source. The result is a non-portable checkout and a failing full backend CI.
+**Status**: Ready for review.
 
-**Required follow-up**: `CI-BASELINE-1` must remove tracked generated dependencies in a dedicated, reviewed cleanup and make repository validation exclude dependency directories. This is deliberately not combined with CUTOVER-0 because it is a large destructive change with its own rollback and validation requirements.
+The backend cleanup removes 9,386 tracked generated `node_modules/` files while retaining the existing ignore rule. It also synchronizes `package-lock.json` with `package.json`, standardizes local, CI, and Docker runtime on Node.js 22, and keeps security validation strict for real credentials while allowing low-confidence example strings only in non-production documentation and test fixtures.
+
+Verified on a clean Node.js 22 / npm 10 install:
+
+- `npm ci`
+- `npm run ci` — 61 test files, 706 tests, architecture, boundary, lint, formatting, and repository validation all pass
+
+This remediation remains an isolated CI baseline review. It does not change product behavior, API contracts, or legacy frontend removal gates.

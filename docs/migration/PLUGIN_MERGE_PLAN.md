@@ -1,4 +1,5 @@
 # PLUGIN MERGE PLAN
+
 **Generated**: 2026-07-13
 **Project**: Roblox AI Studio DevKit
 **Phase**: 2 - Roblox Plugin Merge Analysis
@@ -10,6 +11,7 @@
 This document provides a comprehensive analysis of the two Roblox Studio plugin directories (`RobloxAIStudioPlugin/` and `studio-plugin/`) and recommends a migration strategy for consolidation.
 
 **Analysis Status**: ✅ COMPLETE
+
 - **Plugins Analyzed**: 2
 - **Files Compared**: 14 total (6 + 8)
 - **Duplicates Identified**: 2 (ConnectionManager.lua, SyncManager.lua)
@@ -65,37 +67,37 @@ studio-plugin/
 
 ### 1.3 Key Differences
 
-| Aspect | RobloxAIStudioPlugin | studio-plugin |
-|--------|---------------------|---------------|
-| **Version** | 2.1.0 | 1.7.0 (Alpha) |
-| **Architecture** | Direct REST API | Protocol-based messaging |
-| **Configuration** | Inline in plugin.lua | Separate Config.lua |
-| **Entry Point** | plugin.lua | None (needs creation) |
-| **HTTP Layer** | ApiClient.lua | StudioConnector.lua |
-| **Event System** | Events.lua | Integrated |
-| **UI** | UI.lua | CommandPanel.lua |
-| **Error Handling** | Scattered | ErrorReporter.lua |
-| **Validation** | None | RuntimeValidator.lua |
-| **Artifact Loading** | Basic | ArtifactLoader.lua |
-| **Protocol** | REST endpoints | Structured messages (HELLO, PING, PONG, etc.) |
+| Aspect               | RobloxAIStudioPlugin | studio-plugin                                 |
+| -------------------- | -------------------- | --------------------------------------------- |
+| **Version**          | 2.1.0                | 1.7.0 (Alpha)                                 |
+| **Architecture**     | Direct REST API      | Protocol-based messaging                      |
+| **Configuration**    | Inline in plugin.lua | Separate Config.lua                           |
+| **Entry Point**      | plugin.lua           | None (needs creation)                         |
+| **HTTP Layer**       | ApiClient.lua        | StudioConnector.lua                           |
+| **Event System**     | Events.lua           | Integrated                                    |
+| **UI**               | UI.lua               | CommandPanel.lua                              |
+| **Error Handling**   | Scattered            | ErrorReporter.lua                             |
+| **Validation**       | None                 | RuntimeValidator.lua                          |
+| **Artifact Loading** | Basic                | ArtifactLoader.lua                            |
+| **Protocol**         | REST endpoints       | Structured messages (HELLO, PING, PONG, etc.) |
 
 ---
 
 ## 2. FUNCTIONALITY MAP
 
-| Feature | RobloxAIStudioPlugin | studio-plugin | Final Location |
-|---------|---------------------|---------------|----------------|
-| **Entry Point** | plugin.lua | ❌ None | Create from plugin.lua |
-| **Configuration** | Inline in plugin.lua | Config.lua | studio-plugin/Config.lua |
-| **HTTP Communication** | ApiClient.lua | StudioConnector.lua | studio-plugin/StudioConnector.lua |
+| Feature                  | RobloxAIStudioPlugin  | studio-plugin         | Final Location                              |
+| ------------------------ | --------------------- | --------------------- | ------------------------------------------- |
+| **Entry Point**          | plugin.lua            | ❌ None               | Create from plugin.lua                      |
+| **Configuration**        | Inline in plugin.lua  | Config.lua            | studio-plugin/Config.lua                    |
+| **HTTP Communication**   | ApiClient.lua         | StudioConnector.lua   | studio-plugin/StudioConnector.lua           |
 | **Connection Lifecycle** | ConnectionManager.lua | ConnectionManager.lua | studio-plugin/ConnectionManager.lua (merge) |
-| **Project Sync** | SyncManager.lua | SyncManager.lua | studio-plugin/SyncManager.lua (merge) |
-| **Event Handling** | Events.lua | Integrated | studio-plugin/Events.lua (new) |
-| **UI Widget** | UI.lua | CommandPanel.lua | studio-plugin/CommandPanel.lua (enhance) |
-| **Error Handling** | Scattered | ErrorReporter.lua | studio-plugin/ErrorReporter.lua |
-| **Runtime Validation** | ❌ None | RuntimeValidator.lua | studio-plugin/RuntimeValidator.lua |
-| **Artifact Loading** | Basic | ArtifactLoader.lua | studio-plugin/ArtifactLoader.lua |
-| **Protocol** | REST endpoints | Structured messages | studio-plugin protocol |
+| **Project Sync**         | SyncManager.lua       | SyncManager.lua       | studio-plugin/SyncManager.lua (merge)       |
+| **Event Handling**       | Events.lua            | Integrated            | studio-plugin/Events.lua (new)              |
+| **UI Widget**            | UI.lua                | CommandPanel.lua      | studio-plugin/CommandPanel.lua (enhance)    |
+| **Error Handling**       | Scattered             | ErrorReporter.lua     | studio-plugin/ErrorReporter.lua             |
+| **Runtime Validation**   | ❌ None               | RuntimeValidator.lua  | studio-plugin/RuntimeValidator.lua          |
+| **Artifact Loading**     | Basic                 | ArtifactLoader.lua    | studio-plugin/ArtifactLoader.lua            |
+| **Protocol**             | REST endpoints        | Structured messages   | studio-plugin protocol                      |
 
 ---
 
@@ -103,36 +105,38 @@ studio-plugin/
 
 ### 3.1 Direct Duplicates (Same Name)
 
-| File | RobloxAIStudioPlugin | studio-plugin | Status |
-|------|---------------------|---------------|--------|
-| ConnectionManager.lua | ✅ Exists | ✅ Exists | **CONFLICT - Different implementations** |
-| SyncManager.lua | ✅ Exists | ✅ Exists | **CONFLICT - Different implementations** |
+| File                  | RobloxAIStudioPlugin | studio-plugin | Status                                   |
+| --------------------- | -------------------- | ------------- | ---------------------------------------- |
+| ConnectionManager.lua | ✅ Exists            | ✅ Exists     | **CONFLICT - Different implementations** |
+| SyncManager.lua       | ✅ Exists            | ✅ Exists     | **CONFLICT - Different implementations** |
 
 ### 3.2 Functional Duplicates (Different Name, Same Purpose)
 
-| Purpose | RobloxAIStudioPlugin | studio-plugin | Status |
-|---------|---------------------|---------------|--------|
-| HTTP Communication | ApiClient.lua | StudioConnector.lua | **Different approaches** |
-| UI Widget | UI.lua | CommandPanel.lua | **Different implementations** |
+| Purpose            | RobloxAIStudioPlugin | studio-plugin       | Status                        |
+| ------------------ | -------------------- | ------------------- | ----------------------------- |
+| HTTP Communication | ApiClient.lua        | StudioConnector.lua | **Different approaches**      |
+| UI Widget          | UI.lua               | CommandPanel.lua    | **Different implementations** |
 
 ### 3.3 Unique Modules
 
-| Module | Plugin | Purpose |
-|--------|--------|---------|
-| Events.lua | RobloxAIStudioPlugin | Centralized event system |
-| Config.lua | studio-plugin | Configuration constants |
-| ErrorReporter.lua | studio-plugin | Centralized error handling |
-| RuntimeValidator.lua | studio-plugin | Runtime validation |
-| ArtifactLoader.lua | studio-plugin | Instance creation from artifacts |
+| Module               | Plugin               | Purpose                          |
+| -------------------- | -------------------- | -------------------------------- |
+| Events.lua           | RobloxAIStudioPlugin | Centralized event system         |
+| Config.lua           | studio-plugin        | Configuration constants          |
+| ErrorReporter.lua    | studio-plugin        | Centralized error handling       |
+| RuntimeValidator.lua | studio-plugin        | Runtime validation               |
+| ArtifactLoader.lua   | studio-plugin        | Instance creation from artifacts |
 
 ### 3.4 Conflict Analysis
 
 **ConnectionManager.lua**:
+
 - RobloxAIStudioPlugin: 3,303 bytes - Basic connection lifecycle
 - studio-plugin: 2,482 bytes - Enhanced with protocol support
 - **Resolution**: Use studio-plugin version, add missing features from legacy
 
 **SyncManager.lua**:
+
 - RobloxAIStudioPlugin: 3,380 bytes - Basic sync logic
 - studio-plugin: 2,189 bytes - Protocol-based sync
 - **Resolution**: Use studio-plugin version, add missing features from legacy
@@ -146,6 +150,7 @@ studio-plugin/
 **Approach**: Use studio-plugin as base, integrate useful features from RobloxAIStudioPlugin
 
 **Advantages**:
+
 - ✅ studio-plugin has more sophisticated architecture (protocol-based)
 - ✅ studio-plugin has additional modules (ErrorReporter, RuntimeValidator, ArtifactLoader)
 - ✅ studio-plugin has better separation of concerns (Config.lua)
@@ -154,12 +159,14 @@ studio-plugin/
 - ✅ Less risk - keeping the actively developed version
 
 **Disadvantages**:
+
 - ⚠️ Need to create entry point (plugin.lua)
 - ⚠️ Need to merge ConnectionManager.lua and SyncManager.lua
 - ⚠️ Need to integrate Events.lua functionality
 - ⚠️ Need to enhance CommandPanel.lua with UI.lua features
 
 **Risks**:
+
 - LOW-MEDIUM - Requires careful merging of conflicting modules
 - LOW - Well-understood codebase
 - LOW - Can test incrementally
@@ -173,12 +180,14 @@ studio-plugin/
 **Approach**: Use RobloxAIStudioPlugin as base, integrate studio-plugin features
 
 **Advantages**:
+
 - ✅ Has entry point (plugin.lua) ready
 - ✅ Has event system (Events.lua)
 - ✅ Has UI implementation (UI.lua)
 - ✅ Higher version number (2.1.0 vs 1.7.0)
 
 **Disadvantages**:
+
 - ❌ Loses protocol-based messaging architecture
 - ❌ Loses ErrorReporter, RuntimeValidator, ArtifactLoader
 - ❌ Loses Config.lua separation
@@ -187,6 +196,7 @@ studio-plugin/
 - ❌ studio-plugin is marked as "production-grade"
 
 **Risks**:
+
 - HIGH - Loses architectural improvements
 - HIGH - Goes against development direction
 - MEDIUM - May break existing integrations expecting protocol
@@ -200,12 +210,14 @@ studio-plugin/
 **Approach**: Start fresh, selectively pick best features from both
 
 **Advantages**:
+
 - ✅ Clean slate, no legacy baggage
 - ✅ Can design optimal architecture
 - ✅ No merge conflicts
 - ✅ Opportunity to fix all design issues
 
 **Disadvantages**:
+
 - ❌ Highest effort
 - ❌ Highest risk - rewriting everything
 - ❌ May introduce new bugs
@@ -213,6 +225,7 @@ studio-plugin/
 - ❌ Takes longest time
 
 **Risks**:
+
 - HIGH - Complete rewrite
 - HIGH - New bugs likely
 - HIGH - Longest development time
@@ -226,6 +239,7 @@ studio-plugin/
 ### 5.1 Rationale
 
 **Option A is recommended** because:
+
 1. studio-plugin has superior architecture (protocol-based messaging)
 2. studio-plugin has more comprehensive feature set
 3. studio-plugin is marked as "production-grade"
@@ -235,12 +249,14 @@ studio-plugin/
 ### 5.2 Migration Steps
 
 #### Phase 2.1: Preparation
+
 1. Backup both plugin directories
 2. Create feature comparison matrix
 3. Identify all API endpoints used by both plugins
 4. Document protocol differences
 
 #### Phase 2.2: Create Entry Point
+
 1. Create `plugin.lua` in studio-plugin/
 2. Adapt from RobloxAIStudioPlugin/plugin.lua
 3. Update to use studio-plugin modules
@@ -248,6 +264,7 @@ studio-plugin/
 5. Update HTTP layer to use StudioConnector.lua
 
 #### Phase 2.3: Merge ConnectionManager.lua
+
 1. Compare both implementations
 2. Identify features in legacy not in current
 3. Add missing features to studio-plugin version
@@ -255,6 +272,7 @@ studio-plugin/
 5. Test heartbeat and reconnection
 
 #### Phase 2.4: Merge SyncManager.lua
+
 1. Compare both implementations
 2. Identify features in legacy not in current
 3. Add missing features to studio-plugin version
@@ -262,12 +280,14 @@ studio-plugin/
 5. Test artifact handling
 
 #### Phase 2.5: Integrate Events.lua
+
 1. Copy Events.lua from RobloxAIStudioPlugin
 2. Integrate with studio-plugin architecture
 3. Update all modules to use event system
 4. Test event propagation
 
 #### Phase 2.6: Enhance UI
+
 1. Compare UI.lua with CommandPanel.lua
 2. Identify UI features in legacy not in current
 3. Add missing features to CommandPanel.lua
@@ -275,12 +295,14 @@ studio-plugin/
 5. Test user interactions
 
 #### Phase 2.7: Update Configuration
+
 1. Ensure Config.lua has all necessary settings
 2. Add any missing configuration from legacy
 3. Document all configuration options
 4. Test configuration loading
 
 #### Phase 2.8: Testing
+
 1. Load plugin in Roblox Studio
 2. Test connection to backend
 3. Test heartbeat
@@ -291,6 +313,7 @@ studio-plugin/
 8. Test reconnection logic
 
 #### Phase 2.9: Documentation
+
 1. Update README.md
 2. Document new architecture
 3. Document configuration options
@@ -298,6 +321,7 @@ studio-plugin/
 5. Create migration guide for users
 
 #### Phase 2.10: Cleanup
+
 1. Remove RobloxAIStudioPlugin/ directory
 2. Update any references in documentation
 3. Update any references in server code
@@ -309,33 +333,33 @@ studio-plugin/
 
 ### 6.1 File-by-File Migration
 
-| Step | Source | Destination | Action | Effort |
-|------|--------|-------------|--------|--------|
-| 1 | RobloxAIStudioPlugin/plugin.lua | studio-plugin/plugin.lua | Adapt and integrate | 2h |
-| 2 | RobloxAIStudioPlugin/src/Events.lua | studio-plugin/src/Events.lua | Copy and integrate | 1h |
-| 3 | RobloxAIStudioPlugin/src/ConnectionManager.lua | studio-plugin/src/ConnectionManager.lua | Merge implementations | 2h |
-| 4 | RobloxAIStudioPlugin/src/SyncManager.lua | studio-plugin/src/SyncManager.lua | Merge implementations | 2h |
-| 5 | RobloxAIStudioPlugin/src/UI.lua | studio-plugin/src/CommandPanel.lua | Merge features | 2h |
-| 6 | RobloxAIStudioPlugin/src/ApiClient.lua | N/A | Review for features | 1h |
-| 7 | N/A | studio-plugin/src/Config.lua | Enhance if needed | 0.5h |
-| 8 | N/A | studio-plugin/README.md | Update documentation | 1h |
-| 9 | N/A | RobloxAIStudioPlugin/ | Remove directory | 0.5h |
+| Step | Source                                         | Destination                             | Action                | Effort |
+| ---- | ---------------------------------------------- | --------------------------------------- | --------------------- | ------ |
+| 1    | RobloxAIStudioPlugin/plugin.lua                | studio-plugin/plugin.lua                | Adapt and integrate   | 2h     |
+| 2    | RobloxAIStudioPlugin/src/Events.lua            | studio-plugin/src/Events.lua            | Copy and integrate    | 1h     |
+| 3    | RobloxAIStudioPlugin/src/ConnectionManager.lua | studio-plugin/src/ConnectionManager.lua | Merge implementations | 2h     |
+| 4    | RobloxAIStudioPlugin/src/SyncManager.lua       | studio-plugin/src/SyncManager.lua       | Merge implementations | 2h     |
+| 5    | RobloxAIStudioPlugin/src/UI.lua                | studio-plugin/src/CommandPanel.lua      | Merge features        | 2h     |
+| 6    | RobloxAIStudioPlugin/src/ApiClient.lua         | N/A                                     | Review for features   | 1h     |
+| 7    | N/A                                            | studio-plugin/src/Config.lua            | Enhance if needed     | 0.5h   |
+| 8    | N/A                                            | studio-plugin/README.md                 | Update documentation  | 1h     |
+| 9    | N/A                                            | RobloxAIStudioPlugin/                   | Remove directory      | 0.5h   |
 
 **Total Estimated Effort**: 12 hours
 
 ### 6.2 Testing Plan
 
-| Test | Description | Priority |
-|------|-------------|----------|
+| Test        | Description                                  | Priority |
+| ----------- | -------------------------------------------- | -------- |
 | Load Plugin | Plugin loads without errors in Roblox Studio | CRITICAL |
-| Connect | Plugin connects to backend successfully | CRITICAL |
-| Heartbeat | Heartbeat maintains connection | CRITICAL |
-| Sync | Project synchronization works | CRITICAL |
-| Artifacts | Artifact loading creates instances correctly | HIGH |
-| UI | UI widget displays and functions | HIGH |
-| Reconnect | Auto-reconnect on connection failure | HIGH |
-| Errors | Error reporting displays correctly | MEDIUM |
-| Validation | Runtime validation catches issues | MEDIUM |
+| Connect     | Plugin connects to backend successfully      | CRITICAL |
+| Heartbeat   | Heartbeat maintains connection               | CRITICAL |
+| Sync        | Project synchronization works                | CRITICAL |
+| Artifacts   | Artifact loading creates instances correctly | HIGH     |
+| UI          | UI widget displays and functions             | HIGH     |
+| Reconnect   | Auto-reconnect on connection failure         | HIGH     |
+| Errors      | Error reporting displays correctly           | MEDIUM   |
+| Validation  | Runtime validation catches issues            | MEDIUM   |
 
 ---
 
@@ -344,6 +368,7 @@ studio-plugin/
 ### 7.1 Backup Strategy
 
 Before migration:
+
 1. Create git branch: `feature/plugin-merge`
 2. Tag current state: `pre-plugin-merge`
 3. Copy both directories to temporary backup location
@@ -351,6 +376,7 @@ Before migration:
 ### 7.2 Rollback Plan
 
 If migration fails:
+
 1. Delete studio-plugin/ (if corrupted)
 2. Restore from backup
 3. Checkout pre-merge branch
@@ -410,6 +436,7 @@ If migration fails:
 ### 9.2 Recommended Strategy
 
 **Option A**: Merge RobloxAIStudioPlugin into studio-plugin
+
 - **Reason**: Superior architecture, more features, production-grade
 - **Effort**: 12 hours
 - **Risk**: LOW-MEDIUM

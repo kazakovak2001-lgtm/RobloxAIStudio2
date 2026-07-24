@@ -68,7 +68,9 @@ export function AIStatus({
     <div className="rounded-2xl border border-white/10 bg-slate-900/70 p-6 shadow-glow backdrop-blur-xl">
       <div className="mb-4 flex items-center justify-between">
         <h3 className="text-h3 font-semibold text-white">AI Status</h3>
-        <div className={`flex items-center gap-2 rounded-full px-3 py-1 ${config.bgColor} ${config.textColor}`}>
+        <div
+          className={`flex items-center gap-2 rounded-full px-3 py-1 ${config.bgColor} ${config.textColor}`}
+        >
           {config.icon}
           <span className="text-xs font-medium">{config.label}</span>
         </div>
@@ -112,7 +114,9 @@ export function AIStatus({
         {/* Cost */}
         <div className="flex items-center justify-between rounded-xl border border-white/5 bg-slate-800/50 p-3">
           <span className="text-sm text-slate-400">Total Cost</span>
-          <span className="text-sm font-medium text-white">${cost.toFixed(2)}</span>
+          <span className="text-sm font-medium text-white">
+            ${cost.toFixed(2)}
+          </span>
         </div>
       </div>
     </div>

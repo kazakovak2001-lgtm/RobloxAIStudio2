@@ -191,7 +191,7 @@ test:
     - uses: actions/checkout@v4
     - uses: actions/setup-node@v4
       with:
-        node-version: "20"
+        node-version: "22"
         cache: "npm"
     - run: npm ci
     - run: npm run test

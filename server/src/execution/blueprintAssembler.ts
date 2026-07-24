@@ -57,91 +57,94 @@ export class BlueprintAssembler {
   /**
    * Extract gameplay from game designer agent output
    */
-private static extractGameplay(outputs: Record<string, unknown>, seed?: GameDesignSeed) {
-     const gameplay = outputs.gameplay || outputs.game_designer;
-     const gp =
-       typeof gameplay === "object" && gameplay !== null
-         ? (gameplay as any)
-         : {};
+  private static extractGameplay(
+    outputs: Record<string, unknown>,
+    seed?: GameDesignSeed,
+  ) {
+    const gameplay = outputs.gameplay || outputs.game_designer;
+    const gp =
+      typeof gameplay === "object" && gameplay !== null
+        ? (gameplay as any)
+        : {};
 
-     // Seed-derived structure (ensures loop/win/lose/progression/interactions/economy exist even if LLM output is partial)
-     const seedLoop = seed?.coreLoop;
-     const seedTheme = seed?.theme;
-     const seedMechanics: string[] = Array.isArray(seed?.mechanics)
-       ? seed.mechanics
-       : [];
+    // Seed-derived structure (ensures loop/win/lose/progression/interactions/economy exist even if LLM output is partial)
+    const seedLoop = seed?.coreLoop;
+    const seedTheme = seed?.theme;
+    const seedMechanics: string[] = Array.isArray(seed?.mechanics)
+      ? seed.mechanics
+      : [];
 
-     const loop =
-       typeof gp?.loop === "string"
-         ? gp.loop
-         : typeof seedLoop === "string"
-           ? seedLoop
-           : undefined;
+    const loop =
+      typeof gp?.loop === "string"
+        ? gp.loop
+        : typeof seedLoop === "string"
+          ? seedLoop
+          : undefined;
 
-     const winCondition =
-       typeof gp?.winCondition === "string"
-         ? gp.winCondition
-         : typeof gp?.win_conditions === "string"
-           ? gp.win_conditions
-           : "Reach the core objective";
+    const winCondition =
+      typeof gp?.winCondition === "string"
+        ? gp.winCondition
+        : typeof gp?.win_conditions === "string"
+          ? gp.win_conditions
+          : "Reach the core objective";
 
-     const loseCondition =
-       typeof gp?.loseCondition === "string"
-         ? gp.loseCondition
-         : typeof gp?.lose_conditions === "string"
-           ? gp.lose_conditions
-           : "Fail the objective within the constraints";
+    const loseCondition =
+      typeof gp?.loseCondition === "string"
+        ? gp.loseCondition
+        : typeof gp?.lose_conditions === "string"
+          ? gp.lose_conditions
+          : "Fail the objective within the constraints";
 
-     const progressionModel =
-       typeof gp?.progressionModel === "string"
-         ? gp.progressionModel
-         : typeof gp?.progression_model === "string"
-           ? gp.progression_model
-           : "Milestone-based unlocking with escalating difficulty";
+    const progressionModel =
+      typeof gp?.progressionModel === "string"
+        ? gp.progressionModel
+        : typeof gp?.progression_model === "string"
+          ? gp.progression_model
+          : "Milestone-based unlocking with escalating difficulty";
 
-     const interactionSystems = Array.isArray(gp?.interactionSystems)
-       ? gp.interactionSystems
-       : Array.isArray(gp?.interaction_systems)
-         ? gp.interaction_systems
-         : seedMechanics.slice(0, 5);
+    const interactionSystems = Array.isArray(gp?.interactionSystems)
+      ? gp.interactionSystems
+      : Array.isArray(gp?.interaction_systems)
+        ? gp.interaction_systems
+        : seedMechanics.slice(0, 5);
 
-     const economyOrScoring =
-       typeof gp?.economyOrScoring === "string"
-         ? gp.economyOrScoring
-         : typeof gp?.economy_or_scoring === "string"
-           ? gp.economy_or_scoring
-           : "Points/credits earned from successful interactions and milestones";
+    const economyOrScoring =
+      typeof gp?.economyOrScoring === "string"
+        ? gp.economyOrScoring
+        : typeof gp?.economy_or_scoring === "string"
+          ? gp.economy_or_scoring
+          : "Points/credits earned from successful interactions and milestones";
 
-     // Map into existing GameplaySystem fields without changing top-level schemas.
-     // - mechanics: keep existing mechanic list
-     // - progression/balance: embed required design strings as structured subfields
-     return {
-       mechanics: gp.mechanics || gp.game_mechanics || seedMechanics || [],
-       progression: {
-         ...(gp.progression || {}),
-         // Required additions (seed/LLM-derived)
-         loop,
-         player_progression_model: progressionModel,
-         unlocking_system: gp.progression?.unlocking_system ?? undefined,
-       },
-       balance: {
-         ...(gp.balance || {}),
-         // Required additions
-         winCondition,
-         loseCondition,
-         interactionSystems,
-         economyOrScoring,
-         theme: seedTheme ?? undefined,
-       },
-       // Extended gameplay structure for direct access
-       loop: loop,
-       winCondition,
-       loseCondition,
-       progressionModel,
-       interactionSystems,
-       economyOrScoring,
-     };
-   }
+    // Map into existing GameplaySystem fields without changing top-level schemas.
+    // - mechanics: keep existing mechanic list
+    // - progression/balance: embed required design strings as structured subfields
+    return {
+      mechanics: gp.mechanics || gp.game_mechanics || seedMechanics || [],
+      progression: {
+        ...(gp.progression || {}),
+        // Required additions (seed/LLM-derived)
+        loop,
+        player_progression_model: progressionModel,
+        unlocking_system: gp.progression?.unlocking_system ?? undefined,
+      },
+      balance: {
+        ...(gp.balance || {}),
+        // Required additions
+        winCondition,
+        loseCondition,
+        interactionSystems,
+        economyOrScoring,
+        theme: seedTheme ?? undefined,
+      },
+      // Extended gameplay structure for direct access
+      loop: loop,
+      winCondition,
+      loseCondition,
+      progressionModel,
+      interactionSystems,
+      economyOrScoring,
+    };
+  }
 
   /**
    * Extract UI layouts from UI generator agent output
