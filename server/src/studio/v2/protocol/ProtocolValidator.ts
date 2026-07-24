@@ -19,6 +19,8 @@ const VALID_TYPES: ProtocolMessageType[] = [
   "VALIDATE",
   "SYNC_REQUEST",
   "SYNC_RESPONSE",
+  "COMMAND_ACK",
+  "COMMAND_RESULT",
   "ERROR",
   "UNKNOWN",
 ];
