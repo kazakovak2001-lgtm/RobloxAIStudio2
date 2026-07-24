@@ -1,10 +1,9 @@
 --[[
-  StudioConnector — Manages protocol-level communication with the DevKit backend.
-  Handles HELLO, PING, PONG, STATUS, SYNC_REQUEST, SYNC_RESPONSE, PATCH_UPDATE, ERROR.
+  StudioConnector — Manages protocol and REST communication with the DevKit backend.
 ]]
 
 local HttpService = game:GetService("HttpService")
-local Config = require(script.Parent.core.Config)
+local Config = require(script.Parent.Parent.core.Config)
 
 local StudioConnector = {}
 StudioConnector.__index = StudioConnector
@@ -13,24 +12,26 @@ function StudioConnector.new()
     local self = setmetatable({}, StudioConnector)
     self._sessionId = nil
     self._clientId = nil
+    self._projectId = nil
     self._connected = false
     self._lastMessageId = 0
     return self
 end
 
-function StudioConnector:connect()
+function StudioConnector:connect(projectId)
+    local resolvedProjectId = projectId or (game.Name ~= "" and game.Name or "untitled")
     local payload = {
         studioVersion = tostring(game:GetService("StudioService") and "2024.1" or "unknown"),
-        projectId = game.Name ~= "" and game.Name or "untitled",
+        projectId = resolvedProjectId,
     }
 
     local result = self:_post("/api/studio/connect", payload)
     if result and result.success and result.data then
         self._clientId = result.data.clientId
         self._sessionId = result.data.sessionId
+        self._projectId = resolvedProjectId
         self._connected = true
 
-        -- Send HELLO handshake
         self:sendMessage("HELLO", "hello", {
             pluginVersion = Config.PLUGIN_VERSION,
             studioVersion = payload.studioVersion,
@@ -48,6 +49,7 @@ function StudioConnector:disconnect()
     self._connected = false
     self._clientId = nil
     self._sessionId = nil
+    self._projectId = nil
     return true
 end
 
@@ -72,6 +74,48 @@ function StudioConnector:sendMessage(msgType, command, payload)
     return self:_post("/api/studio/protocol/message", message)
 end
 
+function StudioConnector:getCommands()
+    if not self._clientId then
+        return { success = false, error = "Studio client is not connected" }
+    end
+    local clientId = HttpService:UrlEncode(self._clientId)
+    return self:_get("/api/studio/commands?clientId=" .. clientId)
+end
+
+function StudioConnector:getCommand(commandId)
+    if not self._clientId then
+        return { success = false, error = "Studio client is not connected" }
+    end
+    local clientId = HttpService:UrlEncode(self._clientId)
+    local encodedCommandId = HttpService:UrlEncode(commandId)
+    return self:_get("/api/studio/commands/" .. encodedCommandId .. "?clientId=" .. clientId)
+end
+
+function StudioConnector:acknowledgeCommand(commandId)
+    if not self._clientId then
+        return { success = false, error = "Studio client is not connected" }
+    end
+    local encodedCommandId = HttpService:UrlEncode(commandId)
+    return self:_post("/api/studio/commands/" .. encodedCommandId .. "/acknowledge", {
+        clientId = self._clientId,
+    })
+end
+
+function StudioConnector:reportCommand(commandId, report)
+    if not self._clientId then
+        return { success = false, error = "Studio client is not connected" }
+    end
+    local encodedCommandId = HttpService:UrlEncode(commandId)
+    return self:_post("/api/studio/commands/" .. encodedCommandId .. "/result", {
+        clientId = self._clientId,
+        status = report.status,
+        executionId = report.executionId,
+        artifacts = report.artifacts or {},
+        error = report.error,
+        reportedAt = report.reportedAt or (os.time() * 1000),
+    })
+end
+
 function StudioConnector:getStatus()
     return self:_get("/api/studio/status")
 end
@@ -86,6 +130,10 @@ end
 
 function StudioConnector:getClientId()
     return self._clientId
+end
+
+function StudioConnector:getProjectId()
+    return self._projectId
 end
 
 function StudioConnector:_get(path)
@@ -115,10 +163,10 @@ function StudioConnector:_post(path, body)
 end
 
 function StudioConnector:_headers()
-    local h = { ["Content-Type"] = "application/json" }
-    if Config.API_KEY ~= "" then h["X-API-Key"] = Config.API_KEY end
-    if self._sessionId then h["X-Studio-Session"] = self._sessionId end
-    return h
+    local headers = { ["Content-Type"] = "application/json" }
+    if Config.API_KEY ~= "" then headers["X-API-Key"] = Config.API_KEY end
+    if self._sessionId then headers["X-Studio-Session"] = self._sessionId end
+    return headers
 end
 
 return StudioConnector
