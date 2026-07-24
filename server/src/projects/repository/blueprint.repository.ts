@@ -58,8 +58,8 @@ export interface IBlueprintRepository {
  */
 export class InMemoryBlueprintRepository extends StorageBlueprintRepository {
   constructor(
-    storage: StorageProvider =
-      getConfiguredStorageProvider() ?? new InMemoryStorageProvider(),
+    storage: StorageProvider = getConfiguredStorageProvider() ??
+      new InMemoryStorageProvider(),
   ) {
     super(storage);
   }
