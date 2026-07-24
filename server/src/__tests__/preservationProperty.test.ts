@@ -72,8 +72,10 @@ function simulateAuthMiddleware(
     return { allowed: false, statusCode: 401 };
   }
 
-  if (apiKey && apiKey.length > 10) {
-    return { allowed: true, statusCode: 200 };
+  // The real middleware validates keys through ApiKeyStore. This helper has no
+  // key registry, so it must fail closed for any supplied API key.
+  if (apiKey) {
+    return { allowed: false, statusCode: 401 };
   }
 
   return { allowed: false, statusCode: 401 };
@@ -638,21 +640,28 @@ describe("Preservation Property Tests - Baseline Behavior Guards", () => {
       expect(responseStatus).toBe(401);
     });
 
-    it("unit: API key with length > 10 passes authMiddleware", () => {
+    it("unit: unregistered API key is rejected by authMiddleware", () => {
       process.env.NODE_ENV = "production";
       let nextCalled = false;
+      let responseStatus = 0;
       const req = {
         path: "/api/projects",
         method: "GET",
         headers: { "x-api-key": "my-api-key-1234567890" },
       } as never;
-      const res = {} as never;
+      const res = {
+        status: (code: number) => {
+          responseStatus = code;
+          return { json: () => undefined };
+        },
+      } as never;
       const next = () => {
         nextCalled = true;
       };
 
       authMiddleware(req, res, next);
-      expect(nextCalled).toBe(true);
+      expect(nextCalled).toBe(false);
+      expect(responseStatus).toBe(401);
     });
   });
 
