@@ -13,9 +13,10 @@ import type { TransferResult } from "./sync/ArtifactTransferManager";
 import type { ProjectSnapshot, SyncStatus } from "./sync/SyncTypes";
 
 export interface QueuedProjectExport {
-  command: StudioCommand;
+  command: StudioCommand | null;
   snapshot: ProjectSnapshot;
   transfer: TransferResult;
+  noChanges: boolean;
 }
 
 export type QueueProjectExportResult =
@@ -52,6 +53,7 @@ export class StudioRuntime {
 
   private timeoutMonitor?: ReturnType<typeof setInterval>;
   private readonly latestExecutionByProject = new Map<string, string>();
+  private readonly exportSignatureByClient = new Map<string, string>();
 
   constructor(options: StudioRuntimeOptions = {}) {
     this.artifacts = options.artifacts ?? new ArtifactStore(options.storage);
@@ -152,6 +154,32 @@ export class StudioRuntime {
       };
     }
 
+    const signature = this.createSnapshotSignature(snapshot);
+    const session = this.sessions.getByClient(clientId);
+    const previousSignature =
+      (session?.syncCount ?? 0) > 0
+        ? this.exportSignatureByClient.get(clientId)
+        : undefined;
+    this.latestExecutionByProject.set(projectId, executionId);
+
+    if (previousSignature === signature) {
+      this.sessions.recordNoopExport(clientId, executionId);
+      return {
+        success: true,
+        data: {
+          command: null,
+          snapshot,
+          transfer: {
+            artifacts: [],
+            missing: [],
+            totalSize: 0,
+            payloadExceeded: false,
+          },
+          noChanges: true,
+        },
+      };
+    }
+
     const transfer = this.sync
       .getTransferManager()
       .transfer(snapshot.artifacts.map((artifact) => artifact.id));
@@ -186,14 +214,17 @@ export class StudioRuntime {
       };
     }
 
-    this.latestExecutionByProject.set(projectId, executionId);
+    this.exportSignatureByClient.set(clientId, signature);
     this.sessions.recordQueuedExport(
       clientId,
       executionId,
       transfer.artifacts.length,
     );
 
-    return { success: true, data: { command, snapshot, transfer } };
+    return {
+      success: true,
+      data: { command, snapshot, transfer, noChanges: false },
+    };
   }
 
   drainCommands(clientId: string): StudioCommand[] {
@@ -209,6 +240,13 @@ export class StudioRuntime {
       this.sessions.recordDeliveredExport(clientId, executionId, artifactCount);
     }
     return commands;
+  }
+
+  private createSnapshotSignature(snapshot: ProjectSnapshot): string {
+    return snapshot.artifacts
+      .map((artifact) => `${artifact.id}:${artifact.hash}`)
+      .sort()
+      .join("|");
   }
 
   private resolveExecutionId(projectOrExecutionId: string): string | null {
