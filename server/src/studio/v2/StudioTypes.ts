@@ -24,7 +24,26 @@ export type StudioCommandType =
   | "RUN_TEST"
   | "EXPORT_PROJECT";
 export type CommandStatus =
-  "pending" | "sent" | "acknowledged" | "completed" | "failed";
+  | "pending"
+  | "sent"
+  | "acknowledged"
+  | "completed"
+  | "failed";
+
+export interface StudioArtifactReceipt {
+  artifactId: string;
+  hash: string;
+  instancePath?: string;
+}
+
+export interface StudioCommandResult {
+  status: "completed" | "failed";
+  executionId: string;
+  artifacts: StudioArtifactReceipt[];
+  error?: string;
+  reportedAt?: number;
+  receivedAt: number;
+}
 
 export interface StudioCommand {
   id: string;
@@ -33,6 +52,10 @@ export interface StudioCommand {
   timestamp: number;
   status: CommandStatus;
   clientId: string;
+  deliveredAt?: number;
+  acknowledgedAt?: number;
+  completedAt?: number;
+  result?: StudioCommandResult;
   error?: string;
 }
 

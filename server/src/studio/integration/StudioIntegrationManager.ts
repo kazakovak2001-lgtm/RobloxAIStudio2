@@ -228,17 +228,35 @@ export class StudioIntegrationManager {
       session.clientId,
     );
     const syncCount = session.syncCount ?? 0;
+    const verificationStatus = session.verificationStatus ?? "idle";
+    const status =
+      verificationStatus === "failed"
+        ? "failed"
+        : verificationStatus === "verified"
+          ? "completed"
+          : verificationStatus === "queued" ||
+              verificationStatus === "delivered" ||
+              verificationStatus === "acknowledged" ||
+              pending > 0
+            ? "syncing"
+            : "idle";
+
     return {
       sessionId: session.sessionId,
       studioId: session.clientId,
       projectId: session.projectId ?? "",
       packageId: session.lastExecutionId,
-      status:
-        pending > 0 ? "syncing" : session.lastSyncAt ? "completed" : "idle",
+      status,
       connectedAt: session.createdAt,
       lastSyncAt: session.lastSyncAt,
       syncCount,
       version: Math.max(1, syncCount + 1),
+      artifactVerified: verificationStatus === "verified",
+      verificationStatus,
+      lastCommandId: session.lastCommandId,
+      verifiedExecutionId: session.verifiedExecutionId,
+      verifiedArtifactCount: session.verifiedArtifactCount,
+      verificationError: session.verificationError,
     };
   }
 

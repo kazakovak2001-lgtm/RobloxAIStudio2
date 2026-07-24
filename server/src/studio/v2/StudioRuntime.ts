@@ -4,8 +4,10 @@ import { StudioBridge } from "./StudioBridge";
 import { StudioSessionManager, type BridgeSession } from "./StudioSession";
 import {
   createCommandId,
+  type StudioArtifactReceipt,
   type StudioClient,
   type StudioCommand,
+  type StudioCommandResult,
 } from "./StudioTypes";
 import { PROTOCOL_VERSION } from "./protocol";
 import { ProjectSyncManager } from "./sync/ProjectSyncManager";
@@ -19,6 +21,14 @@ export interface QueuedProjectExport {
   noChanges: boolean;
 }
 
+export interface StudioImportReportInput {
+  status: "completed" | "failed";
+  executionId: string;
+  artifacts?: StudioArtifactReceipt[];
+  error?: string;
+  reportedAt?: number;
+}
+
 export type QueueProjectExportResult =
   | { success: true; data: QueuedProjectExport }
   | {
@@ -30,6 +40,21 @@ export type QueueProjectExportResult =
         | "payload_exceeded"
         | "queue_unavailable";
       message: string;
+    };
+
+export type StudioCommandActionResult =
+  | { success: true; command: StudioCommand; verified: boolean }
+  | {
+      success: false;
+      reason:
+        | "command_not_found"
+        | "client_mismatch"
+        | "invalid_command"
+        | "invalid_status"
+        | "not_delivered"
+        | "verification_failed";
+      message: string;
+      command?: StudioCommand;
     };
 
 export interface StudioRuntimeOptions {
@@ -122,6 +147,10 @@ export class StudioRuntime {
     if (!projectOrExecutionId) return this.sync.getSyncStatus();
     const executionId = this.resolveExecutionId(projectOrExecutionId);
     return this.sync.getSyncStatus(executionId ?? projectOrExecutionId);
+  }
+
+  getCommand(commandId: string): StudioCommand | null {
+    return this.bridge.getCommand(commandId);
   }
 
   queueProjectExport(
@@ -219,6 +248,7 @@ export class StudioRuntime {
       clientId,
       executionId,
       transfer.artifacts.length,
+      command.id,
     );
 
     return {
@@ -229,17 +259,152 @@ export class StudioRuntime {
 
   drainCommands(clientId: string): StudioCommand[] {
     const commands = this.bridge.getCommands(clientId);
-    const latestExport = [...commands]
-      .reverse()
-      .find((command) => command.type === "EXPORT_PROJECT");
-    if (latestExport) {
-      const executionId = String(latestExport.payload.executionId ?? "");
-      const artifactCount = Array.isArray(latestExport.payload.artifacts)
-        ? latestExport.payload.artifacts.length
+    for (const command of commands) {
+      const delivered = this.bridge.markCommandDelivered(clientId, command.id);
+      if (!delivered.success || command.type !== "EXPORT_PROJECT") continue;
+      const executionId = String(command.payload.executionId ?? "");
+      const artifactCount = Array.isArray(command.payload.artifacts)
+        ? command.payload.artifacts.length
         : 0;
-      this.sessions.recordDeliveredExport(clientId, executionId, artifactCount);
+      this.sessions.recordDeliveredExport(
+        clientId,
+        executionId,
+        artifactCount,
+        command.id,
+      );
     }
     return commands;
+  }
+
+  acknowledgeProjectExport(
+    clientId: string,
+    commandId: string,
+  ): StudioCommandActionResult {
+    const command = this.bridge.getCommand(commandId);
+    const valid = this.validateExportCommand(clientId, command);
+    if (!valid.success) return valid;
+    if (!command?.deliveredAt) {
+      return {
+        success: false,
+        reason: "not_delivered",
+        message: "Studio command must be polled before acknowledgement.",
+        command: command ?? undefined,
+      };
+    }
+
+    const acknowledged = this.bridge.acknowledgeCommand(clientId, commandId);
+    if (!acknowledged.success) return acknowledged;
+    const executionId = String(acknowledged.command.payload.executionId ?? "");
+    const projectId = String(acknowledged.command.payload.projectId ?? "");
+    this.sessions.recordAcknowledgedExport(
+      clientId,
+      commandId,
+      executionId,
+    );
+    this.bridge.events.emit({
+      type: "export.started",
+      clientId,
+      projectId,
+      timestamp: Date.now(),
+      data: { commandId, executionId },
+    });
+    return { success: true, command: acknowledged.command, verified: false };
+  }
+
+  reportProjectExport(
+    clientId: string,
+    commandId: string,
+    input: StudioImportReportInput,
+  ): StudioCommandActionResult {
+    const command = this.bridge.getCommand(commandId);
+    const valid = this.validateExportCommand(clientId, command);
+    if (!valid.success) return valid;
+    if (command?.status !== "acknowledged") {
+      return {
+        success: false,
+        reason: "invalid_status",
+        message: "Studio command must be acknowledged before reporting a result.",
+        command: command ?? undefined,
+      };
+    }
+
+    const executionId = String(command.payload.executionId ?? "");
+    const projectId = String(command.payload.projectId ?? "");
+    const reportedArtifacts = input.artifacts ?? [];
+
+    if (input.status === "failed") {
+      const error = input.error?.trim() || "Roblox Studio import failed.";
+      const result = this.createCommandResult(input, reportedArtifacts, error);
+      const failed = this.bridge.failCommand(clientId, commandId, result);
+      if (!failed.success) return failed;
+      this.exportSignatureByClient.delete(clientId);
+      this.sessions.recordFailedExport(clientId, commandId, executionId, error);
+      this.bridge.events.emit({
+        type: "export.failed",
+        clientId,
+        projectId,
+        timestamp: Date.now(),
+        data: { commandId, executionId, error },
+      });
+      return { success: true, command: failed.command, verified: false };
+    }
+
+    const verificationError = this.verifyImportEvidence(
+      command,
+      input.executionId,
+      reportedArtifacts,
+    );
+    if (verificationError) {
+      const result = this.createCommandResult(
+        { ...input, status: "failed" },
+        reportedArtifacts,
+        verificationError,
+      );
+      const failed = this.bridge.failCommand(clientId, commandId, result);
+      if (!failed.success) return failed;
+      this.exportSignatureByClient.delete(clientId);
+      this.sessions.recordFailedExport(
+        clientId,
+        commandId,
+        executionId,
+        verificationError,
+      );
+      this.bridge.events.emit({
+        type: "export.failed",
+        clientId,
+        projectId,
+        timestamp: Date.now(),
+        data: { commandId, executionId, error: verificationError },
+      });
+      return {
+        success: false,
+        reason: "verification_failed",
+        message: verificationError,
+        command: failed.command,
+      };
+    }
+
+    const result = this.createCommandResult(input, reportedArtifacts);
+    const completed = this.bridge.completeCommand(clientId, commandId, result);
+    if (!completed.success) return completed;
+    this.sessions.recordVerifiedExport(
+      clientId,
+      commandId,
+      executionId,
+      reportedArtifacts.length,
+    );
+    this.bridge.events.emit({
+      type: "export.completed",
+      clientId,
+      projectId,
+      timestamp: Date.now(),
+      data: {
+        commandId,
+        executionId,
+        artifactCount: reportedArtifacts.length,
+      },
+    });
+    return { success: true, command: completed.command, verified: true };
   }
 
   private createSnapshotSignature(snapshot: ProjectSnapshot): string {
@@ -247,6 +412,88 @@ export class StudioRuntime {
       .map((artifact) => `${artifact.id}:${artifact.hash}`)
       .sort()
       .join("|");
+  }
+
+  private validateExportCommand(
+    clientId: string,
+    command: StudioCommand | null,
+  ): StudioCommandActionResult | { success: true } {
+    if (!command) {
+      return {
+        success: false,
+        reason: "command_not_found",
+        message: "Studio command was not found.",
+      };
+    }
+    if (command.clientId !== clientId) {
+      return {
+        success: false,
+        reason: "client_mismatch",
+        message: "Studio command belongs to a different client.",
+        command,
+      };
+    }
+    if (command.type !== "EXPORT_PROJECT") {
+      return {
+        success: false,
+        reason: "invalid_command",
+        message: "Only EXPORT_PROJECT commands support import verification.",
+        command,
+      };
+    }
+    return { success: true };
+  }
+
+  private verifyImportEvidence(
+    command: StudioCommand,
+    reportedExecutionId: string,
+    receipts: StudioArtifactReceipt[],
+  ): string | null {
+    const expectedExecutionId = String(command.payload.executionId ?? "");
+    if (!reportedExecutionId || reportedExecutionId !== expectedExecutionId) {
+      return "Reported execution ID does not match the queued export.";
+    }
+
+    const snapshot = command.payload.snapshot as ProjectSnapshot | undefined;
+    if (!snapshot || !Array.isArray(snapshot.artifacts)) {
+      return "Queued export does not contain a valid artifact snapshot.";
+    }
+    if (receipts.length !== snapshot.artifacts.length) {
+      return `Expected ${snapshot.artifacts.length} artifact receipts but received ${receipts.length}.`;
+    }
+
+    const reportedById = new Map(
+      receipts.map((receipt) => [receipt.artifactId, receipt]),
+    );
+    if (reportedById.size !== receipts.length) {
+      return "Artifact receipts contain duplicate artifact IDs.";
+    }
+
+    for (const expected of snapshot.artifacts) {
+      const receipt = reportedById.get(expected.id);
+      if (!receipt) {
+        return `Missing receipt for artifact ${expected.id}.`;
+      }
+      if (receipt.hash !== expected.hash) {
+        return `Artifact hash mismatch for ${expected.id}.`;
+      }
+    }
+    return null;
+  }
+
+  private createCommandResult(
+    input: StudioImportReportInput,
+    artifacts: StudioArtifactReceipt[],
+    error?: string,
+  ): StudioCommandResult {
+    return {
+      status: error ? "failed" : input.status,
+      executionId: input.executionId,
+      artifacts,
+      error,
+      reportedAt: input.reportedAt,
+      receivedAt: Date.now(),
+    };
   }
 
   private resolveExecutionId(projectOrExecutionId: string): string | null {

@@ -56,6 +56,7 @@ describe("STUDIO-1b shared Studio runtime", () => {
       syncCount: 1,
       lastExecutionId: executionId,
       lastArtifactCount: 2,
+      verificationStatus: "queued",
     });
     expect(
       runtime.sessions.getByClient(client.clientId)?.lastSyncAt,
@@ -88,9 +89,14 @@ describe("STUDIO-1b shared Studio runtime", () => {
     expect(serializedPayload).not.toContain("studio-sync-fallback");
     expect(serializedPayload).not.toContain("placeholder script");
     expect(runtime.bridge.getPendingCommandCount(client.clientId)).toBe(0);
-    expect(runtime.sessions.getByClient(client.clientId)?.lastSyncAt).toEqual(
-      expect.any(Number),
-    );
+    expect(runtime.sessions.getByClient(client.clientId)).toMatchObject({
+      verificationStatus: "delivered",
+      lastExecutionId: executionId,
+      lastArtifactCount: 2,
+    });
+    expect(
+      runtime.sessions.getByClient(client.clientId)?.lastSyncAt,
+    ).toBeUndefined();
   });
 
   it("rejects disconnected, mismatched, and artifact-free exports", () => {
@@ -141,8 +147,10 @@ describe("STUDIO-1b shared Studio runtime", () => {
       projectId,
       executionId,
     });
-    expect(manager.getSession("studio-shared")?.lastSyncAt).toEqual(
-      expect.any(Number),
-    );
+    expect(manager.getSession("studio-shared")).toMatchObject({
+      artifactVerified: false,
+      verificationStatus: "delivered",
+      lastSyncAt: undefined,
+    });
   });
 });

@@ -5,6 +5,14 @@
 import { randomUUID } from "crypto";
 import type { StudioClient } from "./StudioTypes";
 
+export type StudioVerificationStatus =
+  | "idle"
+  | "queued"
+  | "delivered"
+  | "acknowledged"
+  | "verified"
+  | "failed";
+
 export interface BridgeSession {
   sessionId: string;
   clientId: string;
@@ -13,10 +21,18 @@ export interface BridgeSession {
   createdAt: number;
   lastActivity: number;
   lastQueuedAt?: number;
+  lastDeliveredAt?: number;
+  lastAcknowledgedAt?: number;
   lastSyncAt?: number;
+  lastVerifiedAt?: number;
   syncCount?: number;
+  lastCommandId?: string;
   lastExecutionId?: string;
   lastArtifactCount?: number;
+  verifiedExecutionId?: string;
+  verifiedArtifactCount?: number;
+  verificationStatus?: StudioVerificationStatus;
+  verificationError?: string;
   status: "active" | "expired" | "closed";
 }
 
@@ -44,6 +60,7 @@ export class StudioSessionManager {
       createdAt: Date.now(),
       lastActivity: Date.now(),
       syncCount: 0,
+      verificationStatus: "idle",
       status: "active",
     };
     this.sessions.set(session.sessionId, session);
@@ -79,13 +96,17 @@ export class StudioSessionManager {
     clientId: string,
     executionId: string,
     artifactCount: number,
+    commandId?: string,
   ): boolean {
     const session = this.getByClient(clientId);
     if (!session || session.status !== "active") return false;
     session.lastQueuedAt = Date.now();
     session.syncCount = (session.syncCount ?? 0) + 1;
+    session.lastCommandId = commandId;
     session.lastExecutionId = executionId;
     session.lastArtifactCount = artifactCount;
+    session.verificationStatus = "queued";
+    session.verificationError = undefined;
     return true;
   }
 
@@ -94,7 +115,6 @@ export class StudioSessionManager {
     if (!session || session.status !== "active") return false;
     session.syncCount = (session.syncCount ?? 0) + 1;
     session.lastExecutionId = executionId;
-    session.lastArtifactCount = 0;
     return true;
   }
 
@@ -102,13 +122,69 @@ export class StudioSessionManager {
     clientId: string,
     executionId: string,
     artifactCount: number,
+    commandId?: string,
   ): boolean {
     const session = this.getByClient(clientId);
     if (!session || session.status !== "active") return false;
     session.lastActivity = Date.now();
-    session.lastSyncAt = Date.now();
+    session.lastDeliveredAt = Date.now();
+    session.lastCommandId = commandId ?? session.lastCommandId;
     if (executionId) session.lastExecutionId = executionId;
     session.lastArtifactCount = artifactCount;
+    session.verificationStatus = "delivered";
+    return true;
+  }
+
+  recordAcknowledgedExport(
+    clientId: string,
+    commandId: string,
+    executionId: string,
+  ): boolean {
+    const session = this.getByClient(clientId);
+    if (!session || session.status !== "active") return false;
+    session.lastActivity = Date.now();
+    session.lastAcknowledgedAt = Date.now();
+    session.lastCommandId = commandId;
+    session.lastExecutionId = executionId;
+    session.verificationStatus = "acknowledged";
+    return true;
+  }
+
+  recordVerifiedExport(
+    clientId: string,
+    commandId: string,
+    executionId: string,
+    artifactCount: number,
+  ): boolean {
+    const session = this.getByClient(clientId);
+    if (!session || session.status !== "active") return false;
+    const now = Date.now();
+    session.lastActivity = now;
+    session.lastSyncAt = now;
+    session.lastVerifiedAt = now;
+    session.lastCommandId = commandId;
+    session.lastExecutionId = executionId;
+    session.lastArtifactCount = artifactCount;
+    session.verifiedExecutionId = executionId;
+    session.verifiedArtifactCount = artifactCount;
+    session.verificationStatus = "verified";
+    session.verificationError = undefined;
+    return true;
+  }
+
+  recordFailedExport(
+    clientId: string,
+    commandId: string,
+    executionId: string,
+    error: string,
+  ): boolean {
+    const session = this.getByClient(clientId);
+    if (!session || session.status !== "active") return false;
+    session.lastActivity = Date.now();
+    session.lastCommandId = commandId;
+    session.lastExecutionId = executionId;
+    session.verificationStatus = "failed";
+    session.verificationError = error;
     return true;
   }
 

@@ -1,7 +1,10 @@
 import { Router } from "express";
 import { GameGenerationService } from "../projects/services/game-generation.service";
 import type { StudioIntegrationManager } from "../studio/integration/StudioIntegrationManager";
-import type { StudioProjectSession } from "../studio/integration/types";
+import type {
+  ArtifactVerificationStatus,
+  StudioProjectSession,
+} from "../studio/integration/types";
 import type { ProjectRuntime } from "./projects";
 
 type StudioConnectionStatus =
@@ -14,6 +17,12 @@ interface StudioConnectionInfo {
   bridgeVersion: string;
   message?: string;
   pendingChanges: number;
+  artifactVerified?: boolean;
+  verificationStatus?: ArtifactVerificationStatus;
+  lastCommandId?: string;
+  verifiedExecutionId?: string;
+  verifiedArtifactCount?: number;
+  verificationError?: string;
 }
 
 interface StudioSyncResult extends StudioConnectionInfo {
@@ -42,6 +51,34 @@ export function createGameGenerationRouter(
         return "error";
       default:
         return "connected";
+    }
+  };
+
+  const describeStudioSession = (
+    session: StudioProjectSession | null,
+    pendingChanges: number,
+  ): string => {
+    if (!session) {
+      return "No connected Studio instance found for this project.";
+    }
+    switch (session.verificationStatus) {
+      case "verified":
+        return "Roblox Studio verified the generated project artifacts.";
+      case "failed":
+        return (
+          session.verificationError ??
+          "Roblox Studio reported an artifact import failure."
+        );
+      case "acknowledged":
+        return "Roblox Studio acknowledged the export and is applying artifacts.";
+      case "delivered":
+        return "The generated export was delivered to Roblox Studio and awaits acknowledgement.";
+      case "queued":
+        return "Generated project artifacts are queued for Roblox Studio.";
+      default:
+        return pendingChanges > 0
+          ? "Generated project artifacts are queued for Roblox Studio."
+          : "Roblox Studio is connected to the project.";
     }
   };
 
@@ -294,13 +331,13 @@ export function createGameGenerationRouter(
           : undefined,
         bridgeVersion: studioManager.protocolVersion,
         pendingChanges,
-        message: session
-          ? session.status === "failed"
-            ? "Studio session has reported a sync failure."
-            : pendingChanges > 0
-              ? "Generated project export is queued for Roblox Studio."
-              : "Roblox Studio is connected to the project."
-          : "No connected Studio instance found for this project.",
+        artifactVerified: session?.artifactVerified ?? false,
+        verificationStatus: session?.verificationStatus ?? "idle",
+        lastCommandId: session?.lastCommandId,
+        verifiedExecutionId: session?.verifiedExecutionId,
+        verifiedArtifactCount: session?.verifiedArtifactCount,
+        verificationError: session?.verificationError,
+        message: describeStudioSession(session, pendingChanges),
       };
 
       res.json({ success: true, data: response });
@@ -343,6 +380,9 @@ export function createGameGenerationRouter(
         execution.id,
       );
       const refreshedSession = studioManager.getSession(session.studioId);
+      const pendingChanges = studioManager.getPendingCommandCount(
+        session.studioId,
+      );
       const response: StudioSyncResult = {
         status: mapStudioStatus(refreshedSession),
         studioId: session.studioId,
@@ -350,15 +390,19 @@ export function createGameGenerationRouter(
           ? new Date(refreshedSession.lastSyncAt).toISOString()
           : undefined,
         bridgeVersion: studioManager.protocolVersion,
-        pendingChanges: studioManager.getPendingCommandCount(session.studioId),
+        pendingChanges,
         itemsSynced: syncResult.itemsSynced,
         durationMs: syncResult.durationMs,
         executionId: execution.id,
-        commandId: syncResult.payloadId || undefined,
+        commandId: syncResult.payloadId || refreshedSession?.lastCommandId,
+        artifactVerified: refreshedSession?.artifactVerified ?? false,
+        verificationStatus: refreshedSession?.verificationStatus ?? "idle",
+        lastCommandId: refreshedSession?.lastCommandId,
+        verifiedExecutionId: refreshedSession?.verifiedExecutionId,
+        verifiedArtifactCount: refreshedSession?.verifiedArtifactCount,
+        verificationError: refreshedSession?.verificationError,
         message: syncResult.success
-          ? syncResult.itemsSynced > 0
-            ? "Generated project export queued for Roblox Studio."
-            : "No artifact changes detected; the Studio export is already current."
+          ? describeStudioSession(refreshedSession, pendingChanges)
           : syncResult.error,
       };
 
