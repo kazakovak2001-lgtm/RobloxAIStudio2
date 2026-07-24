@@ -1,8 +1,8 @@
 # Current Project State
 
 **Last Updated**: July 24, 2026
-**Phase**: STUDIO-1 — Generated Artifact → Roblox Studio End-to-End Validation
-**Build Status**: Backend CI is green on Node.js 22 / npm 10, including the full test suite and real PostgreSQL restart acceptance; standalone frontend CI passes TypeScript, Workspace logic tests, production build, and production-artifact responsive browser QA
+**Phase**: STUDIO-1c — Roblox Studio Import Acknowledgement and Verification
+**Build Status**: Backend CI is green on Node.js 22 / npm 10, including 717 normal-suite tests, strict PostgreSQL restart acceptance, repository validation, and the aggregate merge gate; standalone frontend CI passes TypeScript, Workspace logic tests, production build, and production-artifact responsive browser QA
 
 ---
 
@@ -15,7 +15,8 @@
 - **API Routes**: 28 registered endpoint groups (+ health, root)
 - **AI Providers**: 7 (OpenAI, Anthropic, Gemini, Groq, Ollama, OpenRouter, Mock)
 - **Storage**: One configured provider per process; PostgreSQL migrations and cache hydration complete before the server listens. `STORAGE_PROVIDER=postgres` requires `DATABASE_URL`.
-- **Durable records**: identities, sessions, users, projects, generation history, API keys, blueprints, blueprint versions, generation executions, conversations, and conversation messages use the configured storage boundary.
+- **Durable records**: identities, sessions, users, projects, generation history, API keys, blueprints, blueprint versions, generation executions, pipeline artifacts, conversations, and conversation messages use the configured storage boundary.
+- **Studio runtime**: project sync, plugin registration, active sessions, artifact snapshots, transfer, and the existing outbound command queue use one shared Studio v2 runtime. Project sync selects the newest completed artifact-bearing execution and never creates placeholder Lua/config packages.
 - **Real-time**: Socket.io with 50+ event types, project rooms, JWT-authenticated handshake (production)
 - **Authentication**: bcrypt password hashing (cost 12), storage-backed sessions/roles, cryptographic validation, httpOnly cookie delivery
 
@@ -69,6 +70,8 @@
 | CORE-1a          | Durable identity, projects, and ownership         | July 24, 2026 |
 | CORE-1b          | Durable blueprints, executions, chat, restart E2E | July 24, 2026 |
 | WORKSPACE-1      | Workflow Workspace, scoped tools, logic and QA    | July 24, 2026 |
+| STUDIO-1a        | Durable canonical generation artifact lineage     | July 24, 2026 |
+| STUDIO-1b        | Shared Studio runtime and real artifact queue     | July 24, 2026 |
 
 ---
 
@@ -140,7 +143,7 @@
 ## Known Problems
 
 1. **ESLint Config**: v10 installed with legacy `.eslintrc.json` format (functional but deprecated config style).
-2. **Studio artifact fidelity**: the existing Studio status/sync route is connected, but STUDIO-1 must prove that a real generated package—not a placeholder or fallback manifest—is delivered, acknowledged, and attributable to the durable project execution.
+2. **Studio import acceptance**: real persisted artifacts are now queued and delivered through one Studio runtime, but STUDIO-1c must add an existing-protocol-compatible acknowledgement/result path and prove that the plugin applied the expected artifacts. Queue delivery alone must not set `studioArtifactVerified=true`.
 
 ---
 
@@ -177,6 +180,8 @@ This template enforces:
 
 ## Last Changes
 
+- July 24, 2026: STUDIO-1b complete — project and plugin Studio routes now share one v2 runtime; project sync selects the newest completed artifact-bearing execution, queues real persisted artifacts through `EXPORT_PROJECT`, preserves incremental no-op behavior, and never creates placeholder Lua/config packages. PR #9 passed TypeScript, ESLint, Prettier, 717 tests, repository validation, commitlint, PostgreSQL restart E2E, and Merge Gate. See `STUDIO-1B_RUNTIME_CONSOLIDATION.md`.
+- July 24, 2026: STUDIO-1a complete — canonical `PlanExecutor` outputs are recorded in the storage-backed `ArtifactStore` under durable generation execution IDs and survive PostgreSQL provider reconstruction. See `STUDIO-1A_ARTIFACT_LINEAGE.md`.
 - July 24, 2026: WORKSPACE-1 complete — the standalone project route now uses five workflow stages, one persisted read model, stage-scoped advanced tools, typed context and result presenters, native workflow regression tests, and production-artifact responsive browser QA. Responsive QA found and fixed document-level chat scrolling, workflow shrink issues, and mobile manifest overflow.
 - July 24, 2026: CORE-1b verified — blueprints, versions, generation executions, conversations, and messages now use the configured storage boundary. GitHub Actions passed TypeScript, lint, formatting, full tests, repository validation, commitlint, real PostgreSQL restart recovery, ownership isolation, and the merge gate. See `CORE-1B_DURABLE_RUNTIME.md`.
 - July 24, 2026: CORE-1a implemented — one configured storage provider now backs identities, users, projects, generation history, and API keys; project ownership is mandatory and browser patches are allow-listed. See `CORE-1A_DURABLE_PROJECTS.md`.
