@@ -276,13 +276,13 @@ Same vulnerability, same assessment: dev-only, no production impact.
 
 ### MUST FIX Before Public Deployment (HIGH)
 
-| #   | Finding                                             | Effort | Impact                                 |
-| --- | --------------------------------------------------- | ------ | -------------------------------------- |
-| 1   | Replace SHA-256 with bcrypt for passwords           | 1h     | Prevents password cracking             |
-| 2   | Move tokens to httpOnly cookies                     | 2h     | Eliminates XSS token theft             |
-| 3   | Validate tokens cryptographically in authMiddleware | 1h     | Prevents bypass with arbitrary strings |
+| #   | Finding                                             | Effort  | Impact                                 |
+| --- | --------------------------------------------------- | ------- | -------------------------------------- |
+| 1   | Replace SHA-256 with bcrypt for passwords           | 1h      | Prevents password cracking             |
+| 2   | Move tokens to httpOnly cookies                     | 2h      | Eliminates XSS token theft             |
+| 3   | Validate tokens cryptographically in authMiddleware | 1h      | Prevents bypass with arbitrary strings |
 | 4   | Validate API keys against stored keys               | ✅ Done | Prevents bypass via X-API-Key header   |
-| 5   | Validate Socket.IO tokens properly                  | 1h     | Prevents unauthorized real-time access |
+| 5   | Validate Socket.IO tokens properly                  | 1h      | Prevents unauthorized real-time access |
 
 ### SHOULD FIX Before Scale (MEDIUM)
 
