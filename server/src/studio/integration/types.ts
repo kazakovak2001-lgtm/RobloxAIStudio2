@@ -5,20 +5,10 @@
 import { randomUUID } from "crypto";
 
 export type SyncStatus =
-  | "idle"
-  | "preparing"
-  | "validating"
-  | "syncing"
-  | "completed"
-  | "failed";
+  "idle" | "preparing" | "validating" | "syncing" | "completed" | "failed";
 
 export type ArtifactVerificationStatus =
-  | "idle"
-  | "queued"
-  | "delivered"
-  | "acknowledged"
-  | "verified"
-  | "failed";
+  "idle" | "queued" | "delivered" | "acknowledged" | "verified" | "failed";
 
 export interface StudioProjectSession {
   sessionId: string;
