@@ -74,7 +74,7 @@
 | STUDIO-1a         | Durable canonical generation artifact lineage            | July 24, 2026 |
 | STUDIO-1b         | Shared Studio runtime and real artifact queue            | July 24, 2026 |
 | STUDIO-1c backend | ACK/result state machine and exact evidence verification | July 24, 2026 |
-| STUDIO-1d plugin  | Canonical plugin command/import contract                  | July 24, 2026 |
+| STUDIO-1d plugin  | Canonical plugin command/import contract                 | July 24, 2026 |
 
 ---
 
