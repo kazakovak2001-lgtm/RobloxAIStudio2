@@ -14,6 +14,7 @@ import {
   getRefreshTokenFromCookies,
 } from "../common/middleware/cookies";
 import { getRequestUserId, requireProjectAccess } from "./projects";
+import { loginRateLimiter } from "../common/middleware/security";
 
 interface UserPreferences {
   appearance: "dark" | "system";
@@ -78,7 +79,7 @@ export function createPlatformRouter(): Router {
     });
   });
 
-  router.post("/auth/login", (req, res) => {
+  router.post("/auth/login", loginRateLimiter, (req, res) => {
     const { email, password } = req.body;
     if (!email || !password) {
       res
