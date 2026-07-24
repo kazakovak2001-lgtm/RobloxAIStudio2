@@ -2,7 +2,7 @@
 
 **Repository:** `kazakovak2001-lgtm/RobloxAIStudio2`
 
-**Status:** Plugin implementation in draft; automated contract validation and manual Roblox Studio evidence pending
+**Status:** Canonical plugin implementation CI-verified; manual Roblox Studio desktop evidence pending
 
 ## Objective
 
@@ -108,6 +108,23 @@ The value contains the original content and attributes record artifact identity,
 - active module structure and removal of malformed panel syntax.
 
 These checks run inside the standard backend test suite and merge gate.
+
+## Automated Verification Record
+
+A clean canonical CI run passed:
+
+- TypeScript Check;
+- ESLint;
+- Prettier Check;
+- the full Test Suite, including `studio1.plugin-contract.test.ts`;
+- PostgreSQL Restart E2E;
+- Repository Validation;
+- Commit Message Lint;
+- the aggregate Merge Gate.
+
+The final branch contains no plugin audit, formatting artifact, or self-modifying workflow. The standard repository CI is unchanged.
+
+This validation proves source-level integration with the existing backend contract. The repository does not currently run a Luau parser, Roblox Studio CLI, or desktop Roblox runtime in CI. It therefore cannot replace the manual evidence below.
 
 ## Acceptance Evidence Still Required
 
