@@ -16,6 +16,8 @@ import { AgentRegistry } from "../../agents/core/AgentRegistry";
 import { ExecutionQueue } from "../../execution/executionQueue";
 import { PlannerEngine } from "../../planning/core/PlannerEngine";
 import { PlanExecutor } from "../../planning/execution/PlanExecutor";
+import { ArtifactStore } from "../../pipeline/v2";
+import { GenerationArtifactRecorder } from "../../studio/artifacts/GenerationArtifactRecorder";
 
 export class GameGenerationService {
   private agentRegistry: AgentRegistry;
@@ -26,6 +28,7 @@ export class GameGenerationService {
   private streaming: StreamingUpdateHandler;
   private events: PipelineEventEmitter;
   private validator: BlueprintValidator;
+  private artifactRecorder: GenerationArtifactRecorder;
 
   constructor(
     repository: IBlueprintRepository,
@@ -34,6 +37,7 @@ export class GameGenerationService {
     events: PipelineEventEmitter,
     _integrator: unknown, // preserved for backward-compatible constructor signature
     agentRegistry?: AgentRegistry,
+    artifactStore: ArtifactStore = new ArtifactStore(),
   ) {
     this.repository = repository;
     this.cache = cache;
@@ -41,6 +45,7 @@ export class GameGenerationService {
     this.events = events;
     this.validator = new BlueprintValidator();
     this.agentRegistry = agentRegistry ?? new AgentRegistry();
+    this.artifactRecorder = new GenerationArtifactRecorder(artifactStore);
   }
 
   async createBlueprint(
@@ -159,6 +164,13 @@ export class GameGenerationService {
                   gameDesignSeed,
                 }),
               { projectId: enrichedBlueprint.project_id, stopOnFailure: false },
+            );
+
+            // Persist the real canonical node outputs under the same durable
+            // execution ID consumed by the Studio v2 snapshot/transfer path.
+            this.artifactRecorder.record(
+              execution.id,
+              result.graph.getAllNodes(),
             );
 
             // Build pipeline_steps from TaskGraph

@@ -3,6 +3,10 @@
  */
 
 import { randomUUID } from "crypto";
+import {
+  getConfiguredStorageProvider,
+  type StorageProvider,
+} from "../../platform/storage/StorageFactory";
 import type { StageName } from "./PipelineStage";
 
 export interface PipelineArtifact {
@@ -33,6 +37,8 @@ export type ArtifactType =
   | "ui-layout"
   | "asset-plan";
 
+const ARTIFACT_COLLECTION = "pipeline_artifacts";
+
 const STAGE_ARTIFACT_CONFIG: Record<
   StageName,
   { name: string; type: ArtifactType } | null
@@ -53,6 +59,8 @@ const STAGE_ARTIFACT_CONFIG: Record<
 export class ArtifactStore {
   private artifacts: Map<string, PipelineArtifact> = new Map();
   private byPipeline: Map<string, string[]> = new Map();
+
+  constructor(private readonly injectedStorage?: StorageProvider) {}
 
   /**
    * Store an artifact produced by a pipeline stage.
@@ -82,12 +90,7 @@ export class ArtifactStore {
       reviewStatus: "pending",
     };
 
-    this.artifacts.set(artifact.id, artifact);
-
-    const pipelineArtifacts = this.byPipeline.get(pipelineId) ?? [];
-    pipelineArtifacts.push(artifact.id);
-    this.byPipeline.set(pipelineId, pipelineArtifacts);
-
+    this.persist(artifact);
     return artifact;
   }
 
@@ -95,26 +98,48 @@ export class ArtifactStore {
    * Get all artifacts for a pipeline.
    */
   getByPipeline(pipelineId: string): PipelineArtifact[] {
+    const storage = this.storage;
+    if (storage) {
+      const artifacts = storage
+        .list<PipelineArtifact>(
+          ARTIFACT_COLLECTION,
+          (artifact) => artifact.pipelineId === pipelineId,
+        )
+        .sort((left, right) => left.createdAt - right.createdAt);
+      artifacts.forEach((artifact) => this.cache(artifact));
+      return artifacts;
+    }
+
     const ids = this.byPipeline.get(pipelineId) ?? [];
     return ids
       .map((id) => this.artifacts.get(id))
-      .filter((a): a is PipelineArtifact => a !== undefined);
+      .filter(
+        (artifact): artifact is PipelineArtifact => artifact !== undefined,
+      );
   }
 
   /**
    * Get a single artifact by ID.
    */
   getById(artifactId: string): PipelineArtifact | null {
-    return this.artifacts.get(artifactId) ?? null;
+    const cached = this.artifacts.get(artifactId);
+    if (cached) return cached;
+
+    const artifact =
+      this.storage?.get<PipelineArtifact>(ARTIFACT_COLLECTION, artifactId) ??
+      null;
+    if (artifact) this.cache(artifact);
+    return artifact;
   }
 
   /**
    * Mark an artifact as validated.
    */
   markValidated(artifactId: string): void {
-    const artifact = this.artifacts.get(artifactId);
+    const artifact = this.getById(artifactId);
     if (artifact) {
       artifact.validated = true;
+      this.persist(artifact);
     }
   }
 
@@ -122,19 +147,20 @@ export class ArtifactStore {
    * Get artifact count.
    */
   get count(): number {
-    return this.artifacts.size;
+    return this.storage?.count(ARTIFACT_COLLECTION) ?? this.artifacts.size;
   }
 
   /**
    * Approve an artifact.
    */
   approve(artifactId: string, reviewedBy: string): PipelineArtifact | null {
-    const artifact = this.artifacts.get(artifactId);
+    const artifact = this.getById(artifactId);
     if (!artifact) return null;
     artifact.reviewStatus = "approved";
     artifact.reviewedAt = Date.now();
     artifact.reviewedBy = reviewedBy;
     artifact.validated = true;
+    this.persist(artifact);
     return artifact;
   }
 
@@ -146,12 +172,13 @@ export class ArtifactStore {
     reviewedBy: string,
     comment?: string,
   ): PipelineArtifact | null {
-    const artifact = this.artifacts.get(artifactId);
+    const artifact = this.getById(artifactId);
     if (!artifact) return null;
     artifact.reviewStatus = "rejected";
     artifact.reviewedAt = Date.now();
     artifact.reviewedBy = reviewedBy;
     if (comment) artifact.reviewComment = comment;
+    this.persist(artifact);
     return artifact;
   }
 
@@ -163,11 +190,12 @@ export class ArtifactStore {
     reviewedBy: string,
     comment: string,
   ): PipelineArtifact | null {
-    const artifact = this.artifacts.get(artifactId);
+    const artifact = this.getById(artifactId);
     if (!artifact) return null;
     artifact.reviewComment = comment;
     artifact.reviewedBy = reviewedBy;
     artifact.reviewedAt = Date.now();
+    this.persist(artifact);
     return artifact;
   }
 
@@ -179,13 +207,14 @@ export class ArtifactStore {
     newContent: unknown,
     editedBy: string,
   ): PipelineArtifact | null {
-    const artifact = this.artifacts.get(artifactId);
+    const artifact = this.getById(artifactId);
     if (!artifact) return null;
     artifact.content = newContent;
     artifact.sizeBytes = Buffer.byteLength(JSON.stringify(newContent), "utf8");
     artifact.reviewStatus = "edited";
     artifact.reviewedAt = Date.now();
     artifact.reviewedBy = editedBy;
+    this.persist(artifact);
     return artifact;
   }
 
@@ -204,6 +233,24 @@ export class ArtifactStore {
         (a) => a.reviewStatus === "approved" || a.reviewStatus === "edited",
       ),
     };
+  }
+
+  private get storage(): StorageProvider | undefined {
+    return this.injectedStorage ?? getConfiguredStorageProvider() ?? undefined;
+  }
+
+  private persist(artifact: PipelineArtifact): void {
+    this.cache(artifact);
+    this.storage?.set(ARTIFACT_COLLECTION, artifact.id, artifact);
+  }
+
+  private cache(artifact: PipelineArtifact): void {
+    this.artifacts.set(artifact.id, artifact);
+    const pipelineArtifacts = this.byPipeline.get(artifact.pipelineId) ?? [];
+    if (!pipelineArtifacts.includes(artifact.id)) {
+      pipelineArtifacts.push(artifact.id);
+      this.byPipeline.set(artifact.pipelineId, pipelineArtifacts);
+    }
   }
 }
 

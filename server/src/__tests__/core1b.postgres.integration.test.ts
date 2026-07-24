@@ -3,6 +3,7 @@ import type { Request, Response } from "express";
 import { AuthService } from "../platform/auth/AuthService";
 import { PostgresStorageProvider } from "../platform/storage/postgres/PostgresStorageProvider";
 import { runMigrations } from "../platform/storage/postgres/migrationRunner";
+import { ArtifactStore } from "../pipeline/v2/ArtifactStore";
 import { StorageBlueprintRepository } from "../projects/repository/storageBlueprint.repository";
 import type {
   CreateBlueprintInput,
@@ -10,6 +11,7 @@ import type {
 } from "../projects/types/blueprint";
 import { createProjectRuntime } from "../routes/projects";
 import { ChatPersistenceService } from "../services/ChatPersistenceService";
+import { ProjectSyncManager } from "../studio/v2/sync/ProjectSyncManager";
 
 const describePostgres =
   process.env.RUN_POSTGRES_E2E === "true" ? describe : describe.skip;
@@ -59,7 +61,7 @@ describePostgres("CORE-1b PostgreSQL restart acceptance", () => {
     }
   });
 
-  it("restores owned projects, blueprints, executions, chat, and sessions", async () => {
+  it("restores owned projects, blueprints, executions, artifacts, chat, and sessions", async () => {
     const databaseUrl = process.env.DATABASE_URL;
     if (!databaseUrl) {
       throw new Error("DATABASE_URL is required for the PostgreSQL E2E test");
@@ -147,6 +149,21 @@ describePostgres("CORE-1b PostgreSQL restart acceptance", () => {
     };
     await blueprintsBeforeRestart.recordExecution(execution);
 
+    const artifactsBeforeRestart = new ArtifactStore(firstProvider);
+    const luaArtifact = artifactsBeforeRestart.store(
+      execution.id,
+      "LUA_GENERATION",
+      "lua_generator",
+      {
+        scripts: [
+          {
+            path: "ServerScriptService/Main.server.lua",
+            content: "return { durable = true }",
+          },
+        ],
+      },
+    );
+
     const chatBeforeRestart = new ChatPersistenceService(firstProvider);
     const firstMessage = chatBeforeRestart.createMessage({
       projectId: project.id,
@@ -178,6 +195,7 @@ describePostgres("CORE-1b PostgreSQL restart acceptance", () => {
     const blueprintsAfterRestart = new StorageBlueprintRepository(
       secondProvider,
     );
+    const artifactsAfterRestart = new ArtifactStore(secondProvider);
     const chatAfterRestart = new ChatPersistenceService(secondProvider);
 
     expect(authAfterRestart.validateToken(ownerToken)?.userId).toBe(ownerId);
@@ -193,6 +211,14 @@ describePostgres("CORE-1b PostgreSQL restart acceptance", () => {
     expect(
       (await blueprintsAfterRestart.getExecution(execution.id))?.started_at,
     ).toBeInstanceOf(Date);
+    expect(artifactsAfterRestart.getById(luaArtifact.id)?.content).toEqual(
+      luaArtifact.content,
+    );
+    expect(
+      new ProjectSyncManager(artifactsAfterRestart).getProjectSnapshot(
+        execution.id,
+      )?.artifactCount,
+    ).toBe(1);
     expect(
       chatAfterRestart.getConversation(firstMessage.conversationId)?.messages,
     ).toHaveLength(2);
