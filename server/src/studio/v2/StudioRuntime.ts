@@ -68,7 +68,10 @@ export class StudioRuntime {
         console.log(`[studio] Session ${sessionId} expired (heartbeat timeout)`);
       }
     }, intervalMs);
-    this.timeoutMonitor.unref?.();
+    const monitor = this.timeoutMonitor as ReturnType<typeof setInterval> & {
+      unref?: () => void;
+    };
+    monitor.unref?.();
   }
 
   stopTimeoutMonitor(): void {
