@@ -89,6 +89,15 @@ export class StudioSessionManager {
     return true;
   }
 
+  recordNoopExport(clientId: string, executionId: string): boolean {
+    const session = this.getByClient(clientId);
+    if (!session || session.status !== "active") return false;
+    session.syncCount = (session.syncCount ?? 0) + 1;
+    session.lastExecutionId = executionId;
+    session.lastArtifactCount = 0;
+    return true;
+  }
+
   recordDeliveredExport(
     clientId: string,
     executionId: string,
