@@ -5,7 +5,20 @@
 import { randomUUID } from "crypto";
 
 export type SyncStatus =
-  "idle" | "preparing" | "validating" | "syncing" | "completed" | "failed";
+  | "idle"
+  | "preparing"
+  | "validating"
+  | "syncing"
+  | "completed"
+  | "failed";
+
+export type ArtifactVerificationStatus =
+  | "idle"
+  | "queued"
+  | "delivered"
+  | "acknowledged"
+  | "verified"
+  | "failed";
 
 export interface StudioProjectSession {
   sessionId: string;
@@ -17,6 +30,12 @@ export interface StudioProjectSession {
   lastSyncAt?: number;
   syncCount: number;
   version: number;
+  artifactVerified?: boolean;
+  verificationStatus?: ArtifactVerificationStatus;
+  lastCommandId?: string;
+  verifiedExecutionId?: string;
+  verifiedArtifactCount?: number;
+  verificationError?: string;
 }
 
 export interface SyncPayload {
