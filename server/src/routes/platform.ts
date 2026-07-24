@@ -2,9 +2,8 @@
  * Platform API — User management, versioning, and agent registry.
  */
 
-import { Router } from "express";
+import { Router, type Request, type Response } from "express";
 import { UserRepository } from "../platform/users";
-import { AuthService } from "../platform/auth";
 import { authService } from "../platform/auth/authServiceInstance";
 import { VersionHistoryRepository } from "../platform/versioning";
 import { AgentRegistryService } from "../platform/registry";
@@ -14,6 +13,17 @@ import {
   getTokenFromCookies,
   getRefreshTokenFromCookies,
 } from "../common/middleware/cookies";
+import { getRequestUserId, requireProjectAccess } from "./projects";
+import { loginRateLimiter } from "../common/middleware/security";
+
+interface UserPreferences {
+  appearance: "dark" | "system";
+  notifications: {
+    product: boolean;
+    generation: boolean;
+    marketing: boolean;
+  };
+}
 
 export function createPlatformRouter(): Router {
   const router = Router();
@@ -21,6 +31,15 @@ export function createPlatformRouter(): Router {
   const auth = authService;
   const versions = new VersionHistoryRepository();
   const registry = new AgentRegistryService();
+  const preferences = new Map<string, UserPreferences>();
+  const requireSelf = (req: Request, res: Response, userId: string) => {
+    const requestUserId = getRequestUserId(req);
+    if (requestUserId && requestUserId !== userId) {
+      res.status(403).json({ success: false, error: "Access denied" });
+      return false;
+    }
+    return true;
+  };
 
   // ─── Auth ─────────────────────────────────────────────────
 
@@ -60,7 +79,7 @@ export function createPlatformRouter(): Router {
     });
   });
 
-  router.post("/auth/login", (req, res) => {
+  router.post("/auth/login", loginRateLimiter, (req, res) => {
     const { email, password } = req.body;
     if (!email || !password) {
       res
@@ -118,6 +137,23 @@ export function createPlatformRouter(): Router {
     });
   });
 
+  router.post("/auth/forgot-password", (req, res) => {
+    const { email } = req.body;
+    if (!email || typeof email !== "string") {
+      res.status(400).json({ success: false, error: "email required" });
+      return;
+    }
+    // Do not reveal whether an account exists. A mail provider can consume this
+    // accepted request when configured without changing the public contract.
+    res.status(202).json({
+      success: true,
+      data: {
+        accepted: true,
+        deliveryConfigured: Boolean(process.env.EMAIL_PROVIDER),
+      },
+    });
+  });
+
   router.get("/auth/me", (req, res) => {
     const token =
       req.headers.authorization?.replace("Bearer ", "") ??
@@ -159,6 +195,7 @@ export function createPlatformRouter(): Router {
   });
 
   router.get("/users/:id", (req, res) => {
+    if (!requireSelf(req, res, req.params.id)) return;
     const user = users.getById(req.params.id);
     if (!user) {
       res.status(404).json({ success: false, error: "User not found" });
@@ -167,7 +204,72 @@ export function createPlatformRouter(): Router {
     res.json({ success: true, data: user });
   });
 
+  router.patch("/users/:id", (req, res) => {
+    if (!requireSelf(req, res, req.params.id)) return;
+    const { email, displayName } = req.body;
+    const existing = typeof email === "string" ? users.getByEmail(email) : null;
+    if (existing && existing.id !== req.params.id) {
+      res
+        .status(409)
+        .json({ success: false, error: "Email already registered" });
+      return;
+    }
+    const updated = users.updateProfile(req.params.id, {
+      email: typeof email === "string" ? email : undefined,
+      displayName: typeof displayName === "string" ? displayName : undefined,
+    });
+    if (!updated) {
+      res.status(404).json({ success: false, error: "User not found" });
+      return;
+    }
+    res.json({ success: true, data: updated });
+  });
+
+  router.get("/users/:id/preferences", (req, res) => {
+    if (!requireSelf(req, res, req.params.id)) return;
+    res.json({
+      success: true,
+      data:
+        preferences.get(req.params.id) ??
+        ({
+          appearance: "dark",
+          notifications: {
+            product: true,
+            generation: true,
+            marketing: false,
+          },
+        } satisfies UserPreferences),
+    });
+  });
+
+  router.put("/users/:id/preferences", (req, res) => {
+    if (!requireSelf(req, res, req.params.id)) return;
+    const current =
+      preferences.get(req.params.id) ??
+      ({
+        appearance: "dark",
+        notifications: {
+          product: true,
+          generation: true,
+          marketing: false,
+        },
+      } satisfies UserPreferences);
+    const next: UserPreferences = {
+      appearance:
+        req.body.appearance === "system" || req.body.appearance === "dark"
+          ? req.body.appearance
+          : current.appearance,
+      notifications: {
+        ...current.notifications,
+        ...(req.body.notifications ?? {}),
+      },
+    };
+    preferences.set(req.params.id, next);
+    res.json({ success: true, data: next });
+  });
+
   router.get("/users/:id/limits", (req, res) => {
+    if (!requireSelf(req, res, req.params.id)) return;
     const check = users.checkLimits(req.params.id);
     res.json({ success: true, data: check });
   });
@@ -175,11 +277,13 @@ export function createPlatformRouter(): Router {
   // ─── Versions ─────────────────────────────────────────────
 
   router.get("/versions/:projectId", (req, res) => {
+    if (!requireProjectAccess(req, res, req.params.projectId)) return;
     const history = versions.getHistory(req.params.projectId);
     res.json({ success: true, data: history });
   });
 
   router.post("/versions/:projectId", (req, res) => {
+    if (!requireProjectAccess(req, res, req.params.projectId)) return;
     const {
       label,
       pipelineId,

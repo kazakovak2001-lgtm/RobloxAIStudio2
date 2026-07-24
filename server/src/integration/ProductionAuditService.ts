@@ -65,7 +65,7 @@ export class ProductionAuditService {
       this.checkDir("server/src/integration", "Platform integration"),
     );
     checks.push(this.checkDir("server/src/api", "API gateway"));
-    checks.push(this.checkDir("shared", "Shared contracts"));
+    checks.push(this.checkDir("src/shared", "Shared contracts"));
     checks.push(this.checkDir("reports", "Reports directory"));
     checks.push(this.checkDir("docs/development", "Development docs"));
     checks.push(

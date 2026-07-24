@@ -5,10 +5,12 @@
 import { describe, it, expect } from "vitest";
 import {
   rateLimiter,
+  loginRateLimiter,
   securityHeaders,
   corsMiddleware,
   authMiddleware,
   requestLogger,
+  getApiKeyStore,
 } from "../common/middleware/security";
 import { authService } from "../platform/auth/authServiceInstance";
 
@@ -16,6 +18,10 @@ describe("Security Hardening", () => {
   describe("Middleware exports", () => {
     it("rateLimiter is a function", () => {
       expect(typeof rateLimiter).toBe("function");
+    });
+
+    it("loginRateLimiter is a function", () => {
+      expect(typeof loginRateLimiter).toBe("function");
     });
 
     it("securityHeaders (helmet) is a function", () => {
@@ -116,15 +122,20 @@ describe("Security Hardening", () => {
       process.env.NODE_ENV = originalEnv;
     });
 
-    it("allows API key in production", () => {
+    it("allows a registered API key in production", () => {
       const originalEnv = process.env.NODE_ENV;
       process.env.NODE_ENV = "production";
+      const store = getApiKeyStore();
+      store.clear();
+      const issued = store.issue("my-api-key-1234567", {
+        label: "security-test",
+      });
 
       let nextCalled = false;
       const req = {
         path: "/api/projects",
         method: "GET",
-        headers: { "x-api-key": "my-api-key-1234567" },
+        headers: { "x-api-key": issued.key },
       } as never;
       const res = {} as never;
       const next = () => {
@@ -134,6 +145,58 @@ describe("Security Hardening", () => {
       authMiddleware(req, res, next);
       expect(nextCalled).toBe(true);
 
+      store.clear();
+      process.env.NODE_ENV = originalEnv;
+    });
+
+    it("rejects an unregistered API key in production", () => {
+      const originalEnv = process.env.NODE_ENV;
+      process.env.NODE_ENV = "production";
+      getApiKeyStore().clear();
+
+      let statusCode = 0;
+      const req = {
+        path: "/api/projects",
+        method: "GET",
+        headers: { "x-api-key": "unknown-api-key-123456789" },
+      } as never;
+      const res = {
+        status: (code: number) => {
+          statusCode = code;
+          return { json: () => undefined };
+        },
+      } as never;
+
+      authMiddleware(req, res, () => undefined);
+      expect(statusCode).toBe(401);
+
+      process.env.NODE_ENV = originalEnv;
+    });
+
+    it("rejects an array API key header", () => {
+      const originalEnv = process.env.NODE_ENV;
+      process.env.NODE_ENV = "production";
+      const store = getApiKeyStore();
+      store.clear();
+      store.issue("array-header-api-key-123456", { label: "array-test" });
+
+      let statusCode = 0;
+      const req = {
+        path: "/api/projects",
+        method: "GET",
+        headers: { "x-api-key": ["array-header-api-key-123456"] },
+      } as never;
+      const res = {
+        status: (code: number) => {
+          statusCode = code;
+          return { json: () => undefined };
+        },
+      } as never;
+
+      authMiddleware(req, res, () => undefined);
+      expect(statusCode).toBe(401);
+
+      store.clear();
       process.env.NODE_ENV = originalEnv;
     });
 

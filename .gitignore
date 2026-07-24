@@ -9,7 +9,7 @@ build/
 out/
 
 # ─── Persistent storage (assembly versions, not source code) ──────────────────
-storage/
+/storage/
 
 # ─── Logs ─────────────────────────────────────────────────────────────────────
 *.log

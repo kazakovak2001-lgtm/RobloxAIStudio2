@@ -3,6 +3,11 @@ import { GameGenerationService } from "../projects/services/game-generation.serv
 import type { GenerationPackage } from "../generation/coordinator/types";
 import type { StudioIntegrationManager } from "../studio/integration/StudioIntegrationManager";
 import type { StudioProjectSession } from "../studio/integration/types";
+import {
+  generationHistory,
+  projectRepository,
+  requireProjectAccess,
+} from "./projects";
 
 type StudioConnectionStatus =
   "connected" | "disconnected" | "syncing" | "error";
@@ -124,6 +129,7 @@ export function createGameGenerationRouter(
   router.post("/:projectId/generate", async (req, res) => {
     try {
       const { projectId } = req.params;
+      if (!requireProjectAccess(req, res, projectId)) return;
       const { blueprintId, userId } = req.body;
 
       // Auto-create a minimal blueprint if one doesn't exist yet.
@@ -145,6 +151,23 @@ export function createGameGenerationRouter(
         blueprintId || projectId,
         userId || "default-user",
       );
+      projectRepository.update(projectId, {
+        status: "generating",
+        generationCount:
+          (projectRepository.get(projectId)?.generationCount ?? 0) + 1,
+      });
+      generationHistory.record({
+        id: result.id,
+        projectId,
+        pipelineId: result.id,
+        status: result.status,
+        startedAt: result.started_at.getTime(),
+        stagesCompleted: 0,
+        stagesTotal: 0,
+        failures: 0,
+        tokenUsage: 0,
+        aiCost: 0,
+      });
       res.json({
         success: true,
         executionId: result.id,
@@ -162,6 +185,7 @@ export function createGameGenerationRouter(
   router.post("/:projectId/blueprints", async (req, res) => {
     try {
       const { projectId } = req.params;
+      if (!requireProjectAccess(req, res, projectId)) return;
       const { userId, ...input } = req.body;
       const blueprint = await gameService.createBlueprint(
         userId || "default-user",
@@ -184,6 +208,7 @@ export function createGameGenerationRouter(
         res.status(404).json({ success: false, error: "Blueprint not found" });
         return;
       }
+      if (!requireProjectAccess(req, res, blueprint.project_id)) return;
       res.json({ success: true, data: blueprint });
     } catch (error) {
       res
@@ -200,6 +225,7 @@ export function createGameGenerationRouter(
         res.status(404).json({ success: false, error: "Blueprint not found" });
         return;
       }
+      if (!requireProjectAccess(req, res, blueprint.project_id)) return;
       const validation = gameService.validateBlueprint(blueprint);
       res.json({ success: true, ...validation });
     } catch (error) {
@@ -210,10 +236,45 @@ export function createGameGenerationRouter(
   // Get generation status
   router.get("/:projectId/generation/:executionId/status", async (req, res) => {
     try {
+      if (!requireProjectAccess(req, res, req.params.projectId)) return;
       const execution = await gameService.getExecution(req.params.executionId);
       if (!execution) {
         res.status(404).json({ success: false, error: "Execution not found" });
         return;
+      }
+      if (execution.project_id !== req.params.projectId) {
+        res.status(404).json({ success: false, error: "Execution not found" });
+        return;
+      }
+      const completedSteps = execution.pipeline_steps.filter(
+        (step) => step.status === "completed",
+      ).length;
+      const failedSteps = execution.pipeline_steps.filter(
+        (step) => step.status === "failed",
+      ).length;
+      generationHistory.record({
+        id: execution.id,
+        projectId: execution.project_id,
+        pipelineId: execution.id,
+        status: execution.status,
+        startedAt: execution.started_at.getTime(),
+        finishedAt: execution.completed_at?.getTime(),
+        duration: execution.total_duration_ms,
+        stagesCompleted: completedSteps,
+        stagesTotal: execution.pipeline_steps.length,
+        failures: failedSteps,
+        tokenUsage: 0,
+        aiCost: 0,
+      });
+      if (execution.status === "completed") {
+        projectRepository.update(execution.project_id, {
+          status: "ready",
+          qualityScore: 100,
+        });
+      } else if (execution.status === "failed") {
+        projectRepository.update(execution.project_id, {
+          status: "draft",
+        });
       }
       res.json({ success: true, data: execution });
     } catch (error) {
@@ -224,6 +285,12 @@ export function createGameGenerationRouter(
   // List executions for blueprint
   router.get("/blueprints/:blueprintId/executions", async (req, res) => {
     try {
+      const blueprint = await gameService.getBlueprint(req.params.blueprintId);
+      if (!blueprint) {
+        res.status(404).json({ success: false, error: "Blueprint not found" });
+        return;
+      }
+      if (!requireProjectAccess(req, res, blueprint.project_id)) return;
       const executions = await gameService.getExecutions(
         req.params.blueprintId,
       );
@@ -251,6 +318,7 @@ export function createGameGenerationRouter(
   router.get("/:projectId/studio/status", async (req, res) => {
     try {
       const { projectId } = req.params;
+      if (!requireProjectAccess(req, res, projectId)) return;
       const studioId = req.query.studioId as string | undefined;
       const session = findStudioSession(projectId, studioId);
 
@@ -281,6 +349,7 @@ export function createGameGenerationRouter(
   router.post("/:projectId/studio/sync", async (req, res) => {
     try {
       const { projectId } = req.params;
+      if (!requireProjectAccess(req, res, projectId)) return;
       const { studioId } = req.body;
       const session = findStudioSession(projectId, studioId);
 
@@ -330,6 +399,39 @@ export function createGameGenerationRouter(
       res
         .status(500)
         .json({ success: false, error: "Studio synchronization failed" });
+    }
+  });
+
+  // Download a portable project manifest. The Roblox Studio bridge consumes
+  // the same blueprint and execution metadata when a live Studio session is
+  // available; this endpoint gives browser users a deterministic export.
+  router.get("/:projectId/export", async (req, res) => {
+    try {
+      const { projectId } = req.params;
+      if (!requireProjectAccess(req, res, projectId)) return;
+      const project = projectRepository.get(projectId);
+      const blueprint = await gameService.getBlueprintByProject(projectId);
+      if (!blueprint) {
+        res.status(409).json({
+          success: false,
+          error: "Generate the project before exporting it.",
+        });
+        return;
+      }
+      const executions = await gameService.getExecutions(blueprint.id);
+      res.json({
+        success: true,
+        data: {
+          format: "roblox-ai-studio-project-manifest",
+          version: "1.0.0",
+          exportedAt: new Date().toISOString(),
+          project,
+          blueprint,
+          executions,
+        },
+      });
+    } catch (error) {
+      res.status(500).json({ success: false, error: "Export failed" });
     }
   });
 

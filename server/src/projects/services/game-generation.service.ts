@@ -111,95 +111,101 @@ export class GameGenerationService {
 
     await this.repository.recordExecution(execution);
 
-    void this.executionQueue.add(async () => {
-      try {
-        const gameDesignSeed = generateGameDesignSeed({
-          blueprint,
-          executionId: execution.id,
-          userId,
-        });
+    // Defer execution until the HTTP start response and history record can be
+    // committed. This also guarantees that an already-joined Socket.IO client
+    // can observe pipeline.started instead of racing the request response.
+    setImmediate(
+      () =>
+        void this.executionQueue.add(async () => {
+          try {
+            const gameDesignSeed = generateGameDesignSeed({
+              blueprint,
+              executionId: execution.id,
+              userId,
+            });
 
-        const enrichedBlueprint: GameBlueprint = {
-          ...blueprint,
-          generation_metadata: {
-            ...blueprint.generation_metadata,
-            gameDesignSeed,
-          },
-        };
+            const enrichedBlueprint: GameBlueprint = {
+              ...blueprint,
+              generation_metadata: {
+                ...blueprint.generation_metadata,
+                gameDesignSeed,
+              },
+            };
 
-        // === CANONICAL EXECUTION: PlanExecutor (single runtime) ===
-        const planner = new PlannerEngine();
-        const executor = new PlanExecutor(
-          undefined,
-          undefined,
-          undefined,
-          undefined,
-          this.events,
-        );
+            // === CANONICAL EXECUTION: PlanExecutor (single runtime) ===
+            const planner = new PlannerEngine();
+            const executor = new PlanExecutor(
+              undefined,
+              undefined,
+              undefined,
+              undefined,
+              this.events,
+            );
 
-        const plan = planner.createPlan({
-          intent: `Generate game: ${enrichedBlueprint.name}`,
-          constraints: [],
-          projectId: enrichedBlueprint.project_id,
-          context: { blueprint: enrichedBlueprint, gameDesignSeed },
-        });
+            const plan = planner.createPlan({
+              intent: `Generate game: ${enrichedBlueprint.name}`,
+              constraints: [],
+              projectId: enrichedBlueprint.project_id,
+              context: { blueprint: enrichedBlueprint, gameDesignSeed },
+            });
 
-        const result = await executor.executePlan(
-          plan.planId,
-          plan.graph,
-          (agent, input) =>
-            this.agentRegistry.executeAgent(agent, {
-              ...input,
-              blueprint: enrichedBlueprint,
-              gameDesignSeed,
-            }),
-          { projectId: enrichedBlueprint.project_id, stopOnFailure: false },
-        );
+            const result = await executor.executePlan(
+              execution.id,
+              plan.graph,
+              (agent, input) =>
+                this.agentRegistry.executeAgent(agent, {
+                  ...input,
+                  blueprint: enrichedBlueprint,
+                  gameDesignSeed,
+                }),
+              { projectId: enrichedBlueprint.project_id, stopOnFailure: false },
+            );
 
-        // Build pipeline_steps from TaskGraph
-        const pipelineSteps = result.graph.getAllNodes().map((node) => ({
-          agent: node.agent,
-          status:
-            node.status === "done"
-              ? ("completed" as const)
-              : node.status === "failed"
-                ? ("failed" as const)
-                : ("skipped" as const),
-          started_at: execution.started_at,
-          completed_at: new Date(),
-          duration_ms: node.durationMs,
-          evaluation: node.evaluation
-            ? {
-                qualityScore: node.evaluation.quality,
-                status: node.evaluation.passed
-                  ? ("passed" as const)
-                  : ("warning" as const),
-                issueCount: 0,
-                durationMs: 0,
-              }
-            : undefined,
-        }));
+            // Build pipeline_steps from TaskGraph
+            const pipelineSteps = result.graph.getAllNodes().map((node) => ({
+              agent: node.agent,
+              status:
+                node.status === "done"
+                  ? ("completed" as const)
+                  : node.status === "failed"
+                    ? ("failed" as const)
+                    : ("skipped" as const),
+              started_at: execution.started_at,
+              completed_at: new Date(),
+              duration_ms: node.durationMs,
+              evaluation: node.evaluation
+                ? {
+                    qualityScore: node.evaluation.quality,
+                    status: node.evaluation.passed
+                      ? ("passed" as const)
+                      : ("warning" as const),
+                    issueCount: 0,
+                    durationMs: 0,
+                  }
+                : undefined,
+            }));
 
-        await this.repository.updateExecution(execution.id, {
-          status: result.success ? "completed" : "failed",
-          completed_at: new Date(),
-          pipeline_steps: pipelineSteps,
-          total_duration_ms: result.totalDurationMs,
-        });
-      } catch (err) {
-        console.error(
-          `[GameGenerationService] Pipeline failed for execution ${execution.id}:`,
-          err,
-        );
-        await this.repository.updateExecution(execution.id, {
-          status: "failed",
-          completed_at: new Date(),
-          error_message:
-            err instanceof Error ? err.message : "Unknown pipeline error",
-          total_duration_ms: Date.now() - execution.started_at.getTime(),
-        });
-      }
-    });
+            await this.repository.updateExecution(execution.id, {
+              status: result.success ? "completed" : "failed",
+              completed_at: new Date(),
+              pipeline_steps: pipelineSteps,
+              total_duration_ms: result.totalDurationMs,
+            });
+          } catch (err) {
+            console.error(
+              `[GameGenerationService] Pipeline failed for execution ${execution.id}:`,
+              err,
+            );
+            await this.repository.updateExecution(execution.id, {
+              status: "failed",
+              completed_at: new Date(),
+              error_message:
+                err instanceof Error ? err.message : "Unknown pipeline error",
+              total_duration_ms: Date.now() - execution.started_at.getTime(),
+            });
+          }
+        }),
+    );
 
     return execution;
   }

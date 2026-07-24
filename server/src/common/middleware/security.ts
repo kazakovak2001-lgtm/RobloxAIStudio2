@@ -6,6 +6,15 @@ import type { Request, Response, NextFunction } from "express";
 import rateLimit from "express-rate-limit";
 import helmet from "helmet";
 import { authService } from "../../platform/auth/authServiceInstance";
+import { ApiKeyStore } from "../../platform/security/ApiKeyStore";
+import { createStorageProvider } from "../../platform/storage/StorageFactory";
+
+const apiKeyStore = new ApiKeyStore(createStorageProvider());
+apiKeyStore.seedFromEnvironment();
+
+export function getApiKeyStore(): ApiKeyStore {
+  return apiKeyStore;
+}
 
 // ─── Rate Limiting ──────────────────────────────────────────────────────────
 
@@ -17,6 +26,19 @@ export const rateLimiter = rateLimit({
   message: {
     success: false,
     error: "Too many requests. Please try again later.",
+  },
+});
+
+/** Brute-force protection for the public login endpoint. */
+export const loginRateLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  skipSuccessfulRequests: true,
+  message: {
+    success: false,
+    error: "Too many login attempts. Please try again later.",
   },
 });
 
@@ -56,7 +78,10 @@ export function corsMiddleware(
     return;
   }
 
-  res.header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
+  res.header(
+    "Access-Control-Allow-Methods",
+    "GET, POST, PUT, PATCH, DELETE, OPTIONS",
+  );
   res.header(
     "Access-Control-Allow-Headers",
     "Origin, X-Requested-With, Content-Type, Accept, Authorization, X-API-Key, X-Studio-Session",
@@ -80,7 +105,6 @@ const PUBLIC_PATHS = [
 ];
 
 const PUBLIC_PREFIXES = [
-  "/api/platform/users", // Registration needs to be public (POST only handled below)
   "/api/platform/auth", // Auth routes (login, register, refresh, logout) must be public
 ];
 
@@ -111,7 +135,8 @@ export function authMiddleware(
 
   // Check Authorization header first (priority)
   const authHeader = req.headers.authorization;
-  const apiKey = req.headers["x-api-key"] as string | undefined;
+  const apiKeyHeader = req.headers["x-api-key"];
+  const apiKey = typeof apiKeyHeader === "string" ? apiKeyHeader : undefined;
 
   if (authHeader?.startsWith("Bearer ")) {
     const token = authHeader.slice(7); // Remove "Bearer " prefix
@@ -142,8 +167,8 @@ export function authMiddleware(
     // Cookie token invalid — fall through to 401
   }
 
-  if (apiKey && apiKey.length > 10) {
-    // API key authentication (Studio plugin, CI/CD)
+  if (apiKey && apiKeyStore.validate(apiKey)) {
+    // Registered API key authentication (Studio plugin, CI/CD)
     next();
     return;
   }

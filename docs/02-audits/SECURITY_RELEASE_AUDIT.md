@@ -121,17 +121,18 @@ if (process.env.NODE_ENV !== "production") {
 ## 3. API Key Authentication
 
 ```typescript
-if (apiKey && apiKey.length > 10) {
-  // API key authentication (Studio plugin, CI/CD)
+if (apiKey && apiKeyStore.validate(apiKey)) {
+  // Registered API key authentication (Studio plugin, CI/CD)
   next();
   return;
 }
 ```
 
-**Risk**: MEDIUM  
-**Impact**: Any string > 10 characters in `X-API-Key` header bypasses all auth. No validation against a stored key database.  
-**Fix**: Validate API keys against a registered key store (per-user or per-service keys).  
-**Effort**: 2 hours
+**Status**: ✅ RESOLVED  
+**Implementation**: `ApiKeyStore` stores SHA-256 digests only, supports revocation and
+`API_KEYS` bootstrap seeding, and uses the configured `StorageProvider`. Production
+PostgreSQL deployments persist the registry through the provider's write-through key-value
+store; unknown, short, or array-valued `X-API-Key` headers receive `401`.
 
 ---
 
@@ -275,13 +276,13 @@ Same vulnerability, same assessment: dev-only, no production impact.
 
 ### MUST FIX Before Public Deployment (HIGH)
 
-| #   | Finding                                             | Effort | Impact                                 |
-| --- | --------------------------------------------------- | ------ | -------------------------------------- |
-| 1   | Replace SHA-256 with bcrypt for passwords           | 1h     | Prevents password cracking             |
-| 2   | Move tokens to httpOnly cookies                     | 2h     | Eliminates XSS token theft             |
-| 3   | Validate tokens cryptographically in authMiddleware | 1h     | Prevents bypass with arbitrary strings |
-| 4   | Validate API keys against stored keys               | 2h     | Prevents bypass via X-API-Key header   |
-| 5   | Validate Socket.IO tokens properly                  | 1h     | Prevents unauthorized real-time access |
+| #   | Finding                                             | Effort  | Impact                                 |
+| --- | --------------------------------------------------- | ------- | -------------------------------------- |
+| 1   | Replace SHA-256 with bcrypt for passwords           | 1h      | Prevents password cracking             |
+| 2   | Move tokens to httpOnly cookies                     | 2h      | Eliminates XSS token theft             |
+| 3   | Validate tokens cryptographically in authMiddleware | 1h      | Prevents bypass with arbitrary strings |
+| 4   | Validate API keys against stored keys               | ✅ Done | Prevents bypass via X-API-Key header   |
+| 5   | Validate Socket.IO tokens properly                  | 1h      | Prevents unauthorized real-time access |
 
 ### SHOULD FIX Before Scale (MEDIUM)
 
