@@ -1,6 +1,6 @@
 # Roadmap Status
 
-**Last Updated**: July 16, 2026
+**Last Updated**: July 24, 2026
 
 ---
 
@@ -62,8 +62,8 @@
 | P-3   | Log aggregation (structured → external)   | LOW         | 2h         |
 | P-4   | SSL for remote Postgres connections       | MEDIUM      | 30min      |
 | P-5   | F-12 Collaborative Dev (experimental)     | LOW         | 3+ sprints |
-| P-6   | Login rate limit (10/min)                 | HIGH        | 30min      |
-| P-7   | Validate API keys against stored database | HIGH        | 2h         |
+| P-6   | Login rate limit (10/min)                 | ✅ COMPLETE | —          |
+| P-7   | Validate API keys against stored database | ✅ COMPLETE | —          |
 
 ## Release Readiness
 
