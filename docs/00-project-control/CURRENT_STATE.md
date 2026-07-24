@@ -1,8 +1,8 @@
 # Current Project State
 
-**Last Updated**: July 16, 2026  
-**Phase**: V1.0 Release Hardening — ✅ COMPLETE (All 12 Tasks Done)  
-**Build Status**: STABLE ✅
+**Last Updated**: July 24, 2026
+**Phase**: CUTOVER-0 — Standalone Frontend Governance & CI
+**Build Status**: Backend baseline stable; cross-repository validation is being established
 
 ---
 
@@ -18,14 +18,18 @@
 - **Real-time**: Socket.io with 50+ event types, project rooms, JWT-authenticated handshake (production)
 - **Authentication**: bcrypt password hashing (cost 12), JWT cryptographic validation, httpOnly cookie delivery
 
-### Frontend
+### Canonical Frontend
 
-- **Framework**: React 18 + TypeScript + Vite + Tailwind CSS
-- **Pages**: 12 routed (11 page files + WorkspacePage at /projects/:id)
-- **Components**: 69 .tsx files (excluding pages and test files)
-- **Import Strategy**: @/ path aliases (100% coverage)
-- **Design System**: 95% compliant (custom tokens: brand, success, error, warning, info)
-- **Services**: 16 frontend service files (studioService merged into studioBridgeApi)
+- **Repository**: [kazakovak2001-lgtm/Frontend](https://github.com/kazakovak2001-lgtm/Frontend) on `main`
+- **Framework**: React 19 + TypeScript + Vite + Tailwind CSS
+- **Routing and state**: TanStack Router/Query, typed backend adapter, Socket.IO realtime client
+- **Ownership**: All new user-facing web functionality belongs in the standalone repository.
+
+### Legacy Frontend
+
+- **Location**: repository root `src/`
+- **Status**: Frozen migration inventory; no new product features, pages, or parallel integrations.
+- **Removal**: Allowed only after the gates in [FRONTEND_CUTOVER.md](./FRONTEND_CUTOVER.md) pass.
 
 ### Health Scores
 
@@ -61,7 +65,9 @@
 
 ---
 
-## Feature Completion Status
+## Historical Feature Completion Status
+
+> The table below records the UX-4 delivery history for the embedded frontend. It is not the source of truth for new standalone frontend work. See [FRONTEND_CUTOVER.md](./FRONTEND_CUTOVER.md).
 
 | ID   | Feature                  | Status       | Details                                              |
 | ---- | ------------------------ | ------------ | ---------------------------------------------------- |
@@ -98,7 +104,9 @@
 
 ---
 
-## Backend Capabilities — Frontend Connection Status
+## Historical Backend Capabilities — Legacy Frontend Connection Status
+
+> The mapping below describes the embedded frontend. The standalone frontend mapping is governed by the CUTOVER delivery sequence.
 
 | Backend System | Route            | Frontend Status                                      |
 | -------------- | ---------------- | ---------------------------------------------------- |
@@ -125,6 +133,9 @@
 ## Known Problems
 
 1. **ESLint Config**: v10 installed with legacy .eslintrc.json format (functional but deprecated config style)
+2. **Core data path**: projects, blueprints, and chat need a verified persistent end-to-end path before production cutover (CORE-1).
+3. **Workflow fidelity**: several standalone Workspace operations currently use structural fixtures or fallback artifacts and must be connected to real generated project data (CORE-1 / STUDIO-1).
+4. **CI baseline blocker**: generated `node_modules/` content is tracked in Git, making the backend checkout platform-dependent and causing repository validation to scan dependencies. Resolve through CI-BASELINE-1 before CORE-1.
 
 ---
 
@@ -161,6 +172,7 @@ This template enforces:
 
 ## Last Changes
 
+- July 24, 2026: CUTOVER-0 started — standalone `Frontend` declared canonical, embedded `src/` frontend frozen, CI alignment initiated, and cross-repository delivery gates documented
 - July 16, 2026: Autonomous Pipeline real-time integration complete — events emitted via PipelineEventEmitter, AgentBoard shows phases live, Socket.IO primary transport with polling fallback, step.failed handling added
 - July 16, 2026: Checkpoint — all tests pass (Task 12) — tsc ✅, vite build ✅, vitest 652/654 pass (2 pre-existing), all PBT pass, security source-code verified, FINAL_V1_RELEASE_SIGN_OFF.md generated
 - July 16, 2026: Final verification & release report (Task 11) — All tests pass, security verified, RELEASE_HARDENING_REPORT.md + V1_RELEASE_NOTES.md + SECURITY_FINAL_AUDIT.md + V1_RELEASE_CHECKLIST.md created
