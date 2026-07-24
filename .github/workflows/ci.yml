@@ -58,18 +58,7 @@ jobs:
           node-version: "22"
           cache: "npm"
       - run: npm ci
-      - name: Run full tests with preserved exit code
-        shell: bash
-        run: |
-          set -o pipefail
-          npm run test 2>&1 | tee test-output.log
-      - name: Publish full test log
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: studio-1b-test-log-${{ github.sha }}
-          path: test-output.log
-          retention-days: 2
+      - run: npm run test
 
   postgres-e2e:
     name: PostgreSQL Restart E2E
