@@ -46,8 +46,8 @@ const MESSAGES = "chat_messages";
  */
 export class ChatPersistenceService {
   constructor(
-    private readonly storage: StorageProvider =
-      getConfiguredStorageProvider() ?? new InMemoryStorageProvider(),
+    private readonly storage: StorageProvider = getConfiguredStorageProvider() ??
+      new InMemoryStorageProvider(),
   ) {}
 
   getHistory(projectId: string, limit = 50): Conversation[] {
