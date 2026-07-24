@@ -1,4 +1,11 @@
-import { Server, Cpu, HardDrive, Activity, CheckCircle, AlertCircle } from "lucide-react";
+import {
+  Server,
+  Cpu,
+  HardDrive,
+  Activity,
+  CheckCircle,
+  AlertCircle,
+} from "lucide-react";
 
 export interface SystemHealthProps {
   generationEngineStatus?: "online" | "offline" | "error";
@@ -77,7 +84,9 @@ export function SystemHealth({
             <Server className="h-4 w-4 text-brand-400" />
             <span className="text-sm text-slate-400">Generation Engine</span>
           </div>
-          <div className={`flex items-center gap-2 ${getStatusColor(generationEngineStatus)}`}>
+          <div
+            className={`flex items-center gap-2 ${getStatusColor(generationEngineStatus)}`}
+          >
             {getStatusIcon(generationEngineStatus)}
             <span className="text-xs font-medium capitalize">
               {generationEngineStatus}
@@ -91,9 +100,13 @@ export function SystemHealth({
             <Activity className="h-4 w-4 text-accent" />
             <span className="text-sm text-slate-400">Job Queue</span>
           </div>
-          <div className={`flex items-center gap-2 ${getStatusColor(jobQueueStatus)}`}>
+          <div
+            className={`flex items-center gap-2 ${getStatusColor(jobQueueStatus)}`}
+          >
             {getStatusIcon(jobQueueStatus)}
-            <span className="text-xs font-medium capitalize">{jobQueueStatus}</span>
+            <span className="text-xs font-medium capitalize">
+              {jobQueueStatus}
+            </span>
           </div>
         </div>
 
@@ -103,7 +116,9 @@ export function SystemHealth({
             <Server className="h-4 w-4 text-brand-400" />
             <span className="text-sm text-slate-400">Studio Bridge</span>
           </div>
-          <div className={`flex items-center gap-2 ${getStatusColor(studioBridgeStatus)}`}>
+          <div
+            className={`flex items-center gap-2 ${getStatusColor(studioBridgeStatus)}`}
+          >
             {getStatusIcon(studioBridgeStatus)}
             <span className="text-xs font-medium capitalize">
               {studioBridgeStatus}
@@ -135,7 +150,9 @@ export function SystemHealth({
               <HardDrive className="h-4 w-4 text-accent" />
               <span className="text-sm text-slate-400">Memory Usage</span>
             </div>
-            <span className="text-sm font-medium text-white">{memoryUsage}%</span>
+            <span className="text-sm font-medium text-white">
+              {memoryUsage}%
+            </span>
           </div>
           <div className="h-2 w-full rounded-full bg-slate-700">
             <div

@@ -39,9 +39,7 @@ export class NetworkJobRouter {
    * Route a job to the best available execution target.
    * Tries remote first, falls back to local queue.
    */
-  async routeJob(
-    job: CompilerJob,
-  ): Promise<{
+  async routeJob(job: CompilerJob): Promise<{
     routed: boolean;
     decision: DispatchDecision;
     result?: JobResult;

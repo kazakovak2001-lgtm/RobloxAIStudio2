@@ -1,4 +1,10 @@
-import { ChevronRight, ChevronDown, File, Folder, FolderOpen } from "lucide-react";
+import {
+  ChevronRight,
+  ChevronDown,
+  File,
+  Folder,
+  FolderOpen,
+} from "lucide-react";
 import { useState } from "react";
 
 export interface TreeNode {
@@ -26,7 +32,9 @@ export function TreeView({
   onSelect,
   selectedId,
 }: TreeViewProps) {
-  const [localExpanded, setLocalExpanded] = useState<Set<string>>(new Set(expanded));
+  const [localExpanded, setLocalExpanded] = useState<Set<string>>(
+    new Set(expanded),
+  );
 
   const isExpanded = (nodeId: string) => {
     return localExpanded.has(nodeId);
@@ -85,8 +93,8 @@ export function TreeView({
 
           {/* Node Icon */}
           <div className="flex-shrink-0">
-            {node.icon || (
-              isFolder ? (
+            {node.icon ||
+              (isFolder ? (
                 expanded ? (
                   <FolderOpen className="h-4 w-4 text-brand-400" />
                 ) : (
@@ -94,8 +102,7 @@ export function TreeView({
                 )
               ) : (
                 <File className="h-4 w-4 text-slate-400" />
-              )
-            )}
+              ))}
           </div>
 
           {/* Node Label */}
@@ -113,8 +120,6 @@ export function TreeView({
   };
 
   return (
-    <div className="flex flex-col">
-      {nodes.map((node) => renderNode(node))}
-    </div>
+    <div className="flex flex-col">{nodes.map((node) => renderNode(node))}</div>
   );
 }

@@ -25,11 +25,7 @@ export const CURRENT_VERSIONS: PipelineVersions = {
 // ─── Generation Status ────────────────────────────────────────────────────────
 
 export type GenerationStatus =
-  | "initializing"
-  | "running"
-  | "validating"
-  | "completed"
-  | "failed";
+  "initializing" | "running" | "validating" | "completed" | "failed";
 
 // ─── Blueprint Validation ─────────────────────────────────────────────────────
 

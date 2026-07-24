@@ -123,12 +123,10 @@ export function createGenerationV2Router(agentRegistry: AgentRegistry): Router {
     try {
       const { blueprint, lua, assets } = req.body;
       if (!blueprint || !lua || !assets) {
-        res
-          .status(400)
-          .json({
-            success: false,
-            error: "blueprint, lua, and assets required",
-          });
+        res.status(400).json({
+          success: false,
+          error: "blueprint, lua, and assets required",
+        });
         return;
       }
       const result = exporter.build(blueprint, lua, assets);

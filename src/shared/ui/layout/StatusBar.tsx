@@ -1,5 +1,12 @@
 import type { ReactNode } from "react";
-import { CheckCircle, XCircle, AlertCircle, Loader2, GitBranch, Clock } from "lucide-react";
+import {
+  CheckCircle,
+  XCircle,
+  AlertCircle,
+  Loader2,
+  GitBranch,
+  Clock,
+} from "lucide-react";
 
 export interface StatusBarProps {
   left?: ReactNode;
@@ -43,13 +50,25 @@ export function StatusBar({
       case "online":
       case "connected":
       case "synced":
-        return type === "backend" ? "Backend Online" : type === "plugin" ? "Plugin Connected" : "Synced";
+        return type === "backend"
+          ? "Backend Online"
+          : type === "plugin"
+            ? "Plugin Connected"
+            : "Synced";
       case "offline":
       case "disconnected":
-        return type === "backend" ? "Backend Offline" : type === "plugin" ? "Plugin Disconnected" : "Disconnected";
+        return type === "backend"
+          ? "Backend Offline"
+          : type === "plugin"
+            ? "Plugin Disconnected"
+            : "Disconnected";
       case "loading":
       case "syncing":
-        return type === "backend" ? "Loading..." : type === "plugin" ? "Syncing..." : "Syncing...";
+        return type === "backend"
+          ? "Loading..."
+          : type === "plugin"
+            ? "Syncing..."
+            : "Syncing...";
       case "idle":
         return "Idle";
       case "error":

@@ -44,8 +44,7 @@ export class DebugAgent extends BaseAgent {
     if (!this.llm) return fallback;
 
     const luaOutput = input.lua_generator as
-      | Record<string, unknown>
-      | undefined;
+      Record<string, unknown> | undefined;
     const scriptCount = [
       ...(Array.isArray((luaOutput as any)?.server)
         ? (luaOutput as any).server

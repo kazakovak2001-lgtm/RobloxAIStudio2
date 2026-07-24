@@ -138,6 +138,7 @@ shared/
 ### 2.2 Component Architecture
 
 **Component Hierarchy**:
+
 ```
 App
 ├── AuthContext
@@ -186,14 +187,17 @@ App
 ### 2.3 State Management
 
 **Contexts**:
+
 - AuthContext: Authentication state
 - ToastProvider: Toast notifications
 
 **Hooks**:
+
 - useSocket: WebSocket connection management
 - usePipelineStream: Pipeline streaming (workspace)
 
 **State Flow**:
+
 ```
 User Action → Component State → Context/Service → API → Backend
 ```
@@ -287,16 +291,19 @@ server/src/
 ### 3.3 Key Services
 
 **Game Generation Service**:
+
 - Blueprint creation
 - Pipeline orchestration
 - Result validation
 
 **Agent System**:
+
 - Agent registry
 - Agent coordination
 - Message bus
 
 **Pipeline System**:
+
 - Step execution
 - Parallel/sequential execution
 - Error handling
@@ -323,11 +330,13 @@ studio-plugin/
 ### 4.2 Plugin Communication
 
 **Communication Flow**:
+
 ```
 Roblox Studio → Plugin → WebSocket → Backend Server → Frontend
 ```
 
 **Protocol**:
+
 - WebSocket-based real-time communication
 - JSON message format
 - Event-driven architecture
@@ -349,6 +358,7 @@ shared/
 ### 5.2 Type Sharing
 
 **Shared Types**:
+
 - Project types
 - Agent types
 - Blueprint types
@@ -361,11 +371,13 @@ shared/
 ### 6.1 HTTP REST API
 
 **Frontend → Backend**:
+
 ```
 Frontend Service → HTTP Request → Express Route → Service → Response
 ```
 
 **Key Endpoints**:
+
 - `/api/projects/*` - Project management
 - `/api/system/*` - System status
 - `/api/ai/*` - AI generation
@@ -374,11 +386,13 @@ Frontend Service → HTTP Request → Express Route → Service → Response
 ### 6.2 WebSocket Communication
 
 **Real-time Communication**:
+
 ```
 Frontend (useSocket) → Socket.io Client → Socket.io Server → Event Handlers
 ```
 
 **Events**:
+
 - `generation:progress` - Generation progress updates
 - `pipeline:step` - Pipeline step updates
 - `studio:sync` - Studio sync events
@@ -386,6 +400,7 @@ Frontend (useSocket) → Socket.io Client → Socket.io Server → Event Handler
 ### 6.3 Plugin Protocol
 
 **Plugin → Backend**:
+
 ```
 Plugin → WebSocket → Backend Service → Processing → Response
 ```
@@ -442,34 +457,34 @@ WebSocket Updates → Frontend
 
 ### 8.1 Frontend
 
-| Technology | Version | Purpose |
-|------------|---------|---------|
-| React | 18.3.1 | UI Framework |
-| TypeScript | 5.6.3 | Type Safety |
-| Vite | 5.4.10 | Build Tool |
-| Tailwind CSS | 3.4.16 | Styling |
-| React Router | 6.21.0 | Routing |
-| Framer Motion | 12.42.0 | Animations |
-| Lucide React | 0.468.0 | Icons |
-| Socket.io Client | 4.8.3 | WebSocket |
+| Technology       | Version | Purpose      |
+| ---------------- | ------- | ------------ |
+| React            | 18.3.1  | UI Framework |
+| TypeScript       | 5.6.3   | Type Safety  |
+| Vite             | 5.4.10  | Build Tool   |
+| Tailwind CSS     | 3.4.16  | Styling      |
+| React Router     | 6.21.0  | Routing      |
+| Framer Motion    | 12.42.0 | Animations   |
+| Lucide React     | 0.468.0 | Icons        |
+| Socket.io Client | 4.8.3   | WebSocket    |
 
 ### 8.2 Backend
 
-| Technology | Version | Purpose |
-|------------|---------|---------|
-| Node.js | Latest | Runtime |
-| Express | 4.18.2 | Web Framework |
-| TypeScript | 5.6.3 | Type Safety |
-| Socket.io | 4.8.3 | WebSocket |
-| Helmet | 8.3.0 | Security |
-| Express Rate Limit | 8.5.2 | Rate Limiting |
+| Technology         | Version | Purpose       |
+| ------------------ | ------- | ------------- |
+| Node.js            | Latest  | Runtime       |
+| Express            | 4.18.2  | Web Framework |
+| TypeScript         | 5.6.3   | Type Safety   |
+| Socket.io          | 4.8.3   | WebSocket     |
+| Helmet             | 8.3.0   | Security      |
+| Express Rate Limit | 8.5.2   | Rate Limiting |
 
 ### 8.3 Plugin
 
-| Technology | Version | Purpose |
-|------------|---------|---------|
-| Lua | - | Plugin Language |
-| Roblox Studio | - | Target Platform |
+| Technology    | Version | Purpose         |
+| ------------- | ------- | --------------- |
+| Lua           | -       | Plugin Language |
+| Roblox Studio | -       | Target Platform |
 
 ---
 
@@ -649,6 +664,7 @@ Lua Development → Test → Package → Distribute
 ## 16. Architecture Decision Records
 
 Key ADRs are documented in `docs/adr/`:
+
 - Clean Architecture adoption
 - In-memory storage decision
 - WebSocket for real-time communication

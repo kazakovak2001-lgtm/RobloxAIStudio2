@@ -4,6 +4,17 @@ All significant architectural and product decisions are recorded here.
 
 ---
 
+## 2026-07-24 — Portable CI Baseline
+
+**Decision**: Use Node.js 22.12+ with npm 10+ as the supported runtime baseline, remove all tracked generated `node_modules/` files, and synchronize each repository lockfile before progressing to CORE-1.
+**Reason**: GitHub Actions and clean checkouts failed at `npm ci` because both lockfiles were out of sync. The backend additionally committed platform-specific dependency artifacts, which made Linux checkouts non-portable and caused repository validation to scan dependencies.
+**Implementation**: Added `.nvmrc` and package engine declarations, updated backend CI and Docker runtime to Node.js 22, refreshed both lockfiles with npm 10, formatted the inherited backend baseline, and removed 9,386 tracked dependency files while preserving `.gitignore` protection.
+**Validation policy**: Security validation continues to block private keys, connection strings, GitHub/OpenAI-style credentials, and production-source credential literals. It now permits low-confidence credential vocabulary only in non-production documentation, test fixtures, and environment templates; this behavior is covered by dedicated validator tests.
+**Verification**: Clean Node.js 22 / npm 10 `npm ci` and full backend `npm run ci` pass with 61 test files and 706 tests. Standalone frontend clean install, TypeScript check, and production build also pass.
+**Status**: Ready for review. CORE-1 remains blocked until this isolated CI baseline is accepted and GitHub Actions confirms it.
+
+---
+
 ## 2026-07-24 — Standalone Frontend Cutover
 
 **Decision**: Make `kazakovak2001-lgtm/Frontend` the sole target web client for Roblox AI Studio. Freeze the embedded React/Vite application in this repository's root `src/` directory as a migration inventory; do not add new features or parallel integrations there.

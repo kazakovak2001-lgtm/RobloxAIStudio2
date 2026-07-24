@@ -57,7 +57,9 @@ export function ConnectionBadge({
       {connected && lastHeartbeat && (
         <div className="flex items-center gap-1 text-xs">
           <span className="opacity-70">Last:</span>
-          <span className="font-medium">{formatLastHeartbeat(lastHeartbeat)}</span>
+          <span className="font-medium">
+            {formatLastHeartbeat(lastHeartbeat)}
+          </span>
         </div>
       )}
 

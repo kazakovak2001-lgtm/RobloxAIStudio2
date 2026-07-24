@@ -80,7 +80,9 @@ export function PluginStatus({
             <Puzzle className="h-4 w-4 text-brand-400" />
             <span className="text-sm text-slate-400">Version</span>
           </div>
-          <span className="text-sm font-medium text-white">{pluginVersion}</span>
+          <span className="text-sm font-medium text-white">
+            {pluginVersion}
+          </span>
         </div>
 
         {/* Client Count */}
@@ -95,7 +97,9 @@ export function PluginStatus({
         {/* Uptime */}
         <div className="flex items-center justify-between rounded-xl border border-white/5 bg-slate-800/50 p-3">
           <span className="text-sm text-slate-400">Uptime</span>
-          <span className="text-sm font-medium text-white">{formatUptime(uptime)}</span>
+          <span className="text-sm font-medium text-white">
+            {formatUptime(uptime)}
+          </span>
         </div>
 
         {/* Last Heartbeat */}

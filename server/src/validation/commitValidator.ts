@@ -35,14 +35,28 @@ const SENSITIVE_PATTERNS: RegExp[] = [
   /\.pfx$/,
 ];
 
-const SENSITIVE_CONTENT_PATTERNS: RegExp[] = [
-  /(?:api[_-]?key|apikey)\s*[:=]\s*['"][^'"]+['"]/i,
-  /(?:secret|token|password|passwd|pwd)\s*[:=]\s*['"][^'"]+['"]/i,
-  /Bearer\s+[A-Za-z0-9\-._~+/]+=*/,
-  /-----BEGIN (?:RSA |EC )?PRIVATE KEY-----/,
-  /(?:mongodb|postgres|mysql|redis):\/\/[^:]+:[^@]+@/,
-  /ghp_[A-Za-z0-9]{36,}/,
-  /sk-[A-Za-z0-9]{32,}/,
+interface SensitiveContentPattern {
+  pattern: RegExp;
+  allowInNonProductionExamples?: boolean;
+}
+
+const SENSITIVE_CONTENT_PATTERNS: SensitiveContentPattern[] = [
+  {
+    pattern: /(?:api[_-]?key|apikey)\s*[:=]\s*['"][^'"]+['"]/i,
+    allowInNonProductionExamples: true,
+  },
+  {
+    pattern: /(?:secret|token|password|passwd|pwd)\s*[:=]\s*['"][^'"]+['"]/i,
+    allowInNonProductionExamples: true,
+  },
+  {
+    pattern: /Bearer\s+[A-Za-z0-9\-._~+/]+=*/,
+    allowInNonProductionExamples: true,
+  },
+  { pattern: /-----BEGIN (?:RSA |EC )?PRIVATE KEY-----/ },
+  { pattern: /(?:mongodb|postgres|mysql|redis):\/\/[^:]+:[^@]+@/ },
+  { pattern: /ghp_[A-Za-z0-9]{36,}/ },
+  { pattern: /sk-[A-Za-z0-9]{32,}/ },
 ];
 
 const BLOCKED_DIRECTORIES: string[] = [
@@ -70,6 +84,29 @@ const VAGUE_MESSAGES: RegExp[] = [
 const CONVENTIONAL_COMMIT_REGEX =
   /^(feat|fix|refactor|perf|docs|test|build|ci|chore)(\([a-z0-9-]{1,32}\))?!?:\s.+$/;
 
+function isNonProductionExamplePath(filePath: string): boolean {
+  const normalizedPath = filePath.replace(/\\/g, "/");
+
+  return (
+    normalizedPath === ".env.example" ||
+    normalizedPath.endsWith("/.env.example") ||
+    /^(?:docs|\.kiro|\.agents|\.snapshots)(?:\/|$)/.test(normalizedPath) ||
+    /(?:^|\/)(?:__tests__|tests?|fixtures?|examples?)(?:\/|$)/.test(
+      normalizedPath,
+    ) ||
+    /\.(?:test|spec)\.[cm]?[jt]sx?$/.test(normalizedPath) ||
+    /(?:^|\/)README\.md$/i.test(normalizedPath)
+  );
+}
+
+function isExampleEnvironmentFile(filePath: string): boolean {
+  const normalizedPath = filePath.replace(/\\/g, "/");
+  return (
+    normalizedPath === ".env.example" ||
+    normalizedPath.endsWith("/.env.example")
+  );
+}
+
 export function detectSensitiveFiles(filePaths: string[]): ValidationResult {
   const errors: ValidationError[] = [];
   const warnings: ValidationWarning[] = [];
@@ -91,6 +128,10 @@ export function detectSensitiveFiles(filePaths: string[]): ValidationResult {
     }
 
     for (const pattern of SENSITIVE_PATTERNS) {
+      if (isExampleEnvironmentFile(normalizedPath)) {
+        continue;
+      }
+
       if (pattern.test(normalizedPath)) {
         errors.push({
           code: "SENSITIVE_FILE",
@@ -110,11 +151,19 @@ export function detectSensitiveContent(
 ): ValidationResult {
   const errors: ValidationError[] = [];
   const warnings: ValidationWarning[] = [];
+  const isNonProductionExample = isNonProductionExamplePath(filePath);
 
   const lines = fileContent.split("\n");
 
   for (let i = 0; i < lines.length; i++) {
-    for (const pattern of SENSITIVE_CONTENT_PATTERNS) {
+    for (const {
+      pattern,
+      allowInNonProductionExamples,
+    } of SENSITIVE_CONTENT_PATTERNS) {
+      if (allowInNonProductionExamples && isNonProductionExample) {
+        continue;
+      }
+
       if (pattern.test(lines[i])) {
         errors.push({
           code: "SENSITIVE_CONTENT",

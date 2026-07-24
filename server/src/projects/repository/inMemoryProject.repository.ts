@@ -1,4 +1,10 @@
-import type { IProjectRepository, Project, CreateProjectInput, ProjectQueryOptions, ProjectListResult } from "./project.repository";
+import type {
+  IProjectRepository,
+  Project,
+  CreateProjectInput,
+  ProjectQueryOptions,
+  ProjectListResult,
+} from "./project.repository";
 
 export class InMemoryProjectRepository implements IProjectRepository {
   private projects = new Map<string, Project>();
@@ -29,7 +35,7 @@ export class InMemoryProjectRepository implements IProjectRepository {
   async update(id: string, updates: Partial<Project>): Promise<Project | null> {
     const project = this.projects.get(id);
     if (!project) return null;
-    
+
     const updated = { ...project, ...updates, updatedAt: new Date() };
     this.projects.set(id, updated);
     return updated;

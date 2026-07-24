@@ -1,16 +1,40 @@
-import type { StepExecutionContext, PipelineStep, PipelineEvent, PipelineEventHandler } from "./pipelineTypes";
-import { shouldRetry, incrementRetry, nextRetryDelay, defaultRetryPolicy } from "./retryPolicy";
+import type {
+  StepExecutionContext,
+  PipelineStep,
+  PipelineEvent,
+  PipelineEventHandler,
+} from "./pipelineTypes";
+import {
+  shouldRetry,
+  incrementRetry,
+  nextRetryDelay,
+  defaultRetryPolicy,
+} from "./retryPolicy";
 import type { RetryPolicy } from "./retryPolicy";
 
 export class PipelineRunner {
-  private agents: { executeAgent(agentType: string, input: Record<string, unknown>): Promise<unknown> };
-  private persistence?: { saveRun?(runId: string, stepId: string, data: unknown): Promise<void> };
+  private agents: {
+    executeAgent(
+      agentType: string,
+      input: Record<string, unknown>,
+    ): Promise<unknown>;
+  };
+  private persistence?: {
+    saveRun?(runId: string, stepId: string, data: unknown): Promise<void>;
+  };
   private policy = defaultRetryPolicy;
   private eventBus = new Set<PipelineEventHandler>();
 
   constructor(options: {
-    agentService: { executeAgent(agentType: string, input: Record<string, unknown>): Promise<unknown> };
-    persistence?: { saveRun?(runId: string, stepId: string, data: unknown): Promise<void> };
+    agentService: {
+      executeAgent(
+        agentType: string,
+        input: Record<string, unknown>,
+      ): Promise<unknown>;
+    };
+    persistence?: {
+      saveRun?(runId: string, stepId: string, data: unknown): Promise<void>;
+    };
     policy?: RetryPolicy;
     onEvent?: PipelineEventHandler;
   }) {
@@ -27,20 +51,42 @@ export class PipelineRunner {
 
   async executeStep(context: StepExecutionContext): Promise<PipelineStep> {
     const { step } = context;
-    this.emit({ type: "step.started", pipelineId: context.state.pipelineId, stepId: step.id, timestamp: new Date() });
+    this.emit({
+      type: "step.started",
+      pipelineId: context.state.pipelineId,
+      stepId: step.id,
+      timestamp: new Date(),
+    });
 
     try {
       const result = await this.runWithRetry(context);
       context.state.markStepCompleted(step.id, result);
       await this.persistIfPossible(step.id, result, context);
-      this.emit({ type: "step.completed", pipelineId: context.state.pipelineId, stepId: step.id, data: { output: result }, timestamp: new Date() });
+      this.emit({
+        type: "step.completed",
+        pipelineId: context.state.pipelineId,
+        stepId: step.id,
+        data: { output: result },
+        timestamp: new Date(),
+      });
       return { ...step, status: "completed", result, finishedAt: new Date() };
     } catch (error) {
       const message = error instanceof Error ? error.message : "Unknown error";
       context.state.markStepFailed(step.id, message);
       await this.persistIfPossible(step.id, { error: message }, context);
-      this.emit({ type: "step.failed", pipelineId: context.state.pipelineId, stepId: step.id, data: { error: message }, timestamp: new Date() });
-      return { ...step, status: "failed", error: message, finishedAt: new Date() };
+      this.emit({
+        type: "step.failed",
+        pipelineId: context.state.pipelineId,
+        stepId: step.id,
+        data: { error: message },
+        timestamp: new Date(),
+      });
+      return {
+        ...step,
+        status: "failed",
+        error: message,
+        finishedAt: new Date(),
+      };
     }
   }
 
@@ -71,13 +117,22 @@ export class PipelineRunner {
     try {
       return await this.agents.executeAgent(step.agent, input);
     } catch (error) {
-      const message = error instanceof Error ? error.message : "Agent execution failed";
-      Object.assign(step, { error: message, status: "failed", finishedAt: new Date() });
+      const message =
+        error instanceof Error ? error.message : "Agent execution failed";
+      Object.assign(step, {
+        error: message,
+        status: "failed",
+        finishedAt: new Date(),
+      });
       throw error;
     }
   }
 
-  private async persistIfPossible(stepId: string, data: unknown, context: StepExecutionContext) {
+  private async persistIfPossible(
+    stepId: string,
+    data: unknown,
+    context: StepExecutionContext,
+  ) {
     if (this.persistence?.saveRun) {
       try {
         await this.persistence.saveRun(context.state.pipelineId, stepId, data);

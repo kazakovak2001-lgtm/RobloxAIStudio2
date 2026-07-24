@@ -1,4 +1,5 @@
 # FRONTEND MASTER ARCHITECTURE
+
 **Generated**: 2026-07-13
 **Project**: Roblox AI Studio DevKit
 **Phase**: FE-5 - Documentation
@@ -10,6 +11,7 @@
 This document describes the master architecture for the new Feature-Sliced Design (FSD) frontend. It covers component architecture, data flow, API contracts, state management, integration points, and future roadmap.
 
 **Architecture Status**: ✅ DESIGNED
+
 - **Pattern**: Feature-Sliced Design (FSD)
 - **Tech Stack**: React 18.3.1, TypeScript 5.6.3, Vite 5.4.10, TanStack Query, Zustand, Tailwind CSS
 - **Location**: `frontend-new/`
@@ -37,32 +39,38 @@ src/
 ### 1.2 Layer Responsibilities
 
 **app/** - Application Level
+
 - Providers: QueryClient, Router, Theme
 - Router: Route definitions
 - Store: Global state (Zustand)
 - Config: App-wide configuration
 
 **pages/** - Page Level
+
 - Route components
 - Page layouts
 - Page-specific logic
 
 **widgets/** - Widget Level
+
 - Composite UI components
 - Reusable page sections
 - Business logic for specific UI patterns
 
 **features/** - Feature Level
+
 - Feature-specific business logic
 - Feature-specific UI components
 - Feature-specific hooks
 
 **entities/** - Entity Level
+
 - Business entities
 - Entity-specific types
 - Entity-specific API calls
 
 **shared/** - Shared Level
+
 - API clients
 - UI components (buttons, inputs, etc.)
 - Custom hooks
@@ -87,6 +95,7 @@ User Action → Component → TanStack Query Hook → API Client → Backend
 ```
 
 **TanStack Query Integration**:
+
 - QueryClientProvider wraps app
 - useQuery for data fetching
 - useMutation for data mutations
@@ -100,6 +109,7 @@ User Action → Component → Zustand Store → Component Update
 ```
 
 **Zustand Integration**:
+
 - useAppStore for global state
 - User, activeProject, plugin state
 - AI session state
@@ -112,6 +122,7 @@ Backend → Socket.io → Event Handler → Store Update → Component Update
 ```
 
 **Socket.io Integration**:
+
 - Real-time updates
 - Connection status
 - Generation progress
@@ -126,6 +137,7 @@ Backend → Socket.io → Event Handler → Store Update → Component Update
 **Base**: `/api/projects`
 
 **Endpoints**:
+
 - `GET /api/projects` - List projects
 - `GET /api/projects/:id` - Get project
 - `POST /api/projects` - Create project
@@ -133,6 +145,7 @@ Backend → Socket.io → Event Handler → Store Update → Component Update
 - `GET /api/projects/:id/history` - Get generation history
 
 **Types**:
+
 ```typescript
 interface Project {
   id: string;
@@ -159,11 +172,13 @@ interface CreateProjectInput {
 **Base**: `/api/concept`
 
 **Endpoints**:
+
 - `POST /api/concept/experience/generate-direct` - Start generation
 - `GET /api/concept/experience/status/:pipelineId` - Get status
 - `GET /health` - Get active provider
 
 **Types**:
+
 ```typescript
 interface PipelineResult {
   success: boolean;
@@ -179,6 +194,7 @@ interface PipelineResult {
 **Base**: `/api/studio`
 
 **Endpoints**:
+
 - `GET /api/studio/status` - Connection status
 - `POST /api/studio/connect` - Connect
 - `POST /api/studio/disconnect` - Disconnect
@@ -188,6 +204,7 @@ interface PipelineResult {
 - `GET /api/studio/sync/status` - Sync status
 
 **Types**:
+
 ```typescript
 interface StudioStatusData {
   connected: boolean;
@@ -210,11 +227,13 @@ interface SyncStatusData {
 **Base**: `/api/artifacts`
 
 **Endpoints**:
+
 - `GET /api/artifacts` - List artifacts
 - `GET /api/artifacts/:id` - Get artifact
 - `DELETE /api/artifacts/:id` - Delete artifact
 
 **Types**:
+
 ```typescript
 interface Artifact {
   id: string;
@@ -238,6 +257,7 @@ interface Artifact {
 **Store**: `app/store/index.ts`
 
 **State**:
+
 ```typescript
 interface AppState {
   user: User | null;
@@ -248,6 +268,7 @@ interface AppState {
 ```
 
 **Usage**:
+
 ```typescript
 const { user, activeProject, setUser, setActiveProject } = useAppStore();
 ```
@@ -257,33 +278,35 @@ const { user, activeProject, setUser, setActiveProject } = useAppStore();
 **Query Client**: Configured in `main.tsx`
 
 **Queries**:
+
 ```typescript
 // Projects
 const { data: projects } = useQuery({
-  queryKey: ['projects'],
+  queryKey: ["projects"],
   queryFn: listProjects,
 });
 
 // Project
 const { data: project } = useQuery({
-  queryKey: ['project', id],
+  queryKey: ["project", id],
   queryFn: () => getProject(id),
 });
 
 // Studio Status
 const { data: studioStatus } = useQuery({
-  queryKey: ['studio-status'],
+  queryKey: ["studio-status"],
   queryFn: getStudioStatus,
   refetchInterval: 5000,
 });
 ```
 
 **Mutations**:
+
 ```typescript
 const createProjectMutation = useMutation({
   mutationFn: createProject,
   onSuccess: () => {
-    queryClient.invalidateQueries({ queryKey: ['projects'] });
+    queryClient.invalidateQueries({ queryKey: ["projects"] });
   },
 });
 ```
@@ -295,6 +318,7 @@ const createProjectMutation = useMutation({
 ### 5.1 Backend Integration
 
 **API Proxy**: Vite proxy configuration
+
 ```typescript
 proxy: {
   "/api": {
@@ -305,6 +329,7 @@ proxy: {
 ```
 
 **Socket.io**: Direct connection
+
 ```typescript
 import { io } from "socket.io-client";
 const socket = io("http://localhost:5000");
@@ -329,16 +354,19 @@ const socket = io("http://localhost:5000");
 ### 6.1 Short Term (Next Sprint)
 
 **Authentication**:
+
 - Implement real JWT authentication
 - Add login/register pages
 - Add protected routes
 
 **UI Components**:
+
 - Add shadcn/ui components
 - Create design system
 - Add theme support
 
 **Core Screens**:
+
 - Implement Dashboard with real data
 - Implement Projects page with CRUD
 - Implement AI Studio with prompt/response
@@ -348,12 +376,14 @@ const socket = io("http://localhost:5000");
 ### 6.2 Medium Term (Next Quarter)
 
 **Features**:
+
 - AI generation with real-time progress
 - Project sync with artifact explorer
 - Code review with diff viewer
 - Deployment with version control
 
 **Performance**:
+
 - Add code splitting
 - Add lazy loading
 - Optimize bundle size
@@ -361,12 +391,14 @@ const socket = io("http://localhost:5000");
 ### 6.3 Long Term (Next Year)
 
 **Advanced Features**:
+
 - AI agent orchestration
 - Multi-project management
 - Advanced analytics
 - Team collaboration
 
 **Infrastructure**:
+
 - CI/CD pipeline
 - Monitoring
 - Error tracking
@@ -378,6 +410,7 @@ const socket = io("http://localhost:5000");
 ### 7.1 TypeScript
 
 **Strict Mode**: ✅ Enabled
+
 - No `any` types
 - No unused variables
 - No unused parameters
@@ -386,17 +419,20 @@ const socket = io("http://localhost:5000");
 ### 7.2 Code Quality
 
 **ESLint**: ✅ Configured
+
 - Max warnings: 0
 - React rules
 - TypeScript rules
 
 **Prettier**: ✅ Configured
+
 - Consistent formatting
 - Automatic formatting on save
 
 ### 7.3 Testing
 
 **Vitest**: ✅ Configured
+
 - Unit tests for hooks
 - Integration tests for API
 - E2E tests for critical flows
@@ -404,11 +440,13 @@ const socket = io("http://localhost:5000");
 ### 7.4 Error Handling
 
 **Error Boundaries**: ✅ Required
+
 - Wrap all routes
 - Log errors
 - Show user-friendly error messages
 
 **API Errors**: ✅ Centralized
+
 - ApiError class
 - Global error handler
 - User-friendly error messages
@@ -420,21 +458,25 @@ const socket = io("http://localhost:5000");
 ### 8.1 Migration Phases
 
 **Phase FE-0**: ✅ Audit
+
 - Analyze current frontend
 - Document structure
 - Identify risks
 
 **Phase FE-1**: ✅ Structure
+
 - Create FSD structure
 - Set up configuration
 - Install dependencies
 
 **Phase FE-2**: ✅ API Integration
+
 - Create typed API clients
 - Add TanStack Query
 - Add Zustand
 
 **Phase FE-3**: ⏸️ Core Screens
+
 - Implement Dashboard
 - Implement Projects
 - Implement AI Studio
@@ -442,16 +484,19 @@ const socket = io("http://localhost:5000");
 - Implement Analytics
 
 **Phase FE-4**: ⏸️ State Management
+
 - Implement global stores
 - Implement query hooks
 - Implement mutation hooks
 
 **Phase FE-5**: ⏸️ Documentation
+
 - Create architecture docs
 - Create migration report
 - Update README
 
 **Phase FE-6**: ⏸️ Cleanup
+
 - Move old frontend to frontend-legacy
 - Validate new frontend
 - Remove old frontend
@@ -459,6 +504,7 @@ const socket = io("http://localhost:5000");
 ### 8.2 Validation Steps
 
 **Before Cleanup**:
+
 1. Build new frontend
 2. Test all routes
 3. Test API connections
@@ -466,6 +512,7 @@ const socket = io("http://localhost:5000");
 5. Test error handling
 
 **After Cleanup**:
+
 1. Update package.json
 2. Update build scripts
 3. Update CI/CD
@@ -478,12 +525,14 @@ const socket = io("http://localhost:5000");
 ### 9.1 Architecture Benefits
 
 **FSD Benefits**:
+
 - Clear separation of concerns
 - Scalable structure
 - Easy to maintain
 - Easy to test
 
 **Tech Stack Benefits**:
+
 - Modern React patterns
 - Type-safe API calls
 - Efficient state management
@@ -492,12 +541,14 @@ const socket = io("http://localhost:5000");
 ### 9.2 Next Steps
 
 **Immediate**:
+
 1. Install dependencies (npm install)
 2. Implement core screens
 3. Implement state management hooks
 4. Test API connections
 
 **After Testing**:
+
 1. Move old frontend to frontend-legacy
 2. Validate new frontend
 3. Remove old frontend

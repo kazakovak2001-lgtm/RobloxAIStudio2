@@ -148,7 +148,9 @@ describe("GenerationEngine — successful generation", () => {
     expect(result.model.scripts.length).toBe(1);
     expect(result.model.ui.length).toBe(1);
     expect(result.model.game.title).toBe("Test Game");
-    expect(result.context.timings.totalMs).toBeGreaterThan(0);
+    // Date.now() has millisecond precision, so synchronous mock generators can
+    // legitimately complete within the same clock tick.
+    expect(result.context.timings.totalMs).toBeGreaterThanOrEqual(0);
   });
 
   it("emits events during generation", async () => {

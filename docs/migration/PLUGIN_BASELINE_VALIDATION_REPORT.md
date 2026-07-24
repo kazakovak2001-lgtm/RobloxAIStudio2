@@ -1,4 +1,5 @@
 # PLUGIN BASELINE VALIDATION REPORT
+
 **Generated**: 2026-07-13
 **Project**: Roblox AI Studio DevKit
 **Phase**: 2.5.E.1.5 - Plugin Baseline Validation
@@ -10,6 +11,7 @@
 This report documents the baseline validation of the recovered plugin before manual merge execution. The plugin has been validated for initialization flow, module loading, require paths, service initialization, event system availability, UI dependencies, and backend connector dependencies.
 
 **Validation Status**: ✅ COMPLETE
+
 - **Initialization Flow**: VALID
 - **Module Loading Order**: VALID
 - **Require Paths**: VALID
@@ -27,6 +29,7 @@ This report documents the baseline validation of the recovered plugin before man
 **File**: `studio-plugin/plugin.lua`
 
 **Initialization Order**:
+
 1. Load Config (line 16)
 2. Load all modules (lines 22-29)
 3. Initialize artifactLoader (line 35)
@@ -46,6 +49,7 @@ This report documents the baseline validation of the recovered plugin before man
 **Validation**: ✅ VALID
 
 **Analysis**:
+
 - Initialization order is correct (dependencies initialized before use)
 - artifactLoader and errorReporter initialized before syncManager (correct)
 - events initialized before services (correct)
@@ -59,6 +63,7 @@ This report documents the baseline validation of the recovered plugin before man
 ### 2.1 Module Dependencies
 
 **Load Order**:
+
 1. Config (core/Config.lua) - No dependencies
 2. Events (core/Events.lua) - No dependencies
 3. StudioConnector (services/StudioConnector.lua) - Depends on Config
@@ -72,6 +77,7 @@ This report documents the baseline validation of the recovered plugin before man
 **Validation**: ✅ VALID
 
 **Analysis**:
+
 - Config loaded first (required by services)
 - Events loaded second (required by services in manual merge)
 - Services loaded after Config (correct)
@@ -85,6 +91,7 @@ This report documents the baseline validation of the recovered plugin before man
 ### 3.1 Path Validation
 
 **plugin.lua**:
+
 - `script.Parent.src.core.Config` ✅
 - `script.Parent.src.core.Events` ✅
 - `script.Parent.src.services.StudioConnector` ✅
@@ -96,17 +103,21 @@ This report documents the baseline validation of the recovered plugin before man
 - `script.Parent.src.utils.RuntimeValidator` ✅
 
 **StudioConnector.lua**:
+
 - `script.Parent.core.Config` ✅
 
 **ConnectionManager.lua**:
+
 - `script.Parent.core.Config` ✅
 
 **SyncManager.lua**:
+
 - `script.Parent.core.Config` ✅
 
 **Validation**: ✅ ALL PATHS VALID
 
 **Analysis**:
+
 - All require paths are correct
 - No outdated `script.Parent.Config` references
 - All paths match actual directory structure
@@ -118,16 +129,19 @@ This report documents the baseline validation of the recovered plugin before man
 ### 4.1 Constructor Signatures
 
 **StudioConnector.new()**
+
 - **Parameters**: None
 - **Dependencies**: Config, HttpService
 - **Validation**: ✅ VALID
 
 **ConnectionManager.new(connector, errorReporter)**
+
 - **Parameters**: connector (StudioConnector), errorReporter (ErrorReporter)
 - **Dependencies**: Config
 - **Validation**: ✅ VALID
 
 **SyncManager.new(connector, artifactLoader, errorReporter)**
+
 - **Parameters**: connector (StudioConnector), artifactLoader (ArtifactLoader), errorReporter (ErrorReporter)
 - **Dependencies**: Config
 - **Validation**: ✅ VALID
@@ -146,6 +160,7 @@ local syncManager = SyncManager.new(studioConnector, artifactLoader, errorReport
 **Validation**: ✅ VALID
 
 **Analysis**:
+
 - artifactLoader initialized before syncManager (correct)
 - errorReporter initialized before services (correct)
 - studioConnector initialized before services (correct)
@@ -158,11 +173,13 @@ local syncManager = SyncManager.new(studioConnector, artifactLoader, errorReport
 ### 5.1 Event System Initialization
 
 **Events Instance Created**: Line 37
+
 ```lua
 local events = Events.new()
 ```
 
 **Event Handlers Registered**: Lines 69-91
+
 - STUDIO_CONNECTED
 - STUDIO_DISCONNECTED
 - PROJECT_SYNC_COMPLETED
@@ -173,6 +190,7 @@ local events = Events.new()
 **Validation**: ⚠️ PARTIAL
 
 **Analysis**:
+
 - Events system is initialized and available
 - Event handlers are registered in plugin.lua
 - **ISSUE**: Services (ConnectionManager, SyncManager) do not currently fire events
@@ -183,22 +201,27 @@ local events = Events.new()
 ### 5.2 Event System Methods
 
 **Events.new()** ✅
+
 - Creates new event instance
 - Initializes handlers and history
 
 **Events:on(eventType, handler)** ✅
+
 - Registers event handler
 - Used in plugin.lua
 
 **Events:fire(eventType, payload)** ✅
+
 - Fires event to handlers
 - Not currently used by services (deferred)
 
 **Events:off(eventType, handler)** ✅
+
 - Unregisters event handler
 - Not currently used
 
 **Events:getHistory()** ✅
+
 - Returns event history
 - Not currently used
 
@@ -209,11 +232,13 @@ local events = Events.new()
 ### 6.1 CommandPanel Constructor
 
 **Current Signature**:
+
 ```lua
 function CommandPanel.new(plugin, connManager, syncManager, errors)
 ```
 
 **plugin.lua Call**:
+
 ```lua
 local commandPanel = CommandPanel.new(plugin, connectionManager, syncManager, errorReporter)
 ```
@@ -221,6 +246,7 @@ local commandPanel = CommandPanel.new(plugin, connectionManager, syncManager, er
 **Validation**: ✅ VALID
 
 **Analysis**:
+
 - All parameters passed correctly
 - connectionManager initialized before CommandPanel (correct)
 - syncManager initialized before CommandPanel (correct)
@@ -229,6 +255,7 @@ local commandPanel = CommandPanel.new(plugin, connectionManager, syncManager, er
 ### 6.2 UI Dependencies
 
 **CommandPanel Dependencies**:
+
 - plugin (Roblox plugin object) - Provided by Roblox Studio
 - connManager (ConnectionManager) - Initialized at line 39
 - syncManager (SyncManager) - Initialized at line 40
@@ -237,6 +264,7 @@ local commandPanel = CommandPanel.new(plugin, connectionManager, syncManager, er
 **Validation**: ✅ VALID
 
 **Analysis**:
+
 - All dependencies initialized before CommandPanel
 - No missing dependencies
 - Constructor signature matches call
@@ -246,6 +274,7 @@ local commandPanel = CommandPanel.new(plugin, connectionManager, syncManager, er
 **Current State**: ⚠️ PARTIAL
 
 **Analysis**:
+
 - CommandPanel does not currently use events system
 - Event integration deferred to manual merge
 - UI updates are manual (not event-driven)
@@ -258,11 +287,13 @@ local commandPanel = CommandPanel.new(plugin, connectionManager, syncManager, er
 ### 7.1 StudioConnector Dependencies
 
 **HttpService**:
+
 - **Source**: `game:GetService("HttpService")`
 - **Validation**: ✅ VALID
 - **Analysis**: Standard Roblox service, always available
 
 **Config**:
+
 - **Source**: `require(script.Parent.core.Config)`
 - **Validation**: ✅ VALID
 - **Analysis**: Config loaded correctly
@@ -270,11 +301,13 @@ local commandPanel = CommandPanel.new(plugin, connectionManager, syncManager, er
 ### 7.2 Service Dependencies on StudioConnector
 
 **ConnectionManager**:
+
 - **Dependency**: StudioConnector (passed as parameter)
 - **Usage**: `self._connector:connect()`, `self._connector:heartbeat()`, `self._connector:disconnect()`
 - **Validation**: ✅ VALID
 
 **SyncManager**:
+
 - **Dependency**: StudioConnector (passed as parameter)
 - **Usage**: `self._connector:sendMessage()`
 - **Validation**: ✅ VALID
@@ -282,6 +315,7 @@ local commandPanel = CommandPanel.new(plugin, connectionManager, syncManager, er
 ### 7.3 Backend API Endpoints
 
 **StudioConnector Uses**:
+
 - `POST /api/studio/connect`
 - `POST /api/studio/disconnect`
 - `POST /api/studio/heartbeat`
@@ -291,6 +325,7 @@ local commandPanel = CommandPanel.new(plugin, connectionManager, syncManager, er
 **Validation**: ✅ VALID
 
 **Analysis**:
+
 - All endpoint calls use Config.BACKEND_URL
 - Config.BACKEND_URL = "http://localhost:5000"
 - Protocol-based messaging implemented correctly
@@ -306,6 +341,7 @@ local commandPanel = CommandPanel.new(plugin, connectionManager, syncManager, er
 ### 8.2 Medium Risks
 
 **Event System Not Integrated**
+
 - **Risk**: Event handlers registered but services don't fire events
 - **Impact**: Event-driven features won't work until manual merge
 - **Mitigation**: Deferred to manual merge (planned)
@@ -314,12 +350,14 @@ local commandPanel = CommandPanel.new(plugin, connectionManager, syncManager, er
 ### 8.3 Low Risks
 
 **RuntimeValidator Not Used**
+
 - **Risk**: RuntimeValidator created but not used
 - **Impact**: No functional impact, unused code
 - **Mitigation**: Optional - can remove or integrate later
 - **Risk Level**: LOW
 
 **Generate Button Stub**
+
 - **Risk**: Generate button has no implementation
 - **Impact**: Generate button does nothing
 - **Mitigation**: Expected for current version
@@ -355,6 +393,7 @@ local commandPanel = CommandPanel.new(plugin, connectionManager, syncManager, er
 **Status**: ✅ READY FOR MANUAL MERGE
 
 **Prerequisites Met**:
+
 - Plugin can load (syntax valid)
 - All modules can be required
 - No circular dependencies
@@ -363,6 +402,7 @@ local commandPanel = CommandPanel.new(plugin, connectionManager, syncManager, er
 - Legacy files preserved for reference
 
 **Manual Merge Steps** (from PLUGIN_CORE_MERGE_ANALYSIS.md):
+
 1. Add events parameter to ConnectionManager constructor
 2. Add events parameter to SyncManager constructor
 3. Add events parameter to CommandPanel constructor
@@ -377,28 +417,33 @@ local commandPanel = CommandPanel.new(plugin, connectionManager, syncManager, er
 **Manual Testing Checklist** (Roblox Studio unavailable):
 
 **Plugin Loading**:
+
 - [ ] Plugin loads without errors
 - [ ] Toolbar button appears
 - [ ] Console shows load message
 
 **Connection**:
+
 - [ ] Connect button works
 - [ ] Connection to backend succeeds
 - [ ] Status updates correctly
 - [ ] Heartbeat maintains connection
 
 **UI**:
+
 - [ ] Widget opens on button click
 - [ ] All buttons display correctly
 - [ ] Status label updates
 - [ ] Widget closes correctly
 
 **Sync**:
+
 - [ ] Sync button works
 - [ ] Artifacts load correctly
 - [ ] Error handling works
 
 **Cleanup**:
+
 - [ ] Plugin unloads cleanly
 - [ ] No memory leaks
 - [ ] Connections closed properly
@@ -410,30 +455,37 @@ local commandPanel = CommandPanel.new(plugin, connectionManager, syncManager, er
 ### 10.1 Validation Results
 
 **Initialization Flow**: ✅ VALID
+
 - Correct order
 - All dependencies initialized before use
 
 **Module Loading Order**: ✅ VALID
+
 - No circular dependencies
 - Config loaded first
 
 **Require Paths**: ✅ VALID
+
 - All paths correct
 - No outdated references
 
 **Service Initialization**: ✅ VALID
+
 - Constructor signatures match
 - Parameters passed correctly
 
 **Event System Availability**: ⚠️ PARTIAL
+
 - System available and functional
 - Integration deferred to manual merge
 
 **UI Initialization Dependencies**: ✅ VALID
+
 - All dependencies initialized
 - Constructor signature matches
 
 **Backend/API Connector Dependencies**: ✅ VALID
+
 - HttpService available
 - Config loaded correctly
 - Endpoints defined
@@ -441,12 +493,14 @@ local commandPanel = CommandPanel.new(plugin, connectionManager, syncManager, er
 ### 10.2 Overall Assessment
 
 **Plugin Status**: ✅ READY FOR TESTING
+
 - Syntax valid
 - Dependencies resolved
 - Initialization flow correct
 - No critical issues
 
 **Manual Merge Readiness**: ✅ READY
+
 - Event system available
 - Legacy files preserved
 - Constructor signatures known
@@ -455,16 +509,19 @@ local commandPanel = CommandPanel.new(plugin, connectionManager, syncManager, er
 ### 10.3 Next Steps
 
 **Immediate**:
+
 1. Test plugin in Roblox Studio (if available)
 2. Verify plugin loads without errors
 3. Verify basic functionality works
 
 **Before Manual Merge**:
+
 1. Review PLUGIN_CORE_MERGE_ANALYSIS.md
 2. Approve merge strategy
 3. Execute manual merge steps
 
 **After Manual Merge**:
+
 1. Remove legacy files
 2. Test in Roblox Studio
 3. Update documentation

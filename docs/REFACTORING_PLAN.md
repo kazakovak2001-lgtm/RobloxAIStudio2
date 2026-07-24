@@ -27,6 +27,7 @@
 **Priority**: Critical  
 **Reason**: Eliminate confusion, reduce codebase size, prevent accidental usage  
 **Affected Files**:
+
 - src/pages/DashboardPage.tsx
 - src/pages/ProjectsPage.tsx
 - src/components/layout/Sidebar.tsx
@@ -39,6 +40,7 @@
 **Expected Benefit**: Reduced codebase size by ~169KB, clearer architecture
 
 **Steps**:
+
 1. Verify DashboardPageNew and ProjectsPageNew are fully functional
 2. Update routing configuration to use new pages
 3. Delete legacy page files
@@ -53,6 +55,7 @@
 **Priority**: Critical  
 **Reason**: Improve import readability, reduce relative path complexity  
 **Affected Files**:
+
 - tsconfig.json
 - All import statements in src/
 
@@ -61,6 +64,7 @@
 **Expected Benefit**: Cleaner imports, easier refactoring
 
 **Steps**:
+
 1. Configure paths in tsconfig.json:
    ```json
    "paths": {
@@ -84,6 +88,7 @@
 **Priority**: Critical  
 **Reason**: Eliminate TypeScript warnings, improve code quality  
 **Affected Files**:
+
 - server/src/execution/gameDiversityEngine.ts
 
 **Estimated Effort**: 1 hour  
@@ -91,6 +96,7 @@
 **Expected Benefit**: Clean TypeScript build
 
 **Steps**:
+
 1. Remove unused safeGenre variable
 2. Run TypeScript strict mode check
 3. Fix any additional unused variables found
@@ -102,6 +108,7 @@
 **Priority**: Critical  
 **Reason**: Eliminate confusion, reduce repository size  
 **Affected Files**:
+
 - frontend-new/ (entire directory)
 
 **Estimated Effort**: 1 hour  
@@ -109,6 +116,7 @@
 **Expected Benefit**: Cleaner repository, eliminated confusion
 
 **Steps**:
+
 1. Verify no needed features in frontend-new
 2. Delete frontend-new directory
 3. Update documentation if needed
@@ -120,6 +128,7 @@
 **Priority**: Critical  
 **Reason**: Complete page migration, remove "New" suffix  
 **Affected Files**:
+
 - src/main.tsx or routing configuration
 - src/pages/DashboardPageNew.tsx → DashboardPage.tsx
 - src/pages/ProjectsPageNew.tsx → ProjectsPage.tsx
@@ -129,6 +138,7 @@
 **Expected Benefit**: Consistent naming, completed migration
 
 **Steps**:
+
 1. Rename DashboardPageNew.tsx to DashboardPage.tsx
 2. Rename ProjectsPageNew.tsx to ProjectsPage.tsx
 3. Update routing configuration
@@ -144,6 +154,7 @@
 **Priority**: High  
 **Reason**: Complete design system migration, ensure consistency  
 **Affected Files**:
+
 - All pages using src/components/ui
 - src/components/ui/ (entire directory)
 
@@ -152,6 +163,7 @@
 **Expected Benefit**: Consistent UI, design system compliance
 
 **Steps**:
+
 1. Audit all pages using legacy components
 2. Create missing components in shared/ui if needed
 3. Migrate pages one by one:
@@ -170,6 +182,7 @@
 **Priority**: High  
 **Reason**: Improve maintainability, reduce complexity  
 **Affected Files**:
+
 - src/features/workspace/components/GenerationStatusPanel.tsx (14,655 lines)
 - src/features/workspace/components/ArtifactExplorer.tsx (13,643 lines)
 - src/features/workspace/components/StudioBridgePanel.tsx (8,944 lines)
@@ -182,6 +195,7 @@
 **Expected Benefit**: Improved maintainability, easier testing
 
 **Steps**:
+
 1. Analyze each large file for logical sections
 2. Extract sub-components
 3. Extract hooks and utilities
@@ -196,6 +210,7 @@
 **Priority**: High  
 **Reason**: Single source of truth for layout components  
 **Affected Files**:
+
 - src/components/layout/ (entire directory)
 - src/layouts/ (entire directory)
 - shared/ui/layout/ (keep)
@@ -205,6 +220,7 @@
 **Expected Benefit**: Consistent layout, reduced duplication
 
 **Steps**:
+
 1. Verify shared/ui/layout components are complete
 2. Migrate any unique features from legacy layouts
 3. Update all pages to use shared/ui/layout
@@ -219,6 +235,7 @@
 **Priority**: High  
 **Reason**: Improve error handling, better UX  
 **Affected Files**:
+
 - All page components
 - All feature components
 
@@ -227,6 +244,7 @@
 **Expected Benefit**: Better error handling, improved UX
 
 **Steps**:
+
 1. Create reusable ErrorBoundary component
 2. Wrap all page components
 3. Add error logging
@@ -239,6 +257,7 @@
 **Priority**: High  
 **Reason**: Improve security posture  
 **Affected Files**:
+
 - server/src/routes/
 - index.html
 - src/
@@ -248,6 +267,7 @@
 **Expected Benefit**: Improved security
 
 **Steps**:
+
 1. Add input validation to all API endpoints
 2. Add rate limiting to all endpoints
 3. Add CSRF protection
@@ -261,6 +281,7 @@
 **Priority**: High  
 **Reason**: Improve mobile experience  
 **Affected Files**:
+
 - Legacy UI components
 - Workspace components
 
@@ -269,6 +290,7 @@
 **Expected Benefit**: Better mobile experience
 
 **Steps**:
+
 1. Audit all components for responsive classes
 2. Add responsive classes to legacy components
 3. Add responsive classes to workspace components
@@ -281,6 +303,7 @@
 **Priority**: High  
 **Reason**: Improve accessibility, meet WCAG AA  
 **Affected Files**:
+
 - All interactive components
 
 **Estimated Effort**: 24 hours  
@@ -288,6 +311,7 @@
 **Expected Benefit**: Improved accessibility
 
 **Steps**:
+
 1. Add ARIA labels to all interactive elements
 2. Implement keyboard navigation
 3. Add focus management
@@ -300,6 +324,7 @@
 **Priority**: High  
 **Reason**: Reduce duplication, improve reusability  
 **Affected Files**:
+
 - src/features/workspace/components/
 
 **Estimated Effort**: 20 hours  
@@ -307,6 +332,7 @@
 **Expected Benefit**: Reduced duplication, better reusability
 
 **Steps**:
+
 1. Identify reusable components in workspace
 2. Extract to shared/ui where appropriate
 3. Create feature-specific shared components
@@ -322,6 +348,7 @@
 **Priority**: Medium  
 **Reason**: Improve code quality, reduce bugs  
 **Affected Files**:
+
 - All components
 - All services
 - All hooks
@@ -331,6 +358,7 @@
 **Expected Benefit**: Improved code quality, reduced bugs
 
 **Steps**:
+
 1. Set up testing framework (Vitest)
 2. Write unit tests for shared/ui components
 3. Write unit tests for services
@@ -345,6 +373,7 @@
 **Priority**: Medium  
 **Reason**: Improve load times, user experience  
 **Affected Files**:
+
 - src/
 - vite.config.ts
 
@@ -353,6 +382,7 @@
 **Expected Benefit**: Faster load times, better UX
 
 **Steps**:
+
 1. Implement code splitting
 2. Add lazy loading for routes
 3. Optimize bundle size
@@ -366,6 +396,7 @@
 **Priority**: Medium  
 **Reason**: Better state management, reduced prop drilling  
 **Affected Files**:
+
 - src/contexts/
 - src/features/
 
@@ -374,6 +405,7 @@
 **Expected Benefit**: Better state management
 
 **Steps**:
+
 1. Evaluate current state management needs
 2. Consider state management library (Zustand, Jotai)
 3. Implement where appropriate
@@ -386,6 +418,7 @@
 **Priority**: Medium  
 **Reason**: Improve onboarding, maintainability  
 **Affected Files**:
+
 - All components
 - docs/
 
@@ -394,6 +427,7 @@
 **Expected Benefit**: Better onboarding, improved maintainability
 
 **Steps**:
+
 1. Add JSDoc comments to components
 2. Add component usage examples
 3. Update API documentation
@@ -407,6 +441,7 @@
 **Priority**: Medium  
 **Reason**: Improve consistency, reduce confusion  
 **Affected Files**:
+
 - All files
 
 **Estimated Effort**: 8 hours  
@@ -414,6 +449,7 @@
 **Expected Benefit**: Improved consistency
 
 **Steps**:
+
 1. Establish naming convention guidelines
 2. Rename files to follow conventions
 3. Update imports
@@ -426,6 +462,7 @@
 **Priority**: Medium  
 **Reason**: Better development experience  
 **Affected Files**:
+
 - tsconfig.json
 - .eslintrc.json
 - vite.config.ts
@@ -435,6 +472,7 @@
 **Expected Benefit**: Better development experience
 
 **Steps**:
+
 1. Add environment variable validation
 2. Improve ESLint configuration
 3. Add Prettier configuration
@@ -447,6 +485,7 @@
 **Priority**: Medium  
 **Reason**: Improve maintainability, testability  
 **Affected Files**:
+
 - src/features/workspace/Workspace.tsx
 - src/features/workspace/components/GenerationStatusPanel.tsx
 - src/features/workspace/components/ArtifactExplorer.tsx
@@ -456,6 +495,7 @@
 **Expected Benefit**: Improved maintainability
 
 **Steps**:
+
 1. Analyze complexity
 2. Extract services
 3. Extract hooks
@@ -469,6 +509,7 @@
 **Priority**: Medium  
 **Reason**: Persistent storage, scalability  
 **Affected Files**:
+
 - server/src/
 - New database layer
 
@@ -477,6 +518,7 @@
 **Expected Benefit**: Persistent storage, scalability
 
 **Steps**:
+
 1. Choose database (PostgreSQL)
 2. Design schema
 3. Implement repository pattern
@@ -493,6 +535,7 @@
 **Priority**: Low  
 **Reason**: Improve observability  
 **Affected Files**:
+
 - server/src/
 - src/
 
@@ -501,6 +544,7 @@
 **Expected Benefit**: Better observability
 
 **Steps**:
+
 1. Add logging
 2. Add error tracking (Sentry)
 3. Add performance monitoring
@@ -513,6 +557,7 @@
 **Priority**: Low  
 **Reason**: Better plugin system  
 **Affected Files**:
+
 - studio-plugin/
 - server/src/plugins/
 
@@ -521,6 +566,7 @@
 **Expected Benefit**: Better plugin system
 
 **Steps**:
+
 1. Design plugin architecture
 2. Implement plugin API
 3. Add plugin discovery
@@ -533,6 +579,7 @@
 **Priority**: Low  
 **Reason**: Support multiple languages  
 **Affected Files**:
+
 - src/
 - New i18n layer
 
@@ -541,6 +588,7 @@
 **Expected Benefit**: Multi-language support
 
 **Steps**:
+
 1. Choose i18n library
 2. Extract strings
 3. Implement translations
@@ -553,6 +601,7 @@
 **Priority**: Low  
 **Reason**: Improved scalability  
 **Affected Files**:
+
 - server/src/
 - New microservices
 
@@ -561,6 +610,7 @@
 **Expected Benefit**: Improved scalability
 
 **Steps**:
+
 1. Design microservice architecture
 2. Implement service boundaries
 3. Implement communication layer
@@ -572,6 +622,7 @@
 ## Timeline Summary
 
 ### Week 1-2: Critical Refactoring
+
 - Remove dead code
 - Configure path aliases
 - Fix unused variables
@@ -581,6 +632,7 @@
 **Effort**: 16 hours
 
 ### Week 3-6: High Priority Refactoring
+
 - Migrate to shared/ui
 - Split large files
 - Consolidate layouts
@@ -593,6 +645,7 @@
 **Effort**: 152 hours
 
 ### Week 7-12: Medium Priority Refactoring
+
 - Add test coverage
 - Performance optimization
 - Improve state management
@@ -605,6 +658,7 @@
 **Effort**: 248 hours
 
 ### Week 13-24: Low Priority Refactoring
+
 - Add monitoring
 - Improve plugin architecture
 - Add internationalization
@@ -639,23 +693,27 @@
 ## Success Criteria
 
 ### Code Quality
+
 - [ ] Zero TypeScript errors
 - [ ] Zero ESLint errors
 - [ ] 80% test coverage
 - [ ] No files >5,000 lines
 
 ### Performance
+
 - [ ] Bundle size <500KB
 - [ ] Load time <1s
 - [ ] Build time <10s
 
 ### Architecture
+
 - [ ] Single layout component source
 - [ ] All components use design system
 - [ ] Path aliases configured
 - [ ] No dead code
 
 ### Developer Experience
+
 - [ ] Complete documentation
 - [ ] Clear naming conventions
 - [ ] Automated testing
@@ -692,16 +750,19 @@
 ## Resource Requirements
 
 ### Development Resources
+
 - 2-3 developers for critical phase
 - 1-2 developers for high priority phase
 - 1 developer for medium/low priority phases
 
 ### Testing Resources
+
 - QA engineer for testing
 - Test environment setup
 - Automated testing infrastructure
 
 ### Infrastructure Resources
+
 - Development servers
 - Staging environment
 - Production environment

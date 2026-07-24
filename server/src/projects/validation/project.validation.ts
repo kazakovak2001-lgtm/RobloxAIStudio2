@@ -8,9 +8,9 @@ export interface ValidationError {
 export class ProjectValidator {
   validateCreate(_data: Partial<ProjectDTO>): ValidationError[] {
     const errors: ValidationError[] = [];
-    
+
     // Add validation logic as needed
-    
+
     return errors;
   }
 

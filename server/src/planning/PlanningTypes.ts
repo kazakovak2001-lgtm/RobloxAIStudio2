@@ -11,11 +11,7 @@ export type PlanStepStatus =
   | "skipped"
   | "blocked";
 export type PlanStatus =
-  | "created"
-  | "running"
-  | "completed"
-  | "failed"
-  | "replanned";
+  "created" | "running" | "completed" | "failed" | "replanned";
 export type StepKind = "mandatory" | "optional" | "conditional" | "terminal";
 
 export interface PlanStepDefinition {

@@ -1,4 +1,4 @@
-export type PipelineEventType = 
+export type PipelineEventType =
   | "step.started"
   | "step.completed"
   | "step.failed"
@@ -36,7 +36,7 @@ export interface WorkflowState {
   steps: Map<string, PipelineStep>;
   startedAt: Date;
   completedAt?: Date;
-  
+
   markStepCompleted(stepId: string, result: unknown): void;
   markStepFailed(stepId: string, error: string): void;
   markStepRunning(stepId: string): void;
@@ -44,7 +44,8 @@ export interface WorkflowState {
 
 export class PipelineWorkflowState implements WorkflowState {
   public pipelineId: string;
-  public status: "idle" | "running" | "completed" | "failed" | "paused" | "cancelled";
+  public status:
+    "idle" | "running" | "completed" | "failed" | "paused" | "cancelled";
   public steps: Map<string, PipelineStep>;
   public startedAt: Date;
   public completedAt?: Date;

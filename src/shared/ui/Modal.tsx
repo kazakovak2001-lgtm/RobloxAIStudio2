@@ -10,7 +10,14 @@ export type ModalProps = {
   footer?: React.ReactNode;
 };
 
-export function Modal({ open, onClose, title, description, children, footer }: ModalProps) {
+export function Modal({
+  open,
+  onClose,
+  title,
+  description,
+  children,
+  footer,
+}: ModalProps) {
   useEffect(() => {
     if (open) {
       document.body.style.overflow = "hidden";
@@ -31,8 +38,12 @@ export function Modal({ open, onClose, title, description, children, footer }: M
       <div className="relative w-full max-w-lg rounded-3xl border border-white/10 bg-slate-900 p-6 shadow-2xl">
         <div className="flex items-start justify-between">
           <div>
-            {title && <h2 className="text-xl font-semibold text-white">{title}</h2>}
-            {description && <p className="mt-1 text-sm text-slate-400">{description}</p>}
+            {title && (
+              <h2 className="text-xl font-semibold text-white">{title}</h2>
+            )}
+            {description && (
+              <p className="mt-1 text-sm text-slate-400">{description}</p>
+            )}
           </div>
           <button
             onClick={onClose}

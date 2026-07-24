@@ -77,7 +77,7 @@ docker-compose logs -f app
 ### Option B: Manual Deployment
 
 ```bash
-# 1. Install Node.js 20+
+# 1. Install Node.js 22.12+
 # 2. Install PostgreSQL 16+
 # 3. Clone and install
 git clone <repository-url>

@@ -70,8 +70,8 @@ export function AIChatPanel({
                   message.role === "user"
                     ? "bg-brand-500 text-white"
                     : message.role === "assistant"
-                    ? "bg-accent text-white"
-                    : "bg-slate-700 text-slate-400"
+                      ? "bg-accent text-white"
+                      : "bg-slate-700 text-slate-400"
                 }`}
               >
                 {message.role === "user" ? (
@@ -94,11 +94,13 @@ export function AIChatPanel({
                     message.role === "user"
                       ? "bg-brand-500 text-white"
                       : message.role === "assistant"
-                      ? "bg-slate-800 text-slate-100"
-                      : "bg-slate-900/50 text-slate-400"
+                        ? "bg-slate-800 text-slate-100"
+                        : "bg-slate-900/50 text-slate-400"
                   }`}
                 >
-                  <p className="text-sm whitespace-pre-wrap">{message.content}</p>
+                  <p className="text-sm whitespace-pre-wrap">
+                    {message.content}
+                  </p>
                 </div>
                 <div className="flex items-center gap-2">
                   <span className="text-xs text-slate-500">

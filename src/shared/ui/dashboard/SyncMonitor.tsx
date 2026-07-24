@@ -73,7 +73,9 @@ export function SyncMonitor({
     <div className="rounded-2xl border border-white/10 bg-slate-900/70 p-6 shadow-glow backdrop-blur-xl">
       <div className="mb-4 flex items-center justify-between">
         <h3 className="text-h3 font-semibold text-white">Sync Monitor</h3>
-        <div className={`flex items-center gap-2 rounded-full px-3 py-1 ${config.bgColor} ${config.textColor}`}>
+        <div
+          className={`flex items-center gap-2 rounded-full px-3 py-1 ${config.bgColor} ${config.textColor}`}
+        >
           {config.icon}
           <span className="text-xs font-medium">{config.label}</span>
         </div>
@@ -83,13 +85,17 @@ export function SyncMonitor({
         {/* Last Sync */}
         <div className="flex items-center justify-between rounded-xl border border-white/5 bg-slate-800/50 p-3">
           <span className="text-sm text-slate-400">Last Sync</span>
-          <span className="text-sm font-medium text-white">{formatLastSync(lastSync)}</span>
+          <span className="text-sm font-medium text-white">
+            {formatLastSync(lastSync)}
+          </span>
         </div>
 
         {/* Pending Changes */}
         <div className="flex items-center justify-between rounded-xl border border-white/5 bg-slate-800/50 p-3">
           <span className="text-sm text-slate-400">Pending Changes</span>
-          <span className="text-sm font-medium text-white">{pendingChanges}</span>
+          <span className="text-sm font-medium text-white">
+            {pendingChanges}
+          </span>
         </div>
 
         {/* Sync Progress */}
@@ -97,7 +103,9 @@ export function SyncMonitor({
           <div className="rounded-xl border border-white/5 bg-slate-800/50 p-3">
             <div className="mb-2 flex items-center justify-between">
               <span className="text-sm text-slate-400">Progress</span>
-              <span className="text-sm font-medium text-white">{syncProgress}%</span>
+              <span className="text-sm font-medium text-white">
+                {syncProgress}%
+              </span>
             </div>
             <div className="h-2 w-full rounded-full bg-slate-700">
               <div

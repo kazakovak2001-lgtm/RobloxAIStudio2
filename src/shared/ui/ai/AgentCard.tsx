@@ -63,7 +63,9 @@ export function AgentCard({
           {/* Info */}
           <div className="flex-1">
             <div className="mb-1 flex items-center gap-2">
-              <h4 className="text-base font-semibold text-white">{agent.name}</h4>
+              <h4 className="text-base font-semibold text-white">
+                {agent.name}
+              </h4>
               <span className="rounded-full bg-slate-800 px-2 py-0.5 text-xs text-slate-400">
                 v{agent.version}
               </span>

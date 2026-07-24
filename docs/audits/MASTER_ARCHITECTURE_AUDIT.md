@@ -1,4 +1,5 @@
 # MASTER ARCHITECTURE AUDIT
+
 **Generated**: 2026-07-13
 **Project**: Roblox AI Studio DevKit
 **Current Version**: v1.3.3
@@ -10,6 +11,7 @@
 This audit provides a comprehensive analysis of the current project structure, dependencies, and technical debt to guide the enterprise-level refactoring initiative.
 
 **Key Findings**:
+
 - **Total Source Files**: 259+ TypeScript files (205 server + 54 frontend)
 - **Architecture Health**: 87/100 (CODE_HEALTH_REPORT.md)
 - **Technical Debt Score**: 27/100 (Acceptable for v1.x)
@@ -81,6 +83,7 @@ RobloxAiStudio-DevKit/
 ### 1.2 Technology Stack
 
 **Frontend**:
+
 - React 18.3.1
 - Vite 5.4.10
 - React Router DOM 6.21.0
@@ -89,12 +92,14 @@ RobloxAiStudio-DevKit/
 - Tailwind CSS 3.4.16
 
 **Backend**:
+
 - Node.js (TypeScript 5.6.3)
 - Express 4.18.2
 - Socket.IO 4.8.3
 - Prisma (ORM)
 
 **Build Tools**:
+
 - TypeScript 5.6.3
 - Vite 5.4.10
 - ESLint 10.6.0
@@ -109,12 +114,14 @@ RobloxAiStudio-DevKit/
 ### 2.1 Import Patterns
 
 **Frontend Imports**:
+
 - Components import from `src/components/`
 - Features import from `src/features/`
 - Services import from `src/services/`
 - No external SDK dependencies detected
 
 **Server Imports**:
+
 - Modular structure with clear domain boundaries
 - Routes import from respective service layers
 - No circular dependencies detected
@@ -123,6 +130,7 @@ RobloxAiStudio-DevKit/
 ### 2.2 External Dependencies
 
 **Critical Dependencies**:
+
 - None identified as critical risk
 - All dependencies are actively maintained
 - No deprecated packages detected
@@ -143,20 +151,20 @@ RobloxAiStudio-DevKit/
 
 ### 3.1 Critical Duplicates
 
-| Duplicate A | Duplicate B | Status | Action Required |
-|------------|-------------|--------|-----------------|
-| `RobloxAIStudioPlugin/` | `studio-plugin/` | Both exist | **Phase 2: Merge analysis required** |
-| `server/src/engine/GameGenerationEngine.ts` | `server/src/projects/services/game-generation.service.ts` | Engine is dead | Delete engine/ |
-| `server/src/pipeline/PipelineRunner.ts` | `server/src/execution/stepRunner.ts` | Pipeline is dead | Delete pipeline/ |
-| `server/src/llm/LLMProvider.ts` | `server/src/providers/*.ts` | llm/ is dead | Delete llm/ |
-| `server/src/governance/orchestrator.ts` | `server/src/agents/implementations/OrchestratorAgent.ts` | orchestrator.ts is dead | Delete orchestrator.ts |
+| Duplicate A                                 | Duplicate B                                               | Status                  | Action Required                      |
+| ------------------------------------------- | --------------------------------------------------------- | ----------------------- | ------------------------------------ |
+| `RobloxAIStudioPlugin/`                     | `studio-plugin/`                                          | Both exist              | **Phase 2: Merge analysis required** |
+| `server/src/engine/GameGenerationEngine.ts` | `server/src/projects/services/game-generation.service.ts` | Engine is dead          | Delete engine/                       |
+| `server/src/pipeline/PipelineRunner.ts`     | `server/src/execution/stepRunner.ts`                      | Pipeline is dead        | Delete pipeline/                     |
+| `server/src/llm/LLMProvider.ts`             | `server/src/providers/*.ts`                               | llm/ is dead            | Delete llm/                          |
+| `server/src/governance/orchestrator.ts`     | `server/src/agents/implementations/OrchestratorAgent.ts`  | orchestrator.ts is dead | Delete orchestrator.ts               |
 
 ### 3.2 Near-Duplicates (Naming Overlap)
 
-| Concept | Locations | Resolution |
-|---------|-----------|------------|
-| ProjectRegistry | `server/src/compiler/ProjectRegistry.ts` vs `server/src/projects/` | Different purposes - keep both |
-| BlueprintValidator | `server/src/generation/BlueprintValidator.ts` vs `server/src/projects/services/blueprint.validator.ts` | Different schemas - keep both |
+| Concept            | Locations                                                                                              | Resolution                     |
+| ------------------ | ------------------------------------------------------------------------------------------------------ | ------------------------------ |
+| ProjectRegistry    | `server/src/compiler/ProjectRegistry.ts` vs `server/src/projects/`                                     | Different purposes - keep both |
+| BlueprintValidator | `server/src/generation/BlueprintValidator.ts` vs `server/src/projects/services/blueprint.validator.ts` | Different schemas - keep both  |
 
 ---
 
@@ -164,28 +172,28 @@ RobloxAiStudio-DevKit/
 
 ### 4.1 Dead Code Inventory
 
-| File | Reason | Impact |
-|------|--------|--------|
-| `server/src/engine/GameGenerationEngine.ts` | Redundant composition root | Low |
-| `server/src/pipeline/PipelineRunner.ts` | Superseded by aiPipelineIntegrator | Low |
-| `server/src/execution/pipelineEngine.ts` | 3-line re-export shim | Low |
-| `server/src/execution/incrementalGenerator.ts` | Never imported | Low |
-| `server/src/governance/orchestrator.ts` | Speculative interfaces | Low |
-| `server/src/_quarantine/llm/LLMProvider.ts` | Superseded by providers/ | Low |
-| `vite.config.d.ts`, `vite.config.js`, `vite.config.js.map` | Build artifacts | Low (should be gitignored) |
-| `tsconfig.tsbuildinfo` | Build cache | Low (should be gitignored) |
-| `src/**/*.d.ts.map` | Generated artifacts | Low (should be gitignored) |
+| File                                                       | Reason                             | Impact                     |
+| ---------------------------------------------------------- | ---------------------------------- | -------------------------- |
+| `server/src/engine/GameGenerationEngine.ts`                | Redundant composition root         | Low                        |
+| `server/src/pipeline/PipelineRunner.ts`                    | Superseded by aiPipelineIntegrator | Low                        |
+| `server/src/execution/pipelineEngine.ts`                   | 3-line re-export shim              | Low                        |
+| `server/src/execution/incrementalGenerator.ts`             | Never imported                     | Low                        |
+| `server/src/governance/orchestrator.ts`                    | Speculative interfaces             | Low                        |
+| `server/src/_quarantine/llm/LLMProvider.ts`                | Superseded by providers/           | Low                        |
+| `vite.config.d.ts`, `vite.config.js`, `vite.config.js.map` | Build artifacts                    | Low (should be gitignored) |
+| `tsconfig.tsbuildinfo`                                     | Build cache                        | Low (should be gitignored) |
+| `src/**/*.d.ts.map`                                        | Generated artifacts                | Low (should be gitignored) |
 
 ### 4.2 Stale Documentation
 
-| Document | Status | Action |
-|----------|--------|--------|
-| `IMPLEMENTATION_COMPLETE.md` | Stale | Archive |
-| `IMPLEMENTATION_SUMMARY.md` | Stale | Archive |
-| `QUICK_REFERENCE.md` | Stale | Archive |
-| `TODO.md` | Unknown relevance | Review |
-| `docs/API.md` | Outdated | Update |
-| `docs/ARCHITECTURE.md` | Outdated | Update |
+| Document                     | Status            | Action  |
+| ---------------------------- | ----------------- | ------- |
+| `IMPLEMENTATION_COMPLETE.md` | Stale             | Archive |
+| `IMPLEMENTATION_SUMMARY.md`  | Stale             | Archive |
+| `QUICK_REFERENCE.md`         | Stale             | Archive |
+| `TODO.md`                    | Unknown relevance | Review  |
+| `docs/API.md`                | Outdated          | Update  |
+| `docs/ARCHITECTURE.md`       | Outdated          | Update  |
 
 ---
 
@@ -193,11 +201,11 @@ RobloxAiStudio-DevKit/
 
 ### 5.1 Identified Violations
 
-| Violation | Description | Severity |
-|-----------|-------------|----------|
-| `CompilerOrchestrator.ts` imports `AssemblyBuilder` directly | Should delegate through registry | LOW |
-| `CompilerAPI.ts` imports `ExecutionGuard` | Guard should be internal | LOW |
-| Root-level `agents/` exists alongside `server/src/agents/` | Confusing for developers | MEDIUM |
+| Violation                                                    | Description                      | Severity |
+| ------------------------------------------------------------ | -------------------------------- | -------- |
+| `CompilerOrchestrator.ts` imports `AssemblyBuilder` directly | Should delegate through registry | LOW      |
+| `CompilerAPI.ts` imports `ExecutionGuard`                    | Guard should be internal         | LOW      |
+| Root-level `agents/` exists alongside `server/src/agents/`   | Confusing for developers         | MEDIUM   |
 
 ### 5.2 Assessment
 
@@ -210,6 +218,7 @@ RobloxAiStudio-DevKit/
 ### 6.1 Current Configuration
 
 **Root tsconfig.json**:
+
 - Target: ES2020
 - Module: ESNext
 - Strict mode: Enabled
@@ -217,6 +226,7 @@ RobloxAiStudio-DevKit/
 - Include: `src/` only
 
 **Server tsconfig.json**:
+
 - Separate configuration for server
 - References root tsconfig
 
@@ -264,6 +274,7 @@ RobloxAiStudio-DevKit/
 ### 8.1 Security Findings
 
 Based on `SECURITY_PRODUCTION_AUDIT.md`:
+
 - Helmet middleware configured
 - Rate limiting configured
 - **Gap**: No security scanning in CI
@@ -281,10 +292,10 @@ Based on `SECURITY_PRODUCTION_AUDIT.md`:
 
 ### 9.1 Plugin Directories
 
-| Directory | Status | Purpose |
-|-----------|--------|---------|
-| `RobloxAIStudioPlugin/` | Legacy | Old plugin implementation |
-| `studio-plugin/` | Current | Current plugin implementation |
+| Directory               | Status  | Purpose                       |
+| ----------------------- | ------- | ----------------------------- |
+| `RobloxAIStudioPlugin/` | Legacy  | Old plugin implementation     |
+| `studio-plugin/`        | Current | Current plugin implementation |
 
 ### 9.2 Required Analysis (Phase 2)
 
@@ -326,28 +337,33 @@ Based on `SECURITY_PRODUCTION_AUDIT.md`:
 ## 11. RECOMMENDED MIGRATION PLAN
 
 ### Phase 0: Audit ✅ (IN PROGRESS)
+
 - Create MASTER_ARCHITECTURE_AUDIT.md
 - Create TECH_DEBT_MASTER.md
 - Analyze dependencies
 - Identify risks
 
 ### Phase 1: SDK Extraction ⚠️ **SKIP**
+
 - **Reason**: No `.kilo/@kilocode/sdk/` exists
 - SDK functionality is already in server modules
 
 ### Phase 2: Plugin Merge
+
 - Analyze `RobloxAIStudioPlugin/` vs `studio-plugin/`
 - Identify canonical version
 - Merge to `/plugin`
 - Update build pipeline
 
 ### Phase 3: Documentation Cleanup
+
 - Create centralized docs structure
 - Archive stale documents
 - Update outdated docs
 - Create migration guide
 
 ### Phase 4: Frontend Migration (Gradual)
+
 - Create FSD directory structure
 - Migrate components → widgets/shared
 - Migrate hooks → shared/hooks
@@ -357,6 +373,7 @@ Based on `SECURITY_PRODUCTION_AUDIT.md`:
 - **One module at a time**
 
 ### Phase 5: Server Refactor
+
 - Reorganize routes → api/
 - Extract business logic → services/
 - Consolidate database → db/
@@ -364,6 +381,7 @@ Based on `SECURITY_PRODUCTION_AUDIT.md`:
 - Implement Controller → Service → Database pattern
 
 ### Phase 6: Project Quality
+
 - Enhance CI/CD workflows
 - Add monitoring infrastructure
 - Add security scanning
@@ -375,13 +393,16 @@ Based on `SECURITY_PRODUCTION_AUDIT.md`:
 ## 12. RISK ASSESSMENT
 
 ### High Risk
+
 - None identified
 
 ### Medium Risk
+
 - Plugin merge without functional comparison
 - Frontend FSD migration without incremental validation
 
 ### Low Risk
+
 - Dead code removal (well-documented)
 - Documentation reorganization
 - Path alias configuration
@@ -391,6 +412,7 @@ Based on `SECURITY_PRODUCTION_AUDIT.md`:
 ## 13. SUCCESS CRITERIA
 
 ### After Migration
+
 - [ ] All tests pass
 - [ ] Build succeeds without errors
 - [ ] Type checking passes
@@ -401,6 +423,7 @@ Based on `SECURITY_PRODUCTION_AUDIT.md`:
 - [ ] No dead code remaining
 
 ### Performance Targets
+
 - [ ] Build time < 30s
 - [ ] Typecheck time < 10s
 - [ ] Test execution < 60s

@@ -1,4 +1,5 @@
 # EVENT FLOW VALIDATION
+
 **Generated**: 2026-07-13
 **Project**: Roblox AI Studio DevKit
 **Phase**: 2.5.F - Event Flow Validation
@@ -10,6 +11,7 @@
 This document describes the complete event lifecycle for the plugin, including connection events, sync events, and error events. It documents when events are fired, what payload they carry, and which components handle them.
 
 **Event System**: ✅ VALIDATED
+
 - **Total Events**: 8
 - **Event Sources**: ConnectionManager, SyncManager
 - **Event Handlers**: CommandPanel, plugin.lua
@@ -24,10 +26,12 @@ This document describes the complete event lifecycle for the plugin, including c
 **Fired By**: ConnectionManager:connect()
 
 **When Fired**:
+
 - On successful connection to backend
 - On successful reconnect
 
 **Payload**:
+
 ```lua
 {
     clientId = string,      -- Client ID from backend
@@ -37,10 +41,12 @@ This document describes the complete event lifecycle for the plugin, including c
 ```
 
 **Handled By**:
+
 - CommandPanel:_bindEvents() - Updates status label and session label
 - plugin.lua - Logs connection to console
 
 **Flow**:
+
 ```
 User clicks Connect
   → CommandPanel:_onConnect()
@@ -58,10 +64,12 @@ User clicks Connect
 **Fired By**: ConnectionManager:disconnect()
 
 **When Fired**:
+
 - On manual disconnect
 - On plugin unload
 
 **Payload**:
+
 ```lua
 {
     clientId = string,      -- Client ID before disconnect
@@ -69,10 +77,12 @@ User clicks Connect
 ```
 
 **Handled By**:
+
 - CommandPanel:_bindEvents() - Updates status label and session label
 - plugin.lua - Logs disconnect to console
 
 **Flow**:
+
 ```
 User clicks Disconnect
   → CommandPanel:_onDisconnect()
@@ -90,10 +100,12 @@ User clicks Disconnect
 **Fired By**: ConnectionManager:connect()
 
 **When Fired**:
+
 - On connection failure
 - On reconnect failure (after max attempts)
 
 **Payload**:
+
 ```lua
 {
     error = string,         -- Error message
@@ -101,10 +113,12 @@ User clicks Disconnect
 ```
 
 **Handled By**:
+
 - CommandPanel:_bindEvents() - Updates status label with error
 - plugin.lua - Logs failure to console
 
 **Flow**:
+
 ```
 Connection attempt fails
   → ConnectionManager:connect()
@@ -121,9 +135,11 @@ Connection attempt fails
 **Fired By**: ConnectionManager:_attemptReconnect()
 
 **When Fired**:
+
 - On each reconnect attempt
 
 **Payload**:
+
 ```lua
 {
     attempt = number,       -- Current attempt number (1-5)
@@ -131,9 +147,11 @@ Connection attempt fails
 ```
 
 **Handled By**:
+
 - CommandPanel:_bindEvents() - Updates status label with attempt number
 
 **Flow**:
+
 ```
 Heartbeat fails
   → ConnectionManager:_attemptReconnect()
@@ -150,9 +168,11 @@ Heartbeat fails
 **Fired By**: ConnectionManager:_attemptReconnect()
 
 **When Fired**:
+
 - When max reconnect attempts reached (5)
 
 **Payload**:
+
 ```lua
 {
     attempts = number,      -- Total attempts made (5)
@@ -160,10 +180,12 @@ Heartbeat fails
 ```
 
 **Handled By**:
+
 - ConnectionManager internal - Sets status to "failed"
 - ErrorReporter - Reports error
 
 **Flow**:
+
 ```
 Reconnect attempt 5 fails
   → ConnectionManager:_attemptReconnect()
@@ -181,9 +203,11 @@ Reconnect attempt 5 fails
 **Fired By**: SyncManager:syncProject()
 
 **When Fired**:
+
 - At start of sync operation
 
 **Payload**:
+
 ```lua
 {
     projectId = string,     -- Project ID being synced
@@ -191,9 +215,11 @@ Reconnect attempt 5 fails
 ```
 
 **Handled By**:
+
 - Currently no handlers (can be added for UI feedback)
 
 **Flow**:
+
 ```
 User clicks Sync Project
   → CommandPanel:_onSync()
@@ -209,10 +235,12 @@ User clicks Sync Project
 **Fired By**: SyncManager:syncProject()
 
 **When Fired**:
+
 - On successful sync completion
 - On empty project sync (0 artifacts)
 
 **Payload**:
+
 ```lua
 {
     projectId = string,     -- Project ID synced
@@ -221,10 +249,12 @@ User clicks Sync Project
 ```
 
 **Handled By**:
+
 - CommandPanel:_bindEvents() - Updates sync label with time and count
 - plugin.lua - Logs sync completion to console
 
 **Flow**:
+
 ```
 Artifacts loaded
   → SyncManager:syncProject()
@@ -240,10 +270,12 @@ Artifacts loaded
 **Fired By**: SyncManager:syncProject()
 
 **When Fired**:
+
 - On snapshot request failure
 - On artifact transfer failure
 
 **Payload**:
+
 ```lua
 {
     error = string,         -- Error message
@@ -251,9 +283,11 @@ Artifacts loaded
 ```
 
 **Handled By**:
+
 - Currently no handlers (can be added for UI feedback)
 
 **Flow**:
+
 ```
 Sync request fails
   → SyncManager:syncProject()
@@ -270,9 +304,11 @@ Sync request fails
 **Fired By**: Not currently implemented
 
 **When Fired**:
+
 - When a script is created (deferred to ArtifactLoader)
 
 **Payload**:
+
 ```lua
 {
     name = string,          -- Script name
@@ -280,6 +316,7 @@ Sync request fails
 ```
 
 **Handled By**:
+
 - plugin.lua - Logs script creation to console
 
 **Note**: Event handler registered in plugin.lua but not currently fired
@@ -291,9 +328,11 @@ Sync request fails
 **Fired By**: Not currently implemented
 
 **When Fired**:
+
 - When a script is updated (deferred to ArtifactLoader)
 
 **Payload**:
+
 ```lua
 {
     name = string,          -- Script name
@@ -301,6 +340,7 @@ Sync request fails
 ```
 
 **Handled By**:
+
 - plugin.lua - Logs script update to console
 
 **Note**: Event handler registered in plugin.lua but not currently fired
@@ -314,6 +354,7 @@ Sync request fails
 **Location**: CommandPanel:_bindEvents()
 
 **Registered Handlers**:
+
 ```lua
 events:on("STUDIO_CONNECTED", function(payload)
     -- Update status to green
@@ -347,6 +388,7 @@ end)
 **Location**: plugin.lua (Event Logging section)
 
 **Registered Handlers**:
+
 ```lua
 events:on("STUDIO_CONNECTED", function(payload)
     -- Log connection to console
@@ -538,6 +580,7 @@ end)
 ### 7.1 Events Summary
 
 **Connection Events**: 5
+
 - STUDIO_CONNECTED
 - STUDIO_DISCONNECTED
 - CONNECTION_FAILED
@@ -545,11 +588,13 @@ end)
 - RECONNECT_FAILED
 
 **Sync Events**: 3
+
 - PROJECT_SYNC_STARTED
 - PROJECT_SYNC_COMPLETED
 - PROJECT_SYNC_FAILED
 
 **Script Events**: 2 (deferred)
+
 - SCRIPT_CREATED
 - SCRIPT_UPDATED
 
@@ -565,6 +610,7 @@ end)
 ### 7.3 Validation Status
 
 **Event Flow**: ✅ VALIDATED
+
 - All events documented
 - All payloads documented
 - All handlers documented
