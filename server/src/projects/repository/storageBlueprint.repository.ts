@@ -121,22 +121,16 @@ export class StorageBlueprintRepository implements IBlueprintRepository {
       );
     }
     if (options.status) {
-      items = items.filter(
-        (blueprint) => blueprint.status === options.status,
-      );
+      items = items.filter((blueprint) => blueprint.status === options.status);
     }
 
     const sortBy = options.sort_by ?? "created_at";
     const direction = options.sort_order === "asc" ? 1 : -1;
     items.sort((left, right) => {
       const leftValue =
-        sortBy === "status"
-          ? left.status
-          : this.asTimestamp(left[sortBy]);
+        sortBy === "status" ? left.status : this.asTimestamp(left[sortBy]);
       const rightValue =
-        sortBy === "status"
-          ? right.status
-          : this.asTimestamp(right[sortBy]);
+        sortBy === "status" ? right.status : this.asTimestamp(right[sortBy]);
       if (leftValue < rightValue) return -1 * direction;
       if (leftValue > rightValue) return 1 * direction;
       return 0;
@@ -242,8 +236,7 @@ export class StorageBlueprintRepository implements IBlueprintRepository {
       )
       .map((execution) => this.hydrateExecution(execution))
       .sort(
-        (left, right) =>
-          right.started_at.getTime() - left.started_at.getTime(),
+        (left, right) => right.started_at.getTime() - left.started_at.getTime(),
       );
   }
 
@@ -340,9 +333,7 @@ export class StorageBlueprintRepository implements IBlueprintRepository {
         : undefined,
       pipeline_steps: execution.pipeline_steps.map((step) => ({
         ...step,
-        started_at: step.started_at
-          ? this.asDate(step.started_at)
-          : undefined,
+        started_at: step.started_at ? this.asDate(step.started_at) : undefined,
         completed_at: step.completed_at
           ? this.asDate(step.completed_at)
           : undefined,
