@@ -2,7 +2,7 @@
 
 **Repository:** `kazakovak2001-lgtm/RobloxAIStudio2`
 
-**Status:** Implemented on draft branch; CI validation pending
+**Status:** Implemented and validated on draft PR #9
 
 ## Objective
 
@@ -39,7 +39,7 @@ The runtime owns:
 
 ### Compatibility manager becomes a facade
 
-`StudioIntegrationManager` retains its existing public connection, session, metrics, validation, and synchronization methods, but no longer creates its own bridge, registry, synchronizer, or diff state.
+`StudioIntegrationManager` retains its existing public construction, connection, session, metrics, validation, and synchronization methods, but no longer creates its own bridge, registry, synchronizer, or diff state.
 
 New project synchronization calls `synchronizeExecution(studioId, projectId, executionId)`. The compatibility `synchronize(GenerationPackage)` path records a supplied real package into the canonical artifact store and queues it through the same v2 command transport.
 
@@ -79,10 +79,25 @@ Queueing is not treated as proof that Roblox Studio imported the artifacts. Plug
 - one runtime owns artifacts, sessions, and commands;
 - a real Lua output is present unchanged in the queued export payload;
 - no `studio-sync-fallback` or placeholder script content is introduced;
-- project snapshot lookup resolves to the durable execution after queueing;
+- project snapshot lookup and sync status resolve to the durable execution after queueing;
 - command polling drains the queue and records delivery metadata;
 - disconnected clients, project mismatches, and artifact-free executions are rejected;
 - the compatibility manager and v2 runtime observe the same session and artifact state.
+
+## CI Validation
+
+The draft PR passed:
+
+- root and server TypeScript checks;
+- ESLint with zero warnings;
+- repository Prettier check;
+- the complete Vitest suite;
+- repository architecture and boundary validation;
+- conventional commit lint;
+- strict PostgreSQL close/recreate/reload acceptance;
+- the aggregate merge gate.
+
+Temporary formatting/test diagnostic steps were removed after use; the final branch uses the unchanged canonical CI workflow from `feature/plugin-merge`.
 
 ## Preserved Contracts
 
