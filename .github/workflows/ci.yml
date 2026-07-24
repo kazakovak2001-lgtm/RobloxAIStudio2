@@ -46,7 +46,23 @@ jobs:
           node-version: "22"
           cache: "npm"
       - run: npm ci
-      - run: npm run format:check
+      - name: Check formatting
+        run: npm run format:check
+      - name: Prepare documentation formatting
+        if: failure()
+        run: |
+          npm run format
+          git diff --name-only --diff-filter=ACMRT > formatted-files.txt
+          tar -czf formatted-files.tgz -T formatted-files.txt
+      - name: Publish documentation formatting
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: studio-1c-docs-formatted-${{ github.sha }}
+          path: |
+            formatted-files.txt
+            formatted-files.tgz
+          retention-days: 2
 
   test:
     name: Test Suite
