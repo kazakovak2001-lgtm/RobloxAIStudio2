@@ -65,7 +65,9 @@ export class StudioRuntime {
     this.timeoutMonitor = setInterval(() => {
       const expired = this.sessions.checkTimeouts();
       for (const sessionId of expired) {
-        console.log(`[studio] Session ${sessionId} expired (heartbeat timeout)`);
+        console.log(
+          `[studio] Session ${sessionId} expired (heartbeat timeout)`,
+        );
       }
     }, intervalMs);
     const monitor = this.timeoutMonitor as ReturnType<typeof setInterval> & {
@@ -204,11 +206,7 @@ export class StudioRuntime {
       const artifactCount = Array.isArray(latestExport.payload.artifacts)
         ? latestExport.payload.artifacts.length
         : 0;
-      this.sessions.recordDeliveredExport(
-        clientId,
-        executionId,
-        artifactCount,
-      );
+      this.sessions.recordDeliveredExport(clientId, executionId, artifactCount);
     }
     return commands;
   }
