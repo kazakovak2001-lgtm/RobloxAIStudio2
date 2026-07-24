@@ -18,8 +18,9 @@ describe("STUDIO-1d canonical Roblox plugin contract", () => {
     expect(entry).toContain(
       "SyncManager.new(studioConnector, artifactLoader, events, errorReporter)",
     );
-    expect(entry.indexOf("local errorReporter = ErrorReporter.new()"))
-      .toBeGreaterThan(-1);
+    expect(
+      entry.indexOf("local errorReporter = ErrorReporter.new()"),
+    ).toBeGreaterThan(-1);
     expect(
       entry.indexOf("local artifactLoader = ArtifactLoader.new(errorReporter)"),
     ).toBeGreaterThan(
