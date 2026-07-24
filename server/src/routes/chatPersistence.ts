@@ -6,12 +6,11 @@ import {
 } from "../services/ChatPersistenceService";
 import type { ProjectAccessControl } from "./projects";
 
-const chatPersistence = new ChatPersistenceService();
-
 export function createChatPersistenceRouter(
   access: ProjectAccessControl,
 ): Router {
   const router = Router();
+  const chatPersistence = new ChatPersistenceService();
 
   router.get("/:projectId/history", (req, res) => {
     try {

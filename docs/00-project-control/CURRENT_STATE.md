@@ -1,8 +1,8 @@
 # Current Project State
 
 **Last Updated**: July 24, 2026
-**Phase**: CORE-1a — Durable Identity, Projects, and Project Contracts
-**Build Status**: Clean Node.js 22 / npm 10 backend CI passes (62 files / 709 tests); standalone frontend typecheck and production build pass
+**Phase**: WORKSPACE-1 — Workflow-Oriented Standalone Workspace Audit and Design
+**Build Status**: Backend CI is green on Node.js 22 / npm 10, including the full test suite and real PostgreSQL restart acceptance; standalone frontend typecheck and production build pass
 
 ---
 
@@ -15,6 +15,7 @@
 - **API Routes**: 28 registered endpoint groups (+ health, root)
 - **AI Providers**: 7 (OpenAI, Anthropic, Gemini, Groq, Ollama, OpenRouter, Mock)
 - **Storage**: One configured provider per process; PostgreSQL migrations and cache hydration complete before the server listens. `STORAGE_PROVIDER=postgres` requires `DATABASE_URL`.
+- **Durable records**: identities, sessions, users, projects, generation history, API keys, blueprints, blueprint versions, generation executions, conversations, and conversation messages use the configured storage boundary.
 - **Real-time**: Socket.io with 50+ event types, project rooms, JWT-authenticated handshake (production)
 - **Authentication**: bcrypt password hashing (cost 12), storage-backed sessions/roles, cryptographic validation, httpOnly cookie delivery
 
@@ -24,6 +25,7 @@
 - **Framework**: React 19 + TypeScript + Vite + Tailwind CSS
 - **Routing and state**: TanStack Router/Query, typed backend adapter, Socket.IO realtime client
 - **Ownership**: All new user-facing web functionality belongs in the standalone repository.
+- **Current Workspace**: `/projects/$projectId` already contains overview, modules, manifest, chat, agents, live logs, settings, and export surfaces. WORKSPACE-1 will reorganize and connect these existing surfaces rather than create a parallel Workspace.
 
 ### Legacy Frontend
 
@@ -43,25 +45,29 @@
 
 ## Completed Phases
 
-| Phase            | Description                         | Date          |
-| ---------------- | ----------------------------------- | ------------- |
-| UX-3             | Initial Implementation              | July 2026     |
-| UX-3A            | Forensic Audit                      | July 2026     |
-| UX-3B            | Architecture Stabilization Planning | July 2026     |
-| UX-3C            | Execution Planning                  | July 2026     |
-| UX-3D Sprint 1   | Duplicate Consolidation             | July 15, 2026 |
-| UX-3D Sprint 2   | shared/ui Migration                 | July 15, 2026 |
-| UX-3D Sprint 3   | Repository Structure Execution      | July 15, 2026 |
-| UX-3D Sprint 4   | Import & Path Alias Migration       | July 15, 2026 |
-| UX-3D Sprint 5   | Legacy Cleanup                      | July 15, 2026 |
-| UX-3D Sprint 6   | Design System Enforcement           | July 15, 2026 |
-| UX-3D Sprint 7   | Documentation Synchronization       | July 15, 2026 |
-| UX-3D Sprint 8   | Final Validation & Closure          | July 15, 2026 |
-| UX-4 Preparation | Development Readiness               | July 15, 2026 |
-| UX-4.0           | Product Roadmap Definition          | July 15, 2026 |
-| UX-4 Phase 1     | Must Have Features (F-1, F-2, F-3)  | July 15, 2026 |
-| UX-4 Phase 2A    | Should Have Features (F-4 to F-8)   | July 15, 2026 |
-| UX-4 Phase 2B    | Infrastructure (F-9, F-10, F-11)    | July 15, 2026 |
+| Phase            | Description                                       | Date          |
+| ---------------- | ------------------------------------------------- | ------------- |
+| UX-3             | Initial Implementation                            | July 2026     |
+| UX-3A            | Forensic Audit                                    | July 2026     |
+| UX-3B            | Architecture Stabilization Planning               | July 2026     |
+| UX-3C            | Execution Planning                                | July 2026     |
+| UX-3D Sprint 1   | Duplicate Consolidation                           | July 15, 2026 |
+| UX-3D Sprint 2   | shared/ui Migration                               | July 15, 2026 |
+| UX-3D Sprint 3   | Repository Structure Execution                    | July 15, 2026 |
+| UX-3D Sprint 4   | Import & Path Alias Migration                     | July 15, 2026 |
+| UX-3D Sprint 5   | Legacy Cleanup                                    | July 15, 2026 |
+| UX-3D Sprint 6   | Design System Enforcement                         | July 15, 2026 |
+| UX-3D Sprint 7   | Documentation Synchronization                     | July 15, 2026 |
+| UX-3D Sprint 8   | Final Validation & Closure                        | July 15, 2026 |
+| UX-4 Preparation | Development Readiness                             | July 15, 2026 |
+| UX-4.0           | Product Roadmap Definition                        | July 15, 2026 |
+| UX-4 Phase 1     | Must Have Features (F-1, F-2, F-3)                | July 15, 2026 |
+| UX-4 Phase 2A    | Should Have Features (F-4 to F-8)                 | July 15, 2026 |
+| UX-4 Phase 2B    | Infrastructure (F-9, F-10, F-11)                  | July 15, 2026 |
+| CUTOVER-0        | Standalone frontend governance                    | July 24, 2026 |
+| CI-BASELINE-1    | Portable CI and repository hygiene                | July 24, 2026 |
+| CORE-1a          | Durable identity, projects, and ownership         | July 24, 2026 |
+| CORE-1b          | Durable blueprints, executions, chat, restart E2E | July 24, 2026 |
 
 ---
 
@@ -132,16 +138,16 @@
 
 ## Known Problems
 
-1. **ESLint Config**: v10 installed with legacy .eslintrc.json format (functional but deprecated config style)
-2. **Core data path**: identity, projects, and generation history use the configured storage provider (CORE-1a). Blueprints and chat still need a verified persistent end-to-end path (CORE-1b).
-3. **Workflow fidelity**: several standalone Workspace operations currently use structural fixtures or fallback artifacts and must be connected to real generated project data (CORE-1 / STUDIO-1).
-4. **PostgreSQL restart acceptance**: the provider is fail-fast and unit/smoke validated, but a running PostgreSQL restart test is still required with blueprints and chat in CORE-1b.
+1. **ESLint Config**: v10 installed with legacy `.eslintrc.json` format (functional but deprecated config style).
+2. **Workspace information architecture**: the canonical project route exposes eight tabs and `WorkspaceModules` exposes many backend domains as an undifferentiated module grid. The data is connected, but the workflow is fragmented and operational priority is unclear.
+3. **Workspace data presentation**: several module actions render raw JSON payloads instead of stable, task-oriented views; loading, refresh, history, and failure recovery are repeated inside one large component.
+4. **Studio artifact fidelity**: Studio synchronization must be validated against real generated artifact packages during STUDIO-1, not temporary or fallback payloads.
 
 ---
 
 ## Technical Debt (2 items)
 
-1. **Minimal frontend test coverage** (MEDIUM) — Foundation established (22 tests for analyticsApi + aiEngine). Expand coverage incrementally.
+1. **Minimal frontend test coverage** (MEDIUM) — Foundation established. Expand coverage incrementally around the canonical Workspace route and backend adapter.
 2. **Missing JSDoc** (MEDIUM) — Components and services lack JSDoc documentation.
 
 ---
@@ -172,36 +178,7 @@ This template enforces:
 
 ## Last Changes
 
-- July 24, 2026: CORE-1a implemented — one configured storage provider now backs identities, users, projects, generation history, and API keys; project ownership is mandatory and browser patches are allow-listed. Full backend CI passes (62 files / 709 tests) and HTTP ownership smoke coverage passed. See `CORE-1A_DURABLE_PROJECTS.md`.
+- July 24, 2026: CORE-1b verified — blueprints, versions, generation executions, conversations, and messages now use the configured storage boundary. GitHub Actions passed TypeScript, lint, formatting, full tests, repository validation, commitlint, real PostgreSQL restart recovery, ownership isolation, and the merge gate. See `CORE-1B_DURABLE_RUNTIME.md`.
+- July 24, 2026: CORE-1a implemented — one configured storage provider now backs identities, users, projects, generation history, and API keys; project ownership is mandatory and browser patches are allow-listed. See `CORE-1A_DURABLE_PROJECTS.md`.
 - July 24, 2026: CUTOVER-0 and CI-BASELINE-1 merged — governance and portable CI are complete on the active backend integration branch; the standalone frontend CI is merged on `main`.
-- July 24, 2026: CI-BASELINE-1 prepared — synchronized lockfiles, standardized Node.js 22, removed tracked generated dependencies, formatted the inherited baseline, and verified clean backend CI (706 tests)
-- July 24, 2026: CUTOVER-0 started — standalone `Frontend` declared canonical, embedded `src/` frontend frozen, CI alignment initiated, and cross-repository delivery gates documented
-- July 16, 2026: Autonomous Pipeline real-time integration complete — events emitted via PipelineEventEmitter, AgentBoard shows phases live, Socket.IO primary transport with polling fallback, step.failed handling added
-- July 16, 2026: Checkpoint — all tests pass (Task 12) — tsc ✅, vite build ✅, vitest 652/654 pass (2 pre-existing), all PBT pass, security source-code verified, FINAL_V1_RELEASE_SIGN_OFF.md generated
-- July 16, 2026: Final verification & release report (Task 11) — All tests pass, security verified, RELEASE_HARDENING_REPORT.md + V1_RELEASE_NOTES.md + SECURITY_FINAL_AUDIT.md + V1_RELEASE_CHECKLIST.md created
-- July 16, 2026: Production infrastructure (Task 10) — Dockerfile, migration runner, nginx, backup script, docker-compose
-- July 16, 2026: Documentation synchronization (Task 9) — corrected all stale claims, updated metrics
-- July 16, 2026: Dead code removal (Task 8) — removed AiEngineDemoPage, hooks, cn.ts, types/index.ts, studioService
-- July 16, 2026: Socket.IO JWT handshake validation (Task 7) — production connections now validated
-- July 16, 2026: JWT cryptographic validation (Task 6) — authMiddleware validates tokens via AuthService
-- July 16, 2026: httpOnly cookie token delivery (Task 5) — tokens no longer stored in localStorage
-- July 16, 2026: bcrypt password hashing (Task 4) — SHA-256 replaced with bcrypt cost 12
-- July 16, 2026: Auth route fix (Task 3) — PUBLIC_PREFIXES now includes /api/platform/auth
-- July 15, 2026: Security Release Audit — score 7/10, 5 critical findings documented
-- July 15, 2026: Final v1.0 Reality Audit — found 14 discrepancies, 1 critical auth middleware bug
-- July 15, 2026: F-11 Persistent Storage implemented
-- July 15, 2026: F-10 Real Authentication implemented
-- July 15, 2026: F-9 Multi-Project implemented
-- July 15, 2026: All Phase 2A features (F-4 through F-8) completed
-- July 15, 2026: All Phase 1 features (F-1, F-2, F-3) completed
-
-## Last Audit
-
-- **Date**: July 16, 2026
-- **Type**: Checkpoint — All Tests Pass (Release Hardening Task 12)
-- **Action**: Full build verification, complete test suite run, source-code security audit, infrastructure confirmation, sign-off document generation
-- **Results**: tsc ✅ | vite build ✅ | vitest 652/654 pass (2 pre-existing) | Bug condition PBT 7/7 ✅ | Preservation PBT 42/42 ✅ | Security Hardening 10/10 ✅
-- **Release Readiness**: 9/10 — READY for production
-- **Previous Date**: July 16, 2026
-- **Previous Type**: Final Verification & Release Report (Release Hardening Task 11)
-- **Report**: `RELEASE_HARDENING_REPORT.md`, `docs/SECURITY_FINAL_AUDIT.md`
+- July 16, 2026: Autonomous Pipeline real-time integration complete — events emitted via PipelineEventEmitter, AgentBoard shows phases live, Socket.IO primary transport with polling fallback, step.failed handling added.
