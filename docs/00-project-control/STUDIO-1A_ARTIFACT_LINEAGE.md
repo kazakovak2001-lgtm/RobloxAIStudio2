@@ -41,19 +41,19 @@ Without a configured or injected provider, the previous in-memory behavior remai
 
 `GenerationArtifactRecorder` maps completed `TaskGraph` nodes to the existing pipeline stage vocabulary:
 
-| Canonical agent | Existing artifact stage |
-| --- | --- |
-| requirements | REQUIREMENTS |
-| planner | REQUEST |
-| game_designer | GAME_DESIGN |
-| roblox_architect | ARCHITECTURE |
-| asset_planner | ASSET_PLANNING |
-| lua_generator | LUA_GENERATION |
-| ui_generator | UI_GENERATION |
-| tester | VALIDATION |
-| performance | OPTIMIZATION |
-| documentation | DOCUMENTATION |
-| orchestrator | EXPORT |
+| Canonical agent  | Existing artifact stage |
+| ---------------- | ----------------------- |
+| requirements     | REQUIREMENTS            |
+| planner          | REQUEST                 |
+| game_designer    | GAME_DESIGN             |
+| roblox_architect | ARCHITECTURE            |
+| asset_planner    | ASSET_PLANNING          |
+| lua_generator    | LUA_GENERATION          |
+| ui_generator     | UI_GENERATION           |
+| tester           | VALIDATION              |
+| performance      | OPTIMIZATION            |
+| documentation    | DOCUMENTATION           |
+| orchestrator     | EXPORT                  |
 
 Only nodes with `status === "done"` and a real `output` are stored. Failed, skipped, incomplete, or unmapped tasks do not produce synthetic artifacts.
 
