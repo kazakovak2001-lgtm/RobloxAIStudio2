@@ -30,6 +30,12 @@ export class StudioSessionManager {
    * Create a session for a connected client.
    */
   create(client: StudioClient): BridgeSession {
+    const previousSessionId = this.clientToSession.get(client.clientId);
+    if (previousSessionId) {
+      const previousSession = this.sessions.get(previousSessionId);
+      if (previousSession) previousSession.status = "closed";
+    }
+
     const session: BridgeSession = {
       sessionId: `session-${randomUUID().slice(0, 10)}`,
       clientId: client.clientId,
