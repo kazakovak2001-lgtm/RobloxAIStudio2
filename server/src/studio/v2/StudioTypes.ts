@@ -24,11 +24,7 @@ export type StudioCommandType =
   | "RUN_TEST"
   | "EXPORT_PROJECT";
 export type CommandStatus =
-  | "pending"
-  | "sent"
-  | "acknowledged"
-  | "completed"
-  | "failed";
+  "pending" | "sent" | "acknowledged" | "completed" | "failed";
 
 export interface StudioArtifactReceipt {
   artifactId: string;

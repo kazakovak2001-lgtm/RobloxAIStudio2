@@ -296,11 +296,7 @@ export class StudioRuntime {
     if (!acknowledged.success) return acknowledged;
     const executionId = String(acknowledged.command.payload.executionId ?? "");
     const projectId = String(acknowledged.command.payload.projectId ?? "");
-    this.sessions.recordAcknowledgedExport(
-      clientId,
-      commandId,
-      executionId,
-    );
+    this.sessions.recordAcknowledgedExport(clientId, commandId, executionId);
     this.bridge.events.emit({
       type: "export.started",
       clientId,
@@ -323,7 +319,8 @@ export class StudioRuntime {
       return {
         success: false,
         reason: "invalid_status",
-        message: "Studio command must be acknowledged before reporting a result.",
+        message:
+          "Studio command must be acknowledged before reporting a result.",
         command: command ?? undefined,
       };
     }
