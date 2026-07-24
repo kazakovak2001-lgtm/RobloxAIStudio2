@@ -12,6 +12,11 @@ export interface BridgeSession {
   studioVersion: string;
   createdAt: number;
   lastActivity: number;
+  lastQueuedAt?: number;
+  lastSyncAt?: number;
+  syncCount: number;
+  lastExecutionId?: string;
+  lastArtifactCount?: number;
   status: "active" | "expired" | "closed";
 }
 
@@ -32,6 +37,7 @@ export class StudioSessionManager {
       studioVersion: client.studioVersion,
       createdAt: Date.now(),
       lastActivity: Date.now(),
+      syncCount: 0,
       status: "active",
     };
     this.sessions.set(session.sessionId, session);
@@ -57,11 +63,37 @@ export class StudioSessionManager {
    * Record activity (heartbeat).
    */
   recordActivity(clientId: string): boolean {
-    const sessionId = this.clientToSession.get(clientId);
-    if (!sessionId) return false;
-    const session = this.sessions.get(sessionId);
+    const session = this.getByClient(clientId);
     if (!session || session.status !== "active") return false;
     session.lastActivity = Date.now();
+    return true;
+  }
+
+  recordQueuedExport(
+    clientId: string,
+    executionId: string,
+    artifactCount: number,
+  ): boolean {
+    const session = this.getByClient(clientId);
+    if (!session || session.status !== "active") return false;
+    session.lastQueuedAt = Date.now();
+    session.syncCount += 1;
+    session.lastExecutionId = executionId;
+    session.lastArtifactCount = artifactCount;
+    return true;
+  }
+
+  recordDeliveredExport(
+    clientId: string,
+    executionId: string,
+    artifactCount: number,
+  ): boolean {
+    const session = this.getByClient(clientId);
+    if (!session || session.status !== "active") return false;
+    session.lastActivity = Date.now();
+    session.lastSyncAt = Date.now();
+    if (executionId) session.lastExecutionId = executionId;
+    session.lastArtifactCount = artifactCount;
     return true;
   }
 
