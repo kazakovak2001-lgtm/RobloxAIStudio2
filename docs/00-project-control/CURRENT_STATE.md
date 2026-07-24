@@ -45,28 +45,28 @@
 
 ## Completed Phases
 
-| Phase            | Description                                      | Date          |
-| ---------------- | ------------------------------------------------ | ------------- |
-| UX-3             | Initial Implementation                           | July 2026     |
-| UX-3A            | Forensic Audit                                   | July 2026     |
-| UX-3B            | Architecture Stabilization Planning              | July 2026     |
-| UX-3C            | Execution Planning                               | July 2026     |
-| UX-3D Sprint 1   | Duplicate Consolidation                          | July 15, 2026 |
-| UX-3D Sprint 2   | shared/ui Migration                              | July 15, 2026 |
-| UX-3D Sprint 3   | Repository Structure Execution                   | July 15, 2026 |
-| UX-3D Sprint 4   | Import & Path Alias Migration                    | July 15, 2026 |
-| UX-3D Sprint 5   | Legacy Cleanup                                   | July 15, 2026 |
-| UX-3D Sprint 6   | Design System Enforcement                        | July 15, 2026 |
-| UX-3D Sprint 7   | Documentation Synchronization                    | July 15, 2026 |
-| UX-3D Sprint 8   | Final Validation & Closure                       | July 15, 2026 |
-| UX-4 Preparation | Development Readiness                            | July 15, 2026 |
-| UX-4.0           | Product Roadmap Definition                       | July 15, 2026 |
-| UX-4 Phase 1     | Must Have Features (F-1, F-2, F-3)               | July 15, 2026 |
-| UX-4 Phase 2A    | Should Have Features (F-4 to F-8)                | July 15, 2026 |
-| UX-4 Phase 2B    | Infrastructure (F-9, F-10, F-11)                 | July 15, 2026 |
-| CUTOVER-0        | Standalone frontend governance                   | July 24, 2026 |
-| CI-BASELINE-1    | Portable CI and repository hygiene               | July 24, 2026 |
-| CORE-1a          | Durable identity, projects, and ownership        | July 24, 2026 |
+| Phase            | Description                                       | Date          |
+| ---------------- | ------------------------------------------------- | ------------- |
+| UX-3             | Initial Implementation                            | July 2026     |
+| UX-3A            | Forensic Audit                                    | July 2026     |
+| UX-3B            | Architecture Stabilization Planning               | July 2026     |
+| UX-3C            | Execution Planning                                | July 2026     |
+| UX-3D Sprint 1   | Duplicate Consolidation                           | July 15, 2026 |
+| UX-3D Sprint 2   | shared/ui Migration                               | July 15, 2026 |
+| UX-3D Sprint 3   | Repository Structure Execution                    | July 15, 2026 |
+| UX-3D Sprint 4   | Import & Path Alias Migration                     | July 15, 2026 |
+| UX-3D Sprint 5   | Legacy Cleanup                                    | July 15, 2026 |
+| UX-3D Sprint 6   | Design System Enforcement                         | July 15, 2026 |
+| UX-3D Sprint 7   | Documentation Synchronization                     | July 15, 2026 |
+| UX-3D Sprint 8   | Final Validation & Closure                        | July 15, 2026 |
+| UX-4 Preparation | Development Readiness                             | July 15, 2026 |
+| UX-4.0           | Product Roadmap Definition                        | July 15, 2026 |
+| UX-4 Phase 1     | Must Have Features (F-1, F-2, F-3)                | July 15, 2026 |
+| UX-4 Phase 2A    | Should Have Features (F-4 to F-8)                 | July 15, 2026 |
+| UX-4 Phase 2B    | Infrastructure (F-9, F-10, F-11)                  | July 15, 2026 |
+| CUTOVER-0        | Standalone frontend governance                    | July 24, 2026 |
+| CI-BASELINE-1    | Portable CI and repository hygiene                | July 24, 2026 |
+| CORE-1a          | Durable identity, projects, and ownership         | July 24, 2026 |
 | CORE-1b          | Durable blueprints, executions, chat, restart E2E | July 24, 2026 |
 
 ---
