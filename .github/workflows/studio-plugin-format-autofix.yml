@@ -1,14 +1,13 @@
-name: Studio Plugin Documentation Format Autofix
+name: Studio Plugin Format Autofix
 
 on:
-  push:
-    branches: [studio-1d-real-plugin-acceptance]
+  pull_request:
 
 permissions:
   contents: write
 
 concurrency:
-  group: studio-plugin-format-autofix
+  group: studio-plugin-format-autofix-${{ github.event.pull_request.number }}
   cancel-in-progress: true
 
 jobs:
