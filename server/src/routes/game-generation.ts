@@ -1,7 +1,10 @@
 import { Router } from "express";
 import { GameGenerationService } from "../projects/services/game-generation.service";
 import type { GenerationExecution } from "../projects/types/blueprint";
-import type { StudioRuntime } from "../studio/v2/StudioRuntime";
+import {
+  getStudioRuntime,
+  type StudioRuntime,
+} from "../studio/v2/StudioRuntime";
 import type { ProjectRuntime } from "./projects";
 
 type StudioConnectionStatus =
@@ -31,8 +34,9 @@ interface StudioSyncResult extends StudioConnectionInfo {
 
 export function createGameGenerationRouter(
   gameService: GameGenerationService,
-  studioRuntime: StudioRuntime,
+  _legacyStudioManager: unknown,
   projectRuntime: ProjectRuntime,
+  studioRuntime: StudioRuntime = getStudioRuntime(),
 ): Router {
   const router = Router();
   const { projectRepository, generationHistory, access } = projectRuntime;
