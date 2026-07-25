@@ -2,7 +2,7 @@
 
 **Repository:** `kazakovak2001-lgtm/RobloxAIStudio2`
 
-**Status:** Installable package automation implemented; human-run Roblox Studio evidence pending
+**Status:** Deterministic package automation and CI artifact verified; human-run Roblox Studio evidence pending
 
 ## Objective
 
@@ -224,40 +224,40 @@ The acceptance response must contain:
 
 ## Required Evidence Record
 
-| Field | Required value |
-| --- | --- |
-| Acceptance date and local timezone | Exact timestamp |
-| Operating system | Windows or macOS version |
-| Roblox Studio version | Version shown by Studio |
-| Package artifact name | GitHub artifact or local build reference |
-| Bundle SHA-256 | Verified 64-character hash |
-| Backend commit | Exact commit SHA |
-| Frontend commit | Exact commit SHA |
-| Project ID | Exact canonical project ID |
-| Studio client/session ID | Connected session identifiers |
-| Durable execution ID | Completed generation execution |
-| Export command ID | Queued `EXPORT_PROJECT` command |
-| Expected artifact count | Snapshot count |
-| Verified artifact count | Status response count |
-| Plugin panel evidence | Connected, applying, and Verified screenshots |
-| Explorer evidence | Generated scripts and metadata hierarchy |
-| Status evidence | Full authenticated status JSON |
-| Backend log evidence | Connection, queue, acknowledgement, and completion lines |
+| Field                              | Required value                                           |
+| ---------------------------------- | -------------------------------------------------------- |
+| Acceptance date and local timezone | Exact timestamp                                          |
+| Operating system                   | Windows or macOS version                                 |
+| Roblox Studio version              | Version shown by Studio                                  |
+| Package artifact name              | GitHub artifact or local build reference                 |
+| Bundle SHA-256                     | Verified 64-character hash                               |
+| Backend commit                     | Exact commit SHA                                         |
+| Frontend commit                    | Exact commit SHA                                         |
+| Project ID                         | Exact canonical project ID                               |
+| Studio client/session ID           | Connected session identifiers                            |
+| Durable execution ID               | Completed generation execution                           |
+| Export command ID                  | Queued `EXPORT_PROJECT` command                          |
+| Expected artifact count            | Snapshot count                                           |
+| Verified artifact count            | Status response count                                    |
+| Plugin panel evidence              | Connected, applying, and Verified screenshots            |
+| Explorer evidence                  | Generated scripts and metadata hierarchy                 |
+| Status evidence                    | Full authenticated status JSON                           |
+| Backend log evidence               | Connection, queue, acknowledgement, and completion lines |
 
 Attach evidence to a dedicated STUDIO-1 acceptance PR or issue. Do not mark STUDIO-1 complete from screenshots alone if the status JSON does not match the same project and execution.
 
 ## Failure Triage
 
-| Symptom | Check |
-| --- | --- |
-| Toolbar button missing | Plugin hierarchy, `PluginDebugService`, Output syntax errors, reload plugin |
-| Connection failed | Backend port, localhost permission, HTTP requests setting, `Config.BACKEND_URL` |
-| Connected but no command | Exact project ID, completed artifact-bearing execution, Studio sync request |
-| Command delivered but not acknowledged | `SyncManager` polling loop and `/api/studio/commands/:id/acknowledge` response |
-| Applying artifacts fails | Output error, path collision, script editing permission, malformed artifact content |
-| Plugin reports failure | `/api/studio/commands/:id/result` response and `verificationError` |
-| Panel never reaches Verified | Exact artifact receipt IDs/hashes and matching durable execution ID |
-| Status shows another execution | Re-run sync only after identifying the latest completed artifact-bearing execution |
+| Symptom                                | Check                                                                               |
+| -------------------------------------- | ----------------------------------------------------------------------------------- |
+| Toolbar button missing                 | Plugin hierarchy, `PluginDebugService`, Output syntax errors, reload plugin         |
+| Connection failed                      | Backend port, localhost permission, HTTP requests setting, `Config.BACKEND_URL`     |
+| Connected but no command               | Exact project ID, completed artifact-bearing execution, Studio sync request         |
+| Command delivered but not acknowledged | `SyncManager` polling loop and `/api/studio/commands/:id/acknowledge` response      |
+| Applying artifacts fails               | Output error, path collision, script editing permission, malformed artifact content |
+| Plugin reports failure                 | `/api/studio/commands/:id/result` response and `verificationError`                  |
+| Panel never reaches Verified           | Exact artifact receipt IDs/hashes and matching durable execution ID                 |
+| Status shows another execution         | Re-run sync only after identifying the latest completed artifact-bearing execution  |
 
 A failed import must remain unverified. Fix the cause and queue a fresh authoritative sync; do not edit the status or synthesize a successful receipt.
 
