@@ -32,6 +32,30 @@ jobs:
           cache: "npm"
       - run: npm ci
       - run: npm run studio:package
+      - name: Verify Roblox XML model
+        run: |
+          python3 - <<'PY'
+          from glob import glob
+          from xml.etree import ElementTree
+
+          bundles = glob("dist/studio-plugin/RobloxAIStudioPlugin-v*.rbxmx")
+          if len(bundles) != 1:
+              raise SystemExit(f"Expected one plugin bundle, found {len(bundles)}")
+
+          root = ElementTree.parse(bundles[0]).getroot()
+          if root.tag != "roblox":
+              raise SystemExit(f"Unexpected root element: {root.tag}")
+
+          top_level_models = [
+              item
+              for item in root.findall("Item")
+              if item.attrib.get("class") == "Model"
+          ]
+          if len(top_level_models) != 1:
+              raise SystemExit(
+                  f"Expected one top-level plugin model, found {len(top_level_models)}"
+              )
+          PY
       - name: Verify package checksums
         run: |
           cd dist/studio-plugin
