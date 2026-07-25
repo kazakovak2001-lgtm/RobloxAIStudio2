@@ -223,9 +223,13 @@ export async function packageStudioPlugin(
 
   for (const definition of ACTIVE_PLUGIN_SOURCES) {
     const absoluteSourcePath = resolve(pluginRoot, definition.sourcePath);
-    const relativePath = normalizeOutputPath(relative(pluginRoot, absoluteSourcePath));
+    const relativePath = normalizeOutputPath(
+      relative(pluginRoot, absoluteSourcePath),
+    );
     if (relativePath.startsWith("..")) {
-      throw new Error(`Plugin source escapes canonical root: ${definition.sourcePath}`);
+      throw new Error(
+        `Plugin source escapes canonical root: ${definition.sourcePath}`,
+      );
     }
 
     const source = await readFile(absoluteSourcePath, "utf8");
@@ -295,7 +299,7 @@ const currentModulePath = fileURLToPath(import.meta.url);
 if (process.argv[1] && resolve(process.argv[1]) === currentModulePath) {
   main().catch((error: unknown) => {
     console.error(
-      error instanceof Error ? error.stack ?? error.message : String(error),
+      error instanceof Error ? (error.stack ?? error.message) : String(error),
     );
     process.exitCode = 1;
   });
