@@ -1,0 +1,44 @@
+name: Studio Plugin Package
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [feature/plugin-merge]
+    paths:
+      - "studio-plugin/**"
+      - "scripts/package-studio-plugin.ts"
+      - "package.json"
+      - ".github/workflows/studio-plugin-package.yml"
+  pull_request:
+    paths:
+      - "studio-plugin/**"
+      - "scripts/package-studio-plugin.ts"
+      - "server/src/__tests__/studio1.plugin-package.test.ts"
+      - "package.json"
+      - ".github/workflows/studio-plugin-package.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  package:
+    name: Build Installable Plugin
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "npm"
+      - run: npm ci
+      - run: npm run studio:package
+      - name: Verify package checksums
+        run: |
+          cd dist/studio-plugin
+          sha256sum -c RobloxAIStudioPlugin-v*.SHA256SUMS.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: roblox-ai-studio-plugin-${{ github.sha }}
+          path: dist/studio-plugin/
+          if-no-files-found: error
+          retention-days: 14
