@@ -1,8 +1,8 @@
 # Current Project State
 
-**Last Updated**: July 24, 2026
-**Phase**: STUDIO-1 — Manual Roblox Studio Evidence (STUDIO-1d canonical plugin implementation verified)
-**Build Status**: Backend CI is green on Node.js 22 / npm 10, including the full normal test suite, canonical plugin contract coverage, strict PostgreSQL restart acceptance, repository validation, formatting, linting, commitlint, and the aggregate merge gate; standalone frontend CI passes TypeScript, Workspace logic tests, production build, and production-artifact responsive browser QA
+**Last Updated**: July 25, 2026
+**Phase**: STUDIO-1 — Manual Roblox Studio Evidence (STUDIO-1e deterministic package automation verified)
+**Build Status**: Backend CI is green on Node.js 22 / npm 10, including the full normal test suite, canonical plugin source and deterministic package coverage, strict PostgreSQL restart acceptance, repository validation, formatting, linting, commitlint, and the aggregate merge gate; the Studio package workflow builds, parses, checksum-verifies, and uploads the installable `.rbxmx`; standalone frontend CI passes TypeScript, Workspace logic tests, production build, and production-artifact responsive browser QA
 
 ---
 
@@ -11,13 +11,14 @@
 ### Backend
 
 - **Server**: Express + Socket.io (Node.js/TypeScript)
-- **Files**: 574 TypeScript files in 48 subsystems
+- **Files**: 576 TypeScript files in 48 subsystems
 - **API Routes**: 28 registered endpoint groups (+ health, root)
 - **AI Providers**: 7 (OpenAI, Anthropic, Gemini, Groq, Ollama, OpenRouter, Mock)
 - **Storage**: One configured provider per process; PostgreSQL migrations and cache hydration complete before the server listens. `STORAGE_PROVIDER=postgres` requires `DATABASE_URL`.
 - **Durable records**: identities, sessions, users, projects, generation history, API keys, blueprints, blueprint versions, generation executions, pipeline artifacts, conversations, and conversation messages use the configured storage boundary.
 - **Studio runtime**: project sync, plugin registration, active sessions, artifact snapshots, transfer, the outbound command ledger, acknowledgement/result processing, and exact artifact ID/hash verification use one shared Studio v2 runtime. Project sync selects the newest completed artifact-bearing execution and never creates placeholder Lua/config packages. Queue delivery alone never marks an import verified.
 - **Canonical Studio plugin**: `studio-plugin/` v1.8 reuses the existing connector, lifecycle manager, sync manager, artifact loader, events, and UI. It connects with the exact backend project ID, polls `EXPORT_PROJECT`, acknowledges delivery, materializes structured Lua scripts and non-Lua metadata as Roblox instances, reports one exact ID/hash receipt per pipeline artifact, and shows Verified only after the backend accepts the evidence.
+- **Studio plugin package**: `npm run studio:package` creates a deterministic installable `.rbxmx`, a source/bundle manifest, and SHA-256 checksums from an explicit active-module allowlist. The dedicated package workflow validates XML structure and checksums before uploading the desktop acceptance artifact.
 - **Real-time**: Socket.io with 50+ event types, project rooms, JWT-authenticated handshake (production)
 - **Authentication**: bcrypt password hashing (cost 12), storage-backed sessions/roles, cryptographic validation, httpOnly cookie delivery
 
@@ -75,6 +76,7 @@
 | STUDIO-1b         | Shared Studio runtime and real artifact queue            | July 24, 2026 |
 | STUDIO-1c backend | ACK/result state machine and exact evidence verification | July 24, 2026 |
 | STUDIO-1d plugin  | Canonical plugin command/import contract                 | July 24, 2026 |
+| STUDIO-1e package | Deterministic installable plugin and acceptance runbook  | July 25, 2026 |
 
 ---
 
@@ -146,7 +148,7 @@
 ## Known Problems
 
 1. **ESLint Config**: v10 installed with legacy `.eslintrc.json` format (functional but deprecated config style).
-2. **Manual Roblox Studio acceptance evidence**: the backend ACK/result verifier and canonical `studio-plugin/` implementation are CI-verified. STUDIO-1 remains active only until a real desktop Studio session installs the plugin, polls `EXPORT_PROJECT`, creates or updates every expected instance, reports matching receipts, and project status returns `artifactVerified=true` for the same execution.
+2. **Manual Roblox Studio acceptance evidence**: the backend ACK/result verifier, canonical `studio-plugin/` implementation, deterministic `.rbxmx` package, checksum manifest, and acceptance runbook are CI-verified. STUDIO-1 remains active only until a real desktop Studio session installs the verified package, polls `EXPORT_PROJECT`, creates or updates every expected instance, reports matching receipts, and project status returns `artifactVerified=true` for the same execution.
 
 ---
 
@@ -183,6 +185,7 @@ This template enforces:
 
 ## Last Changes
 
+- July 25, 2026: STUDIO-1e acceptance packaging verified — `npm run studio:package` now creates a deterministic installable `.rbxmx`, source/bundle manifest, and SHA-256 checksum file from the explicit active plugin allowlist. The package workflow parses the Roblox XML model, verifies checksums, and publishes a downloadable artifact. The standard test suite proves repeat builds are byte-identical, and the desktop runbook defines installation, status capture, evidence fields, and failure triage. Real Roblox Studio evidence remains the only STUDIO-1 gate. See `STUDIO-1E_DESKTOP_ACCEPTANCE_RUNBOOK.md`.
 - July 24, 2026: STUDIO-1d canonical plugin implementation verified — existing plugin modules now use the correct dependency graph and backend project ID, poll and acknowledge `EXPORT_PROJECT`, materialize structured Lua scripts and non-Lua metadata as real Roblox instances, report exact ID/hash receipts, and expose Verified only after backend evidence acceptance. The plugin source contract is enforced by the normal test suite. Manual Roblox Studio evidence remains the only STUDIO-1 gate. See `STUDIO-1D_REAL_PLUGIN_ACCEPTANCE.md`.
 - July 24, 2026: STUDIO-1c backend slice complete — the shared Studio runtime now enforces polling → acknowledgement → result ordering, validates the exact durable execution ID and artifact ID/SHA-256 receipt set, records verified/failed session states, and exposes accurate additive project status fields. PR #10 delivered the contract; PR #11 restored canonical CI, removed temporary diagnostics, completed formatting, and passed every standard validation gate. See `STUDIO-1C_IMPORT_ACKNOWLEDGEMENT.md`.
 - July 24, 2026: STUDIO-1b complete — project and plugin Studio routes now share one v2 runtime; project sync selects the newest completed artifact-bearing execution, queues real persisted artifacts through `EXPORT_PROJECT`, preserves incremental no-op behavior, and never creates placeholder Lua/config packages. PR #9 passed TypeScript, ESLint, Prettier, 717 tests, repository validation, commitlint, PostgreSQL restart E2E, and Merge Gate. See `STUDIO-1B_RUNTIME_CONSOLIDATION.md`.

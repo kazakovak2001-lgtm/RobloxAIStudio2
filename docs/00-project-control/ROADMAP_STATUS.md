@@ -1,6 +1,6 @@
 # Roadmap Status
 
-**Last Updated**: July 24, 2026
+**Last Updated**: July 25, 2026
 
 ---
 
@@ -8,14 +8,14 @@
 
 This sequence is authoritative for work after the standalone frontend integration. It replaces the historical plan to further migrate the embedded frontend in this repository.
 
-| ID            | Delivery item                                                  | Priority | Status                                           | Dependency            |
-| ------------- | -------------------------------------------------------------- | -------- | ------------------------------------------------ | --------------------- |
-| CUTOVER-0     | Standalone frontend governance and CI alignment                | Critical | ✅ Complete                                      | —                     |
-| CI-BASELINE-1 | Portable green backend CI and repository hygiene               | Critical | ✅ Complete                                      | CUTOVER-0             |
-| CORE-1        | Real project data, persistence, and API contract stabilization | Critical | ✅ Complete                                      | CI-BASELINE-1         |
-| WORKSPACE-1   | Workflow-oriented standalone Workspace                         | High     | ✅ Complete                                      | CORE-1                |
-| STUDIO-1      | Generated artifact → Roblox Studio end-to-end validation       | High     | 🟡 1a–1d code verified; desktop evidence pending | CORE-1, WORKSPACE-1   |
-| CUTOVER-1     | Release promotion and legacy frontend removal                  | High     | ⏳ Planned                                       | WORKSPACE-1, STUDIO-1 |
+| ID            | Delivery item                                                  | Priority | Status                                                   | Dependency            |
+| ------------- | -------------------------------------------------------------- | -------- | -------------------------------------------------------- | --------------------- |
+| CUTOVER-0     | Standalone frontend governance and CI alignment                | Critical | ✅ Complete                                              | —                     |
+| CI-BASELINE-1 | Portable green backend CI and repository hygiene               | Critical | ✅ Complete                                              | CUTOVER-0             |
+| CORE-1        | Real project data, persistence, and API contract stabilization | Critical | ✅ Complete                                              | CI-BASELINE-1         |
+| WORKSPACE-1   | Workflow-oriented standalone Workspace                         | High     | ✅ Complete                                              | CORE-1                |
+| STUDIO-1      | Generated artifact → Roblox Studio end-to-end validation       | High     | 🟡 1a–1e code/package verified; desktop evidence pending | CORE-1, WORKSPACE-1   |
+| CUTOVER-1     | Release promotion and legacy frontend removal                  | High     | ⏳ Planned                                               | WORKSPACE-1, STUDIO-1 |
 
 See [FRONTEND_CUTOVER.md](./FRONTEND_CUTOVER.md) for ownership, branch, validation, and legacy-removal rules.
 See [CORE-1A_DURABLE_PROJECTS.md](./CORE-1A_DURABLE_PROJECTS.md) for the completed identity/project boundary.
@@ -23,7 +23,8 @@ See [CORE-1B_DURABLE_RUNTIME.md](./CORE-1B_DURABLE_RUNTIME.md) for the verified 
 See [STUDIO-1A_ARTIFACT_LINEAGE.md](./STUDIO-1A_ARTIFACT_LINEAGE.md) for durable canonical generation artifacts.
 See [STUDIO-1B_RUNTIME_CONSOLIDATION.md](./STUDIO-1B_RUNTIME_CONSOLIDATION.md) for the shared Studio runtime, real artifact queue, and incremental no-op contract.
 See [STUDIO-1C_IMPORT_ACKNOWLEDGEMENT.md](./STUDIO-1C_IMPORT_ACKNOWLEDGEMENT.md) for the verified backend ACK/result contract.
-See [STUDIO-1D_REAL_PLUGIN_ACCEPTANCE.md](./STUDIO-1D_REAL_PLUGIN_ACCEPTANCE.md) for the CI-verified canonical plugin implementation and manual Studio evidence checklist.
+See [STUDIO-1D_REAL_PLUGIN_ACCEPTANCE.md](./STUDIO-1D_REAL_PLUGIN_ACCEPTANCE.md) for the CI-verified canonical plugin implementation.
+See [STUDIO-1E_DESKTOP_ACCEPTANCE_RUNBOOK.md](./STUDIO-1E_DESKTOP_ACCEPTANCE_RUNBOOK.md) for the deterministic installable package, checksum contract, and manual evidence procedure.
 See the standalone frontend documentation for the completed WORKSPACE-1 slices and production responsive QA:
 
 - [`WORKSPACE-1_WORKFLOW_SHELL.md`](https://github.com/kazakovak2001-lgtm/Frontend/blob/main/docs/WORKSPACE-1_WORKFLOW_SHELL.md)
@@ -34,18 +35,18 @@ See the standalone frontend documentation for the completed WORKSPACE-1 slices a
 
 ## Active Acceptance Gate
 
-STUDIO-1 code preparation is complete through STUDIO-1d. The remaining valid project step is a human-run Roblox Studio acceptance session against the existing implementation:
+STUDIO-1 code and package preparation is complete through STUDIO-1e. The remaining valid project step is a human-run Roblox Studio acceptance session against the verified installable artifact:
 
-1. install the canonical `studio-plugin/` hierarchy;
-2. enable HTTP Requests and script editing permission;
-3. enter the exact standalone Workspace project ID;
-4. connect and poll the queued `EXPORT_PROJECT` command;
-5. acknowledge the command;
-6. create or update every expected Roblox instance;
+1. download or build `RobloxAIStudioPlugin-v1.8.0.rbxmx`;
+2. verify the bundle SHA-256 from the packaged checksum file;
+3. install the model as a local plugin and enable required HTTP/script permissions;
+4. enter the exact standalone Workspace project ID;
+5. connect and poll the queued `EXPORT_PROJECT` command;
+6. acknowledge the command and create or update every expected Roblox instance;
 7. report the exact durable execution ID and artifact ID/SHA-256 receipts;
-8. capture plugin state **Verified** and project status `artifactVerified=true` for the same execution.
+8. capture plugin state **Verified**, Explorer hierarchy, logs, and project status `artifactVerified=true` for the same execution.
 
-CUTOVER-1 must not begin until this evidence exists. A synthetic success response, queue delivery, backend-only test, or source-contract test is not sufficient as final desktop proof.
+CUTOVER-1 must not begin until this evidence exists. A synthetic success response, queue delivery, backend-only test, source-contract test, or successful package build is not sufficient as final desktop proof.
 
 ## Historical Roadmap: UX-4 Feature Development
 

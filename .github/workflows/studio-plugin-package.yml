@@ -1,0 +1,68 @@
+name: Studio Plugin Package
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [feature/plugin-merge]
+    paths:
+      - "studio-plugin/**"
+      - "scripts/package-studio-plugin.ts"
+      - "package.json"
+      - ".github/workflows/studio-plugin-package.yml"
+  pull_request:
+    paths:
+      - "studio-plugin/**"
+      - "scripts/package-studio-plugin.ts"
+      - "server/src/__tests__/studio1.plugin-package.test.ts"
+      - "package.json"
+      - ".github/workflows/studio-plugin-package.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  package:
+    name: Build Installable Plugin
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "npm"
+      - run: npm ci
+      - run: npm run studio:package
+      - name: Verify Roblox XML model
+        run: |
+          python3 - <<'PY'
+          from glob import glob
+          from xml.etree import ElementTree
+
+          bundles = glob("dist/studio-plugin/RobloxAIStudioPlugin-v*.rbxmx")
+          if len(bundles) != 1:
+              raise SystemExit(f"Expected one plugin bundle, found {len(bundles)}")
+
+          root = ElementTree.parse(bundles[0]).getroot()
+          if root.tag != "roblox":
+              raise SystemExit(f"Unexpected root element: {root.tag}")
+
+          top_level_models = [
+              item
+              for item in root.findall("Item")
+              if item.attrib.get("class") == "Model"
+          ]
+          if len(top_level_models) != 1:
+              raise SystemExit(
+                  f"Expected one top-level plugin model, found {len(top_level_models)}"
+              )
+          PY
+      - name: Verify package checksums
+        run: |
+          cd dist/studio-plugin
+          sha256sum -c RobloxAIStudioPlugin-v*.SHA256SUMS.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: roblox-ai-studio-plugin-${{ github.sha }}
+          path: dist/studio-plugin/
+          if-no-files-found: error
+          retention-days: 14
