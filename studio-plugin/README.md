@@ -36,14 +36,37 @@ studio-plugin/
         └── ErrorReporter.lua
 ```
 
-Files with `_legacy` suffix are migration inventory only and are not used by `plugin.lua`.
+Files with `_legacy` suffix are migration inventory only and are not used by `plugin.lua` or the canonical package.
+
+## Build the Installable Package
+
+From the repository root:
+
+```bash
+npm ci
+npm run studio:package
+```
+
+The command creates ignored outputs under `dist/studio-plugin/`:
+
+```text
+RobloxAIStudioPlugin-v1.8.0.rbxmx
+RobloxAIStudioPlugin-v1.8.0.manifest.json
+RobloxAIStudioPlugin-v1.8.0.SHA256SUMS.txt
+```
+
+The `.rbxmx` model contains the active source hierarchy with `plugin.lua` represented as a `Script` and the remaining active modules represented as `ModuleScript` instances. The manifest records source and bundle SHA-256 values. Unchanged sources produce byte-identical package outputs.
+
+The **Studio Plugin Package** GitHub Actions workflow runs the same command, verifies the checksum file, and uploads an artifact named `roblox-ai-studio-plugin-<commit-sha>`.
+
+See [STUDIO-1e Desktop Acceptance Packaging and Runbook](../docs/00-project-control/STUDIO-1E_DESKTOP_ACCEPTANCE_RUNBOOK.md) for download verification, local installation, evidence capture, and failure triage.
 
 ## Installation Prerequisites
 
-- Roblox Studio with **Allow HTTP Requests** enabled under Game Settings → Security.
-- Permission for the plugin to create and edit scripts.
+- Roblox Studio with **Allow HTTP Requests** enabled under Experience Settings → Security.
+- Permission for the plugin to communicate with the configured backend address and create or edit script source.
 - Backend running at the URL configured in `src/core/Config.lua` (`http://localhost:5000` by default).
-- The source hierarchy above must be preserved when packaging or installing the plugin.
+- The canonical `.rbxmx` package produced by `npm run studio:package` or the GitHub Actions artifact.
 
 ## Connection
 
@@ -126,10 +149,11 @@ The **Check Export Queue** button triggers the same polling method used by the a
 
 ## Acceptance Boundary
 
-Repository tests validate the plugin source contract and the backend validates the full ACK/result state machine. Final STUDIO-1 acceptance still requires a human-run Roblox Studio session that captures:
+Repository tests validate the plugin source and package contracts, while the backend validates the full ACK/result state machine. Final STUDIO-1 acceptance still requires a human-run Roblox Studio session that captures:
 
-1. connection with the real project ID;
-2. an `EXPORT_PROJECT` command created from a completed generation execution;
-3. expected instances in the Roblox hierarchy;
-4. plugin panel state **Verified**;
-5. project status with `artifactVerified=true` and the same execution ID.
+1. the verified package SHA-256;
+2. connection with the real project ID;
+3. an `EXPORT_PROJECT` command created from a completed generation execution;
+4. expected instances in the Roblox hierarchy;
+5. plugin panel state **Verified**;
+6. project status with `artifactVerified=true` and the same execution ID.
