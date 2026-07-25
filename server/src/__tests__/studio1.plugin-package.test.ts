@@ -34,7 +34,9 @@ afterEach(async () => {
 
 describe("STUDIO-1e deterministic Roblox plugin package", () => {
   it("packages only the canonical active source hierarchy as an installable model", async () => {
-    const outputDirectory = await createTemporaryDirectory("studio-plugin-package-");
+    const outputDirectory = await createTemporaryDirectory(
+      "studio-plugin-package-",
+    );
     const result = await packageStudioPlugin({
       repositoryRoot: resolve(process.cwd()),
       outputDirectory,
@@ -43,13 +45,9 @@ describe("STUDIO-1e deterministic Roblox plugin package", () => {
     const bundle = await readFile(result.bundlePath, "utf8");
     const manifestContent = await readFile(result.manifestPath, "utf8");
     const checksums = await readFile(result.checksumsPath, "utf8");
-    const manifest = JSON.parse(
-      manifestContent,
-    ) as StudioPluginPackageManifest;
+    const manifest = JSON.parse(manifestContent) as StudioPluginPackageManifest;
 
-    expect(result.bundlePath).toMatch(
-      /RobloxAIStudioPlugin-v1\.8\.0\.rbxmx$/,
-    );
+    expect(result.bundlePath).toMatch(/RobloxAIStudioPlugin-v1\.8\.0\.rbxmx$/);
     expect(manifest).toMatchObject({
       formatVersion: 1,
       pluginName: "RobloxAIStudioPlugin",
@@ -68,11 +66,15 @@ describe("STUDIO-1e deterministic Roblox plugin package", () => {
       manifest.sources.every((source) => /^[a-f0-9]{64}$/.test(source.sha256)),
     ).toBe(true);
     expect(
-      manifest.sources.every((source) => source.instancePath.startsWith("RobloxAIStudioPlugin.")),
+      manifest.sources.every((source) =>
+        source.instancePath.startsWith("RobloxAIStudioPlugin."),
+      ),
     ).toBe(true);
 
     expect(bundle).toContain('<Item class="Model" referent="RBX000000">');
-    expect(bundle).toContain('<string name="Name">RobloxAIStudioPlugin</string>');
+    expect(bundle).toContain(
+      '<string name="Name">RobloxAIStudioPlugin</string>',
+    );
     expect(bundle).toContain('<Item class="Script"');
     expect(bundle).toContain('<string name="Name">plugin</string>');
     expect(bundle).toContain('<Item class="ModuleScript"');
@@ -94,8 +96,12 @@ describe("STUDIO-1e deterministic Roblox plugin package", () => {
   });
 
   it("produces byte-identical bundles and manifests from unchanged sources", async () => {
-    const firstOutput = await createTemporaryDirectory("studio-plugin-package-a-");
-    const secondOutput = await createTemporaryDirectory("studio-plugin-package-b-");
+    const firstOutput = await createTemporaryDirectory(
+      "studio-plugin-package-a-",
+    );
+    const secondOutput = await createTemporaryDirectory(
+      "studio-plugin-package-b-",
+    );
 
     const first = await packageStudioPlugin({
       repositoryRoot: resolve(process.cwd()),
