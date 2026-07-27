@@ -102,7 +102,8 @@ assert.equal(currentUserPayload.success, true);
 assert.equal(currentUserPayload.data.user.email, credentials.email);
 
 await assertSocketRejectedWithoutCookie();
-await assertSocketAcceptedWithCookie(accessCookieHeader);
+const authenticatedSocketTransport =
+  await assertSocketAcceptedWithCookie(accessCookieHeader);
 
 const result = {
   status: "passed",
@@ -114,6 +115,7 @@ const result = {
   corsRejected: rejectedOrigin.status,
   authenticatedRest: currentUser.status,
   authenticatedSocket: true,
+  authenticatedSocketTransport,
   unauthenticatedSocketRejected: true,
   hostOnlyCookies: true,
 };
@@ -228,18 +230,64 @@ function assertSocketAcceptedWithCookie(cookie) {
   });
   return new Promise((resolve, reject) => {
     const socket = createSocket(cookie);
-    const timer = setTimeout(() => {
-      socket.close();
-      const error = new Error("Authenticated Socket.IO connection timed out");
-      recordSmokeEvent("socket.authenticated.timeout", serializeError(error));
-      reject(error);
-    }, 8_000);
+    let connected = false;
+    let upgradedTransport;
 
-    socket.once("connect", () => {
+    const finishWhenVerified = () => {
+      if (!connected || upgradedTransport !== "websocket") return;
       clearTimeout(timer);
       socket.close();
-      recordSmokeEvent("socket.authenticated.connected");
-      resolve();
+      recordSmokeEvent("socket.authenticated.verified", {
+        transport: upgradedTransport,
+      });
+      resolve(upgradedTransport);
+    };
+
+    const trackEngine = () => {
+      const engine = socket.io.engine;
+      if (!engine) return;
+
+      recordSmokeEvent("socket.authenticated.transport.initial", {
+        transport: engine.transport.name,
+      });
+      if (engine.transport.name === "websocket") {
+        upgradedTransport = "websocket";
+        finishWhenVerified();
+        return;
+      }
+
+      engine.once("upgrade", (transport) => {
+        upgradedTransport = transport.name;
+        recordSmokeEvent("socket.authenticated.transport.upgraded", {
+          transport: upgradedTransport,
+        });
+        finishWhenVerified();
+      });
+    };
+
+    const timer = setTimeout(() => {
+      const currentTransport = socket.io.engine?.transport?.name;
+      socket.close();
+      const error = new Error(
+        `Authenticated Socket.IO connection did not upgrade to WebSocket (transport=${currentTransport ?? "none"})`,
+      );
+      recordSmokeEvent("socket.authenticated.timeout", {
+        ...serializeError(error),
+        connected,
+        transport: currentTransport,
+      });
+      reject(error);
+    }, 12_000);
+
+    if (socket.io.engine) trackEngine();
+    else socket.io.once("open", trackEngine);
+
+    socket.once("connect", () => {
+      connected = true;
+      recordSmokeEvent("socket.authenticated.connected", {
+        transport: socket.io.engine?.transport?.name,
+      });
+      finishWhenVerified();
     });
     socket.once("connect_error", (error) => {
       clearTimeout(timer);
@@ -251,16 +299,28 @@ function assertSocketAcceptedWithCookie(cookie) {
 }
 
 function createSocket(cookie) {
+  const extraHeaders = {
+    Origin: allowedOrigin,
+    ...(cookie ? { Cookie: cookie } : {}),
+  };
+
   return io(origin, {
     path: "/socket.io",
-    transports: ["websocket"],
+    transports: ["polling", "websocket"],
+    upgrade: true,
+    rememberUpgrade: false,
     withCredentials: true,
     reconnection: false,
     timeout: 5_000,
     rejectUnauthorized: false,
-    extraHeaders: {
-      Origin: allowedOrigin,
-      ...(cookie ? { Cookie: cookie } : {}),
+    extraHeaders,
+    transportOptions: {
+      polling: {
+        extraHeaders,
+      },
+      websocket: {
+        extraHeaders,
+      },
     },
   });
 }
