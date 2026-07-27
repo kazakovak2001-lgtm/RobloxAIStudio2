@@ -4,9 +4,6 @@ on:
   push:
     branches:
       - cutover/backend-release-artifact
-  pull_request:
-    branches:
-      - feature/plugin-merge
 
 permissions:
   contents: write
@@ -21,7 +18,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ${{ github.head_ref || github.ref_name }}
+          ref: cutover/backend-release-artifact
           fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
@@ -51,4 +48,4 @@ jobs:
             docs/00-project-control/CUTOVER-1A_BACKEND_RELEASE_ARTIFACT.md \
             docs/00-project-control/ROADMAP_STATUS.md
           git commit -m "docs(cutover): format backend release records"
-          git push origin HEAD:${{ github.head_ref || github.ref_name }}
+          git push origin HEAD:cutover/backend-release-artifact
