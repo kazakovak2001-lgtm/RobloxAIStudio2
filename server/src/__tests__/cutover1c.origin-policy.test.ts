@@ -27,9 +27,7 @@ describe("CUTOVER-1C shared frontend origin policy", () => {
     expect(getAllowedFrontendOrigins()).toEqual([
       "https://app.example.test:8443",
     ]);
-    expect(isFrontendOriginAllowed("https://app.example.test:8443")).toBe(
-      true,
-    );
+    expect(isFrontendOriginAllowed("https://app.example.test:8443")).toBe(true);
     expect(isFrontendOriginAllowed("http://localhost:5173")).toBe(false);
   });
 

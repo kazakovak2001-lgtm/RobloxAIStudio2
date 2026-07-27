@@ -73,7 +73,9 @@ assert.ok(refreshCookie, "Missing refresh cookie");
 assertCookiePolicy(accessCookie, { path: "/" });
 assertCookiePolicy(refreshCookie, { path: "/api/platform/auth/refresh" });
 
-const cookieHeader = setCookies.map((value) => value.split(";", 1)[0]).join("; ");
+const cookieHeader = setCookies
+  .map((value) => value.split(";", 1)[0])
+  .join("; ");
 const accessCookieHeader = accessCookie.split(";", 1)[0];
 
 const currentUser = await request("/api/platform/auth/me", {
@@ -162,7 +164,10 @@ function assertCookiePolicy(cookie, { path }) {
   assert.match(cookie, /;\s*HttpOnly(?:;|$)/i);
   assert.match(cookie, /;\s*Secure(?:;|$)/i);
   assert.match(cookie, /;\s*SameSite=Lax(?:;|$)/i);
-  assert.match(cookie, new RegExp(`;\\s*Path=${escapeRegExp(path)}(?:;|$)`, "i"));
+  assert.match(
+    cookie,
+    new RegExp(`;\\s*Path=${escapeRegExp(path)}(?:;|$)`, "i"),
+  );
   assert.doesNotMatch(cookie, /;\s*Domain=/i, "Cookie must remain host-only");
 }
 
