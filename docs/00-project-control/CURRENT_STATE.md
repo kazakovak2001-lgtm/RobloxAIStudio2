@@ -1,8 +1,8 @@
 # Current Project State
 
 **Last Updated**: July 27, 2026
-**Phase**: STUDIO-1 — Fresh real Roblox Studio acceptance rerun after STUDIO-1f desktop fixes
-**Build Status**: Backend CI is green on Node.js 22 / npm 10, including the full normal test suite, canonical plugin source and deterministic package coverage, strict PostgreSQL restart acceptance, repository validation, formatting, linting, commitlint, and the aggregate merge gate; PR #16 fixed the Roblox-forbidden custom `Content-Type` header and PR #17 normalized the real Lua generator output at the existing artifact-recorder boundary; standalone frontend CI passes TypeScript, Workspace logic tests, production build, and production-artifact responsive browser QA. The remaining release gate is a fresh real desktop execution proving `artifactVerified=true`.
+**Phase**: CUTOVER-1 — Release promotion and legacy frontend removal preparation
+**Build Status**: Backend CI is green on Node.js 22 / npm 10, including the full normal test suite, canonical plugin source and deterministic package coverage, strict PostgreSQL restart acceptance, repository validation, formatting, linting, commitlint, and the aggregate merge gate. PR #16 fixed the Roblox-forbidden custom `Content-Type` header, PR #17 normalized real Lua generator output at the existing artifact-recorder boundary, and PR #19 preserved canonical specialist assignments when no adaptive performance evidence exists. Standalone frontend CI passes TypeScript, Workspace logic tests, production build, and production-artifact responsive browser QA. STUDIO-1 passed through a real Roblox Studio desktop session with eight verified artifacts; CUTOVER-1 is now unblocked but still requires release-promotion, dependency, rollback, and cleanup gates.
 
 ---
 
@@ -20,13 +20,14 @@
 - **Generation-to-Studio boundary**: the existing `GenerationArtifactRecorder` preserves canonical `scripts[]` payloads and normalizes current `LuaGeneratorAgent` server/client/shared/module `{ name, code }` groups into validated Studio `{ path, content }` scripts. Empty, malformed, and duplicate-path Lua output is rejected before queueing.
 - **Canonical Studio plugin**: `studio-plugin/` v1.8 reuses the existing connector, lifecycle manager, sync manager, artifact loader, events, and UI. It connects with the exact backend project ID, polls `EXPORT_PROJECT`, acknowledges delivery, materializes structured Lua scripts and non-Lua metadata as Roblox instances, reports one exact ID/hash receipt per pipeline artifact, and shows Verified only after the backend accepts the evidence. Roblox-owned JSON content type is provided through `Enum.HttpContentType.ApplicationJson`; the plugin does not submit a forbidden custom `Content-Type` header.
 - **Studio plugin package**: `npm run studio:package` creates a deterministic installable `.rbxmx`, a source/bundle manifest, and SHA-256 checksums from an explicit active-module allowlist. The dedicated package workflow validates XML structure and checksums before uploading the desktop acceptance artifact.
-- **Current acceptance package**: workflow run `30277078815`, artifact ID `8657228073`, bundle size `45932` bytes, bundle SHA-256 `a97e6268193f202cb5cc12ef5c174d0a028067c382327dd9432aacbe80f5ced7`, manifest SHA-256 `0655ae43b48f8c3bb90591da1e35170ff122136f8352bad73320c88c0eca3f14`.
+- **Verified acceptance package**: workflow run `30277078815`, artifact ID `8657228073`, bundle size `45932` bytes, bundle SHA-256 `a97e6268193f202cb5cc12ef5c174d0a028067c382327dd9432aacbe80f5ced7`, manifest SHA-256 `0655ae43b48f8c3bb90591da1e35170ff122136f8352bad73320c88c0eca3f14`.
 - **Real-time**: Socket.io with 50+ event types, project rooms, JWT-authenticated handshake (production)
 - **Authentication**: bcrypt password hashing (cost 12), storage-backed sessions/roles, cryptographic validation, httpOnly cookie delivery
 
 ### Canonical Frontend
 
 - **Repository**: [kazakovak2001-lgtm/Frontend](https://github.com/kazakovak2001-lgtm/Frontend) on `main`
+- **Acceptance commit**: `a8d005d433d48e18d8e64ac176ee63c9c694b644`, independently matched to the ZIP used during the successful STUDIO-1 session.
 - **Framework**: React 19 + TypeScript + Vite + Tailwind CSS
 - **Routing and state**: TanStack Router/Query, typed backend adapter, Socket.IO realtime client
 - **Ownership**: All new user-facing web functionality belongs in the standalone repository.
@@ -36,7 +37,7 @@
 
 - **Location**: repository root `src/`
 - **Status**: Frozen migration inventory; no new product features, pages, or parallel integrations.
-- **Removal**: Allowed only after the gates in [FRONTEND_CUTOVER.md](./FRONTEND_CUTOVER.md) pass.
+- **Removal**: CUTOVER-1 is unblocked, but removal is allowed only after every gate in [FRONTEND_CUTOVER.md](./FRONTEND_CUTOVER.md) passes through a separately reviewed cleanup change.
 
 ### Health Scores
 
@@ -79,7 +80,8 @@
 | STUDIO-1c backend | ACK/result state machine and exact evidence verification | July 24, 2026 |
 | STUDIO-1d plugin  | Canonical plugin command/import contract                 | July 24, 2026 |
 | STUDIO-1e package | Deterministic installable plugin and acceptance runbook  | July 25, 2026 |
-| STUDIO-1f fixes   | Real desktop transport and Lua artifact contract fixes   | July 27, 2026 |
+| STUDIO-1f fixes   | Real desktop transport, artifact, and routing fixes       | July 27, 2026 |
+| STUDIO-1g         | Real desktop import and backend verification             | July 27, 2026 |
 
 ---
 
@@ -151,7 +153,8 @@
 ## Known Problems
 
 1. **ESLint Config**: v10 installed with legacy `.eslintrc.json` format (functional but deprecated config style).
-2. **Manual Roblox Studio acceptance evidence**: real desktop testing proved connection and reached `EXPORT_PROJECT`, then exposed and fixed the Roblox header and Lua artifact-shape defects in PR #16 and PR #17. STUDIO-1 remains active until a fresh execution generated after integration commit `5e560069758b1b7a2444e40042dcf21c10636623` is imported by the current verified plugin package and the same project status returns `artifactVerified=true`, `verificationStatus=verified`, a matching execution ID, and a matching artifact count.
+
+STUDIO-1 desktop delivery is no longer a known problem. The completed evidence is recorded in `STUDIO-1G_DESKTOP_ACCEPTANCE_RESULT.md` and closed issue #15.
 
 ---
 
@@ -188,9 +191,10 @@ This template enforces:
 
 ## Last Changes
 
-- July 27, 2026: STUDIO-1f desktop findings resolved — PR #16 removed the Roblox-forbidden custom `Content-Type` header while retaining the canonical connector and protocol. PR #17 normalized the exact current `LuaGeneratorAgent` output at the existing `GenerationArtifactRecorder` boundary, maps server/client/shared/module scripts to canonical Studio paths, and rejects empty, malformed, or duplicate Lua artifacts before queueing. The live acceptance issue and package identity were refreshed. A fresh post-fix generation and real Studio verification remain mandatory. See `STUDIO-1F_DESKTOP_FINDINGS_AND_RERUN.md` and issue #15.
-- July 25, 2026: STUDIO-1e acceptance packaging verified — `npm run studio:package` now creates a deterministic installable `.rbxmx`, source/bundle manifest, and SHA-256 checksum file from the explicit active plugin allowlist. The package workflow parses the Roblox XML model, verifies checksums, and publishes a downloadable artifact. The standard test suite proves repeat builds are byte-identical, and the desktop runbook defines installation, status capture, evidence fields, and failure triage. Real Roblox Studio evidence remains the only STUDIO-1 gate. See `STUDIO-1E_DESKTOP_ACCEPTANCE_RUNBOOK.md`.
-- July 24, 2026: STUDIO-1d canonical plugin implementation verified — existing plugin modules now use the correct dependency graph and backend project ID, poll and acknowledge `EXPORT_PROJECT`, materialize structured Lua scripts and non-Lua metadata as real Roblox instances, report exact ID/hash receipts, and expose Verified only after backend evidence acceptance. The plugin source contract is enforced by the normal test suite. Manual Roblox Studio evidence remains the only STUDIO-1 gate. See `STUDIO-1D_REAL_PLUGIN_ACCEPTANCE.md`.
+- July 27, 2026: STUDIO-1g real desktop acceptance completed — standalone Frontend commit `a8d005d433d48e18d8e64ac176ee63c9c694b644` generated execution `exec-1785180356168`; plugin v1.8 on Roblox Studio `0.730.0.7300790` imported eight artifacts, created the expected Roblox instance hierarchy, returned exact receipts, and reached `Verified`. The authenticated project and session status matched project `proj-286c6929-5`, client `studio-39fa03bb`, session `session-afec81df-c`, command `cmd-96bd9df4-e`, and eight verified artifacts. Issue #15 is closed. See `STUDIO-1G_DESKTOP_ACCEPTANCE_RESULT.md`.
+- July 27, 2026: STUDIO-1f desktop findings resolved — PR #16 removed the Roblox-forbidden custom `Content-Type` header while retaining the canonical connector and protocol. PR #17 normalized the exact current `LuaGeneratorAgent` output at the existing `GenerationArtifactRecorder` boundary and rejects empty, malformed, or duplicate Lua artifacts before queueing. PR #19 preserved canonical specialist assignments when adaptive performance evidence is absent. Subsequent real desktop acceptance passed in STUDIO-1g.
+- July 25, 2026: STUDIO-1e acceptance packaging verified — `npm run studio:package` now creates a deterministic installable `.rbxmx`, source/bundle manifest, and SHA-256 checksum file from the explicit active plugin allowlist. The package workflow parses the Roblox XML model, verifies checksums, and publishes a downloadable artifact. The standard test suite proves repeat builds are byte-identical, and the desktop runbook defines installation, status capture, evidence fields, and failure triage.
+- July 24, 2026: STUDIO-1d canonical plugin implementation verified — existing plugin modules now use the correct dependency graph and backend project ID, poll and acknowledge `EXPORT_PROJECT`, materialize structured Lua scripts and non-Lua metadata as real Roblox instances, report exact ID/hash receipts, and expose Verified only after backend evidence acceptance. The plugin source contract is enforced by the normal test suite.
 - July 24, 2026: STUDIO-1c backend slice complete — the shared Studio runtime now enforces polling → acknowledgement → result ordering, validates the exact durable execution ID and artifact ID/SHA-256 receipt set, records verified/failed session states, and exposes accurate additive project status fields. PR #10 delivered the contract; PR #11 restored canonical CI, removed temporary diagnostics, completed formatting, and passed every standard validation gate. See `STUDIO-1C_IMPORT_ACKNOWLEDGEMENT.md`.
 - July 24, 2026: STUDIO-1b complete — project and plugin Studio routes now share one v2 runtime; project sync selects the newest completed artifact-bearing execution, queues real persisted artifacts through `EXPORT_PROJECT`, preserves incremental no-op behavior, and never creates placeholder Lua/config packages. PR #9 passed TypeScript, ESLint, Prettier, 717 tests, repository validation, commitlint, PostgreSQL restart E2E, and Merge Gate. See `STUDIO-1B_RUNTIME_CONSOLIDATION.md`.
 - July 24, 2026: STUDIO-1a complete — canonical `PlanExecutor` outputs are recorded in the storage-backed `ArtifactStore` under durable generation execution IDs and survive PostgreSQL provider reconstruction. See `STUDIO-1A_ARTIFACT_LINEAGE.md`.
