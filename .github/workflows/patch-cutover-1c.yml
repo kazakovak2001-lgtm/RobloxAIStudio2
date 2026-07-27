@@ -27,27 +27,23 @@ jobs:
 
           path = Path("server/src/index.ts")
           source = path.read_text()
-          old_origin = '''    origin:
-              process.env.NODE_ENV === "production"
-                ? (["http://localhost:5173", process.env.FRONTEND_URL ?? ""].filter(
-                    (o) => o.length > 0,
-                  ) as string[])
-                : true,'''
-          new_origin = '''    origin:
-              process.env.NODE_ENV === "production"
-                ? getAllowedFrontendOrigins()
-                : true,'''
-          if old_origin not in source:
-              raise SystemExit("Socket.IO origin anchor not found")
-          source = source.replace(old_origin, new_origin, 1)
+          socket_start = source.index("const io = new SocketServer")
+          origin_start = source.index("    origin:\n", socket_start)
+          methods_start = source.index("    methods:", origin_start)
+          replacement = (
+              "    origin:\n"
+              "      process.env.NODE_ENV === \"production\"\n"
+              "        ? getAllowedFrontendOrigins()\n"
+              "        : true,\n"
+          )
+          source = source[:origin_start] + replacement + source[methods_start:]
 
-          old_import = '''  configureApiKeyStore,
-              getApiKeyStore,
-              requestLogger,'''
-          new_import = '''  configureApiKeyStore,
-              getAllowedFrontendOrigins,
-              getApiKeyStore,
-              requestLogger,'''
+          old_import = "  configureApiKeyStore,\n  getApiKeyStore,"
+          new_import = (
+              "  configureApiKeyStore,\n"
+              "  getAllowedFrontendOrigins,\n"
+              "  getApiKeyStore,"
+          )
           if old_import not in source:
               raise SystemExit("Security import anchor not found")
           source = source.replace(old_import, new_import, 1)
