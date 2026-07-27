@@ -1,8 +1,8 @@
 # Current Project State
 
 **Last Updated**: July 27, 2026
-**Phase**: CUTOVER-1 — Release promotion and legacy frontend removal preparation
-**Build Status**: Backend CI is green on Node.js 22 / npm 10, including the full normal test suite, canonical plugin source and deterministic package coverage, strict PostgreSQL restart acceptance, repository validation, formatting, linting, commitlint, and the aggregate merge gate. PR #16 fixed the Roblox-forbidden custom `Content-Type` header, PR #17 normalized real Lua generator output at the existing artifact-recorder boundary, and PR #19 preserved canonical specialist assignments when no adaptive performance evidence exists. Standalone frontend CI passes TypeScript, Workspace logic tests, production build, and production-artifact responsive browser QA. STUDIO-1 passed through a real Roblox Studio desktop session with eight verified artifacts; CUTOVER-1 is now unblocked but still requires release-promotion, dependency, rollback, and cleanup gates.
+**Phase**: CUTOVER-1C — Cross-repository release composition
+**Build Status**: Backend CI is green on Node.js 22 / npm 10, including the full normal test suite, canonical plugin and package coverage, strict PostgreSQL restart acceptance, the backend-only production image smoke gate, repository validation, formatting, linting, commitlint, and the aggregate merge gate. Standalone Frontend CI is green for TypeScript, Workspace logic tests, production build, the non-root SSR release image, `/health`, the root SSR document, production-artifact responsive browser QA, and its aggregate Merge Gate. STUDIO-1, CUTOVER-1A, and CUTOVER-1B are complete. CUTOVER-1C must now prove the composed frontend/backend release topology, CORS, cookies, authenticated REST, Socket.IO, and rollback before legacy frontend removal.
 
 ---
 
@@ -28,6 +28,7 @@
 
 - **Repository**: [kazakovak2001-lgtm/Frontend](https://github.com/kazakovak2001-lgtm/Frontend) on `main`
 - **Acceptance commit**: `a8d005d433d48e18d8e64ac176ee63c9c694b644`, independently matched to the ZIP used during the successful STUDIO-1 session.
+- **SSR release commit**: `1036c3ef9705d145cb9700cd14268a33d2abdd58`, merged through Frontend PR #12 after CI run #65 verified the production image, `/health`, SSR `/`, responsive QA, and Merge Gate.
 - **Framework**: React 19 + TypeScript + Vite + Tailwind CSS
 - **Routing and state**: TanStack Router/Query, typed backend adapter, Socket.IO realtime client
 - **Ownership**: All new user-facing web functionality belongs in the standalone repository.
@@ -82,6 +83,8 @@
 | STUDIO-1e package | Deterministic installable plugin and acceptance runbook  | July 25, 2026 |
 | STUDIO-1f fixes   | Real desktop transport, artifact, and routing fixes      | July 27, 2026 |
 | STUDIO-1g         | Real desktop import and backend verification             | July 27, 2026 |
+| CUTOVER-1A        | Backend-only production release artifact                 | July 27, 2026 |
+| CUTOVER-1B        | Standalone Frontend SSR release artifact                 | July 27, 2026 |
 
 ---
 
@@ -180,10 +183,11 @@ This template enforces:
 
 ## Production Infrastructure
 
-- **Dockerfile**: Multi-stage build (Node.js 22 alpine builder → production image)
-- **Migration Runner**: `server/src/platform/storage/postgres/migrationRunner.ts` — auto-applies pending migrations on startup (skips when STORAGE_PROVIDER=inmemory)
-- **Nginx Config**: `deploy/nginx.conf` — reverse proxy with WebSocket support, gzip, security headers
-- **Docker Compose**: `deploy/docker-compose.yml` — full stack (app + postgres + nginx)
+- **Backend release image**: `Dockerfile.backend` builds and starts the compiled backend without root `src/`, `public/`, Vite, or Tailwind inputs; CI verifies `GET /health`.
+- **Backend/PostgreSQL composition**: `deploy/docker-compose.backend.yml` provides the independently verified backend and persistent database boundary.
+- **Standalone Frontend release image**: Frontend commit `1036c3ef9705d145cb9700cd14268a33d2abdd58` packages `.output` plus one shared worker-to-Node adapter as a non-root SSR process.
+- **Migration Runner**: `server/src/platform/storage/postgres/migrationRunner.ts` — auto-applies pending migrations on startup (skips when STORAGE_PROVIDER=inmemory).
+- **Rollback inventory**: the prior combined `Dockerfile`, `deploy/nginx.conf`, and `deploy/docker-compose.yml` remain unchanged until composed-release and cleanup gates pass.
 - **Backup Script**: `scripts/backup-database.sh` — timestamped pg_dump with configurable retention
 - **Deployment Guide**: `docs/PRODUCTION_DEPLOYMENT_GUIDE.md`
 
@@ -191,6 +195,8 @@ This template enforces:
 
 ## Last Changes
 
+- July 27, 2026: CUTOVER-1B completed — Frontend PR #12 merged as `1036c3ef9705d145cb9700cd14268a33d2abdd58`. One shared worker-to-Node adapter now serves both responsive QA and production. Frontend CI run #65 verified the non-root image, independent `/health`, root SSR document, desktop/tablet/mobile responsive QA, and Merge Gate. CUTOVER-1C is the next gate.
+- July 27, 2026: CUTOVER-1A completed — backend PR #22 merged as `22852af9d4db30c4fff28ea5ef0c762aa3c0607a`. The backend-only production image builds without legacy frontend sources and passes its container health smoke gate.
 - July 27, 2026: STUDIO-1g real desktop acceptance completed — standalone Frontend commit `a8d005d433d48e18d8e64ac176ee63c9c694b644` generated execution `exec-1785180356168`; plugin v1.8 on Roblox Studio `0.730.0.7300790` imported eight artifacts, created the expected Roblox instance hierarchy, returned exact receipts, and reached `Verified`. The authenticated project and session status matched project `proj-286c6929-5`, client `studio-39fa03bb`, session `session-afec81df-c`, command `cmd-96bd9df4-e`, and eight verified artifacts. Issue #15 is closed. See `STUDIO-1G_DESKTOP_ACCEPTANCE_RESULT.md`.
 - July 27, 2026: STUDIO-1f desktop findings resolved — PR #16 removed the Roblox-forbidden custom `Content-Type` header while retaining the canonical connector and protocol. PR #17 normalized the exact current `LuaGeneratorAgent` output at the existing `GenerationArtifactRecorder` boundary and rejects empty, malformed, or duplicate Lua artifacts before queueing. PR #19 preserved canonical specialist assignments when adaptive performance evidence is absent. Subsequent real desktop acceptance passed in STUDIO-1g.
 - July 25, 2026: STUDIO-1e acceptance packaging verified — `npm run studio:package` now creates a deterministic installable `.rbxmx`, source/bundle manifest, and SHA-256 checksum file from the explicit active plugin allowlist. The package workflow parses the Roblox XML model, verifies checksums, and publishes a downloadable artifact. The standard test suite proves repeat builds are byte-identical, and the desktop runbook defines installation, status capture, evidence fields, and failure triage.

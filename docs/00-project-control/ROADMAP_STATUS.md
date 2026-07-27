@@ -15,7 +15,7 @@ This sequence is authoritative for work after the standalone frontend integratio
 | CORE-1        | Real project data, persistence, and API contract stabilization | Critical | ✅ Complete                         | CI-BASELINE-1         |
 | WORKSPACE-1   | Workflow-oriented standalone Workspace                         | High     | ✅ Complete                         | CORE-1                |
 | STUDIO-1      | Generated artifact → Roblox Studio end-to-end validation       | High     | ✅ Complete — real desktop verified | CORE-1, WORKSPACE-1   |
-| CUTOVER-1     | Release promotion and legacy frontend removal                  | High     | 🟡 Active — 1A complete; 1B planned | WORKSPACE-1, STUDIO-1 |
+| CUTOVER-1     | Release promotion and legacy frontend removal                  | High     | 🟡 Active — 1A/1B complete; 1C next | WORKSPACE-1, STUDIO-1 |
 
 See [FRONTEND_CUTOVER.md](./FRONTEND_CUTOVER.md) for ownership, branch, validation, and legacy-removal rules.
 See [CORE-1A_DURABLE_PROJECTS.md](./CORE-1A_DURABLE_PROJECTS.md) for the completed identity/project boundary.
@@ -27,7 +27,8 @@ See [STUDIO-1D_REAL_PLUGIN_ACCEPTANCE.md](./STUDIO-1D_REAL_PLUGIN_ACCEPTANCE.md)
 See [STUDIO-1E_DESKTOP_ACCEPTANCE_RUNBOOK.md](./STUDIO-1E_DESKTOP_ACCEPTANCE_RUNBOOK.md) for the deterministic installable package, checksum contract, and manual evidence procedure.
 See [STUDIO-1F_DESKTOP_FINDINGS_AND_RERUN.md](./STUDIO-1F_DESKTOP_FINDINGS_AND_RERUN.md) for the production-only defects found during the first desktop runs.
 See [STUDIO-1G_DESKTOP_ACCEPTANCE_RESULT.md](./STUDIO-1G_DESKTOP_ACCEPTANCE_RESULT.md) for the completed real desktop evidence and canonical acceptance identity.
-See [CUTOVER-1A_BACKEND_RELEASE_ARTIFACT.md](./CUTOVER-1A_BACKEND_RELEASE_ARTIFACT.md) for the backend-only release boundary and the remaining cross-repository slices.
+See [CUTOVER-1A_BACKEND_RELEASE_ARTIFACT.md](./CUTOVER-1A_BACKEND_RELEASE_ARTIFACT.md) for the completed backend-only release boundary.
+See [`CUTOVER-1B_FRONTEND_SSR_RELEASE.md`](https://github.com/kazakovak2001-lgtm/Frontend/blob/main/docs/CUTOVER-1B_FRONTEND_SSR_RELEASE.md) for the completed standalone Frontend SSR release artifact.
 See the standalone frontend documentation for the completed WORKSPACE-1 slices and production responsive QA:
 
 - [`WORKSPACE-1_WORKFLOW_SHELL.md`](https://github.com/kazakovak2001-lgtm/Frontend/blob/main/docs/WORKSPACE-1_WORKFLOW_SHELL.md)
@@ -57,11 +58,13 @@ CUTOVER-1 is now unblocked, but the next step is preparation and review—not im
 
 ## Active CUTOVER-1 Gate
 
-CUTOVER-1A is complete. CI run #192 built `Dockerfile.backend`, started the production container without root `src/`, and received HTTP 200 from `GET /health`. The image contains the compiled backend, production dependencies, and the required backend `architecture.manifest.json`; it does not contain the legacy frontend, `public/`, Vite configuration, or Tailwind configuration.
+CUTOVER-1A is complete. Backend CI run #195 built `Dockerfile.backend`, started the production container without root `src/`, and received HTTP 200 from `GET /health`.
+
+CUTOVER-1B is complete. Frontend PR #12 merged as `1036c3ef9705d145cb9700cd14268a33d2abdd58`; final CI run #65 built the non-root SSR image, verified independent `/health`, received an HTML document from `/`, and passed desktop/tablet/mobile responsive QA through the same shared Node adapter.
 
 The prior combined Dockerfile, Nginx configuration, compose stack, and legacy frontend remain unchanged as rollback inventory.
 
-The next slice is **CUTOVER-1B — standalone Frontend SSR release artifact**. It must package the TanStack Start/Nitro process independently and establish its production health contract before cross-repository composition begins.
+The next slice is **CUTOVER-1C — cross-repository release composition**. It must compose the independently verified artifacts and prove exact origins, CORS, cookie behavior, authenticated REST, authenticated Socket.IO, health, and rollback before dependency pruning or legacy frontend removal.
 
 ## Historical Roadmap: UX-4 Feature Development
 
@@ -99,7 +102,8 @@ The next slice is **CUTOVER-1B — standalone Frontend SSR release artifact**. I
 - UX-3D: 8/8 sprints ✅ (See MIGRATION_PROGRESS.md for full history)
 - ✅ STUDIO-1 COMPLETE — real desktop import and backend verification passed
 - ✅ CUTOVER-1A COMPLETE — backend-only production image and health smoke gate passed
-- 🟡 CUTOVER-1B NEXT — standalone Frontend SSR release artifact
+- ✅ CUTOVER-1B COMPLETE — standalone Frontend SSR image, health, SSR document, responsive QA, and Merge Gate passed
+- 🟡 CUTOVER-1C NEXT — cross-repository release composition and authenticated transport verification
 
 ## Release Hardening Sprint Status
 
@@ -137,6 +141,6 @@ The next slice is **CUTOVER-1B — standalone Frontend SSR release artifact**. I
 - **Security Status**: 12/12 hardening tasks completed (including final checkpoint)
 - **Historical v1.0 Decision**: ✅ APPROVED for the embedded product baseline
 - **Studio Gate**: ✅ STUDIO-1 complete with real desktop evidence
-- **Current Cutover Decision**: ▶️ CUTOVER-1A complete; CUTOVER-1B standalone Frontend SSR packaging is next
+- **Current Cutover Decision**: ▶️ CUTOVER-1A and CUTOVER-1B complete; CUTOVER-1C composed-release verification is next
 - **Sign-Off Document**: `FINAL_V1_RELEASE_SIGN_OFF.md`
 - **Post-release**: F-12 (Collaborative Dev) deferred to post-launch
