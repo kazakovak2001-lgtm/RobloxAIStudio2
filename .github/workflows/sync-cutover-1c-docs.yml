@@ -1,19 +1,19 @@
 name: Sync CUTOVER-1C Acceptance Documentation
 
 on:
-  pull_request:
-    types: [synchronize]
+  push:
+    branches:
+      - cutover/composed-release-topology
 
 permissions:
   contents: write
 
 concurrency:
-  group: cutover-1c-doc-sync-${{ github.event.pull_request.number }}
+  group: cutover-1c-doc-sync-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
   sync:
-    if: github.head_ref == 'cutover/composed-release-topology'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -31,6 +31,11 @@ jobs:
         run: |
           python - <<'PY'
           from pathlib import Path
+
+          result_path = Path("docs/00-project-control/CUTOVER-1C_COMPOSED_RELEASE.md")
+          if result_path.exists():
+              print("CUTOVER-1C documentation already synchronized")
+              raise SystemExit(0)
 
           current_path = Path("docs/00-project-control/CURRENT_STATE.md")
           current = current_path.read_text()
@@ -126,9 +131,6 @@ All significant architectural and product decisions are recorded here.
               raise SystemExit("DECISION_LOG header anchor missing")
           decision_path.write_text(decision.replace(anchor, section, 1))
 
-          result_path = Path("docs/00-project-control/CUTOVER-1C_COMPOSED_RELEASE.md")
-          if result_path.exists():
-              raise SystemExit("CUTOVER-1C result document already exists")
           result_path.write_text("""# CUTOVER-1C Composed HTTPS Release
 
 **Status**: Verified  
