@@ -8,14 +8,14 @@
 
 This sequence is authoritative for work after the standalone frontend integration. It replaces the historical plan to further migrate the embedded frontend in this repository.
 
-| ID            | Delivery item                                                  | Priority | Status                                                         | Dependency            |
-| ------------- | -------------------------------------------------------------- | -------- | -------------------------------------------------------------- | --------------------- |
-| CUTOVER-0     | Standalone frontend governance and CI alignment                | Critical | ✅ Complete                                                    | —                     |
-| CI-BASELINE-1 | Portable green backend CI and repository hygiene               | Critical | ✅ Complete                                                    | CUTOVER-0             |
-| CORE-1        | Real project data, persistence, and API contract stabilization | Critical | ✅ Complete                                                    | CI-BASELINE-1         |
-| WORKSPACE-1   | Workflow-oriented standalone Workspace                         | High     | ✅ Complete                                                    | CORE-1                |
-| STUDIO-1      | Generated artifact → Roblox Studio end-to-end validation       | High     | 🟡 1a–1f code/fixes verified; fresh desktop evidence pending   | CORE-1, WORKSPACE-1   |
-| CUTOVER-1     | Release promotion and legacy frontend removal                  | High     | ⏳ Planned                                                     | WORKSPACE-1, STUDIO-1 |
+| ID            | Delivery item                                                  | Priority | Status                                                       | Dependency            |
+| ------------- | -------------------------------------------------------------- | -------- | ------------------------------------------------------------ | --------------------- |
+| CUTOVER-0     | Standalone frontend governance and CI alignment                | Critical | ✅ Complete                                                  | —                     |
+| CI-BASELINE-1 | Portable green backend CI and repository hygiene               | Critical | ✅ Complete                                                  | CUTOVER-0             |
+| CORE-1        | Real project data, persistence, and API contract stabilization | Critical | ✅ Complete                                                  | CI-BASELINE-1         |
+| WORKSPACE-1   | Workflow-oriented standalone Workspace                         | High     | ✅ Complete                                                  | CORE-1                |
+| STUDIO-1      | Generated artifact → Roblox Studio end-to-end validation       | High     | 🟡 1a–1f code/fixes verified; fresh desktop evidence pending | CORE-1, WORKSPACE-1   |
+| CUTOVER-1     | Release promotion and legacy frontend removal                  | High     | ⏳ Planned                                                   | WORKSPACE-1, STUDIO-1 |
 
 See [FRONTEND_CUTOVER.md](./FRONTEND_CUTOVER.md) for ownership, branch, validation, and legacy-removal rules.
 See [CORE-1A_DURABLE_PROJECTS.md](./CORE-1A_DURABLE_PROJECTS.md) for the completed identity/project boundary.
@@ -76,11 +76,11 @@ Previously persisted malformed executions must not be reused. CUTOVER-1 must not
 
 ## Active Bugfixes
 
-| ID        | Issue                                      | Status                                                    |
-| --------- | ------------------------------------------ | --------------------------------------------------------- |
-| UX-4.1    | Responsive Layout Fix                      | ✅ RESOLVED (already implemented)                         |
-| STUDIO-1f | Roblox custom `Content-Type` rejection     | ✅ RESOLVED in PR #16                                     |
-| STUDIO-1f | Lua generator → plugin artifact shape gap  | ✅ RESOLVED in PR #17; fresh desktop rerun still required |
+| ID        | Issue                                     | Status                                                    |
+| --------- | ----------------------------------------- | --------------------------------------------------------- |
+| UX-4.1    | Responsive Layout Fix                     | ✅ RESOLVED (already implemented)                         |
+| STUDIO-1f | Roblox custom `Content-Type` rejection    | ✅ RESOLVED in PR #16                                     |
+| STUDIO-1f | Lua generator → plugin artifact shape gap | ✅ RESOLVED in PR #17; fresh desktop rerun still required |
 
 ## Milestones
 
