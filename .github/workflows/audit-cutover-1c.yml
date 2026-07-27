@@ -1,10 +1,9 @@
 name: Audit CUTOVER-1C Contracts
 
 on:
-  push:
+  pull_request:
     branches:
-      - cutover/composed-release-topology
-  workflow_dispatch:
+      - feature/plugin-merge
 
 permissions:
   contents: read
@@ -35,7 +34,7 @@ jobs:
       - name: Publish audit inventory
         uses: actions/upload-artifact@v4
         with:
-          name: cutover-1c-audit-${{ github.sha }}
+          name: cutover-1c-audit-${{ github.event.pull_request.head.sha }}
           path: artifacts/cutover-1c-audit/inventory.txt
           if-no-files-found: error
           retention-days: 1
