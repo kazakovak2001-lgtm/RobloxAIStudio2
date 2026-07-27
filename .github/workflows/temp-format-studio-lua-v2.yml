@@ -1,0 +1,47 @@
+name: Temporary Studio Lua Format V2
+
+on:
+  push:
+    branches:
+      - fix/studio-lua-artifact-shape
+
+permissions:
+  contents: write
+
+jobs:
+  format:
+    if: github.event.head_commit.message != 'style(studio): apply canonical Prettier output'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out branch
+        uses: actions/checkout@v4
+        with:
+          ref: fix/studio-lua-artifact-shape
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Format changed Studio files
+        run: |
+          node node_modules/prettier/bin/prettier.cjs --write \
+            server/src/studio/artifacts/GenerationArtifactRecorder.ts \
+            server/src/__tests__/studio1.artifact-lineage.test.ts
+
+      - name: Commit formatted files
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add server/src/studio/artifacts/GenerationArtifactRecorder.ts \
+            server/src/__tests__/studio1.artifact-lineage.test.ts
+          if git diff --cached --quiet; then
+            echo "Files already formatted"
+            exit 0
+          fi
+          git commit -m "style(studio): apply canonical Prettier output"
+          git push origin HEAD:fix/studio-lua-artifact-shape
