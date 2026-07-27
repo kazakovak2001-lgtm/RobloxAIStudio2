@@ -1,25 +1,18 @@
 name: Format CUTOVER-1A Files
 
 on:
-  push:
+  pull_request:
     branches:
-      - cutover/backend-release-artifact
+      - feature/plugin-merge
 
 permissions:
-  contents: write
-
-concurrency:
-  group: cutover-1a-format-${{ github.ref }}
-  cancel-in-progress: true
+  contents: read
 
 jobs:
   format:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-        with:
-          ref: cutover/backend-release-artifact
-          fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
@@ -34,18 +27,15 @@ jobs:
             deploy/docker-compose.backend.yml \
             docs/00-project-control/CUTOVER-1A_BACKEND_RELEASE_ARTIFACT.md \
             docs/00-project-control/ROADMAP_STATUS.md
-      - name: Commit formatting when required
-        run: |
-          if git diff --quiet; then
-            echo "CUTOVER-1A files already formatted."
-            exit 0
-          fi
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add \
-            .github/workflows/ci.yml \
-            deploy/docker-compose.backend.yml \
-            docs/00-project-control/CUTOVER-1A_BACKEND_RELEASE_ARTIFACT.md \
+      - name: Publish formatted files
+        uses: actions/upload-artifact@v4
+        with:
+          name: cutover-1a-formatted-${{ github.event.pull_request.head.sha }}
+          path: |
+            .github/workflows/ci.yml
+            deploy/docker-compose.backend.yml
+            docs/00-project-control/CUTOVER-1A_BACKEND_RELEASE_ARTIFACT.md
             docs/00-project-control/ROADMAP_STATUS.md
-          git commit -m "docs(cutover): format backend release records"
-          git push origin HEAD:cutover/backend-release-artifact
+          include-hidden-files: true
+          if-no-files-found: error
+          retention-days: 1
