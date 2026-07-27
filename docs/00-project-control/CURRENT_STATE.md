@@ -1,8 +1,8 @@
 # Current Project State
 
-**Last Updated**: July 25, 2026
-**Phase**: STUDIO-1 — Manual Roblox Studio Evidence (STUDIO-1e deterministic package automation verified)
-**Build Status**: Backend CI is green on Node.js 22 / npm 10, including the full normal test suite, canonical plugin source and deterministic package coverage, strict PostgreSQL restart acceptance, repository validation, formatting, linting, commitlint, and the aggregate merge gate; the Studio package workflow builds, parses, checksum-verifies, and uploads the installable `.rbxmx`; standalone frontend CI passes TypeScript, Workspace logic tests, production build, and production-artifact responsive browser QA
+**Last Updated**: July 27, 2026
+**Phase**: STUDIO-1 — Fresh real Roblox Studio acceptance rerun after STUDIO-1f desktop fixes
+**Build Status**: Backend CI is green on Node.js 22 / npm 10, including the full normal test suite, canonical plugin source and deterministic package coverage, strict PostgreSQL restart acceptance, repository validation, formatting, linting, commitlint, and the aggregate merge gate; PR #16 fixed the Roblox-forbidden custom `Content-Type` header and PR #17 normalized the real Lua generator output at the existing artifact-recorder boundary; standalone frontend CI passes TypeScript, Workspace logic tests, production build, and production-artifact responsive browser QA. The remaining release gate is a fresh real desktop execution proving `artifactVerified=true`.
 
 ---
 
@@ -17,8 +17,10 @@
 - **Storage**: One configured provider per process; PostgreSQL migrations and cache hydration complete before the server listens. `STORAGE_PROVIDER=postgres` requires `DATABASE_URL`.
 - **Durable records**: identities, sessions, users, projects, generation history, API keys, blueprints, blueprint versions, generation executions, pipeline artifacts, conversations, and conversation messages use the configured storage boundary.
 - **Studio runtime**: project sync, plugin registration, active sessions, artifact snapshots, transfer, the outbound command ledger, acknowledgement/result processing, and exact artifact ID/hash verification use one shared Studio v2 runtime. Project sync selects the newest completed artifact-bearing execution and never creates placeholder Lua/config packages. Queue delivery alone never marks an import verified.
-- **Canonical Studio plugin**: `studio-plugin/` v1.8 reuses the existing connector, lifecycle manager, sync manager, artifact loader, events, and UI. It connects with the exact backend project ID, polls `EXPORT_PROJECT`, acknowledges delivery, materializes structured Lua scripts and non-Lua metadata as Roblox instances, reports one exact ID/hash receipt per pipeline artifact, and shows Verified only after the backend accepts the evidence.
+- **Generation-to-Studio boundary**: the existing `GenerationArtifactRecorder` preserves canonical `scripts[]` payloads and normalizes current `LuaGeneratorAgent` server/client/shared/module `{ name, code }` groups into validated Studio `{ path, content }` scripts. Empty, malformed, and duplicate-path Lua output is rejected before queueing.
+- **Canonical Studio plugin**: `studio-plugin/` v1.8 reuses the existing connector, lifecycle manager, sync manager, artifact loader, events, and UI. It connects with the exact backend project ID, polls `EXPORT_PROJECT`, acknowledges delivery, materializes structured Lua scripts and non-Lua metadata as Roblox instances, reports one exact ID/hash receipt per pipeline artifact, and shows Verified only after the backend accepts the evidence. Roblox-owned JSON content type is provided through `Enum.HttpContentType.ApplicationJson`; the plugin does not submit a forbidden custom `Content-Type` header.
 - **Studio plugin package**: `npm run studio:package` creates a deterministic installable `.rbxmx`, a source/bundle manifest, and SHA-256 checksums from an explicit active-module allowlist. The dedicated package workflow validates XML structure and checksums before uploading the desktop acceptance artifact.
+- **Current acceptance package**: workflow run `30277078815`, artifact ID `8657228073`, bundle size `45932` bytes, bundle SHA-256 `a97e6268193f202cb5cc12ef5c174d0a028067c382327dd9432aacbe80f5ced7`, manifest SHA-256 `0655ae43b48f8c3bb90591da1e35170ff122136f8352bad73320c88c0eca3f14`.
 - **Real-time**: Socket.io with 50+ event types, project rooms, JWT-authenticated handshake (production)
 - **Authentication**: bcrypt password hashing (cost 12), storage-backed sessions/roles, cryptographic validation, httpOnly cookie delivery
 
@@ -77,6 +79,7 @@
 | STUDIO-1c backend | ACK/result state machine and exact evidence verification | July 24, 2026 |
 | STUDIO-1d plugin  | Canonical plugin command/import contract                 | July 24, 2026 |
 | STUDIO-1e package | Deterministic installable plugin and acceptance runbook  | July 25, 2026 |
+| STUDIO-1f fixes   | Real desktop transport and Lua artifact contract fixes   | July 27, 2026 |
 
 ---
 
@@ -148,7 +151,7 @@
 ## Known Problems
 
 1. **ESLint Config**: v10 installed with legacy `.eslintrc.json` format (functional but deprecated config style).
-2. **Manual Roblox Studio acceptance evidence**: the backend ACK/result verifier, canonical `studio-plugin/` implementation, deterministic `.rbxmx` package, checksum manifest, and acceptance runbook are CI-verified. STUDIO-1 remains active only until a real desktop Studio session installs the verified package, polls `EXPORT_PROJECT`, creates or updates every expected instance, reports matching receipts, and project status returns `artifactVerified=true` for the same execution.
+2. **Manual Roblox Studio acceptance evidence**: real desktop testing proved connection and reached `EXPORT_PROJECT`, then exposed and fixed the Roblox header and Lua artifact-shape defects in PR #16 and PR #17. STUDIO-1 remains active until a fresh execution generated after integration commit `5e560069758b1b7a2444e40042dcf21c10636623` is imported by the current verified plugin package and the same project status returns `artifactVerified=true`, `verificationStatus=verified`, a matching execution ID, and a matching artifact count.
 
 ---
 
@@ -185,6 +188,7 @@ This template enforces:
 
 ## Last Changes
 
+- July 27, 2026: STUDIO-1f desktop findings resolved — PR #16 removed the Roblox-forbidden custom `Content-Type` header while retaining the canonical connector and protocol. PR #17 normalized the exact current `LuaGeneratorAgent` output at the existing `GenerationArtifactRecorder` boundary, maps server/client/shared/module scripts to canonical Studio paths, and rejects empty, malformed, or duplicate Lua artifacts before queueing. The live acceptance issue and package identity were refreshed. A fresh post-fix generation and real Studio verification remain mandatory. See `STUDIO-1F_DESKTOP_FINDINGS_AND_RERUN.md` and issue #15.
 - July 25, 2026: STUDIO-1e acceptance packaging verified — `npm run studio:package` now creates a deterministic installable `.rbxmx`, source/bundle manifest, and SHA-256 checksum file from the explicit active plugin allowlist. The package workflow parses the Roblox XML model, verifies checksums, and publishes a downloadable artifact. The standard test suite proves repeat builds are byte-identical, and the desktop runbook defines installation, status capture, evidence fields, and failure triage. Real Roblox Studio evidence remains the only STUDIO-1 gate. See `STUDIO-1E_DESKTOP_ACCEPTANCE_RUNBOOK.md`.
 - July 24, 2026: STUDIO-1d canonical plugin implementation verified — existing plugin modules now use the correct dependency graph and backend project ID, poll and acknowledge `EXPORT_PROJECT`, materialize structured Lua scripts and non-Lua metadata as real Roblox instances, report exact ID/hash receipts, and expose Verified only after backend evidence acceptance. The plugin source contract is enforced by the normal test suite. Manual Roblox Studio evidence remains the only STUDIO-1 gate. See `STUDIO-1D_REAL_PLUGIN_ACCEPTANCE.md`.
 - July 24, 2026: STUDIO-1c backend slice complete — the shared Studio runtime now enforces polling → acknowledgement → result ordering, validates the exact durable execution ID and artifact ID/SHA-256 receipt set, records verified/failed session states, and exposes accurate additive project status fields. PR #10 delivered the contract; PR #11 restored canonical CI, removed temporary diagnostics, completed formatting, and passed every standard validation gate. See `STUDIO-1C_IMPORT_ACKNOWLEDGEMENT.md`.
