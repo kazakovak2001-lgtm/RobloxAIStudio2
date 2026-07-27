@@ -1,0 +1,95 @@
+name: Prepare CUTOVER-1C Runtime
+
+on:
+  push:
+    branches:
+      - cutover/composed-release-topology
+
+permissions:
+  contents: write
+
+concurrency:
+  group: cutover-1c-prepare-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: cutover/composed-release-topology
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+      - run: npm ci
+        env:
+          HUSKY: "0"
+      - name: Reuse HTTP origin policy in Socket.IO
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path("server/src/index.ts")
+          source = path.read_text()
+          old_origin = '''    origin:
+              process.env.NODE_ENV === "production"
+                ? (["http://localhost:5173", process.env.FRONTEND_URL ?? ""].filter(
+                    (o) => o.length > 0,
+                  ) as string[])
+                : true,'''
+          new_origin = '''    origin:
+              process.env.NODE_ENV === "production"
+                ? getAllowedFrontendOrigins()
+                : true,'''
+          if old_origin not in source:
+              raise SystemExit("Socket.IO origin anchor not found")
+          source = source.replace(old_origin, new_origin, 1)
+
+          old_import = '''  configureApiKeyStore,
+              getApiKeyStore,
+              requestLogger,'''
+          new_import = '''  configureApiKeyStore,
+              getAllowedFrontendOrigins,
+              getApiKeyStore,
+              requestLogger,'''
+          if old_import not in source:
+              raise SystemExit("Security import anchor not found")
+          source = source.replace(old_import, new_import, 1)
+          path.write_text(source)
+          PY
+      - name: Format CUTOVER-1C files
+        run: |
+          npx prettier --write \
+            .github/workflows/ci.yml \
+            server/src/index.ts \
+            server/src/common/middleware/security.ts \
+            server/src/__tests__/cutover1c.origin-policy.test.ts \
+            scripts/cutover/verify-composed-release.mjs \
+            deploy/docker-compose.backend.yml \
+            deploy/docker-compose.release.yml
+      - name: Validate focused contracts
+        run: |
+          node --check scripts/cutover/verify-composed-release.mjs
+          npx vitest run server/src/__tests__/cutover1c.origin-policy.test.ts
+          npx tsc --noEmit --project server/tsconfig.json
+      - name: Commit prepared files
+        run: |
+          if git diff --quiet; then
+            echo "CUTOVER-1C runtime already prepared."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add \
+            .github/workflows/ci.yml \
+            server/src/index.ts \
+            server/src/common/middleware/security.ts \
+            server/src/__tests__/cutover1c.origin-policy.test.ts \
+            scripts/cutover/verify-composed-release.mjs \
+            deploy/docker-compose.backend.yml \
+            deploy/docker-compose.release.yml
+          git commit -m "feat(cutover): prepare composed release runtime"
+          git push origin HEAD:cutover/composed-release-topology
