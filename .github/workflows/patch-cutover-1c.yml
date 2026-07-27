@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - cutover/composed-release-topology
+  workflow_dispatch:
 
 permissions:
   contents: write
