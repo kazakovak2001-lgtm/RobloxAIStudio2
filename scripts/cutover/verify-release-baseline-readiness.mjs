@@ -23,6 +23,23 @@ const integrationRef =
   process.env.INTEGRATION_REF ?? "origin/feature/plugin-merge";
 const defaultRef = process.env.DEFAULT_REF ?? "origin/standing-pentaceratops";
 
+mkdirSync(outputDirectory, { recursive: true });
+process.on("uncaughtException", (error) => {
+  const failure = {
+    status: "failed",
+    roadmapId: "CUTOVER-1D",
+    generatedAt: new Date().toISOString(),
+    message: error instanceof Error ? error.message : String(error),
+    stack: error instanceof Error ? error.stack : undefined,
+  };
+  writeFileSync(
+    path.join(outputDirectory, "readiness-failure.json"),
+    `${JSON.stringify(failure, null, 2)}\n`,
+  );
+  console.error(error);
+  process.exit(1);
+});
+
 const inventory = JSON.parse(readFileSync(inventoryPath, "utf8"));
 assert.equal(inventory.schemaVersion, 1, "Unsupported inventory schema");
 assert.equal(inventory.roadmapId, "CUTOVER-1D");
