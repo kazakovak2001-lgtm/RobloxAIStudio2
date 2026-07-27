@@ -63,6 +63,77 @@ describe("STUDIO-1a canonical artifact lineage", () => {
     expect(store.count).toBe(3);
   });
 
+  it("normalizes the real LuaGeneratorAgent output into Studio scripts", () => {
+    const storage = new InMemoryStorageProvider();
+    const store = new ArtifactStore(storage);
+    const recorder = new GenerationArtifactRecorder(store);
+
+    const [artifact] = recorder.record("exec-real-lua-output", [
+      completedNode("lua_generator", {
+        generatedCode: { scripts: [], modules: {} },
+        lua_generator: {
+          server: [
+            {
+              name: "GameManager.server.lua",
+              code: "return { server = true }",
+            },
+          ],
+          client: [
+            {
+              name: "LocalController.client.lua",
+              code: "return { client = true }",
+            },
+          ],
+          shared: [
+            {
+              name: "GameConfig.lua",
+              code: "return { version = 1 }",
+            },
+          ],
+          modules: [],
+        },
+      }),
+    ]);
+
+    expect(artifact?.type).toBe("lua");
+    expect(artifact?.content).toEqual({
+      scripts: [
+        {
+          path: "ServerScriptService/GameManager.server.lua",
+          content: "return { server = true }",
+        },
+        {
+          path: "StarterPlayerScripts/LocalController.client.lua",
+          content: "return { client = true }",
+        },
+        {
+          path: "ReplicatedStorage/Shared/GameConfig.lua",
+          content: "return { version = 1 }",
+        },
+      ],
+    });
+  });
+
+  it("rejects completed Lua outputs that cannot materialize real scripts", () => {
+    const storage = new InMemoryStorageProvider();
+    const recorder = new GenerationArtifactRecorder(new ArtifactStore(storage));
+
+    expect(() =>
+      recorder.record("exec-empty-lua-output", [
+        completedNode("lua_generator", {
+          generatedCode: { scripts: [], modules: {} },
+          lua_generator: {
+            server: [],
+            client: [],
+            shared: [],
+            modules: [],
+          },
+        }),
+      ]),
+    ).toThrow("non-empty Studio scripts array");
+    expect(storage.count("pipeline_artifacts")).toBe(0);
+  });
+
   it("reconstructs artifacts, reviews, snapshots, and transfers from storage", () => {
     const storage = new InMemoryStorageProvider();
     const executionId = "exec-studio-restart";
