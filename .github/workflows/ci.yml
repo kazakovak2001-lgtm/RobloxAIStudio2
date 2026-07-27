@@ -6,6 +6,9 @@ on:
   pull_request:
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
@@ -203,6 +206,60 @@ jobs:
       - name: Stop composed release
         if: always()
         run: docker compose --project-name cutover1c --file deploy/docker-compose.release.yml down --volumes --remove-orphans || true
+
+  sync-cutover-docs:
+    name: Sync CUTOVER-1C Docs
+    if: github.event_name == 'pull_request' && github.head_ref == 'cutover/composed-release-topology'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: cutover/composed-release-topology
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "npm"
+      - run: npm ci
+        env:
+          HUSKY: "0"
+      - name: Apply canonical documentation transformation
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          workflow_path = Path(".github/workflows/sync-cutover-1c-docs.yml")
+          workflow = workflow_path.read_text()
+          start_marker = "          python - <<'PY'\n"
+          end_marker = "\n          PY"
+          start = workflow.index(start_marker) + len(start_marker)
+          end = workflow.index(end_marker, start)
+          lines = workflow[start:end].splitlines()
+          script = "\n".join(
+              line[10:] if line.startswith("          ") else line for line in lines
+          )
+          exec(compile(script, str(workflow_path), "exec"))
+          PY
+      - name: Format and validate synchronized documentation
+        run: |
+          npx prettier --write \
+            docs/00-project-control/CURRENT_STATE.md \
+            docs/00-project-control/ROADMAP_STATUS.md \
+            docs/00-project-control/DECISION_LOG.md \
+            docs/00-project-control/CUTOVER-1C_COMPOSED_RELEASE.md
+          npm run format:check
+          npm run validate
+      - name: Commit synchronized documentation
+        run: |
+          if git diff --quiet; then
+            echo "Documentation already synchronized."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs/00-project-control
+          git commit -m "docs(cutover): record composed release acceptance"
+          git push origin HEAD:cutover/composed-release-topology
 
   validate:
     name: Repository Validation
