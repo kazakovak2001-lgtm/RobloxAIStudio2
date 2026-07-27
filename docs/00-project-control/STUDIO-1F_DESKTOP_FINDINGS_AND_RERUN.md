@@ -89,18 +89,18 @@ PR #17 extended the existing `GenerationArtifactRecorder` to:
 
 Use the package produced from the PR #17 source and merged unchanged into `feature/plugin-merge`:
 
-| Field | Value |
-| --- | --- |
-| Workflow run | `30277078815` |
-| Artifact ID | `8657228073` |
-| Artifact name | `roblox-ai-studio-plugin-4691632dc7a8a0e60d35602f8dccd3368b09f406` |
-| Artifact source commit | `f98671ae44b51b9f456edd3e4441a6ab335482d4` |
-| Integration commit | `5e560069758b1b7a2444e40042dcf21c10636623` |
-| Bundle file | `RobloxAIStudioPlugin-v1.8.0.rbxmx` |
-| Bundle size | `45932` bytes |
-| Bundle SHA-256 | `a97e6268193f202cb5cc12ef5c174d0a028067c382327dd9432aacbe80f5ced7` |
-| Manifest SHA-256 | `0655ae43b48f8c3bb90591da1e35170ff122136f8352bad73320c88c0eca3f14` |
-| Active packaged Lua sources | 9 |
+| Field                       | Value                                                              |
+| --------------------------- | ------------------------------------------------------------------ |
+| Workflow run                | `30277078815`                                                      |
+| Artifact ID                 | `8657228073`                                                       |
+| Artifact name               | `roblox-ai-studio-plugin-4691632dc7a8a0e60d35602f8dccd3368b09f406` |
+| Artifact source commit      | `f98671ae44b51b9f456edd3e4441a6ab335482d4`                         |
+| Integration commit          | `5e560069758b1b7a2444e40042dcf21c10636623`                         |
+| Bundle file                 | `RobloxAIStudioPlugin-v1.8.0.rbxmx`                                |
+| Bundle size                 | `45932` bytes                                                      |
+| Bundle SHA-256              | `a97e6268193f202cb5cc12ef5c174d0a028067c382327dd9432aacbe80f5ced7` |
+| Manifest SHA-256            | `0655ae43b48f8c3bb90591da1e35170ff122136f8352bad73320c88c0eca3f14` |
+| Active packaged Lua sources | 9                                                                  |
 
 The earlier acceptance values of `45185` bytes and bundle SHA beginning `5e01fbcb` are superseded.
 
