@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { appendFileSync, mkdirSync, writeFileSync } from "node:fs";
 import https from "node:https";
 import { io } from "socket.io-client";
 
@@ -6,6 +7,11 @@ const origin = process.env.RELEASE_ORIGIN ?? "https://localhost:8443";
 const allowedOrigin = new URL(origin).origin;
 const disallowedOrigin = "https://not-allowed.example";
 const verificationPassword = process.env.POSTGRES_PASSWORD;
+const evidenceDirectory = "artifacts/cutover-1c";
+const smokeEventsPath = `${evidenceDirectory}/smoke-events.jsonl`;
+mkdirSync(evidenceDirectory, { recursive: true });
+recordSmokeEvent("smoke.started", { origin: allowedOrigin });
+
 assert.ok(
   verificationPassword,
   "POSTGRES_PASSWORD is required",
@@ -98,25 +104,25 @@ assert.equal(currentUserPayload.data.user.email, credentials.email);
 await assertSocketRejectedWithoutCookie();
 await assertSocketAcceptedWithCookie(accessCookieHeader);
 
-console.log(
-  JSON.stringify(
-    {
-      status: "passed",
-      origin: allowedOrigin,
-      frontendHealth: frontendHealth.status,
-      backendHealth: backendHealth.status,
-      ssrDocument: documentResponse.status,
-      corsAllowed: allowedPreflight.status,
-      corsRejected: rejectedOrigin.status,
-      authenticatedRest: currentUser.status,
-      authenticatedSocket: true,
-      unauthenticatedSocketRejected: true,
-      hostOnlyCookies: true,
-    },
-    null,
-    2,
-  ),
+const result = {
+  status: "passed",
+  origin: allowedOrigin,
+  frontendHealth: frontendHealth.status,
+  backendHealth: backendHealth.status,
+  ssrDocument: documentResponse.status,
+  corsAllowed: allowedPreflight.status,
+  corsRejected: rejectedOrigin.status,
+  authenticatedRest: currentUser.status,
+  authenticatedSocket: true,
+  unauthenticatedSocketRejected: true,
+  hostOnlyCookies: true,
+};
+writeFileSync(
+  `${evidenceDirectory}/smoke-result.json`,
+  `${JSON.stringify(result, null, 2)}\n`,
 );
+recordSmokeEvent("smoke.passed", result);
+console.log(JSON.stringify(result, null, 2));
 
 async function waitForHealthyRelease() {
   let lastError;
@@ -178,21 +184,34 @@ function assertCookiePolicy(cookie, { path }) {
 }
 
 function assertSocketRejectedWithoutCookie() {
+  recordSmokeEvent("socket.unauthenticated.started");
   return new Promise((resolve, reject) => {
     const socket = createSocket();
     const timer = setTimeout(() => {
       socket.close();
-      reject(new Error("Unauthenticated Socket.IO connection did not fail"));
+      const error = new Error(
+        "Unauthenticated Socket.IO connection did not fail",
+      );
+      recordSmokeEvent("socket.unauthenticated.timeout", serializeError(error));
+      reject(error);
     }, 8_000);
 
     socket.once("connect", () => {
       clearTimeout(timer);
       socket.close();
-      reject(new Error("Unauthenticated Socket.IO connection was accepted"));
+      const error = new Error(
+        "Unauthenticated Socket.IO connection was accepted",
+      );
+      recordSmokeEvent("socket.unauthenticated.accepted", serializeError(error));
+      reject(error);
     });
     socket.once("connect_error", (error) => {
       clearTimeout(timer);
       socket.close();
+      recordSmokeEvent(
+        "socket.unauthenticated.rejected",
+        serializeError(error),
+      );
       try {
         assert.match(error.message, /Authentication required/);
         resolve();
@@ -204,21 +223,28 @@ function assertSocketRejectedWithoutCookie() {
 }
 
 function assertSocketAcceptedWithCookie(cookie) {
+  recordSmokeEvent("socket.authenticated.started", {
+    cookiePresent: Boolean(cookie),
+  });
   return new Promise((resolve, reject) => {
     const socket = createSocket(cookie);
     const timer = setTimeout(() => {
       socket.close();
-      reject(new Error("Authenticated Socket.IO connection timed out"));
+      const error = new Error("Authenticated Socket.IO connection timed out");
+      recordSmokeEvent("socket.authenticated.timeout", serializeError(error));
+      reject(error);
     }, 8_000);
 
     socket.once("connect", () => {
       clearTimeout(timer);
       socket.close();
+      recordSmokeEvent("socket.authenticated.connected");
       resolve();
     });
     socket.once("connect_error", (error) => {
       clearTimeout(timer);
       socket.close();
+      recordSmokeEvent("socket.authenticated.rejected", serializeError(error));
       reject(error);
     });
   });
@@ -237,6 +263,24 @@ function createSocket(cookie) {
       ...(cookie ? { Cookie: cookie } : {}),
     },
   });
+}
+
+function recordSmokeEvent(event, details = {}) {
+  appendFileSync(
+    smokeEventsPath,
+    `${JSON.stringify({ timestamp: new Date().toISOString(), event, ...details })}\n`,
+  );
+}
+
+function serializeError(error) {
+  return {
+    name: error?.name,
+    message: error?.message,
+    description: error?.description?.message ?? error?.description,
+    type: error?.type,
+    data: error?.data,
+    contextReadyState: error?.context?.readyState,
+  };
 }
 
 function escapeRegExp(value) {
