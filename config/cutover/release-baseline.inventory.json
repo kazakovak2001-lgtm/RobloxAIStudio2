@@ -55,6 +55,7 @@
     ]
   },
   "rollbackInventory": {
+    "mode": "independent-cutover-1a-and-1b-artifacts",
     "files": [
       "Dockerfile",
       "deploy/docker-compose.yml",
@@ -67,7 +68,15 @@
       "postcss.config.js",
       "index.html"
     ],
-    "directories": ["src", "public"]
+    "directories": ["src"],
+    "knownMissing": [
+      {
+        "path": "public",
+        "referencedBy": "Dockerfile",
+        "classification": "legacy-combined-stack-not-executable"
+      }
+    ],
+    "classification": "prior combined stack is archival only; executable rollback uses the independently verified backend and Frontend artifacts"
   },
   "legacyDevelopment": {
     "packageScripts": {
@@ -190,6 +199,8 @@
   "promotionPlan": {
     "operation": "Promote the verified integration tree only after this readiness gate, branch-protection review, and rollback approval; do not merge PR #1 or cherry-pick the default-only commit.",
     "rollbackPoint": "309e897b6f56633e290c72f099729a603c2fd13e",
+    "rollbackMechanism": "restore independently deployable CUTOVER-1A backend and CUTOVER-1B Frontend artifacts; do not use the archival combined Dockerfile",
+    "priorCombinedStackExecutable": false,
     "requiredPostPromotionChecks": [
       "TypeScript Check",
       "ESLint",
