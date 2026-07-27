@@ -95,6 +95,19 @@ describe("STUDIO-1e deterministic Roblox plugin package", () => {
     );
   });
 
+  it("does not send Content-Type as a forbidden custom Roblox header", async () => {
+    const connectorSource = await readFile(
+      resolve(
+        process.cwd(),
+        "studio-plugin/src/services/StudioConnector.lua",
+      ),
+      "utf8",
+    );
+
+    expect(connectorSource).toContain("Enum.HttpContentType.ApplicationJson");
+    expect(connectorSource).not.toContain('["Content-Type"]');
+  });
+
   it("produces byte-identical bundles and manifests from unchanged sources", async () => {
     const firstOutput = await createTemporaryDirectory(
       "studio-plugin-package-a-",
