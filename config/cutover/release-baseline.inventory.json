@@ -39,7 +39,7 @@
       },
       {
         "id": "legacy-vite-command",
-        "regex": "(?:node_modules/vite|\\bnpx\\s+vite|\\bnpm\\s+run\\s+(?:dev|preview)\\b)",
+        "regex": "(?:node_modules/vite(?:/|$)|\\bnpx\\s+vite\\b|\\bnpm\\s+run\\s+(?:dev|preview)\\b)",
         "description": "Active release artifacts must not execute the legacy root Vite application."
       },
       {
