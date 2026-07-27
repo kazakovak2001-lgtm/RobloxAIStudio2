@@ -1,64 +1,249 @@
-name: CUTOVER-1C Documentation Gate
+name: CI Pipeline
 
 on:
+  push:
+    branches: [standing-pentaceratops, feature/plugin-merge]
   pull_request:
   workflow_dispatch:
 
-permissions:
-  contents: write
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
-  sync-cutover-docs:
-    name: Sync CUTOVER-1C Docs
-    if: github.event_name == 'pull_request' && github.head_ref == 'cutover/composed-release-topology'
+  typecheck:
+    name: TypeScript Check
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
         with:
-          ref: cutover/composed-release-topology
+          node-version: "22"
+          cache: "npm"
+      - run: npm ci
+      - run: npx tsc --noEmit
+      - run: npx tsc --noEmit --project server/tsconfig.json
+
+  lint:
+    name: ESLint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "npm"
+      - run: npm ci
+      - run: npm run lint
+
+  format:
+    name: Prettier Check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "npm"
+      - run: npm ci
+      - run: npm run format:check
+
+  test:
+    name: Test Suite
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "npm"
+      - run: npm ci
+      - run: npm run test
+
+  postgres-e2e:
+    name: PostgreSQL Restart E2E
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: roblox_ai_studio_test
+          POSTGRES_USER: studio
+          POSTGRES_PASSWORD: studio_test_password
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U studio -d roblox_ai_studio_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "npm"
+      - run: npm ci
+      - name: Verify restart durability and ownership isolation
+        env:
+          STORAGE_PROVIDER: postgres
+          DATABASE_URL: postgresql://studio:studio_test_password@localhost:5432/roblox_ai_studio_test
+          RUN_POSTGRES_E2E: "true"
+        run: npx vitest run server/src/__tests__/core1b.postgres.integration.test.ts
+
+  backend-image:
+    name: Backend Release Image
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build backend-only image
+        run: docker build --file Dockerfile.backend --tag roblox-ai-studio-backend:cutover .
+      - name: Start backend-only container
+        run: |
+          docker run --detach \
+            --name roblox-ai-studio-backend-cutover \
+            --publish 5050:5000 \
+            --env NODE_ENV=production \
+            --env PORT=5000 \
+            --env STORAGE_PROVIDER=inmemory \
+            --env FRONTEND_URL=http://127.0.0.1:8080 \
+            roblox-ai-studio-backend:cutover
+      - name: Verify backend health
+        run: |
+          for attempt in $(seq 1 30); do
+            if curl --fail --silent http://127.0.0.1:5050/health > /tmp/backend-health.json; then
+              cat /tmp/backend-health.json
+              grep --quiet '"status":"healthy"' /tmp/backend-health.json
+              exit 0
+            fi
+            sleep 1
+          done
+          docker inspect roblox-ai-studio-backend-cutover || true
+          exit 1
+      - name: Capture backend container logs
+        if: always()
+        run: docker logs roblox-ai-studio-backend-cutover > backend-container.log 2>&1 || true
+      - name: Publish backend container diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-container-diagnostics-${{ github.event.pull_request.head.sha }}
+          path: backend-container.log
+          if-no-files-found: error
+          retention-days: 1
+      - name: Print backend logs on failure
+        if: failure()
+        run: cat backend-container.log || true
+      - name: Stop backend container
+        if: always()
+        run: docker rm --force roblox-ai-studio-backend-cutover || true
+
+  composed-release:
+    name: Composed HTTPS Release
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout backend release source
+        uses: actions/checkout@v4
+      - name: Checkout exact Frontend release commit
+        uses: actions/checkout@v4
+        with:
+          repository: kazakovak2001-lgtm/Frontend
+          ref: 1036c3ef9705d145cb9700cd14268a33d2abdd58
+          path: standalone-frontend
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "npm"
+      - run: npm ci
+      - name: Configure release identity
+        run: |
+          echo "BACKEND_IMAGE=roblox-ai-studio-backend:cutover-1c" >> "$GITHUB_ENV"
+          echo "FRONTEND_IMAGE=roblox-ai-studio-frontend:cutover-1c" >> "$GITHUB_ENV"
+          echo "POSTGRES_PASSWORD=cutover_1c_ci_password" >> "$GITHUB_ENV"
+          echo "RELEASE_ORIGIN=https://localhost:8443" >> "$GITHUB_ENV"
+          echo "RELEASE_PORT=8443" >> "$GITHUB_ENV"
+          echo "RELEASE_CERT_DIR=${GITHUB_WORKSPACE}/.cutover-certs" >> "$GITHUB_ENV"
+      - name: Generate CI-only TLS certificate
+        run: |
+          mkdir -p .cutover-certs
+          openssl req -x509 -newkey rsa:2048 -nodes -days 1 \
+            -keyout .cutover-certs/release.key \
+            -out .cutover-certs/release.crt \
+            -subj "/CN=localhost" \
+            -addext "subjectAltName=DNS:localhost,IP:127.0.0.1"
+      - name: Build exact backend and Frontend images
+        run: |
+          docker build \
+            --file Dockerfile.backend \
+            --tag "$BACKEND_IMAGE" \
+            .
+          docker build \
+            --build-arg VITE_API_URL="$RELEASE_ORIGIN/api" \
+            --build-arg VITE_SOCKET_URL="$RELEASE_ORIGIN" \
+            --tag "$FRONTEND_IMAGE" \
+            standalone-frontend
+      - name: Start composed HTTPS release
+        run: docker compose --project-name cutover1c --file deploy/docker-compose.release.yml up --detach
+      - name: Verify secure REST and Socket.IO composition
+        run: node scripts/cutover/verify-composed-release.mjs
+      - name: Capture composition diagnostics
+        if: always()
+        run: |
+          mkdir -p artifacts/cutover-1c
+          docker compose --project-name cutover1c --file deploy/docker-compose.release.yml ps --all > artifacts/cutover-1c/compose-ps.txt || true
+          docker compose --project-name cutover1c --file deploy/docker-compose.release.yml logs --no-color > artifacts/cutover-1c/compose.log 2>&1 || true
+      - name: Publish composition diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cutover-1c-composition-${{ github.event.pull_request.head.sha }}
+          path: artifacts/cutover-1c
+          if-no-files-found: error
+          retention-days: 3
+      - name: Stop composed release
+        if: always()
+        run: docker compose --project-name cutover1c --file deploy/docker-compose.release.yml down --volumes --remove-orphans || true
+
+  validate:
+    name: Repository Validation
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "npm"
+      - run: npm ci
+      - run: npm run validate
+
+  commit-lint:
+    name: Commit Message Lint
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    steps:
+      - uses: actions/checkout@v4
+        with:
           fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
           cache: "npm"
       - run: npm ci
-        env:
-          HUSKY: "0"
-      - name: Apply canonical documentation transformation
-        run: |
-          python - <<'PY'
-          from pathlib import Path
+      - run: npx commitlint --config commitlint.config.cjs --from ${{ github.event.pull_request.base.sha }} --to ${{ github.event.pull_request.head.sha }}
 
-          workflow_path = Path(".github/workflows/sync-cutover-1c-docs.yml")
-          workflow = workflow_path.read_text()
-          start_marker = "          python - <<'PY'\n"
-          end_marker = "\n          PY"
-          start = workflow.index(start_marker) + len(start_marker)
-          end = workflow.index(end_marker, start)
-          lines = workflow[start:end].splitlines()
-          script = "\n".join(
-              line[10:] if line.startswith("          ") else line for line in lines
-          )
-          exec(compile(script, str(workflow_path), "exec"))
-          PY
-      - name: Format and validate synchronized documentation
-        run: |
-          npx prettier --write \
-            docs/00-project-control/CURRENT_STATE.md \
-            docs/00-project-control/ROADMAP_STATUS.md \
-            docs/00-project-control/DECISION_LOG.md \
-            docs/00-project-control/CUTOVER-1C_COMPOSED_RELEASE.md
-          npx prettier --check \
-            docs/00-project-control/CURRENT_STATE.md \
-            docs/00-project-control/ROADMAP_STATUS.md \
-            docs/00-project-control/DECISION_LOG.md \
-            docs/00-project-control/CUTOVER-1C_COMPOSED_RELEASE.md
-          npm run validate
-      - name: Commit synchronized documentation
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add docs/00-project-control
-          git diff --cached --quiet && exit 0
-          git commit -m "docs(cutover): record composed release acceptance"
-          git push origin HEAD:cutover/composed-release-topology
+  gate:
+    name: Merge Gate
+    runs-on: ubuntu-latest
+    needs:
+      [
+        typecheck,
+        lint,
+        format,
+        test,
+        postgres-e2e,
+        backend-image,
+        composed-release,
+        validate,
+      ]
+    steps:
+      - run: echo "All checks passed"
