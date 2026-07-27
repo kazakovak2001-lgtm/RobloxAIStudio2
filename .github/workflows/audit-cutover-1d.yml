@@ -1,0 +1,108 @@
+name: Audit CUTOVER-1D Readiness
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Fetch canonical branch tips
+        run: |
+          git fetch origin standing-pentaceratops feature/plugin-merge
+      - name: Capture promotion and dependency inventory
+        run: |
+          mkdir -p artifacts/cutover-1d-audit
+          integration_ref=origin/feature/plugin-merge
+          default_ref=origin/standing-pentaceratops
+          merge_base=$(git merge-base "$integration_ref" "$default_ref")
+          integration_tip=$(git rev-parse "$integration_ref")
+          default_tip=$(git rev-parse "$default_ref")
+          ahead=$(git rev-list --count "$default_ref..$integration_ref")
+          behind=$(git rev-list --count "$integration_ref..$default_ref")
+
+          cat > artifacts/cutover-1d-audit/branch-identity.json <<JSON
+          {
+            "integrationBranch": "feature/plugin-merge",
+            "integrationTip": "$integration_tip",
+            "defaultBranch": "standing-pentaceratops",
+            "defaultTip": "$default_tip",
+            "mergeBase": "$merge_base",
+            "integrationAheadBy": $ahead,
+            "integrationBehindBy": $behind
+          }
+          JSON
+
+          git log --format='%H%x09%s' "$integration_ref..$default_ref" \
+            > artifacts/cutover-1d-audit/default-only-commits.tsv
+          git diff --name-status "$integration_ref...$default_ref" \
+            > artifacts/cutover-1d-audit/default-only-paths.tsv
+
+          {
+            echo '# Runtime, CI, build, and deployment references'
+            grep -RInE '(^|[^[:alnum:]_])(src/|public/|dist/|vite|tailwind|postcss|Dockerfile([^.]|$)|deploy/nginx\.conf|deploy/docker-compose\.yml)' \
+              package.json package-lock.json tsconfig*.json vite.config.ts tailwind.config.js postcss.config.js Dockerfile Dockerfile.backend \
+              .github deploy scripts server studio-plugin 2>/dev/null || true
+            echo
+            echo '# Documentation references'
+            grep -RInE 'src/|public/|dist/|vite|tailwind|postcss|deploy/nginx\.conf|deploy/docker-compose\.yml' \
+              docs README.md FINAL_V1_RELEASE_SIGN_OFF.md V1_RELEASE_NOTES.md 2>/dev/null || true
+          } > artifacts/cutover-1d-audit/legacy-references.txt
+
+          node - <<'NODE' > artifacts/cutover-1d-audit/package-boundary.json
+          const pkg = require('./package.json');
+          const frontendPackages = [
+            'react', 'react-dom', 'react-router-dom', 'framer-motion',
+            'lucide-react', 'vite', '@vitejs/plugin-react', 'tailwindcss',
+            'postcss', 'autoprefixer', '@types/react', '@types/react-dom'
+          ];
+          console.log(JSON.stringify({
+            scripts: pkg.scripts,
+            frontendPackages: Object.fromEntries(frontendPackages.map((name) => [
+              name,
+              pkg.dependencies?.[name] ?? pkg.devDependencies?.[name] ?? null
+            ])),
+          }, null, 2));
+          NODE
+
+          {
+            echo '# Active release files'
+            printf '%s\n' \
+              Dockerfile.backend \
+              deploy/docker-compose.backend.yml \
+              deploy/docker-compose.release.yml \
+              deploy/release/nginx.conf \
+              scripts/cutover/verify-composed-release.mjs \
+              .github/workflows/ci.yml
+            echo
+            echo '# Rollback inventory files'
+            printf '%s\n' \
+              Dockerfile \
+              deploy/docker-compose.yml \
+              deploy/nginx.conf \
+              docker-compose.yml \
+              package.json \
+              tsconfig.json \
+              vite.config.ts \
+              tailwind.config.js \
+              postcss.config.js \
+              index.html \
+              src \
+              public
+          } > artifacts/cutover-1d-audit/release-boundaries.txt
+      - name: Publish audit inventory
+        uses: actions/upload-artifact@v4
+        with:
+          name: cutover-1d-audit-${{ github.event.pull_request.head.sha }}
+          path: artifacts/cutover-1d-audit
+          if-no-files-found: error
+          retention-days: 1
