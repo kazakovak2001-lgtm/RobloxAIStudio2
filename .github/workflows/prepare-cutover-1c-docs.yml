@@ -1,0 +1,52 @@
+name: Prepare CUTOVER-1C Documentation
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+      - run: npm ci
+        env:
+          HUSKY: "0"
+      - name: Extract verified documentation patch
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          workflow = Path('.github/workflows/sync-cutover-1c-docs.yml').read_text().splitlines()
+          start = next(i for i, line in enumerate(workflow) if "python - <<'PY'" in line) + 1
+          end = next(i for i in range(start, len(workflow)) if workflow[i].strip() == 'PY')
+          script = '\n'.join(line[10:] if line.startswith('          ') else line for line in workflow[start:end]) + '\n'
+          Path('/tmp/sync-cutover-1c-docs.py').write_text(script)
+          PY
+          python /tmp/sync-cutover-1c-docs.py
+      - name: Format and validate documentation
+        run: |
+          npx prettier --write \
+            docs/00-project-control/CURRENT_STATE.md \
+            docs/00-project-control/ROADMAP_STATUS.md \
+            docs/00-project-control/DECISION_LOG.md \
+            docs/00-project-control/CUTOVER-1C_COMPOSED_RELEASE.md
+          npm run format:check
+          npm run validate
+      - name: Publish prepared documentation
+        uses: actions/upload-artifact@v4
+        with:
+          name: cutover-1c-documentation-${{ github.event.pull_request.head.sha }}
+          path: |
+            docs/00-project-control/CURRENT_STATE.md
+            docs/00-project-control/ROADMAP_STATUS.md
+            docs/00-project-control/DECISION_LOG.md
+            docs/00-project-control/CUTOVER-1C_COMPOSED_RELEASE.md
+          if-no-files-found: error
+          retention-days: 1
