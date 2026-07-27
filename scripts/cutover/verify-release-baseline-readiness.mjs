@@ -158,6 +158,13 @@ for (const rollbackPath of inventory.rollbackInventory.directories) {
     `Not a directory: ${rollbackPath}`,
   );
 }
+for (const missingPath of inventory.rollbackInventory.knownMissing ?? []) {
+  const absolutePath = path.join(root, missingPath.path);
+  assert.ok(
+    !existsSync(absolutePath),
+    `Known-missing archival path unexpectedly exists: ${missingPath.path}`,
+  );
+}
 
 const packageJson = JSON.parse(
   readFileSync(path.join(root, "package.json"), "utf8"),
@@ -210,7 +217,6 @@ const result = {
   promotionPlan: inventory.promotionPlan,
 };
 
-mkdirSync(outputDirectory, { recursive: true });
 writeFileSync(
   path.join(outputDirectory, "readiness-result.json"),
   `${JSON.stringify(result, null, 2)}\n`,
