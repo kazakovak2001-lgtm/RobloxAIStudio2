@@ -1,0 +1,47 @@
+name: Temporary Studio Lua Format Artifact
+
+on:
+  pull_request:
+    branches:
+      - feature/plugin-merge
+
+permissions:
+  contents: read
+
+jobs:
+  format-artifact:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out pull request
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Format changed Studio files
+        run: |
+          node node_modules/prettier/bin/prettier.cjs --write \
+            server/src/studio/artifacts/GenerationArtifactRecorder.ts \
+            server/src/__tests__/studio1.artifact-lineage.test.ts
+
+      - name: Stage formatted output
+        run: |
+          mkdir -p formatted/server/src/studio/artifacts
+          mkdir -p formatted/server/src/__tests__
+          cp server/src/studio/artifacts/GenerationArtifactRecorder.ts \
+            formatted/server/src/studio/artifacts/GenerationArtifactRecorder.ts
+          cp server/src/__tests__/studio1.artifact-lineage.test.ts \
+            formatted/server/src/__tests__/studio1.artifact-lineage.test.ts
+
+      - name: Upload formatted files
+        uses: actions/upload-artifact@v4
+        with:
+          name: studio-lua-prettier-output
+          path: formatted
+          if-no-files-found: error
