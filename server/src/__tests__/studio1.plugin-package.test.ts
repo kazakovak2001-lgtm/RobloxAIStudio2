@@ -97,10 +97,7 @@ describe("STUDIO-1e deterministic Roblox plugin package", () => {
 
   it("uses Roblox-safe POST headers and exposes desktop request failures", async () => {
     const connectorSource = await readFile(
-      resolve(
-        process.cwd(),
-        "studio-plugin/src/services/StudioConnector.lua",
-      ),
+      resolve(process.cwd(), "studio-plugin/src/services/StudioConnector.lua"),
       "utf8",
     );
 
