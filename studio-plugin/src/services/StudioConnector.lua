@@ -163,7 +163,9 @@ function StudioConnector:_post(path, body)
 end
 
 function StudioConnector:_headers()
-    local headers = { ["Content-Type"] = "application/json" }
+    -- PostAsync sets Content-Type from Enum.HttpContentType.ApplicationJson.
+    -- Roblox rejects callers that also provide Content-Type in custom headers.
+    local headers = {}
     if Config.API_KEY ~= "" then headers["X-API-Key"] = Config.API_KEY end
     if self._sessionId then headers["X-Studio-Session"] = self._sessionId end
     return headers
