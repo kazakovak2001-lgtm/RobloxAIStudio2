@@ -27,11 +27,12 @@ jobs:
       - name: Capture repository format check
         run: npm run format:check > prettier-check.log 2>&1 || true
 
-      - name: Format changed Studio files
+      - name: Format affected Studio files
         run: |
           node node_modules/prettier/bin/prettier.cjs --write \
             server/src/studio/artifacts/GenerationArtifactRecorder.ts \
-            server/src/__tests__/studio1.artifact-lineage.test.ts
+            server/src/__tests__/studio1.artifact-lineage.test.ts \
+            server/src/__tests__/studio1.plugin-package.test.ts
 
       - name: Stage diagnostic output
         run: |
@@ -42,6 +43,8 @@ jobs:
             diagnostic/formatted/server/src/studio/artifacts/GenerationArtifactRecorder.ts
           cp server/src/__tests__/studio1.artifact-lineage.test.ts \
             diagnostic/formatted/server/src/__tests__/studio1.artifact-lineage.test.ts
+          cp server/src/__tests__/studio1.plugin-package.test.ts \
+            diagnostic/formatted/server/src/__tests__/studio1.plugin-package.test.ts
 
       - name: Upload diagnostic files
         uses: actions/upload-artifact@v4
