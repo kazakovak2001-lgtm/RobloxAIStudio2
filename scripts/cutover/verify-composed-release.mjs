@@ -67,8 +67,11 @@ assert.equal(registration.status, 200, registration.body);
 
 const setCookies = registration.headers["set-cookie"] ?? [];
 assert.ok(Array.isArray(setCookies), "Expected multiple Set-Cookie headers");
-const accessCookie = setCookies.find((value) =>
-  value.startsWith("roblox_ai_token="),
+const accessCookie = setCookies.find(
+  (value) =>
+    value.startsWith("roblox_ai_token=") &&
+    /;\s*Path=\/(?:;|$)/i.test(value) &&
+    !/;\s*Max-Age=0(?:;|$)/i.test(value),
 );
 const refreshCookie = setCookies.find((value) =>
   value.startsWith("roblox_ai_refresh="),
@@ -78,10 +81,8 @@ assert.ok(refreshCookie, "Missing refresh cookie");
 assertCookiePolicy(accessCookie, { path: "/" });
 assertCookiePolicy(refreshCookie, { path: "/api/platform/auth/refresh" });
 
-const cookieHeader = setCookies
-  .map((value) => value.split(";", 1)[0])
-  .join("; ");
 const accessCookieHeader = accessCookie.split(";", 1)[0];
+const cookieHeader = accessCookieHeader;
 
 const currentUser = await request("/api/platform/auth/me", {
   headers: {
