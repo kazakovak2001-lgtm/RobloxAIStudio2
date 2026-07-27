@@ -21,8 +21,7 @@ const outputDirectory = path.resolve(
 );
 const integrationRef =
   process.env.INTEGRATION_REF ?? "origin/feature/plugin-merge";
-const defaultRef =
-  process.env.DEFAULT_REF ?? "origin/standing-pentaceratops";
+const defaultRef = process.env.DEFAULT_REF ?? "origin/standing-pentaceratops";
 
 const inventory = JSON.parse(readFileSync(inventoryPath, "utf8"));
 assert.equal(inventory.schemaVersion, 1, "Unsupported inventory schema");
@@ -111,7 +110,10 @@ const classifiedDefaultOnlyPaths = defaultOnlyPaths.map((entry) => {
 
 for (const releasePath of inventory.activeRelease.files) {
   const absolutePath = path.join(root, releasePath);
-  assert.ok(existsSync(absolutePath), `Missing active release file: ${releasePath}`);
+  assert.ok(
+    existsSync(absolutePath),
+    `Missing active release file: ${releasePath}`,
+  );
   assert.ok(statSync(absolutePath).isFile(), `Not a file: ${releasePath}`);
   const content = readFileSync(absolutePath, "utf8");
   for (const pattern of inventory.activeRelease.forbiddenPatterns) {
@@ -130,11 +132,19 @@ for (const rollbackPath of inventory.rollbackInventory.files) {
 }
 for (const rollbackPath of inventory.rollbackInventory.directories) {
   const absolutePath = path.join(root, rollbackPath);
-  assert.ok(existsSync(absolutePath), `Missing rollback directory: ${rollbackPath}`);
-  assert.ok(statSync(absolutePath).isDirectory(), `Not a directory: ${rollbackPath}`);
+  assert.ok(
+    existsSync(absolutePath),
+    `Missing rollback directory: ${rollbackPath}`,
+  );
+  assert.ok(
+    statSync(absolutePath).isDirectory(),
+    `Not a directory: ${rollbackPath}`,
+  );
 }
 
-const packageJson = JSON.parse(readFileSync(path.join(root, "package.json"), "utf8"));
+const packageJson = JSON.parse(
+  readFileSync(path.join(root, "package.json"), "utf8"),
+);
 for (const [name, expectedCommand] of Object.entries(
   inventory.legacyDevelopment.packageScripts,
 )) {
