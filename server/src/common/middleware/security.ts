@@ -62,13 +62,27 @@ export const securityHeaders = helmet({
 
 // ─── CORS ───────────────────────────────────────────────────────────────────
 
-const ALLOWED_ORIGINS = [
-  "http://localhost:5173", // Vite dev
-  "http://localhost:5174",
-  "http://localhost:3000",
-  "http://127.0.0.1:5173",
-  process.env.FRONTEND_URL,
-].filter(Boolean) as string[];
+/**
+ * Return the one canonical browser origin configured for production.
+ *
+ * Development keeps its existing allow-all behavior in the HTTP and Socket.IO
+ * middleware. Production fails closed when FRONTEND_URL is absent or invalid.
+ */
+export function getAllowedFrontendOrigins(): string[] {
+  const configured = process.env.FRONTEND_URL?.trim();
+  if (!configured) return [];
+
+  try {
+    return [new URL(configured).origin];
+  } catch {
+    return [];
+  }
+}
+
+export function isFrontendOriginAllowed(origin: string): boolean {
+  if (process.env.NODE_ENV !== "production") return true;
+  return getAllowedFrontendOrigins().includes(origin);
+}
 
 export function corsMiddleware(
   req: Request,
@@ -78,8 +92,9 @@ export function corsMiddleware(
   const origin = req.headers.origin;
   const isDev = process.env.NODE_ENV !== "production";
 
-  // In development, allow all origins for convenience
-  if (isDev || (origin && ALLOWED_ORIGINS.includes(origin))) {
+  // In development, preserve the permissive local workflow. Production uses
+  // the same FRONTEND_URL policy as Socket.IO.
+  if (isDev || (origin && isFrontendOriginAllowed(origin))) {
     res.header("Access-Control-Allow-Origin", origin ?? "*");
   } else if (!origin) {
     // Allow requests without origin (server-to-server, curl, Studio plugin)
