@@ -4,6 +4,9 @@ on:
   push:
     branches:
       - docs/studio-1-complete
+  pull_request:
+    branches:
+      - feature/plugin-merge
 
 permissions:
   contents: write
@@ -18,7 +21,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: docs/studio-1-complete
+          ref: ${{ github.head_ref || github.ref_name }}
           fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
@@ -44,4 +47,4 @@ jobs:
             docs/00-project-control/ROADMAP_STATUS.md \
             docs/00-project-control/STUDIO-1G_DESKTOP_ACCEPTANCE_RESULT.md
           git commit -m "docs(studio): format acceptance records"
-          git push origin HEAD:docs/studio-1-complete
+          git push origin HEAD:${{ github.head_ref || github.ref_name }}
