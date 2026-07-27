@@ -95,7 +95,7 @@ describe("STUDIO-1e deterministic Roblox plugin package", () => {
     );
   });
 
-  it("does not send Content-Type as a forbidden custom Roblox header", async () => {
+  it("uses Roblox-safe POST headers and exposes desktop request failures", async () => {
     const connectorSource = await readFile(
       resolve(
         process.cwd(),
@@ -106,6 +106,10 @@ describe("STUDIO-1e deterministic Roblox plugin package", () => {
 
     expect(connectorSource).toContain("Enum.HttpContentType.ApplicationJson");
     expect(connectorSource).not.toContain('["Content-Type"]');
+    expect(connectorSource).toContain("if next(headers) then");
+    expect(connectorSource).toContain(
+      '[AI Studio HTTP] POST " .. path .. " failed:',
+    );
   });
 
   it("produces byte-identical bundles and manifests from unchanged sources", async () => {
