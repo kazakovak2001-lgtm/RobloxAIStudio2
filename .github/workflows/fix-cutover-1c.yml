@@ -1,0 +1,131 @@
+name: Apply CUTOVER-1C Confirmed Fixes
+
+on:
+  push:
+    branches:
+      - cutover/composed-release-topology
+
+permissions:
+  contents: write
+
+concurrency:
+  group: cutover-1c-confirmed-fixes-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: cutover/composed-release-topology
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+      - run: npm ci
+        env:
+          HUSKY: "0"
+      - name: Apply confirmed validation and healthcheck fixes
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          ci_path = Path(".github/workflows/ci.yml")
+          ci = ci_path.read_text()
+          old_ci = '          echo "POSTGRES_PASSWORD=cutover_1c_ci_password" >> "$GITHUB_ENV"\n          echo "RELEASE_ORIGIN=https://localhost:8443" >> "$GITHUB_ENV"'
+          new_ci = '          echo "POSTGRES_PASSWORD=$(openssl rand -hex 24)" >> "$GITHUB_ENV"\n          echo "CUTOVER_VERIFICATION_PASSWORD=$(openssl rand -hex 24)" >> "$GITHUB_ENV"\n          echo "RELEASE_ORIGIN=https://localhost:8443" >> "$GITHUB_ENV"'
+          if old_ci not in ci:
+              raise SystemExit("CI credential anchor missing")
+          ci_path.write_text(ci.replace(old_ci, new_ci, 1))
+
+          smoke_path = Path("scripts/cutover/verify-composed-release.mjs")
+          smoke = smoke_path.read_text()
+          old_header = 'const disallowedOrigin = "https://not-allowed.example";\n\nawait waitForHealthyRelease();'
+          new_header = 'const disallowedOrigin = "https://not-allowed.example";\nconst verificationPassword = process.env.CUTOVER_VERIFICATION_PASSWORD;\nassert.ok(\n  verificationPassword,\n  "CUTOVER_VERIFICATION_PASSWORD is required",\n);\n\nawait waitForHealthyRelease();'
+          if old_header not in smoke:
+              raise SystemExit("Smoke environment anchor missing")
+          smoke = smoke.replace(old_header, new_header, 1)
+          literal = '"Cutover1C!Pass123"'
+          if literal not in smoke:
+              raise SystemExit("Smoke credential literal missing")
+          smoke_path.write_text(smoke.replace(literal, "verificationPassword", 1))
+
+          compose_path = Path("deploy/docker-compose.release.yml")
+          compose = compose_path.read_text()
+          replacements = [
+              (
+                  '''      test:
+                  [
+                    "CMD",
+                    "wget",
+                    "--no-verbose",
+                    "--tries=1",
+                    "--spider",
+                    "http://localhost:5000/health",
+                  ]''',
+                  '''      test:
+                  [
+                    "CMD",
+                    "node",
+                    "-e",
+                    "fetch('http://127.0.0.1:5000/health').then((response) => process.exit(response.ok ? 0 : 1)).catch(() => process.exit(1))",
+                  ]''',
+              ),
+              (
+                  '''      test:
+                  [
+                    "CMD",
+                    "wget",
+                    "--no-verbose",
+                    "--tries=1",
+                    "--spider",
+                    "http://localhost:3000/health",
+                  ]''',
+                  '''      test:
+                  [
+                    "CMD",
+                    "node",
+                    "-e",
+                    "fetch('http://127.0.0.1:3000/health').then((response) => process.exit(response.ok ? 0 : 1)).catch(() => process.exit(1))",
+                  ]''',
+              ),
+          ]
+          for old, new in replacements:
+              if old not in compose:
+                  raise SystemExit("Compose healthcheck anchor missing")
+              compose = compose.replace(old, new, 1)
+          compose_path.write_text(compose)
+          PY
+      - name: Format confirmed fixes
+        run: |
+          npx prettier --write \
+            .github/workflows/ci.yml \
+            deploy/docker-compose.release.yml \
+            scripts/cutover/verify-composed-release.mjs
+      - name: Validate confirmed fixes
+        env:
+          BACKEND_IMAGE: validation-backend
+          FRONTEND_IMAGE: validation-frontend
+          POSTGRES_PASSWORD: generated-at-runtime
+          RELEASE_ORIGIN: https://localhost:8443
+          RELEASE_CERT_DIR: /tmp/cutover-certs
+        run: |
+          node --check scripts/cutover/verify-composed-release.mjs
+          docker compose --file deploy/docker-compose.release.yml config > /tmp/cutover-compose.yml
+          npm run validate
+      - name: Commit confirmed fixes
+        run: |
+          if git diff --quiet; then
+            echo "Confirmed fixes already applied."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add \
+            .github/workflows/ci.yml \
+            deploy/docker-compose.release.yml \
+            scripts/cutover/verify-composed-release.mjs
+          git commit -m "fix(cutover): use runtime credentials and node healthchecks"
+          git push origin HEAD:cutover/composed-release-topology
