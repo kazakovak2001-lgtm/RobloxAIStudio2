@@ -1,0 +1,118 @@
+name: Synchronize CUTOVER-1B Documentation
+
+on:
+  push:
+    branches:
+      - docs/cutover-1b-complete
+
+permissions:
+  contents: write
+
+concurrency:
+  group: cutover-1b-doc-sync-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  synchronize:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: docs/cutover-1b-complete
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+      - run: npm ci
+        env:
+          HUSKY: "0"
+      - name: Synchronize project-control records
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          current_path = Path("docs/00-project-control/CURRENT_STATE.md")
+          current = current_path.read_text()
+
+          replacements = [
+              (
+                  "**Phase**: CUTOVER-1 — Release promotion and legacy frontend removal preparation",
+                  "**Phase**: CUTOVER-1C — Cross-repository release composition",
+              ),
+              (
+                  "**Build Status**: Backend CI is green on Node.js 22 / npm 10, including the full normal test suite, canonical plugin source and deterministic package coverage, strict PostgreSQL restart acceptance, repository validation, formatting, linting, commitlint, and the aggregate merge gate. PR #16 fixed the Roblox-forbidden custom `Content-Type` header, PR #17 normalized real Lua generator output at the existing artifact-recorder boundary, and PR #19 preserved canonical specialist assignments when no adaptive performance evidence exists. Standalone frontend CI passes TypeScript, Workspace logic tests, production build, and production-artifact responsive browser QA. STUDIO-1 passed through a real Roblox Studio desktop session with eight verified artifacts; CUTOVER-1 is now unblocked but still requires release-promotion, dependency, rollback, and cleanup gates.",
+                  "**Build Status**: Backend CI is green on Node.js 22 / npm 10, including the full normal test suite, canonical plugin and package coverage, strict PostgreSQL restart acceptance, the backend-only production image smoke gate, repository validation, formatting, linting, commitlint, and the aggregate merge gate. Standalone Frontend CI is green for TypeScript, Workspace logic tests, production build, the non-root SSR release image, `/health`, the root SSR document, production-artifact responsive browser QA, and its aggregate Merge Gate. STUDIO-1, CUTOVER-1A, and CUTOVER-1B are complete. CUTOVER-1C must now prove the composed frontend/backend release topology, CORS, cookies, authenticated REST, Socket.IO, and rollback before legacy frontend removal.",
+              ),
+              (
+                  "- **Acceptance commit**: `a8d005d433d48e18d8e64ac176ee63c9c694b644`, independently matched to the ZIP used during the successful STUDIO-1 session.",
+                  "- **Acceptance commit**: `a8d005d433d48e18d8e64ac176ee63c9c694b644`, independently matched to the ZIP used during the successful STUDIO-1 session.\n- **SSR release commit**: `1036c3ef9705d145cb9700cd14268a33d2abdd58`, merged through Frontend PR #12 after CI run #65 verified the production image, `/health`, SSR `/`, responsive QA, and Merge Gate.",
+              ),
+              (
+                  "| STUDIO-1g         | Real desktop import and backend verification             | July 27, 2026 |",
+                  "| STUDIO-1g         | Real desktop import and backend verification             | July 27, 2026 |\n| CUTOVER-1A       | Backend-only production release artifact                  | July 27, 2026 |\n| CUTOVER-1B       | Standalone Frontend SSR release artifact                   | July 27, 2026 |",
+              ),
+              (
+                  "- **Dockerfile**: Multi-stage build (Node.js 22 alpine builder → production image)\n- **Migration Runner**: `server/src/platform/storage/postgres/migrationRunner.ts` — auto-applies pending migrations on startup (skips when STORAGE_PROVIDER=inmemory)\n- **Nginx Config**: `deploy/nginx.conf` — reverse proxy with WebSocket support, gzip, security headers\n- **Docker Compose**: `deploy/docker-compose.yml` — full stack (app + postgres + nginx)",
+                  "- **Backend release image**: `Dockerfile.backend` builds and starts the compiled backend without root `src/`, `public/`, Vite, or Tailwind inputs; CI verifies `GET /health`.\n- **Backend/PostgreSQL composition**: `deploy/docker-compose.backend.yml` provides the independently verified backend and persistent database boundary.\n- **Standalone Frontend release image**: Frontend commit `1036c3ef9705d145cb9700cd14268a33d2abdd58` packages `.output` plus one shared worker-to-Node adapter as a non-root SSR process.\n- **Migration Runner**: `server/src/platform/storage/postgres/migrationRunner.ts` — auto-applies pending migrations on startup (skips when STORAGE_PROVIDER=inmemory).\n- **Rollback inventory**: the prior combined `Dockerfile`, `deploy/nginx.conf`, and `deploy/docker-compose.yml` remain unchanged until composed-release and cleanup gates pass.",
+              ),
+              (
+                  "## Last Changes\n\n- July 27, 2026: STUDIO-1g real desktop acceptance completed",
+                  "## Last Changes\n\n- July 27, 2026: CUTOVER-1B completed — Frontend PR #12 merged as `1036c3ef9705d145cb9700cd14268a33d2abdd58`. One shared worker-to-Node adapter now serves both responsive QA and production. Frontend CI run #65 verified the non-root image, independent `/health`, root SSR document, desktop/tablet/mobile responsive QA, and Merge Gate. CUTOVER-1C is the next gate.\n- July 27, 2026: CUTOVER-1A completed — backend PR #22 merged as `22852af9d4db30c4fff28ea5ef0c762aa3c0607a`. The backend-only production image builds without legacy frontend sources and passes its container health smoke gate.\n- July 27, 2026: STUDIO-1g real desktop acceptance completed",
+              ),
+          ]
+
+          for old, new in replacements:
+              if old not in current:
+                  raise SystemExit(f"CURRENT_STATE anchor missing: {old[:100]}")
+              current = current.replace(old, new, 1)
+          current_path.write_text(current)
+
+          roadmap_path = Path("docs/00-project-control/ROADMAP_STATUS.md")
+          roadmap = roadmap_path.read_text()
+          roadmap_replacements = [
+              (
+                  "| CUTOVER-1     | Release promotion and legacy frontend removal                  | High     | 🟡 Active — 1A complete; 1B planned | WORKSPACE-1, STUDIO-1 |",
+                  "| CUTOVER-1     | Release promotion and legacy frontend removal                  | High     | 🟡 Active — 1A/1B complete; 1C next | WORKSPACE-1, STUDIO-1 |",
+              ),
+              (
+                  "See [CUTOVER-1A_BACKEND_RELEASE_ARTIFACT.md](./CUTOVER-1A_BACKEND_RELEASE_ARTIFACT.md) for the backend-only release boundary and the remaining cross-repository slices.",
+                  "See [CUTOVER-1A_BACKEND_RELEASE_ARTIFACT.md](./CUTOVER-1A_BACKEND_RELEASE_ARTIFACT.md) for the completed backend-only release boundary.\nSee [`CUTOVER-1B_FRONTEND_SSR_RELEASE.md`](https://github.com/kazakovak2001-lgtm/Frontend/blob/main/docs/CUTOVER-1B_FRONTEND_SSR_RELEASE.md) for the completed standalone Frontend SSR release artifact.",
+              ),
+              (
+                  "CUTOVER-1A is complete. CI run #192 built `Dockerfile.backend`, started the production container without root `src/`, and received HTTP 200 from `GET /health`. The image contains the compiled backend, production dependencies, and the required backend `architecture.manifest.json`; it does not contain the legacy frontend, `public/`, Vite configuration, or Tailwind configuration.\n\nThe prior combined Dockerfile, Nginx configuration, compose stack, and legacy frontend remain unchanged as rollback inventory.\n\nThe next slice is **CUTOVER-1B — standalone Frontend SSR release artifact**. It must package the TanStack Start/Nitro process independently and establish its production health contract before cross-repository composition begins.",
+                  "CUTOVER-1A is complete. Backend CI run #195 built `Dockerfile.backend`, started the production container without root `src/`, and received HTTP 200 from `GET /health`.\n\nCUTOVER-1B is complete. Frontend PR #12 merged as `1036c3ef9705d145cb9700cd14268a33d2abdd58`; final CI run #65 built the non-root SSR image, verified independent `/health`, received an HTML document from `/`, and passed desktop/tablet/mobile responsive QA through the same shared Node adapter.\n\nThe prior combined Dockerfile, Nginx configuration, compose stack, and legacy frontend remain unchanged as rollback inventory.\n\nThe next slice is **CUTOVER-1C — cross-repository release composition**. It must compose the independently verified artifacts and prove exact origins, CORS, cookie behavior, authenticated REST, authenticated Socket.IO, health, and rollback before dependency pruning or legacy frontend removal.",
+              ),
+              (
+                  "- ✅ CUTOVER-1A COMPLETE — backend-only production image and health smoke gate passed\n- 🟡 CUTOVER-1B NEXT — standalone Frontend SSR release artifact",
+                  "- ✅ CUTOVER-1A COMPLETE — backend-only production image and health smoke gate passed\n- ✅ CUTOVER-1B COMPLETE — standalone Frontend SSR image, health, SSR document, responsive QA, and Merge Gate passed\n- 🟡 CUTOVER-1C NEXT — cross-repository release composition and authenticated transport verification",
+              ),
+              (
+                  "- **Current Cutover Decision**: ▶️ CUTOVER-1A complete; CUTOVER-1B standalone Frontend SSR packaging is next",
+                  "- **Current Cutover Decision**: ▶️ CUTOVER-1A and CUTOVER-1B complete; CUTOVER-1C composed-release verification is next",
+              ),
+          ]
+          for old, new in roadmap_replacements:
+              if old not in roadmap:
+                  raise SystemExit(f"ROADMAP_STATUS anchor missing: {old[:100]}")
+              roadmap = roadmap.replace(old, new, 1)
+          roadmap_path.write_text(roadmap)
+          PY
+      - name: Format synchronized records
+        run: |
+          npx prettier --write \
+            docs/00-project-control/CURRENT_STATE.md \
+            docs/00-project-control/ROADMAP_STATUS.md
+      - name: Commit synchronized records
+        run: |
+          if git diff --quiet; then
+            echo "CUTOVER-1B records already synchronized."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add \
+            docs/00-project-control/CURRENT_STATE.md \
+            docs/00-project-control/ROADMAP_STATUS.md
+          git commit -m "docs(cutover): synchronize frontend release completion"
+          git push origin HEAD:docs/cutover-1b-complete
