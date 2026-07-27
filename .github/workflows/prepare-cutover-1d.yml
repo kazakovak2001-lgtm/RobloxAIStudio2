@@ -22,6 +22,7 @@ jobs:
         run: |
           python - <<'PY'
           from pathlib import Path
+          import textwrap
 
           path = Path('.github/workflows/ci.yml')
           source = path.read_text()
@@ -32,7 +33,8 @@ jobs:
           if marker not in source:
               raise SystemExit('CI validate job anchor missing')
 
-          job = '''  release-readiness:
+          job = textwrap.indent(textwrap.dedent(r'''\
+          release-readiness:
             name: Release Baseline Readiness
             runs-on: ubuntu-latest
             needs: composed-release
@@ -62,34 +64,34 @@ jobs:
                 run: node scripts/cutover/verify-release-baseline-readiness.mjs
               - name: Build independent rollback artifacts
                 run: |
-                  docker build \\
-                    --file Dockerfile.backend \\
-                    --tag roblox-ai-studio-backend:cutover-1d-rollback \\
+                  docker build \
+                    --file Dockerfile.backend \
+                    --tag roblox-ai-studio-backend:cutover-1d-rollback \
                     .
-                  docker build \\
-                    --build-arg VITE_API_URL=http://127.0.0.1:5051/api \\
-                    --build-arg VITE_SOCKET_URL=http://127.0.0.1:5051 \\
-                    --tag roblox-ai-studio-frontend:cutover-1d-rollback \\
+                  docker build \
+                    --build-arg VITE_API_URL=http://127.0.0.1:5051/api \
+                    --build-arg VITE_SOCKET_URL=http://127.0.0.1:5051 \
+                    --tag roblox-ai-studio-frontend:cutover-1d-rollback \
                     standalone-frontend
               - name: Restore independent backend and Frontend artifacts
                 run: |
                   mkdir -p artifacts/cutover-1d
-                  printf '%s\\n' \\
-                    'Composed HTTPS Release prerequisite: passed and stopped by its own cleanup step.' \\
-                    'Rollback rehearsal: starting independently deployable CUTOVER-1A and CUTOVER-1B artifacts.' \\
+                  printf '%s\n' \
+                    'Composed HTTPS Release prerequisite: passed and stopped by its own cleanup step.' \
+                    'Rollback rehearsal: starting independently deployable CUTOVER-1A and CUTOVER-1B artifacts.' \
                     > artifacts/cutover-1d/rollback-transcript.txt
-                  docker run --detach \\
-                    --name roblox-ai-studio-backend-cutover-1d \\
-                    --publish 5051:5000 \\
-                    --env NODE_ENV=production \\
-                    --env PORT=5000 \\
-                    --env STORAGE_PROVIDER=inmemory \\
-                    --env FRONTEND_URL=http://127.0.0.1:8081 \\
+                  docker run --detach \
+                    --name roblox-ai-studio-backend-cutover-1d \
+                    --publish 5051:5000 \
+                    --env NODE_ENV=production \
+                    --env PORT=5000 \
+                    --env STORAGE_PROVIDER=inmemory \
+                    --env FRONTEND_URL=http://127.0.0.1:8081 \
                     roblox-ai-studio-backend:cutover-1d-rollback
-                  docker run --detach \\
-                    --name roblox-ai-studio-frontend-cutover-1d \\
-                    --publish 8081:3000 \\
-                    --env PUBLIC_ORIGIN=http://127.0.0.1:8081 \\
+                  docker run --detach \
+                    --name roblox-ai-studio-frontend-cutover-1d \
+                    --publish 8081:3000 \
+                    --env PUBLIC_ORIGIN=http://127.0.0.1:8081 \
                     roblox-ai-studio-frontend:cutover-1d-rollback
               - name: Verify independent rollback health and SSR
                 run: |
@@ -123,13 +125,13 @@ jobs:
                   mkdir -p artifacts/cutover-1d
                   docker logs roblox-ai-studio-backend-cutover-1d > artifacts/cutover-1d/backend.log 2>&1 || true
                   docker logs roblox-ai-studio-frontend-cutover-1d > artifacts/cutover-1d/frontend.log 2>&1 || true
-                  docker inspect roblox-ai-studio-backend-cutover-1d roblox-ai-studio-frontend-cutover-1d \\
+                  docker inspect roblox-ai-studio-backend-cutover-1d roblox-ai-studio-frontend-cutover-1d \
                     > artifacts/cutover-1d/container-inspect.json 2>/dev/null || true
               - name: Publish release readiness evidence
                 if: always()
                 uses: actions/upload-artifact@v4
                 with:
-                  name: cutover-1d-readiness-${{ github.event.pull_request.head.sha || github.sha }}
+                  name: cutover-1d-readiness
                   path: artifacts/cutover-1d
                   if-no-files-found: error
                   retention-days: 3
@@ -139,7 +141,7 @@ jobs:
                   docker rm --force roblox-ai-studio-backend-cutover-1d || true
                   docker rm --force roblox-ai-studio-frontend-cutover-1d || true
 
-          '''
+          '''), '  ')
           source = source.replace(marker, job + marker, 1)
           old_needs = '''        backend-image,
                   composed-release,
@@ -164,6 +166,7 @@ jobs:
             config/cutover/release-baseline.inventory.json \
             scripts/cutover/verify-release-baseline-readiness.mjs
           node --check scripts/cutover/verify-release-baseline-readiness.mjs
+          ruby -e 'require "yaml"; workflow = YAML.load_file(".github/workflows/ci.yml"); abort "release-readiness missing" unless workflow.fetch("jobs").key?("release-readiness")'
       - name: Publish prepared gate
         uses: actions/upload-artifact@v4
         with:
