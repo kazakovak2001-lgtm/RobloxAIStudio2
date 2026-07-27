@@ -72,17 +72,42 @@ export class AgentDecisionEngine {
       };
     }
 
-    // Score all available agents
+    const taskHistory = this.memory.getTaskTypeHistory(taskType);
+    const assignedHasTaskEvidence = taskHistory.some(
+      (record) => record.agent === assignedAgent,
+    );
+
+    if (!assignedHasTaskEvidence) {
+      const score = this.memory.computeScore(assignedAgent, contextKeys);
+      score.compositeScore = this.policy.computeComposite(score);
+      return {
+        selectedAgent: assignedAgent,
+        score,
+        alternates: [],
+        selectionReason:
+          "No task-specific evidence for assigned agent — preserving plan assignment",
+        policyMode: this.policy.mode,
+      };
+    }
+
+    const evidenceBackedAgents = availableAgents.filter(
+      (agent) =>
+        agent === assignedAgent ||
+        taskHistory.some((record) => record.agent === agent),
+    );
+
+    // Score only agents with exact task-type evidence. An unevaluated
+    // agent must not replace the planner's explicit assignment.
     const scoredAgents: Array<{ agent: string; score: AgentScore }> = [];
 
-    for (const agent of availableAgents) {
+    for (const agent of evidenceBackedAgents) {
       const rawScore = this.memory.computeScore(agent, contextKeys);
       rawScore.compositeScore = this.policy.computeComposite(rawScore);
       scoredAgents.push({ agent, score: rawScore });
     }
 
     // Also score the assigned agent if not in list
-    if (!availableAgents.includes(assignedAgent)) {
+    if (!evidenceBackedAgents.includes(assignedAgent)) {
       const rawScore = this.memory.computeScore(assignedAgent, contextKeys);
       rawScore.compositeScore = this.policy.computeComposite(rawScore);
       scoredAgents.push({ agent: assignedAgent, score: rawScore });
