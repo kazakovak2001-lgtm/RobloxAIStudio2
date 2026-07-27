@@ -30,7 +30,6 @@ services:
       STORAGE_PROVIDER: postgres
       DATABASE_URL: postgresql://${POSTGRES_USER:-studio}:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-roblox_ai_studio}
       FRONTEND_URL: ${FRONTEND_URL:?Set FRONTEND_URL to the standalone Frontend origin}
-      COOKIE_DOMAIN: ${COOKIE_DOMAIN:-}
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
       GOOGLE_API_KEY: ${GOOGLE_API_KEY:-}

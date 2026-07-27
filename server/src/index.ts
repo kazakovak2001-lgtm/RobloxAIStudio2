@@ -61,9 +61,7 @@ const io = new SocketServer(httpServer, {
   cors: {
     origin:
       process.env.NODE_ENV === "production"
-        ? (["http://localhost:5173", process.env.FRONTEND_URL ?? ""].filter(
-            (o) => o.length > 0,
-          ) as string[])
+        ? getAllowedFrontendOrigins()
         : true,
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE"],
     credentials: true,
@@ -124,6 +122,7 @@ import {
   corsMiddleware,
   authMiddleware,
   configureApiKeyStore,
+  getAllowedFrontendOrigins,
   getApiKeyStore,
   requestLogger,
 } from "./common/middleware/security";

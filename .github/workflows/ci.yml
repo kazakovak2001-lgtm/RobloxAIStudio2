@@ -138,6 +138,72 @@ jobs:
         if: always()
         run: docker rm --force roblox-ai-studio-backend-cutover || true
 
+  composed-release:
+    name: Composed HTTPS Release
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout backend release source
+        uses: actions/checkout@v4
+      - name: Checkout exact Frontend release commit
+        uses: actions/checkout@v4
+        with:
+          repository: kazakovak2001-lgtm/Frontend
+          ref: 1036c3ef9705d145cb9700cd14268a33d2abdd58
+          path: standalone-frontend
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "npm"
+      - run: npm ci
+      - name: Configure release identity
+        run: |
+          echo "BACKEND_IMAGE=roblox-ai-studio-backend:cutover-1c" >> "$GITHUB_ENV"
+          echo "FRONTEND_IMAGE=roblox-ai-studio-frontend:cutover-1c" >> "$GITHUB_ENV"
+          echo "POSTGRES_PASSWORD=cutover_1c_ci_password" >> "$GITHUB_ENV"
+          echo "RELEASE_ORIGIN=https://localhost:8443" >> "$GITHUB_ENV"
+          echo "RELEASE_PORT=8443" >> "$GITHUB_ENV"
+          echo "RELEASE_CERT_DIR=${GITHUB_WORKSPACE}/.cutover-certs" >> "$GITHUB_ENV"
+      - name: Generate CI-only TLS certificate
+        run: |
+          mkdir -p .cutover-certs
+          openssl req -x509 -newkey rsa:2048 -nodes -days 1 \
+            -keyout .cutover-certs/release.key \
+            -out .cutover-certs/release.crt \
+            -subj "/CN=localhost" \
+            -addext "subjectAltName=DNS:localhost,IP:127.0.0.1"
+      - name: Build exact backend and Frontend images
+        run: |
+          docker build \
+            --file Dockerfile.backend \
+            --tag "$BACKEND_IMAGE" \
+            .
+          docker build \
+            --build-arg VITE_API_URL="$RELEASE_ORIGIN/api" \
+            --build-arg VITE_SOCKET_URL="$RELEASE_ORIGIN" \
+            --tag "$FRONTEND_IMAGE" \
+            standalone-frontend
+      - name: Start composed HTTPS release
+        run: docker compose --project-name cutover1c --file deploy/docker-compose.release.yml up --detach
+      - name: Verify secure REST and Socket.IO composition
+        run: node scripts/cutover/verify-composed-release.mjs
+      - name: Capture composition diagnostics
+        if: always()
+        run: |
+          mkdir -p artifacts/cutover-1c
+          docker compose --project-name cutover1c --file deploy/docker-compose.release.yml ps --all > artifacts/cutover-1c/compose-ps.txt || true
+          docker compose --project-name cutover1c --file deploy/docker-compose.release.yml logs --no-color > artifacts/cutover-1c/compose.log 2>&1 || true
+      - name: Publish composition diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cutover-1c-composition-${{ github.event.pull_request.head.sha }}
+          path: artifacts/cutover-1c
+          if-no-files-found: error
+          retention-days: 3
+      - name: Stop composed release
+        if: always()
+        run: docker compose --project-name cutover1c --file deploy/docker-compose.release.yml down --volumes --remove-orphans || true
+
   validate:
     name: Repository Validation
     runs-on: ubuntu-latest
@@ -169,6 +235,15 @@ jobs:
     name: Merge Gate
     runs-on: ubuntu-latest
     needs:
-      [typecheck, lint, format, test, postgres-e2e, backend-image, validate]
+      [
+        typecheck,
+        lint,
+        format,
+        test,
+        postgres-e2e,
+        backend-image,
+        composed-release,
+        validate,
+      ]
     steps:
       - run: echo "All checks passed"

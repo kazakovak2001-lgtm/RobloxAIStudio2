@@ -4,6 +4,19 @@ All significant architectural and product decisions are recorded here.
 
 ---
 
+## 2026-07-27 — CUTOVER-1C Composed HTTPS Release
+
+**Decision**: Compose the independently verified backend and standalone Frontend release artifacts behind one HTTPS origin. Reuse the existing Express API, Socket.IO server/client, cookie authentication, PostgreSQL storage, and Frontend adapters; do not introduce parallel transport or auth layers.
+**Exact inputs**: Backend baseline `2bae4a1299e1094a5d3c3818adb158dbc1b26c77`; verified implementation head `8bee44a284244033d73637b3e3cc4bddf72af035`; exact Frontend release commit `1036c3ef9705d145cb9700cd14268a33d2abdd58`.
+**Implementation**: `deploy/docker-compose.release.yml` composes PostgreSQL, backend, standalone Frontend, and an HTTPS Nginx proxy. HTTP and Socket.IO share one production-origin policy derived from `FRONTEND_URL`. Health checks use the Node runtime already present in both minimal images. The acceptance harness verifies secure host-only cookie attributes, authenticated REST, unauthenticated Socket.IO rejection, and authenticated polling-to-WebSocket upgrade.
+**Verification**: CI run `30312627413` (#219) passed TypeScript, ESLint, Prettier, full tests, PostgreSQL restart E2E, backend image, repository validation, commitlint, Composed HTTPS Release, and Merge Gate. Evidence artifact `8670986116`, named `cutover-1c-composition-8bee44a284244033d73637b3e3cc4bddf72af035`, has digest `sha256:6a941900d9b73bca852d1fe071f148d6ac19eae151b414a9e7f99aa3ad39b57a`.
+**Acceptance result**: Frontend health 200, backend health 200, SSR document 200, allowed CORS preflight 204, disallowed origin 403, authenticated `/api/platform/auth/me` 200, unauthenticated Socket.IO rejected, authenticated Socket.IO connected through polling and upgraded to WebSocket, and cookies remained `Secure`, `HttpOnly`, `SameSite=Lax`, and host-only.
+**Rollback**: Revert focused PR #25. CUTOVER-1A and CUTOVER-1B remain independently deployable; the prior combined `Dockerfile`, `deploy/nginx.conf`, `deploy/docker-compose.yml`, and frozen root `src/` remain unchanged. No legacy dependency was pruned in this slice.
+**Remaining gate**: Prepare release-baseline promotion, complete runtime dependency inventory, rehearse rollback, and remove the legacy frontend only in a separately reviewed cleanup change. Do not merge PR #1 directly.
+**Status**: Verified; ready for focused PR merge.
+
+---
+
 ## 2026-07-24 — CORE-1a Durable Project Boundary
 
 **Decision**: Use one configured `StorageProvider` for server bootstrap, authentication, users, projects, generation history, and API keys; do not create route-local in-memory project state in production.
