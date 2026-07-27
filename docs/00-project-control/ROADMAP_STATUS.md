@@ -8,14 +8,14 @@
 
 This sequence is authoritative for work after the standalone frontend integration. It replaces the historical plan to further migrate the embedded frontend in this repository.
 
-| ID            | Delivery item                                                  | Priority | Status                                  | Dependency            |
-| ------------- | -------------------------------------------------------------- | -------- | --------------------------------------- | --------------------- |
-| CUTOVER-0     | Standalone frontend governance and CI alignment                | Critical | ✅ Complete                             | —                     |
-| CI-BASELINE-1 | Portable green backend CI and repository hygiene               | Critical | ✅ Complete                             | CUTOVER-0             |
-| CORE-1        | Real project data, persistence, and API contract stabilization | Critical | ✅ Complete                             | CI-BASELINE-1         |
-| WORKSPACE-1   | Workflow-oriented standalone Workspace                         | High     | ✅ Complete                             | CORE-1                |
-| STUDIO-1      | Generated artifact → Roblox Studio end-to-end validation       | High     | ✅ Complete — real desktop verified     | CORE-1, WORKSPACE-1   |
-| CUTOVER-1     | Release promotion and legacy frontend removal                  | High     | 🟡 Active — preparation and gate review | WORKSPACE-1, STUDIO-1 |
+| ID            | Delivery item                                                  | Priority | Status                                      | Dependency            |
+| ------------- | -------------------------------------------------------------- | -------- | ------------------------------------------- | --------------------- |
+| CUTOVER-0     | Standalone frontend governance and CI alignment                | Critical | ✅ Complete                                 | —                     |
+| CI-BASELINE-1 | Portable green backend CI and repository hygiene               | Critical | ✅ Complete                                 | CUTOVER-0             |
+| CORE-1        | Real project data, persistence, and API contract stabilization | Critical | ✅ Complete                                 | CI-BASELINE-1         |
+| WORKSPACE-1   | Workflow-oriented standalone Workspace                         | High     | ✅ Complete                                 | CORE-1                |
+| STUDIO-1      | Generated artifact → Roblox Studio end-to-end validation       | High     | ✅ Complete — real desktop verified         | CORE-1, WORKSPACE-1   |
+| CUTOVER-1     | Release promotion and legacy frontend removal                  | High     | 🟡 Active — 1A backend artifact in progress | WORKSPACE-1, STUDIO-1 |
 
 See [FRONTEND_CUTOVER.md](./FRONTEND_CUTOVER.md) for ownership, branch, validation, and legacy-removal rules.
 See [CORE-1A_DURABLE_PROJECTS.md](./CORE-1A_DURABLE_PROJECTS.md) for the completed identity/project boundary.
@@ -27,6 +27,7 @@ See [STUDIO-1D_REAL_PLUGIN_ACCEPTANCE.md](./STUDIO-1D_REAL_PLUGIN_ACCEPTANCE.md)
 See [STUDIO-1E_DESKTOP_ACCEPTANCE_RUNBOOK.md](./STUDIO-1E_DESKTOP_ACCEPTANCE_RUNBOOK.md) for the deterministic installable package, checksum contract, and manual evidence procedure.
 See [STUDIO-1F_DESKTOP_FINDINGS_AND_RERUN.md](./STUDIO-1F_DESKTOP_FINDINGS_AND_RERUN.md) for the production-only defects found during the first desktop runs.
 See [STUDIO-1G_DESKTOP_ACCEPTANCE_RESULT.md](./STUDIO-1G_DESKTOP_ACCEPTANCE_RESULT.md) for the completed real desktop evidence and canonical acceptance identity.
+See [CUTOVER-1A_BACKEND_RELEASE_ARTIFACT.md](./CUTOVER-1A_BACKEND_RELEASE_ARTIFACT.md) for the backend-only release boundary and the remaining cross-repository slices.
 See the standalone frontend documentation for the completed WORKSPACE-1 slices and production responsive QA:
 
 - [`WORKSPACE-1_WORKFLOW_SHELL.md`](https://github.com/kazakovak2001-lgtm/Frontend/blob/main/docs/WORKSPACE-1_WORKFLOW_SHELL.md)
@@ -53,6 +54,19 @@ STUDIO-1 passed on July 27, 2026 through a real Roblox Studio desktop session. T
 The authenticated project status returned `artifactVerified=true`, `verificationStatus=verified`, the matching execution ID, eight verified artifacts, and zero pending changes. Explorer evidence confirmed real Script, LocalScript, ModuleScript, and non-Lua metadata instances. Issue #15 is closed as completed.
 
 CUTOVER-1 is now unblocked, but the next step is preparation and review—not immediate deletion or a direct merge of the oversized integration PR. The cutover must still prove branch alignment, deployment ownership, rollback readiness, no remaining runtime dependency on the embedded frontend, clean cross-repository validation, and a separately reviewed cleanup change.
+
+## Active CUTOVER-1 Gate
+
+CUTOVER-1A is tracked in issue #21. It creates a backend-only release image and PostgreSQL compose stack without copying or compiling root `src/`, while preserving the previous combined Docker and Nginx files for rollback.
+
+The required CI proof is:
+
+1. build `Dockerfile.backend`;
+2. start the resulting production container;
+3. receive HTTP 200 from `GET /health`;
+4. keep every existing validation job and the aggregate Merge Gate green.
+
+After CUTOVER-1A, the next slice packages the standalone TanStack Start/Nitro Frontend as its own release artifact and defines the composed frontend/backend cookie, CORS, REST, Socket.IO, and rollback topology.
 
 ## Historical Roadmap: UX-4 Feature Development
 
@@ -89,7 +103,7 @@ CUTOVER-1 is now unblocked, but the next step is preparation and review—not im
 - 🔒 Security Hardening (Pre-Deploy) — ✅ COMPLETE (All 12 tasks done, FINAL_V1_RELEASE_SIGN_OFF.md generated)
 - UX-3D: 8/8 sprints ✅ (See MIGRATION_PROGRESS.md for full history)
 - ✅ STUDIO-1 COMPLETE — real desktop import and backend verification passed
-- 🟡 CUTOVER-1 ACTIVE — release promotion and cleanup gate preparation
+- 🟡 CUTOVER-1 ACTIVE — CUTOVER-1A backend release artifact in progress
 
 ## Release Hardening Sprint Status
 
@@ -104,7 +118,7 @@ CUTOVER-1 is now unblocked, but the next step is preparation and review—not im
 | T-7  | Socket.IO token validation (JWT handshake)         | HIGH     | ✅ Done |
 | T-8  | Remove dead code and merge studioService           | MEDIUM   | ✅ Done |
 | T-9  | Update stale documentation                         | MEDIUM   | ✅ Done |
-| T-10 | Add production infrastructure (Docker, migrations) | HIGH     | ✅ Done |
+| T-10 | Add production infrastructure                      | HIGH     | ✅ Done |
 | T-11 | Final verification and release report              | HIGH     | ✅ Done |
 | T-12 | Checkpoint — ensure all tests pass                 | HIGH     | ✅ Done |
 
@@ -127,6 +141,6 @@ CUTOVER-1 is now unblocked, but the next step is preparation and review—not im
 - **Security Status**: 12/12 hardening tasks completed (including final checkpoint)
 - **Historical v1.0 Decision**: ✅ APPROVED for the embedded product baseline
 - **Studio Gate**: ✅ STUDIO-1 complete with real desktop evidence
-- **Current Cutover Decision**: ▶️ CUTOVER-1 unblocked; release-promotion preparation is active
+- **Current Cutover Decision**: ▶️ CUTOVER-1A active; backend-only release artifact must pass container smoke validation
 - **Sign-Off Document**: `FINAL_V1_RELEASE_SIGN_OFF.md`
 - **Post-release**: F-12 (Collaborative Dev) deferred to post-launch
