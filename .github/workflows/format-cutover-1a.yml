@@ -1,0 +1,54 @@
+name: Format CUTOVER-1A Files
+
+on:
+  push:
+    branches:
+      - cutover/backend-release-artifact
+  pull_request:
+    branches:
+      - feature/plugin-merge
+
+permissions:
+  contents: write
+
+concurrency:
+  group: cutover-1a-format-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  format:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref || github.ref_name }}
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+      - run: npm ci
+        env:
+          HUSKY: "0"
+      - name: Format CUTOVER-1A files
+        run: |
+          npx prettier --write \
+            .github/workflows/ci.yml \
+            deploy/docker-compose.backend.yml \
+            docs/00-project-control/CUTOVER-1A_BACKEND_RELEASE_ARTIFACT.md \
+            docs/00-project-control/ROADMAP_STATUS.md
+      - name: Commit formatting when required
+        run: |
+          if git diff --quiet; then
+            echo "CUTOVER-1A files already formatted."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add \
+            .github/workflows/ci.yml \
+            deploy/docker-compose.backend.yml \
+            docs/00-project-control/CUTOVER-1A_BACKEND_RELEASE_ARTIFACT.md \
+            docs/00-project-control/ROADMAP_STATUS.md
+          git commit -m "docs(cutover): format backend release records"
+          git push origin HEAD:${{ github.head_ref || github.ref_name }}
