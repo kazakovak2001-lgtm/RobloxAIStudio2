@@ -1,0 +1,207 @@
+{
+  "schemaVersion": 1,
+  "roadmapId": "CUTOVER-1D",
+  "status": "readiness-only",
+  "canonicalBranches": {
+    "integration": "feature/plugin-merge",
+    "integrationBaseline": "309e897b6f56633e290c72f099729a603c2fd13e",
+    "default": "standing-pentaceratops",
+    "expectedDefaultTip": "91a1626d080a4bc22ce20648c4ff10481ae6e299",
+    "expectedMergeBase": "89202d409e217a1472dbd70fa4bf9c00ecdf7881",
+    "minimumIntegrationAheadBy": 184,
+    "expectedIntegrationBehindBy": 1
+  },
+  "frontendRelease": {
+    "repository": "kazakovak2001-lgtm/Frontend",
+    "commit": "1036c3ef9705d145cb9700cd14268a33d2abdd58"
+  },
+  "activeRelease": {
+    "files": [
+      "Dockerfile.backend",
+      "deploy/docker-compose.backend.yml",
+      "deploy/docker-compose.release.yml",
+      "deploy/release/nginx.conf",
+      "scripts/cutover/verify-composed-release.mjs",
+      ".github/workflows/ci.yml",
+      "scripts/package-studio-plugin.ts",
+      ".github/workflows/studio-plugin-package.yml"
+    ],
+    "forbiddenPatterns": [
+      {
+        "id": "root-src-copy",
+        "regex": "\\bCOPY\\s+src/",
+        "description": "Active release artifacts must not copy the embedded root src frontend."
+      },
+      {
+        "id": "root-public-copy",
+        "regex": "\\bCOPY\\s+public/",
+        "description": "Active release artifacts must not copy the embedded root public directory."
+      },
+      {
+        "id": "legacy-vite-command",
+        "regex": "(?:node_modules/vite|\\bnpx\\s+vite|\\bnpm\\s+run\\s+(?:dev|preview)\\b)",
+        "description": "Active release artifacts must not execute the legacy root Vite application."
+      },
+      {
+        "id": "legacy-root-config",
+        "regex": "(?:vite\\.config\\.ts|tailwind\\.config\\.js|postcss\\.config\\.js|\\bindex\\.html\\b)",
+        "description": "Active release artifacts must not consume root legacy frontend configuration."
+      },
+      {
+        "id": "prior-deployment-stack",
+        "regex": "(?:deploy/nginx\\.conf|deploy/docker-compose\\.yml)",
+        "description": "The active release must not route through the prior combined deployment stack."
+      }
+    ]
+  },
+  "rollbackInventory": {
+    "files": [
+      "Dockerfile",
+      "deploy/docker-compose.yml",
+      "deploy/nginx.conf",
+      "docker-compose.yml",
+      "package.json",
+      "tsconfig.json",
+      "vite.config.ts",
+      "tailwind.config.js",
+      "postcss.config.js",
+      "index.html"
+    ],
+    "directories": ["src", "public"]
+  },
+  "legacyDevelopment": {
+    "packageScripts": {
+      "dev": "node node_modules/vite/bin/vite.js",
+      "build": "node --import tsx scripts/validate-architecture.ts && node --import tsx scripts/validate-boundaries.ts && node node_modules/typescript/bin/tsc -b && node node_modules/vite/bin/vite.js build",
+      "preview": "node node_modules/vite/bin/vite.js preview"
+    },
+    "packages": [
+      "react",
+      "react-dom",
+      "react-router-dom",
+      "framer-motion",
+      "lucide-react",
+      "vite",
+      "@vitejs/plugin-react",
+      "tailwindcss",
+      "postcss",
+      "autoprefixer",
+      "@types/react",
+      "@types/react-dom"
+    ],
+    "classification": "local-legacy-development-and-cleanup-blocker"
+  },
+  "defaultOnlyDisposition": {
+    "expectedCommits": [
+      {
+        "sha": "91a1626d080a4bc22ce20648c4ff10481ae6e299",
+        "subject": "Identity & Access Management",
+        "classification": "semantically-superseded-do-not-cherry-pick"
+      }
+    ],
+    "pathRules": [
+      {
+        "kind": "exact",
+        "value": ".blackboxrules",
+        "classification": "superseded-tooling-metadata"
+      },
+      {
+        "kind": "exact",
+        "value": "TODO.md",
+        "classification": "obsolete-sse-migration-plan"
+      },
+      {
+        "kind": "prefix",
+        "value": "dist/",
+        "classification": "generated-output-cleanup-already-superseded"
+      },
+      {
+        "kind": "regex",
+        "value": "^errors[0-9]*\\.txt$",
+        "classification": "temporary-diagnostics-cleanup"
+      },
+      {
+        "kind": "exact",
+        "value": "server/src/agents/implementations/GameDesignerAgent.ts",
+        "classification": "superseded-by-current-canonical-agent-runtime"
+      },
+      {
+        "kind": "exact",
+        "value": "server/src/engine/GameGenerationEngine.ts",
+        "classification": "superseded-by-current-generation-runtime"
+      },
+      {
+        "kind": "exact",
+        "value": "server/src/execution/aiPipelineIntegrator.ts",
+        "classification": "superseded-deprecated-pipeline-adapter"
+      },
+      {
+        "kind": "exact",
+        "value": "server/src/execution/blueprintAssembler.ts",
+        "classification": "superseded-by-durable-generation-runtime"
+      },
+      {
+        "kind": "exact",
+        "value": "server/src/execution/gameDiversityEngine.ts",
+        "classification": "superseded-unpromoted-generation-experiment"
+      },
+      {
+        "kind": "exact",
+        "value": "server/src/execution/gameGenerationResultAggregator.ts",
+        "classification": "superseded-unpromoted-generation-experiment"
+      },
+      {
+        "kind": "exact",
+        "value": "server/src/index.ts",
+        "classification": "superseded-by-current-auth-realtime-storage-bootstrap"
+      },
+      {
+        "kind": "exact",
+        "value": "server/src/projects/services/game-generation.service.ts",
+        "classification": "superseded-by-current-project-generation-service"
+      },
+      {
+        "kind": "exact",
+        "value": "server/src/types/blueprint.ts",
+        "classification": "superseded-by-current-durable-blueprint-contract"
+      },
+      {
+        "kind": "exact",
+        "value": "server/src/types/game-generation-result.ts",
+        "classification": "superseded-unpromoted-result-contract"
+      },
+      {
+        "kind": "exact",
+        "value": "server/src/types/gameDesignSeed.ts",
+        "classification": "superseded-unpromoted-seed-contract"
+      },
+      {
+        "kind": "exact",
+        "value": "server/src/types/index.ts",
+        "classification": "superseded-by-current-canonical-type-exports"
+      },
+      {
+        "kind": "exact",
+        "value": "server/tsconfig.json",
+        "classification": "superseded-by-current-server-build-contract"
+      }
+    ]
+  },
+  "promotionPlan": {
+    "operation": "Promote the verified integration tree only after this readiness gate, branch-protection review, and rollback approval; do not merge PR #1 or cherry-pick the default-only commit.",
+    "rollbackPoint": "309e897b6f56633e290c72f099729a603c2fd13e",
+    "requiredPostPromotionChecks": [
+      "TypeScript Check",
+      "ESLint",
+      "Prettier Check",
+      "Test Suite",
+      "PostgreSQL Restart E2E",
+      "Backend Release Image",
+      "Composed HTTPS Release",
+      "Release Baseline Readiness",
+      "Repository Validation",
+      "Merge Gate"
+    ],
+    "legacyCleanupAuthorized": false
+  }
+}
