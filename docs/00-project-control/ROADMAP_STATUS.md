@@ -107,20 +107,20 @@ After CUTOVER-1A, the next slice packages the standalone TanStack Start/Nitro Fr
 
 ## Release Hardening Sprint Status
 
-| #    | Task                                               | Priority | Status  |
-| ---- | -------------------------------------------------- | -------- | ------- |
-| T-1  | Bug condition exploration tests                    | CRITICAL | ✅ Done |
-| T-2  | Preservation property tests                        | CRITICAL | ✅ Done |
-| T-3  | Fix auth route blocking (PUBLIC_PREFIXES)          | CRITICAL | ✅ Done |
-| T-4  | Replace SHA-256 with bcrypt for passwords          | CRITICAL | ✅ Done |
-| T-5  | Move tokens to httpOnly cookies                    | CRITICAL | ✅ Done |
-| T-6  | Wire AuthService.validateToken() into middleware   | CRITICAL | ✅ Done |
-| T-7  | Socket.IO token validation (JWT handshake)         | HIGH     | ✅ Done |
-| T-8  | Remove dead code and merge studioService           | MEDIUM   | ✅ Done |
-| T-9  | Update stale documentation                         | MEDIUM   | ✅ Done |
-| T-10 | Add production infrastructure                      | HIGH     | ✅ Done |
-| T-11 | Final verification and release report              | HIGH     | ✅ Done |
-| T-12 | Checkpoint — ensure all tests pass                 | HIGH     | ✅ Done |
+| #    | Task                                             | Priority | Status  |
+| ---- | ------------------------------------------------ | -------- | ------- |
+| T-1  | Bug condition exploration tests                  | CRITICAL | ✅ Done |
+| T-2  | Preservation property tests                      | CRITICAL | ✅ Done |
+| T-3  | Fix auth route blocking (PUBLIC_PREFIXES)        | CRITICAL | ✅ Done |
+| T-4  | Replace SHA-256 with bcrypt for passwords        | CRITICAL | ✅ Done |
+| T-5  | Move tokens to httpOnly cookies                  | CRITICAL | ✅ Done |
+| T-6  | Wire AuthService.validateToken() into middleware | CRITICAL | ✅ Done |
+| T-7  | Socket.IO token validation (JWT handshake)       | HIGH     | ✅ Done |
+| T-8  | Remove dead code and merge studioService         | MEDIUM   | ✅ Done |
+| T-9  | Update stale documentation                       | MEDIUM   | ✅ Done |
+| T-10 | Add production infrastructure                    | HIGH     | ✅ Done |
+| T-11 | Final verification and release report            | HIGH     | ✅ Done |
+| T-12 | Checkpoint — ensure all tests pass               | HIGH     | ✅ Done |
 
 ## Post-Launch Improvements
 
