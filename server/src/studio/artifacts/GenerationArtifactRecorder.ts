@@ -78,16 +78,8 @@ export function normalizeLuaArtifactContent(
     ? output.lua_generator
     : undefined;
   const scripts = [
-    ...normalizeLegacyGroup(
-      legacy?.server,
-      "ServerScriptService",
-      "server",
-    ),
-    ...normalizeLegacyGroup(
-      legacy?.client,
-      "StarterPlayerScripts",
-      "client",
-    ),
+    ...normalizeLegacyGroup(legacy?.server, "ServerScriptService", "server"),
+    ...normalizeLegacyGroup(legacy?.client, "StarterPlayerScripts", "client"),
     ...normalizeLegacyGroup(
       legacy?.shared,
       "ReplicatedStorage/Shared",
