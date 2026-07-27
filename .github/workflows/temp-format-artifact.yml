@@ -24,24 +24,28 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Capture repository format check
+        run: npm run format:check > prettier-check.log 2>&1 || true
+
       - name: Format changed Studio files
         run: |
           node node_modules/prettier/bin/prettier.cjs --write \
             server/src/studio/artifacts/GenerationArtifactRecorder.ts \
             server/src/__tests__/studio1.artifact-lineage.test.ts
 
-      - name: Stage formatted output
+      - name: Stage diagnostic output
         run: |
-          mkdir -p formatted/server/src/studio/artifacts
-          mkdir -p formatted/server/src/__tests__
+          mkdir -p diagnostic/formatted/server/src/studio/artifacts
+          mkdir -p diagnostic/formatted/server/src/__tests__
+          cp prettier-check.log diagnostic/prettier-check.log
           cp server/src/studio/artifacts/GenerationArtifactRecorder.ts \
-            formatted/server/src/studio/artifacts/GenerationArtifactRecorder.ts
+            diagnostic/formatted/server/src/studio/artifacts/GenerationArtifactRecorder.ts
           cp server/src/__tests__/studio1.artifact-lineage.test.ts \
-            formatted/server/src/__tests__/studio1.artifact-lineage.test.ts
+            diagnostic/formatted/server/src/__tests__/studio1.artifact-lineage.test.ts
 
-      - name: Upload formatted files
+      - name: Upload diagnostic files
         uses: actions/upload-artifact@v4
         with:
-          name: studio-lua-prettier-output
-          path: formatted
+          name: studio-lua-prettier-diagnostic
+          path: diagnostic
           if-no-files-found: error
