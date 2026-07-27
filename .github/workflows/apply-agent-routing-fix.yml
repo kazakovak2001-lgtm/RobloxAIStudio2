@@ -32,7 +32,7 @@ jobs:
               const scoredAgents: Array<{ agent: string; score: AgentScore }> = [];
 
               for (const agent of availableAgents) {
-          '''
+          '''.replace("              ", "    ")
           new = '''    const taskHistory = this.memory.getTaskTypeHistory(taskType);
               const assignedHasTaskEvidence = taskHistory.some(
                 (record) => record.agent === assignedAgent,
@@ -62,10 +62,11 @@ jobs:
               const scoredAgents: Array<{ agent: string; score: AgentScore }> = [];
 
               for (const agent of evidenceBackedAgents) {
-          '''
+          '''.replace("              ", "    ")
           if old not in source:
               raise SystemExit("AgentDecisionEngine insertion anchor not found")
           source = source.replace(old, new, 1)
+
           old_assigned = "    if (!availableAgents.includes(assignedAgent)) {"
           new_assigned = "    if (!evidenceBackedAgents.includes(assignedAgent)) {"
           if old_assigned not in source:
@@ -136,12 +137,12 @@ jobs:
               expect(selection.selectedAgent).toBe("requirements");
             });
           });
-          ''', encoding="utf-8")
+          '''.replace("          ", ""), encoding="utf-8")
           PY
           npx prettier --write \
             server/src/core/agents/AgentDecisionEngine.ts \
             server/src/__tests__/agentDecisionEngine.routing.test.ts
-          npm run test -- --run server/src/__tests__/agentDecisionEngine.routing.test.ts
+          npx vitest run server/src/__tests__/agentDecisionEngine.routing.test.ts
       - name: Commit generated fix
         run: |
           git config user.name "github-actions[bot]"
