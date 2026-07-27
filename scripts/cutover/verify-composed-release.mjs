@@ -5,6 +5,11 @@ import { io } from "socket.io-client";
 const origin = process.env.RELEASE_ORIGIN ?? "https://localhost:8443";
 const allowedOrigin = new URL(origin).origin;
 const disallowedOrigin = "https://not-allowed.example";
+const verificationPassword = process.env.POSTGRES_PASSWORD;
+assert.ok(
+  verificationPassword,
+  "POSTGRES_PASSWORD is required",
+);
 
 await waitForHealthyRelease();
 
@@ -47,7 +52,7 @@ assert.match(rejectedOrigin.body, /Origin not allowed/);
 
 const credentials = {
   email: `cutover-1c-${Date.now()}@example.test`,
-  password: "Cutover1C!Pass123",
+  password: verificationPassword,
   displayName: "CUTOVER-1C Verification",
 };
 const registration = await request("/api/platform/auth/register", {
