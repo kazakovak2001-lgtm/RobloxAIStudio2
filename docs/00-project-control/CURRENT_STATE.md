@@ -80,7 +80,7 @@
 | STUDIO-1c backend | ACK/result state machine and exact evidence verification | July 24, 2026 |
 | STUDIO-1d plugin  | Canonical plugin command/import contract                 | July 24, 2026 |
 | STUDIO-1e package | Deterministic installable plugin and acceptance runbook  | July 25, 2026 |
-| STUDIO-1f fixes   | Real desktop transport, artifact, and routing fixes       | July 27, 2026 |
+| STUDIO-1f fixes   | Real desktop transport, artifact, and routing fixes      | July 27, 2026 |
 | STUDIO-1g         | Real desktop import and backend verification             | July 27, 2026 |
 
 ---

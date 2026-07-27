@@ -73,12 +73,12 @@ CUTOVER-1 is now unblocked, but the next step is preparation and review—not im
 
 ## Active Bugfixes
 
-| ID        | Issue                                              | Status                |
-| --------- | -------------------------------------------------- | --------------------- |
-| UX-4.1    | Responsive Layout Fix                              | ✅ RESOLVED           |
-| STUDIO-1f | Roblox custom `Content-Type` rejection             | ✅ RESOLVED in PR #16 |
-| STUDIO-1f | Lua generator → plugin artifact shape gap          | ✅ RESOLVED in PR #17 |
-| STUDIO-1f | First-run specialist assignment overridden         | ✅ RESOLVED in PR #19 |
+| ID        | Issue                                               | Status                |
+| --------- | --------------------------------------------------- | --------------------- |
+| UX-4.1    | Responsive Layout Fix                               | ✅ RESOLVED           |
+| STUDIO-1f | Roblox custom `Content-Type` rejection              | ✅ RESOLVED in PR #16 |
+| STUDIO-1f | Lua generator → plugin artifact shape gap           | ✅ RESOLVED in PR #17 |
+| STUDIO-1f | First-run specialist assignment overridden          | ✅ RESOLVED in PR #19 |
 | STUDIO-1g | Real Roblox Studio end-to-end artifact verification | ✅ VERIFIED           |
 
 ## Milestones

@@ -22,43 +22,43 @@ CUTOVER-1 is no longer blocked by Studio artifact delivery. Release promotion an
 
 ## Canonical acceptance identity
 
-| Field | Value |
-| --- | --- |
-| Backend branch | `feature/plugin-merge` |
-| Backend commit | `d99246d813e12bccff0193a15e73de41b92f175d` |
-| Frontend commit | `a8d005d433d48e18d8e64ac176ee63c9c694b644` |
-| Project ID | `proj-286c6929-5` |
-| Studio client ID | `studio-39fa03bb` |
-| Studio session ID | `session-afec81df-c` |
-| Durable execution ID | `exec-1785180356168` |
-| Export command ID | `cmd-96bd9df4-e` |
-| Expected artifacts | `8` |
-| Verified artifacts | `8` |
-| Plugin version | `1.8.0` |
-| Bridge protocol | `1.0.0` |
+| Field                | Value                                      |
+| -------------------- | ------------------------------------------ |
+| Backend branch       | `feature/plugin-merge`                     |
+| Backend commit       | `d99246d813e12bccff0193a15e73de41b92f175d` |
+| Frontend commit      | `a8d005d433d48e18d8e64ac176ee63c9c694b644` |
+| Project ID           | `proj-286c6929-5`                          |
+| Studio client ID     | `studio-39fa03bb`                          |
+| Studio session ID    | `session-afec81df-c`                       |
+| Durable execution ID | `exec-1785180356168`                       |
+| Export command ID    | `cmd-96bd9df4-e`                           |
+| Expected artifacts   | `8`                                        |
+| Verified artifacts   | `8`                                        |
+| Plugin version       | `1.8.0`                                    |
+| Bridge protocol      | `1.0.0`                                    |
 
 ## Acceptance environment
 
-| Field | Value |
-| --- | --- |
-| Host | `Windows_NT 10.0.26200` |
-| Roblox Studio | `0.730.0.7300790` (64-bit) |
-| Channel | `production` |
-| Newer Studio available during capture | `0.731.0.7310942` |
+| Field                                 | Value                      |
+| ------------------------------------- | -------------------------- |
+| Host                                  | `Windows_NT 10.0.26200`    |
+| Roblox Studio                         | `0.730.0.7300790` (64-bit) |
+| Channel                               | `production`               |
+| Newer Studio available during capture | `0.731.0.7310942`          |
 
 The protocol payload also reported `studioVersion=2024.1`; the desktop About dialog above is the authoritative application build identity.
 
 ## Plugin package provenance
 
-| Field | Value |
-| --- | --- |
-| Workflow run | `30277078815` |
-| Artifact ID | `8657228073` |
-| Package | `RobloxAIStudioPlugin-v1.8.0.rbxmx` |
-| Bundle size | `45932` bytes |
-| Bundle SHA-256 | `a97e6268193f202cb5cc12ef5c174d0a028067c382327dd9432aacbe80f5ced7` |
-| Manifest SHA-256 | `0655ae43b48f8c3bb90591da1e35170ff122136f8352bad73320c88c0eca3f14` |
-| Canonical Lua sources | `9` |
+| Field                 | Value                                                              |
+| --------------------- | ------------------------------------------------------------------ |
+| Workflow run          | `30277078815`                                                      |
+| Artifact ID           | `8657228073`                                                       |
+| Package               | `RobloxAIStudioPlugin-v1.8.0.rbxmx`                                |
+| Bundle size           | `45932` bytes                                                      |
+| Bundle SHA-256        | `a97e6268193f202cb5cc12ef5c174d0a028067c382327dd9432aacbe80f5ced7` |
+| Manifest SHA-256      | `0655ae43b48f8c3bb90591da1e35170ff122136f8352bad73320c88c0eca3f14` |
+| Canonical Lua sources | `9`                                                                |
 
 The GitHub Actions artifact was independently downloaded after the desktop run. Its package size, bundle checksum, manifest checksum, and packaged checksum file matched the values above.
 
@@ -81,13 +81,13 @@ Execution `exec-1785180356168` completed and produced a non-empty eight-artifact
 
 The authenticated Studio session recorded the same command, execution, and artifact set through every state:
 
-| Lifecycle event | UTC timestamp |
-| --- | --- |
-| Session created | `2026-07-27T19:35:05.805Z` |
-| Command queued | `2026-07-27T19:37:08.212Z` |
-| Command delivered | `2026-07-27T19:37:08.937Z` |
+| Lifecycle event      | UTC timestamp              |
+| -------------------- | -------------------------- |
+| Session created      | `2026-07-27T19:35:05.805Z` |
+| Command queued       | `2026-07-27T19:37:08.212Z` |
+| Command delivered    | `2026-07-27T19:37:08.937Z` |
 | Command acknowledged | `2026-07-27T19:37:08.955Z` |
-| Import verified | `2026-07-27T19:37:09.030Z` |
+| Import verified      | `2026-07-27T19:37:09.030Z` |
 
 Studio Output independently showed:
 
