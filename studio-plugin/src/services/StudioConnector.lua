@@ -40,6 +40,10 @@ function StudioConnector:connect(projectId)
 
         return true
     end
+
+    if result and result.error then
+        warn("[AI Studio HTTP] Connect failed: " .. tostring(result.error))
+    end
     return false
 end
 
@@ -147,23 +151,46 @@ function StudioConnector:_get(path)
 end
 
 function StudioConnector:_post(path, body)
+    local headers = self:_headers()
     local success, response = pcall(function()
+        local url = Config.BACKEND_URL .. path
+        local encodedBody = HttpService:JSONEncode(body)
+
+        if next(headers) then
+            return HttpService:PostAsync(
+                url,
+                encodedBody,
+                Enum.HttpContentType.ApplicationJson,
+                false,
+                headers
+            )
+        end
+
         return HttpService:PostAsync(
-            Config.BACKEND_URL .. path,
-            HttpService:JSONEncode(body),
+            url,
+            encodedBody,
             Enum.HttpContentType.ApplicationJson,
-            false,
-            self:_headers()
+            false
         )
     end)
-    if not success then return { success = false, error = tostring(response) } end
+
+    if not success then
+        warn("[AI Studio HTTP] POST " .. path .. " failed: " .. tostring(response))
+        return { success = false, error = tostring(response) }
+    end
+
     local ok, data = pcall(function() return HttpService:JSONDecode(response) end)
-    if not ok then return { success = false, error = "JSON decode failed" } end
+    if not ok then
+        warn("[AI Studio HTTP] POST " .. path .. " returned invalid JSON")
+        return { success = false, error = "JSON decode failed" }
+    end
     return data
 end
 
 function StudioConnector:_headers()
-    local headers = { ["Content-Type"] = "application/json" }
+    -- PostAsync sets Content-Type from Enum.HttpContentType.ApplicationJson.
+    -- Roblox rejects callers that also provide Content-Type in custom headers.
+    local headers = {}
     if Config.API_KEY ~= "" then headers["X-API-Key"] = Config.API_KEY end
     if self._sessionId then headers["X-Studio-Session"] = self._sessionId end
     return headers

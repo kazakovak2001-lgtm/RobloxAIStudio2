@@ -95,6 +95,23 @@ describe("STUDIO-1e deterministic Roblox plugin package", () => {
     );
   });
 
+  it("uses Roblox-safe POST headers and exposes desktop request failures", async () => {
+    const connectorSource = await readFile(
+      resolve(
+        process.cwd(),
+        "studio-plugin/src/services/StudioConnector.lua",
+      ),
+      "utf8",
+    );
+
+    expect(connectorSource).toContain("Enum.HttpContentType.ApplicationJson");
+    expect(connectorSource).not.toContain('["Content-Type"]');
+    expect(connectorSource).toContain("if next(headers) then");
+    expect(connectorSource).toContain(
+      '[AI Studio HTTP] POST " .. path .. " failed:',
+    );
+  });
+
   it("produces byte-identical bundles and manifests from unchanged sources", async () => {
     const firstOutput = await createTemporaryDirectory(
       "studio-plugin-package-a-",
