@@ -1,8 +1,8 @@
 # Current Project State
 
 **Last Updated**: July 27, 2026
-**Phase**: CUTOVER-1C — Cross-repository release composition
-**Build Status**: Backend CI is green on Node.js 22 / npm 10, including the full normal test suite, canonical plugin and package coverage, strict PostgreSQL restart acceptance, the backend-only production image smoke gate, repository validation, formatting, linting, commitlint, and the aggregate merge gate. Standalone Frontend CI is green for TypeScript, Workspace logic tests, production build, the non-root SSR release image, `/health`, the root SSR document, production-artifact responsive browser QA, and its aggregate Merge Gate. STUDIO-1, CUTOVER-1A, and CUTOVER-1B are complete. CUTOVER-1C must now prove the composed frontend/backend release topology, CORS, cookies, authenticated REST, Socket.IO, and rollback before legacy frontend removal.
+**Phase**: CUTOVER-1 — Release promotion and isolated legacy cleanup preparation
+**Build Status**: Backend CI is green on Node.js 22 / npm 10, including the full normal test suite, canonical plugin and package coverage, strict PostgreSQL restart acceptance, the backend-only production image smoke gate, repository validation, formatting, linting, commitlint, and the aggregate merge gate. Standalone Frontend CI is green for TypeScript, Workspace logic tests, production build, the non-root SSR release image, `/health`, the root SSR document, production-artifact responsive browser QA, and its aggregate Merge Gate. STUDIO-1 and CUTOVER-1A/1B/1C are complete. CI run #219 proved the composed HTTPS frontend/backend topology, secure host-only cookie authentication for REST and Socket.IO, production origin enforcement, PostgreSQL durability, and rollback preservation. Legacy frontend removal remains blocked pending release-baseline promotion, runtime dependency inventory, rollback rehearsal, and a separately reviewed cleanup change.
 
 ---
 
@@ -38,7 +38,7 @@
 
 - **Location**: repository root `src/`
 - **Status**: Frozen migration inventory; no new product features, pages, or parallel integrations.
-- **Removal**: CUTOVER-1 is unblocked, but removal is allowed only after every gate in [FRONTEND_CUTOVER.md](./FRONTEND_CUTOVER.md) passes through a separately reviewed cleanup change.
+- **Removal**: CUTOVER-1C is verified, but removal remains allowed only after release-baseline promotion, runtime dependency inventory, rollback rehearsal, and every gate in [FRONTEND_CUTOVER.md](./FRONTEND_CUTOVER.md) passes through a separately reviewed cleanup change.
 
 ### Health Scores
 
@@ -85,6 +85,7 @@
 | STUDIO-1g         | Real desktop import and backend verification             | July 27, 2026 |
 | CUTOVER-1A        | Backend-only production release artifact                 | July 27, 2026 |
 | CUTOVER-1B        | Standalone Frontend SSR release artifact                 | July 27, 2026 |
+| CUTOVER-1C        | Composed HTTPS release and authenticated transports      | July 27, 2026 |
 
 ---
 
@@ -186,8 +187,9 @@ This template enforces:
 - **Backend release image**: `Dockerfile.backend` builds and starts the compiled backend without root `src/`, `public/`, Vite, or Tailwind inputs; CI verifies `GET /health`.
 - **Backend/PostgreSQL composition**: `deploy/docker-compose.backend.yml` provides the independently verified backend and persistent database boundary.
 - **Standalone Frontend release image**: Frontend commit `1036c3ef9705d145cb9700cd14268a33d2abdd58` packages `.output` plus one shared worker-to-Node adapter as a non-root SSR process.
+- **Composed HTTPS release**: backend head `8bee44a284244033d73637b3e3cc4bddf72af035` and exact Frontend commit `1036c3ef9705d145cb9700cd14268a33d2abdd58` passed CI run `30312627413` (#219). Evidence artifact `8670986116` (`cutover-1c-composition-8bee44a284244033d73637b3e3cc4bddf72af035`, digest `sha256:6a941900d9b73bca852d1fe071f148d6ac19eae151b414a9e7f99aa3ad39b57a`) proves healthy PostgreSQL/backend/frontend/proxy services, HTTPS SSR and health, allowed/rejected production origins, secure host-only cookies, authenticated REST, unauthenticated Socket.IO rejection, and authenticated polling → WebSocket upgrade.
 - **Migration Runner**: `server/src/platform/storage/postgres/migrationRunner.ts` — auto-applies pending migrations on startup (skips when STORAGE_PROVIDER=inmemory).
-- **Rollback inventory**: the prior combined `Dockerfile`, `deploy/nginx.conf`, and `deploy/docker-compose.yml` remain unchanged until composed-release and cleanup gates pass.
+- **Rollback inventory**: revert focused PR #25 to remove the composed release; CUTOVER-1A and CUTOVER-1B remain independently deployable. The prior combined `Dockerfile`, `deploy/nginx.conf`, `deploy/docker-compose.yml`, and frozen root `src/` remain unchanged until promotion, rehearsal, and cleanup gates pass.
 - **Backup Script**: `scripts/backup-database.sh` — timestamped pg_dump with configurable retention
 - **Deployment Guide**: `docs/PRODUCTION_DEPLOYMENT_GUIDE.md`
 
@@ -195,6 +197,7 @@ This template enforces:
 
 ## Last Changes
 
+- July 27, 2026: CUTOVER-1C verified — backend head `8bee44a284244033d73637b3e3cc4bddf72af035` composed the exact Frontend release commit `1036c3ef9705d145cb9700cd14268a33d2abdd58` behind one HTTPS origin. CI run #219 and evidence artifact `8670986116` proved healthy services, SSR, CORS allow/deny behavior, secure host-only cookies, authenticated REST, unauthenticated Socket.IO rejection, and authenticated polling → WebSocket upgrade. The prior release stack and legacy frontend remain preserved for rollback. See `CUTOVER-1C_COMPOSED_RELEASE.md`.
 - July 27, 2026: CUTOVER-1B completed — Frontend PR #12 merged as `1036c3ef9705d145cb9700cd14268a33d2abdd58`. One shared worker-to-Node adapter now serves both responsive QA and production. Frontend CI run #65 verified the non-root image, independent `/health`, root SSR document, desktop/tablet/mobile responsive QA, and Merge Gate. CUTOVER-1C is the next gate.
 - July 27, 2026: CUTOVER-1A completed — backend PR #22 merged as `22852af9d4db30c4fff28ea5ef0c762aa3c0607a`. The backend-only production image builds without legacy frontend sources and passes its container health smoke gate.
 - July 27, 2026: STUDIO-1g real desktop acceptance completed — standalone Frontend commit `a8d005d433d48e18d8e64ac176ee63c9c694b644` generated execution `exec-1785180356168`; plugin v1.8 on Roblox Studio `0.730.0.7300790` imported eight artifacts, created the expected Roblox instance hierarchy, returned exact receipts, and reached `Verified`. The authenticated project and session status matched project `proj-286c6929-5`, client `studio-39fa03bb`, session `session-afec81df-c`, command `cmd-96bd9df4-e`, and eight verified artifacts. Issue #15 is closed. See `STUDIO-1G_DESKTOP_ACCEPTANCE_RESULT.md`.
