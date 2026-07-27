@@ -1,6 +1,6 @@
 # CUTOVER-1A — Backend-Only Release Artifact
 
-**Status:** In implementation  
+**Status:** Complete  
 **Tracking issue:** #21  
 **Baseline:** `feature/plugin-merge` at `3608b5bee35501dc8d01e75871d3d23f80cd65b0`
 
@@ -33,6 +33,8 @@ CUTOVER-1A adds:
 
 The existing `Dockerfile`, `deploy/docker-compose.yml`, legacy `src/`, and standalone Frontend remain unchanged for rollback and comparison.
 
+The production image also includes `architecture.manifest.json`, which is a required backend runtime contract loaded by `ArchitectureControllerAgent`. It does not include the frozen legacy frontend, `public/`, Vite configuration, or Tailwind configuration.
+
 ## Target release architecture
 
 ```text
@@ -50,15 +52,23 @@ PostgreSQL
 
 The frontend and backend are separate release artifacts. Their boundary remains the existing versioned REST, Socket.IO, authentication-cookie, and Studio contracts.
 
-## Validation contract
+## Validation result
 
-The focused pull request must prove all of the following:
+GitHub Actions CI run #192 proved the backend-only release boundary:
 
-- Docker build succeeds without copying `src/`;
-- compiled backend starts from `dist/server/index.js`;
-- production container returns HTTP 200 from `/health`;
-- existing TypeScript, ESLint, Prettier, tests, repository validation, PostgreSQL restart E2E, and Merge Gate remain green;
-- no REST, Socket.IO, Studio, storage, or authentication behavior changes.
+- `Dockerfile.backend` built successfully;
+- the resulting production container started successfully;
+- `GET /health` returned HTTP 200 with healthy status;
+- TypeScript Check passed;
+- ESLint passed;
+- Prettier Check passed;
+- Test Suite passed;
+- Repository Validation passed;
+- PostgreSQL Restart E2E passed;
+- Commit Message Lint passed;
+- aggregate Merge Gate passed.
+
+The smoke gate initially exposed a missing `architecture.manifest.json` runtime asset. The asset was added to the image after confirming that it belongs to the backend architecture boundary. No legacy frontend source was added to the image.
 
 ## Known follow-up work
 
@@ -69,6 +79,8 @@ CUTOVER-1A deliberately does not complete the entire cutover. The next focused s
 3. prove authenticated REST and Socket.IO traffic through the composed release topology;
 4. separate backend dependencies and scripts from legacy Vite dependencies;
 5. remove root `src/` only in a final isolated cleanup pull request after all removal gates pass.
+
+The immediate next slice is **CUTOVER-1B — standalone Frontend SSR release artifact**.
 
 ## Rollback
 
