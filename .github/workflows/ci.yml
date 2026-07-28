@@ -24,6 +24,35 @@ jobs:
         with:
           node-version: "22"
           cache: npm
+      - name: Narrow context-independent adapter patch
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          fixer_path = Path("scripts/runtime205-fixer.py")
+          fixer = fixer_path.read_text(encoding="utf-8")
+          block = '''replace_exact(
+              "server/src/orchestrator/AutonomousPhaseRegistry.ts",
+              "this.capability(context)",
+              "this.capability()",
+              expected=2,
+          )
+
+          '''
+          if block not in fixer:
+              raise SystemExit("fixer precondition block not found")
+          fixer_path.write_text(fixer.replace(block, "", 1), encoding="utf-8")
+
+          source_path = Path("server/src/orchestrator/AutonomousPhaseRegistry.ts")
+          source = source_path.read_text(encoding="utf-8")
+          old = "return this.skipped(context, this.capability(context));"
+          if source.count(old) != 2:
+              raise SystemExit(f"expected two context-independent calls, found {source.count(old)}")
+          source_path.write_text(
+              source.replace(old, "return this.skipped(context, this.capability());"),
+              encoding="utf-8",
+          )
+          PY
       - name: Apply deterministic contract patch
         run: python scripts/runtime205-fixer.py
       - name: Install dependencies
