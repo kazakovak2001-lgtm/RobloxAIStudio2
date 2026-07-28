@@ -21,7 +21,7 @@ The active product topology remains:
 - canonical standalone Frontend repository: `kazakovak2001-lgtm/Frontend`;
 - exact Frontend release commit: `1036c3ef9705d145cb9700cd14268a33d2abdd58`.
 
-Active backend and composed-release artifacts were already proven independent from root `src/` by CUTOVER-1D and CUTOVER-1F. CLEANUP-1A reuses those classifications rather than creating a competing release inventory.
+Active backend and composed-release artifacts were already proven independent from root `src/` by CUTOVER-1D and CUTOVER-1F. CLEANUP-1A reuses those classifications rather than creating a competing release inventory. The cleanup audit also requires its canonical Frontend identity to match the CUTOVER-1D release inventory exactly.
 
 ## Exact Legacy Source Inventory
 
@@ -45,6 +45,20 @@ The source tree includes:
 - frontend-only types, constants, hooks and utilities.
 
 Any tracked-file addition, deletion, or rename under root `src/` causes the CLEANUP-1A gate to fail until the classification is reviewed.
+
+## Audit-Only Immutability
+
+CLEANUP-1A compares the pull request against the exact CUTOVER-1F baseline and rejects changes to protected paths. The protected set includes:
+
+- all 168 tracked files under root `src/`;
+- root TypeScript, Vite, Tailwind, PostCSS and HTML configuration;
+- archival deployment files;
+- root PostgreSQL development compose configuration;
+- stale inventory files;
+- `package.json` and `package-lock.json`;
+- architecture and boundary validation sources.
+
+The audit may change only its own inventory, verifier, documentation and CI registration. Generating new hashes from modified files is not accepted as an immutable baseline.
 
 ## Current Removal Blockers
 
@@ -119,8 +133,12 @@ The audit uses the TypeScript parser to inspect actual `import`, `export from`, 
 The verified dependency evidence shows:
 
 - `react` has no consumer outside root `src/`;
-- `vite` is consumed outside root `src/` only by `vite.config.ts`;
+- `vite` and `@vitejs/plugin-react` are consumed outside root `src/` only by `vite.config.ts`;
 - `socket.io-client` is retained as an operational dependency because `scripts/cutover/verify-composed-release.mjs` uses it to verify authenticated Socket.IO transport in the active composed HTTPS release gate.
+
+## CI Enforcement
+
+The CI job `Legacy Frontend Decommission Audit` runs after `Promoted Baseline Integrity`. The audit verifies that the aggregate `Merge Gate` explicitly contains `legacy-frontend-audit` in its `needs` dependency list. Merely defining or running the audit job is insufficient if the protected merge gate no longer waits for it.
 
 ## Ordered Removal Waves
 
@@ -154,12 +172,12 @@ CLEANUP-1D must prove:
 
 ## Verification Evidence
 
-Protected pull request #33 triggered:
+Protected pull request #33 triggered the review-strengthened validation run:
 
 ```text
-CI Pipeline run: 30324915585 (#277)
-Branch head: 4e5d3be6bbcdba0db4830f3d557f788507ff06b9
-Audited PR merge ref: b553033d6461dff1f6e659707b3c5961d74558e0
+CI Pipeline run: 30325509495 (#279)
+Branch head: fc5f3b332009f102f50f9063b205742320bcdfe1
+Audited PR merge ref: c9d027af4f600867a6424e3e278e3b4f41f9041f
 ```
 
 The run passed:
@@ -181,7 +199,11 @@ The audit result verified:
 
 ```text
 Status: passed
+Protected audit-only paths: 184
+Protected path changes: 0
 Tracked root src files: 168
+Merge Gate dependency: legacy-frontend-audit
+Canonical Frontend identity: verified against CUTOVER-1D
 Active release legacy reference violations: 0
 Current stage deletion authorized: false
 ```
@@ -190,8 +212,8 @@ Published evidence:
 
 ```text
 Artifact name: cleanup-1a-legacy-frontend-audit
-Artifact ID: 8675337451
-Digest: sha256:b6cd21702f1a07ee1ecbb88ac6b4bf3c58737cf157820e739d6335f4c5b31a63
+Artifact ID: 8675557354
+Digest: sha256:fe031ceed0274222e3f17bd8df6e3dbefd7a51739b4d1baeb548861407dbacd8
 ```
 
 The merge commit is recorded in issue #32 after the protected merge operation.
@@ -205,7 +227,7 @@ config/cleanup/legacy-frontend-decommission.inventory.json
 scripts/cleanup/audit-legacy-frontend-decommission.mjs
 ```
 
-The CI job `Legacy Frontend Decommission Audit` publishes:
+The CI job publishes:
 
 ```text
 artifacts/cleanup-1a/legacy-frontend-audit-result.json
