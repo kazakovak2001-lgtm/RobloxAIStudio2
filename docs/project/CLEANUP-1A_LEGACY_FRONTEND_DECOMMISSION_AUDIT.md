@@ -1,8 +1,9 @@
 # CLEANUP-1A Legacy Frontend Decommission Audit
 
-**Status**: Verification pending  
+**Status**: Verified  
 **Date**: July 28, 2026  
-**Tracking issue**: #32
+**Tracking issue**: #32  
+**Implementation pull request**: #33
 
 ## Objective
 
@@ -113,9 +114,13 @@ The following packages are candidates for removal after tooling decoupling and s
 - Vite and its React plugin;
 - Tailwind CSS, PostCSS and Autoprefixer.
 
-The audit scans tracked JavaScript and TypeScript files outside root `src/`. A package classified as legacy-only fails the gate if a non-legacy consumer appears.
+The audit uses the TypeScript parser to inspect actual `import`, `export from`, dynamic `import()` and `require()` module specifiers outside root `src/`. Text strings and validation rules are not misclassified as package consumers.
 
-`socket.io-client` is explicitly retained as an operational dependency because `scripts/cutover/verify-composed-release.mjs` uses it to verify authenticated Socket.IO transport in the active composed HTTPS release gate.
+The verified dependency evidence shows:
+
+- `react` has no consumer outside root `src/`;
+- `vite` is consumed outside root `src/` only by `vite.config.ts`;
+- `socket.io-client` is retained as an operational dependency because `scripts/cutover/verify-composed-release.mjs` uses it to verify authenticated Socket.IO transport in the active composed HTTPS release gate.
 
 ## Ordered Removal Waves
 
@@ -134,7 +139,7 @@ CLEANUP-1C is the first deletion-authorized stage, but only after CLEANUP-1B is 
 
 1. delete root `src/` and legacy frontend entry/configuration files;
 2. remove the archival combined frontend deployment stack;
-3. delete generated frontend residue;
+3. remove only residue that actually exists at that stage;
 4. prune only dependencies proven legacy-only and update `package-lock.json`;
 5. retain or deliberately relocate active operational consumers such as `socket.io-client`.
 
@@ -147,7 +152,51 @@ CLEANUP-1D must prove:
 3. refreshed repository inventories and project-control documentation;
 4. no regression to the promoted default branch or pinned rollback reference.
 
-## Machine-Readable Evidence
+## Verification Evidence
+
+Protected pull request #33 triggered:
+
+```text
+CI Pipeline run: 30324915585 (#277)
+Branch head: 4e5d3be6bbcdba0db4830f3d557f788507ff06b9
+Audited PR merge ref: b553033d6461dff1f6e659707b3c5961d74558e0
+```
+
+The run passed:
+
+- TypeScript Check;
+- ESLint;
+- Prettier Check;
+- Test Suite;
+- PostgreSQL Restart E2E;
+- Backend Release Image;
+- Composed HTTPS Release;
+- Promoted Baseline Integrity;
+- Legacy Frontend Decommission Audit;
+- Repository Validation;
+- Commit Message Lint;
+- Merge Gate.
+
+The audit result verified:
+
+```text
+Status: passed
+Tracked root src files: 168
+Active release legacy reference violations: 0
+Current stage deletion authorized: false
+```
+
+Published evidence:
+
+```text
+Artifact name: cleanup-1a-legacy-frontend-audit
+Artifact ID: 8675337451
+Digest: sha256:b6cd21702f1a07ee1ecbb88ac6b4bf3c58737cf157820e739d6335f4c5b31a63
+```
+
+The merge commit is recorded in issue #32 after the protected merge operation.
+
+## Machine-Readable Contract
 
 The audit is defined by:
 
@@ -162,8 +211,6 @@ The CI job `Legacy Frontend Decommission Audit` publishes:
 artifacts/cleanup-1a/legacy-frontend-audit-result.json
 ```
 
-The final CI run, artifact ID, digest, verified head and merge commit will be recorded after the protected pull request passes.
-
 ## Safety Boundary
 
 CLEANUP-1A does not modify or delete:
@@ -177,6 +224,8 @@ CLEANUP-1A does not modify or delete:
 - standalone Frontend code or release identity;
 - the pinned rollback reference;
 - PR #1.
+
+Deletion remains unauthorized until CLEANUP-1B is verified and merged. CLEANUP-1C is the first deletion-authorized stage.
 
 ## Rollback
 
