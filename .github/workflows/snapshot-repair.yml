@@ -1,0 +1,31 @@
+name: Snapshot Repair
+
+on:
+  pull_request:
+
+permissions:
+  contents: write
+
+jobs:
+  snapshot-repair:
+    if: github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout pull request head
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.ref }}
+
+      - name: Generate snapshots for final tracked set
+        run: |
+          git rm .github/workflows/snapshot-repair.yml
+          node scripts/cleanup/generate-tracked-inventories.mjs
+          git restore --staged --worktree .github/workflows/snapshot-repair.yml
+
+      - name: Commit deterministic snapshots
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add _inventory_raw.txt ProjectStructure.txt project_structure.txt
+          git commit -m "chore(cleanup): regenerate tracked snapshots"
+          git push origin HEAD:${{ github.event.pull_request.head.ref }}
