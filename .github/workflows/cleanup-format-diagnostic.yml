@@ -1,0 +1,36 @@
+name: Cleanup Format Diagnostic
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  format-cleanup-files:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "npm"
+      - run: npm ci
+      - name: Format CLEANUP-1A files
+        run: |
+          node node_modules/prettier/bin/prettier.cjs --write \
+            .github/workflows/ci.yml \
+            config/cleanup/legacy-frontend-decommission.inventory.json \
+            docs/project/CLEANUP-1A_LEGACY_FRONTEND_DECOMMISSION_AUDIT.md \
+            scripts/cleanup/audit-legacy-frontend-decommission.mjs
+      - name: Package formatted files
+        run: |
+          tar -czf cleanup-format-output.tgz \
+            .github/workflows/ci.yml \
+            config/cleanup/legacy-frontend-decommission.inventory.json \
+            docs/project/CLEANUP-1A_LEGACY_FRONTEND_DECOMMISSION_AUDIT.md \
+            scripts/cleanup/audit-legacy-frontend-decommission.mjs
+      - uses: actions/upload-artifact@v4
+        with:
+          name: cleanup-format-output
+          path: cleanup-format-output.tgz
+          if-no-files-found: error
+          retention-days: 1
