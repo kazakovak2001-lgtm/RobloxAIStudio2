@@ -65,13 +65,13 @@ These items are ready and should run in this order.
 
 ### INT-201 — Protected 40-check production contract
 
-| Field      | Value                    |
-| ---------- | ------------------------ |
-| Priority   | P0                       |
-| Repository | Both                     |
-| Size       | M                        |
-| Depends on | SEC-201, FE-201          |
-| Status     | Implementing — issue #47 |
+| Field      | Value                                                   |
+| ---------- | ------------------------------------------------------- |
+| Priority   | P0                                                      |
+| Repository | Both                                                    |
+| Size       | M                                                       |
+| Depends on | SEC-201, FE-201                                         |
+| Status     | Implemented — Frontend PR #16; backend issue #47/PR #48 |
 
 **Scope**
 
@@ -88,12 +88,13 @@ These items are ready and should run in this order.
 
 ### DOC-201 — Correct active auth and release terminology
 
-| Field      | Value           |
-| ---------- | --------------- |
-| Priority   | P1              |
-| Repository | RobloxAIStudio2 |
-| Size       | S               |
-| Depends on | SEC-201         |
+| Field      | Value                   |
+| ---------- | ----------------------- |
+| Priority   | P1                      |
+| Repository | RobloxAIStudio2         |
+| Size       | S                       |
+| Depends on | SEC-201                 |
+| Status     | Implemented — issue #49 |
 
 **Scope**
 

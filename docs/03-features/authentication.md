@@ -70,6 +70,25 @@ storage hydration and flushed before the server begins accepting traffic.
 - The composed HTTPS release verifier exercises register, login, refresh,
   `/auth/me`, unauthenticated Socket.IO rejection, authenticated Socket.IO
   upgrade, and old-refresh replay rejection in production mode.
+- The reciprocal backend and Frontend Merge Gates run exactly 40 production
+  checks against an exact SHA pair. Development mode intentionally bypasses
+  authentication and cannot satisfy auth or cross-user isolation evidence.
 
 Route-level role/permission middleware is a separate `SEC-202` item; project
 ownership and authenticated-user enforcement remain active independently.
+
+### Executable sources
+
+- [`harden2a.auth-contract.test.ts`](../../server/src/__tests__/harden2a.auth-contract.test.ts)
+  proves response shape, cookie attributes, digest-only persistence, legacy
+  migration, rotation, replay rejection, `/auth/me`, and the authoritative
+  terminology guard.
+- [`verify-composed-release.mjs`](../../scripts/cutover/verify-composed-release.mjs)
+  proves the current same-origin HTTPS REST, refresh, CORS, and Socket.IO
+  behavior.
+- [Backend CI run #307](https://github.com/kazakovak2001-lgtm/RobloxAIStudio2/actions/runs/30350138128)
+  passed 40/40 protected checks for backend
+  `b30be04ce3c5458902561472d371f753b28f08c5` and Frontend
+  `739b43cbc5f991c1852e80b30fe38c0e7c02d681`. Contract artifact
+  `8684538568` has digest
+  `sha256:0babbaf1239615e15479a4adbbcc5f5745965632fb3417c06bc2ee9a70c3c0a9`.

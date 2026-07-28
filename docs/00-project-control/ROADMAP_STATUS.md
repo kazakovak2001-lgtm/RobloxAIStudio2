@@ -17,7 +17,7 @@ This sequence is authoritative for work after the standalone frontend integratio
 | STUDIO-1      | Generated artifact → Roblox Studio end-to-end validation       | High     | ✅ Complete — real desktop verified | CORE-1, WORKSPACE-1   |
 | CUTOVER-1     | Release promotion and legacy frontend removal                  | High     | ✅ Complete                         | WORKSPACE-1, STUDIO-1 |
 | TECH-AUDIT-2  | Evidence-based two-repository technical baseline               | Critical | ✅ Complete                         | CUTOVER-1             |
-| HARDEN-2A     | Auth response, Studio state, and contract-E2E correctness      | Critical | ◐ INT-201 backend gate in issue #47 | TECH-AUDIT-2          |
+| HARDEN-2A     | Auth response, Studio state, and contract-E2E correctness      | Critical | ✅ Complete                         | TECH-AUDIT-2          |
 | ARCH-2B       | Exhaustive and truthful architecture boundary gate             | Critical | Planned                             | HARDEN-2A             |
 | FRONTEND-2C   | Protected Frontend quality and bundle baseline                 | High     | Planned                             | HARDEN-2A             |
 | RUNTIME-2D    | Runtime/provider/orchestration/memory consolidation            | High     | Planned                             | ARCH-2B               |
@@ -73,7 +73,7 @@ The authenticated project status returned `artifactVerified=true`, `verification
 
 CUTOVER-1D proved branch alignment evidence, deployment ownership, active-release independence from the embedded frontend, complete default-only semantic classification, and an executable rollback rehearsal. CUTOVER-1E promoted the verified candidate as the protected default, CUTOVER-1F aligned CI with that promoted baseline, CLEANUP-1A classified the exact legacy removal surface, CLEANUP-1B decoupled protected tooling, CLEANUP-1C physically removed the legacy frontend, and CLEANUP-1D completed protected post-removal verification with zero file deletions.
 
-## Active CUTOVER-1 Gate
+## Completed CUTOVER-1 Evidence
 
 CUTOVER-1A is complete. Backend CI run #195 built `Dockerfile.backend`, started the production container without root `src/`, and received HTTP 200 from `GET /health`.
 
@@ -95,6 +95,16 @@ CLEANUP-1D is complete under closed issue #41 and merged PR #42. Merge commit `f
 
 The removed combined stack was archival only, not an executable rollback path: its root `Dockerfile` referenced the absent `public/` directory. Executable rollback uses the independently verified CUTOVER-1A backend and CUTOVER-1B Frontend artifacts; the focused CLEANUP-1C PR can be reverted to recover historical source/configuration inventory. Historical PR #1 was closed without merge on July 28, 2026.
 
+HARDEN-2A / INT-201 is complete. Frontend PR #16 merged the first protected
+40-check production contract as
+`739b43cbc5f991c1852e80b30fe38c0e7c02d681`. Backend PR #48 merged the
+reciprocal release gate as
+`b30be04ce3c5458902561472d371f753b28f08c5`. Backend post-merge CI run
+`30350138128` (#307) passed all protected jobs, including the composed HTTPS
+release, exact 40/40 contract, promoted-baseline rollback, post-removal
+invariants, and Merge Gate. Contract artifact `8684538568` has digest
+`sha256:0babbaf1239615e15479a4adbbcc5f5745965632fb3417c06bc2ee9a70c3c0a9`.
+
 ## Historical Roadmap: UX-4 Feature Development
 
 | ID   | Feature                  | Priority     | Status      | Sprint |
@@ -112,7 +122,12 @@ The removed combined stack was archival only, not an executable rollback path: i
 | F-11 | Persistent Storage       | Future       | ✅ COMPLETE | —      |
 | F-12 | Collaborative Dev        | Experimental | —           | —      |
 
-These labels preserve delivery history. The current [TECH-AUDIT-2 feature matrix](../02-audits/technical-v2/FEATURE_MATRIX.md) reclassifies F-6 as a prototype because its mounted phases are simulated, F-10 as partial because browser responses expose credentials, and F-11 as operational because request-level durability and secondary stores remain.
+These labels preserve delivery history. TECH-AUDIT-2 originally reclassified
+F-6 as a prototype because its mounted phases are simulated, F-10 as partial
+because browser responses exposed credentials, and F-11 as operational because
+request-level durability and secondary stores remain. SEC-201 has since closed
+the F-10 response-body and refresh-storage gap; route-level RBAC remains
+separate SEC-202 scope.
 
 ## Active Bugfixes
 
@@ -143,7 +158,7 @@ These labels preserve delivery history. The current [TECH-AUDIT-2 feature matrix
 - ✅ CLEANUP-1C COMPLETE — physical removal and protected post-merge verification passed
 - ✅ CLEANUP-1D COMPLETE — protected merge and post-merge verification passed
 - ✅ TECH-AUDIT-2 COMPLETE — first official backend + standalone Frontend technical baseline
-- ◐ HARDEN-2A IN PROGRESS — SEC-201 and FE-201 are implemented; Frontend PR #16 protects the 40-check production contract and backend issue #47 adds the reciprocal release gate
+- ✅ HARDEN-2A COMPLETE — SEC-201, FE-201, INT-201, and DOC-201 issue #49 close the release-correctness phase
 
 ## Release Hardening Sprint Status
 
@@ -181,6 +196,6 @@ These labels preserve delivery history. The current [TECH-AUDIT-2 feature matrix
 - **Security Status**: SEC-201 removes credentials from browser JSON and protects refresh persistence/rotation; route-level RBAC and protected security/dependency automation remain separate backlog items
 - **Historical v1.0 Decision**: ✅ APPROVED for the embedded product baseline
 - **Studio Gate**: ✅ STUDIO-1 complete with real desktop evidence
-- **Current Decision**: ✅ CUTOVER-1, CLEANUP, and TECH-AUDIT-2 are complete; ◐ HARDEN-2A has SEC-201 and FE-201 merged, with INT-201 backend protection active under issue #47
+- **Current Decision**: ✅ CUTOVER-1, CLEANUP, TECH-AUDIT-2, and HARDEN-2A are complete; ARCH-2B is next
 - **Sign-Off Document**: `FINAL_V1_RELEASE_SIGN_OFF.md`
 - **Post-release**: F-12 (Collaborative Dev) deferred to post-launch

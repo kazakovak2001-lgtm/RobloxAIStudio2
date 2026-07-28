@@ -4,17 +4,42 @@ All significant architectural and product decisions are recorded here.
 
 ---
 
+## 2026-07-28 — HARDEN-2A / DOC-201 Active Auth and Release Authority
+
+**Decision**: Keep storage-backed opaque sessions and the independent backend /
+standalone Frontend release topology as the only current auth and deployment
+contract. The current project-control, authentication, deployment-guide, and
+deployment-checklist files must state the actual `Secure`, `HttpOnly`,
+`SameSite=Lax`, host-only cookie policy and scoped paths. Current claims must
+link to native auth tests, the composed HTTPS verifier, and protected INT-201
+evidence.
+
+**Historical preservation**: Retain July 16 decision text as dated evidence, but
+mark its signed-token/cryptographic terminology, incorrect strict cookie
+attribute, embedded Frontend, and combined-Docker claims as superseded.
+Historical wording is not current runtime or release guidance.
+
+**Executable guard**: The existing HARDEN-2A auth-contract test scans the
+authoritative file set for obsolete signed-token, signing-secret,
+cryptographic-validation, and strict-site cookie claims. It also requires
+supersession banners on the retained conflicting July 16 sections.
+
+**Status**: Implemented under issue #49. Protected CI and review remain the
+merge acceptance gate.
+
+---
+
 ## 2026-07-28 — HARDEN-2A / INT-201 Protected Cross-Repository Contract
 
 **Decision**: Protect the existing Frontend 40-check integration suite in both repositories with immutable cross-repository pins. Each job checks out the exact proposed source SHA, builds the backend-only production image, starts it with `NODE_ENV=production`, and runs the canonical Frontend contract. Both Merge Gates depend on their local contract job, so either repository blocks an incompatible auth, ownership-isolation, realtime, generation, module, or guarded Studio-sync change.
 
-**Exact paired baseline**: Backend `7e98aba28911a20ff942e04ba5eaa51448c34b0c`; Frontend `739b43cbc5f991c1852e80b30fe38c0e7c02d681`. The backend workflow also replaces the earlier CUTOVER-1B Frontend pin in active composed-release and promoted-baseline checks. Historical CUTOVER evidence retains its original SHA.
+**Exact paired baseline**: Backend `b30be04ce3c5458902561472d371f753b28f08c5`; Frontend `739b43cbc5f991c1852e80b30fe38c0e7c02d681`. The backend workflow also replaces the earlier CUTOVER-1B Frontend pin in active composed-release and promoted-baseline checks. Historical CUTOVER evidence retains its original SHA.
 
-**Evidence contract**: Every contract run records the exact backend and Frontend SHAs, explicit production runtime configuration, expected/completed check counts, per-check durations, final status, E2E output, health response, image inspection, and backend logs. The Frontend implementation merged through PR #16 after CI run #71 passed 40/40 checks and Merge Gate. Evidence artifact `8683753669` has digest `sha256:9fd918b86b845186386c000059cbf27b0d534e58cbc60a9f3ccab4d1ebf0575d`. Post-merge run #72 also passed; artifact `8683827461` has digest `sha256:72e479cca3325067734dc1e61119ee00b81f52929342720e9bbd874620cf3761`.
+**Evidence contract**: Every contract run records the exact backend and Frontend SHAs, explicit production runtime configuration, expected/completed check counts, per-check durations, final status, E2E output, health response, image inspection, and backend logs. The Frontend implementation merged through PR #16; post-merge run #72 passed 40/40 checks and Merge Gate, and artifact `8683827461` has digest `sha256:72e479cca3325067734dc1e61119ee00b81f52929342720e9bbd874620cf3761`. Backend PR #48 merged as `b30be04ce3c5458902561472d371f753b28f08c5`; post-merge CI run #307 passed every protected job, and contract artifact `8684538568` has digest `sha256:0babbaf1239615e15479a4adbbcc5f5745965632fb3417c06bc2ee9a70c3c0a9`.
 
 **Security boundary**: The backend intentionally bypasses REST and Socket.IO authentication when `NODE_ENV !== production`. Development-mode runs remain useful for feature work but cannot prove authentication or cross-user isolation and do not satisfy INT-201. The in-memory provider is explicit for this short-lived authorization contract; PostgreSQL restart durability remains a separate required backend job.
 
-**Status**: Frontend protection is merged and post-merge verified. Backend implementation is tracked by issue #47.
+**Status**: Complete and post-merge verified in both repositories. Frontend issue #15 and backend issue #47 are closed.
 
 ---
 
@@ -30,7 +55,7 @@ All significant architectural and product decisions are recorded here.
 
 **Evidence**: Four native HARDEN-2A tests cover credential-free production responses, cookie attributes, digest-only storage, direct lookup, legacy migration, successful rotation, old-credential replay rejection, `/auth/me`, and authoritative terminology. The composed HTTPS release verifier now performs register/login/refresh body checks and refresh replay rejection in addition to existing REST and Socket.IO checks.
 
-**Status**: Implemented under issue #45. FE-201 is the next HARDEN-2A unit.
+**Status**: Complete under closed issue #45 and merged backend PR #46.
 
 ---
 
@@ -40,7 +65,11 @@ All significant architectural and product decisions are recorded here.
 
 **Evidence**: Backend protected checks pass with 61 test files and 672 tests plus one skip. Frontend TypeScript, seven native tests, build, SSR image, and responsive QA pass; all 40 production-mode cross-repository integration checks pass locally. Static audit found 46 real backend subsystems versus 32 modeled domains, four reported architecture cycles with a successful CLI exit, credentials returned in auth JSON despite httpOnly cookies, Frontend Studio verification hardcoded false, simulated autonomous phases, unprotected Frontend lint/format failures, and asynchronous PostgreSQL acknowledgement semantics.
 
-**Terminology correction**: Production auth validates random opaque storage-backed sessions, not signed JWTs. Historical JWT wording records earlier intent and is not proof of the current token format. Cookie transport is implemented, but browser response bodies remain a HARDEN-2A gap.
+**Terminology correction**: Production auth validates random opaque
+storage-backed sessions, not self-contained client-verifiable tokens. Historical
+signed-token wording records earlier intent and is not proof of the current
+credential format. SEC-201 subsequently removed reusable credentials from
+browser response bodies and protected refresh persistence/rotation.
 
 **Ordered response**: Execute HARDEN-2A → ARCH-2B → FRONTEND-2C → RUNTIME-2D → DURABILITY-2E. Treat STUDIO-2F native assets/GUI/place work as optional expansion. Keep F-12 collaborative development deferred until authorization, runtime ownership, and durability gates pass.
 
@@ -150,6 +179,11 @@ All significant architectural and product decisions are recorded here.
 
 ## 2026-07-16 — Final Verification & Release Report (Task 11)
 
+> **Superseded by DOC-201 (July 28, 2026):** The verification labels and
+> combined-release files below describe the removed embedded product baseline.
+> Current auth uses storage-backed opaque sessions, and current release evidence
+> comes from the independent backend/Frontend images and protected INT-201 gate.
+
 **Decision**: Complete final validation of all hardening tasks and generate release documentation (RELEASE_HARDENING_REPORT.md, V1_RELEASE_NOTES.md, SECURITY_FINAL_AUDIT.md, V1_RELEASE_CHECKLIST.md).  
 **Reason**: All 10 implementation tasks are complete. Final verification confirms all security fixes work correctly and no regressions were introduced. The project needs formal release documentation before declaring production-ready.  
 **Verification Results**:
@@ -170,6 +204,12 @@ All significant architectural and product decisions are recorded here.
 ---
 
 ## 2026-07-16 — Production Infrastructure (Task 10)
+
+> **Superseded by DOC-201 (July 28, 2026):** The root `Dockerfile`,
+> `deploy/nginx.conf`, and `deploy/docker-compose.yml` described below were part
+> of the removed, non-executable embedded stack. Current deployment uses
+> `Dockerfile.backend`, the standalone Frontend image,
+> `deploy/docker-compose.release.yml`, and `deploy/release/nginx.conf`.
 
 **Decision**: Add production deployment infrastructure including Dockerfile, automatic migration runner, nginx reverse proxy, database backup script, and Docker Compose orchestration.  
 **Reason**: The project had no containerization, no automated schema management, no reverse proxy configuration, and no backup strategy. These are required for production deployment (Bug 1.8).  
@@ -225,6 +265,12 @@ All significant architectural and product decisions are recorded here.
 
 ## 2026-07-16 — Socket.IO JWT Handshake Validation Implemented (Task 7)
 
+> **Superseded by DOC-201 (July 28, 2026):** The heading and
+> “cryptographic validation” wording below were inaccurate. The retained
+> security change rejects arbitrary credentials, but current production
+> Socket.IO authenticates a random opaque access credential by resolving its
+> server-side session record.
+
 **Decision**: Replace token-presence-only Socket.IO auth with full cryptographic validation via `AuthService.validateToken()`.  
 **Reason**: The Socket.IO middleware only checked `if (!token)` — any non-empty string was accepted as a valid token in production mode. This allowed unauthenticated clients to establish persistent WebSocket connections and receive real-time events.  
 **Implementation**: Updated `io.use()` middleware in `server/src/index.ts` to import the shared `authService` singleton and call `authService.validateToken(token)` for all production connections. Invalid/expired tokens are rejected with `next(new Error("Invalid or expired token"))`. Authenticated session data is attached to `socket.data.user`.  
@@ -236,6 +282,10 @@ All significant architectural and product decisions are recorded here.
 
 ## 2026-07-16 — JWT Cryptographic Validation Implemented (Task 6)
 
+> **Superseded by DOC-201 (July 28, 2026):** No signed-token verification was
+> introduced. The retained decision records the move from presence-only checks
+> to storage-backed opaque-session lookup in `AuthService.validateToken()`.
+
 **Decision**: Replace presence-only Bearer token check in `authMiddleware` with full cryptographic validation via `AuthService.validateToken()`.  
 **Reason**: The `authMiddleware` only checked `authHeader?.startsWith("Bearer ")` — any arbitrary string passed authentication in production. This allowed unauthenticated access to all protected resources.  
 **Implementation**: Created a shared `authService` singleton (`platform/auth/authServiceInstance.ts`) imported by both the security middleware and platform router. The middleware now extracts the token, validates it cryptographically, attaches the session to the request, and returns 401 for invalid/expired tokens. Cookie-based auth also validates tokens.  
@@ -246,6 +296,11 @@ All significant architectural and product decisions are recorded here.
 ---
 
 ## 2026-07-16 — httpOnly Cookie Token Delivery (Task 5)
+
+> **Superseded by DOC-201 (July 28, 2026):** The current production policy is
+> `Secure`, `HttpOnly`, `SameSite=Lax`, host-only. The access cookie path is `/`
+> and the refresh cookie path is `/api/platform/auth/refresh`; browser auth
+> response bodies are credential-free after SEC-201.
 
 **Decision**: Move auth tokens from localStorage to httpOnly, Secure, SameSite=Strict cookies.  
 **Reason**: Storing tokens in localStorage exposes them to any XSS attack vector on the page. httpOnly cookies are inaccessible to JavaScript, eliminating this attack surface entirely.  

@@ -36,9 +36,11 @@
 
 **Resolution tracking:** TAV2-001 is implemented by HARDEN-2A / SEC-201 under
 backend issue #45. TAV2-002 is implemented by FE-201 under Frontend issue #13
-and PR #14. Frontend PR #16 protects its side of TAV2-007; backend issue #47
-tracks the reciprocal protected release gate. The evidence below remains the
-immutable TECH-AUDIT-2 baseline; current project state is tracked in
+and PR #14. TAV2-007 is implemented by Frontend PR #16 and backend issue
+#47 / PR #48. DOC-201 issue #49 corrects the active auth/release subset of
+TAV2-014; the broader historical authority/metrics consolidation remains
+DOC-202 scope. The evidence below remains the immutable TECH-AUDIT-2 baseline;
+current project state is tracked in
 [`CURRENT_STATE.md`](../../00-project-control/CURRENT_STATE.md).
 
 ## Detailed remediation contracts
@@ -318,6 +320,8 @@ The following are not open debt in TECH-AUDIT-2:
 - backend/Frontend independent release images;
 - PostgreSQL pre-listen migrations/hydration;
 - production authentication presence/validation;
+- cookie-only browser responses and digest-only refresh rotation;
+- reciprocal protected 40-check production contract evidence;
 - project ownership isolation;
 - canonical generation artifact recording;
 - Studio command acknowledgement/result ordering;
