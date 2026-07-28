@@ -15,9 +15,19 @@ const REPORT_PATH = join(ROOT, "boundary-report.json");
 
 interface ArchitectureManifest {
   domains: Record<string, { path: string; layer: string }>;
-  layers: Record<string, { modules?: string[] }>;
+  layers: Record<string, { modules?: string[]; canImportFrom?: string[] }>;
   allowedCycles?: string[][];
+  allowedLayerEdges?: Array<{ from: string; to: string; reason: string }>;
   excludedTopLevelEntries?: Array<{ name: string; reason: string }>;
+}
+
+interface LayerViolation {
+  sourceLayer: string;
+  targetLayer: string;
+  sourceDomain: string;
+  targetDomain: string;
+  file: string;
+  importPath: string;
 }
 
 function canonicalCycle(cycle: string[]): string {
@@ -33,6 +43,10 @@ function canonicalCycle(cycle: string[]): string {
   );
 
   return rotations.sort()[0];
+}
+
+function layerEdgeKey(from: string, to: string): string {
+  return `${from}→${to}`;
 }
 
 function validateManifest(manifest: ArchitectureManifest): string[] {
@@ -110,9 +124,64 @@ function validateManifest(manifest: ArchitectureManifest): string[] {
         );
       }
     }
+
+    for (const importedLayer of layer.canImportFrom ?? []) {
+      if (!manifest.layers[importedLayer]) {
+        errors.push(
+          `Layer '${layerName}' can import from unknown layer '${importedLayer}'.`,
+        );
+      }
+    }
+  }
+
+  for (const exception of manifest.allowedLayerEdges ?? []) {
+    const source = manifest.layers[exception.from];
+    const target = manifest.layers[exception.to];
+    if (!source || !target) {
+      errors.push(
+        `Allowed layer edge '${exception.from} → ${exception.to}' references an unknown layer.`,
+      );
+    } else if ((source.canImportFrom ?? []).includes(exception.to)) {
+      errors.push(
+        `Allowed layer edge '${exception.from} → ${exception.to}' is stale because the edge is already permitted.`,
+      );
+    }
   }
 
   return errors;
+}
+
+function collectLayerViolations(
+  manifest: ArchitectureManifest,
+  validator: ImportBoundaryValidator,
+  edges: ReturnType<typeof buildAstImportInventory>["edges"],
+): LayerViolation[] {
+  const violations: LayerViolation[] = [];
+  const seen = new Set<string>();
+
+  for (const edge of edges) {
+    const sourceLayer = validator.resolveLayer(edge.from);
+    const targetLayer = validator.resolveLayer(edge.to);
+    if (sourceLayer === targetLayer) continue;
+
+    const allowed = manifest.layers[sourceLayer]?.canImportFrom ?? [];
+    if (allowed.includes(targetLayer)) continue;
+
+    const key = [edge.file, edge.importPath, edge.from, edge.to].join("|");
+    if (seen.has(key)) continue;
+    seen.add(key);
+
+    violations.push({
+      sourceLayer,
+      targetLayer,
+      sourceDomain: edge.from,
+      targetDomain: edge.to,
+      file: edge.file,
+      importPath: edge.importPath,
+    });
+  }
+
+  return violations;
 }
 
 function main(): void {
@@ -143,12 +212,34 @@ function main(): void {
     (violation) => violation.severity === "critical",
   );
   const unresolvedInternalImports = astInventory.unresolvedInternalImports;
+  const layerViolations = collectLayerViolations(
+    manifest,
+    validator,
+    astInventory.edges,
+  );
+  const allowedLayerEdges = new Set(
+    (manifest.allowedLayerEdges ?? []).map((edge) =>
+      layerEdgeKey(edge.from, edge.to),
+    ),
+  );
+  const acknowledgedLayerViolations = layerViolations.filter((violation) =>
+    allowedLayerEdges.has(
+      layerEdgeKey(violation.sourceLayer, violation.targetLayer),
+    ),
+  );
+  const unexpectedLayerViolations = layerViolations.filter(
+    (violation) =>
+      !allowedLayerEdges.has(
+        layerEdgeKey(violation.sourceLayer, violation.targetLayer),
+      ),
+  );
 
   const failed =
     manifestErrors.length > 0 ||
     criticalViolations.length > 0 ||
     unexpectedCycles.length > 0 ||
-    unresolvedInternalImports.length > 0;
+    unresolvedInternalImports.length > 0 ||
+    unexpectedLayerViolations.length > 0;
 
   const report = {
     ...baseReport,
@@ -160,12 +251,18 @@ function main(): void {
       internalEdges: astInventory.edges.length,
       unresolvedInternalImports,
     },
+    layerEnforcement: {
+      acknowledgedViolations: acknowledgedLayerViolations,
+      unexpectedViolations: unexpectedLayerViolations,
+    },
     gate: {
       manifestErrors,
       criticalViolationCount: criticalViolations.length,
       acknowledgedCycles,
       unexpectedCycles,
       unresolvedInternalImportCount: unresolvedInternalImports.length,
+      acknowledgedLayerViolationCount: acknowledgedLayerViolations.length,
+      unexpectedLayerViolationCount: unexpectedLayerViolations.length,
       exitCode: failed ? 1 : 0,
     },
   };
@@ -181,6 +278,8 @@ function main(): void {
   console.log(`  Manifest errors:     ${manifestErrors.length}`);
   console.log(`  Allowed cycles:      ${acknowledgedCycles.length}`);
   console.log(`  Unexpected cycles:   ${unexpectedCycles.length}`);
+  console.log(`  Allowed layer debt:  ${acknowledgedLayerViolations.length}`);
+  console.log(`  Layer violations:    ${unexpectedLayerViolations.length}`);
   console.log(`  Violations:          ${result.violations.length}`);
   console.log("");
 
@@ -194,6 +293,32 @@ function main(): void {
     console.error("  ❌ UNRESOLVED INTERNAL IMPORT DOMAINS:\n");
     for (const unresolved of unresolvedInternalImports) {
       console.error(`    ${unresolved.file}: ${unresolved.importPath}`);
+    }
+    console.error("");
+  }
+
+  if (acknowledgedLayerViolations.length > 0) {
+    console.warn("  ⚠️  TEMPORARILY ALLOWLISTED LAYER DEBT:");
+    const pairs = new Set(
+      acknowledgedLayerViolations.map((violation) =>
+        layerEdgeKey(violation.sourceLayer, violation.targetLayer),
+      ),
+    );
+    for (const pair of pairs) console.warn(`    ${pair}`);
+    console.warn("");
+  }
+
+  if (unexpectedLayerViolations.length > 0) {
+    console.error("  ❌ NON-ALLOWLISTED LAYER VIOLATIONS:");
+    for (const violation of unexpectedLayerViolations.slice(0, 20)) {
+      console.error(
+        `    ${violation.sourceLayer} → ${violation.targetLayer}: ${violation.file} imports ${violation.importPath}`,
+      );
+    }
+    if (unexpectedLayerViolations.length > 20) {
+      console.error(
+        `    ... ${unexpectedLayerViolations.length - 20} additional violation(s) in boundary-report.json`,
+      );
     }
     console.error("");
   }
@@ -241,7 +366,7 @@ function main(): void {
     );
   } else {
     console.log(
-      "  ✅ PASS — manifest, AST inventory, cycles and critical boundaries are valid.",
+      "  ✅ PASS — manifest, AST inventory, layers, cycles and critical boundaries are valid.",
     );
   }
   console.log("  Architecture Model: EXHAUSTIVE DOMAIN-ISOLATED PLATFORM");
