@@ -1,4 +1,4 @@
-name: Fix RUNTIME-204 Null Narrowing v2
+name: Fix RUNTIME-204 Quality Narrowing
 
 on:
   pull_request:
@@ -20,7 +20,7 @@ jobs:
           node-version: "22"
           cache: "npm"
       - run: npm ci
-      - name: Apply null-safe quality score narrowing
+      - name: Apply explicit quality score narrowing
         run: |
           python - <<'PY'
           from pathlib import Path
@@ -45,19 +45,13 @@ jobs:
               }
           '''
           new = '''    const qualityScore = session.qualityScore;
-              if (phase === "repair" && qualityScore === null) return true;
-              if (phase === "repair" && qualityScore >= session.goals.targetScore) {
-                return true;
+              if (phase === "repair") {
+                if (qualityScore === null) return true;
+                return qualityScore >= session.goals.targetScore;
               }
-              if (phase === "studio_sync" && session.executionMode === "simulation") {
-                return true;
-              }
-              if (
-                phase === "studio_sync" &&
-                qualityScore !== null &&
-                qualityScore < 50
-              ) {
-                return true;
+              if (phase === "studio_sync") {
+                if (session.executionMode === "simulation") return true;
+                return qualityScore !== null && qualityScore < 50;
               }
           '''
           if old not in text:
