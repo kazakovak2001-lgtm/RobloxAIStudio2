@@ -39,7 +39,11 @@ process.on("uncaughtException", (error) => {
 });
 
 const inventory = JSON.parse(readFileSync(inventoryPath, "utf8"));
-assert.equal(inventory.schemaVersion, 1, "Unsupported cleanup inventory schema");
+assert.equal(
+  inventory.schemaVersion,
+  1,
+  "Unsupported cleanup inventory schema",
+);
 assert.equal(inventory.roadmapId, "CLEANUP-1A");
 assert.equal(inventory.status, "audit-only");
 assert.equal(
@@ -73,7 +77,9 @@ const sourcePrefix = `${inventory.legacyFrontend.sourceRoot}/`;
 const actualLegacyFiles = trackedFiles
   .filter((file) => file.startsWith(sourcePrefix))
   .sort();
-const expectedLegacyFiles = [...inventory.legacyFrontend.expectedTrackedFiles].sort();
+const expectedLegacyFiles = [
+  ...inventory.legacyFrontend.expectedTrackedFiles,
+].sort();
 
 assert.deepEqual(
   actualLegacyFiles,
@@ -84,7 +90,10 @@ assert.deepEqual(
 const legacyFileEvidence = expectedLegacyFiles.map((file) => {
   const absolutePath = path.join(root, file);
   assert.ok(existsSync(absolutePath), `Missing legacy source file: ${file}`);
-  assert.ok(statSync(absolutePath).isFile(), `Legacy path is not a file: ${file}`);
+  assert.ok(
+    statSync(absolutePath).isFile(),
+    `Legacy path is not a file: ${file}`,
+  );
   const content = readFileSync(absolutePath);
   return {
     path: file,
@@ -101,13 +110,22 @@ for (const file of [
   ...inventory.legacyFrontend.staleInventoryFiles,
 ]) {
   const absolutePath = path.join(root, file);
-  assert.ok(existsSync(absolutePath), `Missing classified legacy path: ${file}`);
-  assert.ok(statSync(absolutePath).isFile(), `Classified path is not a file: ${file}`);
+  assert.ok(
+    existsSync(absolutePath),
+    `Missing classified legacy path: ${file}`,
+  );
+  assert.ok(
+    statSync(absolutePath).isFile(),
+    `Classified path is not a file: ${file}`,
+  );
 }
 
 for (const entry of inventory.legacyFrontend.separateInfrastructureFiles) {
   const absolutePath = path.join(root, entry.path);
-  assert.ok(existsSync(absolutePath), `Missing separate infrastructure file: ${entry.path}`);
+  assert.ok(
+    existsSync(absolutePath),
+    `Missing separate infrastructure file: ${entry.path}`,
+  );
   const content = readFileSync(absolutePath, "utf8");
   assert.doesNotMatch(
     content,
@@ -123,7 +141,9 @@ for (const entry of inventory.legacyFrontend.knownMissingPaths) {
   );
 }
 
-const packageJson = JSON.parse(readFileSync(path.join(root, "package.json"), "utf8"));
+const packageJson = JSON.parse(
+  readFileSync(path.join(root, "package.json"), "utf8"),
+);
 for (const [name, expectedCommand] of Object.entries(
   inventory.currentBlockers.packageScripts,
 )) {
@@ -134,7 +154,9 @@ for (const [name, expectedCommand] of Object.entries(
   );
 }
 
-const rootTsconfig = JSON.parse(readFileSync(path.join(root, "tsconfig.json"), "utf8"));
+const rootTsconfig = JSON.parse(
+  readFileSync(path.join(root, "tsconfig.json"), "utf8"),
+);
 assert.deepEqual(
   rootTsconfig.include,
   inventory.currentBlockers.rootTsconfig.include,
@@ -169,9 +191,15 @@ for (const marker of inventory.currentBlockers.combinedDockerfileMarkers) {
   );
 }
 
-const ciWorkflow = readFileSync(path.join(root, ".github/workflows/ci.yml"), "utf8");
+const ciWorkflow = readFileSync(
+  path.join(root, ".github/workflows/ci.yml"),
+  "utf8",
+);
 for (const marker of inventory.currentBlockers.ciMarkers) {
-  assert.ok(ciWorkflow.includes(marker), `CI blocker marker disappeared: ${marker}`);
+  assert.ok(
+    ciWorkflow.includes(marker),
+    `CI blocker marker disappeared: ${marker}`,
+  );
 }
 assert.ok(
   ciWorkflow.includes("name: Legacy Frontend Decommission Audit"),
@@ -187,7 +215,10 @@ const releaseInventory = JSON.parse(readFileSync(releaseInventoryPath, "utf8"));
 assert.equal(releaseInventory.roadmapId, "CUTOVER-1D");
 for (const releasePath of releaseInventory.activeRelease.files) {
   const absolutePath = path.join(root, releasePath);
-  assert.ok(existsSync(absolutePath), `Missing active release file: ${releasePath}`);
+  assert.ok(
+    existsSync(absolutePath),
+    `Missing active release file: ${releasePath}`,
+  );
   const content = readFileSync(absolutePath, "utf8");
   for (const pattern of releaseInventory.activeRelease.forbiddenPatterns) {
     const regex = new RegExp(pattern.regex, "i");
@@ -259,7 +290,8 @@ for (const packageName of inventory.packageDisposition.legacyOnlyCandidates) {
   };
 }
 
-for (const packageName of inventory.packageDisposition.legacyToolingCandidates) {
+for (const packageName of inventory.packageDisposition
+  .legacyToolingCandidates) {
   assertPackageDeclared(packageName);
   const consumers = packageConsumersOutsideLegacyRoot(packageName).sort();
   const unexpectedConsumers = consumers.filter(
