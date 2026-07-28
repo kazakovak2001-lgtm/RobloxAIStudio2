@@ -1,0 +1,326 @@
+{
+  "schemaVersion": 1,
+  "roadmapId": "CLEANUP-1A",
+  "status": "audit-only",
+  "baseline": {
+    "defaultBranch": "release/cutover-1e-candidate",
+    "minimumAncestorCommit": "35896654419cf3117d7e1d7085f4e7c2084a04be"
+  },
+  "canonicalFrontend": {
+    "repository": "kazakovak2001-lgtm/Frontend",
+    "commit": "1036c3ef9705d145cb9700cd14268a33d2abdd58"
+  },
+  "sourceReleaseInventory": "config/cutover/release-baseline.inventory.json",
+  "legacyFrontend": {
+    "sourceRoot": "src",
+    "expectedTrackedFiles": [
+      "src/App.tsx",
+      "src/app/config/index.ts",
+      "src/app/providers/index.tsx",
+      "src/app/router/index.tsx",
+      "src/components/ErrorBoundary.tsx",
+      "src/features/workspace/MissionControlPage.tsx",
+      "src/features/workspace/PipelineView.tsx",
+      "src/features/workspace/Workspace.tsx",
+      "src/features/workspace/WorkspaceEntry.tsx",
+      "src/features/workspace/components/ActivityFeed.tsx",
+      "src/features/workspace/components/AgentBoard.tsx",
+      "src/features/workspace/components/AgentCard.tsx",
+      "src/features/workspace/components/ArtifactExplorer.tsx",
+      "src/features/workspace/components/AuditLogViewer.tsx",
+      "src/features/workspace/components/AutonomousPipelinePanel.tsx",
+      "src/features/workspace/components/CostMonitor.tsx",
+      "src/features/workspace/components/EconomyPanel.tsx",
+      "src/features/workspace/components/ExportPreview.tsx",
+      "src/features/workspace/components/GameArchitectPanel.tsx",
+      "src/features/workspace/components/GenerateButton.tsx",
+      "src/features/workspace/components/GenerationHistoryPanel.tsx",
+      "src/features/workspace/components/GenerationStatusPanel.tsx",
+      "src/features/workspace/components/LiveConsole.tsx",
+      "src/features/workspace/components/MetricsPanel.tsx",
+      "src/features/workspace/components/PipelineStatusBar.tsx",
+      "src/features/workspace/components/PipelineStatusViewer.tsx",
+      "src/features/workspace/components/PlaytestPanel.tsx",
+      "src/features/workspace/components/ProgressTimeline.tsx",
+      "src/features/workspace/components/ProjectSummary.tsx",
+      "src/features/workspace/components/ProtocolMonitor.tsx",
+      "src/features/workspace/components/PublishWorkflow.tsx",
+      "src/features/workspace/components/ReviewSummaryPanel.tsx",
+      "src/features/workspace/components/SimulationPanel.tsx",
+      "src/features/workspace/components/StudioBridgePanel.tsx",
+      "src/features/workspace/components/StudioConnectionStatus.tsx",
+      "src/features/workspace/components/SyncButton.tsx",
+      "src/features/workspace/components/TokenUsage.tsx",
+      "src/features/workspace/components/ValidationResults.tsx",
+      "src/features/workspace/core/WorkspaceProvider.tsx",
+      "src/features/workspace/core/constants.ts",
+      "src/features/workspace/core/feature-flags.ts",
+      "src/features/workspace/core/hooks/useWorkspacePanel.ts",
+      "src/features/workspace/core/index.ts",
+      "src/features/workspace/core/panel-registry/definitions.ts",
+      "src/features/workspace/core/panel-registry/index.ts",
+      "src/features/workspace/core/panel-registry/registry.ts",
+      "src/features/workspace/core/panel-registry/types.ts",
+      "src/features/workspace/core/preferences.ts",
+      "src/features/workspace/core/responsive.ts",
+      "src/features/workspace/core/selectors.ts",
+      "src/features/workspace/core/types.ts",
+      "src/features/workspace/hooks/index.ts",
+      "src/features/workspace/hooks/usePipelineStream.ts",
+      "src/features/workspace/index.ts",
+      "src/features/workspace/shell/AICommandZone.tsx",
+      "src/features/workspace/shell/CanvasModeSwitcher.tsx",
+      "src/features/workspace/shell/CanvasZone.tsx",
+      "src/features/workspace/shell/CommandBar.tsx",
+      "src/features/workspace/shell/ExplorerZone.tsx",
+      "src/features/workspace/shell/MissionControlShell.tsx",
+      "src/features/workspace/shell/PhaseSelector.tsx",
+      "src/features/workspace/shell/PropertiesZone.tsx",
+      "src/features/workspace/shell/ai-command/ActivityTab.tsx",
+      "src/features/workspace/shell/ai-command/ConsoleTab.tsx",
+      "src/features/workspace/shell/ai-command/StatusHeader.tsx",
+      "src/features/workspace/shell/canvas/AnalyticsCanvas.tsx",
+      "src/features/workspace/shell/canvas/BuildCanvas.tsx",
+      "src/features/workspace/shell/canvas/CodeCanvas.tsx",
+      "src/features/workspace/shell/canvas/PipelineCanvas.tsx",
+      "src/features/workspace/shell/canvas/PlaytestCanvas.tsx",
+      "src/features/workspace/shell/canvas/SimulationCanvas.tsx",
+      "src/features/workspace/shell/hooks/index.ts",
+      "src/features/workspace/shell/hooks/useResizeHandle.ts",
+      "src/features/workspace/shell/hooks/useWorkspaceShortcuts.ts",
+      "src/features/workspace/shell/index.ts",
+      "src/features/workspace/shell/properties/BuildProperties.tsx",
+      "src/features/workspace/shell/properties/DefaultProperties.tsx",
+      "src/features/workspace/shell/properties/ExportProperties.tsx",
+      "src/features/workspace/shell/properties/MonitoringProperties.tsx",
+      "src/features/workspace/shell/properties/PipelineProperties.tsx",
+      "src/features/workspace/shell/properties/ValidationProperties.tsx",
+      "src/features/workspace/shell/types.ts",
+      "src/features/workspace/types/index.ts",
+      "src/main.tsx",
+      "src/pages/AiStudioPage.tsx",
+      "src/pages/AnalyticsPage.tsx",
+      "src/pages/DashboardPage.tsx",
+      "src/pages/KnowledgePage.tsx",
+      "src/pages/LandingPage.tsx",
+      "src/pages/LoginPage.tsx",
+      "src/pages/NewProjectPage.tsx",
+      "src/pages/PluginManagerPage.tsx",
+      "src/pages/ProjectsPage.tsx",
+      "src/pages/RegisterPage.tsx",
+      "src/pages/SettingsPage.tsx",
+      "src/providers/AuthContext.tsx",
+      "src/providers/ToastProvider.tsx",
+      "src/services/__tests__/aiEngine.test.ts",
+      "src/services/__tests__/analyticsApi.integration.test.ts",
+      "src/services/__tests__/analyticsApi.test.ts",
+      "src/services/__tests__/authApi.test.ts",
+      "src/services/__tests__/autonomousApi.test.ts",
+      "src/services/__tests__/economyApi.test.ts",
+      "src/services/__tests__/knowledgeApi.test.ts",
+      "src/services/__tests__/playtestApi.test.ts",
+      "src/services/__tests__/simulationApi.test.ts",
+      "src/services/__tests__/studioBridgeApi.smoke.test.ts",
+      "src/services/aiEngine.ts",
+      "src/services/analyticsApi.ts",
+      "src/services/api.ts",
+      "src/services/authApi.ts",
+      "src/services/autonomousApi.ts",
+      "src/services/conceptApi.ts",
+      "src/services/economyApi.ts",
+      "src/services/gameArchitectApi.ts",
+      "src/services/generationMonitorApi.ts",
+      "src/services/knowledgeApi.ts",
+      "src/services/playtestApi.ts",
+      "src/services/projectService.ts",
+      "src/services/simulationApi.ts",
+      "src/services/socket.ts",
+      "src/services/studioBridgeApi.ts",
+      "src/services/systemApi.ts",
+      "src/shared/constants/index.ts",
+      "src/shared/contracts/index.ts",
+      "src/shared/events/index.ts",
+      "src/shared/hooks/index.ts",
+      "src/shared/hooks/useBreakpoint.ts",
+      "src/shared/hooks/useSidebar.tsx",
+      "src/shared/types.ts",
+      "src/shared/ui/Badge.tsx",
+      "src/shared/ui/Button.tsx",
+      "src/shared/ui/Card.tsx",
+      "src/shared/ui/Dropdown.tsx",
+      "src/shared/ui/Input.tsx",
+      "src/shared/ui/Loader.tsx",
+      "src/shared/ui/Modal.tsx",
+      "src/shared/ui/Tabs.tsx",
+      "src/shared/ui/Toast.tsx",
+      "src/shared/ui/ai/AIChatPanel.tsx",
+      "src/shared/ui/ai/AgentCard.tsx",
+      "src/shared/ui/ai/CodeDiffViewer.tsx",
+      "src/shared/ui/ai/GenerationHistory.tsx",
+      "src/shared/ui/ai/PromptInput.tsx",
+      "src/shared/ui/ai/index.ts",
+      "src/shared/ui/dashboard/AIStatus.tsx",
+      "src/shared/ui/dashboard/PluginStatus.tsx",
+      "src/shared/ui/dashboard/ProjectOverview.tsx",
+      "src/shared/ui/dashboard/SyncMonitor.tsx",
+      "src/shared/ui/dashboard/SystemHealth.tsx",
+      "src/shared/ui/dashboard/index.ts",
+      "src/shared/ui/data/TreeView.tsx",
+      "src/shared/ui/data/index.ts",
+      "src/shared/ui/index.ts",
+      "src/shared/ui/layout/AppLayout.tsx",
+      "src/shared/ui/layout/AppShell.tsx",
+      "src/shared/ui/layout/Sidebar.tsx",
+      "src/shared/ui/layout/StatusBar.tsx",
+      "src/shared/ui/layout/TopBar.tsx",
+      "src/shared/ui/layout/Workspace.tsx",
+      "src/shared/ui/layout/index.ts",
+      "src/shared/ui/projects/ProjectExplorer.tsx",
+      "src/shared/ui/projects/index.ts",
+      "src/shared/ui/system/ConnectionBadge.tsx",
+      "src/shared/ui/system/StatusIndicator.tsx",
+      "src/shared/ui/system/SyncProgress.tsx",
+      "src/shared/ui/system/index.ts",
+      "src/styles/index.css"
+    ],
+    "entrypoints": ["src/main.tsx", "src/App.tsx", "src/styles/index.css"],
+    "configurationFiles": [
+      "index.html",
+      "tsconfig.json",
+      "vite.config.ts",
+      "tailwind.config.js",
+      "postcss.config.js"
+    ],
+    "generatedResidue": [],
+    "archivalDeploymentFiles": [
+      "Dockerfile",
+      "deploy/docker-compose.yml",
+      "deploy/nginx.conf"
+    ],
+    "separateInfrastructureFiles": [
+      {
+        "path": "docker-compose.yml",
+        "classification": "postgres-development-only-do-not-delete-with-frontend-stack"
+      }
+    ],
+    "staleInventoryFiles": ["_inventory_raw.txt", "ProjectStructure.txt"],
+    "knownMissingPaths": [
+      {
+        "path": "public",
+        "referencedBy": "Dockerfile",
+        "classification": "broken-archival-combined-build-input"
+      },
+      {
+        "path": "vite.config.js",
+        "referencedBy": "stale repository inventories",
+        "classification": "historical-generated-residue-already-absent"
+      },
+      {
+        "path": "vite.config.d.ts",
+        "referencedBy": "stale repository inventories",
+        "classification": "historical-generated-residue-already-absent"
+      },
+      {
+        "path": "tsconfig.tsbuildinfo",
+        "referencedBy": "stale repository inventories",
+        "classification": "historical-generated-residue-already-absent"
+      }
+    ]
+  },
+  "currentBlockers": {
+    "packageScripts": {
+      "dev": "node node_modules/vite/bin/vite.js",
+      "build": "node --import tsx scripts/validate-architecture.ts && node --import tsx scripts/validate-boundaries.ts && node node_modules/typescript/bin/tsc -b && node node_modules/vite/bin/vite.js build",
+      "preview": "node node_modules/vite/bin/vite.js preview",
+      "typecheck": "node node_modules/typescript/bin/tsc --noEmit && node node_modules/typescript/bin/tsc --noEmit --project server/tsconfig.json"
+    },
+    "rootTsconfig": {
+      "include": ["src"],
+      "pathAlias": {
+        "@/*": ["src/*"]
+      }
+    },
+    "architectureValidatorMarkers": [
+      "Frontend: src/ (React/Vite SPA)",
+      "collectTsFiles(join(ROOT, \"src\"))",
+      "Frontend (/src)"
+    ],
+    "combinedDockerfileMarkers": [
+      "COPY src/ src/",
+      "COPY public/ public/",
+      "RUN npx vite build",
+      "COPY --from=builder /app/dist ./dist"
+    ],
+    "ciMarkers": ["npx tsc --noEmit", "name: Promoted Baseline Integrity"]
+  },
+  "packageDisposition": {
+    "retainOperational": [
+      {
+        "name": "socket.io-client",
+        "expectedConsumersOutsideLegacyRoot": [
+          "scripts/cutover/verify-composed-release.mjs"
+        ],
+        "reason": "required by composed HTTPS release Socket.IO verification"
+      }
+    ],
+    "legacyOnlyCandidates": [
+      "framer-motion",
+      "lucide-react",
+      "react",
+      "react-dom",
+      "react-router-dom",
+      "@types/react",
+      "@types/react-dom"
+    ],
+    "legacyToolingCandidates": [
+      "@vitejs/plugin-react",
+      "autoprefixer",
+      "postcss",
+      "tailwindcss",
+      "vite"
+    ],
+    "allowedLegacyToolConsumers": [
+      "vite.config.ts",
+      "postcss.config.js",
+      "tailwind.config.js"
+    ]
+  },
+  "removalWaves": [
+    {
+      "id": "CLEANUP-1B",
+      "name": "tooling-decoupling",
+      "deletionAuthorized": false,
+      "actions": [
+        "remove root frontend compilation from protected TypeScript checks",
+        "convert root dev/build/typecheck scripts to backend and repository operations",
+        "replace dual-root architecture reporting with backend plus standalone Frontend topology",
+        "preserve every legacy source, configuration, deployment and dependency file"
+      ]
+    },
+    {
+      "id": "CLEANUP-1C",
+      "name": "physical-removal-and-dependency-pruning",
+      "deletionAuthorized": true,
+      "prerequisite": "CLEANUP-1B verified and merged",
+      "actions": [
+        "delete root src and legacy entry/config files",
+        "delete archival combined frontend deployment files",
+        "delete generated frontend residue",
+        "prune only packages proven legacy-only and update package-lock.json",
+        "retain or deliberately relocate active operational consumers"
+      ]
+    },
+    {
+      "id": "CLEANUP-1D",
+      "name": "post-removal-verification",
+      "deletionAuthorized": false,
+      "prerequisite": "CLEANUP-1C verified and merged",
+      "actions": [
+        "prove zero active and tooling references to removed frontend paths",
+        "verify backend, Studio, composed release and rollback gates",
+        "refresh repository inventories and project-control documentation"
+      ]
+    }
+  ],
+  "currentStageDeletionAuthorized": false
+}
