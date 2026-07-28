@@ -8,10 +8,10 @@ All significant architectural and product decisions are recorded here.
 
 **Decision**: Complete the cleanup sequence with a focused, zero-deletion verification stage based on protected default `9a728661ee7b0a635af78da56a5d147b296dc23c`.
 **Reason**: CLEANUP-1C removed the legacy web client, but older architecture helpers and three broad repository snapshots still modeled or listed the retired root. Leaving those contradictions would let agents and tooling recommend invalid paths even though production release gates were clean.
-**Implementation**: Upgrade the existing cleanup inventory/verifier to schema v4; recognize only `server/src` and `studio-plugin/src` as local source zones; forbid root `src/` in static, runtime, generation, lint, and staged-file checks; retire the `@/` alias; index Studio Luau alongside backend TypeScript; generate deterministic tracked-path inventories; classify historical, negative-guard, Studio-relative, and Roblox-artifact-relative references; rename protected evidence while retaining the Merge Gate dependency.
+**Implementation**: Upgrade the existing cleanup inventory/verifier to schema v4 for the exact implementation stage, then schema v5 for the permanent steady-state guard; recognize only `server/src` and `studio-plugin/src` as local source zones; forbid root `src/` in static, runtime, generation, lint, and staged-file checks; retire the `@/` alias; index Studio Luau alongside backend TypeScript; generate deterministic tracked-path inventories; classify historical, negative-guard, Studio-relative, and Roblox-artifact-relative references; retain protected invariant evidence as a Merge Gate dependency without freezing future reviewed changes to the historical implementation diff.
 **Preservation**: No deletion, dependency, lockfile, backend API, authentication, storage, generation output/API behavior, Studio protocol, Frontend identity, release topology, protected default, or rollback-reference change.
 **Rollback**: Revert the focused CLEANUP-1D commit. CLEANUP-1C and all independently verified release artifacts remain intact.
-**Status**: Implemented and locally verified; protected verification pending.
+**Status**: Complete. PR #42 merged as `f924079995059d9b86a5caaaf6364cb7b4879881`; pre-merge run #295 and post-merge run #296 passed, post-merge artifact `8679552100` has digest `sha256:a8fa2cea2192b4f69471926521678307a0409e3a053c699f5783fdbfb04aa14c`, and issue #41 is closed.
 
 ---
 

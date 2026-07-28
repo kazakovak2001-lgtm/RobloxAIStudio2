@@ -20,7 +20,8 @@ const inventoryPath = path.resolve(
 );
 const outputDirectory = path.resolve(
   root,
-  process.env.LEGACY_FRONTEND_AUDIT_OUTPUT ?? "artifacts/cleanup-1d",
+  process.env.LEGACY_FRONTEND_AUDIT_OUTPUT ??
+    "artifacts/post-removal-invariants",
 );
 
 mkdirSync(outputDirectory, { recursive: true });
@@ -33,7 +34,7 @@ process.on("uncaughtException", (error) => {
     stack: error instanceof Error ? error.stack : undefined,
   };
   writeFileSync(
-    path.join(outputDirectory, "legacy-frontend-audit-failure.json"),
+    path.join(outputDirectory, "post-removal-invariant-audit-failure.json"),
     `${JSON.stringify(failure, null, 2)}\n`,
   );
   console.error(error);
@@ -43,15 +44,15 @@ process.on("uncaughtException", (error) => {
 const inventory = JSON.parse(readFileSync(inventoryPath, "utf8"));
 assert.equal(
   inventory.schemaVersion,
-  4,
+  5,
   "Unsupported cleanup inventory schema",
 );
 assert.equal(inventory.roadmapId, stageId);
-assert.equal(inventory.status, "post-removal-verification-implemented");
+assert.equal(inventory.status, "post-removal-steady-state");
 assert.equal(
-  inventory.currentStageDeletionAuthorized,
-  false,
-  "CLEANUP-1D is a non-deletion verification stage",
+  inventory.cleanupSequenceStatus,
+  "complete",
+  "The cleanup sequence must remain closed",
 );
 
 const git = (...args) =>
@@ -61,12 +62,7 @@ const gitBuffer = (...args) =>
 
 execFileSync(
   "git",
-  [
-    "merge-base",
-    "--is-ancestor",
-    inventory.baseline.minimumAncestorCommit,
-    "HEAD",
-  ],
+  ["merge-base", "--is-ancestor", inventory.baseline.steadyStateCommit, "HEAD"],
   { cwd: root, stdio: "pipe" },
 );
 
@@ -77,14 +73,15 @@ const trackedFiles = git("ls-files")
   .filter(Boolean)
   .sort();
 const trackedFileSet = new Set(trackedFiles);
-const baseline = inventory.baseline.minimumAncestorCommit;
+const implementationBaseline = inventory.baseline.minimumAncestorCommit;
+const implementationHead = inventory.baseline.steadyStateCommit;
 const rawNameStatus = git(
   "diff",
   "--name-status",
   "--no-renames",
-  `${baseline}...HEAD`,
+  `${implementationBaseline}...${implementationHead}`,
 );
-const changeEntries = rawNameStatus
+const implementationChangeEntries = rawNameStatus
   ? rawNameStatus.split("\n").map((line) => {
       const [status, file, unexpectedPath] = line.split("\t");
       assert.ok(
@@ -94,30 +91,30 @@ const changeEntries = rawNameStatus
       return { file, status };
     })
   : [];
-const changeByFile = new Map(
-  changeEntries.map((entry) => [entry.file, entry.status]),
+const implementationChangeByFile = new Map(
+  implementationChangeEntries.map((entry) => [entry.file, entry.status]),
 );
 assert.equal(
-  changeByFile.size,
-  changeEntries.length,
-  "CLEANUP-1D diff contains duplicate path entries",
+  implementationChangeByFile.size,
+  implementationChangeEntries.length,
+  "Historical CLEANUP-1D diff contains duplicate path entries",
 );
 assert.deepEqual(
-  changeEntries.filter((entry) => entry.status.startsWith("D")),
+  implementationChangeEntries.filter((entry) => entry.status.startsWith("D")),
   [],
-  "CLEANUP-1D must not delete files",
+  "Historical CLEANUP-1D implementation must not delete files",
 );
 
 const requiredModifiedFiles = [
-  ...inventory.stageChangePolicy.requiredModifiedFiles,
+  ...inventory.historicalImplementationChangePolicy.requiredModifiedFiles,
 ].sort();
 const requiredAddedFiles = [
-  ...inventory.stageChangePolicy.requiredAddedFiles,
+  ...inventory.historicalImplementationChangePolicy.requiredAddedFiles,
 ].sort();
 assert.deepEqual(
-  inventory.stageChangePolicy.requiredDeletedFiles,
+  inventory.historicalImplementationChangePolicy.requiredDeletedFiles,
   [],
-  "CLEANUP-1D change policy must authorize zero deletions",
+  "Historical CLEANUP-1D change policy must authorize zero deletions",
 );
 const expectedChanges = new Map([
   ...requiredModifiedFiles.map((file) => [file, "M"]),
@@ -129,25 +126,26 @@ assert.equal(
   "CLEANUP-1D change policy contains overlapping paths",
 );
 assert.deepEqual(
-  [...changeByFile.keys()].sort(),
+  [...implementationChangeByFile.keys()].sort(),
   [...expectedChanges.keys()].sort(),
-  "CLEANUP-1D changed paths differ from the exact authorized scope",
+  "Historical CLEANUP-1D paths differ from the exact authorized scope",
 );
 for (const [file, expectedStatus] of expectedChanges) {
   assert.equal(
-    changeByFile.get(file),
+    implementationChangeByFile.get(file),
     expectedStatus,
-    `CLEANUP-1D expected ${expectedStatus} status for ${file}`,
+    `Historical CLEANUP-1D expected ${expectedStatus} status for ${file}`,
   );
 }
-for (const file of inventory.stageChangePolicy.protectedUnchangedFiles) {
+for (const file of inventory.historicalImplementationChangePolicy
+  .protectedUnchangedFiles) {
+  execFileSync("git", ["cat-file", "-e", `${implementationHead}:${file}`], {
+    cwd: root,
+    stdio: "pipe",
+  });
   assert.ok(
-    existsSync(path.join(root, file)),
-    `Protected file is missing: ${file}`,
-  );
-  assert.ok(
-    !changeByFile.has(file),
-    `Protected file changed during CLEANUP-1D: ${file}`,
+    !implementationChangeByFile.has(file),
+    `Protected file changed during historical CLEANUP-1D: ${file}`,
   );
 }
 
@@ -287,11 +285,16 @@ assert.equal(
 const packageJson = JSON.parse(
   readFileSync(path.join(root, "package.json"), "utf8"),
 );
-const baselinePackageJson = JSON.parse(git("show", `${baseline}:package.json`));
+const baselinePackageJson = JSON.parse(
+  git("show", `${implementationBaseline}:package.json`),
+);
+const implementationPackageJson = JSON.parse(
+  git("show", `${implementationHead}:package.json`),
+);
 assert.deepEqual(
-  packageJson,
+  implementationPackageJson,
   baselinePackageJson,
-  "CLEANUP-1D must not modify package declarations or scripts",
+  "Historical CLEANUP-1D must not modify package declarations or scripts",
 );
 const removedRuntimePackages = [
   ...inventory.packageDisposition.removedRuntimeDirectPackages,
@@ -595,7 +598,7 @@ assert.deepEqual(
 );
 assert.equal(inventory.removalWaves[0].status, "complete");
 assert.equal(inventory.removalWaves[1].status, "complete");
-assert.equal(inventory.removalWaves[2].status, "implemented");
+assert.equal(inventory.removalWaves[2].status, "complete");
 assert.equal(inventory.removalWaves[2].deletionAuthorized, false);
 
 const result = {
@@ -604,10 +607,13 @@ const result = {
   generatedAt: new Date().toISOString(),
   auditedHead: head,
   baseline: inventory.baseline,
+  verificationEvidence: inventory.verificationEvidence,
   canonicalFrontend: inventory.canonicalFrontend,
-  stageChangePolicy: {
-    changedFileCount: changeEntries.length,
-    changes: changeEntries,
+  historicalImplementationChangePolicy: {
+    baseline: implementationBaseline,
+    implementationHead,
+    changedFileCount: implementationChangeEntries.length,
+    changes: implementationChangeEntries,
     deletionCount: 0,
   },
   legacyFrontend: {
@@ -641,12 +647,12 @@ const result = {
     legacyReferenceViolations: 0,
   },
   removalWaves: inventory.removalWaves,
-  currentStageDeletionAuthorized: false,
+  cleanupSequenceStatus: inventory.cleanupSequenceStatus,
   nextStage: inventory.nextStage,
 };
 
 writeFileSync(
-  path.join(outputDirectory, "legacy-frontend-audit-result.json"),
+  path.join(outputDirectory, "post-removal-invariant-audit-result.json"),
   `${JSON.stringify(result, null, 2)}\n`,
 );
 console.log(JSON.stringify(result, null, 2));

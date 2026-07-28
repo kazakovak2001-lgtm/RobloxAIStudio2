@@ -1,6 +1,6 @@
 # Frontend Cutover Policy
 
-**Status**: Active — CLEANUP-1D protected verification pending
+**Status**: Active — CUTOVER-1 complete
 **Roadmap ID**: CUTOVER-0  
 **Effective date**: July 24, 2026
 
@@ -61,7 +61,7 @@ The removal gate passed before CLEANUP-1C began:
 
 CLEANUP-1C completed the dedicated removal under issue #37 from exact baseline `85a2fa8d512738e6d02ffae42da77af7a27db6fc`. Its protected audit proved all 176 authorized deletions, exact dependency pruning, unchanged active release boundaries, and a hard failure if root `src/` reappears.
 
-CLEANUP-1D is implemented and locally verified under issue #41 from protected baseline `9a728661ee7b0a635af78da56a5d147b296dc23c`. It is a zero-deletion verification stage: local source ownership is limited to `server/src` and `studio-plugin/src`, stale repository snapshots are replaced with deterministic tracked-path inventories, intentional Studio/Roblox/historical `src/**` references are classified, and protected evidence remains required by Merge Gate.
+CLEANUP-1D completed under closed issue #41 from protected baseline `9a728661ee7b0a635af78da56a5d147b296dc23c`. PR #42 merged as `f924079995059d9b86a5caaaf6364cb7b4879881` with zero file deletions, and post-merge CI run #296 passed the full Merge Gate. Local source ownership is limited to `server/src` and `studio-plugin/src`; deterministic tracked-path inventories and the permanent post-removal invariant guard preserve the historical evidence without blocking future reviewed development.
 
 ## Definition of Done for a Cutover Sprint
 

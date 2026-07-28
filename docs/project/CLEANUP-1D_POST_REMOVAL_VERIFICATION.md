@@ -1,8 +1,9 @@
 # CLEANUP-1D — Post-Removal Repository Verification
 
-**Status:** Implemented and locally verified; protected verification pending
+**Status:** Complete
 **Tracking issue:** #41
 **Baseline:** `release/cutover-1e-candidate@9a728661ee7b0a635af78da56a5d147b296dc23c`
+**Merge commit:** `f924079995059d9b86a5caaaf6364cb7b4879881`
 **Deletion authorization:** `false`
 
 ## Objective
@@ -27,7 +28,9 @@ the staged-file guard.
 
 ## Changes
 
-- upgraded the cleanup inventory and verifier to schema v4 / CLEANUP-1D;
+- upgraded the cleanup inventory and verifier to schema v4 for the exact
+  CLEANUP-1D implementation contract and schema v5 for the permanent
+  steady-state invariant guard;
 - preserved the complete 176-path CLEANUP-1C removal and 12-package pruning
   evidence;
 - aligned `ArchitecturePolicy`, `BoundaryValidator`, `RuntimeBoundaryGuard`,
@@ -41,8 +44,9 @@ the staged-file guard.
 - made `ProjectStructure.txt` a deterministic tree derived only from tracked
   paths;
 - reduced `project_structure.txt` to a UTF-8 compatibility pointer;
-- renamed the protected evidence artifact to
-  `cleanup-1d-post-removal-verification`;
+- published implementation evidence as
+  `cleanup-1d-post-removal-verification` and transitioned the permanent
+  evidence artifact to `post-removal-invariant-audit`;
 - retained `legacy-frontend-audit` as a required Merge Gate dependency.
 
 ## Preservation
@@ -63,9 +67,9 @@ Local verification passed:
 
 - clean npm install: 357 packages;
 - TypeScript, architecture, boundary validation, ESLint, and Prettier;
-- 61 passing backend test files / 671 passing tests, with one file and one test
+- 61 passing backend test files / 672 passing tests, with one file and one test
   intentionally skipped;
-- five focused CLEANUP-1D negative-control tests;
+- six focused CLEANUP-1D negative-control tests;
 - repository validation over 1,088 tracked files;
 - backend build;
 - schema-v4 CLEANUP-1D audit with 26 exact changed paths, zero deletions,
@@ -73,12 +77,26 @@ Local verification passed:
   consumers, zero active/tooling exact-path violations, and zero unclassified
   root-relative references.
 
-Protected CI must additionally pass PostgreSQL restart E2E, backend image,
-composed HTTPS release, promoted-baseline integrity, Studio packaging where
-applicable, CLEANUP-1D evidence, and Merge Gate.
+Protected verification passed:
+
+- pre-merge CI run `30336635283` (#295) passed all 12 jobs and Merge Gate;
+- post-merge push run `30336910264` (#296) passed every applicable job and
+  Merge Gate on merge commit `f924079995059d9b86a5caaaf6364cb7b4879881`;
+- post-merge artifact `8679552100`
+  (`cleanup-1d-post-removal-verification`) has digest
+  `sha256:a8fa2cea2192b4f69471926521678307a0409e3a053c699f5783fdbfb04aa14c`;
+- all six CodeRabbit review threads were resolved by follow-up commit
+  `5a7d9c84f8aabf6618684ecfdd77bc176283a925`;
+- issue #41 is closed as completed.
+
+The schema-v5 guard evaluates the exact historical implementation diff at the
+protected merge commit, then evaluates current repository invariants against
+HEAD. Future reviewed additions, updates, dependency changes, and deletions are
+therefore permitted without weakening the removed-frontend boundary.
 
 ## Rollback
 
-Revert the focused CLEANUP-1D commit. CLEANUP-1C physical removal, standalone
+Revert PR #42 to roll back CLEANUP-1D. CLEANUP-1C physical removal, standalone
 Frontend, active release artifacts, protected default, and pinned rollback
-reference remain unchanged.
+reference remain unchanged. The steady-state guard transition can be reverted
+independently without rewriting published history.
