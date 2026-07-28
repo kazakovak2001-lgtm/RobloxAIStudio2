@@ -1,20 +1,19 @@
-name: Fix RUNTIME-204 Preservation Contracts v3
+name: Diagnose RUNTIME-204 Affected Tests
 
 on:
   pull_request:
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
-  fix-preservation:
+  diagnose-affected-tests:
     if: github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:
           ref: ${{ github.event.pull_request.head.ref }}
-          fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
@@ -31,28 +30,45 @@ jobs:
             server/src/__tests__/autonomousPipelinePreservation.test.ts \
             server/src/__tests__/integration.test.ts \
             server/src/__tests__/performance.test.ts
-      - name: Validate affected contracts
+      - name: Capture affected validation results
+        shell: bash
         run: |
-          npm run typecheck
-          node node_modules/vitest/vitest.mjs --config config/testing/vitest.backend.config.ts run \
-            server/src/orchestrator/AutonomousOrchestrator.test.ts \
-            server/src/__tests__/autonomousPipelineIntegration.test.ts \
-            server/src/__tests__/autonomousPipelinePreservation.test.ts \
-            server/src/__tests__/integration.test.ts \
-            server/src/__tests__/performance.test.ts
-          npm run lint
-      - name: Commit compatibility updates
+          set +e
+          npm run typecheck > typecheck.log 2>&1
+          echo "$?" > typecheck.status
+
+          node node_modules/vitest/vitest.mjs --config config/testing/vitest.backend.config.ts run server/src/orchestrator/AutonomousOrchestrator.test.ts > orchestrator.log 2>&1
+          echo "$?" > orchestrator.status
+
+          node node_modules/vitest/vitest.mjs --config config/testing/vitest.backend.config.ts run server/src/__tests__/autonomousPipelineIntegration.test.ts > autonomous-integration.log 2>&1
+          echo "$?" > autonomous-integration.status
+
+          node node_modules/vitest/vitest.mjs --config config/testing/vitest.backend.config.ts run server/src/__tests__/autonomousPipelinePreservation.test.ts > autonomous-preservation.log 2>&1
+          echo "$?" > autonomous-preservation.status
+
+          node node_modules/vitest/vitest.mjs --config config/testing/vitest.backend.config.ts run server/src/__tests__/integration.test.ts > integration.log 2>&1
+          echo "$?" > integration.status
+
+          node node_modules/vitest/vitest.mjs --config config/testing/vitest.backend.config.ts run server/src/__tests__/performance.test.ts > performance.log 2>&1
+          echo "$?" > performance.status
+
+          for status_file in *.status; do
+            printf '%s=%s\n' "$status_file" "$(cat "$status_file")"
+          done
+          exit 0
+      - name: Publish affected-test diagnostics
+        uses: actions/upload-artifact@v4
+        with:
+          name: runtime-204-affected-tests-${{ github.sha }}
+          path: |
+            *.log
+            *.status
+          retention-days: 1
+      - name: Enforce affected validation results
         run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add \
-            server/src/orchestrator/AutonomousOrchestrator.ts \
-            server/src/__tests__/autonomousPipelineIntegration.test.ts \
-            server/src/__tests__/autonomousPipelinePreservation.test.ts \
-            server/src/__tests__/integration.test.ts \
-            server/src/__tests__/performance.test.ts
-          if git diff --cached --quiet; then
-            exit 0
-          fi
-          git commit --no-verify -m "test(orchestrator): align preview preservation contracts"
-          git push origin HEAD:${{ github.event.pull_request.head.ref }}
+          test "$(cat typecheck.status)" = "0"
+          test "$(cat orchestrator.status)" = "0"
+          test "$(cat autonomous-integration.status)" = "0"
+          test "$(cat autonomous-preservation.status)" = "0"
+          test "$(cat integration.status)" = "0"
+          test "$(cat performance.status)" = "0"
