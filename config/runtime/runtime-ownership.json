@@ -180,11 +180,10 @@
       "classification": "preview",
       "owner": "providers",
       "productionUse": "preview-internal",
-      "responsibility": "Secondary provider registry factory retained for the advanced provider preview stack.",
+      "responsibility": "Internal secondary factory retained only for the advanced provider preview stack and direct tests.",
       "replacement": "providers-llm-provider-factory",
       "allowedImporters": [
-        "server/src/integration/PlatformIntegrationManager.ts",
-        "server/src/providers/ai/index.ts"
+        "server/src/integration/PlatformIntegrationManager.ts"
       ]
     },
     {
@@ -194,13 +193,12 @@
       "classification": "preview",
       "owner": "providers",
       "productionUse": "preview-internal",
-      "responsibility": "In-process registry for the advanced provider preview stack.",
+      "responsibility": "Internal in-process registry for the advanced provider preview stack.",
       "allowedImporters": [
         "server/src/integration/PlatformIntegrationManager.ts",
         "server/src/providers/ai/ProviderFactory.ts",
         "server/src/providers/ai/ProviderHealthService.ts",
-        "server/src/providers/ai/RetryPolicy.ts",
-        "server/src/providers/ai/index.ts"
+        "server/src/providers/ai/RetryPolicy.ts"
       ]
     },
     {
