@@ -108,10 +108,10 @@ describe("Integration - Successful Pipeline Run", () => {
           if (previewCompleted.length === 1) {
             const data = previewCompleted[0].data as Record<string, unknown>;
             expect(data).toMatchObject({
-              executionMode: "simulation",
+              executionMode: "bounded",
               resultAuthority: "preview-only",
               productionCompleted: false,
-              qualityScore: null,
+              qualityScore: expect.any(Number),
               totalCost: 0,
             });
           }
@@ -223,7 +223,7 @@ describe("Integration - Agent Name Mapping", () => {
 // ─── 4. Cost Data Propagation ───────────────────────────────────────────────
 
 describe("Integration - Cost Data Propagation", () => {
-  it("property: preview step evidence includes zero synthetic usage with explicit source", async () => {
+  it("property: bounded step evidence includes zero billed usage with measured timing", async () => {
     await fc.assert(
       fc.asyncProperty(
         fc.string({ minLength: 5, maxLength: 50 }),
@@ -250,7 +250,7 @@ describe("Integration - Cost Data Propagation", () => {
             expect(costData).toMatchObject({
               tokens: 0,
               cost: 0,
-              source: "synthetic",
+              source: "measured",
             });
             expect(typeof costData.timeMs).toBe("number");
             expect(costData.timeMs).toBeGreaterThanOrEqual(0);

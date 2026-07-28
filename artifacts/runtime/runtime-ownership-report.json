@@ -1,0 +1,420 @@
+{
+  "schemaVersion": 1,
+  "status": "PASS",
+  "generatedAt": "2026-07-28T23:39:37.803Z",
+  "registryPath": "config/runtime/runtime-ownership.json",
+  "counts": {
+    "entries": 16,
+    "canonical": 2,
+    "boundedAdapters": 5,
+    "preview": 8,
+    "deprecated": 1,
+    "removed": 0,
+    "discoveredEntrypoints": 16,
+    "productionFilesScanned": 551,
+    "registeredImports": 38,
+    "acknowledgedPreviewImports": 15
+  },
+  "canonicalByCapability": {
+    "execution-engine": "planning-plan-executor",
+    "provider-construction": "providers-llm-provider-factory"
+  },
+  "discoveredEntrypoints": [
+    "server/src/execution/aiPipelineIntegrator.ts",
+    "server/src/integration/EndToEndValidator.ts",
+    "server/src/integration/PlatformIntegrationManager.ts",
+    "server/src/memory/MemoryRegistry.ts",
+    "server/src/memory/agents/AgentMemoryBridge.ts",
+    "server/src/memory/core/MemoryEngine.ts",
+    "server/src/memory/knowledge/MemoryManager.ts",
+    "server/src/orchestrator/AutonomousOrchestrator.ts",
+    "server/src/orchestrator/AutonomousPhaseRegistry.ts",
+    "server/src/pipeline/v2/PipelineEngine.ts",
+    "server/src/pipeline/v2/PipelineExecutor.ts",
+    "server/src/planning/execution/PlanExecutor.ts",
+    "server/src/providers/ai/ProviderFactory.ts",
+    "server/src/providers/ai/ProviderRegistry.ts",
+    "server/src/providers/providerFactory.ts",
+    "server/src/runtime/controller/RuntimeExecutionController.ts"
+  ],
+  "importUses": [
+    {
+      "importer": "server/src/api/v1/index.ts",
+      "targetId": "planning-plan-executor",
+      "targetPath": "server/src/planning/execution/PlanExecutor.ts",
+      "importPath": "../../planning/execution/PlanExecutor",
+      "kind": "import"
+    },
+    {
+      "importer": "server/src/api/v2/index.ts",
+      "targetId": "planning-plan-executor",
+      "targetPath": "server/src/planning/execution/PlanExecutor.ts",
+      "importPath": "../../planning/execution/PlanExecutor",
+      "kind": "import"
+    },
+    {
+      "importer": "server/src/distributed/execution/ExecutionWorker.ts",
+      "targetId": "planning-plan-executor",
+      "targetPath": "server/src/planning/execution/PlanExecutor.ts",
+      "importPath": "../../planning/execution/PlanExecutor",
+      "kind": "import"
+    },
+    {
+      "importer": "server/src/economy/bridge/EconomyFeedbackBridge.ts",
+      "targetId": "memory-engine",
+      "targetPath": "server/src/memory/core/MemoryEngine.ts",
+      "importPath": "../../memory/core/MemoryEngine",
+      "kind": "import"
+    },
+    {
+      "importer": "server/src/execution/aiPipelineIntegrator.ts",
+      "targetId": "memory-execution-registry",
+      "targetPath": "server/src/memory/MemoryRegistry.ts",
+      "importPath": "../memory/MemoryRegistry",
+      "kind": "import"
+    },
+    {
+      "importer": "server/src/generation/coordinator/GenerationCoordinator.ts",
+      "targetId": "planning-plan-executor",
+      "targetPath": "server/src/planning/execution/PlanExecutor.ts",
+      "importPath": "../../planning/execution/PlanExecutor",
+      "kind": "import"
+    },
+    {
+      "importer": "server/src/index.ts",
+      "targetId": "providers-llm-provider-factory",
+      "targetPath": "server/src/providers/providerFactory.ts",
+      "importPath": "./providers/providerFactory",
+      "kind": "import"
+    },
+    {
+      "importer": "server/src/integration/EndToEndValidator.ts",
+      "targetId": "platform-integration-manager",
+      "targetPath": "server/src/integration/PlatformIntegrationManager.ts",
+      "importPath": "./PlatformIntegrationManager",
+      "kind": "import"
+    },
+    {
+      "importer": "server/src/integration/PlatformIntegrationManager.ts",
+      "targetId": "providers-ai-provider-factory",
+      "targetPath": "server/src/providers/ai/ProviderFactory.ts",
+      "importPath": "../providers/ai/ProviderFactory",
+      "kind": "import"
+    },
+    {
+      "importer": "server/src/integration/PlatformIntegrationManager.ts",
+      "targetId": "providers-ai-provider-registry",
+      "targetPath": "server/src/providers/ai/ProviderRegistry.ts",
+      "importPath": "../providers/ai/ProviderRegistry",
+      "kind": "import"
+    },
+    {
+      "importer": "server/src/integration/PlatformIntegrationManager.ts",
+      "targetId": "knowledge-memory-manager",
+      "targetPath": "server/src/memory/knowledge/MemoryManager.ts",
+      "importPath": "../memory/knowledge/MemoryManager",
+      "kind": "import"
+    },
+    {
+      "importer": "server/src/jobs/JobManager.ts",
+      "targetId": "runtime-execution-controller",
+      "targetPath": "server/src/runtime/controller/RuntimeExecutionController.ts",
+      "importPath": "../runtime/controller/RuntimeExecutionController",
+      "kind": "import"
+    },
+    {
+      "importer": "server/src/lifecycle/bridge/LifecycleFeedbackBridge.ts",
+      "targetId": "memory-engine",
+      "targetPath": "server/src/memory/core/MemoryEngine.ts",
+      "importPath": "../../memory/core/MemoryEngine",
+      "kind": "import"
+    },
+    {
+      "importer": "server/src/memory/agents/AgentMemoryBridge.ts",
+      "targetId": "memory-engine",
+      "targetPath": "server/src/memory/core/MemoryEngine.ts",
+      "importPath": "../core/MemoryEngine",
+      "kind": "import"
+    },
+    {
+      "importer": "server/src/memory/knowledge/ContextResolver.ts",
+      "targetId": "knowledge-memory-manager",
+      "targetPath": "server/src/memory/knowledge/MemoryManager.ts",
+      "importPath": "./MemoryManager",
+      "kind": "import"
+    },
+    {
+      "importer": "server/src/memory/knowledge/MemoryMetrics.ts",
+      "targetId": "knowledge-memory-manager",
+      "targetPath": "server/src/memory/knowledge/MemoryManager.ts",
+      "importPath": "./MemoryManager",
+      "kind": "import"
+    },
+    {
+      "importer": "server/src/memory/knowledge/index.ts",
+      "targetId": "knowledge-memory-manager",
+      "targetPath": "server/src/memory/knowledge/MemoryManager.ts",
+      "importPath": "./MemoryManager",
+      "kind": "re-export"
+    },
+    {
+      "importer": "server/src/orchestrator/AutonomousOrchestrator.ts",
+      "targetId": "autonomous-phase-registry",
+      "targetPath": "server/src/orchestrator/AutonomousPhaseRegistry.ts",
+      "importPath": "./AutonomousPhaseRegistry",
+      "kind": "import"
+    },
+    {
+      "importer": "server/src/orchestrator/index.ts",
+      "targetId": "autonomous-orchestrator",
+      "targetPath": "server/src/orchestrator/AutonomousOrchestrator.ts",
+      "importPath": "./AutonomousOrchestrator",
+      "kind": "re-export"
+    },
+    {
+      "importer": "server/src/orchestrator/index.ts",
+      "targetId": "autonomous-phase-registry",
+      "targetPath": "server/src/orchestrator/AutonomousPhaseRegistry.ts",
+      "importPath": "./AutonomousPhaseRegistry",
+      "kind": "re-export"
+    },
+    {
+      "importer": "server/src/pipeline/v2/PipelineEngine.ts",
+      "targetId": "pipeline-v2-executor",
+      "targetPath": "server/src/pipeline/v2/PipelineExecutor.ts",
+      "importPath": "./PipelineExecutor",
+      "kind": "import"
+    },
+    {
+      "importer": "server/src/pipeline/v2/index.ts",
+      "targetId": "pipeline-v2-engine",
+      "targetPath": "server/src/pipeline/v2/PipelineEngine.ts",
+      "importPath": "./PipelineEngine",
+      "kind": "re-export"
+    },
+    {
+      "importer": "server/src/pipeline/v2/index.ts",
+      "targetId": "pipeline-v2-executor",
+      "targetPath": "server/src/pipeline/v2/PipelineExecutor.ts",
+      "importPath": "./PipelineExecutor",
+      "kind": "re-export"
+    },
+    {
+      "importer": "server/src/planning/execution/PlanExecutor.ts",
+      "targetId": "memory-agent-bridge",
+      "targetPath": "server/src/memory/agents/AgentMemoryBridge.ts",
+      "importPath": "../../memory/agents/AgentMemoryBridge",
+      "kind": "import"
+    },
+    {
+      "importer": "server/src/projects/services/game-generation.service.ts",
+      "targetId": "planning-plan-executor",
+      "targetPath": "server/src/planning/execution/PlanExecutor.ts",
+      "importPath": "../../planning/execution/PlanExecutor",
+      "kind": "import"
+    },
+    {
+      "importer": "server/src/providers/ai/ProviderFactory.ts",
+      "targetId": "providers-ai-provider-registry",
+      "targetPath": "server/src/providers/ai/ProviderRegistry.ts",
+      "importPath": "./ProviderRegistry",
+      "kind": "import"
+    },
+    {
+      "importer": "server/src/providers/ai/ProviderHealthService.ts",
+      "targetId": "providers-ai-provider-registry",
+      "targetPath": "server/src/providers/ai/ProviderRegistry.ts",
+      "importPath": "./ProviderRegistry",
+      "kind": "import"
+    },
+    {
+      "importer": "server/src/providers/ai/RetryPolicy.ts",
+      "targetId": "providers-ai-provider-registry",
+      "targetPath": "server/src/providers/ai/ProviderRegistry.ts",
+      "importPath": "./ProviderRegistry",
+      "kind": "import"
+    },
+    {
+      "importer": "server/src/routes/compile.ts",
+      "targetId": "planning-plan-executor",
+      "targetPath": "server/src/planning/execution/PlanExecutor.ts",
+      "importPath": "../planning/execution/PlanExecutor",
+      "kind": "import"
+    },
+    {
+      "importer": "server/src/routes/concept.ts",
+      "targetId": "pipeline-v2-engine",
+      "targetPath": "server/src/pipeline/v2/PipelineEngine.ts",
+      "importPath": "../pipeline/v2/PipelineEngine",
+      "kind": "import"
+    },
+    {
+      "importer": "server/src/routes/generation-v2.ts",
+      "targetId": "planning-plan-executor",
+      "targetPath": "server/src/planning/execution/PlanExecutor.ts",
+      "importPath": "../planning/execution/PlanExecutor",
+      "kind": "import"
+    },
+    {
+      "importer": "server/src/routes/memory.ts",
+      "targetId": "memory-engine",
+      "targetPath": "server/src/memory/core/MemoryEngine.ts",
+      "importPath": "../memory/core/MemoryEngine",
+      "kind": "import"
+    },
+    {
+      "importer": "server/src/routes/planning.ts",
+      "targetId": "planning-plan-executor",
+      "targetPath": "server/src/planning/execution/PlanExecutor.ts",
+      "importPath": "../planning/execution/PlanExecutor",
+      "kind": "import"
+    },
+    {
+      "importer": "server/src/runtime/controller/RuntimeExecutionController.ts",
+      "targetId": "planning-plan-executor",
+      "targetPath": "server/src/planning/execution/PlanExecutor.ts",
+      "importPath": "../../planning/execution/PlanExecutor",
+      "kind": "import"
+    },
+    {
+      "importer": "server/src/runtime/index.ts",
+      "targetId": "runtime-execution-controller",
+      "targetPath": "server/src/runtime/controller/RuntimeExecutionController.ts",
+      "importPath": "./controller/RuntimeExecutionController",
+      "kind": "re-export"
+    },
+    {
+      "importer": "server/src/runtime/simulation/E2EGenerationSimulator.ts",
+      "targetId": "runtime-execution-controller",
+      "targetPath": "server/src/runtime/controller/RuntimeExecutionController.ts",
+      "importPath": "../controller/RuntimeExecutionController",
+      "kind": "import"
+    },
+    {
+      "importer": "server/src/simulation/bridge/GenerationRefinementBridge.ts",
+      "targetId": "memory-engine",
+      "targetPath": "server/src/memory/core/MemoryEngine.ts",
+      "importPath": "../../memory/core/MemoryEngine",
+      "kind": "import"
+    },
+    {
+      "importer": "server/src/world/bridge/WorldSimulationBridge.ts",
+      "targetId": "memory-engine",
+      "targetPath": "server/src/memory/core/MemoryEngine.ts",
+      "importPath": "../../memory/core/MemoryEngine",
+      "kind": "import"
+    }
+  ],
+  "acknowledgedPreviewImports": [
+    {
+      "importer": "server/src/integration/EndToEndValidator.ts",
+      "targetId": "platform-integration-manager",
+      "targetPath": "server/src/integration/PlatformIntegrationManager.ts",
+      "importPath": "./PlatformIntegrationManager",
+      "kind": "import"
+    },
+    {
+      "importer": "server/src/integration/PlatformIntegrationManager.ts",
+      "targetId": "providers-ai-provider-factory",
+      "targetPath": "server/src/providers/ai/ProviderFactory.ts",
+      "importPath": "../providers/ai/ProviderFactory",
+      "kind": "import"
+    },
+    {
+      "importer": "server/src/integration/PlatformIntegrationManager.ts",
+      "targetId": "providers-ai-provider-registry",
+      "targetPath": "server/src/providers/ai/ProviderRegistry.ts",
+      "importPath": "../providers/ai/ProviderRegistry",
+      "kind": "import"
+    },
+    {
+      "importer": "server/src/integration/PlatformIntegrationManager.ts",
+      "targetId": "knowledge-memory-manager",
+      "targetPath": "server/src/memory/knowledge/MemoryManager.ts",
+      "importPath": "../memory/knowledge/MemoryManager",
+      "kind": "import"
+    },
+    {
+      "importer": "server/src/memory/knowledge/ContextResolver.ts",
+      "targetId": "knowledge-memory-manager",
+      "targetPath": "server/src/memory/knowledge/MemoryManager.ts",
+      "importPath": "./MemoryManager",
+      "kind": "import"
+    },
+    {
+      "importer": "server/src/memory/knowledge/MemoryMetrics.ts",
+      "targetId": "knowledge-memory-manager",
+      "targetPath": "server/src/memory/knowledge/MemoryManager.ts",
+      "importPath": "./MemoryManager",
+      "kind": "import"
+    },
+    {
+      "importer": "server/src/memory/knowledge/index.ts",
+      "targetId": "knowledge-memory-manager",
+      "targetPath": "server/src/memory/knowledge/MemoryManager.ts",
+      "importPath": "./MemoryManager",
+      "kind": "re-export"
+    },
+    {
+      "importer": "server/src/orchestrator/index.ts",
+      "targetId": "autonomous-orchestrator",
+      "targetPath": "server/src/orchestrator/AutonomousOrchestrator.ts",
+      "importPath": "./AutonomousOrchestrator",
+      "kind": "re-export"
+    },
+    {
+      "importer": "server/src/pipeline/v2/PipelineEngine.ts",
+      "targetId": "pipeline-v2-executor",
+      "targetPath": "server/src/pipeline/v2/PipelineExecutor.ts",
+      "importPath": "./PipelineExecutor",
+      "kind": "import"
+    },
+    {
+      "importer": "server/src/pipeline/v2/index.ts",
+      "targetId": "pipeline-v2-engine",
+      "targetPath": "server/src/pipeline/v2/PipelineEngine.ts",
+      "importPath": "./PipelineEngine",
+      "kind": "re-export"
+    },
+    {
+      "importer": "server/src/pipeline/v2/index.ts",
+      "targetId": "pipeline-v2-executor",
+      "targetPath": "server/src/pipeline/v2/PipelineExecutor.ts",
+      "importPath": "./PipelineExecutor",
+      "kind": "re-export"
+    },
+    {
+      "importer": "server/src/providers/ai/ProviderFactory.ts",
+      "targetId": "providers-ai-provider-registry",
+      "targetPath": "server/src/providers/ai/ProviderRegistry.ts",
+      "importPath": "./ProviderRegistry",
+      "kind": "import"
+    },
+    {
+      "importer": "server/src/providers/ai/ProviderHealthService.ts",
+      "targetId": "providers-ai-provider-registry",
+      "targetPath": "server/src/providers/ai/ProviderRegistry.ts",
+      "importPath": "./ProviderRegistry",
+      "kind": "import"
+    },
+    {
+      "importer": "server/src/providers/ai/RetryPolicy.ts",
+      "targetId": "providers-ai-provider-registry",
+      "targetPath": "server/src/providers/ai/ProviderRegistry.ts",
+      "importPath": "./ProviderRegistry",
+      "kind": "import"
+    },
+    {
+      "importer": "server/src/routes/concept.ts",
+      "targetId": "pipeline-v2-engine",
+      "targetPath": "server/src/pipeline/v2/PipelineEngine.ts",
+      "importPath": "../pipeline/v2/PipelineEngine",
+      "kind": "import"
+    }
+  ],
+  "errors": [],
+  "warnings": [
+    "Runtime entry providers-ai-provider-registry has no replacement path recorded.",
+    "Runtime entry knowledge-memory-manager has no replacement path recorded."
+  ]
+}

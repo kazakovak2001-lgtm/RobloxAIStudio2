@@ -29,12 +29,7 @@ export type EvidenceLevel = "heuristic" | "synthetic" | "verified";
 export type PhaseCapabilityStatus = "available" | "degraded" | "unavailable";
 
 export type ExecutionStatus =
-  | "pending"
-  | "running"
-  | "completed"
-  | "simulated"
-  | "failed"
-  | "skipped";
+  "pending" | "running" | "completed" | "simulated" | "failed" | "skipped";
 
 export interface ExecutionNode {
   id: string;

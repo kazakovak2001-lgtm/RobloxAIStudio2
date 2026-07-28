@@ -146,7 +146,7 @@ describe("Performance Benchmarks", () => {
       for (const s of sessions) {
         const final = orch.getSession(s.id);
         expect(final).not.toBeNull();
-        expect(final!.status).toBe("simulated");
+        expect(final!.status).toBe("preview_completed");
       }
     });
   });

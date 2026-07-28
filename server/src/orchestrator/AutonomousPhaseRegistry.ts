@@ -2,10 +2,7 @@ import { AgentCoordinator } from "../agents/collaboration/AgentCoordinator";
 import type { AgentTask } from "../agents/collaboration/CollaborationTypes";
 import { BenchmarkEngine } from "../domain/BenchmarkEngine";
 import { GenreLibrary } from "../domain/GenreLibrary";
-import type {
-  BenchmarkResult,
-  GameGenre,
-} from "../domain/DomainTypes";
+import type { BenchmarkResult, GameGenre } from "../domain/DomainTypes";
 import { AssetGenerationEngine } from "../generation/assets/AssetGenerationEngine";
 import type { AssetGenerationResult } from "../generation/assets/AssetTypes";
 import { GameBlueprintEngine } from "../generation/blueprint/GameBlueprintEngine";
@@ -20,10 +17,7 @@ import type {
 import { KnowledgeEngine } from "../knowledge/KnowledgeEngine";
 import { PlaytestEngine } from "../playtest/PlaytestEngine";
 import type { PlaytestReport } from "../playtest/PlaytestTypes";
-import type {
-  EvidenceLevel,
-  OrchestratorPhase,
-} from "./OrchestratorTypes";
+import type { EvidenceLevel, OrchestratorPhase } from "./OrchestratorTypes";
 
 export type RunnableOrchestratorPhase = Exclude<
   OrchestratorPhase,
@@ -512,7 +506,8 @@ class PlaytestAdapter extends BaseAdapter {
     signal: AbortSignal,
   ): Promise<PhaseExecutionResult> {
     const capability = this.capability(context);
-    if (!context.lua || !context.assets) return this.skipped(context, capability);
+    if (!context.lua || !context.assets)
+      return this.skipped(context, capability);
     ensureNotAborted(signal);
     const report = new PlaytestEngine().run({
       projectId: context.projectId,
@@ -576,7 +571,7 @@ class RepairAdapter extends BaseAdapter {
     context: AutonomousPhaseContext,
     _signal: AbortSignal,
   ): Promise<PhaseExecutionResult> {
-    return this.skipped(context, this.capability(context));
+    return this.skipped(context, this.capability());
   }
 }
 
@@ -588,7 +583,8 @@ class BenchmarkAdapter extends BaseAdapter {
       status: "degraded",
       evidence: "heuristic",
       service: "BenchmarkEngine",
-      reason: "Benchmarking compares static structure against genre references.",
+      reason:
+        "Benchmarking compares static structure against genre references.",
       cancellable: true,
       checkpointable: true,
     };
@@ -610,18 +606,13 @@ class BenchmarkAdapter extends BaseAdapter {
       ),
     });
     context.benchmark = result;
-    return this.completed(
-      context,
-      "BenchmarkEngine",
-      "heuristic",
-      {
-        overallScore: result.overallScore,
-        completeness: result.completeness,
-        scalability: result.scalability,
-        maintainability: result.maintainability,
-        missingRequired: result.missingRequired,
-      },
-    );
+    return this.completed(context, "BenchmarkEngine", "heuristic", {
+      overallScore: result.overallScore,
+      completeness: result.completeness,
+      scalability: result.scalability,
+      maintainability: result.maintainability,
+      missingRequired: result.missingRequired,
+    });
   }
 }
 
@@ -644,7 +635,7 @@ class StudioSyncAdapter extends BaseAdapter {
     context: AutonomousPhaseContext,
     _signal: AbortSignal,
   ): Promise<PhaseExecutionResult> {
-    return this.skipped(context, this.capability(context));
+    return this.skipped(context, this.capability());
   }
 }
 

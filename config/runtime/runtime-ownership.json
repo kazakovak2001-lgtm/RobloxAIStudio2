@@ -126,12 +126,21 @@
       "classification": "preview",
       "owner": "orchestrator",
       "productionUse": "preview-route",
-      "responsibility": "Preview autonomous lifecycle whose named phases currently use simulated execution.",
+      "responsibility": "Preview autonomous lifecycle coordinating registered bounded phase adapters; not a canonical production execution engine.",
       "replacement": "runtime-execution-controller",
       "allowedImporters": [
         "server/src/orchestrator/index.ts",
         "server/src/routes/autonomous.ts"
       ]
+    },
+    {
+      "id": "autonomous-phase-registry",
+      "capability": "autonomous-phase-adapters",
+      "path": "server/src/orchestrator/AutonomousPhaseRegistry.ts",
+      "classification": "bounded-adapter",
+      "owner": "orchestrator",
+      "productionUse": "adapter-only",
+      "responsibility": "Registry of bounded autonomous phase adapters. It coordinates existing services but does not own canonical production execution."
     },
     {
       "id": "execution-ai-pipeline-integrator",

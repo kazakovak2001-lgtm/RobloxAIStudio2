@@ -292,7 +292,8 @@ export class AutonomousOrchestrator {
 
         try {
           const controller = this.controllers.get(session.id);
-          if (!controller) throw new Error("Autonomous abort controller is missing");
+          if (!controller)
+            throw new Error("Autonomous abort controller is missing");
 
           const result = await adapter.execute(context, controller.signal);
           if (controller.signal.aborted || session.status !== "running") {
@@ -305,7 +306,8 @@ export class AutonomousOrchestrator {
           node.evidence = result.evidence;
           node.service = result.service;
           node.completedAt = Date.now();
-          node.durationMs = node.completedAt - (node.startedAt ?? node.completedAt);
+          node.durationMs =
+            node.completedAt - (node.startedAt ?? node.completedAt);
           node.output = result.output;
           node.skippedReason = result.reason;
 
@@ -424,7 +426,9 @@ export class AutonomousOrchestrator {
     });
   }
 
-  private nextPendingNode(session: OrchestratorSession): ExecutionNode | undefined {
+  private nextPendingNode(
+    session: OrchestratorSession,
+  ): ExecutionNode | undefined {
     return session.phases.find(
       (node) =>
         node.phase !== "preview_completed" &&
