@@ -1,15 +1,12 @@
-/**
- * AutonomousOrchestrator — Single-prompt to complete Roblox Experience.
- * Coordinates all modules: Domain, Knowledge, Agents, Lua, Assets, Assembly, Playtest, Repair, Benchmark.
- */
-
 import type {
   OrchestratorSession,
   OrchestratorPhase,
   GoalConfig,
   ExecutionNode,
-  Checkpoint,
   CostTracker,
+  Checkpoint,
+  EvidenceLevel,
+  ExecutionStatus,
 } from "./OrchestratorTypes";
 import { DEFAULT_GOALS, createSessionId } from "./OrchestratorTypes";
 import type { PipelineEventEmitter } from "../socket/streaming";
@@ -28,6 +25,20 @@ const PHASE_AGENT_NAMES: Record<string, string> = {
   studio_sync: "Studio Sync",
 };
 
+const PHASE_DURATIONS: Record<string, number> = {
+  genre_detection: 50,
+  knowledge_search: 80,
+  blueprint: 100,
+  agent_collaboration: 150,
+  lua_generation: 200,
+  asset_generation: 100,
+  experience_assembly: 80,
+  playtest: 120,
+  repair: 180,
+  benchmark: 60,
+  studio_sync: 40,
+};
+
 const PHASE_ORDER: OrchestratorPhase[] = [
   "genre_detection",
   "knowledge_search",
@@ -40,19 +51,33 @@ const PHASE_ORDER: OrchestratorPhase[] = [
   "repair",
   "benchmark",
   "studio_sync",
-  "completed",
 ];
+
+export interface AutonomousOrchestratorOptions {
+  simulationDelayMs?: number;
+}
+
+interface PhaseExecutionResult {
+  status: Extract<ExecutionStatus, "completed" | "simulated">;
+  evidence: EvidenceLevel;
+  output: Record<string, unknown>;
+}
 
 export class AutonomousOrchestrator {
   private sessions: Map<string, OrchestratorSession> = new Map();
   private events?: PipelineEventEmitter;
+  private options: AutonomousOrchestratorOptions;
 
-  constructor(events?: PipelineEventEmitter) {
+  constructor(
+    events?: PipelineEventEmitter,
+    options: AutonomousOrchestratorOptions = {},
+  ) {
     this.events = events;
+    this.options = options;
   }
 
   /**
-   * Start autonomous generation from a single prompt.
+   * Start preview-only autonomous simulation from a single prompt.
    */
   run(
     prompt: string,
@@ -66,43 +91,47 @@ export class AutonomousOrchestrator {
       id: sessionId,
       projectId,
       prompt,
+      executionMode: "simulation",
+      resultAuthority: "preview-only",
       status: "running",
       currentPhase: "genre_detection",
       phases: PHASE_ORDER.map((phase) => ({
         id: `node-${phase}`,
         phase,
         status: "pending",
+        executionMode: "simulation",
       })),
       goals: config,
       cost: this.emptyCost(),
       checkpoints: [],
-      qualityScore: 0,
+      qualityScore: null,
       startedAt: Date.now(),
       estimatedTimeMs: this.estimateTime(config),
-      estimatedCost: this.estimateCost(config),
+      estimatedCost: 0,
     };
 
     this.sessions.set(sessionId, session);
 
-    // Emit pipeline.started event
-    void this.events?.emitPipelineStarted(session.id, session.projectId);
+    void this.events?.emit({
+      type: "pipeline.started",
+      pipelineId: session.id,
+      projectId: session.projectId,
+      data: {
+        executionMode: session.executionMode,
+        resultAuthority: session.resultAuthority,
+        preview: true,
+      },
+      timestamp: new Date(),
+    });
 
-    // Execute phases sequentially (async fire-and-forget)
     void this.executePhases(session);
-
     return session;
   }
 
-  /**
-   * Get session status.
-   */
   getSession(sessionId: string): OrchestratorSession | null {
     return this.sessions.get(sessionId) ?? null;
   }
 
-  /**
-   * Pause execution.
-   */
   pause(sessionId: string): boolean {
     const session = this.sessions.get(sessionId);
     if (!session || session.status !== "running") return false;
@@ -111,32 +140,28 @@ export class AutonomousOrchestrator {
     return true;
   }
 
-  /**
-   * Resume execution.
-   */
   resume(sessionId: string): boolean {
     const session = this.sessions.get(sessionId);
     if (!session || session.status !== "paused") return false;
     session.status = "running";
-    // Find the last incomplete phase
-    const next = session.phases.find((p) => p.status === "pending");
+    const next = session.phases.find((phase) => phase.status === "pending");
     if (next) {
       session.currentPhase = next.phase;
       void this.executePhases(session);
+    } else {
+      this.finishPreview(session);
     }
     return true;
   }
 
-  /**
-   * Cancel execution.
-   */
   cancel(sessionId: string): boolean {
     const session = this.sessions.get(sessionId);
     if (
       !session ||
       (session.status !== "running" && session.status !== "paused")
-    )
+    ) {
       return false;
+    }
     session.status = "cancelled";
     session.currentPhase = "cancelled";
     session.finishedAt = Date.now();
@@ -145,74 +170,32 @@ export class AutonomousOrchestrator {
 
   private async executePhases(session: OrchestratorSession): Promise<void> {
     for (const node of session.phases) {
-      if (node.status === "completed" || node.status === "skipped") continue;
-      if (session.status !== "running") break;
-      if (node.phase === "completed") {
-        session.status = "completed";
-        session.currentPhase = "completed";
-        session.finishedAt = Date.now();
-
-        // Emit pipeline.completed
-        void this.events?.emitPipelineCompleted(
-          session.id,
-          {
-            qualityScore: session.qualityScore,
-            genre: session.genre,
-            totalCost: session.cost.totalCost,
-          },
-          session.projectId,
-        );
-        break;
+      if (
+        node.status === "completed" ||
+        node.status === "simulated" ||
+        node.status === "skipped"
+      ) {
+        continue;
       }
+      if (session.status !== "running") break;
 
-      // Check smart skip conditions
       if (this.shouldSkip(session, node.phase)) {
         node.status = "skipped";
+        node.executionMode = "simulation";
+        node.evidence = "synthetic";
         node.skippedReason = this.skipReason(session, node.phase);
         continue;
       }
 
-      // Check budget/time limits
       if (this.isOverBudget(session)) {
-        session.status = "failed";
-        session.currentPhase = "failed";
-        session.finishedAt = Date.now();
-        node.status = "failed";
-        node.error = "Budget or time limit exceeded";
-
-        // Emit step.failed for the budget-exceeded phase
-        const agentName = PHASE_AGENT_NAMES[node.phase] ?? node.phase;
-        const stepId = `auto-${node.phase}`;
-        void this.events?.emitStepFailed(
-          session.id,
-          stepId,
-          agentName,
-          node.error,
-          session.projectId,
-        );
-
-        // Emit pipeline.failed
-        void this.events?.emitPipelineFailed(
-          session.id,
-          node.error,
-          session.projectId,
-          {
-            failedStepId: stepId,
-            failedAgentId: agentName,
-            completedSteps: session.phases.filter(
-              (p) => p.status === "completed",
-            ).length,
-          },
-        );
+        this.failForBudget(session, node);
         break;
       }
 
-      // Execute phase
       session.currentPhase = node.phase;
       node.status = "running";
       node.startedAt = Date.now();
 
-      // Emit step.started
       const agentName = PHASE_AGENT_NAMES[node.phase] ?? node.phase;
       const stepId = `auto-${node.phase}`;
       void this.events?.emitStepStarted(
@@ -223,114 +206,167 @@ export class AutonomousOrchestrator {
       );
 
       try {
-        const output = await this.executePhase(session, node.phase);
-        node.status = "completed";
+        const result = await this.executePhase(session, node.phase);
+        node.status = result.status;
+        node.executionMode = "simulation";
+        node.evidence = result.evidence;
         node.completedAt = Date.now();
         node.durationMs = node.completedAt - node.startedAt;
-        node.output = output;
+        node.output = result.output;
 
-        // Update cost tracking
         this.trackCost(session, node);
 
-        // Emit step.completed with cost data
-        const costData = session.cost.perPhase[node.phase];
-        void this.events?.emitStepCompleted(
-          session.id,
-          stepId,
-          agentName,
-          {
-            ...(node.output as Record<string, unknown>),
-            cost: costData,
-            durationMs: node.durationMs,
-          },
-          session.projectId,
-        );
+        const eventOutput = {
+          ...result.output,
+          executionMode: session.executionMode,
+          resultAuthority: session.resultAuthority,
+          evidence: result.evidence,
+          cost: session.cost.perPhase[node.phase],
+          durationMs: node.durationMs,
+        };
 
-        // Checkpoint after each phase
+        if (result.status === "completed") {
+          void this.events?.emitStepCompleted(
+            session.id,
+            stepId,
+            agentName,
+            eventOutput,
+            session.projectId,
+          );
+        } else {
+          void this.events?.emit({
+            type: "step.simulated",
+            pipelineId: session.id,
+            projectId: session.projectId,
+            stepId,
+            data: { name: agentName, output: eventOutput },
+            timestamp: new Date(),
+          });
+        }
+
         this.checkpoint(session, node.phase);
-      } catch (err) {
-        node.status = "failed";
-        node.completedAt = Date.now();
-        node.durationMs = node.completedAt - (node.startedAt ?? Date.now());
-        node.error = err instanceof Error ? err.message : String(err);
-        session.status = "failed";
-        session.currentPhase = "failed";
-        session.finishedAt = Date.now();
-
-        // Emit step.failed
-        void this.events?.emitStepFailed(
-          session.id,
-          stepId,
-          agentName,
-          node.error!,
-          session.projectId,
-        );
-
-        // Emit pipeline.failed
-        void this.events?.emitPipelineFailed(
-          session.id,
-          node.error ?? "Unknown error",
-          session.projectId,
-          {
-            failedStepId: stepId,
-            failedAgentId: agentName,
-            completedSteps: session.phases.filter(
-              (p) => p.status === "completed",
-            ).length,
-          },
-        );
+      } catch (error) {
+        this.failPhase(session, node, stepId, agentName, error);
         break;
       }
+    }
+
+    if (session.status === "running") {
+      const remaining = session.phases.some(
+        (phase) => phase.status === "pending" || phase.status === "running",
+      );
+      if (!remaining) this.finishPreview(session);
     }
   }
 
   private async executePhase(
     session: OrchestratorSession,
     phase: OrchestratorPhase,
-  ): Promise<unknown> {
-    // Simulate phase execution with realistic timing
-    // In production, each phase calls its respective engine
-    const durations: Record<string, number> = {
-      genre_detection: 50,
-      knowledge_search: 80,
-      blueprint: 100,
-      agent_collaboration: 150,
-      lua_generation: 200,
-      asset_generation: 100,
-      experience_assembly: 80,
-      playtest: 120,
-      repair: 180,
-      benchmark: 60,
-      studio_sync: 40,
-    };
+  ): Promise<PhaseExecutionResult> {
+    const duration = this.options.simulationDelayMs ?? PHASE_DURATIONS[phase] ?? 50;
+    await new Promise((resolve) => setTimeout(resolve, duration));
 
-    await new Promise((resolve) => setTimeout(resolve, durations[phase] ?? 50));
-
-    // Simulate outputs
-    switch (phase) {
-      case "genre_detection":
-        session.genre = this.detectGenre(session.prompt);
-        return { genre: session.genre };
-      case "playtest":
-        session.qualityScore = 75 + Math.floor(Math.random() * 20);
-        return { score: session.qualityScore };
-      case "repair":
-        session.qualityScore = Math.min(100, session.qualityScore + 10);
-        return { scoreAfter: session.qualityScore };
-      case "benchmark":
-        return { benchmarkScore: session.qualityScore };
-      default:
-        return { phase, status: "ok" };
+    if (phase === "genre_detection") {
+      session.genre = this.detectGenre(session.prompt);
+      return {
+        status: "completed",
+        evidence: "heuristic",
+        output: {
+          genre: session.genre,
+          method: "local-keyword-heuristic",
+          verified: false,
+        },
+      };
     }
+
+    if (phase === "playtest") {
+      return {
+        status: "simulated",
+        evidence: "synthetic",
+        output: {
+          score: null,
+          verification: "not-performed",
+          reason: "No Roblox runtime playtest is executed in simulation mode.",
+        },
+      };
+    }
+
+    if (phase === "benchmark") {
+      return {
+        status: "simulated",
+        evidence: "synthetic",
+        output: {
+          benchmarkScore: null,
+          verification: "not-performed",
+        },
+      };
+    }
+
+    return {
+      status: "simulated",
+      evidence: "synthetic",
+      output: {
+        phase,
+        status: "simulated",
+        engineInvoked: false,
+      },
+    };
+  }
+
+  private finishPreview(session: OrchestratorSession): void {
+    session.status = "simulated";
+    session.currentPhase = "simulated";
+    session.finishedAt = Date.now();
+
+    const simulatedPhases = session.phases.filter(
+      (phase) => phase.status === "simulated",
+    ).length;
+    const completedHeuristics = session.phases.filter(
+      (phase) => phase.status === "completed",
+    ).length;
+
+    void this.events?.emit({
+      type: "pipeline.preview.completed",
+      pipelineId: session.id,
+      projectId: session.projectId,
+      data: {
+        executionMode: session.executionMode,
+        resultAuthority: session.resultAuthority,
+        simulatedPhases,
+        completedHeuristics,
+        skippedPhases: session.phases.filter(
+          (phase) => phase.status === "skipped",
+        ).length,
+        qualityScore: session.qualityScore,
+        genre: session.genre,
+        totalCost: session.cost.totalCost,
+        productionCompleted: false,
+      },
+      timestamp: new Date(),
+    });
   }
 
   private shouldSkip(
     session: OrchestratorSession,
     phase: OrchestratorPhase,
   ): boolean {
-    if (phase === "repair" && session.qualityScore >= session.goals.targetScore)
+    if (phase === "repair" && session.qualityScore === null) return true;
+    if (
+      phase === "repair" &&
+      session.qualityScore >= session.goals.targetScore
+    ) {
       return true;
-    if (phase === "studio_sync" && session.qualityScore < 50) return true;
+    }
+    if (phase === "studio_sync" && session.executionMode === "simulation") {
+      return true;
+    }
+    if (
+      phase === "studio_sync" &&
+      session.qualityScore !== null &&
+      session.qualityScore < 50
+    ) {
+      return true;
+    }
     return false;
   }
 
@@ -338,46 +374,136 @@ export class AutonomousOrchestrator {
     session: OrchestratorSession,
     phase: OrchestratorPhase,
   ): string {
-    if (phase === "repair")
+    if (phase === "repair" && session.qualityScore === null) {
+      return "No verified playtest score is available in simulation mode.";
+    }
+    if (phase === "repair") {
       return `Quality ${session.qualityScore} >= target ${session.goals.targetScore}`;
-    if (phase === "studio_sync")
+    }
+    if (phase === "studio_sync" && session.executionMode === "simulation") {
+      return "Simulation mode cannot deliver or verify artifacts in Roblox Studio.";
+    }
+    if (phase === "studio_sync") {
       return `Quality ${session.qualityScore} too low for sync`;
-    return "Skipped by optimizer";
+    }
+    return "Skipped by preview policy";
   }
 
   private isOverBudget(session: OrchestratorSession): boolean {
     const elapsed = Date.now() - session.startedAt;
-    if (elapsed > session.goals.timeLimitMs) return true;
-    if (session.cost.totalCost > session.goals.maxCost) return true;
-    return false;
+    return (
+      elapsed > session.goals.timeLimitMs ||
+      session.cost.totalCost > session.goals.maxCost
+    );
+  }
+
+  private failForBudget(
+    session: OrchestratorSession,
+    node: ExecutionNode,
+  ): void {
+    session.status = "failed";
+    session.currentPhase = "failed";
+    session.finishedAt = Date.now();
+    node.status = "failed";
+    node.error = "Budget or time limit exceeded";
+
+    const agentName = PHASE_AGENT_NAMES[node.phase] ?? node.phase;
+    const stepId = `auto-${node.phase}`;
+    void this.events?.emitStepFailed(
+      session.id,
+      stepId,
+      agentName,
+      node.error,
+      session.projectId,
+    );
+    void this.events?.emitPipelineFailed(
+      session.id,
+      node.error,
+      session.projectId,
+      {
+        executionMode: session.executionMode,
+        resultAuthority: session.resultAuthority,
+        failedStepId: stepId,
+        failedAgentId: agentName,
+        completedSteps: session.phases.filter(
+          (phase) =>
+            phase.status === "completed" || phase.status === "simulated",
+        ).length,
+      },
+    );
+  }
+
+  private failPhase(
+    session: OrchestratorSession,
+    node: ExecutionNode,
+    stepId: string,
+    agentName: string,
+    error: unknown,
+  ): void {
+    node.status = "failed";
+    node.completedAt = Date.now();
+    node.durationMs = node.completedAt - (node.startedAt ?? Date.now());
+    node.error = error instanceof Error ? error.message : String(error);
+    session.status = "failed";
+    session.currentPhase = "failed";
+    session.finishedAt = Date.now();
+
+    void this.events?.emitStepFailed(
+      session.id,
+      stepId,
+      agentName,
+      node.error,
+      session.projectId,
+    );
+    void this.events?.emitPipelineFailed(
+      session.id,
+      node.error,
+      session.projectId,
+      {
+        executionMode: session.executionMode,
+        resultAuthority: session.resultAuthority,
+        failedStepId: stepId,
+        failedAgentId: agentName,
+        completedSteps: session.phases.filter(
+          (phase) =>
+            phase.status === "completed" || phase.status === "simulated",
+        ).length,
+      },
+    );
   }
 
   private trackCost(session: OrchestratorSession, node: ExecutionNode): void {
-    const tokens = Math.floor(Math.random() * 500) + 100;
-    const cost = tokens * 0.000002;
     const timeMs = node.durationMs ?? 0;
-
-    session.cost.totalTokens += tokens;
-    session.cost.totalCost += cost;
     session.cost.totalTimeMs += timeMs;
-    session.cost.perPhase[node.phase] = { tokens, cost, timeMs };
+    session.cost.perPhase[node.phase] = {
+      tokens: 0,
+      cost: 0,
+      timeMs,
+      source: "synthetic",
+    };
   }
 
   private checkpoint(
     session: OrchestratorSession,
     phase: OrchestratorPhase,
   ): void {
-    const cp: Checkpoint = {
+    const checkpoint: Checkpoint = {
       phase,
       timestamp: Date.now(),
       snapshot: {
+        executionMode: session.executionMode,
+        resultAuthority: session.resultAuthority,
         qualityScore: session.qualityScore,
         cost: { ...session.cost },
-        completedPhases: session.phases.filter((p) => p.status === "completed")
-          .length,
+        completedHeuristics: session.phases.filter(
+          (item) => item.status === "completed",
+        ).length,
+        simulatedPhases: session.phases.filter(
+          (item) => item.status === "simulated",
+        ).length,
       },
     };
-    session.checkpoints.push(cp);
+    session.checkpoints.push(checkpoint);
   }
 
   private detectGenre(prompt: string): string {
@@ -397,14 +523,21 @@ export class AutonomousOrchestrator {
   }
 
   private estimateTime(config: GoalConfig): number {
-    return Math.min(config.timeLimitMs, 60_000);
-  }
-
-  private estimateCost(config: GoalConfig): number {
-    return Math.min(config.maxCost, 0.15);
+    const estimated = PHASE_ORDER.reduce(
+      (sum, phase) =>
+        sum + (this.options.simulationDelayMs ?? PHASE_DURATIONS[phase] ?? 50),
+      0,
+    );
+    return Math.min(config.timeLimitMs, estimated);
   }
 
   private emptyCost(): CostTracker {
-    return { totalTokens: 0, totalCost: 0, totalTimeMs: 0, perPhase: {} };
+    return {
+      totalTokens: 0,
+      totalCost: 0,
+      totalTimeMs: 0,
+      source: "synthetic",
+      perPhase: {},
+    };
   }
 }
