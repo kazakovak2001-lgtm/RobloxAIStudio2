@@ -74,7 +74,7 @@ jobs:
         run: |
           git fetch origin agent/runtime-2d-autonomous-truthfulness
           git checkout origin/agent/runtime-2d-autonomous-truthfulness -- .github/workflows/ci.yml
-          git rm scripts/runtime205-fixer.py
+          git rm -f scripts/runtime205-fixer.py
       - name: TypeScript
         run: npm run typecheck
       - name: ESLint
