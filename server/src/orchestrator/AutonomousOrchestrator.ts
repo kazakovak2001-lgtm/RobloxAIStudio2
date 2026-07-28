@@ -263,7 +263,8 @@ export class AutonomousOrchestrator {
     session: OrchestratorSession,
     phase: OrchestratorPhase,
   ): Promise<PhaseExecutionResult> {
-    const duration = this.options.simulationDelayMs ?? PHASE_DURATIONS[phase] ?? 50;
+    const duration =
+      this.options.simulationDelayMs ?? PHASE_DURATIONS[phase] ?? 50;
     await new Promise((resolve) => setTimeout(resolve, duration));
 
     if (phase === "genre_detection") {
@@ -350,22 +351,14 @@ export class AutonomousOrchestrator {
     session: OrchestratorSession,
     phase: OrchestratorPhase,
   ): boolean {
-    if (phase === "repair" && session.qualityScore === null) return true;
-    if (
-      phase === "repair" &&
-      session.qualityScore >= session.goals.targetScore
-    ) {
-      return true;
+    const qualityScore = session.qualityScore;
+    if (phase === "repair") {
+      if (qualityScore === null) return true;
+      return qualityScore >= session.goals.targetScore;
     }
-    if (phase === "studio_sync" && session.executionMode === "simulation") {
-      return true;
-    }
-    if (
-      phase === "studio_sync" &&
-      session.qualityScore !== null &&
-      session.qualityScore < 50
-    ) {
-      return true;
+    if (phase === "studio_sync") {
+      if (session.executionMode === "simulation") return true;
+      return qualityScore !== null && qualityScore < 50;
     }
     return false;
   }
