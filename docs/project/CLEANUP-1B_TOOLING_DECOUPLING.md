@@ -1,6 +1,6 @@
 # CLEANUP-1B Legacy Frontend Tooling Decoupling
 
-**Status**: Protected implementation verification passed in PR #35
+**Status**: Complete — merged through PR #35
 **Date**: July 28, 2026
 **Tracking issue**: #34
 
@@ -140,8 +140,14 @@ result: legacy-frontend-audit-result.json
 Evidence artifact `8676095415`, named `cleanup-1b-tooling-decoupling`, has
 digest
 `sha256:dc455ca74bdd823584eabc0b2de55adf3efd9b472dc1084d958408e5b30745d6`.
-The run passed the CLEANUP-1B audit and Merge Gate. The merge commit is recorded
-after the protected pull request transition completes.
+The run passed the CLEANUP-1B audit and Merge Gate.
+
+PR #35 merged as `703fe0fbcfcb8706506e9351af1fe7874a1337f0`. Post-merge
+push CI run `30327587217` (#284) passed the same protected release, rollback,
+cleanup-audit, and Merge Gate sequence on that exact default-branch commit.
+Post-merge evidence artifact `8676270323`, named
+`cleanup-1b-tooling-decoupling`, has digest
+`sha256:5d14de17c49751392d009021dc9a7b14605447ae72d44e24414848d3331169ec`.
 
 ## Safety Boundary
 
@@ -162,10 +168,9 @@ Deletion remains unauthorized in this stage.
 
 ## Next Authorized Stage
 
-CLEANUP-1C may begin only after CLEANUP-1B is protected, verified, and merged.
-It is the first deletion-authorized stage and must remove the physical legacy
-frontend and prune only dependencies proven legacy-only by the existing
-inventory.
+CLEANUP-1C is now the next authorized stage. It is the first
+deletion-authorized stage and must remove the physical legacy frontend and
+prune only dependencies proven legacy-only by the existing inventory.
 
 ## Rollback
 
