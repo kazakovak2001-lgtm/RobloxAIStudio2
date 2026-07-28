@@ -1,0 +1,26 @@
+name: Cleanup Format Diagnostic
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  format-cleanup-files:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "npm"
+      - run: npm ci
+      - name: Format CLEANUP-1A inventory
+        run: node node_modules/prettier/bin/prettier.cjs --write config/cleanup/legacy-frontend-decommission.inventory.json
+      - name: Package formatted inventory
+        run: tar -czf cleanup-format-output.tgz config/cleanup/legacy-frontend-decommission.inventory.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: cleanup-format-output
+          path: cleanup-format-output.tgz
+          if-no-files-found: error
+          retention-days: 1
