@@ -1,4 +1,4 @@
-import type { LLMProvider, LLMOptions, LLMResponse } from "../ai/provider";
+import type { LLMProvider, LLMOptions, LLMResponse } from "../types/llm";
 
 /**
  * Mock provider for testing. Returns deterministic responses.

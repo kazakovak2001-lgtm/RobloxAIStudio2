@@ -41,17 +41,8 @@ export interface PipelineContext {
   metadata: Record<string, unknown>;
 }
 
-export interface LLMProvider {
-  generate(prompt: string, options?: LLMOptions): Promise<string>;
-  stream?(prompt: string, onChunk: (chunk: string) => void): Promise<void>;
-}
-
-export interface LLMOptions {
-  model?: string;
-  temperature?: number;
-  maxTokens?: number;
-  stop?: string[];
-}
+export { LLMError } from "./llm";
+export type { LLMOptions, LLMProvider, LLMResponse } from "./llm";
 
 export type AgentStatus =
   "idle" | "running" | "completed" | "failed" | "retrying";

@@ -2,7 +2,7 @@
  * LLM utility functions — timeout, retry, centralized error handling.
  */
 
-import { LLMError } from "./provider";
+import { LLMError } from "../types/llm";
 
 /**
  * Wrap a fetch call with timeout.

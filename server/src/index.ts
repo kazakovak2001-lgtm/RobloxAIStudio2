@@ -31,7 +31,7 @@ import {
 import { RealtimeServer } from "./socket/index";
 import { errorHandler } from "./common/middleware/errorHandler";
 import { AgentRegistry } from "./agents/core/AgentRegistry";
-import { LLMProviderFactory } from "./ai/providerFactory";
+import { LLMProviderFactory } from "./providers/providerFactory";
 import { ExecutionTracer } from "./core/observability/ExecutionTracer";
 import { StudioIntegrationManager } from "./studio/integration/StudioIntegrationManager";
 import {

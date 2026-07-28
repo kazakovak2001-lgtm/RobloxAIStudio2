@@ -1,10 +1,10 @@
-import type { LLMProvider } from "./provider";
-import { OpenAIProvider } from "../providers/openai";
-import { AnthropicProvider } from "../providers/anthropic";
-import { GeminiProvider } from "../providers/gemini";
-import { OpenRouterProvider } from "../providers/openrouter";
-import { OllamaProvider } from "../providers/ollama";
-import { GroqProvider } from "../providers/groq";
+import type { LLMProvider } from "../types/llm";
+import { OpenAIProvider } from "./openai";
+import { AnthropicProvider } from "./anthropic";
+import { GeminiProvider } from "./gemini";
+import { OpenRouterProvider } from "./openrouter";
+import { OllamaProvider } from "./ollama";
+import { GroqProvider } from "./groq";
 
 export type ProviderMode =
   "openai" | "anthropic" | "gemini" | "openrouter" | "ollama" | "groq" | "none";

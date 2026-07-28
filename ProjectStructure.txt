@@ -8,9 +8,11 @@
 ├── .env.example
 ├── .eslintrc.json
 ├── .github
+│   ├── arch-204-trigger.txt
 │   ├── copilot-instructions.md
 │   └── workflows
 │       ├── ci.yml
+│       ├── patch-ai-provider-commit.yml
 │       └── studio-plugin-package.yml
 ├── .gitignore
 ├── .husky

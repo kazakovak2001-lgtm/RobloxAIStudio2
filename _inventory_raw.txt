@@ -3,8 +3,10 @@
 .dockerignore
 .env.example
 .eslintrc.json
+.github/arch-204-trigger.txt
 .github/copilot-instructions.md
 .github/workflows/ci.yml
+.github/workflows/patch-ai-provider-commit.yml
 .github/workflows/studio-plugin-package.yml
 .gitignore
 .husky/commit-msg

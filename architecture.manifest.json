@@ -68,67 +68,190 @@
     }
   },
   "domains": {
-    "agents": { "path": "server/src/agents", "layer": "domains" },
-    "ai": { "path": "server/src/ai", "layer": "domains" },
-    "analytics": { "path": "server/src/analytics", "layer": "domains" },
-    "api": { "path": "server/src/api", "layer": "api" },
-    "artifacts": { "path": "server/src/artifacts", "layer": "domains" },
-    "assembly": { "path": "server/src/assembly", "layer": "domains" },
-    "assets": { "path": "server/src/assets", "layer": "domains" },
-    "cloud": { "path": "server/src/cloud", "layer": "infrastructure" },
+    "agents": {
+      "path": "server/src/agents",
+      "layer": "domains"
+    },
+    "ai": {
+      "path": "server/src/ai",
+      "layer": "domains"
+    },
+    "analytics": {
+      "path": "server/src/analytics",
+      "layer": "domains"
+    },
+    "api": {
+      "path": "server/src/api",
+      "layer": "api"
+    },
+    "artifacts": {
+      "path": "server/src/artifacts",
+      "layer": "domains"
+    },
+    "assembly": {
+      "path": "server/src/assembly",
+      "layer": "domains"
+    },
+    "assets": {
+      "path": "server/src/assets",
+      "layer": "domains"
+    },
+    "cloud": {
+      "path": "server/src/cloud",
+      "layer": "infrastructure"
+    },
     "collaboration": {
       "path": "server/src/collaboration",
       "layer": "domains"
     },
-    "common": { "path": "server/src/common", "layer": "shared" },
-    "compiler": { "path": "server/src/compiler", "layer": "domains" },
-    "core": { "path": "server/src/core", "layer": "core" },
+    "common": {
+      "path": "server/src/common",
+      "layer": "shared"
+    },
+    "compiler": {
+      "path": "server/src/compiler",
+      "layer": "domains"
+    },
+    "core": {
+      "path": "server/src/core",
+      "layer": "core"
+    },
     "distributed": {
       "path": "server/src/distributed",
       "layer": "infrastructure"
     },
-    "domain": { "path": "server/src/domain", "layer": "domains" },
-    "economy": { "path": "server/src/economy", "layer": "domains" },
-    "evaluation": { "path": "server/src/evaluation", "layer": "domains" },
-    "eventsource": { "path": "server/src/eventsource", "layer": "domains" },
-    "execution": { "path": "server/src/execution", "layer": "domains" },
-    "export": { "path": "server/src/export", "layer": "domains" },
-    "generation": { "path": "server/src/generation", "layer": "domains" },
-    "governance": { "path": "server/src/governance", "layer": "domains" },
+    "domain": {
+      "path": "server/src/domain",
+      "layer": "domains"
+    },
+    "economy": {
+      "path": "server/src/economy",
+      "layer": "domains"
+    },
+    "evaluation": {
+      "path": "server/src/evaluation",
+      "layer": "domains"
+    },
+    "eventsource": {
+      "path": "server/src/eventsource",
+      "layer": "domains"
+    },
+    "execution": {
+      "path": "server/src/execution",
+      "layer": "domains"
+    },
+    "export": {
+      "path": "server/src/export",
+      "layer": "domains"
+    },
+    "generation": {
+      "path": "server/src/generation",
+      "layer": "domains"
+    },
+    "governance": {
+      "path": "server/src/governance",
+      "layer": "domains"
+    },
     "integration": {
       "path": "server/src/integration",
       "layer": "infrastructure"
     },
-    "jobs": { "path": "server/src/jobs", "layer": "infrastructure" },
-    "knowledge": { "path": "server/src/knowledge", "layer": "domains" },
-    "lifecycle": { "path": "server/src/lifecycle", "layer": "domains" },
-    "lua": { "path": "server/src/lua", "layer": "domains" },
-    "memory": { "path": "server/src/memory", "layer": "domains" },
+    "jobs": {
+      "path": "server/src/jobs",
+      "layer": "infrastructure"
+    },
+    "knowledge": {
+      "path": "server/src/knowledge",
+      "layer": "domains"
+    },
+    "lifecycle": {
+      "path": "server/src/lifecycle",
+      "layer": "domains"
+    },
+    "lua": {
+      "path": "server/src/lua",
+      "layer": "domains"
+    },
+    "memory": {
+      "path": "server/src/memory",
+      "layer": "domains"
+    },
     "orchestrator": {
       "path": "server/src/orchestrator",
       "layer": "domains"
     },
-    "pipeline": { "path": "server/src/pipeline", "layer": "infrastructure" },
-    "planning": { "path": "server/src/planning", "layer": "domains" },
-    "platform": { "path": "server/src/platform", "layer": "api" },
-    "playtest": { "path": "server/src/playtest", "layer": "domains" },
-    "plugins": { "path": "server/src/plugins", "layer": "domains" },
-    "projects": { "path": "server/src/projects", "layer": "api" },
+    "pipeline": {
+      "path": "server/src/pipeline",
+      "layer": "infrastructure"
+    },
+    "planning": {
+      "path": "server/src/planning",
+      "layer": "domains"
+    },
+    "platform": {
+      "path": "server/src/platform",
+      "layer": "api"
+    },
+    "playtest": {
+      "path": "server/src/playtest",
+      "layer": "domains"
+    },
+    "plugins": {
+      "path": "server/src/plugins",
+      "layer": "domains"
+    },
+    "projects": {
+      "path": "server/src/projects",
+      "layer": "api"
+    },
     "providers": {
       "path": "server/src/providers",
       "layer": "infrastructure"
     },
-    "repair": { "path": "server/src/repair", "layer": "domains" },
-    "routes": { "path": "server/src/routes", "layer": "api" },
-    "runtime": { "path": "server/src/runtime", "layer": "infrastructure" },
-    "services": { "path": "server/src/services", "layer": "shared" },
-    "simulation": { "path": "server/src/simulation", "layer": "domains" },
-    "socket": { "path": "server/src/socket", "layer": "infrastructure" },
-    "studio": { "path": "server/src/studio", "layer": "domains" },
-    "types": { "path": "server/src/types", "layer": "shared" },
-    "ui-gen": { "path": "server/src/ui-gen", "layer": "domains" },
-    "validation": { "path": "server/src/validation", "layer": "shared" },
-    "world": { "path": "server/src/world", "layer": "domains" }
+    "repair": {
+      "path": "server/src/repair",
+      "layer": "domains"
+    },
+    "routes": {
+      "path": "server/src/routes",
+      "layer": "api"
+    },
+    "runtime": {
+      "path": "server/src/runtime",
+      "layer": "infrastructure"
+    },
+    "services": {
+      "path": "server/src/services",
+      "layer": "shared"
+    },
+    "simulation": {
+      "path": "server/src/simulation",
+      "layer": "domains"
+    },
+    "socket": {
+      "path": "server/src/socket",
+      "layer": "infrastructure"
+    },
+    "studio": {
+      "path": "server/src/studio",
+      "layer": "domains"
+    },
+    "types": {
+      "path": "server/src/types",
+      "layer": "shared"
+    },
+    "ui-gen": {
+      "path": "server/src/ui-gen",
+      "layer": "domains"
+    },
+    "validation": {
+      "path": "server/src/validation",
+      "layer": "shared"
+    },
+    "world": {
+      "path": "server/src/world",
+      "layer": "domains"
+    }
   },
   "excludedTopLevelEntries": [
     {
@@ -141,7 +264,6 @@
     }
   ],
   "allowedCycles": [
-    ["ai", "providers"],
     ["execution", "socket"],
     ["execution", "planning", "socket"]
   ],
@@ -184,6 +306,28 @@
       "reason": "Replaced by PlanExecutor",
       "preservedFor": ["PIPELINE_STAGES constant", "type references"],
       "runtimeUsage": "FORBIDDEN"
+    }
+  ],
+  "allowedLayerEdges": [
+    {
+      "from": "domains",
+      "to": "infrastructure",
+      "reason": "Legacy domain orchestration emits realtime events and writes pipeline artifacts directly; replace with runtime ports during RUNTIME-2D."
+    },
+    {
+      "from": "shared",
+      "to": "api",
+      "reason": "Legacy shared middleware and persistence services depend on platform auth/storage adapters; invert these dependencies during RUNTIME-2D and DURABILITY-2E."
+    },
+    {
+      "from": "infrastructure",
+      "to": "api",
+      "reason": "Pipeline artifact storage currently uses the platform storage factory; move the storage contract below the API layer during DURABILITY-2E."
+    },
+    {
+      "from": "domains",
+      "to": "api",
+      "reason": "Studio runtime currently imports the platform storage contract; extract a neutral storage port during DURABILITY-2E and STUDIO-2F."
     }
   ]
 }

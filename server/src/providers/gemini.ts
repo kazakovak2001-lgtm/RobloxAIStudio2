@@ -1,9 +1,5 @@
-import type { LLMProvider, LLMOptions, LLMResponse } from "../ai/provider";
-import {
-  fetchWithTimeout,
-  withRetry,
-  parseProviderError,
-} from "../ai/llmUtils";
+import type { LLMProvider, LLMOptions, LLMResponse } from "../types/llm";
+import { fetchWithTimeout, withRetry, parseProviderError } from "./llmUtils";
 
 export class GeminiProvider implements LLMProvider {
   readonly name = "gemini";

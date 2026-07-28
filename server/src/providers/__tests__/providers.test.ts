@@ -4,8 +4,8 @@
 
 import { describe, it, expect } from "vitest";
 import { MockProvider } from "../mock";
-import { LLMError } from "../../ai/provider";
-import { withRetry } from "../../ai/llmUtils";
+import { LLMError } from "../../types/llm";
+import { withRetry } from "../llmUtils";
 
 describe("MockProvider", () => {
   it("generates deterministic responses", async () => {
