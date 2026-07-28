@@ -1,0 +1,45 @@
+name: ARCH-204 Evidence
+
+on:
+  push:
+    branches:
+      - agent/arch-204-cycle-reduction
+
+permissions:
+  contents: read
+
+jobs:
+  cycle-evidence:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout branch
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Generate architecture report
+        run: npm run validate:boundaries
+
+      - name: Capture assembly-governance call sites
+        run: |
+          grep -RInE 'runGovernanceCheck|getCIStatus' server/src > arch-204-callers.txt || true
+          grep -RInE 'governance/' server/src/assembly > assembly-to-governance.txt || true
+          grep -RInE 'assembly/' server/src/governance > governance-to-assembly.txt || true
+
+      - name: Upload evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: arch-204-cycle-evidence
+          path: |
+            boundary-report.json
+            arch-204-callers.txt
+            assembly-to-governance.txt
+            governance-to-assembly.txt
+          if-no-files-found: error
