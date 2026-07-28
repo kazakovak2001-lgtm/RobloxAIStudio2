@@ -1,4 +1,4 @@
-name: Fix RUNTIME-204 Preservation Contracts
+name: Fix RUNTIME-204 Preservation Contracts v2
 
 on:
   pull_request:
@@ -26,7 +26,6 @@ jobs:
         run: |
           node node_modules/prettier/bin/prettier.cjs --write \
             .github/workflows/runtime-204-test-diagnostics.yml \
-            scripts/runtime-204-compatibility-patch.py \
             server/src/orchestrator/AutonomousOrchestrator.ts \
             server/src/__tests__/autonomousPipelineIntegration.test.ts \
             server/src/__tests__/autonomousPipelinePreservation.test.ts \
