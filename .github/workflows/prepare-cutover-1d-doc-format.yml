@@ -1,16 +1,20 @@
-name: Prepare CUTOVER-1D Documentation Format
+name: Finalize CUTOVER-1D Documentation Format
 
 on:
   pull_request:
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
-  prepare:
+  finalize:
+    if: github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: cutover/release-baseline-readiness
+          fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
@@ -26,12 +30,14 @@ jobs:
           npx prettier --check \
             docs/00-project-control/CUTOVER-1D_RELEASE_BASELINE_READINESS.md \
             docs/00-project-control/ROADMAP_STATUS.md
-      - name: Publish formatted documentation
-        uses: actions/upload-artifact@v4
-        with:
-          name: cutover-1d-doc-format-${{ github.event.pull_request.head.sha }}
-          path: |
-            docs/00-project-control/CUTOVER-1D_RELEASE_BASELINE_READINESS.md
+      - name: Commit formatted documents and remove helper
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git rm .github/workflows/prepare-cutover-1d-doc-format.yml
+          git add \
+            docs/00-project-control/CUTOVER-1D_RELEASE_BASELINE_READINESS.md \
             docs/00-project-control/ROADMAP_STATUS.md
-          if-no-files-found: error
-          retention-days: 1
+          git diff --cached --check
+          git commit -m "style(cutover): format readiness documentation"
+          git push origin HEAD:cutover/release-baseline-readiness
