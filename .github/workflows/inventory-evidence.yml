@@ -1,0 +1,30 @@
+name: Inventory Evidence
+
+on:
+  pull_request:
+    branches:
+      - release/cutover-1e-candidate
+
+permissions:
+  contents: read
+
+jobs:
+  inventory-evidence:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout pull request
+        uses: actions/checkout@v4
+
+      - name: Regenerate final tracked-file inventory
+        run: |
+          git ls-files \
+            | grep -v '^.github/workflows/inventory-evidence.yml$' \
+            | LC_ALL=C sort \
+            > _inventory_raw.txt
+
+      - name: Upload inventory evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: inventory-evidence
+          path: _inventory_raw.txt
+          if-no-files-found: error
