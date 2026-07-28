@@ -183,7 +183,11 @@
       "src/shared/ui/system/index.ts",
       "src/styles/index.css"
     ],
-    "entrypoints": ["src/main.tsx", "src/App.tsx", "src/styles.css"],
+    "entrypoints": [
+      "src/main.tsx",
+      "src/App.tsx",
+      "src/styles/index.css"
+    ],
     "configurationFiles": [
       "index.html",
       "tsconfig.json",
@@ -207,7 +211,10 @@
         "classification": "postgres-development-only-do-not-delete-with-frontend-stack"
       }
     ],
-    "staleInventoryFiles": ["_inventory_raw.txt", "ProjectStructure.txt"],
+    "staleInventoryFiles": [
+      "_inventory_raw.txt",
+      "ProjectStructure.txt"
+    ],
     "knownMissingPaths": [
       {
         "path": "public",
@@ -224,9 +231,13 @@
       "typecheck": "node node_modules/typescript/bin/tsc --noEmit && node node_modules/typescript/bin/tsc --noEmit --project server/tsconfig.json"
     },
     "rootTsconfig": {
-      "include": ["src"],
+      "include": [
+        "src"
+      ],
       "pathAlias": {
-        "@/*": ["src/*"]
+        "@/*": [
+          "src/*"
+        ]
       }
     },
     "architectureValidatorMarkers": [
@@ -240,7 +251,10 @@
       "RUN npx vite build",
       "COPY --from=builder /app/dist ./dist"
     ],
-    "ciMarkers": ["npx tsc --noEmit", "name: Promoted Baseline Integrity"]
+    "ciMarkers": [
+      "npx tsc --noEmit",
+      "name: Promoted Baseline Integrity"
+    ]
   },
   "packageDisposition": {
     "retainOperational": [
