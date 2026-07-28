@@ -19,8 +19,7 @@ export type AssemblyCIStatus = "PASSED" | "BLOCKED" | "WARN";
 export class AssemblyGovernanceService {
   constructor(
     private readonly registry: AssemblyRegistry = getDefaultAssemblyRegistry(),
-    private readonly policyEngine: GovernancePolicyEngine =
-      new GovernancePolicyEngine(),
+    private readonly policyEngine: GovernancePolicyEngine = new GovernancePolicyEngine(),
   ) {}
 
   runGovernanceCheck(
