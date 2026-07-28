@@ -1,4 +1,4 @@
-name: Sync ARCH-204 Stacked Base
+name: Synchronize ARCH-204 Stacked Base
 
 on:
   pull_request:
