@@ -49,7 +49,8 @@ function collectTypeScriptFiles(directory: string): string[] {
 }
 
 function literalText(node: ts.Expression | undefined): string | undefined {
-  return node && (ts.isStringLiteral(node) || ts.isNoSubstitutionTemplateLiteral(node))
+  return node &&
+    (ts.isStringLiteral(node) || ts.isNoSubstitutionTemplateLiteral(node))
     ? node.text
     : undefined;
 }
@@ -95,7 +96,9 @@ function resolveInternalTarget(
   sourceFile: string,
   importPath: string,
 ): string | undefined {
-  if (!importPath.startsWith(".") && !importPath.startsWith("/")) return undefined;
+  if (!importPath.startsWith(".") && !importPath.startsWith("/")) {
+    return undefined;
+  }
 
   const resolved = resolve(dirname(sourceFile), importPath);
   return relative(rootDir, resolved).replaceAll("\\", "/");
@@ -108,7 +111,10 @@ export function buildAstImportInventory(
   const sourceRoot = join(rootDir, "server", "src");
   const files = collectTypeScriptFiles(sourceRoot);
   const edges: AstDependencyEdge[] = [];
-  const unresolvedInternalImports: Array<{ file: string; importPath: string }> = [];
+  const unresolvedInternalImports: Array<{
+    file: string;
+    importPath: string;
+  }> = [];
   let specificationsAnalyzed = 0;
   let reExportsAnalyzed = 0;
 
