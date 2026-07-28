@@ -24,14 +24,14 @@ Active backend and composed-release artifacts were already proven independent fr
 
 ## Exact Legacy Source Inventory
 
-Root `src/` currently contains 55 tracked files. The machine-readable inventory records every path and the audit produces a SHA-256 digest and byte size for every file.
+Root `src/` currently contains 168 tracked files. The machine-readable inventory records every path and the audit produces a SHA-256 digest and byte size for every file.
 
 The primary embedded frontend entrypoints are:
 
 ```text
 src/main.tsx
 src/App.tsx
-src/styles.css
+src/styles/index.css
 ```
 
 The source tree includes:
