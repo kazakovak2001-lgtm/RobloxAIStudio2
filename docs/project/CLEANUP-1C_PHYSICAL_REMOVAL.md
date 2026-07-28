@@ -1,6 +1,6 @@
 # CLEANUP-1C Legacy Frontend Physical Removal
 
-**Status**: Protected implementation verification passed in PR #39; merge pending
+**Status**: Complete — merged through PR #39
 **Date**: July 28, 2026  
 **Tracking issue**: #37
 
@@ -159,8 +159,19 @@ Protected implementation verification passed on PR #39 head
 - the artifact contains the `artifacts/cleanup-1c` evidence bundle, including
   `legacy-frontend-audit-result.json`.
 
-This records implementation verification only. CLEANUP-1C remains active until
-PR #39 is merged and the protected default-branch push run passes.
+Final PR head `3c977e756653f13e31ab622822639388f791e68f` passed CI run
+`30329991563` (#290), Studio Plugin Package run #27, the CLEANUP-1C audit, and
+Merge Gate. Final PR evidence artifact `8677050249` has digest
+`sha256:e944bf32918b3aedf09ff591f0e76e56e62068d68710150f7b37fb3fc696d566`.
+
+PR #39 merged as `1bc54753783610827750dbb11689c0fb24620923`. Post-merge
+push CI run `30330505927` (#291) passed the protected backend tests, PostgreSQL
+restart, backend image, composed HTTPS release, promoted-baseline integrity,
+CLEANUP-1C audit, repository validation, and Merge Gate sequence on that exact
+default-branch commit. Post-merge evidence artifact `8677218198`, named
+`cleanup-1c-physical-removal`, has digest
+`sha256:b7693a9fac74b6e6615b5ba277e98ccb8575d21147e381d9ebcb5e400c89f74f`.
+Issue #37 is closed as completed.
 
 ## Rollback
 
@@ -173,7 +184,6 @@ backend artifact with the verified CUTOVER-1B standalone Frontend artifact.
 
 ## Next Stage
 
-CLEANUP-1D is the next stage after CLEANUP-1C is protected, verified, and
-merged. It must run post-removal verification, prove zero stale active/tooling
-references, and refresh the intentionally retained broad repository
-inventories and project-control documentation.
+CLEANUP-1D is now the next stage. It must run post-removal verification, prove
+zero stale active/tooling references, and refresh the intentionally retained
+broad repository inventories and project-control documentation.
