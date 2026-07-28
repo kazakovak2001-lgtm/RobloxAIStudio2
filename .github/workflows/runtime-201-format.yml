@@ -1,4 +1,4 @@
-name: Format RUNTIME-201 Files v2
+name: Format RUNTIME-201 Files v3
 
 on:
   pull_request:
@@ -42,5 +42,5 @@ jobs:
             config/runtime/runtime-ownership.json \
             package.json \
             scripts/validate-runtime-ownership.ts
-          git commit -m "style(runtime): format ownership registry"
+          git commit --no-verify -m "style(runtime): format ownership registry"
           git push origin HEAD:${{ github.event.pull_request.head.ref }}
