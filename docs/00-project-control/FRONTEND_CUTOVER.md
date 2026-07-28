@@ -8,25 +8,25 @@
 
 The standalone [Frontend repository](https://github.com/kazakovak2001-lgtm/Frontend) is the only target web client for Roblox AI Studio.
 
-The React/Vite application in this repository's root `src/` directory is a legacy migration inventory. It is frozen: it must not receive new product features, new pages, or parallel API integrations.
+The former React/Vite application in this repository's root `src/` directory was a frozen migration inventory and is physically removed in CLEANUP-1C. It must not be recreated; Git history and the cleanup inventory preserve the migration evidence.
 
 This policy supersedes historical documentation that planned to evolve the embedded frontend in place.
 
 ## Ownership Boundaries
 
-| Area                                                    | Canonical location               | Rule                                                            |
-| ------------------------------------------------------- | -------------------------------- | --------------------------------------------------------------- |
-| Web UI, routes, Workspace, client state                 | `kazakovak2001-lgtm/Frontend`    | All new user-facing UI work belongs here.                       |
-| API, domain logic, AI execution, Socket.IO, persistence | `RobloxAIStudio2/server/`        | Frontend accesses it only through REST and Socket.IO contracts. |
-| Roblox Studio integration                               | `RobloxAIStudio2/studio-plugin/` | Maintain one plugin implementation and one protocol.            |
-| Legacy web client                                       | `RobloxAIStudio2/src/`           | Read-only migration reference until the removal gate is passed. |
+| Area                                                    | Canonical location                | Rule                                                            |
+| ------------------------------------------------------- | --------------------------------- | --------------------------------------------------------------- |
+| Web UI, routes, Workspace, client state                 | `kazakovak2001-lgtm/Frontend`     | All new user-facing UI work belongs here.                       |
+| API, domain logic, AI execution, Socket.IO, persistence | `RobloxAIStudio2/server/`         | Frontend accesses it only through REST and Socket.IO contracts. |
+| Roblox Studio integration                               | `RobloxAIStudio2/studio-plugin/`  | Maintain one plugin implementation and one protocol.            |
+| Removed legacy web client                               | Historical `RobloxAIStudio2/src/` | Do not recreate; use the standalone Frontend repository.        |
 
 ## Mandatory Rules
 
 1. Search both repositories before creating a component, endpoint, service, hook, or contract.
 2. Reuse and extend the existing `Frontend` API adapter, realtime client, contexts, routes, and UI primitives before adding equivalents.
 3. Do not import source code across repositories. The boundary is versioned REST/Socket.IO contracts.
-4. Every user-facing backend capability must have one discoverable path in the standalone frontend; do not recreate it in the legacy frontend.
+4. Every user-facing backend capability must have one discoverable path in the standalone frontend; do not recreate an embedded frontend.
 5. Production workflows must use persisted project data and generated artifacts. Fixtures and placeholders belong only in tests.
 6. Any public API change requires a contract-impact review and a matching standalone frontend change in the same delivery sequence.
 7. Every task must run the project controller pre-check or an equivalent duplicate/architecture audit before implementation.
@@ -50,7 +50,7 @@ This policy supersedes historical documentation that planned to evolve the embed
 
 ## Legacy Frontend Removal Gate
 
-The embedded `src/` frontend may be removed only when all conditions are true:
+The removal gate passed before CLEANUP-1C began:
 
 - The standalone frontend covers the agreed core user flow: create project → generate → observe progress → inspect artifacts → validate/playtest → repair → synchronize/export.
 - The backend serves the same typed API contracts used by the standalone frontend with real persisted data.
@@ -59,10 +59,12 @@ The embedded `src/` frontend may be removed only when all conditions are true:
 - CLEANUP-1B tooling decoupling is protected, verified, and merged.
 - The removal occurs in a dedicated pull request with a rollback plan.
 
+CLEANUP-1C implements the dedicated removal under issue #37 from exact baseline `85a2fa8d512738e6d02ffae42da77af7a27db6fc`. Its protected audit requires all 176 authorized deletions, exact dependency pruning, unchanged active release boundaries, and a hard failure if root `src/` reappears. CLEANUP-1D post-removal verification remains blocked until CLEANUP-1C is verified and merged.
+
 ## Definition of Done for a Cutover Sprint
 
 - Both repository boundaries remain intact.
-- No new legacy frontend code is introduced.
+- The removed legacy frontend root is not reintroduced.
 - CI covers the active backend integration branch and the standalone frontend default branch.
 - Project-control documents and the decision log reflect the verified state.
 - The next sprint has a single objective, dependencies, validation plan, and rollback plan.

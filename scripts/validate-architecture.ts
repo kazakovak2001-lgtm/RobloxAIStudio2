@@ -1,16 +1,16 @@
 /**
- * Architecture Boundary Validator v3 — Backend + Standalone Frontend Model
+ * Architecture Boundary Validator v4 — Backend + Standalone Frontend Model
  *
  * Enforces:
  *   - Backend: server/src/ (Node/Express AI compiler)
  *   - Roblox Studio plugin: studio-plugin/src/ (isolated plugin runtime)
  *   - Canonical web client: kazakovak2001-lgtm/Frontend (external repository)
- *   - Frozen root src/: migration inventory only, never an active source root
+ *   - Removed legacy root src/: forbidden to reintroduce
  *
  * Detects:
  *   - Missing canonical backend or Studio roots
  *   - Forbidden source roots
- *   - Backend imports from React or the frozen legacy frontend
+ *   - Backend imports from React or the removed legacy frontend
  *   - Orphan modules
  *   - Deprecated runtime usage
  *
@@ -96,8 +96,21 @@ function scanForMissingCanonicalRoots(): Violation[] {
   return violations;
 }
 
-function scanForForbiddenRoots(): Violation[] {
+function scanForForbiddenRoots(legacyRoot: string): Violation[] {
   const violations: Violation[] = [];
+
+  const removedLegacyRoot = join(ROOT, legacyRoot);
+  if (
+    existsSync(removedLegacyRoot) &&
+    statSync(removedLegacyRoot).isDirectory()
+  ) {
+    violations.push({
+      type: "forbidden-root",
+      path: legacyRoot,
+      severity: "critical",
+      message: `Removed legacy frontend root reintroduced: ${legacyRoot}/`,
+    });
+  }
 
   for (const pattern of FORBIDDEN_PATTERNS) {
     const fullPath = join(ROOT, pattern);
@@ -211,7 +224,7 @@ function scanForBackendBoundaryViolations(): Violation[] {
         type: "cross-boundary",
         path: repositoryPath,
         severity: "critical",
-        message: "Backend file imports from frozen root src/",
+        message: "Backend file imports from removed legacy root src/",
       });
     }
   }
@@ -276,12 +289,12 @@ function main(): void {
   const legacyFrontendExists = existsSync(join(ROOT, legacyRoot));
 
   console.log("╔══════════════════════════════════════════════════╗");
-  console.log("║  Canonical Architecture Validator v3             ║");
+  console.log("║  Canonical Architecture Validator v4             ║");
   console.log("╚══════════════════════════════════════════════════╝\n");
 
   const violations: Violation[] = [
     ...scanForMissingCanonicalRoots(),
-    ...scanForForbiddenRoots(),
+    ...scanForForbiddenRoots(legacyRoot),
     ...scanForOrphanModules(),
     ...scanForBackendBoundaryViolations(),
     ...scanForDeprecatedRuntimeUsage(),
@@ -301,7 +314,7 @@ function main(): void {
   );
   console.log(
     `  Legacy frontend (/${legacyRoot}): ${
-      legacyFrontendExists ? "FROZEN INVENTORY" : "REMOVED"
+      legacyFrontendExists ? "REINTRODUCED" : "REMOVED"
     }`,
   );
   console.log(
