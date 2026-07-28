@@ -1,0 +1,44 @@
+name: AI Provider Cycle Evidence
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  cycle-evidence:
+    if: github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout pull request head
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.ref }}
+
+      - name: Capture AI to providers edges
+        run: |
+          grep -RInE 'from ["'"']\.\./providers|from ["'"']\.\./\.\./providers|require\(["'"'].*providers' server/src/ai server/src > ai-to-providers.txt || true
+
+      - name: Capture providers to AI edges
+        run: |
+          grep -RInE 'from ["'"']\.\./ai|from ["'"']\.\./\.\./ai|require\(["'"'].*ai' server/src/providers > providers-to-ai.txt || true
+
+      - name: Capture provider factory call sites
+        run: |
+          grep -RInE 'providerFactory|LLMProviderFactory|ProviderFactoryResult|ProviderMode' server/src > provider-factory-callers.txt || true
+
+      - name: Capture provider contract and utility call sites
+        run: |
+          grep -RInE 'ai/provider|ai/llmUtils|LLMProvider|LLMOptions|LLMResponse|LLMError|fetchWithTimeout|withRetry|parseProviderError' server/src > provider-contract-callers.txt || true
+
+      - name: Upload cycle evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: ai-provider-cycle-evidence
+          path: |
+            ai-to-providers.txt
+            providers-to-ai.txt
+            provider-factory-callers.txt
+            provider-contract-callers.txt
+          if-no-files-found: error
