@@ -67,6 +67,7 @@ commitlint.config.js
 config/cleanup/legacy-frontend-decommission.inventory.json
 config/cutover/promoted-baseline.inventory.json
 config/cutover/release-baseline.inventory.json
+config/runtime/runtime-ownership.json
 config/testing/vitest.backend.config.ts
 deploy/docker-compose.backend.yml
 deploy/docker-compose.release.yml
@@ -467,6 +468,7 @@ scripts/test-pre-check.ts
 scripts/validate-architecture.ts
 scripts/validate-boundaries.ts
 scripts/validate-controller.ts
+scripts/validate-runtime-ownership.ts
 scripts/validate.ts
 server/prisma/schema.prisma
 server/src/__tests__/agentDecisionEngine.routing.test.ts
