@@ -33,10 +33,10 @@ This policy supersedes historical documentation that planned to evolve the embed
 
 ## Current Branch Strategy
 
-- `feature/plugin-merge` is the active integration baseline for the connected backend and Studio plugin.
-- The repository default branch is currently `standing-pentaceratops`.
-- Do not merge the large integration PR into the default branch without a dedicated release plan, conflict review, and full validation.
-- Cutover work uses small branches and focused pull requests based on `feature/plugin-merge` until the release baseline is formally promoted.
+- `release/cutover-1e-candidate` is the protected repository default and canonical backend/Studio baseline.
+- `backup/default-before-cutover-1e` preserves the exact pre-promotion default reference.
+- `feature/plugin-merge` remains historical integration evidence; PR #1 must not be merged directly.
+- Cleanup work uses small branches and focused pull requests based on the protected default.
 
 ## Delivery Order
 
@@ -56,6 +56,7 @@ The embedded `src/` frontend may be removed only when all conditions are true:
 - The backend serves the same typed API contracts used by the standalone frontend with real persisted data.
 - Cross-repository build, typecheck, API, realtime, and manual Studio validation pass.
 - No runtime script, CI workflow, deployment configuration, documentation link, or import depends on the embedded frontend.
+- CLEANUP-1B tooling decoupling is protected, verified, and merged.
 - The removal occurs in a dedicated pull request with a rollback plan.
 
 ## Definition of Done for a Cutover Sprint

@@ -12,6 +12,7 @@ import path from "node:path";
 import ts from "typescript";
 
 const root = process.cwd();
+const stageId = "CLEANUP-1B";
 const inventoryPath = path.resolve(
   root,
   process.env.LEGACY_FRONTEND_AUDIT_INVENTORY ??
@@ -19,14 +20,14 @@ const inventoryPath = path.resolve(
 );
 const outputDirectory = path.resolve(
   root,
-  process.env.LEGACY_FRONTEND_AUDIT_OUTPUT ?? "artifacts/cleanup-1a",
+  process.env.LEGACY_FRONTEND_AUDIT_OUTPUT ?? "artifacts/cleanup-1b",
 );
 
 mkdirSync(outputDirectory, { recursive: true });
 process.on("uncaughtException", (error) => {
   const failure = {
     status: "failed",
-    roadmapId: "CLEANUP-1A",
+    roadmapId: stageId,
     generatedAt: new Date().toISOString(),
     message: error instanceof Error ? error.message : String(error),
     stack: error instanceof Error ? error.stack : undefined,
@@ -42,16 +43,17 @@ process.on("uncaughtException", (error) => {
 const inventory = JSON.parse(readFileSync(inventoryPath, "utf8"));
 assert.equal(
   inventory.schemaVersion,
-  1,
+  2,
   "Unsupported cleanup inventory schema",
 );
-assert.equal(inventory.roadmapId, "CLEANUP-1A");
-assert.equal(inventory.status, "audit-only");
+assert.equal(inventory.roadmapId, stageId);
+assert.equal(inventory.status, "tooling-decoupled");
 assert.equal(
   inventory.currentStageDeletionAuthorized,
   false,
-  "CLEANUP-1A must not authorize deletion",
+  "CLEANUP-1B must not authorize deletion",
 );
+assert.equal(inventory.nextStage, "CLEANUP-1C");
 
 const git = (...args) =>
   execFileSync("git", args, { cwd: root, encoding: "utf8" }).trim();
@@ -73,6 +75,29 @@ const trackedFiles = git("ls-files")
   .map((file) => file.trim())
   .filter(Boolean)
   .sort();
+const changedSinceBaseline = git(
+  "diff",
+  "--name-only",
+  `${inventory.baseline.minimumAncestorCommit}...HEAD`,
+)
+  .split("\n")
+  .map((file) => file.trim())
+  .filter(Boolean)
+  .sort();
+
+const allowedStageChanges = new Set(
+  inventory.stageChangePolicy.allowedChangedFiles,
+);
+const unexpectedStageChanges = changedSinceBaseline.filter(
+  (file) => !allowedStageChanges.has(file),
+);
+assert.deepEqual(
+  unexpectedStageChanges,
+  [],
+  `CLEANUP-1B changed files outside its tooling/documentation scope: ${unexpectedStageChanges.join(
+    ", ",
+  )}`,
+);
 
 const sourcePrefix = `${inventory.legacyFrontend.sourceRoot}/`;
 const actualLegacyFiles = trackedFiles
@@ -85,10 +110,10 @@ const expectedLegacyFiles = [
 assert.deepEqual(
   actualLegacyFiles,
   expectedLegacyFiles,
-  "Tracked root src inventory changed; repeat CLEANUP-1A classification",
+  "Tracked root src inventory changed; CLEANUP-1B must preserve all CLEANUP-1A source files",
 );
 
-const auditOnlyProtectedFiles = new Set([
+const protectedUnchangedFiles = new Set([
   ...inventory.legacyFrontend.expectedTrackedFiles,
   ...inventory.legacyFrontend.configurationFiles,
   ...inventory.legacyFrontend.archivalDeploymentFiles,
@@ -96,29 +121,15 @@ const auditOnlyProtectedFiles = new Set([
     (entry) => entry.path,
   ),
   ...inventory.legacyFrontend.staleInventoryFiles,
-  "package.json",
-  "package-lock.json",
-  "scripts/validate-architecture.ts",
-  "scripts/validate-boundaries.ts",
-  "server/src/core/architecture/ImportBoundaryValidator.ts",
+  ...inventory.stageChangePolicy.additionalProtectedFiles,
 ]);
-const changedSinceBaseline = git(
-  "diff",
-  "--name-only",
-  `${inventory.baseline.minimumAncestorCommit}...HEAD`,
-)
-  .split("\n")
-  .map((file) => file.trim())
-  .filter(Boolean)
-  .sort();
 const protectedPathChanges = changedSinceBaseline.filter(
-  (file) =>
-    file.startsWith(sourcePrefix) || auditOnlyProtectedFiles.has(file),
+  (file) => file.startsWith(sourcePrefix) || protectedUnchangedFiles.has(file),
 );
 assert.deepEqual(
   protectedPathChanges,
   [],
-  `CLEANUP-1A audit-only protected paths changed: ${protectedPathChanges.join(
+  `CLEANUP-1B protected legacy/runtime files changed: ${protectedPathChanges.join(
     ", ",
   )}`,
 );
@@ -180,13 +191,27 @@ for (const entry of inventory.legacyFrontend.knownMissingPaths) {
 const packageJson = JSON.parse(
   readFileSync(path.join(root, "package.json"), "utf8"),
 );
+const baselinePackageJson = JSON.parse(
+  git("show", `${inventory.baseline.minimumAncestorCommit}:package.json`),
+);
+assert.deepEqual(
+  packageJson.dependencies,
+  baselinePackageJson.dependencies,
+  "CLEANUP-1B must not change runtime dependency declarations",
+);
+assert.deepEqual(
+  packageJson.devDependencies,
+  baselinePackageJson.devDependencies,
+  "CLEANUP-1B must not change development dependency declarations",
+);
+
 for (const [name, expectedCommand] of Object.entries(
-  inventory.currentBlockers.packageScripts,
+  inventory.toolingContract.packageScripts,
 )) {
   assert.equal(
     packageJson.scripts?.[name],
     expectedCommand,
-    `Current blocker script ${name} changed without cleanup inventory update`,
+    `Backend tooling script ${name} differs from the CLEANUP-1B contract`,
   );
 }
 
@@ -195,16 +220,33 @@ const rootTsconfig = JSON.parse(
 );
 assert.deepEqual(
   rootTsconfig.include,
-  inventory.currentBlockers.rootTsconfig.include,
-  "Root TypeScript include changed without cleanup inventory update",
+  inventory.toolingContract.rootTsconfig.include,
+  "Preserved root TypeScript include changed",
 );
 for (const [alias, targets] of Object.entries(
-  inventory.currentBlockers.rootTsconfig.pathAlias,
+  inventory.toolingContract.rootTsconfig.pathAlias,
 )) {
   assert.deepEqual(
     rootTsconfig.compilerOptions?.paths?.[alias],
     targets,
-    `Root TypeScript alias ${alias} changed without cleanup inventory update`,
+    `Preserved root TypeScript alias ${alias} changed`,
+  );
+}
+
+const vitestConfigPath = inventory.toolingContract.vitestBackendConfig.path;
+const vitestConfig = readFileSync(path.join(root, vitestConfigPath), "utf8");
+for (const includePattern of inventory.toolingContract.vitestBackendConfig
+  .include) {
+  assert.ok(
+    vitestConfig.includes(includePattern),
+    `Backend Vitest include is missing: ${includePattern}`,
+  );
+}
+for (const marker of inventory.toolingContract.vitestBackendConfig
+  .forbiddenMarkers) {
+  assert.ok(
+    !vitestConfig.includes(marker),
+    `Backend Vitest config still references legacy tooling: ${marker}`,
   );
 }
 
@@ -212,18 +254,26 @@ const architectureValidator = readFileSync(
   path.join(root, "scripts/validate-architecture.ts"),
   "utf8",
 );
-for (const marker of inventory.currentBlockers.architectureValidatorMarkers) {
+for (const marker of inventory.toolingContract
+  .architectureValidatorRequiredMarkers) {
   assert.ok(
     architectureValidator.includes(marker),
-    `Architecture blocker marker disappeared: ${marker}`,
+    `Canonical architecture marker is missing: ${marker}`,
+  );
+}
+for (const marker of inventory.toolingContract
+  .architectureValidatorForbiddenMarkers) {
+  assert.ok(
+    !architectureValidator.includes(marker),
+    `Dual-root architecture marker remains active: ${marker}`,
   );
 }
 
 const combinedDockerfile = readFileSync(path.join(root, "Dockerfile"), "utf8");
-for (const marker of inventory.currentBlockers.combinedDockerfileMarkers) {
+for (const marker of inventory.toolingContract.combinedDockerfileMarkers) {
   assert.ok(
     combinedDockerfile.includes(marker),
-    `Combined Dockerfile blocker marker disappeared: ${marker}`,
+    `Archival combined Dockerfile marker disappeared: ${marker}`,
   );
 }
 
@@ -231,19 +281,18 @@ const ciWorkflow = readFileSync(
   path.join(root, ".github/workflows/ci.yml"),
   "utf8",
 );
-for (const marker of inventory.currentBlockers.ciMarkers) {
+for (const marker of inventory.toolingContract.ciRequiredMarkers) {
+  assert.ok(ciWorkflow.includes(marker), `CI marker is missing: ${marker}`);
+}
+for (const marker of inventory.toolingContract.ciForbiddenMarkers) {
   assert.ok(
-    ciWorkflow.includes(marker),
-    `CI blocker marker disappeared: ${marker}`,
+    !ciWorkflow.includes(marker),
+    `CI still contains legacy tooling marker: ${marker}`,
   );
 }
 assert.ok(
-  ciWorkflow.includes("name: Legacy Frontend Decommission Audit"),
-  "CLEANUP-1A audit job is not registered in CI",
-);
-assert.ok(
   ciWorkflow.includes("audit-legacy-frontend-decommission.mjs"),
-  "CLEANUP-1A audit invocation is missing from CI",
+  "The protected cleanup verifier invocation is missing from CI",
 );
 const gateJobMatch = ciWorkflow.match(
   /\n  gate:\n([\s\S]*?)(?=\n  [A-Za-z0-9_-]+:\n|$)/,
@@ -338,7 +387,8 @@ function moduleSpecifiersInFile(file, content) {
       node.arguments.length === 1 &&
       ts.isStringLiteralLike(node.arguments[0]) &&
       (node.expression.kind === ts.SyntaxKind.ImportKeyword ||
-        (ts.isIdentifier(node.expression) && node.expression.text === "require"))
+        (ts.isIdentifier(node.expression) &&
+          node.expression.text === "require"))
     ) {
       recordSpecifier(node.arguments[0]);
     }
@@ -442,10 +492,11 @@ const result = {
   auditedHead: head,
   baseline: inventory.baseline,
   canonicalFrontend: inventory.canonicalFrontend,
-  auditOnlyImmutability: {
-    baselineCommit: inventory.baseline.minimumAncestorCommit,
-    protectedFileCount: auditOnlyProtectedFiles.size,
+  stageChangePolicy: {
     changedSinceBaseline,
+    allowedChangedFiles: [...allowedStageChanges].sort(),
+    unexpectedStageChanges,
+    protectedFileCount: protectedUnchangedFiles.size,
     protectedPathChanges,
   },
   legacyFrontend: {
@@ -460,16 +511,12 @@ const result = {
       inventory.legacyFrontend.separateInfrastructureFiles,
     knownMissingPaths: inventory.legacyFrontend.knownMissingPaths,
   },
-  blockers: {
-    packageScripts: Object.keys(inventory.currentBlockers.packageScripts),
-    rootTypeScriptScope: inventory.currentBlockers.rootTsconfig,
-    architectureValidatorMarkers:
-      inventory.currentBlockers.architectureValidatorMarkers,
-    combinedDockerfileMarkers:
-      inventory.currentBlockers.combinedDockerfileMarkers,
-    ciMarkers: inventory.currentBlockers.ciMarkers,
-  },
-  workflow: {
+  tooling: {
+    packageScripts: inventory.toolingContract.packageScripts,
+    dependencyDeclarationsChanged: false,
+    rootTypeScriptScope: inventory.toolingContract.rootTsconfig.classification,
+    backendVitestConfig: inventory.toolingContract.vitestBackendConfig,
+    architectureModel: "BACKEND + STANDALONE FRONTEND",
     mergeGateDependencyVerified: "legacy-frontend-audit",
   },
   packageConsumerEvidence,
@@ -480,6 +527,7 @@ const result = {
   },
   removalWaves: inventory.removalWaves,
   currentStageDeletionAuthorized: inventory.currentStageDeletionAuthorized,
+  nextStage: inventory.nextStage,
 };
 
 writeFileSync(

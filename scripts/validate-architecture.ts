@@ -1,25 +1,32 @@
 /**
- * Architecture Boundary Validator v2 — Dual-Root Model
+ * Architecture Boundary Validator v3 — Backend + Standalone Frontend Model
  *
  * Enforces:
- *   - Frontend: src/ (React/Vite SPA)
  *   - Backend: server/src/ (Node/Express AI compiler)
  *   - Roblox Studio plugin: studio-plugin/src/ (isolated plugin runtime)
- *   - Shared frontend contracts: src/shared/
+ *   - Canonical web client: kazakovak2001-lgtm/Frontend (external repository)
+ *   - Frozen root src/: migration inventory only, never an active source root
  *
  * Detects:
+ *   - Missing canonical backend or Studio roots
  *   - Forbidden source roots
- *   - Cross-boundary imports
+ *   - Backend imports from React or the frozen legacy frontend
  *   - Orphan modules
- *   - Backend code in frontend zone (and vice versa)
+ *   - Deprecated runtime usage
  *
  * Exit: 0 = PASS, 1 = FAIL
  */
 
-import { readdirSync, existsSync, statSync, readFileSync } from "fs";
-import { join, relative } from "path";
+import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
+import { join, relative } from "node:path";
 
 const ROOT = process.cwd();
+const CLEANUP_INVENTORY_PATH = join(
+  ROOT,
+  "config",
+  "cleanup",
+  "legacy-frontend-decommission.inventory.json",
+);
 
 const FORBIDDEN_PATTERNS = [
   "app/src",
@@ -30,11 +37,63 @@ const FORBIDDEN_PATTERNS = [
   "core/src",
 ];
 
+interface CleanupInventory {
+  roadmapId: string;
+  status: string;
+  canonicalFrontend: {
+    repository: string;
+    commit: string;
+  };
+  legacyFrontend: {
+    sourceRoot: string;
+  };
+}
+
 interface Violation {
-  type: "forbidden-root" | "cross-boundary" | "orphan-module" | "zone-leak";
+  type: "missing-root" | "forbidden-root" | "cross-boundary" | "orphan-module";
   path: string;
   severity: "critical" | "warning";
   message: string;
+}
+
+function loadCleanupInventory(): CleanupInventory {
+  if (!existsSync(CLEANUP_INVENTORY_PATH)) {
+    throw new Error(
+      "Cleanup inventory is required to resolve the canonical Frontend boundary",
+    );
+  }
+
+  return JSON.parse(
+    readFileSync(CLEANUP_INVENTORY_PATH, "utf8"),
+  ) as CleanupInventory;
+}
+
+function scanForMissingCanonicalRoots(): Violation[] {
+  const violations: Violation[] = [];
+  const canonicalRoots = [
+    {
+      path: "server/src",
+      message: "Canonical backend source root is missing",
+    },
+    {
+      path: "studio-plugin/src",
+      message: "Canonical Roblox Studio plugin source root is missing",
+    },
+  ];
+
+  for (const root of canonicalRoots) {
+    const absolutePath = join(ROOT, root.path);
+    if (!existsSync(absolutePath) || !statSync(absolutePath).isDirectory()) {
+      violations.push({
+        type: "missing-root",
+        path: root.path,
+        severity: "critical",
+        message: root.message,
+      });
+    }
+  }
+
+  return violations;
 }
 
 function scanForForbiddenRoots(): Violation[] {
@@ -52,7 +111,6 @@ function scanForForbiddenRoots(): Violation[] {
     }
   }
 
-  // Scan top-level for unexpected src/ directories
   const topLevel = readdirSync(ROOT).filter((entry) => {
     const full = join(ROOT, entry);
     return (
@@ -66,15 +124,18 @@ function scanForForbiddenRoots(): Violation[] {
     );
   });
 
-  for (const dir of topLevel) {
-    if (["src", "server", "shared", "studio-plugin"].includes(dir)) continue;
-    const potentialSrc = join(ROOT, dir, "src");
-    if (existsSync(potentialSrc) && statSync(potentialSrc).isDirectory()) {
+  for (const directory of topLevel) {
+    if (["src", "server", "studio-plugin"].includes(directory)) continue;
+    const potentialSourceRoot = join(ROOT, directory, "src");
+    if (
+      existsSync(potentialSourceRoot) &&
+      statSync(potentialSourceRoot).isDirectory()
+    ) {
       violations.push({
         type: "forbidden-root",
-        path: `${dir}/src`,
+        path: `${directory}/src`,
         severity: "critical",
-        message: `Unexpected source root: ${dir}/src/`,
+        message: `Unexpected source root: ${directory}/src/`,
       });
     }
   }
@@ -84,17 +145,17 @@ function scanForForbiddenRoots(): Violation[] {
 
 function scanForOrphanModules(): Violation[] {
   const violations: Violation[] = [];
-
   const legacyAgents = join(ROOT, "agents");
+
   if (existsSync(legacyAgents) && statSync(legacyAgents).isDirectory()) {
     const contents = readdirSync(legacyAgents);
-    if (contents.some((f) => f.endsWith(".ts") || f.endsWith(".js"))) {
+    if (contents.some((file) => file.endsWith(".ts") || file.endsWith(".js"))) {
       violations.push({
         type: "orphan-module",
         path: "agents/",
         severity: "critical",
         message:
-          "Legacy agents/ contains source — must be in server/src/agents/",
+          "Legacy agents/ contains source — canonical agents belong in server/src/agents/",
       });
     }
   }
@@ -102,125 +163,104 @@ function scanForOrphanModules(): Violation[] {
   return violations;
 }
 
-function scanForCrossBoundaryImports(): Violation[] {
-  const violations: Violation[] = [];
+function collectTypeScriptFiles(directory: string): string[] {
+  if (!existsSync(directory)) return [];
 
-  // Check backend files for React imports
-  const backendFiles = collectTsFiles(join(ROOT, "server", "src"));
-  for (const file of backendFiles) {
-    const content = readFileSync(file, "utf-8");
-    if (
-      content.includes('from "react"') ||
-      content.includes("from 'react'") ||
-      content.includes('from "react-dom"')
-    ) {
-      violations.push({
-        type: "cross-boundary",
-        path: relative(ROOT, file),
-        severity: "critical",
-        message: "Backend file imports React runtime",
-      });
-    }
-    if (content.match(/from\s+["']\.\.\/\.\.\/src\//)) {
-      violations.push({
-        type: "cross-boundary",
-        path: relative(ROOT, file),
-        severity: "critical",
-        message: "Backend file imports from frontend src/",
-      });
-    }
-  }
-
-  // Check frontend files for Node/server imports
-  const frontendFiles = collectTsFiles(join(ROOT, "src"));
-  for (const file of frontendFiles) {
-    const content = readFileSync(file, "utf-8");
-    if (content.match(/from\s+["']\.\.\/server\/src\//)) {
-      violations.push({
-        type: "cross-boundary",
-        path: relative(ROOT, file),
-        severity: "critical",
-        message: "Frontend file imports from backend server/src/",
-      });
-    }
-  }
-
-  return violations;
-}
-
-function collectTsFiles(dir: string): string[] {
-  if (!existsSync(dir)) return [];
   const files: string[] = [];
-  const entries = readdirSync(dir, { withFileTypes: true });
-  for (const entry of entries) {
-    const full = join(dir, entry.name);
+  for (const entry of readdirSync(directory, { withFileTypes: true })) {
+    const absolutePath = join(directory, entry.name);
     if (entry.isDirectory() && entry.name !== "node_modules") {
-      files.push(...collectTsFiles(full));
+      files.push(...collectTypeScriptFiles(absolutePath));
     } else if (
       entry.isFile() &&
       (entry.name.endsWith(".ts") || entry.name.endsWith(".tsx"))
     ) {
-      files.push(full);
+      files.push(absolutePath);
     }
   }
+
   return files;
 }
 
-// ─── Runtime Enforcement: PlanExecutor is the only runtime ──────────────────
+function scanForBackendBoundaryViolations(): Violation[] {
+  const violations: Violation[] = [];
+  const backendFiles = collectTypeScriptFiles(join(ROOT, "server", "src"));
+
+  for (const file of backendFiles) {
+    const content = readFileSync(file, "utf8");
+    const repositoryPath = relative(ROOT, file).replaceAll("\\", "/");
+
+    if (
+      /(?:from\s+|import\s*\()\s*["']react(?:-dom)?(?:\/[^"']*)?["']/.test(
+        content,
+      )
+    ) {
+      violations.push({
+        type: "cross-boundary",
+        path: repositoryPath,
+        severity: "critical",
+        message: "Backend file imports React runtime",
+      });
+    }
+
+    if (
+      /(?:from\s+|import\s*\()\s*["'](?:\.\.\/)+src(?:\/|["'])/.test(content) ||
+      /(?:from\s+|import\s*\()\s*["']@\//.test(content)
+    ) {
+      violations.push({
+        type: "cross-boundary",
+        path: repositoryPath,
+        severity: "critical",
+        message: "Backend file imports from frozen root src/",
+      });
+    }
+  }
+
+  return violations;
+}
 
 function scanForDeprecatedRuntimeUsage(): Violation[] {
   const violations: Violation[] = [];
+  const runtimeDirectories = [
+    "routes",
+    "projects/services",
+    "planning",
+    "generation",
+    "simulation",
+    "economy",
+    "world",
+    "lifecycle",
+    "artifacts",
+    "export",
+    "compiler",
+  ].map((directory) => join(ROOT, "server", "src", directory));
 
-  // Files that MUST NOT import aiPipelineIntegrator (runtime code)
-  const runtimeDirs = [
-    join(ROOT, "server", "src", "routes"),
-    join(ROOT, "server", "src", "projects", "services"),
-    join(ROOT, "server", "src", "planning"),
-    join(ROOT, "server", "src", "generation"),
-    join(ROOT, "server", "src", "simulation"),
-    join(ROOT, "server", "src", "economy"),
-    join(ROOT, "server", "src", "world"),
-    join(ROOT, "server", "src", "lifecycle"),
-    join(ROOT, "server", "src", "artifacts"),
-    join(ROOT, "server", "src", "export"),
-    join(ROOT, "server", "src", "compiler"),
-  ];
+  for (const directory of runtimeDirectories) {
+    for (const file of collectTypeScriptFiles(directory)) {
+      const content = readFileSync(file, "utf8");
+      const repositoryPath = relative(ROOT, file).replaceAll("\\", "/");
 
-  for (const dir of runtimeDirs) {
-    const files = collectTsFiles(dir);
-    for (const file of files) {
-      const content = readFileSync(file, "utf-8");
-      // Check for runtime instantiation (new AIPipelineIntegrator)
       if (content.includes("new AIPipelineIntegrator")) {
         violations.push({
           type: "cross-boundary",
-          path: relative(ROOT, file),
+          path: repositoryPath,
           severity: "critical",
           message:
             "DEPRECATED: Runtime instantiation of AIPipelineIntegrator detected. Use PlanExecutor.",
         });
       }
-      // Check for import of the class (not just type)
-      if (content.match(/import\s+\{[^}]*AIPipelineIntegrator[^}]*\}\s+from/)) {
-        // Allow if it's only importing the PIPELINE_STAGES constant or types
-        if (
-          !content.includes("import type") ||
-          content.includes("new AIPipelineIntegrator")
-        ) {
-          // Check if it's a non-type import that could lead to instantiation
-          const importLine = content.match(
-            /import\s+\{[^}]*AIPipelineIntegrator[^}]*\}\s+from[^\n]*/,
-          );
-          if (importLine && !importLine[0].includes("import type")) {
-            violations.push({
-              type: "cross-boundary",
-              path: relative(ROOT, file),
-              severity: "warning",
-              message:
-                "Runtime import of AIPipelineIntegrator — should use 'import type' or remove.",
-            });
-          }
-        }
+
+      const runtimeImport = content.match(
+        /import\s+\{[^}]*AIPipelineIntegrator[^}]*\}\s+from[^\n]*/,
+      );
+      if (runtimeImport && !runtimeImport[0].includes("import type")) {
+        violations.push({
+          type: "cross-boundary",
+          path: repositoryPath,
+          severity: "warning",
+          message:
+            "Runtime import of AIPipelineIntegrator — use an import type or remove it.",
+        });
       }
     }
   }
@@ -228,54 +268,68 @@ function scanForDeprecatedRuntimeUsage(): Violation[] {
   return violations;
 }
 
-// ─── Main ──────────────────────────────────────────────────────────────────
-
 function main(): void {
+  const inventory = loadCleanupInventory();
+  const legacyRoot = inventory.legacyFrontend.sourceRoot;
+  const backendExists = existsSync(join(ROOT, "server", "src"));
+  const studioPluginExists = existsSync(join(ROOT, "studio-plugin", "src"));
+  const legacyFrontendExists = existsSync(join(ROOT, legacyRoot));
+
   console.log("╔══════════════════════════════════════════════════╗");
-  console.log("║  Dual-Boundary Architecture Validator v2         ║");
+  console.log("║  Canonical Architecture Validator v3             ║");
   console.log("╚══════════════════════════════════════════════════╝\n");
 
   const violations: Violation[] = [
+    ...scanForMissingCanonicalRoots(),
     ...scanForForbiddenRoots(),
     ...scanForOrphanModules(),
-    ...scanForCrossBoundaryImports(),
+    ...scanForBackendBoundaryViolations(),
     ...scanForDeprecatedRuntimeUsage(),
   ];
 
-  // Status report
-  const feExists = existsSync(join(ROOT, "src"));
-  const beExists = existsSync(join(ROOT, "server", "src"));
-  const sharedExists =
-    existsSync(join(ROOT, "shared")) || existsSync(join(ROOT, "src", "shared"));
-  const studioPluginExists = existsSync(join(ROOT, "studio-plugin", "src"));
-
-  console.log("DUAL BOUNDARY ARCHITECTURE STATUS");
-  console.log(`  Frontend (/src): ${feExists ? "ACTIVE" : "MISSING"}`);
-  console.log(`  Backend (/server/src): ${beExists ? "ACTIVE" : "MISSING"}`);
+  console.log("CANONICAL PRODUCT TOPOLOGY");
   console.log(
-    `  Studio plugin (/studio-plugin/src): ${studioPluginExists ? "ACTIVE" : "NOT CREATED"}`,
+    `  Backend (/server/src): ${backendExists ? "ACTIVE" : "MISSING"}`,
   );
-  console.log(`  Shared contracts: ${sharedExists ? "ACTIVE" : "NOT CREATED"}`);
+  console.log(
+    `  Studio plugin (/studio-plugin/src): ${
+      studioPluginExists ? "ACTIVE" : "MISSING"
+    }`,
+  );
+  console.log(
+    `  Canonical Frontend: ${inventory.canonicalFrontend.repository}@${inventory.canonicalFrontend.commit}`,
+  );
+  console.log(
+    `  Legacy frontend (/${legacyRoot}): ${
+      legacyFrontendExists ? "FROZEN INVENTORY" : "REMOVED"
+    }`,
+  );
+  console.log(
+    `  Cleanup contract: ${inventory.roadmapId} (${inventory.status})`,
+  );
   console.log("");
 
   if (violations.length === 0) {
-    console.log("  Cross-boundary violations: NONE");
+    console.log("  Boundary violations: NONE");
     console.log("  CI Gate: ACTIVE");
     console.log("  Runtime Guard: ACTIVE");
-    console.log("  AI Sandbox: ACTIVE");
     console.log("");
     console.log("  System State: STABLE");
-    console.log("  Architecture Model: MONOREPO DUAL-ROOT");
+    console.log("  Architecture Model: BACKEND + STANDALONE FRONTEND");
     process.exit(0);
-  } else {
-    console.error(`  Cross-boundary violations: ${violations.length}\n`);
-    for (const v of violations) {
-      console.error(`  [${v.severity.toUpperCase()}] ${v.type}: ${v.path}`);
-      console.error(`    → ${v.message}\n`);
-    }
-    console.error("  System State: VIOLATION DETECTED");
-    process.exit(1);
   }
+
+  console.error(`  Boundary violations: ${violations.length}\n`);
+  for (const violation of violations) {
+    console.error(
+      `  [${violation.severity.toUpperCase()}] ${violation.type}: ${
+        violation.path
+      }`,
+    );
+    console.error(`    → ${violation.message}\n`);
+  }
+  console.error("  System State: VIOLATION DETECTED");
+  process.exit(1);
 }
 
 main();

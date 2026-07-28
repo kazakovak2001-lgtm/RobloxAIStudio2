@@ -21,8 +21,7 @@ jobs:
           node-version: "22"
           cache: "npm"
       - run: npm ci
-      - run: npx tsc --noEmit
-      - run: npx tsc --noEmit --project server/tsconfig.json
+      - run: npm run typecheck
 
   lint:
     name: ESLint
@@ -89,7 +88,7 @@ jobs:
           STORAGE_PROVIDER: postgres
           DATABASE_URL: postgresql://studio:studio_test_password@localhost:5432/roblox_ai_studio_test
           RUN_POSTGRES_E2E: "true"
-        run: npx vitest run server/src/__tests__/core1b.postgres.integration.test.ts
+        run: npm run test:postgres
 
   backend-image:
     name: Backend Release Image
@@ -247,7 +246,7 @@ jobs:
           retention-days: 3
 
   legacy-frontend-audit:
-    name: Legacy Frontend Decommission Audit
+    name: Legacy Frontend Tooling Decoupling
     runs-on: ubuntu-latest
     needs: release-readiness
     steps:
@@ -260,16 +259,16 @@ jobs:
           node-version: "22"
           cache: "npm"
       - run: npm ci
-      - name: Audit legacy frontend decommission readiness
+      - name: Verify legacy frontend tooling decoupling
         env:
-          LEGACY_FRONTEND_AUDIT_OUTPUT: artifacts/cleanup-1a
+          LEGACY_FRONTEND_AUDIT_OUTPUT: artifacts/cleanup-1b
         run: node scripts/cleanup/audit-legacy-frontend-decommission.mjs
-      - name: Publish legacy frontend audit evidence
+      - name: Publish tooling decoupling evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: cleanup-1a-legacy-frontend-audit
-          path: artifacts/cleanup-1a
+          name: cleanup-1b-tooling-decoupling
+          path: artifacts/cleanup-1b
           if-no-files-found: error
           retention-days: 3
 

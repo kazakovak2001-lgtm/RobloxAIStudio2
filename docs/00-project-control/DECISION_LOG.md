@@ -4,6 +4,19 @@ All significant architectural and product decisions are recorded here.
 
 ---
 
+## 2026-07-28 — CLEANUP-1B Legacy Frontend Tooling Decoupling
+
+**Decision**: Remove the frozen root React/Vite frontend from active backend development, build, typecheck, test, and architecture-tooling paths before authorizing physical deletion. Reuse the CLEANUP-1A inventory/verifier, existing backend scripts, Vitest, domain firewall, CUTOVER release inventory, and protected Merge Gate; do not create parallel tooling.
+**Baseline**: Protected default `release/cutover-1e-candidate` at CLEANUP-1A merge `99b0de4a3b493d1e1fa98173deea8fae59d57842`; canonical standalone Frontend `kazakovak2001-lgtm/Frontend` at release commit `1036c3ef9705d145cb9700cd14268a33d2abdd58`; frozen legacy source inventory 168 files.
+**Implementation**: Root `dev`, `build`, `preview`, and `typecheck` now delegate to canonical backend operations. Existing Vitest receives an explicit backend-only config shared by normal and PostgreSQL acceptance runs, so it no longer loads root `vite.config.ts` or discovers frozen frontend tests. Architecture validation reports `server/src`, `studio-plugin/src`, and the external standalone Frontend as canonical while retaining backend cross-boundary and deprecated-runtime checks.
+**Preservation**: The evolved cleanup verifier permits only the focused tooling/documentation file set and requires no change to root `src/`, legacy entry/config/deployment files, PostgreSQL-only compose, stale inventories, dependency declarations, `package-lock.json`, backend domain firewall, active release topology, or rollback references. `socket.io-client` remains retained for composed-release verification.
+**Verification**: PR #35 implementation commit `12b2009f244caa77c8cfc21d9fd51c29afa519b1` passed protected CI run `30327076703` (#282): TypeScript, architecture, boundaries, lint, formatting, backend tests, PostgreSQL restart, backend image, composed HTTPS release, promoted baseline integrity, repository validation, CLEANUP-1B evidence, commitlint, Studio plugin packaging, and Merge Gate. Evidence artifact `8676095415`, named `cleanup-1b-tooling-decoupling`, has digest `sha256:dc455ca74bdd823584eabc0b2de55adf3efd9b472dc1084d958408e5b30745d6`.
+**Safety boundary**: `currentStageDeletionAuthorized=false`. CLEANUP-1C is the first deletion-authorized stage and remains blocked until CLEANUP-1B is verified and merged. PR #1 remains prohibited from direct merge.
+**Rollback**: Revert the focused CLEANUP-1B pull request. CLEANUP-1A, active release artifacts, the protected default, the pinned rollback reference, and every legacy file/dependency remain available.
+**Status**: Protected implementation verification passed in PR #35; physical deletion remains blocked until the pull request is merged.
+
+---
+
 ## 2026-07-27 — CUTOVER-1C Composed HTTPS Release
 
 **Decision**: Compose the independently verified backend and standalone Frontend release artifacts behind one HTTPS origin. Reuse the existing Express API, Socket.IO server/client, cookie authentication, PostgreSQL storage, and Frontend adapters; do not introduce parallel transport or auth layers.
