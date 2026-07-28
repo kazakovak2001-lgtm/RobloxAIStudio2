@@ -6,35 +6,35 @@
  */
 
 export const ARCHITECTURE = {
-  frontendRoot: "src",
   backendRoot: "server/src",
-  sharedRoot: "shared",
-  version: "2.0.0",
-} as const;
-
-export const FRONTEND_RULES = {
-  allowedPaths: ["src/**"],
-  forbiddenImports: ["server/src/**", "node:*", "express", "socket.io"],
-  allowedRuntimes: ["browser", "web"],
-  description: "Frontend: React SPA (Vite). No Node.js runtime access.",
+  studioPluginRoot: "studio-plugin/src",
+  removedFrontendRoot: "src",
+  version: "3.0.0",
 } as const;
 
 export const BACKEND_RULES = {
   allowedPaths: ["server/src/**"],
-  forbiddenImports: ["react", "react-dom", "../../src/**", "../../../src/**"],
+  forbiddenImports: [
+    "react",
+    "react-dom",
+    "@/**",
+    "../../src/**",
+    "../../../src/**",
+  ],
   allowedRuntimes: ["node"],
   description:
-    "Backend: Node/Express + AI compiler platform. No browser runtime.",
+    "Backend: Node/Express + AI compiler platform. No removed web-client runtime.",
 } as const;
 
-export const SHARED_RULES = {
-  allowedPaths: ["shared/**"],
-  forbiddenContent: ["class ", "import {", "require("],
-  allowedContent: ["export type", "export interface", "export const"],
-  description: "Shared: Only types, DTOs, contracts. No business logic.",
+export const STUDIO_PLUGIN_RULES = {
+  allowedPaths: ["studio-plugin/src/**"],
+  forbiddenImports: ["server/src/**", "src/**"],
+  allowedRuntimes: ["roblox-luau"],
+  description:
+    "Roblox Studio plugin: isolated Luau runtime connected through the Studio protocol.",
 } as const;
 
-export type BoundaryZone = "frontend" | "backend" | "shared" | "unknown";
+export type BoundaryZone = "backend" | "studio-plugin" | "unknown";
 
 /**
  * Resolve which boundary zone a file path belongs to.
@@ -42,13 +42,16 @@ export type BoundaryZone = "frontend" | "backend" | "shared" | "unknown";
 export function resolveBoundary(filePath: string): BoundaryZone {
   const normalized = filePath.replace(/\\/g, "/");
   if (
-    normalized.startsWith("server/src/") ||
-    normalized.startsWith("server\\src\\")
-  )
+    normalized === ARCHITECTURE.backendRoot ||
+    normalized.startsWith(`${ARCHITECTURE.backendRoot}/`)
+  ) {
     return "backend";
-  if (normalized.startsWith("src/") || normalized.startsWith("src\\"))
-    return "frontend";
-  if (normalized.startsWith("shared/") || normalized.startsWith("shared\\"))
-    return "shared";
+  }
+  if (
+    normalized === ARCHITECTURE.studioPluginRoot ||
+    normalized.startsWith(`${ARCHITECTURE.studioPluginRoot}/`)
+  ) {
+    return "studio-plugin";
+  }
   return "unknown";
 }

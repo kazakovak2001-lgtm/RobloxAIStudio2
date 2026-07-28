@@ -60,6 +60,11 @@ export default [
               group: ["**/lib/src/**"],
               message: "Forbidden: no imports from lib/src/.",
             },
+            {
+              group: ["@/**"],
+              message:
+                "Forbidden: @/ resolved into the removed root frontend. Use valid backend-relative imports.",
+            },
           ],
         },
       ],
@@ -73,9 +78,9 @@ export default [
         {
           patterns: [
             {
-              group: ["../../src/**", "../../../src/**"],
+              group: ["@/**", "../../src/**", "../../../src/**"],
               message:
-                "Backend (server/src/) must not import from frontend (src/) directly. Use API calls.",
+                "Backend (server/src/) must not import from the removed root frontend.",
             },
           ],
         },
@@ -95,25 +100,9 @@ export default [
                 "FORBIDDEN: aiPipelineIntegrator is deprecated. Use PlanExecutor as the only runtime execution engine.",
             },
             {
-              group: ["../../src/**", "../../../src/**"],
-              message: "Backend must not import from frontend.",
-            },
-          ],
-        },
-      ],
-    },
-  },
-  {
-    files: ["src/**/*.{ts,tsx}"],
-    rules: {
-      "no-restricted-imports": [
-        "error",
-        {
-          patterns: [
-            {
-              group: ["../../server/src/**", "../../../server/src/**"],
+              group: ["@/**", "../../src/**", "../../../src/**"],
               message:
-                "Frontend (src/) must not import from backend (server/src/) directly. Use API calls.",
+                "Backend must not import from the removed root frontend.",
             },
           ],
         },

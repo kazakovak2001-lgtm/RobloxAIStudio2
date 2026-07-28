@@ -57,17 +57,6 @@ desktop.ini
 
 # ─── TypeScript ───────────────────────────────────────────────────────────────
 *.tsbuildinfo
-# Compiled JS/declaration output alongside source (tsc side-effects)
-src/**/*.js
-src/**/*.js.map
-src/**/*.d.ts
-vite.config.js
-vite.config.js.map
-vite.config.d.ts
-vite.config.d.ts.map
-
-# ─── Vite ─────────────────────────────────────────────────────────────────────
-.vite/
 
 # ─── Generated reports (CI artifacts, not committed) ──────────────────────────
 boundary-report.json

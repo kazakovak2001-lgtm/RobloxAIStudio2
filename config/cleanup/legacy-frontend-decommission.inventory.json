@@ -1,13 +1,16 @@
 {
-  "schemaVersion": 3,
-  "roadmapId": "CLEANUP-1C",
-  "status": "physical-removal-implemented",
+  "schemaVersion": 4,
+  "roadmapId": "CLEANUP-1D",
+  "status": "post-removal-verification-implemented",
   "baseline": {
     "defaultBranch": "release/cutover-1e-candidate",
-    "minimumAncestorCommit": "85a2fa8d512738e6d02ffae42da77af7a27db6fc",
+    "minimumAncestorCommit": "9a728661ee7b0a635af78da56a5d147b296dc23c",
+    "cleanup1cRemovalBaselineCommit": "85a2fa8d512738e6d02ffae42da77af7a27db6fc",
     "cleanup1aCommit": "99b0de4a3b493d1e1fa98173deea8fae59d57842",
     "cleanup1bCommit": "703fe0fbcfcb8706506e9351af1fe7874a1337f0",
-    "cleanup1bCloseoutCommit": "85a2fa8d512738e6d02ffae42da77af7a27db6fc"
+    "cleanup1bCloseoutCommit": "85a2fa8d512738e6d02ffae42da77af7a27db6fc",
+    "cleanup1cCommit": "1bc54753783610827750dbb11689c0fb24620923",
+    "cleanup1cCloseoutCommit": "9a728661ee7b0a635af78da56a5d147b296dc23c"
   },
   "canonicalFrontend": {
     "repository": "kazakovak2001-lgtm/Frontend",
@@ -206,7 +209,11 @@
         "classification": "postgres-development-only-do-not-delete-with-frontend-stack"
       }
     ],
-    "staleInventoryFiles": ["_inventory_raw.txt", "ProjectStructure.txt"],
+    "trackedInventoryFiles": [
+      "_inventory_raw.txt",
+      "ProjectStructure.txt",
+      "project_structure.txt"
+    ],
     "knownMissingPaths": [
       {
         "path": "public",
@@ -233,26 +240,44 @@
   "stageChangePolicy": {
     "requiredModifiedFiles": [
       ".github/workflows/ci.yml",
+      ".eslintrc.json",
+      ".gitignore",
+      "ProjectStructure.txt",
+      "_inventory_raw.txt",
       "config/cleanup/legacy-frontend-decommission.inventory.json",
       "docs/00-project-control/CURRENT_STATE.md",
       "docs/00-project-control/DECISION_LOG.md",
       "docs/00-project-control/FRONTEND_CUTOVER.md",
       "docs/00-project-control/ROADMAP_STATUS.md",
-      "package.json",
-      "package-lock.json",
-      "server/src/integration/ProductionAuditService.ts",
+      "AI_DEVELOPMENT_GOVERNANCE.md",
+      "eslint.config.js",
+      "project_structure.txt",
+      "repository_manifest.json",
       "scripts/cleanup/audit-legacy-frontend-decommission.mjs",
-      "scripts/validate-architecture.ts"
+      "scripts/git-boundary-guard.js",
+      "scripts/validate-architecture.ts",
+      "server/src/agents/implementations/CodeReviewControllerAgent.ts",
+      "server/src/core/ai/GenerationSandbox.ts",
+      "server/src/core/architecture/ArchitecturePolicy.ts",
+      "server/src/core/architecture/BoundaryValidator.ts",
+      "server/src/core/architecture/RuntimeBoundaryGuard.ts",
+      "server/src/knowledge/CodebaseKnowledge.ts"
     ],
-    "requiredAddedFiles": ["docs/project/CLEANUP-1C_PHYSICAL_REMOVAL.md"],
+    "requiredAddedFiles": [
+      "docs/project/CLEANUP-1D_POST_REMOVAL_VERIFICATION.md",
+      "scripts/cleanup/generate-tracked-inventories.mjs",
+      "server/src/core/architecture/__tests__/cleanup1d.post-removal.test.ts"
+    ],
+    "requiredDeletedFiles": [],
     "protectedUnchangedFiles": [
-      ".eslintrc.json",
       "architecture.manifest.json",
       "config/testing/vitest.backend.config.ts",
       "docker-compose.yml",
-      "_inventory_raw.txt",
-      "ProjectStructure.txt",
+      "package.json",
+      "package-lock.json",
+      "server/src/integration/ProductionAuditService.ts",
       "docs/project/CLEANUP-1B_TOOLING_DECOUPLING.md",
+      "docs/project/CLEANUP-1C_PHYSICAL_REMOVAL.md",
       "scripts/validate-boundaries.ts",
       "server/src/core/architecture/ImportBoundaryValidator.ts"
     ]
@@ -287,7 +312,7 @@
       "forbiddenMarkers": ["src/shared", "Shared contracts"]
     },
     "architectureValidatorRequiredMarkers": [
-      "Architecture Boundary Validator v4 — Backend + Standalone Frontend Model",
+      "Architecture Boundary Validator v5 — Post-Removal Backend + Studio Model",
       "Canonical web client: kazakovak2001-lgtm/Frontend",
       "Removed legacy root src/: forbidden to reintroduce",
       "Removed legacy frontend root reintroduced",
@@ -303,9 +328,9 @@
     "ciRequiredMarkers": [
       "- run: npm run typecheck",
       "run: npm run test:postgres",
-      "name: Legacy Frontend Physical Removal",
-      "LEGACY_FRONTEND_AUDIT_OUTPUT: artifacts/cleanup-1c",
-      "name: cleanup-1c-physical-removal",
+      "name: CLEANUP-1D Post-Removal Verification",
+      "LEGACY_FRONTEND_AUDIT_OUTPUT: artifacts/cleanup-1d",
+      "name: cleanup-1d-post-removal-verification",
       "name: Promoted Baseline Integrity"
     ],
     "ciForbiddenMarkers": [
@@ -313,8 +338,62 @@
       "npx vitest run server/src/__tests__/core1b.postgres.integration.test.ts",
       "LEGACY_FRONTEND_AUDIT_OUTPUT: artifacts/cleanup-1a",
       "LEGACY_FRONTEND_AUDIT_OUTPUT: artifacts/cleanup-1b",
-      "name: cleanup-1b-tooling-decoupling"
+      "name: cleanup-1b-tooling-decoupling",
+      "name: cleanup-1c-physical-removal"
     ]
+  },
+  "referencePolicy": {
+    "activeAndToolingRoots": [
+      ".github/workflows",
+      "config",
+      "scripts",
+      "server/src",
+      "AI_DEVELOPMENT_GOVERNANCE.md",
+      ".eslintrc.json",
+      ".gitignore",
+      "eslint.config.js",
+      "repository_manifest.json",
+      "package.json"
+    ],
+    "intentionalExactReferenceFiles": [
+      "config/cleanup/legacy-frontend-decommission.inventory.json",
+      "config/cutover/release-baseline.inventory.json"
+    ],
+    "classificationRules": {
+      "historical": [
+        ".kiro/specs/",
+        "FINAL_V1_RELEASE_SIGN_OFF.md",
+        "RELEASE_HARDENING_REPORT.md",
+        "docs/",
+        "reports/",
+        "specs/"
+      ],
+      "negativeGuard": [
+        ".eslintrc.json",
+        ".gitignore",
+        ".github/workflows/",
+        "AI_DEVELOPMENT_GOVERNANCE.md",
+        "Dockerfile.backend",
+        "config/cleanup/",
+        "config/cutover/",
+        "eslint.config.js",
+        "scripts/cleanup/",
+        "scripts/git-boundary-guard.js",
+        "scripts/validate-architecture.ts",
+        "server/src/core/architecture/ArchitecturePolicy.ts",
+        "server/src/core/architecture/__tests__/"
+      ],
+      "studioRelative": [
+        "studio-plugin/",
+        "scripts/package-studio-plugin.ts",
+        "server/src/__tests__/studio1.plugin"
+      ],
+      "robloxArtifactRelative": [
+        "server/src/generation/export/RobloxExportBuilder.ts"
+      ],
+      "backendRelative": ["server/tsconfig.json"],
+      "dependencyPackageRelative": ["package-lock.json"]
+    }
   },
   "packageDisposition": {
     "retainOperational": [
@@ -359,7 +438,7 @@
     {
       "id": "CLEANUP-1C",
       "name": "physical-removal-and-dependency-pruning",
-      "status": "implemented",
+      "status": "complete",
       "deletionAuthorized": true,
       "prerequisite": "CLEANUP-1B verified and merged",
       "actions": [
@@ -373,7 +452,7 @@
     {
       "id": "CLEANUP-1D",
       "name": "post-removal-verification",
-      "status": "next-after-cleanup-1c-merge",
+      "status": "implemented",
       "deletionAuthorized": false,
       "prerequisite": "CLEANUP-1C verified and merged",
       "actions": [
@@ -383,6 +462,6 @@
       ]
     }
   ],
-  "currentStageDeletionAuthorized": true,
-  "nextStage": "CLEANUP-1D"
+  "currentStageDeletionAuthorized": false,
+  "nextStage": "CLEANUP-1D protected merge and closeout"
 }

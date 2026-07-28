@@ -2,7 +2,7 @@
  * GenerationSandbox.ts
  *
  * Enforces that AI generation code writes only to valid boundary zones.
- * Prevents cross-boundary generation (e.g. writing backend code to src/).
+ * Prevents generation into the removed root frontend or other local zones.
  */
 
 import {
@@ -22,18 +22,16 @@ export class GenerationError extends Error {
   }
 }
 
-export type GenerationTarget = "ui" | "backend" | "shared";
+export type GenerationTarget = "backend" | "studio-plugin";
 
 const TARGET_TO_ZONE: Record<GenerationTarget, BoundaryZone> = {
-  ui: "frontend",
   backend: "backend",
-  shared: "shared",
+  "studio-plugin": "studio-plugin",
 };
 
 const TARGET_TO_PATH_PREFIX: Record<GenerationTarget, string> = {
-  ui: "src/",
   backend: "server/src/",
-  shared: "shared/",
+  "studio-plugin": "studio-plugin/src/",
 };
 
 export class GenerationSandbox {

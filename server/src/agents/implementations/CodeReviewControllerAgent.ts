@@ -14,7 +14,7 @@ const REVIEW_RULES = [
   {
     id: "R1",
     category: "imports",
-    rule: "Use @/ path aliases for cross-feature imports",
+    rule: "Use relative backend imports; the retired @/ frontend alias is forbidden",
   },
   {
     id: "R2",
@@ -29,7 +29,7 @@ const REVIEW_RULES = [
   {
     id: "R4",
     category: "structure",
-    rule: "Components must be in features/ or shared/ui/",
+    rule: "Local source belongs in server/src/ or studio-plugin/src/",
   },
   {
     id: "R5",
@@ -110,14 +110,17 @@ export class CodeReviewControllerAgent extends BaseAgent {
     const findings: Array<{ rule: string; passed: boolean; detail?: string }> =
       [];
 
-    // R1: Path aliases
-    if (filePath.includes("src/")) {
-      const hasRelativeCrossFeature = /from\s+["']\.\.\/\.\.\//.test(code);
+    // R1: The @/ alias resolved into the removed root frontend.
+    if (
+      filePath.startsWith("server/src/") ||
+      filePath.startsWith("studio-plugin/src/")
+    ) {
+      const hasRetiredAlias = /(?:from\s+|import\s*\()\s*["']@\//.test(code);
       findings.push({
         rule: "R1",
-        passed: !hasRelativeCrossFeature,
-        detail: hasRelativeCrossFeature
-          ? "Found relative cross-feature imports — use @/ alias"
+        passed: !hasRetiredAlias,
+        detail: hasRetiredAlias
+          ? "Found retired @/ frontend alias — use a valid local relative import"
           : undefined,
       });
     }

@@ -33,18 +33,27 @@ export class RuntimeBoundaryGuard {
   validate(): GuardResult {
     const checks: GuardResult["checks"] = [];
 
-    // Check frontend root exists
-    checks.push(
-      this.checkExists(ARCHITECTURE.frontendRoot, "Frontend root (src/)"),
-    );
-
     // Check backend root exists
     checks.push(
       this.checkExists(ARCHITECTURE.backendRoot, "Backend root (server/src/)"),
     );
 
+    // Check canonical Roblox Studio plugin root exists
+    checks.push(
+      this.checkExists(
+        ARCHITECTURE.studioPluginRoot,
+        "Studio plugin root (studio-plugin/src/)",
+      ),
+    );
+
     // Check no forbidden roots
-    const forbiddenRoots = ["app/src", "lib/src", "backend/src", "api/src"];
+    const forbiddenRoots = [
+      ARCHITECTURE.removedFrontendRoot,
+      "app/src",
+      "lib/src",
+      "backend/src",
+      "api/src",
+    ];
     for (const root of forbiddenRoots) {
       const exists = existsSync(join(this.rootDir, root));
       checks.push({

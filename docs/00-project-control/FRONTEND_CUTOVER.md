@@ -1,6 +1,6 @@
 # Frontend Cutover Policy
 
-**Status**: Active  
+**Status**: Active — CLEANUP-1D protected verification pending
 **Roadmap ID**: CUTOVER-0  
 **Effective date**: July 24, 2026
 
@@ -35,7 +35,7 @@ This policy supersedes historical documentation that planned to evolve the embed
 
 - `release/cutover-1e-candidate` is the protected repository default and canonical backend/Studio baseline.
 - `backup/default-before-cutover-1e` preserves the exact pre-promotion default reference.
-- `feature/plugin-merge` remains historical integration evidence; PR #1 must not be merged directly.
+- `feature/plugin-merge` remains historical integration evidence; PR #1 was closed without merge on July 28, 2026.
 - Cleanup work uses small branches and focused pull requests based on the protected default.
 
 ## Delivery Order
@@ -59,7 +59,9 @@ The removal gate passed before CLEANUP-1C began:
 - CLEANUP-1B tooling decoupling is protected, verified, and merged.
 - The removal occurs in a dedicated pull request with a rollback plan.
 
-CLEANUP-1C implements the dedicated removal under issue #37 from exact baseline `85a2fa8d512738e6d02ffae42da77af7a27db6fc`. Its protected audit requires all 176 authorized deletions, exact dependency pruning, unchanged active release boundaries, and a hard failure if root `src/` reappears. CLEANUP-1D post-removal verification remains blocked until CLEANUP-1C is verified and merged.
+CLEANUP-1C completed the dedicated removal under issue #37 from exact baseline `85a2fa8d512738e6d02ffae42da77af7a27db6fc`. Its protected audit proved all 176 authorized deletions, exact dependency pruning, unchanged active release boundaries, and a hard failure if root `src/` reappears.
+
+CLEANUP-1D is implemented and locally verified under issue #41 from protected baseline `9a728661ee7b0a635af78da56a5d147b296dc23c`. It is a zero-deletion verification stage: local source ownership is limited to `server/src` and `studio-plugin/src`, stale repository snapshots are replaced with deterministic tracked-path inventories, intentional Studio/Roblox/historical `src/**` references are classified, and protected evidence remains required by Merge Gate.
 
 ## Definition of Done for a Cutover Sprint
 
