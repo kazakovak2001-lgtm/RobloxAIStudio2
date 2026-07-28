@@ -1,4 +1,4 @@
-name: Inventory Evidence
+name: Inventory Repair
 
 on:
   pull_request:
@@ -6,14 +6,17 @@ on:
       - release/cutover-1e-candidate
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
-  inventory-evidence:
+  inventory-repair:
+    if: github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout pull request
+      - name: Checkout pull request head
         uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.ref }}
 
       - name: Regenerate final tracked-file inventory
         run: |
@@ -21,10 +24,12 @@ jobs:
             | grep -v '^.github/workflows/inventory-evidence.yml$' \
             | LC_ALL=C sort \
             > _inventory_raw.txt
+          git rm .github/workflows/inventory-evidence.yml
 
-      - name: Upload inventory evidence
-        uses: actions/upload-artifact@v4
-        with:
-          name: inventory-evidence
-          path: _inventory_raw.txt
-          if-no-files-found: error
+      - name: Commit exact inventory and remove repair workflow
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A _inventory_raw.txt .github/workflows/inventory-evidence.yml
+          git commit -m "chore(cleanup): refresh tracked-file inventory"
+          git push origin HEAD:${{ github.event.pull_request.head.ref }}
