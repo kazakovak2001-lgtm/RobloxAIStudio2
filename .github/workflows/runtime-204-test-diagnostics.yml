@@ -1,0 +1,39 @@
+name: RUNTIME-204 Test Diagnostics
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  diagnose-tests:
+    if: github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.ref }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "npm"
+      - run: npm ci
+      - name: Capture complete backend test output
+        shell: bash
+        run: |
+          set +e
+          npm run test > backend-test.log 2>&1
+          echo "$?" > backend-test.status
+          tail -n 200 backend-test.log
+          exit 0
+      - name: Publish test diagnostics
+        uses: actions/upload-artifact@v4
+        with:
+          name: runtime-204-test-diagnostics-${{ github.sha }}
+          path: |
+            backend-test.log
+            backend-test.status
+          retention-days: 1
+      - name: Enforce test result
+        run: test "$(cat backend-test.status)" = "0"
