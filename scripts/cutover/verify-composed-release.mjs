@@ -12,10 +12,7 @@ const smokeEventsPath = `${evidenceDirectory}/smoke-events.jsonl`;
 mkdirSync(evidenceDirectory, { recursive: true });
 recordSmokeEvent("smoke.started", { origin: allowedOrigin });
 
-assert.ok(
-  verificationPassword,
-  "POSTGRES_PASSWORD is required",
-);
+assert.ok(verificationPassword, "POSTGRES_PASSWORD is required");
 
 await waitForHealthyRelease();
 
@@ -70,6 +67,7 @@ const registration = await request("/api/platform/auth/register", {
   body: JSON.stringify(credentials),
 });
 assert.equal(registration.status, 200, registration.body);
+assertCredentialFreeAuthResponse("register", registration.body);
 
 const setCookies = registration.headers["set-cookie"] ?? [];
 assert.ok(Array.isArray(setCookies), "Expected multiple Set-Cookie headers");
@@ -105,6 +103,94 @@ await assertSocketRejectedWithoutCookie();
 const authenticatedSocketTransport =
   await assertSocketAcceptedWithCookie(accessCookieHeader);
 
+const initialRefreshCookieHeader = refreshCookie.split(";", 1)[0];
+const refreshed = await request("/api/platform/auth/refresh", {
+  method: "POST",
+  headers: {
+    Origin: allowedOrigin,
+    Cookie: initialRefreshCookieHeader,
+  },
+});
+assert.equal(refreshed.status, 200, refreshed.body);
+assertCredentialFreeAuthResponse("refresh", refreshed.body);
+const refreshedCookies = refreshed.headers["set-cookie"] ?? [];
+assert.ok(
+  Array.isArray(refreshedCookies),
+  "Expected rotated auth Set-Cookie headers",
+);
+const rotatedAccessCookie = refreshedCookies.find(
+  (value) =>
+    value.startsWith("roblox_ai_token=") &&
+    /;\s*Path=\/(?:;|$)/i.test(value) &&
+    !/;\s*Max-Age=0(?:;|$)/i.test(value),
+);
+const rotatedRefreshCookie = refreshedCookies.find((value) =>
+  value.startsWith("roblox_ai_refresh="),
+);
+assert.ok(rotatedAccessCookie, "Missing rotated access cookie");
+assert.ok(rotatedRefreshCookie, "Missing rotated refresh cookie");
+assertCookiePolicy(rotatedAccessCookie, { path: "/" });
+assertCookiePolicy(rotatedRefreshCookie, {
+  path: "/api/platform/auth/refresh",
+});
+assert.notEqual(
+  rotatedRefreshCookie.split(";", 1)[0],
+  initialRefreshCookieHeader,
+  "Refresh credential was not rotated",
+);
+
+const replayedRefresh = await request("/api/platform/auth/refresh", {
+  method: "POST",
+  headers: {
+    Origin: allowedOrigin,
+    Cookie: initialRefreshCookieHeader,
+  },
+});
+assert.equal(
+  replayedRefresh.status,
+  401,
+  "Consumed refresh credential was accepted again",
+);
+
+const rotatedAccessCookieHeader = rotatedAccessCookie.split(";", 1)[0];
+const rotatedCurrentUser = await request("/api/platform/auth/me", {
+  headers: {
+    Origin: allowedOrigin,
+    Cookie: rotatedAccessCookieHeader,
+  },
+});
+assert.equal(rotatedCurrentUser.status, 200, rotatedCurrentUser.body);
+
+const login = await request("/api/platform/auth/login", {
+  method: "POST",
+  headers: {
+    Origin: allowedOrigin,
+    "Content-Type": "application/json",
+  },
+  body: JSON.stringify({
+    email: credentials.email,
+    password: credentials.password,
+  }),
+});
+assert.equal(login.status, 200, login.body);
+assertCredentialFreeAuthResponse("login", login.body);
+const loginCookies = login.headers["set-cookie"] ?? [];
+assert.ok(Array.isArray(loginCookies), "Expected login Set-Cookie headers");
+const loginAccessCookie = loginCookies.find(
+  (value) =>
+    value.startsWith("roblox_ai_token=") &&
+    /;\s*Path=\/(?:;|$)/i.test(value) &&
+    !/;\s*Max-Age=0(?:;|$)/i.test(value),
+);
+assert.ok(loginAccessCookie, "Missing login access cookie");
+const loginCurrentUser = await request("/api/platform/auth/me", {
+  headers: {
+    Origin: allowedOrigin,
+    Cookie: loginAccessCookie.split(";", 1)[0],
+  },
+});
+assert.equal(loginCurrentUser.status, 200, loginCurrentUser.body);
+
 const result = {
   status: "passed",
   origin: allowedOrigin,
@@ -118,6 +204,9 @@ const result = {
   authenticatedSocketTransport,
   unauthenticatedSocketRejected: true,
   hostOnlyCookies: true,
+  credentialFreeAuthResponses: ["register", "login", "refresh"],
+  refreshCredentialRotated: true,
+  consumedRefreshCredentialRejected: true,
 };
 writeFileSync(
   `${evidenceDirectory}/smoke-result.json`,
@@ -185,6 +274,28 @@ function assertCookiePolicy(cookie, { path }) {
   assert.doesNotMatch(cookie, /;\s*Domain=/i, "Cookie must remain host-only");
 }
 
+function assertCredentialFreeAuthResponse(operation, body) {
+  const payload = JSON.parse(body);
+  assert.equal(payload.success, true, `${operation} did not succeed`);
+  assert.ok(
+    payload.data && typeof payload.data === "object",
+    `${operation} response data is missing`,
+  );
+  assert.ok(
+    !Object.hasOwn(payload.data, "token"),
+    `${operation} response exposed an access token`,
+  );
+  assert.ok(
+    !Object.hasOwn(payload.data, "refreshToken"),
+    `${operation} response exposed a refresh token`,
+  );
+  assert.doesNotMatch(
+    body,
+    /"(?:token|refreshToken)"\s*:/,
+    `${operation} response serialized a reusable credential`,
+  );
+}
+
 function assertSocketRejectedWithoutCookie() {
   recordSmokeEvent("socket.unauthenticated.started");
   return new Promise((resolve, reject) => {
@@ -204,7 +315,10 @@ function assertSocketRejectedWithoutCookie() {
       const error = new Error(
         "Unauthenticated Socket.IO connection was accepted",
       );
-      recordSmokeEvent("socket.unauthenticated.accepted", serializeError(error));
+      recordSmokeEvent(
+        "socket.unauthenticated.accepted",
+        serializeError(error),
+      );
       reject(error);
     });
     socket.once("connect_error", (error) => {

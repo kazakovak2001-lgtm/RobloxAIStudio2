@@ -27,7 +27,8 @@ import { SaaSProjectRepository } from "../platform/projects";
 
 /**
  * Simulates the authMiddleware logic for testing without Express server.
- * Mirrors the actual implementation in security.ts (FIXED version with JWT validation).
+ * Mirrors the actual implementation in security.ts (storage-backed opaque
+ * session validation).
  */
 function simulateAuthMiddleware(
   path: string,

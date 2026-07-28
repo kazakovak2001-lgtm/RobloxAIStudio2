@@ -83,8 +83,6 @@ export function createPlatformRouter({
       success: true,
       data: {
         user,
-        token: loginResult.token,
-        refreshToken: loginResult.refreshToken,
       },
     });
   });
@@ -112,8 +110,6 @@ export function createPlatformRouter({
       success: true,
       data: {
         user,
-        token: result.token,
-        refreshToken: result.refreshToken,
         role: result.role,
       },
     });
@@ -130,9 +126,14 @@ export function createPlatformRouter({
 
   router.post("/auth/refresh", (req, res) => {
     const refreshToken =
-      req.body.refreshToken ?? getRefreshTokenFromCookies(req);
+      getRefreshTokenFromCookies(req) ??
+      (typeof req.body?.refreshToken === "string"
+        ? req.body.refreshToken
+        : null);
     if (!refreshToken) {
-      res.status(400).json({ success: false, error: "refreshToken required" });
+      res
+        .status(400)
+        .json({ success: false, error: "Refresh credential required" });
       return;
     }
     const result = auth.refreshSession(refreshToken);
@@ -143,7 +144,7 @@ export function createPlatformRouter({
     setAuthCookies(res, result.token!, result.refreshToken!);
     res.json({
       success: true,
-      data: { token: result.token, refreshToken: result.refreshToken },
+      data: { refreshed: true },
     });
   });
 

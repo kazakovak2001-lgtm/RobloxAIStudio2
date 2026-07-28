@@ -18,12 +18,13 @@ These items are ready and should run in this order.
 
 ### SEC-201 — Cookie-only browser auth contract
 
-| Field      | Value           |
-| ---------- | --------------- |
-| Priority   | P0              |
-| Repository | RobloxAIStudio2 |
-| Size       | M               |
-| Depends on | TECH-AUDIT-2    |
+| Field      | Value                   |
+| ---------- | ----------------------- |
+| Priority   | P0                      |
+| Repository | RobloxAIStudio2         |
+| Size       | M                       |
+| Depends on | TECH-AUDIT-2            |
+| Status     | Implemented — issue #45 |
 
 **Scope**
 
