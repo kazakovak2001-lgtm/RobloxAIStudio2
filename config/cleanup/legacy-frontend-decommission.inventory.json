@@ -1,10 +1,11 @@
 {
-  "schemaVersion": 1,
-  "roadmapId": "CLEANUP-1A",
-  "status": "audit-only",
+  "schemaVersion": 2,
+  "roadmapId": "CLEANUP-1B",
+  "status": "tooling-decoupled",
   "baseline": {
     "defaultBranch": "release/cutover-1e-candidate",
-    "minimumAncestorCommit": "35896654419cf3117d7e1d7085f4e7c2084a04be"
+    "minimumAncestorCommit": "99b0de4a3b493d1e1fa98173deea8fae59d57842",
+    "cleanup1aCommit": "99b0de4a3b493d1e1fa98173deea8fae59d57842"
   },
   "canonicalFrontend": {
     "repository": "kazakovak2001-lgtm/Frontend",
@@ -227,23 +228,66 @@
       }
     ]
   },
-  "currentBlockers": {
+  "stageChangePolicy": {
+    "allowedChangedFiles": [
+      ".github/workflows/ci.yml",
+      "config/cleanup/legacy-frontend-decommission.inventory.json",
+      "config/testing/vitest.backend.config.ts",
+      "docs/00-project-control/CURRENT_STATE.md",
+      "docs/00-project-control/DECISION_LOG.md",
+      "docs/00-project-control/FRONTEND_CUTOVER.md",
+      "docs/00-project-control/ROADMAP_STATUS.md",
+      "docs/project/CLEANUP-1B_TOOLING_DECOUPLING.md",
+      "package.json",
+      "scripts/cleanup/audit-legacy-frontend-decommission.mjs",
+      "scripts/validate-architecture.ts"
+    ],
+    "additionalProtectedFiles": [
+      ".eslintrc.json",
+      "architecture.manifest.json",
+      "package-lock.json",
+      "scripts/validate-boundaries.ts",
+      "server/src/core/architecture/ImportBoundaryValidator.ts"
+    ]
+  },
+  "toolingContract": {
     "packageScripts": {
-      "dev": "node node_modules/vite/bin/vite.js",
-      "build": "node --import tsx scripts/validate-architecture.ts && node --import tsx scripts/validate-boundaries.ts && node node_modules/typescript/bin/tsc -b && node node_modules/vite/bin/vite.js build",
-      "preview": "node node_modules/vite/bin/vite.js preview",
-      "typecheck": "node node_modules/typescript/bin/tsc --noEmit && node node_modules/typescript/bin/tsc --noEmit --project server/tsconfig.json"
+      "dev": "npm run dev:server",
+      "build": "npm run build:server",
+      "preview": "npm run start",
+      "typecheck": "node node_modules/typescript/bin/tsc --noEmit --project server/tsconfig.json",
+      "test": "node node_modules/vitest/vitest.mjs --config config/testing/vitest.backend.config.ts run",
+      "test:watch": "node node_modules/vitest/vitest.mjs --config config/testing/vitest.backend.config.ts",
+      "test:postgres": "node node_modules/vitest/vitest.mjs --config config/testing/vitest.backend.config.ts run server/src/__tests__/core1b.postgres.integration.test.ts",
+      "lint": "node node_modules/eslint/bin/eslint.js server/src scripts config/testing --ext .ts --max-warnings 0"
     },
     "rootTsconfig": {
+      "classification": "preserved-legacy-config-not-invoked-by-active-tooling",
       "include": ["src"],
       "pathAlias": {
         "@/*": ["src/*"]
       }
     },
-    "architectureValidatorMarkers": [
-      "Frontend: src/ (React/Vite SPA)",
+    "vitestBackendConfig": {
+      "path": "config/testing/vitest.backend.config.ts",
+      "include": ["server/src/**/*.test.ts", "server/src/**/*.spec.ts"],
+      "forbiddenMarkers": [
+        "@vitejs/plugin-react",
+        "vite.config.ts",
+        "\"src/",
+        "'src/"
+      ]
+    },
+    "architectureValidatorRequiredMarkers": [
+      "Backend + Standalone Frontend Model",
+      "Canonical web client: kazakovak2001-lgtm/Frontend",
+      "FROZEN INVENTORY",
+      "Architecture Model: BACKEND + STANDALONE FRONTEND"
+    ],
+    "architectureValidatorForbiddenMarkers": [
+      "Dual-Root Model",
       "collectTsFiles(join(ROOT, \"src\"))",
-      "Frontend (/src)"
+      "Architecture Model: MONOREPO DUAL-ROOT"
     ],
     "combinedDockerfileMarkers": [
       "COPY src/ src/",
@@ -251,7 +295,19 @@
       "RUN npx vite build",
       "COPY --from=builder /app/dist ./dist"
     ],
-    "ciMarkers": ["npx tsc --noEmit", "name: Promoted Baseline Integrity"]
+    "ciRequiredMarkers": [
+      "- run: npm run typecheck",
+      "run: npm run test:postgres",
+      "name: Legacy Frontend Tooling Decoupling",
+      "LEGACY_FRONTEND_AUDIT_OUTPUT: artifacts/cleanup-1b",
+      "name: cleanup-1b-tooling-decoupling",
+      "name: Promoted Baseline Integrity"
+    ],
+    "ciForbiddenMarkers": [
+      "- run: npx tsc --noEmit",
+      "npx vitest run server/src/__tests__/core1b.postgres.integration.test.ts",
+      "LEGACY_FRONTEND_AUDIT_OUTPUT: artifacts/cleanup-1a"
+    ]
   },
   "packageDisposition": {
     "retainOperational": [
@@ -289,6 +345,7 @@
     {
       "id": "CLEANUP-1B",
       "name": "tooling-decoupling",
+      "status": "implemented",
       "deletionAuthorized": false,
       "actions": [
         "remove root frontend compilation from protected TypeScript checks",
@@ -300,6 +357,7 @@
     {
       "id": "CLEANUP-1C",
       "name": "physical-removal-and-dependency-pruning",
+      "status": "next-after-cleanup-1b-merge",
       "deletionAuthorized": true,
       "prerequisite": "CLEANUP-1B verified and merged",
       "actions": [
@@ -313,6 +371,7 @@
     {
       "id": "CLEANUP-1D",
       "name": "post-removal-verification",
+      "status": "blocked-by-cleanup-1c",
       "deletionAuthorized": false,
       "prerequisite": "CLEANUP-1C verified and merged",
       "actions": [
@@ -322,5 +381,6 @@
       ]
     }
   ],
-  "currentStageDeletionAuthorized": false
+  "currentStageDeletionAuthorized": false,
+  "nextStage": "CLEANUP-1C"
 }
