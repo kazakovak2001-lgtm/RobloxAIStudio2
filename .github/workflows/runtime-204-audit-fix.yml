@@ -71,7 +71,10 @@ jobs:
         run: |
           node node_modules/prettier/bin/prettier.cjs --write scripts/cleanup/audit-legacy-frontend-decommission.mjs
           node --check scripts/cleanup/audit-legacy-frontend-decommission.mjs
+          git rm .github/workflows/runtime-204-audit-fix.yml
           LEGACY_FRONTEND_AUDIT_OUTPUT=artifacts/runtime-204-audit node scripts/cleanup/audit-legacy-frontend-decommission.mjs
+          git restore --staged .github/workflows/runtime-204-audit-fix.yml
+          git restore .github/workflows/runtime-204-audit-fix.yml
           npm run lint
       - name: Commit truthful audit semantics
         run: |
