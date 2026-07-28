@@ -2,6 +2,7 @@ export type PipelineEventType =
   | "step.started"
   | "step.completed"
   | "step.simulated"
+  | "step.skipped"
   | "step.failed"
   | "pipeline.started"
   | "pipeline.completed"
