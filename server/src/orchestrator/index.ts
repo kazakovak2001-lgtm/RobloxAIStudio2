@@ -1,4 +1,7 @@
-export { AutonomousOrchestrator } from "./AutonomousOrchestrator";
+export {
+  AutonomousOrchestrator,
+  type AutonomousOrchestratorOptions,
+} from "./AutonomousOrchestrator";
 export {
   DEFAULT_GOALS,
   createSessionId,
