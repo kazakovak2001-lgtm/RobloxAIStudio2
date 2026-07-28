@@ -1,0 +1,218 @@
+{
+  "schemaVersion": 1,
+  "classifications": [
+    "canonical",
+    "bounded-adapter",
+    "preview",
+    "deprecated",
+    "removed"
+  ],
+  "productionUsePolicies": [
+    "allowed",
+    "adapter-only",
+    "preview-route",
+    "preview-internal",
+    "forbidden"
+  ],
+  "canonicalByCapability": {
+    "execution-engine": "planning-plan-executor",
+    "provider-construction": "providers-llm-provider-factory"
+  },
+  "inventoryRules": [
+    {
+      "root": "server/src/planning/execution",
+      "pattern": "(?:Executor|Controller|Orchestrator|Integrator|Factory|Registry|Engine|Manager|Bridge)\\.ts$"
+    },
+    {
+      "root": "server/src/runtime/controller",
+      "pattern": "(?:Executor|Controller|Orchestrator|Integrator|Factory|Registry|Engine|Manager|Bridge)\\.ts$"
+    },
+    {
+      "root": "server/src/orchestrator",
+      "pattern": "(?:Executor|Controller|Orchestrator|Integrator|Factory|Registry|Engine|Manager|Bridge)\\.ts$"
+    },
+    {
+      "root": "server/src/pipeline/v2",
+      "pattern": "(?:PipelineEngine|PipelineExecutor)\\.ts$"
+    },
+    {
+      "root": "server/src/execution",
+      "pattern": "aiPipelineIntegrator\\.ts$"
+    },
+    {
+      "root": "server/src/providers",
+      "pattern": "providerFactory\\.ts$"
+    },
+    {
+      "root": "server/src/providers/ai",
+      "pattern": "Provider(?:Factory|Registry)\\.ts$"
+    },
+    {
+      "root": "server/src/memory",
+      "pattern": "MemoryRegistry\\.ts$"
+    },
+    {
+      "root": "server/src/memory/agents",
+      "pattern": "AgentMemoryBridge\\.ts$"
+    },
+    {
+      "root": "server/src/memory/core",
+      "pattern": "MemoryEngine\\.ts$"
+    },
+    {
+      "root": "server/src/memory/knowledge",
+      "pattern": "MemoryManager\\.ts$"
+    }
+  ],
+  "entries": [
+    {
+      "id": "planning-plan-executor",
+      "capability": "execution-engine",
+      "path": "server/src/planning/execution/PlanExecutor.ts",
+      "classification": "canonical",
+      "owner": "planning",
+      "productionUse": "allowed",
+      "responsibility": "Canonical DAG-based production execution engine."
+    },
+    {
+      "id": "runtime-execution-controller",
+      "capability": "execution-lifecycle",
+      "path": "server/src/runtime/controller/RuntimeExecutionController.ts",
+      "classification": "bounded-adapter",
+      "owner": "runtime",
+      "productionUse": "adapter-only",
+      "responsibility": "Lifecycle, checkpoint, telemetry and error-boundary adapter around PlanExecutor."
+    },
+    {
+      "id": "pipeline-v2-engine",
+      "capability": "execution-engine",
+      "path": "server/src/pipeline/v2/PipelineEngine.ts",
+      "classification": "preview",
+      "owner": "pipeline",
+      "productionUse": "preview-internal",
+      "responsibility": "Preview stage pipeline with in-memory persistence and artifact review facilities.",
+      "replacement": "planning-plan-executor",
+      "allowedImporters": [
+        "server/src/pipeline/v2/index.ts"
+      ]
+    },
+    {
+      "id": "pipeline-v2-executor",
+      "capability": "execution-engine",
+      "path": "server/src/pipeline/v2/PipelineExecutor.ts",
+      "classification": "preview",
+      "owner": "pipeline",
+      "productionUse": "preview-internal",
+      "responsibility": "Internal executor owned by the preview Pipeline v2 facade.",
+      "replacement": "planning-plan-executor",
+      "allowedImporters": [
+        "server/src/pipeline/v2/PipelineEngine.ts",
+        "server/src/pipeline/v2/index.ts"
+      ]
+    },
+    {
+      "id": "autonomous-orchestrator",
+      "capability": "autonomous-orchestration",
+      "path": "server/src/orchestrator/AutonomousOrchestrator.ts",
+      "classification": "preview",
+      "owner": "orchestrator",
+      "productionUse": "preview-route",
+      "responsibility": "Preview autonomous lifecycle whose named phases currently use simulated execution.",
+      "replacement": "runtime-execution-controller",
+      "allowedImporters": [
+        "server/src/orchestrator/index.ts",
+        "server/src/routes/autonomous.ts"
+      ]
+    },
+    {
+      "id": "execution-ai-pipeline-integrator",
+      "capability": "execution-engine",
+      "path": "server/src/execution/aiPipelineIntegrator.ts",
+      "classification": "deprecated",
+      "owner": "execution",
+      "productionUse": "forbidden",
+      "responsibility": "Legacy planning and memory integrator retained only for constants and compatibility types.",
+      "replacement": "planning-plan-executor",
+      "allowedImporters": []
+    },
+    {
+      "id": "providers-llm-provider-factory",
+      "capability": "provider-construction",
+      "path": "server/src/providers/providerFactory.ts",
+      "classification": "canonical",
+      "owner": "providers",
+      "productionUse": "allowed",
+      "responsibility": "Canonical environment-driven LLM provider construction path."
+    },
+    {
+      "id": "providers-ai-provider-factory",
+      "capability": "provider-construction",
+      "path": "server/src/providers/ai/ProviderFactory.ts",
+      "classification": "preview",
+      "owner": "providers",
+      "productionUse": "preview-internal",
+      "responsibility": "Secondary provider registry factory retained for the advanced provider preview stack.",
+      "replacement": "providers-llm-provider-factory",
+      "allowedImporters": [
+        "server/src/providers/ai/index.ts"
+      ]
+    },
+    {
+      "id": "providers-ai-provider-registry",
+      "capability": "provider-registry",
+      "path": "server/src/providers/ai/ProviderRegistry.ts",
+      "classification": "preview",
+      "owner": "providers",
+      "productionUse": "preview-internal",
+      "responsibility": "In-process registry for the advanced provider preview stack.",
+      "allowedImporters": [
+        "server/src/providers/ai/ProviderFactory.ts",
+        "server/src/providers/ai/ProviderHealthService.ts",
+        "server/src/providers/ai/index.ts"
+      ]
+    },
+    {
+      "id": "memory-execution-registry",
+      "capability": "execution-memory",
+      "path": "server/src/memory/MemoryRegistry.ts",
+      "classification": "bounded-adapter",
+      "owner": "memory",
+      "productionUse": "adapter-only",
+      "responsibility": "Bounded execution-scoped ProjectMemory registry with capped process-local history."
+    },
+    {
+      "id": "memory-agent-bridge",
+      "capability": "agent-memory",
+      "path": "server/src/memory/agents/AgentMemoryBridge.ts",
+      "classification": "bounded-adapter",
+      "owner": "memory",
+      "productionUse": "adapter-only",
+      "responsibility": "Non-blocking adapter between agent execution and the memory engine."
+    },
+    {
+      "id": "memory-engine",
+      "capability": "long-term-memory",
+      "path": "server/src/memory/core/MemoryEngine.ts",
+      "classification": "preview",
+      "owner": "memory",
+      "productionUse": "preview-route",
+      "responsibility": "Process-local long-term and semantic memory preview; not durable product-state storage.",
+      "allowedImporters": [
+        "server/src/memory/agents/AgentMemoryBridge.ts",
+        "server/src/routes/memory.ts"
+      ]
+    },
+    {
+      "id": "knowledge-memory-manager",
+      "capability": "project-knowledge-memory",
+      "path": "server/src/memory/knowledge/MemoryManager.ts",
+      "classification": "preview",
+      "owner": "memory",
+      "productionUse": "preview-internal",
+      "responsibility": "Process-local project knowledge store with bounded entry eviction.",
+      "allowedImporters": [
+        "server/src/memory/knowledge/index.ts"
+      ]
+    }
+  ]
+}
