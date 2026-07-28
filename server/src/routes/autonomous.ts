@@ -1,8 +1,10 @@
 /**
  * Autonomous Orchestrator Preview API.
  *
- * This route currently runs a deterministic simulation. It does not invoke the
- * production generation, playtest, Studio delivery or verification engines.
+ * This route invokes bounded deterministic services but remains preview-only.
+ * Static playtest evidence is not a Roblox runtime play session, repair is not
+ * artifact-applying, and Studio delivery is unavailable without an attached
+ * authenticated Studio verification context.
  */
 
 import { Router } from "express";
@@ -13,7 +15,7 @@ export function createAutonomousRouter(events?: PipelineEventEmitter): Router {
   const router = Router();
   const orchestrator = new AutonomousOrchestrator(events);
 
-  // POST /api/autonomous/run — start preview-only autonomous simulation
+  // POST /api/autonomous/run — start bounded preview execution
   router.post("/run", (req, res) => {
     const { prompt, projectId, goals } = req.body;
 
@@ -40,7 +42,7 @@ export function createAutonomousRouter(events?: PipelineEventEmitter): Router {
         resultAuthority: session.resultAuthority,
         productionCompleted: false,
         warning:
-          "Preview simulation only. No production generation, Roblox playtest, Studio delivery or artifact verification is performed.",
+          "Bounded preview only. Deterministic generation and static analysis may run, but no Roblox runtime playtest, artifact-applying repair, Studio delivery or artifact verification is performed.",
       },
     });
   });
@@ -53,6 +55,16 @@ export function createAutonomousRouter(events?: PipelineEventEmitter): Router {
       return;
     }
     res.json({ success: true, data: session });
+  });
+
+  // GET /api/autonomous/capabilities/:sessionId
+  router.get("/capabilities/:sessionId", (req, res) => {
+    const capabilities = orchestrator.getCapabilities(req.params.sessionId);
+    if (!capabilities) {
+      res.status(404).json({ success: false, error: "Session not found" });
+      return;
+    }
+    res.json({ success: true, data: capabilities });
   });
 
   router.post("/pause/:sessionId", (req, res) => {
@@ -72,6 +84,26 @@ export function createAutonomousRouter(events?: PipelineEventEmitter): Router {
       res
         .status(400)
         .json({ success: false, error: "Cannot resume (not paused)" });
+      return;
+    }
+    res.json({ success: true, data: { status: "running" } });
+  });
+
+  router.post("/recover/:sessionId", (req, res) => {
+    const timestamp = req.body?.checkpointTimestamp;
+    if (timestamp !== undefined && !Number.isFinite(timestamp)) {
+      res.status(400).json({
+        success: false,
+        error: "checkpointTimestamp must be a finite number",
+      });
+      return;
+    }
+    const ok = orchestrator.recover(req.params.sessionId, timestamp);
+    if (!ok) {
+      res.status(400).json({
+        success: false,
+        error: "Cannot recover session from the requested checkpoint",
+      });
       return;
     }
     res.json({ success: true, data: { status: "running" } });
