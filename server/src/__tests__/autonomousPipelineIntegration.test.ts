@@ -65,7 +65,7 @@ async function waitForSessionEnd(
 // ─── 1. Successful Pipeline Run ────────────────────────────────────────────
 
 describe("Integration - Successful Pipeline Run", () => {
-  it("property: full autonomous run emits pipeline.started, step events for each phase, and pipeline.completed with quality score and cost", async () => {
+  it("property: full autonomous preview emits truthful phase evidence without production completion", async () => {
     await fc.assert(
       fc.asyncProperty(
         fc.string({ minLength: 5, maxLength: 50 }),
@@ -88,30 +88,32 @@ describe("Integration - Successful Pipeline Run", () => {
           const stepStarted = events.filter((e) => e.type === "step.started");
           expect(stepStarted.length).toBeGreaterThan(0);
 
-          // Verify step.completed events were emitted
-          const stepCompleted = events.filter(
-            (e) => e.type === "step.completed",
+          const stepEvidence = events.filter(
+            (e) => e.type === "step.completed" || e.type === "step.simulated",
           );
-          expect(stepCompleted.length).toBeGreaterThan(0);
+          expect(stepEvidence.length).toBeGreaterThan(0);
 
-          // Verify pipeline terminal event emitted
-          const pipelineCompleted = events.filter(
+          const previewCompleted = events.filter(
+            (e) => e.type === "pipeline.preview.completed",
+          );
+          const productionCompleted = events.filter(
             (e) => e.type === "pipeline.completed",
           );
           const pipelineFailed = events.filter(
             (e) => e.type === "pipeline.failed",
           );
-          expect(pipelineCompleted.length + pipelineFailed.length).toBe(1);
+          expect(previewCompleted.length + pipelineFailed.length).toBe(1);
+          expect(productionCompleted.length).toBe(0);
 
-          // If completed, verify quality score and cost are present
-          if (pipelineCompleted.length === 1) {
-            const data = pipelineCompleted[0].data as Record<string, unknown>;
-            expect(data).toBeDefined();
-            // outputs field contains qualityScore, genre, totalCost
-            const outputs = data.outputs as Record<string, unknown>;
-            expect(outputs).toBeDefined();
-            expect(typeof outputs.qualityScore).toBe("number");
-            expect(typeof outputs.totalCost).toBe("number");
+          if (previewCompleted.length === 1) {
+            const data = previewCompleted[0].data as Record<string, unknown>;
+            expect(data).toMatchObject({
+              executionMode: "simulation",
+              resultAuthority: "preview-only",
+              productionCompleted: false,
+              qualityScore: null,
+              totalCost: 0,
+            });
           }
         },
       ),
@@ -221,7 +223,7 @@ describe("Integration - Agent Name Mapping", () => {
 // ─── 4. Cost Data Propagation ───────────────────────────────────────────────
 
 describe("Integration - Cost Data Propagation", () => {
-  it("property: step.completed events include cost field with { tokens, cost, timeMs } structure", async () => {
+  it("property: preview step evidence includes zero synthetic usage with explicit source", async () => {
     await fc.assert(
       fc.asyncProperty(
         fc.string({ minLength: 5, maxLength: 50 }),
@@ -233,25 +235,24 @@ describe("Integration - Cost Data Propagation", () => {
           // Wait for completion
           await waitForSessionEnd(orchestrator, session.id);
 
-          // Get step.completed events
-          const stepCompleted = events.filter(
-            (e) => e.type === "step.completed",
+          const stepEvidence = events.filter(
+            (e) => e.type === "step.completed" || e.type === "step.simulated",
           );
-          expect(stepCompleted.length).toBeGreaterThan(0);
+          expect(stepEvidence.length).toBeGreaterThan(0);
 
-          // Verify cost data structure in each step.completed
-          for (const evt of stepCompleted) {
+          for (const evt of stepEvidence) {
             const data = evt.data as Record<string, unknown>;
             expect(data.output).toBeDefined();
             const output = data.output as Record<string, unknown>;
             expect(output.cost).toBeDefined();
 
             const costData = output.cost as Record<string, unknown>;
-            expect(typeof costData.tokens).toBe("number");
-            expect(typeof costData.cost).toBe("number");
+            expect(costData).toMatchObject({
+              tokens: 0,
+              cost: 0,
+              source: "synthetic",
+            });
             expect(typeof costData.timeMs).toBe("number");
-            expect(costData.tokens).toBeGreaterThan(0);
-            expect(costData.cost).toBeGreaterThan(0);
             expect(costData.timeMs).toBeGreaterThanOrEqual(0);
           }
         },

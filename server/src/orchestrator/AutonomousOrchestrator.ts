@@ -95,12 +95,21 @@ export class AutonomousOrchestrator {
       resultAuthority: "preview-only",
       status: "running",
       currentPhase: "genre_detection",
-      phases: PHASE_ORDER.map((phase) => ({
-        id: `node-${phase}`,
-        phase,
-        status: "pending",
-        executionMode: "simulation",
-      })),
+      phases: [
+        ...PHASE_ORDER.map((phase) => ({
+          id: `node-${phase}`,
+          phase,
+          status: "pending" as const,
+          executionMode: "simulation" as const,
+        })),
+        {
+          id: "node-simulated",
+          phase: "simulated",
+          status: "pending",
+          executionMode: "simulation",
+          evidence: "synthetic",
+        },
+      ],
       goals: config,
       cost: this.emptyCost(),
       checkpoints: [],
@@ -144,7 +153,9 @@ export class AutonomousOrchestrator {
     const session = this.sessions.get(sessionId);
     if (!session || session.status !== "paused") return false;
     session.status = "running";
-    const next = session.phases.find((phase) => phase.status === "pending");
+    const next = session.phases.find(
+      (phase) => phase.status === "pending" && phase.phase !== "simulated",
+    );
     if (next) {
       session.currentPhase = next.phase;
       void this.executePhases(session);
@@ -170,6 +181,7 @@ export class AutonomousOrchestrator {
 
   private async executePhases(session: OrchestratorSession): Promise<void> {
     for (const node of session.phases) {
+      if (node.phase === "simulated") continue;
       if (
         node.status === "completed" ||
         node.status === "simulated" ||
@@ -253,7 +265,9 @@ export class AutonomousOrchestrator {
 
     if (session.status === "running") {
       const remaining = session.phases.some(
-        (phase) => phase.status === "pending" || phase.status === "running",
+        (phase) =>
+          phase.phase !== "simulated" &&
+          (phase.status === "pending" || phase.status === "running"),
       );
       if (!remaining) this.finishPreview(session);
     }
@@ -318,6 +332,22 @@ export class AutonomousOrchestrator {
     session.status = "simulated";
     session.currentPhase = "simulated";
     session.finishedAt = Date.now();
+
+    const terminalNode = session.phases.find(
+      (phase) => phase.phase === "simulated",
+    );
+    if (terminalNode) {
+      terminalNode.status = "simulated";
+      terminalNode.executionMode = "simulation";
+      terminalNode.evidence = "synthetic";
+      terminalNode.startedAt = session.finishedAt;
+      terminalNode.completedAt = session.finishedAt;
+      terminalNode.durationMs = 0;
+      terminalNode.output = {
+        productionCompleted: false,
+        resultAuthority: session.resultAuthority,
+      };
+    }
 
     const simulatedPhases = session.phases.filter(
       (phase) => phase.status === "simulated",
