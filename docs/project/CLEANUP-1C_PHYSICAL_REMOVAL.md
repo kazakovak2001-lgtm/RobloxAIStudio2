@@ -1,6 +1,6 @@
 # CLEANUP-1C Legacy Frontend Physical Removal
 
-**Status**: Implemented — local verification passed; protected CI pending  
+**Status**: Protected implementation verification passed in PR #39; merge pending
 **Date**: July 28, 2026  
 **Tracking issue**: #37
 
@@ -142,7 +142,25 @@ Local verification passed on the CLEANUP-1C implementation:
   direct packages, synchronized package-lock root declarations, and zero
   active-release legacy reference violations.
 
-Protected CI run and artifact identities will be recorded after publication.
+Protected implementation verification passed on PR #39 head
+`600f17e8826da3a9d830760964b546d98674b75d`:
+
+- CI run `30329606556` (#289) passed TypeScript, ESLint, Prettier,
+  commit-message lint, backend tests, PostgreSQL restart E2E, repository
+  validation, composed HTTPS release, promoted-baseline integrity, the
+  CLEANUP-1C physical-removal audit, backend release image, and Merge Gate;
+- Studio Plugin Package run #26 passed against the same implementation head;
+- the first backend-image attempt encountered a transient Docker Hub timeout
+  while pulling `docker/dockerfile:1`; retrying that exact job without a source
+  change passed;
+- evidence artifact `8676923623`, named
+  `cleanup-1c-physical-removal`, has digest
+  `sha256:a6006b891305ccc9ac00fe662b5dbc8e4a9bce4fe731e18991eadfec28920b15`;
+- the artifact contains the `artifacts/cleanup-1c` evidence bundle, including
+  `legacy-frontend-audit-result.json`.
+
+This records implementation verification only. CLEANUP-1C remains active until
+PR #39 is merged and the protected default-branch push run passes.
 
 ## Rollback
 

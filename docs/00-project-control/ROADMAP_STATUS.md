@@ -15,7 +15,7 @@ This sequence is authoritative for work after the standalone frontend integratio
 | CORE-1        | Real project data, persistence, and API contract stabilization | Critical | ✅ Complete                                    | CI-BASELINE-1         |
 | WORKSPACE-1   | Workflow-oriented standalone Workspace                         | High     | ✅ Complete                                    | CORE-1                |
 | STUDIO-1      | Generated artifact → Roblox Studio end-to-end validation       | High     | ✅ Complete — real desktop verified            | CORE-1, WORKSPACE-1   |
-| CUTOVER-1     | Release promotion and legacy frontend removal                  | High     | 🟡 Active — CLEANUP-1C implemented; CI pending | WORKSPACE-1, STUDIO-1 |
+| CUTOVER-1     | Release promotion and legacy frontend removal                  | High     | 🟡 Active — CLEANUP-1C verified; merge pending | WORKSPACE-1, STUDIO-1 |
 
 See [FRONTEND_CUTOVER.md](./FRONTEND_CUTOVER.md) for ownership, branch, validation, and legacy-removal rules.
 See [CORE-1A_DURABLE_PROJECTS.md](./CORE-1A_DURABLE_PROJECTS.md) for the completed identity/project boundary.
@@ -79,7 +79,7 @@ CLEANUP-1A merged as `99b0de4a3b493d1e1fa98173deea8fae59d57842`. It inventories 
 
 CLEANUP-1B is complete under closed issue #34 and merged PR #35. It routes backend development, build, typecheck, Vitest, PostgreSQL acceptance, and architecture reporting away from the frozen React/Vite application. Merge commit `703fe0fbcfcb8706506e9351af1fe7874a1337f0` passed post-merge push CI run `30327587217` (#284), including the CLEANUP-1B evidence job and Merge Gate. Artifact `8676270323` has digest `sha256:5d14de17c49751392d009021dc9a7b14605447ae72d44e24414848d3331169ec`. Every legacy source/configuration/deployment file, dependency declaration, and lockfile remained protected until the separately reviewed CLEANUP-1C stage.
 
-CLEANUP-1C is implemented under issue #37 from exact post-CLEANUP-1B baseline `85a2fa8d512738e6d02ffae42da77af7a27db6fc`. It deletes the 168-file embedded `src/` tree, five root frontend configuration/entry files, and three archival combined-deployment files; prunes exactly 12 proven legacy-only direct package declarations; retains active `socket.io-client`; and turns root `src/` into a forbidden architecture root. Local and protected validation must pass before merge. CLEANUP-1D post-removal verification remains blocked.
+CLEANUP-1C is implemented under issue #37 from exact post-CLEANUP-1B baseline `85a2fa8d512738e6d02ffae42da77af7a27db6fc`. It deletes the 168-file embedded `src/` tree, five root frontend configuration/entry files, and three archival combined-deployment files; prunes exactly 12 proven legacy-only direct package declarations; retains active `socket.io-client`; and turns root `src/` into a forbidden architecture root. PR #39 implementation head `600f17e8826da3a9d830760964b546d98674b75d` passed protected CI run `30329606556` (#289), Studio Plugin Package run #26, and Merge Gate. Evidence artifact `8676923623` has digest `sha256:a6006b891305ccc9ac00fe662b5dbc8e4a9bce4fe731e18991eadfec28920b15`. Merge and protected default-branch push validation remain required; CLEANUP-1D post-removal verification remains blocked.
 
 The removed combined stack was archival only, not an executable rollback path: its root `Dockerfile` referenced the absent `public/` directory. Executable rollback uses the independently verified CUTOVER-1A backend and CUTOVER-1B Frontend artifacts; the focused CLEANUP-1C PR can be reverted to recover historical source/configuration inventory. PR #1 must still not be merged directly.
 
@@ -126,7 +126,7 @@ The removed combined stack was archival only, not an executable rollback path: i
 - ✅ CUTOVER-1F COMPLETE — CI aligned with the promoted baseline
 - ✅ CLEANUP-1A COMPLETE — exact legacy frontend decommission inventory and protected audit
 - ✅ CLEANUP-1B COMPLETE — backend tooling decoupling and protected evidence
-- 🟡 CLEANUP-1C ACTIVE — physical removal implemented; protected CI pending
+- 🟡 CLEANUP-1C ACTIVE — protected implementation verification passed; merge pending
 
 ## Release Hardening Sprint Status
 
@@ -164,6 +164,6 @@ The removed combined stack was archival only, not an executable rollback path: i
 - **Security Status**: 12/12 hardening tasks completed (including final checkpoint)
 - **Historical v1.0 Decision**: ✅ APPROVED for the embedded product baseline
 - **Studio Gate**: ✅ STUDIO-1 complete with real desktop evidence
-- **Current Cutover Decision**: 🟡 CUTOVER-1A through CUTOVER-1F, CLEANUP-1A, and CLEANUP-1B are verified; CLEANUP-1C removal is implemented and awaits protected CI before CLEANUP-1D
+- **Current Cutover Decision**: 🟡 CUTOVER-1A through CUTOVER-1F, CLEANUP-1A, and CLEANUP-1B are complete; CLEANUP-1C protected implementation verification passed in PR #39 and awaits merge plus the protected default-branch push run before CLEANUP-1D
 - **Sign-Off Document**: `FINAL_V1_RELEASE_SIGN_OFF.md`
 - **Post-release**: F-12 (Collaborative Dev) deferred to post-launch
