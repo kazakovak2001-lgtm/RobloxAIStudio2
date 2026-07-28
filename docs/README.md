@@ -30,7 +30,7 @@ The old embedded root `src/` frontend is removed and protected by a permanent in
 
 - CUTOVER-1 and CLEANUP-1A–1D: complete.
 - TECH-AUDIT-2: complete.
-- HARDEN-2A: next.
+- HARDEN-2A: complete through SEC-201, FE-201, INT-201, and DOC-201.
 - ARCH-2B, FRONTEND-2C, RUNTIME-2D, DURABILITY-2E: planned in that order.
 - STUDIO-2F native asset/GUI/place expansion: optional and deferred.
 - F-12 collaborative development: deferred until authorization, runtime, and durability gates pass.
@@ -100,7 +100,10 @@ npm run test:workspace
 npm run build
 ```
 
-TECH-AUDIT-2 found that Frontend lint/format are not yet green or protected; FRONTEND-2C owns that baseline.
+TECH-AUDIT-2 found that Frontend lint/format are not yet green or protected;
+FRONTEND-2C owns that baseline. Production auth and ownership-isolation evidence
+must use the protected 40-check contract with `NODE_ENV=production`;
+development-mode auth bypass is not valid evidence.
 
 ## Documentation organization
 

@@ -1,8 +1,8 @@
 # Current Project State
 
 **Last Updated**: July 28, 2026
-**Phase**: HARDEN-2A in progress — SEC-201 and FE-201 implemented; INT-201 backend gate tracked by issue #47
-**Build Status**: SEC-201 merged through backend PR #46 as `7e98aba28911a20ff942e04ba5eaa51448c34b0c`. FE-201 merged through Frontend PR #14 as `2aab7c3367bb55520edc2576422ebafec265d7c6`. Frontend PR #16 then merged the protected INT-201 production contract as `739b43cbc5f991c1852e80b30fe38c0e7c02d681`; post-merge CI run #72 passed the production backend image, all 40 contract checks, responsive QA, and Merge Gate. Backend issue #47 adds the reciprocal protected gate and promotes that exact Frontend SHA into active composed-release checks.
+**Phase**: HARDEN-2A complete — ARCH-2B is next
+**Build Status**: SEC-201 merged through backend PR #46 as `7e98aba28911a20ff942e04ba5eaa51448c34b0c`. FE-201 merged through Frontend PR #14 as `2aab7c3367bb55520edc2576422ebafec265d7c6`. Frontend PR #16 merged its protected INT-201 gate as `739b43cbc5f991c1852e80b30fe38c0e7c02d681`. Backend PR #48 completed the reciprocal gate as `b30be04ce3c5458902561472d371f753b28f08c5`; post-merge CI run #307 passed 40/40 production checks, the composed HTTPS release, rollback, post-removal invariants, and Merge Gate. Contract artifact `8684538568` has digest `sha256:0babbaf1239615e15479a4adbbcc5f5745965632fb3417c06bc2ee9a70c3c0a9`. DOC-201 issue #49 then synchronized active auth/release authority and added a protected terminology/supersession guard without changing runtime behavior.
 
 ---
 
@@ -28,7 +28,8 @@
 
 - **Repository**: [kazakovak2001-lgtm/Frontend](https://github.com/kazakovak2001-lgtm/Frontend) on `main`
 - **Acceptance commit**: `a8d005d433d48e18d8e64ac176ee63c9c694b644`, independently matched to the ZIP used during the successful STUDIO-1 session.
-- **SSR release commit**: `1036c3ef9705d145cb9700cd14268a33d2abdd58`, merged through Frontend PR #12 after CI run #65 verified the production image, `/health`, SSR `/`, responsive QA, and Merge Gate.
+- **Initial SSR release commit**: `1036c3ef9705d145cb9700cd14268a33d2abdd58`, merged through Frontend PR #12 after CI run #65 verified the production image, `/health`, SSR `/`, responsive QA, and Merge Gate.
+- **Active release commit**: `739b43cbc5f991c1852e80b30fe38c0e7c02d681`, merged through Frontend PR #16. It includes FE-201 and the protected Frontend INT-201 job; post-merge CI run #72 passed 12 native tests, the production image, responsive QA, 40/40 production checks, and Merge Gate.
 - **Framework**: React 19 + TypeScript + Vite + Tailwind CSS
 - **Routing and state**: TanStack Router/Query, typed backend adapter, Socket.IO realtime client
 - **Ownership**: All new user-facing web functionality belongs in the standalone repository.
@@ -97,6 +98,10 @@ See [Technical Audit v2.0](../02-audits/technical-v2/EXECUTIVE_AUDIT.md) for the
 | CLEANUP-1C        | Legacy frontend physical removal                         | July 28, 2026 |
 | CLEANUP-1D        | Post-removal verification and permanent guard            | July 28, 2026 |
 | TECH-AUDIT-2      | Two-repository technical and architecture baseline       | July 28, 2026 |
+| SEC-201           | Cookie-only browser auth and refresh protection          | July 28, 2026 |
+| FE-201            | Real Studio verification in the canonical Workspace      | July 28, 2026 |
+| INT-201           | Reciprocal protected 40-check production contract        | July 28, 2026 |
+| DOC-201           | Active auth/release authority and terminology guard      | July 28, 2026 |
 
 ---
 
@@ -122,20 +127,20 @@ See [Technical Audit v2.0](../02-audits/technical-v2/EXECUTIVE_AUDIT.md) for the
 
 ## Security Hardening Status (Release Sprint)
 
-| Task | Description                                 | Status                                           |
-| ---- | ------------------------------------------- | ------------------------------------------------ |
-| 1    | Bug condition exploration tests             | ✅ Complete                                      |
-| 2    | Preservation property tests                 | ✅ Complete                                      |
-| 3    | Auth route PUBLIC_PREFIXES fix              | ✅ Complete                                      |
-| 4    | bcrypt password hashing (replaces SHA-256)  | ✅ Complete                                      |
-| 5    | httpOnly cookie delivery                    | ⚠️ Transport complete; JSON response gap is open |
-| 6    | Opaque-session validation in authMiddleware | ✅ Complete                                      |
-| 7    | Socket.IO opaque-session validation         | ✅ Complete                                      |
-| 8    | Dead code removal                           | ✅ Historical scope complete                     |
-| 9    | Documentation synchronization               | ⚠️ TECH-AUDIT-2 found later drift                |
-| 10   | Production infrastructure                   | ✅ Complete                                      |
-| 11   | Final verification and release report       | ✅ Historical release scope complete             |
-| 12   | Checkpoint — protected backend checks pass  | ✅ Complete                                      |
+| Task | Description                                 | Status                                 |
+| ---- | ------------------------------------------- | -------------------------------------- |
+| 1    | Bug condition exploration tests             | ✅ Complete                            |
+| 2    | Preservation property tests                 | ✅ Complete                            |
+| 3    | Auth route PUBLIC_PREFIXES fix              | ✅ Complete                            |
+| 4    | bcrypt password hashing (replaces SHA-256)  | ✅ Complete                            |
+| 5    | httpOnly cookie delivery                    | ✅ Cookie-only browser responses       |
+| 6    | Opaque-session validation in authMiddleware | ✅ Complete                            |
+| 7    | Socket.IO opaque-session validation         | ✅ Complete                            |
+| 8    | Dead code removal                           | ✅ Historical scope complete           |
+| 9    | Documentation synchronization               | ✅ DOC-201 implemented under issue #49 |
+| 10   | Production infrastructure                   | ✅ Complete                            |
+| 11   | Final verification and release report       | ✅ Historical release scope complete   |
+| 12   | Checkpoint — protected backend checks pass  | ✅ Complete                            |
 
 ---
 
@@ -167,19 +172,29 @@ See [Technical Audit v2.0](../02-audits/technical-v2/EXECUTIVE_AUDIT.md) for the
 
 ## Known Problems
 
-1. **Frontend Studio verification (P0)**: the standalone Frontend hardcodes `studioArtifactVerified` to false and discards the backend verification result.
-2. **Architecture gate (P0)**: 15 subsystems are unmodeled; layer rules/re-exports are not enforced; four cycles yield report status `FAIL` without failing CI.
-3. **Frontend quality gate (P1)**: 640 lint errors, 12 warnings, and 70 unformatted files are not covered by Frontend CI.
-4. **Autonomous pipeline (P1)**: the mounted lifecycle/events exist, but named engine phases are simulated.
-5. **Durability acknowledgement (P1)**: PostgreSQL writes are scheduled after synchronous cache mutation, so request success does not prove database acceptance.
+1. **Architecture gate (P0)**: 15 subsystems are unmodeled; layer rules/re-exports are not enforced; four cycles yield report status `FAIL` without failing CI.
+2. **Frontend quality gate (P1)**: 640 lint errors, 12 warnings, and 70 unformatted files are not covered by Frontend CI.
+3. **Autonomous pipeline (P1)**: the mounted lifecycle/events exist, but named engine phases are simulated.
+4. **Durability acknowledgement (P1)**: PostgreSQL writes are scheduled after synchronous cache mutation, so request success does not prove database acceptance.
 
-Auth response credential exposure is resolved by HARDEN-2A / SEC-201 under issue #45. STUDIO-1 desktop delivery is also no longer a known problem; its completed evidence is recorded in `STUDIO-1G_DESKTOP_ACCEPTANCE_RESULT.md` and closed issue #15.
+Auth response credential exposure is resolved by SEC-201 under issue #45.
+Frontend Studio verification is resolved by FE-201 under Frontend issue #13 and
+PR #14. STUDIO-1 desktop delivery is also no longer a known problem; its
+completed evidence is recorded in `STUDIO-1G_DESKTOP_ACCEPTANCE_RESULT.md` and
+closed issue #15.
 
 ---
 
 ## Technical Debt
 
-TECH-AUDIT-2 records 16 evidence-backed debt items. SEC-201 resolves TAV2-001 and FE-201 resolves TAV2-002. INT-201 closes TAV2-007 once the reciprocal backend gate under issue #47 merges. The remaining known problems above are the immediate release/architecture priorities. Other material items include runtime/provider/memory consolidation, route-level RBAC, dependency/security automation, the unused parallel execution contract, Frontend bundle budgets, process-local state classification, documentation consolidation, Studio native asset/GUI scope, and compiled ESM/dependency hygiene.
+TECH-AUDIT-2 records 16 evidence-backed debt items. SEC-201 resolves TAV2-001,
+FE-201 resolves TAV2-002, and reciprocal Frontend PR #16 plus backend PR #48
+resolve TAV2-007. The remaining known problems above are the immediate
+release/architecture priorities. Other material items include
+runtime/provider/memory consolidation, route-level RBAC, dependency/security
+automation, the unused parallel execution contract, Frontend bundle budgets,
+process-local state classification, documentation consolidation, Studio native
+asset/GUI scope, and compiled ESM/dependency hygiene.
 
 See [TECHNICAL_DEBT.md](../02-audits/technical-v2/TECHNICAL_DEBT.md) for definitions of done and [SPRINT_BACKLOG.md](../02-audits/technical-v2/SPRINT_BACKLOG.md) for ordered implementation work.
 
@@ -202,8 +217,8 @@ This template enforces:
 
 - **Backend release image**: `Dockerfile.backend` builds and starts the compiled backend without root `src/`, `public/`, Vite, or Tailwind inputs; CI verifies `GET /health`.
 - **Backend/PostgreSQL composition**: `deploy/docker-compose.backend.yml` provides the independently verified backend and persistent database boundary.
-- **Standalone Frontend release image**: Frontend commit `1036c3ef9705d145cb9700cd14268a33d2abdd58` packages `.output` plus one shared worker-to-Node adapter as a non-root SSR process.
-- **Composed HTTPS release**: backend head `8bee44a284244033d73637b3e3cc4bddf72af035` and exact Frontend commit `1036c3ef9705d145cb9700cd14268a33d2abdd58` passed CI run `30312627413` (#219). Evidence artifact `8670986116` (`cutover-1c-composition-8bee44a284244033d73637b3e3cc4bddf72af035`, digest `sha256:6a941900d9b73bca852d1fe071f148d6ac19eae151b414a9e7f99aa3ad39b57a`) proves healthy PostgreSQL/backend/frontend/proxy services, HTTPS SSR and health, allowed/rejected production origins, secure host-only cookies, authenticated REST, unauthenticated Socket.IO rejection, and authenticated polling → WebSocket upgrade.
+- **Standalone Frontend release image**: active Frontend commit `739b43cbc5f991c1852e80b30fe38c0e7c02d681` packages `.output` plus one shared worker-to-Node adapter as a non-root SSR process.
+- **Composed HTTPS release**: backend merge `b30be04ce3c5458902561472d371f753b28f08c5` and exact Frontend commit `739b43cbc5f991c1852e80b30fe38c0e7c02d681` passed post-merge CI run `30350138128` (#307). The release checks proved healthy PostgreSQL/backend/frontend/proxy services, HTTPS SSR and health, allowed/rejected production origins, credential-free auth responses, `Secure`/`HttpOnly`/`SameSite=Lax` host-only cookies with scoped paths, refresh rotation/replay rejection, authenticated REST, unauthenticated Socket.IO rejection, authenticated polling → WebSocket upgrade, and the exact 40-check cross-user contract.
 - **Migration Runner**: `server/src/platform/storage/postgres/migrationRunner.ts` — auto-applies pending migrations on startup (skips when STORAGE_PROVIDER=inmemory).
 - **Rollback inventory**: CUTOVER-1A and CUTOVER-1B remain independently deployable and are unaffected by removal of the non-executable combined stack. The deleted legacy source/configuration/deployment inventory remains recoverable by reverting the focused CLEANUP-1C change from baseline `85a2fa8d512738e6d02ffae42da77af7a27db6fc`. The promoted default and pinned pre-promotion rollback reference remain protected.
 - **Backup Script**: `scripts/backup-database.sh` — timestamped pg_dump with configurable retention
@@ -213,7 +228,10 @@ This template enforces:
 
 ## Last Changes
 
-- July 28, 2026: HARDEN-2A / SEC-201 removed reusable credentials from register/login/refresh JSON while preserving user/role metadata and httpOnly cookie auth. Refresh credentials are now 256-bit random values persisted only as SHA-256 digests with direct digest lookup, migrated from legacy plaintext records before startup traffic, and consumed before replacement so replay fails. Four native production-contract tests cover body shape, cookie policy, digest-only storage, migration, rotation, replay rejection, `/auth/me`, and active terminology. The composed HTTPS verifier now checks register/login/refresh body safety and rotation alongside REST and Socket.IO. Local verification passed `npm run ci` (62 test files passed, one skipped; 676 tests passed, one skipped), the production backend build, all 1,096 tracked-path invariants, and the pinned Frontend workspace tests/build. Issue #45 tracks the reviewed change; FE-201 is next.
+- July 28, 2026: HARDEN-2A / DOC-201 synchronized the active authentication and two-repository deployment guides, linked their claims to native/composed/protected evidence, annotated the conflicting July 16 decision records as superseded, and expanded the auth-contract test into a search-based authority guard. Issue #49 tracks the focused documentation-only implementation.
+- July 28, 2026: HARDEN-2A / INT-201 completed in both repositories. Frontend PR #16 merged as `739b43cbc5f991c1852e80b30fe38c0e7c02d681`; backend PR #48 merged as `b30be04ce3c5458902561472d371f753b28f08c5` after its CodeRabbit supply-chain finding was fixed with read-only job permissions, non-persisted checkout credentials, and a single inventory-backed Frontend pin. Backend post-merge run #307 passed all protected jobs and 40/40 production checks. Contract artifact `8684538568` has digest `sha256:0babbaf1239615e15479a4adbbcc5f5745965632fb3417c06bc2ee9a70c3c0a9`.
+- July 28, 2026: HARDEN-2A / FE-201 merged through Frontend PR #14 as `2aab7c3367bb55520edc2576422ebafec265d7c6`. The Workspace now parses and renders verified, pending, failed, malformed, and disconnected Studio status instead of hardcoding verification false.
+- July 28, 2026: HARDEN-2A / SEC-201 removed reusable credentials from register/login/refresh JSON while preserving user/role metadata and httpOnly cookie auth. Refresh credentials are now 256-bit random values persisted only as SHA-256 digests with direct digest lookup, migrated from legacy plaintext records before startup traffic, and consumed before replacement so replay fails. Four native production-contract tests cover body shape, cookie policy, digest-only storage, migration, rotation, replay rejection, `/auth/me`, and active terminology. The composed HTTPS verifier now checks register/login/refresh body safety and rotation alongside REST and Socket.IO. Local verification passed `npm run ci` (62 test files passed, one skipped; 676 tests passed, one skipped), the production backend build, all 1,096 tracked-path invariants, and the pinned Frontend workspace tests/build. Issue #45 is closed as completed.
 - July 28, 2026: TECH-AUDIT-2 established the first official backend + standalone Frontend baseline at backend `a2f596dcb03d92791f96d1b217bf33a534eeddcb` and Frontend `1036c3ef9705d145cb9700cd14268a33d2abdd58`. The audit inventories 46 backend subsystems, the 99-file Frontend TypeScript surface, and the 14-source Studio plugin; reconciles historical completion claims; records 16 prioritized debt items; and orders HARDEN-2A → ARCH-2B → FRONTEND-2C → RUNTIME-2D → DURABILITY-2E → STUDIO-2F. Seven deliverables live under `docs/02-audits/technical-v2/`.
 - July 28, 2026: The schema-v5 steady-state cleanup guard merged through PR #43 as `a2f596dcb03d92791f96d1b217bf33a534eeddcb`. Post-merge CI run `30338196639` (#298) passed and artifact `8680037918` (`post-removal-invariant-audit`, digest `sha256:c7e908d07c64c8e6b9b5cf654d94501dbe9a25d85162e7c4d5638cab9e1528bb`) preserves historical cleanup proof without freezing future reviewed changes.
 - July 28, 2026: CLEANUP-1D completed through PR #42 and merge commit `f924079995059d9b86a5caaaf6364cb7b4879881` with zero file deletions. All six review findings were resolved in follow-up commit `5a7d9c84f8aabf6618684ecfdd77bc176283a925`, including traversal-safe path classification and stateless import guards. Pre-merge CI run `30336635283` (#295) and post-merge push run `30336910264` (#296) passed every applicable job and Merge Gate. Post-merge evidence artifact `8679552100` (`cleanup-1d-post-removal-verification`, digest `sha256:a8fa2cea2192b4f69471926521678307a0409e3a053c699f5783fdbfb04aa14c`) confirms 26 historical implementation paths, zero deletions, all 176 removed paths absent, all 12 removed packages without consumers, 1,088 deterministic tracked paths, and zero release-isolation violations. Issue #41 is closed. The schema-v5 guard now verifies these invariants without freezing future repository changes. See `docs/project/CLEANUP-1D_POST_REMOVAL_VERIFICATION.md`.

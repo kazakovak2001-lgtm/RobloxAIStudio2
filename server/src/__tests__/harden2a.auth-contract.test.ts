@@ -221,6 +221,9 @@ describe("HARDEN-2A auth contract", () => {
       ".env.example",
       "server/src/platform/auth/AuthService.ts",
       "server/src/platform/auth/AuthTypes.ts",
+      "docs/README.md",
+      "docs/00-project-control/CURRENT_STATE.md",
+      "docs/00-project-control/ROADMAP_STATUS.md",
       "docs/03-features/authentication.md",
       "docs/PRODUCTION_DEPLOYMENT_GUIDE.md",
       "docs/PRODUCTION_DEPLOYMENT_CHECKLIST.md",
@@ -229,6 +232,9 @@ describe("HARDEN-2A auth contract", () => {
       /JWT_SECRET/,
       /\bJWT-like\b/i,
       /\bJWT (?:token|validation|signing)\b/i,
+      /\bJWT cryptographic validation\b/i,
+      /\bfull cryptographic validation\b/i,
+      /\bSameSite\s*[:=]\s*Strict\b/i,
     ];
 
     for (const file of authoritativeFiles) {
@@ -239,6 +245,80 @@ describe("HARDEN-2A auth contract", () => {
           `${file} contains obsolete auth terminology`,
         ).not.toMatch(claim);
       }
+    }
+
+    const decisionLog = readFileSync(
+      "docs/00-project-control/DECISION_LOG.md",
+      "utf8",
+    );
+    const historicalBoundary =
+      "## 2026-07-16 — Final Verification & Release Report (Task 11)";
+    expect(decisionLog).toContain(historicalBoundary);
+    const currentDecisions = decisionLog.slice(
+      0,
+      decisionLog.indexOf(historicalBoundary),
+    );
+    for (const claim of obsoleteClaims) {
+      expect(
+        currentDecisions,
+        `Current decision log contains obsolete auth terminology`,
+      ).not.toMatch(claim);
+    }
+
+    const supersededHistoricalSections = [
+      historicalBoundary,
+      "## 2026-07-16 — Production Infrastructure (Task 10)",
+      "## 2026-07-16 — Socket.IO JWT Handshake Validation Implemented (Task 7)",
+      "## 2026-07-16 — JWT Cryptographic Validation Implemented (Task 6)",
+      "## 2026-07-16 — httpOnly Cookie Token Delivery (Task 5)",
+    ];
+    for (const heading of supersededHistoricalSections) {
+      const start = decisionLog.indexOf(heading);
+      expect(
+        start,
+        `Missing historical decision ${heading}`,
+      ).toBeGreaterThanOrEqual(0);
+      const next = decisionLog.indexOf("\n## ", start + heading.length);
+      const section = decisionLog.slice(
+        start,
+        next === -1 ? decisionLog.length : next,
+      );
+      expect(
+        section,
+        `${heading} is missing its DOC-201 supersession note`,
+      ).toMatch(/> \*\*Superseded by DOC-201 \(July 28, 2026\):\*\*/);
+    }
+
+    const authenticationGuide = readFileSync(
+      "docs/03-features/authentication.md",
+      "utf8",
+    );
+    const deploymentGuide = readFileSync(
+      "docs/PRODUCTION_DEPLOYMENT_GUIDE.md",
+      "utf8",
+    );
+    const deploymentChecklist = readFileSync(
+      "docs/PRODUCTION_DEPLOYMENT_CHECKLIST.md",
+      "utf8",
+    );
+    for (const content of [
+      authenticationGuide,
+      deploymentGuide,
+      deploymentChecklist,
+    ]) {
+      expect(content).toContain("SameSite=Lax");
+      expect(content).toContain("roblox_ai_token");
+      expect(content).toContain("roblox_ai_refresh");
+      expect(content).toContain("/api/platform/auth/refresh");
+    }
+    expect(authenticationGuide).toContain("harden2a.auth-contract.test.ts");
+    expect(deploymentGuide).toContain("verify-composed-release.mjs");
+    expect(deploymentChecklist).toContain("30350138128");
+    for (const content of [deploymentGuide, deploymentChecklist]) {
+      expect(content).toContain("Dockerfile.backend");
+      expect(content).toContain("kazakovak2001-lgtm/Frontend");
+      expect(content).toContain("deploy/docker-compose.release.yml");
+      expect(content).toContain("release-baseline.inventory.json");
     }
   });
 
