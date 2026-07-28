@@ -76,11 +76,17 @@
     "assembly": { "path": "server/src/assembly", "layer": "domains" },
     "assets": { "path": "server/src/assets", "layer": "domains" },
     "cloud": { "path": "server/src/cloud", "layer": "infrastructure" },
-    "collaboration": { "path": "server/src/collaboration", "layer": "domains" },
+    "collaboration": {
+      "path": "server/src/collaboration",
+      "layer": "domains"
+    },
     "common": { "path": "server/src/common", "layer": "shared" },
     "compiler": { "path": "server/src/compiler", "layer": "domains" },
     "core": { "path": "server/src/core", "layer": "core" },
-    "distributed": { "path": "server/src/distributed", "layer": "infrastructure" },
+    "distributed": {
+      "path": "server/src/distributed",
+      "layer": "infrastructure"
+    },
     "domain": { "path": "server/src/domain", "layer": "domains" },
     "economy": { "path": "server/src/economy", "layer": "domains" },
     "evaluation": { "path": "server/src/evaluation", "layer": "domains" },
@@ -89,20 +95,29 @@
     "export": { "path": "server/src/export", "layer": "domains" },
     "generation": { "path": "server/src/generation", "layer": "domains" },
     "governance": { "path": "server/src/governance", "layer": "domains" },
-    "integration": { "path": "server/src/integration", "layer": "infrastructure" },
+    "integration": {
+      "path": "server/src/integration",
+      "layer": "infrastructure"
+    },
     "jobs": { "path": "server/src/jobs", "layer": "infrastructure" },
     "knowledge": { "path": "server/src/knowledge", "layer": "domains" },
     "lifecycle": { "path": "server/src/lifecycle", "layer": "domains" },
     "lua": { "path": "server/src/lua", "layer": "domains" },
     "memory": { "path": "server/src/memory", "layer": "domains" },
-    "orchestrator": { "path": "server/src/orchestrator", "layer": "domains" },
+    "orchestrator": {
+      "path": "server/src/orchestrator",
+      "layer": "domains"
+    },
     "pipeline": { "path": "server/src/pipeline", "layer": "infrastructure" },
     "planning": { "path": "server/src/planning", "layer": "domains" },
     "platform": { "path": "server/src/platform", "layer": "api" },
     "playtest": { "path": "server/src/playtest", "layer": "domains" },
     "plugins": { "path": "server/src/plugins", "layer": "domains" },
     "projects": { "path": "server/src/projects", "layer": "api" },
-    "providers": { "path": "server/src/providers", "layer": "infrastructure" },
+    "providers": {
+      "path": "server/src/providers",
+      "layer": "infrastructure"
+    },
     "repair": { "path": "server/src/repair", "layer": "domains" },
     "routes": { "path": "server/src/routes", "layer": "api" },
     "runtime": { "path": "server/src/runtime", "layer": "infrastructure" },
