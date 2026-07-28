@@ -17,7 +17,7 @@ This sequence is authoritative for work after the standalone frontend integratio
 | STUDIO-1      | Generated artifact → Roblox Studio end-to-end validation       | High     | ✅ Complete — real desktop verified | CORE-1, WORKSPACE-1   |
 | CUTOVER-1     | Release promotion and legacy frontend removal                  | High     | ✅ Complete                         | WORKSPACE-1, STUDIO-1 |
 | TECH-AUDIT-2  | Evidence-based two-repository technical baseline               | Critical | ✅ Complete                         | CUTOVER-1             |
-| HARDEN-2A     | Auth response, Studio state, and contract-E2E correctness      | Critical | ▶ Next                              | TECH-AUDIT-2          |
+| HARDEN-2A     | Auth response, Studio state, and contract-E2E correctness      | Critical | ◐ SEC-201 implemented; FE-201 next  | TECH-AUDIT-2          |
 | ARCH-2B       | Exhaustive and truthful architecture boundary gate             | Critical | Planned                             | HARDEN-2A             |
 | FRONTEND-2C   | Protected Frontend quality and bundle baseline                 | High     | Planned                             | HARDEN-2A             |
 | RUNTIME-2D    | Runtime/provider/orchestration/memory consolidation            | High     | Planned                             | ARCH-2B               |
@@ -143,24 +143,24 @@ These labels preserve delivery history. The current [TECH-AUDIT-2 feature matrix
 - ✅ CLEANUP-1C COMPLETE — physical removal and protected post-merge verification passed
 - ✅ CLEANUP-1D COMPLETE — protected merge and post-merge verification passed
 - ✅ TECH-AUDIT-2 COMPLETE — first official backend + standalone Frontend technical baseline
-- ▶ HARDEN-2A NEXT — credential-free browser auth responses, real Frontend Studio verification, and protected production contract E2E
+- ◐ HARDEN-2A IN PROGRESS — SEC-201 cookie-only browser auth implemented; FE-201 real Frontend Studio verification is next, followed by protected production contract E2E
 
 ## Release Hardening Sprint Status
 
-| #    | Task                                             | Priority | Status                                  |
-| ---- | ------------------------------------------------ | -------- | --------------------------------------- |
-| T-1  | Bug condition exploration tests                  | CRITICAL | ✅ Done                                 |
-| T-2  | Preservation property tests                      | CRITICAL | ✅ Done                                 |
-| T-3  | Fix auth route blocking (PUBLIC_PREFIXES)        | CRITICAL | ✅ Done                                 |
-| T-4  | Replace SHA-256 with bcrypt for passwords        | CRITICAL | ✅ Done                                 |
-| T-5  | Move tokens to httpOnly cookies                  | CRITICAL | ⚠️ Cookie transport done; JSON gap open |
-| T-6  | Wire AuthService.validateToken() into middleware | CRITICAL | ✅ Done                                 |
-| T-7  | Socket.IO opaque-session validation              | HIGH     | ✅ Done                                 |
-| T-8  | Remove dead code and merge studioService         | MEDIUM   | ✅ Done                                 |
-| T-9  | Update stale documentation                       | MEDIUM   | ✅ Done                                 |
-| T-10 | Add production infrastructure                    | HIGH     | ✅ Done                                 |
-| T-11 | Final verification and release report            | HIGH     | ✅ Done                                 |
-| T-12 | Checkpoint — ensure all tests pass               | HIGH     | ✅ Done                                 |
+| #    | Task                                             | Priority | Status                           |
+| ---- | ------------------------------------------------ | -------- | -------------------------------- |
+| T-1  | Bug condition exploration tests                  | CRITICAL | ✅ Done                          |
+| T-2  | Preservation property tests                      | CRITICAL | ✅ Done                          |
+| T-3  | Fix auth route blocking (PUBLIC_PREFIXES)        | CRITICAL | ✅ Done                          |
+| T-4  | Replace SHA-256 with bcrypt for passwords        | CRITICAL | ✅ Done                          |
+| T-5  | Move tokens to httpOnly cookies                  | CRITICAL | ✅ Cookie-only browser responses |
+| T-6  | Wire AuthService.validateToken() into middleware | CRITICAL | ✅ Done                          |
+| T-7  | Socket.IO opaque-session validation              | HIGH     | ✅ Done                          |
+| T-8  | Remove dead code and merge studioService         | MEDIUM   | ✅ Done                          |
+| T-9  | Update stale documentation                       | MEDIUM   | ✅ Done                          |
+| T-10 | Add production infrastructure                    | HIGH     | ✅ Done                          |
+| T-11 | Final verification and release report            | HIGH     | ✅ Done                          |
+| T-12 | Checkpoint — ensure all tests pass               | HIGH     | ✅ Done                          |
 
 ## Post-Launch Improvements
 
@@ -178,9 +178,9 @@ These labels preserve delivery history. The current [TECH-AUDIT-2 feature matrix
 ## Release Readiness
 
 - **Historical delivery**: All 11 UX-4 implementation items (F-1 through F-11) were delivered; TECH-AUDIT-2 supersedes “feature-complete” as a production-readiness claim
-- **Security Status**: authentication/ownership foundations pass, but HARDEN-2A must remove credentials from browser JSON and add protected security/dependency automation
+- **Security Status**: SEC-201 removes credentials from browser JSON and protects refresh persistence/rotation; route-level RBAC and protected security/dependency automation remain separate backlog items
 - **Historical v1.0 Decision**: ✅ APPROVED for the embedded product baseline
 - **Studio Gate**: ✅ STUDIO-1 complete with real desktop evidence
-- **Current Decision**: ✅ CUTOVER-1, CLEANUP, and TECH-AUDIT-2 are complete; ▶ HARDEN-2A is next
+- **Current Decision**: ✅ CUTOVER-1, CLEANUP, and TECH-AUDIT-2 are complete; ◐ HARDEN-2A is active with SEC-201 implemented and FE-201 next
 - **Sign-Off Document**: `FINAL_V1_RELEASE_SIGN_OFF.md`
 - **Post-release**: F-12 (Collaborative Dev) deferred to post-launch

@@ -18,7 +18,7 @@ cd deploy/
 
 # Copy and configure environment variables
 cp ../.env.example .env
-# Edit .env with your production values (JWT_SECRET, API keys, etc.)
+# Edit .env with your frontend origin, database URL, and AI provider keys
 
 # Build and start all services
 docker compose up -d --build
@@ -40,13 +40,17 @@ The application will be available at `http://localhost` (port 80 via nginx).
 | `PORT`              | No            | `5000`        | Application server port                                 |
 | `STORAGE_PROVIDER`  | No            | `inmemory`    | Set to `postgres` for persistent storage                |
 | `DATABASE_URL`      | When postgres | —             | PostgreSQL connection string                            |
-| `JWT_SECRET`        | Production    | Random        | Secret for JWT token signing                            |
 | `FRONTEND_URL`      | Production    | —             | Frontend URL for CORS (e.g., `https://your-domain.com`) |
-| `COOKIE_DOMAIN`     | Production    | —             | Domain for auth cookies                                 |
 | `OPENAI_API_KEY`    | Optional      | —             | OpenAI API key                                          |
 | `ANTHROPIC_API_KEY` | Optional      | —             | Anthropic API key                                       |
 | `GOOGLE_API_KEY`    | Optional      | —             | Google Gemini API key                                   |
 | `OLLAMA_BASE_URL`   | Optional      | —             | Ollama server URL for local AI                          |
+
+Authentication uses random opaque credentials backed by the configured
+storage provider; there is no token-signing secret. Production access and
+refresh credentials are delivered only through `Secure`, `HttpOnly`,
+`SameSite=Lax`, host-only cookies. Refresh credentials are persisted only as
+SHA-256 digests and are single-use after rotation.
 
 ---
 
@@ -100,7 +104,7 @@ docker run -d \
   -e NODE_ENV=production \
   -e STORAGE_PROVIDER=postgres \
   -e DATABASE_URL=postgresql://user:pass@host:5432/dbname \
-  -e JWT_SECRET=your-secret-here \
+  -e FRONTEND_URL=https://your-domain.example \
   roblox-ai-studio:latest
 ```
 

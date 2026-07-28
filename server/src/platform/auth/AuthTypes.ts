@@ -1,5 +1,7 @@
 /**
- * Authentication Types — JWT, sessions, roles, permissions.
+ * Authentication types for storage-backed opaque sessions, roles, and
+ * permissions. Access and refresh credentials are random server-side session
+ * identifiers, not signed JWTs.
  */
 
 export type UserRole =
@@ -41,7 +43,6 @@ export interface AuthSession {
   userId: string;
   role: UserRole;
   token: string;
-  refreshToken: string;
   createdAt: number;
   expiresAt: number;
   lastActivity: number;

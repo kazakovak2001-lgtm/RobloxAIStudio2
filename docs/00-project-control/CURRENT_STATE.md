@@ -1,8 +1,8 @@
 # Current Project State
 
 **Last Updated**: July 28, 2026
-**Phase**: TECH-AUDIT-2 complete — HARDEN-2A next
-**Build Status**: CUTOVER-1A through CUTOVER-1F and CLEANUP-1A through CLEANUP-1D are complete on the protected default branch `release/cutover-1e-candidate`. The schema-v5 steady-state correction merged through PR #43 as `a2f596dcb03d92791f96d1b217bf33a534eeddcb`; post-merge push run #298 passed and artifact `8680037918` has digest `sha256:c7e908d07c64c8e6b9b5cf654d94501dbe9a25d85162e7c4d5638cab9e1528bb`. TECH-AUDIT-2 pins that backend commit and Frontend `1036c3ef9705d145cb9700cd14268a33d2abdd58` as the first official two-repository audit baseline. Backend CI remains green, while the audit separately records architecture, auth-response, Frontend Studio-state, Frontend quality-gate, runtime, and durability gaps that green release CI does not currently cover.
+**Phase**: HARDEN-2A in progress — SEC-201 implemented; FE-201 next
+**Build Status**: TECH-AUDIT-2 merged through PR #44 as `5e3c2c83b7068ed47829993dce175441775680bf`; post-merge push run #301 passed every applicable job, the post-removal invariant guard, and Merge Gate. HARDEN-2A issue #45 implements the first P0 corrective unit: credential-free browser auth responses, digest-only refresh persistence with bounded lookup, startup migration, single-use rotation, and expanded production contract evidence. The standalone Frontend remains pinned at `1036c3ef9705d145cb9700cd14268a33d2abdd58` until FE-201.
 
 ---
 
@@ -11,7 +11,7 @@
 ### Backend
 
 - **Server**: Express + Socket.io (Node.js/TypeScript)
-- **Files**: 609 TypeScript files under `server/src`: 547 production files and 62 test files across 46 real top-level subsystems
+- **Files**: 610 TypeScript files under `server/src`: 547 production files and 63 test files across 46 real top-level subsystems
 - **API Routes**: 30 unique mounted `/api` prefixes (`/api/projects` mounts two routers), plus health and root endpoints
 - **AI Providers**: 6 configurable modes (OpenAI, Anthropic, Gemini, Groq, Ollama, OpenRouter), plus no-provider stub behavior and test mocks
 - **Storage**: One configured provider per process; PostgreSQL migrations and cache hydration complete before the server listens. `STORAGE_PROVIDER=postgres` requires `DATABASE_URL`.
@@ -22,7 +22,7 @@
 - **Studio plugin package**: `npm run studio:package` creates a deterministic installable `.rbxmx`, a source/bundle manifest, and SHA-256 checksums from an explicit active-module allowlist. The dedicated package workflow validates XML structure and checksums before uploading the desktop acceptance artifact.
 - **Verified acceptance package**: workflow run `30277078815`, artifact ID `8657228073`, bundle size `45932` bytes, bundle SHA-256 `a97e6268193f202cb5cc12ef5c174d0a028067c382327dd9432aacbe80f5ced7`, manifest SHA-256 `0655ae43b48f8c3bb90591da1e35170ff122136f8352bad73320c88c0eca3f14`.
 - **Real-time**: Socket.io with 50+ event types, project rooms, and storage-backed opaque-session authentication in production
-- **Authentication**: bcrypt password hashing (cost 12), storage-backed opaque sessions/roles, httpOnly cookie delivery, and production REST/Socket validation. TECH-AUDIT-2 found that register/login/refresh still return reusable access and refresh tokens in JSON; HARDEN-2A must remove those fields.
+- **Authentication**: bcrypt password hashing (cost 12), storage-backed opaque sessions/roles, cookie-only browser credential delivery, and production REST/Socket validation. Register/login/refresh JSON is credential-free. High-entropy refresh values are stored only as SHA-256 digests with a bounded digest index, migrated before startup traffic, and consumed before rotation; access cookies cover `/` for Socket.IO, refresh cookies are endpoint-scoped, and production policy is `Secure`, `HttpOnly`, `SameSite=Lax`, host-only.
 
 ### Canonical Frontend
 
@@ -167,20 +167,19 @@ See [Technical Audit v2.0](../02-audits/technical-v2/EXECUTIVE_AUDIT.md) for the
 
 ## Known Problems
 
-1. **Auth response credential exposure (P0)**: register/login/refresh return reusable access and refresh tokens in JSON even though cookies are httpOnly.
-2. **Frontend Studio verification (P0)**: the standalone Frontend hardcodes `studioArtifactVerified` to false and discards the backend verification result.
-3. **Architecture gate (P0)**: 15 subsystems are unmodeled; layer rules/re-exports are not enforced; four cycles yield report status `FAIL` without failing CI.
-4. **Frontend quality gate (P1)**: 640 lint errors, 12 warnings, and 70 unformatted files are not covered by Frontend CI.
-5. **Autonomous pipeline (P1)**: the mounted lifecycle/events exist, but named engine phases are simulated.
-6. **Durability acknowledgement (P1)**: PostgreSQL writes are scheduled after synchronous cache mutation, so request success does not prove database acceptance.
+1. **Frontend Studio verification (P0)**: the standalone Frontend hardcodes `studioArtifactVerified` to false and discards the backend verification result.
+2. **Architecture gate (P0)**: 15 subsystems are unmodeled; layer rules/re-exports are not enforced; four cycles yield report status `FAIL` without failing CI.
+3. **Frontend quality gate (P1)**: 640 lint errors, 12 warnings, and 70 unformatted files are not covered by Frontend CI.
+4. **Autonomous pipeline (P1)**: the mounted lifecycle/events exist, but named engine phases are simulated.
+5. **Durability acknowledgement (P1)**: PostgreSQL writes are scheduled after synchronous cache mutation, so request success does not prove database acceptance.
 
-STUDIO-1 desktop delivery is no longer a known problem. The completed evidence is recorded in `STUDIO-1G_DESKTOP_ACCEPTANCE_RESULT.md` and closed issue #15.
+Auth response credential exposure is resolved by HARDEN-2A / SEC-201 under issue #45. STUDIO-1 desktop delivery is also no longer a known problem; its completed evidence is recorded in `STUDIO-1G_DESKTOP_ACCEPTANCE_RESULT.md` and closed issue #15.
 
 ---
 
 ## Technical Debt
 
-TECH-AUDIT-2 records 16 evidence-backed debt items. The six known problems above are the release/architecture priorities. Other material items include cross-repository contract CI, runtime/provider/memory consolidation, route-level RBAC, dependency/security automation, the unused parallel execution contract, Frontend bundle budgets, process-local state classification, documentation consolidation, Studio native asset/GUI scope, and compiled ESM/dependency hygiene.
+TECH-AUDIT-2 records 16 evidence-backed debt items. SEC-201 resolves TAV2-001, leaving 15 open baseline items; the five known problems above are the immediate release/architecture priorities. Other material items include cross-repository contract CI, runtime/provider/memory consolidation, route-level RBAC, dependency/security automation, the unused parallel execution contract, Frontend bundle budgets, process-local state classification, documentation consolidation, Studio native asset/GUI scope, and compiled ESM/dependency hygiene.
 
 See [TECHNICAL_DEBT.md](../02-audits/technical-v2/TECHNICAL_DEBT.md) for definitions of done and [SPRINT_BACKLOG.md](../02-audits/technical-v2/SPRINT_BACKLOG.md) for ordered implementation work.
 
@@ -214,6 +213,7 @@ This template enforces:
 
 ## Last Changes
 
+- July 28, 2026: HARDEN-2A / SEC-201 removed reusable credentials from register/login/refresh JSON while preserving user/role metadata and httpOnly cookie auth. Refresh credentials are now 256-bit random values persisted only as SHA-256 digests with direct digest lookup, migrated from legacy plaintext records before startup traffic, and consumed before replacement so replay fails. Four native production-contract tests cover body shape, cookie policy, digest-only storage, migration, rotation, replay rejection, `/auth/me`, and active terminology. The composed HTTPS verifier now checks register/login/refresh body safety and rotation alongside REST and Socket.IO. Local verification passed `npm run ci` (62 test files passed, one skipped; 676 tests passed, one skipped), the production backend build, all 1,096 tracked-path invariants, and the pinned Frontend workspace tests/build. Issue #45 tracks the reviewed change; FE-201 is next.
 - July 28, 2026: TECH-AUDIT-2 established the first official backend + standalone Frontend baseline at backend `a2f596dcb03d92791f96d1b217bf33a534eeddcb` and Frontend `1036c3ef9705d145cb9700cd14268a33d2abdd58`. The audit inventories 46 backend subsystems, the 99-file Frontend TypeScript surface, and the 14-source Studio plugin; reconciles historical completion claims; records 16 prioritized debt items; and orders HARDEN-2A → ARCH-2B → FRONTEND-2C → RUNTIME-2D → DURABILITY-2E → STUDIO-2F. Seven deliverables live under `docs/02-audits/technical-v2/`.
 - July 28, 2026: The schema-v5 steady-state cleanup guard merged through PR #43 as `a2f596dcb03d92791f96d1b217bf33a534eeddcb`. Post-merge CI run `30338196639` (#298) passed and artifact `8680037918` (`post-removal-invariant-audit`, digest `sha256:c7e908d07c64c8e6b9b5cf654d94501dbe9a25d85162e7c4d5638cab9e1528bb`) preserves historical cleanup proof without freezing future reviewed changes.
 - July 28, 2026: CLEANUP-1D completed through PR #42 and merge commit `f924079995059d9b86a5caaaf6364cb7b4879881` with zero file deletions. All six review findings were resolved in follow-up commit `5a7d9c84f8aabf6618684ecfdd77bc176283a925`, including traversal-safe path classification and stateless import guards. Pre-merge CI run `30336635283` (#295) and post-merge push run `30336910264` (#296) passed every applicable job and Merge Gate. Post-merge evidence artifact `8679552100` (`cleanup-1d-post-removal-verification`, digest `sha256:a8fa2cea2192b4f69471926521678307a0409e3a053c699f5783fdbfb04aa14c`) confirms 26 historical implementation paths, zero deletions, all 176 removed paths absent, all 12 removed packages without consumers, 1,088 deterministic tracked paths, and zero release-isolation violations. Issue #41 is closed. The schema-v5 guard now verifies these invariants without freezing future repository changes. See `docs/project/CLEANUP-1D_POST_REMOVAL_VERIFICATION.md`.

@@ -62,6 +62,9 @@ No phase may create a second web client, Studio protocol, production composition
 
 ## Phase 1 — HARDEN-2A
 
+**Progress:** SEC-2A-1 / SEC-201 is implemented under issue #45. FE-201 is
+next, followed by INT-201 and the remaining active-auth terminology guard.
+
 ### Scope
 
 1. **SEC-2A-1 — Cookie-only browser auth responses**

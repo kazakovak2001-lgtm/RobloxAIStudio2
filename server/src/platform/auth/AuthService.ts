@@ -1,9 +1,10 @@
 /**
- * AuthService — Authentication with JWT-like tokens and session management.
- * Uses bcrypt (cost factor 12) for password hashing with automatic salt.
+ * AuthService — Authentication with storage-backed opaque sessions.
+ * Uses bcrypt (cost factor 12) for password hashing with automatic salt and
+ * stores only SHA-256 digests of high-entropy refresh credentials.
  */
 
-import { randomUUID, createHash } from "crypto";
+import { randomBytes, randomUUID, createHash, timingSafeEqual } from "crypto";
 import bcrypt from "bcryptjs";
 import {
   InMemoryStorageProvider,
@@ -23,16 +24,38 @@ const REFRESH_EXPIRY_MS = 7 * 24 * 60 * 60 * 1000; // 7d
 const BCRYPT_COST_FACTOR = 12;
 const CREDENTIALS_COLLECTION = "auth_credentials";
 const SESSIONS_COLLECTION = "auth_sessions";
+const REFRESH_CREDENTIALS_COLLECTION = "auth_refresh_credentials";
 const ROLES_COLLECTION = "auth_roles";
 
 interface StoredCredentials extends AuthCredentials {
   userId: string;
 }
 
+interface StoredAuthSession extends AuthSession {
+  refreshTokenDigest?: string;
+  refreshExpiresAt?: number;
+  /** Pre-HARDEN-2A compatibility field, removed during startup migration. */
+  refreshToken?: string;
+}
+
+interface IssuedSession {
+  session: AuthSession;
+  refreshToken: string;
+}
+
+interface RefreshCredentialRecord {
+  sessionToken: string;
+  expiresAt: number;
+}
+
 export class AuthService {
   constructor(
     private readonly storage: StorageProvider = new InMemoryStorageProvider(),
-  ) {}
+  ) {
+    // In-memory and already-hydrated providers migrate immediately. PostgreSQL
+    // is migrated a second time after its cache is hydrated during bootstrap.
+    this.migrateLegacyRefreshCredentials();
+  }
 
   register(
     email: string,
@@ -106,50 +129,158 @@ export class AuthService {
 
     const role =
       this.storage.get<UserRole>(ROLES_COLLECTION, userId) ?? "creator";
-    const session = this.createSession(userId, role);
+    const issued = this.createSession(userId, role);
     return {
       success: true,
-      token: session.token,
-      refreshToken: session.refreshToken,
+      token: issued.session.token,
+      refreshToken: issued.refreshToken,
       userId,
       role,
     };
   }
 
   logout(token: string): boolean {
-    return this.storage.delete(SESSIONS_COLLECTION, token);
+    const session = this.storage.get<StoredAuthSession>(
+      SESSIONS_COLLECTION,
+      token,
+    );
+    if (!session) return false;
+    return this.deleteSession(session);
   }
 
   validateToken(token: string): AuthSession | null {
-    const session = this.storage.get<AuthSession>(SESSIONS_COLLECTION, token);
+    const session = this.storage.get<StoredAuthSession>(
+      SESSIONS_COLLECTION,
+      token,
+    );
     if (!session) return null;
     if (Date.now() > session.expiresAt) {
-      this.storage.delete(SESSIONS_COLLECTION, token);
+      this.deleteSession(session);
       return null;
     }
     const updated = { ...session, lastActivity: Date.now() };
     this.storage.set(SESSIONS_COLLECTION, token, updated);
-    return updated;
+    return this.toPublicSession(updated);
   }
 
   refreshSession(refreshToken: string): LoginResult {
-    for (const session of this.storage.list<AuthSession>(SESSIONS_COLLECTION)) {
-      if (
-        session.refreshToken === refreshToken &&
-        Date.now() < session.expiresAt + REFRESH_EXPIRY_MS
-      ) {
-        const newSession = this.createSession(session.userId, session.role);
-        this.storage.delete(SESSIONS_COLLECTION, session.token);
-        return {
-          success: true,
-          token: newSession.token,
-          refreshToken: newSession.refreshToken,
-          userId: session.userId,
-          role: session.role,
-        };
-      }
+    const now = Date.now();
+    const refreshTokenDigest = this.digestRefreshToken(refreshToken);
+    const credential = this.storage.get<RefreshCredentialRecord>(
+      REFRESH_CREDENTIALS_COLLECTION,
+      refreshTokenDigest,
+    );
+    if (!credential) {
+      return { success: false, error: "Invalid refresh token" };
     }
-    return { success: false, error: "Invalid refresh token" };
+
+    const session = this.storage.get<StoredAuthSession>(
+      SESSIONS_COLLECTION,
+      credential.sessionToken,
+    );
+    const refreshExpiresAt =
+      session?.refreshExpiresAt ??
+      (session ? session.expiresAt + REFRESH_EXPIRY_MS : 0);
+    if (
+      !session ||
+      !this.matchesRefreshCredential(
+        session.refreshTokenDigest,
+        refreshToken,
+      ) ||
+      credential.expiresAt !== refreshExpiresAt ||
+      now >= credential.expiresAt
+    ) {
+      this.storage.delete(REFRESH_CREDENTIALS_COLLECTION, refreshTokenDigest);
+      if (session && now >= refreshExpiresAt) this.deleteSession(session);
+      return { success: false, error: "Invalid refresh token" };
+    }
+
+    // Consume the digest index before issuing its replacement. Both cache
+    // mutations are synchronous, so another request cannot replay the same
+    // credential between the consume and replace operations.
+    if (
+      !this.storage.delete(
+        REFRESH_CREDENTIALS_COLLECTION,
+        refreshTokenDigest,
+      ) ||
+      !this.storage.delete(SESSIONS_COLLECTION, session.token)
+    ) {
+      return { success: false, error: "Invalid refresh token" };
+    }
+    const issued = this.createSession(session.userId, session.role);
+    return {
+      success: true,
+      token: issued.session.token,
+      refreshToken: issued.refreshToken,
+      userId: session.userId,
+      role: session.role,
+    };
+  }
+
+  /**
+   * Rewrites pre-HARDEN-2A plaintext refresh credentials as digests. Call this
+   * after a durable provider hydrates its cache and before accepting traffic.
+   */
+  migrateLegacyRefreshCredentials(): number {
+    let migrated = 0;
+    for (const session of this.storage.list<StoredAuthSession>(
+      SESSIONS_COLLECTION,
+    )) {
+      const plaintext =
+        typeof session.refreshToken === "string"
+          ? session.refreshToken
+          : undefined;
+      const digest = this.isRefreshDigest(session.refreshTokenDigest)
+        ? session.refreshTokenDigest
+        : plaintext === undefined
+          ? undefined
+          : this.digestRefreshToken(plaintext);
+      const refreshExpiresAt =
+        session.refreshExpiresAt ??
+        (digest ? session.expiresAt + REFRESH_EXPIRY_MS : undefined);
+
+      const sessionChanged = !(
+        plaintext === undefined &&
+        digest === session.refreshTokenDigest &&
+        refreshExpiresAt === session.refreshExpiresAt
+      );
+      const migratedSession: StoredAuthSession = {
+        ...this.toPublicSession(session),
+        ...(digest ? { refreshTokenDigest: digest } : {}),
+        ...(refreshExpiresAt ? { refreshExpiresAt } : {}),
+      };
+      if (sessionChanged) {
+        this.storage.set(
+          SESSIONS_COLLECTION,
+          migratedSession.token,
+          migratedSession,
+        );
+      }
+
+      let indexChanged = false;
+      if (digest && refreshExpiresAt) {
+        const existingIndex = this.storage.get<RefreshCredentialRecord>(
+          REFRESH_CREDENTIALS_COLLECTION,
+          digest,
+        );
+        if (
+          existingIndex?.sessionToken !== migratedSession.token ||
+          existingIndex.expiresAt !== refreshExpiresAt
+        ) {
+          this.storage.set<RefreshCredentialRecord>(
+            REFRESH_CREDENTIALS_COLLECTION,
+            digest,
+            {
+              sessionToken: migratedSession.token,
+              expiresAt: refreshExpiresAt,
+            },
+          );
+          indexChanged = true;
+        }
+      }
+      if (sessionChanged || indexChanged) migrated += 1;
+    }
+    return migrated;
   }
 
   hasPermission(userId: string, permission: Permission): boolean {
@@ -162,19 +293,37 @@ export class AuthService {
     this.storage.set<UserRole>(ROLES_COLLECTION, userId, role);
   }
 
-  private createSession(userId: string, role: UserRole): AuthSession {
-    const session: AuthSession = {
+  private createSession(userId: string, role: UserRole): IssuedSession {
+    const now = Date.now();
+    const refreshToken = `ref_${randomBytes(32).toString("hex")}`;
+    const session: StoredAuthSession = {
       sessionId: randomUUID().slice(0, 12),
       userId,
       role,
       token: `tok_${randomUUID().replace(/-/g, "")}`,
-      refreshToken: `ref_${randomUUID().replace(/-/g, "")}`,
-      createdAt: Date.now(),
-      expiresAt: Date.now() + TOKEN_EXPIRY_MS,
-      lastActivity: Date.now(),
+      refreshTokenDigest: this.digestRefreshToken(refreshToken),
+      createdAt: now,
+      expiresAt: now + TOKEN_EXPIRY_MS,
+      refreshExpiresAt: now + REFRESH_EXPIRY_MS,
+      lastActivity: now,
     };
-    this.storage.set<AuthSession>(SESSIONS_COLLECTION, session.token, session);
-    return session;
+    this.storage.set<StoredAuthSession>(
+      SESSIONS_COLLECTION,
+      session.token,
+      session,
+    );
+    this.storage.set<RefreshCredentialRecord>(
+      REFRESH_CREDENTIALS_COLLECTION,
+      session.refreshTokenDigest!,
+      {
+        sessionToken: session.token,
+        expiresAt: session.refreshExpiresAt!,
+      },
+    );
+    return {
+      session: this.toPublicSession(session),
+      refreshToken,
+    };
   }
 
   private normalizeEmail(email: string): string {
@@ -187,5 +336,48 @@ export class AuthService {
    */
   private isLegacyHash(hash: string): boolean {
     return /^[a-f0-9]{64}$/.test(hash);
+  }
+
+  private digestRefreshToken(refreshToken: string): string {
+    return createHash("sha256").update(refreshToken).digest("hex");
+  }
+
+  private isRefreshDigest(value: string | undefined): value is string {
+    return typeof value === "string" && /^[a-f0-9]{64}$/.test(value);
+  }
+
+  private matchesRefreshCredential(
+    storedDigest: string | undefined,
+    refreshToken: string,
+  ): boolean {
+    if (!this.isRefreshDigest(storedDigest)) return false;
+    const expected = Buffer.from(storedDigest, "hex");
+    const candidate = Buffer.from(this.digestRefreshToken(refreshToken), "hex");
+    return (
+      expected.length === candidate.length &&
+      timingSafeEqual(expected, candidate)
+    );
+  }
+
+  private toPublicSession(session: StoredAuthSession): AuthSession {
+    return {
+      sessionId: session.sessionId,
+      userId: session.userId,
+      role: session.role,
+      token: session.token,
+      createdAt: session.createdAt,
+      expiresAt: session.expiresAt,
+      lastActivity: session.lastActivity,
+    };
+  }
+
+  private deleteSession(session: StoredAuthSession): boolean {
+    if (this.isRefreshDigest(session.refreshTokenDigest)) {
+      this.storage.delete(
+        REFRESH_CREDENTIALS_COLLECTION,
+        session.refreshTokenDigest,
+      );
+    }
+    return this.storage.delete(SESSIONS_COLLECTION, session.token);
   }
 }

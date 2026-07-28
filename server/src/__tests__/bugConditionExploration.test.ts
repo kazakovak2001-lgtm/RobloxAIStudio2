@@ -206,13 +206,13 @@ describe("Bug Condition Exploration - Release Hardening Security Defects", () =>
   });
 
   /**
-   * Property 1.4: Missing JWT Validation
+   * Property 1.4: Missing Opaque Session Validation
    *
    * Expected behavior: invalid Bearer tokens SHALL result in 401 responses.
    * Bug condition: authMiddleware only checks if header starts with "Bearer " —
    * any arbitrary string passes.
    */
-  describe("Missing JWT Validation (Requirement 1.4)", () => {
+  describe("Missing Opaque Session Validation (Requirement 1.4)", () => {
     it("property: invalid Bearer tokens SHALL result in 401 responses", () => {
       fc.assert(
         fc.property(
@@ -289,7 +289,7 @@ describe("Bug Condition Exploration - Release Hardening Security Defects", () =>
       );
     });
 
-    it("property: Socket.IO SHALL validate JWT during handshake — fake tokens rejected", () => {
+    it("property: Socket.IO SHALL validate opaque sessions during handshake — fake tokens rejected", () => {
       const fakeTokens = [
         "fake",
         "not_a_jwt",

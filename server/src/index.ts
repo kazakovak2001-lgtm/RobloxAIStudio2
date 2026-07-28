@@ -717,6 +717,14 @@ async function bootstrap(): Promise<void> {
   // succeed, so no route can observe an empty PostgreSQL cache at startup.
   await runMigrations();
   await initializeStorageProvider(storageProvider);
+  const migratedRefreshCredentials =
+    authService.migrateLegacyRefreshCredentials();
+  if (migratedRefreshCredentials > 0) {
+    await flushStorageProvider(storageProvider);
+    console.log(
+      `[auth] Migrated ${migratedRefreshCredentials} legacy refresh credential(s) to digests`,
+    );
+  }
   getApiKeyStore().seedFromEnvironment();
   startServer(PORT);
 }

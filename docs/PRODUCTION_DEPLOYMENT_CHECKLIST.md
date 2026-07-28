@@ -1,17 +1,18 @@
 # Production Deployment Checklist
 
-**Date**: July 15, 2026  
+**Date**: July 28, 2026
 **Version**: 1.0.0  
-**Status**: PRE-DEPLOYMENT REVIEW
+**Status**: ACTIVE — authentication updated by HARDEN-2A / SEC-201
 
 ---
 
 ## Critical Blockers (Must Fix Before Deploy)
 
-- [ ] **Fix auth middleware PUBLIC_PREFIXES** — Add `/api/platform/auth` to allow login/register in production mode
-- [ ] **Upgrade password hashing** — Replace SHA-256 with bcrypt (cost factor 12)
-- [ ] **Move tokens to httpOnly cookies** — Eliminate localStorage XSS vector
-- [ ] **Wire AuthService.validateToken() into authMiddleware** — Currently only checks token format
+- [x] **Public auth routing** — Login/register/refresh remain reachable in production
+- [x] **Password hashing** — bcrypt with cost factor 12
+- [x] **Cookie-only browser credential delivery** — Auth JSON contains no reusable credentials
+- [x] **Opaque-session validation** — REST and Socket.IO validate storage-backed sessions
+- [x] **Refresh protection** — High-entropy refresh credentials are stored as digests and rotate once
 
 ---
 
@@ -35,8 +36,10 @@
 **Status**:
 
 - [x] `.env.example` exists with all variables documented
-- [ ] Missing from `.env.example`: `FRONTEND_URL`, `POOL_SIZE`, `POOL_TIMEOUT`
-- [ ] Missing: `SESSION_SECRET` or `JWT_SECRET` for token signing (currently using randomUUID)
+- [x] `FRONTEND_URL` and persistent-storage variables are documented
+- [x] No signing secret is required: auth uses random opaque credentials backed by storage
+- [x] Cookies are `Secure`, `HttpOnly`, `SameSite=Lax`, host-only, and server-scoped
+- [ ] Missing from `.env.example`: `POOL_SIZE`, `POOL_TIMEOUT`
 - [ ] Missing: `BCRYPT_ROUNDS` configuration
 
 **Action**: Update `.env.example` with all production variables.

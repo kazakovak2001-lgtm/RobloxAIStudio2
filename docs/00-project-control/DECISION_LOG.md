@@ -4,6 +4,22 @@ All significant architectural and product decisions are recorded here.
 
 ---
 
+## 2026-07-28 — HARDEN-2A / SEC-201 Cookie-Only Browser Authentication
+
+**Decision**: Keep the existing storage-backed opaque-session architecture and make the browser contract genuinely cookie-only. Register, login, and refresh continue to set scoped httpOnly cookies but return only non-secret user/session metadata. Do not introduce a signed-token format or a second Frontend transport.
+
+**Refresh protection**: Generate 256-bit random refresh credentials, persist only SHA-256 digests, and maintain a digest-keyed lookup record. Refresh consumes the old digest index and access session synchronously before creating the replacement, so the same credential cannot be replayed in-process. Existing plaintext refresh records are converted after storage hydration and flushed before the server accepts traffic.
+
+**Cookie policy**: Preserve the verified production contract: `Secure`, `HttpOnly`, `SameSite=Lax`, host-only; access path `/` for REST and Socket.IO, refresh path `/api/platform/auth/refresh`. Explicit Bearer input remains for non-browser tooling, body refresh input remains a compatibility fallback, and API-key clients are unchanged.
+
+**Compatibility**: The standalone Frontend already uses `credentials: "include"` and reads only the returned user, so its login/register/refresh flow requires no transport change. Logout, `/auth/me`, REST middleware, and Socket.IO use the same access-session validation as before.
+
+**Evidence**: Four native HARDEN-2A tests cover credential-free production responses, cookie attributes, digest-only storage, direct lookup, legacy migration, successful rotation, old-credential replay rejection, `/auth/me`, and authoritative terminology. The composed HTTPS release verifier now performs register/login/refresh body checks and refresh replay rejection in addition to existing REST and Socket.IO checks.
+
+**Status**: Implemented under issue #45. FE-201 is the next HARDEN-2A unit.
+
+---
+
 ## 2026-07-28 — TECH-AUDIT-2 Baseline and Corrective Sequence
 
 **Decision**: Establish backend `a2f596dcb03d92791f96d1b217bf33a534eeddcb` and standalone Frontend `1036c3ef9705d145cb9700cd14268a33d2abdd58` as the first official two-repository technical audit baseline. Replace unsupported manual health/debt scores and “all features complete” as current planning signals with executable evidence and the TECH-AUDIT-2 feature/debt matrices.

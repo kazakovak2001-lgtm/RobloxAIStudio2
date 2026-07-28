@@ -1,6 +1,6 @@
 /**
- * TokenProvider — Generates and validates access tokens.
- * Abstraction layer for future JWT/OAuth integration.
+ * TokenProvider — Isolated in-memory opaque-token utility.
+ * Production authentication is owned by the storage-backed AuthService.
  */
 
 import { randomUUID, createHash } from "crypto";
