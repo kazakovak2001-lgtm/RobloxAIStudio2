@@ -1,0 +1,205 @@
+{
+  "schemaVersion": 1,
+  "roadmapId": "CLEANUP-1A",
+  "status": "audit-only",
+  "baseline": {
+    "defaultBranch": "release/cutover-1e-candidate",
+    "minimumAncestorCommit": "35896654419cf3117d7e1d7085f4e7c2084a04be"
+  },
+  "canonicalFrontend": {
+    "repository": "kazakovak2001-lgtm/Frontend",
+    "commit": "1036c3ef9705d145cb9700cd14268a33d2abdd58"
+  },
+  "sourceReleaseInventory": "config/cutover/release-baseline.inventory.json",
+  "legacyFrontend": {
+    "sourceRoot": "src",
+    "expectedTrackedFiles": [
+      "src/App.tsx",
+      "src/components/layout/Navbar.d.ts",
+      "src/components/layout/Navbar.tsx",
+      "src/components/layout/Sidebar.tsx",
+      "src/components/ui/Avatar.tsx",
+      "src/components/ui/Badge.tsx",
+      "src/components/ui/Breadcrumb.tsx",
+      "src/components/ui/Button.d.ts",
+      "src/components/ui/Button.tsx",
+      "src/components/ui/Card.d.ts",
+      "src/components/ui/Card.tsx",
+      "src/components/ui/Dialog.tsx",
+      "src/components/ui/Dropdown.tsx",
+      "src/components/ui/Input.tsx",
+      "src/components/ui/Loader.tsx",
+      "src/components/ui/Modal.tsx",
+      "src/components/ui/Pagination.tsx",
+      "src/components/ui/Table.tsx",
+      "src/components/ui/Tabs.tsx",
+      "src/components/ui/Toast.tsx",
+      "src/components/ui/Tooltip.tsx",
+      "src/constants/index.ts",
+      "src/contexts/AuthContext.tsx",
+      "src/contexts/ToastProvider.tsx",
+      "src/features/workspace/components/ActivityFeed.tsx",
+      "src/features/workspace/components/AgentBoard.tsx",
+      "src/features/workspace/components/AgentCard.tsx",
+      "src/features/workspace/components/CostMonitor.tsx",
+      "src/features/workspace/components/LiveConsole.tsx",
+      "src/features/workspace/components/ProgressTimeline.tsx",
+      "src/features/workspace/components/ProjectSummary.tsx",
+      "src/features/workspace/components/TokenUsage.tsx",
+      "src/features/workspace/PipelineView.tsx",
+      "src/features/workspace/usePipelineStream.ts",
+      "src/features/workspace/Workspace.tsx",
+      "src/features/workspace/workspace.types.ts",
+      "src/hooks/index.ts",
+      "src/hooks/useSocket.ts",
+      "src/layouts/AppLayout.tsx",
+      "src/main.tsx",
+      "src/pages/AiEngineDemoPage.tsx",
+      "src/pages/DashboardPage.tsx",
+      "src/pages/LandingPage.tsx",
+      "src/pages/LoginPage.tsx",
+      "src/pages/NewProjectPage.tsx",
+      "src/pages/ProjectDetailPage.tsx",
+      "src/pages/ProjectsPage.tsx",
+      "src/pages/RegisterPage.tsx",
+      "src/pages/SettingsPage.tsx",
+      "src/services/aiEngine.ts",
+      "src/services/socket.ts",
+      "src/styles.css",
+      "src/test.ts",
+      "src/types/index.ts",
+      "src/utils/cn.ts"
+    ],
+    "entrypoints": ["src/main.tsx", "src/App.tsx", "src/styles.css"],
+    "configurationFiles": [
+      "index.html",
+      "tsconfig.json",
+      "vite.config.ts",
+      "tailwind.config.js",
+      "postcss.config.js"
+    ],
+    "generatedResidue": [
+      "vite.config.js",
+      "vite.config.d.ts",
+      "tsconfig.tsbuildinfo"
+    ],
+    "archivalDeploymentFiles": [
+      "Dockerfile",
+      "deploy/docker-compose.yml",
+      "deploy/nginx.conf"
+    ],
+    "separateInfrastructureFiles": [
+      {
+        "path": "docker-compose.yml",
+        "classification": "postgres-development-only-do-not-delete-with-frontend-stack"
+      }
+    ],
+    "staleInventoryFiles": ["_inventory_raw.txt", "ProjectStructure.txt"],
+    "knownMissingPaths": [
+      {
+        "path": "public",
+        "referencedBy": "Dockerfile",
+        "classification": "broken-archival-combined-build-input"
+      }
+    ]
+  },
+  "currentBlockers": {
+    "packageScripts": {
+      "dev": "node node_modules/vite/bin/vite.js",
+      "build": "node --import tsx scripts/validate-architecture.ts && node --import tsx scripts/validate-boundaries.ts && node node_modules/typescript/bin/tsc -b && node node_modules/vite/bin/vite.js build",
+      "preview": "node node_modules/vite/bin/vite.js preview",
+      "typecheck": "node node_modules/typescript/bin/tsc --noEmit && node node_modules/typescript/bin/tsc --noEmit --project server/tsconfig.json"
+    },
+    "rootTsconfig": {
+      "include": ["src"],
+      "pathAlias": {
+        "@/*": ["src/*"]
+      }
+    },
+    "architectureValidatorMarkers": [
+      "Frontend: src/ (React/Vite SPA)",
+      "collectTsFiles(join(ROOT, \"src\"))",
+      "Frontend (/src)"
+    ],
+    "combinedDockerfileMarkers": [
+      "COPY src/ src/",
+      "COPY public/ public/",
+      "RUN npx vite build",
+      "COPY --from=builder /app/dist ./dist"
+    ],
+    "ciMarkers": [
+      "npx tsc --noEmit",
+      "name: Promoted Baseline Integrity"
+    ]
+  },
+  "packageDisposition": {
+    "retainOperational": [
+      {
+        "name": "socket.io-client",
+        "expectedConsumersOutsideLegacyRoot": [
+          "scripts/cutover/verify-composed-release.mjs"
+        ],
+        "reason": "required by composed HTTPS release Socket.IO verification"
+      }
+    ],
+    "legacyOnlyCandidates": [
+      "framer-motion",
+      "lucide-react",
+      "react",
+      "react-dom",
+      "react-router-dom",
+      "@types/react",
+      "@types/react-dom"
+    ],
+    "legacyToolingCandidates": [
+      "@vitejs/plugin-react",
+      "autoprefixer",
+      "postcss",
+      "tailwindcss",
+      "vite"
+    ],
+    "allowedLegacyToolConsumers": [
+      "vite.config.ts",
+      "postcss.config.js",
+      "tailwind.config.js"
+    ]
+  },
+  "removalWaves": [
+    {
+      "id": "CLEANUP-1B",
+      "name": "tooling-decoupling",
+      "deletionAuthorized": false,
+      "actions": [
+        "remove root frontend compilation from protected TypeScript checks",
+        "convert root dev/build/typecheck scripts to backend and repository operations",
+        "replace dual-root architecture reporting with backend plus standalone Frontend topology",
+        "preserve every legacy source, configuration, deployment and dependency file"
+      ]
+    },
+    {
+      "id": "CLEANUP-1C",
+      "name": "physical-removal-and-dependency-pruning",
+      "deletionAuthorized": true,
+      "prerequisite": "CLEANUP-1B verified and merged",
+      "actions": [
+        "delete root src and legacy entry/config files",
+        "delete archival combined frontend deployment files",
+        "delete generated frontend residue",
+        "prune only packages proven legacy-only and update package-lock.json",
+        "retain or deliberately relocate active operational consumers"
+      ]
+    },
+    {
+      "id": "CLEANUP-1D",
+      "name": "post-removal-verification",
+      "deletionAuthorized": false,
+      "prerequisite": "CLEANUP-1C verified and merged",
+      "actions": [
+        "prove zero active and tooling references to removed frontend paths",
+        "verify backend, Studio, composed release and rollback gates",
+        "refresh repository inventories and project-control documentation"
+      ]
+    }
+  ],
+  "currentStageDeletionAuthorized": false
+}
