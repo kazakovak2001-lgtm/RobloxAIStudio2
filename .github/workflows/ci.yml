@@ -2,7 +2,7 @@ name: CI Pipeline
 
 on:
   push:
-    branches: [standing-pentaceratops, feature/plugin-merge]
+    branches: [release/cutover-1e-candidate, feature/plugin-merge]
   pull_request:
   workflow_dispatch:
 
@@ -205,11 +205,11 @@ jobs:
         run: docker compose --project-name cutover1c --file deploy/docker-compose.release.yml down --volumes --remove-orphans || true
 
   release-readiness:
-    name: Release Baseline Readiness
+    name: Promoted Baseline Integrity
     runs-on: ubuntu-latest
     needs: composed-release
     steps:
-      - name: Checkout backend readiness source
+      - name: Checkout promoted baseline source
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
@@ -224,25 +224,25 @@ jobs:
           node-version: "22"
           cache: "npm"
       - run: npm ci
-      - name: Fetch canonical branch tips
-        run: git fetch origin standing-pentaceratops feature/plugin-merge
-      - name: Verify branch and release dependency inventory
+      - name: Fetch promoted and rollback references
+        run: git fetch origin release/cutover-1e-candidate backup/default-before-cutover-1e feature/plugin-merge
+      - name: Verify promoted default and release integrity
         env:
-          INTEGRATION_REF: origin/feature/plugin-merge
-          DEFAULT_REF: origin/standing-pentaceratops
-          RELEASE_BASELINE_OUTPUT: artifacts/cutover-1d
-        run: node scripts/cutover/verify-release-baseline-readiness.mjs
+          PROMOTED_DEFAULT_REF: origin/release/cutover-1e-candidate
+          ROLLBACK_REF: origin/backup/default-before-cutover-1e
+          PROMOTED_BASELINE_OUTPUT: artifacts/cutover-1f
+        run: node scripts/cutover/verify-promoted-baseline-integrity.mjs
       - name: Rehearse independent artifact rollback
         env:
           FRONTEND_SOURCE: standalone-frontend
-          RELEASE_BASELINE_OUTPUT: artifacts/cutover-1d
+          RELEASE_BASELINE_OUTPUT: artifacts/cutover-1f
         run: bash scripts/cutover/rehearse-independent-rollback.sh
-      - name: Publish release readiness evidence
+      - name: Publish promoted baseline evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: cutover-1d-readiness
-          path: artifacts/cutover-1d
+          name: cutover-1f-promotion-integrity
+          path: artifacts/cutover-1f
           if-no-files-found: error
           retention-days: 3
 

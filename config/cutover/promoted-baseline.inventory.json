@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 1,
+  "roadmapId": "CUTOVER-1F",
+  "status": "integrity-gate",
+  "promotedDefault": {
+    "branch": "release/cutover-1e-candidate",
+    "baselineCommit": "95dda46034b29c9d6de9af15f9a44c2c0d2c938e",
+    "requiredPushBranch": "release/cutover-1e-candidate"
+  },
+  "transitionalPushBranches": ["feature/plugin-merge"],
+  "nonCanonicalPushBranches": ["standing-pentaceratops"],
+  "rollbackReference": {
+    "branch": "backup/default-before-cutover-1e",
+    "expectedTip": "91a1626d080a4bc22ce20648c4ff10481ae6e299"
+  },
+  "sourceReleaseInventory": "config/cutover/release-baseline.inventory.json",
+  "workflowPath": ".github/workflows/ci.yml",
+  "expectedVerifier": "scripts/cutover/verify-promoted-baseline-integrity.mjs",
+  "historicalVerifier": "scripts/cutover/verify-release-baseline-readiness.mjs",
+  "legacyCleanupAuthorized": false
+}
