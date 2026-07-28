@@ -26,24 +26,26 @@ jobs:
           cache: npm
       - name: Install dependencies
         run: npm ci
-      - name: Regenerate exact tracked-file inventory
-        run: LC_ALL=C git ls-files | LC_ALL=C sort > _inventory_raw.txt
+      - name: Regenerate deterministic tracked inventories
+        run: node scripts/cleanup/generate-tracked-inventories.mjs
       - name: Verify post-removal invariants
         run: node scripts/cleanup/audit-legacy-frontend-decommission.mjs
       - name: Restore canonical CI
         run: |
           git fetch origin agent/runtime-2d-autonomous-truthfulness
           git checkout origin/agent/runtime-2d-autonomous-truthfulness -- .github/workflows/ci.yml
-      - name: Commit validated inventory only
+      - name: Commit validated inventories only
         run: |
           git config user.name github-actions[bot]
           git config user.email 41898282+github-actions[bot]@users.noreply.github.com
-          git add _inventory_raw.txt .github/workflows/ci.yml
+          git add _inventory_raw.txt ProjectStructure.txt project_structure.txt .github/workflows/ci.yml
           if git diff --cached --quiet; then
             echo "No inventory change to commit"
             exit 0
           fi
-          git diff --cached --name-only
-          test "$(git diff --cached --name-only | tr '\n' ' ')" = "_inventory_raw.txt "
-          git commit -m "chore(runtime): refresh tracked file inventory"
+          changed="$(git diff --cached --name-only | tr '\n' ' ')"
+          echo "$changed"
+          test "$changed" = "ProjectStructure.txt _inventory_raw.txt " || \
+            test "$changed" = "ProjectStructure.txt _inventory_raw.txt project_structure.txt "
+          git commit -m "chore(runtime): refresh tracked file inventories"
           git push origin HEAD:agent/runtime-2d-bounded-phases
