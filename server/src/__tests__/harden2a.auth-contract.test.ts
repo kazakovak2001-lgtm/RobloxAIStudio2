@@ -231,10 +231,11 @@ describe("HARDEN-2A auth contract", () => {
     const obsoleteClaims = [
       /JWT_SECRET/,
       /\bJWT-like\b/i,
-      /\bJWT (?:token|validation|signing)\b/i,
+      /\bJWT[- ](?:based|secret|signing|token|validation)\b/i,
+      /\bsigned[- ]JWTs?\b/i,
       /\bJWT cryptographic validation\b/i,
       /\bfull cryptographic validation\b/i,
-      /\bSameSite\s*[:=]\s*Strict\b/i,
+      /\bSameSite(?:\s*[:=]\s*|\s+)Strict\b/i,
     ];
 
     for (const file of authoritativeFiles) {

@@ -28,6 +28,7 @@ Protected CI reads this field directly; do not maintain a second workflow pin.
 - Docker 20.10+ with Docker Compose v2
 - Node.js 22.12+ and npm 10+ for local verification
 - PostgreSQL 16 for parity with the composed release
+- `curl` and `jq` for the health and release-identity commands below
 - an HTTPS certificate and key named `release.crt` and `release.key`
 - a reviewed secret-injection mechanism and at least one provider credential
   for non-stub generation
@@ -147,6 +148,8 @@ tests and short-lived development only.
 Run the executable composed-release smoke test after the services are healthy:
 
 ```bash
+npm ci
+
 RELEASE_ORIGIN="$RELEASE_ORIGIN" \
 POSTGRES_PASSWORD="$POSTGRES_PASSWORD" \
 node scripts/cutover/verify-composed-release.mjs

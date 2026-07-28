@@ -1,7 +1,8 @@
 /**
  * Authentication types for storage-backed opaque sessions, roles, and
  * permissions. Access and refresh credentials are random server-side session
- * identifiers, not signed JWTs.
+ * identifiers resolved through server-side storage, not self-contained
+ * client-verifiable credentials.
  */
 
 export type UserRole =

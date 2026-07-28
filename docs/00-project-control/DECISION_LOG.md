@@ -65,7 +65,11 @@ merge acceptance gate.
 
 **Evidence**: Backend protected checks pass with 61 test files and 672 tests plus one skip. Frontend TypeScript, seven native tests, build, SSR image, and responsive QA pass; all 40 production-mode cross-repository integration checks pass locally. Static audit found 46 real backend subsystems versus 32 modeled domains, four reported architecture cycles with a successful CLI exit, credentials returned in auth JSON despite httpOnly cookies, Frontend Studio verification hardcoded false, simulated autonomous phases, unprotected Frontend lint/format failures, and asynchronous PostgreSQL acknowledgement semantics.
 
-**Terminology correction**: Production auth validates random opaque storage-backed sessions, not signed JWTs. Historical JWT wording records earlier intent and is not proof of the current token format. SEC-201 subsequently removed reusable credentials from browser response bodies and protected refresh persistence/rotation.
+**Terminology correction**: Production auth validates random opaque
+storage-backed sessions, not self-contained client-verifiable tokens. Historical
+signed-token wording records earlier intent and is not proof of the current
+credential format. SEC-201 subsequently removed reusable credentials from
+browser response bodies and protected refresh persistence/rotation.
 
 **Ordered response**: Execute HARDEN-2A → ARCH-2B → FRONTEND-2C → RUNTIME-2D → DURABILITY-2E. Treat STUDIO-2F native assets/GUI/place work as optional expansion. Keep F-12 collaborative development deferred until authorization, runtime ownership, and durability gates pass.
 
