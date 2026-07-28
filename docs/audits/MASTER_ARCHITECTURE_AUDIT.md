@@ -1,5 +1,7 @@
 # MASTER ARCHITECTURE AUDIT
 
+> **Superseded current-state authority:** This July 13 snapshot is retained for history. It describes the deleted embedded frontend and obsolete module/dependency states. Use [Technical Audit v2.0](../02-audits/technical-v2/EXECUTIVE_AUDIT.md) and `docs/00-project-control/CURRENT_STATE.md` for the July 28, 2026 technical baseline.
+
 **Generated**: 2026-07-13
 **Project**: Roblox AI Studio DevKit
 **Current Version**: v1.3.3

@@ -4,6 +4,24 @@ All significant architectural and product decisions are recorded here.
 
 ---
 
+## 2026-07-28 — TECH-AUDIT-2 Baseline and Corrective Sequence
+
+**Decision**: Establish backend `a2f596dcb03d92791f96d1b217bf33a534eeddcb` and standalone Frontend `1036c3ef9705d145cb9700cd14268a33d2abdd58` as the first official two-repository technical audit baseline. Replace unsupported manual health/debt scores and “all features complete” as current planning signals with executable evidence and the TECH-AUDIT-2 feature/debt matrices.
+
+**Evidence**: Backend protected checks pass with 61 test files and 672 tests plus one skip. Frontend TypeScript, seven native tests, build, SSR image, and responsive QA pass; all 40 production-mode cross-repository integration checks pass locally. Static audit found 46 real backend subsystems versus 32 modeled domains, four reported architecture cycles with a successful CLI exit, credentials returned in auth JSON despite httpOnly cookies, Frontend Studio verification hardcoded false, simulated autonomous phases, unprotected Frontend lint/format failures, and asynchronous PostgreSQL acknowledgement semantics.
+
+**Terminology correction**: Production auth validates random opaque storage-backed sessions, not signed JWTs. Historical JWT wording records earlier intent and is not proof of the current token format. Cookie transport is implemented, but browser response bodies remain a HARDEN-2A gap.
+
+**Ordered response**: Execute HARDEN-2A → ARCH-2B → FRONTEND-2C → RUNTIME-2D → DURABILITY-2E. Treat STUDIO-2F native assets/GUI/place work as optional expansion. Keep F-12 collaborative development deferred until authorization, runtime ownership, and durability gates pass.
+
+**Preservation**: The audit changes documentation and planning only. It does not alter API/runtime behavior, dependencies, release topology, Frontend ownership, the canonical `PlanExecutor`, the Studio command/receipt protocol, protected branches, or repository history.
+
+**Deliverables**: `docs/02-audits/technical-v2/{EXECUTIVE_AUDIT,MODULE_REGISTRY,FEATURE_MATRIX,ARCHITECTURE_GAP_REPORT,TECHNICAL_DEBT,ROADMAP_v2_UPDATE,SPRINT_BACKLOG}.md`.
+
+**Status**: Complete. HARDEN-2A is next.
+
+---
+
 ## 2026-07-28 — CLEANUP-1D Post-Removal Repository Verification
 
 **Decision**: Complete the cleanup sequence with a focused, zero-deletion verification stage based on protected default `9a728661ee7b0a635af78da56a5d147b296dc23c`.

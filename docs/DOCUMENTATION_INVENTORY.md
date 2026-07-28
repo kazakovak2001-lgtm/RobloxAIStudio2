@@ -1,6 +1,6 @@
 # Documentation Inventory
 
-**Last Updated**: July 2026  
+**Last Updated**: July 28, 2026
 **Purpose**: Categorized index of all documentation files
 
 ---
@@ -9,22 +9,29 @@
 
 These documents reflect current reality and are updated as the project evolves.
 
-| File                                        | Category        | Purpose                        |
-| ------------------------------------------- | --------------- | ------------------------------ |
-| `00-project-control/CURRENT_STATE.md`       | Project Control | Canonical project state        |
-| `00-project-control/DECISION_LOG.md`        | Project Control | Architectural decision records |
-| `00-project-control/ROADMAP_STATUS.md`      | Project Control | Sprint/release tracking        |
-| `CHANGELOG.md`                              | Process         | Release changelog              |
-| `ENGINEERING_HANDBOOK.md`                   | Process         | Development standards          |
-| `QUALITY_GATES.md`                          | Process         | CI/CD quality standards        |
-| `TESTING_STRATEGY.md`                       | Process         | Test strategy and approach     |
-| `PRODUCTION_DEPLOYMENT_CHECKLIST.md`        | DevOps          | Deployment procedures          |
-| `API.md`                                    | Reference       | API documentation              |
-| `ARCHITECTURE.md`                           | Reference       | System architecture overview   |
-| `DOCUMENTATION_STATUS.md`                   | Meta            | Documentation governance       |
-| `DOCUMENTATION_INVENTORY.md`                | Meta            | This file                      |
-| `templates/IMPLEMENTATION_TASK_TEMPLATE.md` | Template        | Task execution template        |
-| `README.md`                                 | Meta            | Docs directory overview        |
+| File                                                | Category        | Purpose                        |
+| --------------------------------------------------- | --------------- | ------------------------------ |
+| `00-project-control/CURRENT_STATE.md`               | Project Control | Canonical project state        |
+| `00-project-control/DECISION_LOG.md`                | Project Control | Architectural decision records |
+| `00-project-control/ROADMAP_STATUS.md`              | Project Control | Sprint/release tracking        |
+| `CHANGELOG.md`                                      | Process         | Release changelog              |
+| `ENGINEERING_HANDBOOK.md`                           | Process         | Development standards          |
+| `QUALITY_GATES.md`                                  | Process         | CI/CD quality standards        |
+| `TESTING_STRATEGY.md`                               | Process         | Test strategy and approach     |
+| `PRODUCTION_DEPLOYMENT_CHECKLIST.md`                | DevOps          | Deployment procedures          |
+| `API.md`                                            | Reference       | API documentation              |
+| `ARCHITECTURE.md`                                   | Reference       | System architecture overview   |
+| `DOCUMENTATION_STATUS.md`                           | Meta            | Documentation governance       |
+| `DOCUMENTATION_INVENTORY.md`                        | Meta            | This file                      |
+| `templates/IMPLEMENTATION_TASK_TEMPLATE.md`         | Template        | Task execution template        |
+| `README.md`                                         | Meta            | Docs directory overview        |
+| `02-audits/technical-v2/EXECUTIVE_AUDIT.md`         | Audit           | Current technical baseline     |
+| `02-audits/technical-v2/MODULE_REGISTRY.md`         | Audit           | Current module inventory       |
+| `02-audits/technical-v2/FEATURE_MATRIX.md`          | Audit           | Evidence-based feature status  |
+| `02-audits/technical-v2/ARCHITECTURE_GAP_REPORT.md` | Audit           | Current architecture gaps      |
+| `02-audits/technical-v2/TECHNICAL_DEBT.md`          | Audit           | Prioritized debt register      |
+| `02-audits/technical-v2/ROADMAP_v2_UPDATE.md`       | Planning        | Corrective delivery sequence   |
+| `02-audits/technical-v2/SPRINT_BACKLOG.md`          | Planning        | Ready implementation backlog   |
 
 ---
 
@@ -179,7 +186,7 @@ These files exist in the repository but should not be used as references:
 
 | Category               | Count | Status               |
 | ---------------------- | ----- | -------------------- |
-| Active (maintained)    | 14    | ✅ Current           |
+| Active (maintained)    | 21    | ✅ Current           |
 | Historical (reference) | ~50   | 📋 Frozen            |
 | Archived               | 60+   | 📦 Moved to archive/ |
 | Deprecated             | 3     | ⚠️ Do not reference  |

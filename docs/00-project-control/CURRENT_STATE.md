@@ -1,8 +1,8 @@
 # Current Project State
 
 **Last Updated**: July 28, 2026
-**Phase**: CLEANUP-1D complete — TECH-AUDIT-2 next
-**Build Status**: CUTOVER-1A through CUTOVER-1F and CLEANUP-1A through CLEANUP-1D are complete on the protected default branch `release/cutover-1e-candidate`. CLEANUP-1D merged through PR #42 as `f924079995059d9b86a5caaaf6364cb7b4879881` with zero file deletions. Pre-merge CI run #295 and post-merge push run #296 passed every applicable job and Merge Gate; post-merge artifact `8679552100` has digest `sha256:a8fa2cea2192b4f69471926521678307a0409e3a053c699f5783fdbfb04aa14c`. Issue #41 is closed. The schema-v5 steady-state guard preserves the historical exact 26-path implementation evidence without restricting future reviewed changes, while continuing to enforce removed-path absence, package pruning, deterministic inventories, boundary ownership, and release isolation.
+**Phase**: TECH-AUDIT-2 complete — HARDEN-2A next
+**Build Status**: CUTOVER-1A through CUTOVER-1F and CLEANUP-1A through CLEANUP-1D are complete on the protected default branch `release/cutover-1e-candidate`. The schema-v5 steady-state correction merged through PR #43 as `a2f596dcb03d92791f96d1b217bf33a534eeddcb`; post-merge push run #298 passed and artifact `8680037918` has digest `sha256:c7e908d07c64c8e6b9b5cf654d94501dbe9a25d85162e7c4d5638cab9e1528bb`. TECH-AUDIT-2 pins that backend commit and Frontend `1036c3ef9705d145cb9700cd14268a33d2abdd58` as the first official two-repository audit baseline. Backend CI remains green, while the audit separately records architecture, auth-response, Frontend Studio-state, Frontend quality-gate, runtime, and durability gaps that green release CI does not currently cover.
 
 ---
 
@@ -11,9 +11,9 @@
 ### Backend
 
 - **Server**: Express + Socket.io (Node.js/TypeScript)
-- **Files**: 576 TypeScript files in 48 subsystems
-- **API Routes**: 28 registered endpoint groups (+ health, root)
-- **AI Providers**: 7 (OpenAI, Anthropic, Gemini, Groq, Ollama, OpenRouter, Mock)
+- **Files**: 609 TypeScript files under `server/src`: 547 production files and 62 test files across 46 real top-level subsystems
+- **API Routes**: 30 unique mounted `/api` prefixes (`/api/projects` mounts two routers), plus health and root endpoints
+- **AI Providers**: 6 configurable modes (OpenAI, Anthropic, Gemini, Groq, Ollama, OpenRouter), plus no-provider stub behavior and test mocks
 - **Storage**: One configured provider per process; PostgreSQL migrations and cache hydration complete before the server listens. `STORAGE_PROVIDER=postgres` requires `DATABASE_URL`.
 - **Durable records**: identities, sessions, users, projects, generation history, API keys, blueprints, blueprint versions, generation executions, pipeline artifacts, conversations, and conversation messages use the configured storage boundary.
 - **Studio runtime**: project sync, plugin registration, active sessions, artifact snapshots, transfer, the outbound command ledger, acknowledgement/result processing, and exact artifact ID/hash verification use one shared Studio v2 runtime. Project sync selects the newest completed artifact-bearing execution and never creates placeholder Lua/config packages. Queue delivery alone never marks an import verified.
@@ -21,8 +21,8 @@
 - **Canonical Studio plugin**: `studio-plugin/` v1.8 reuses the existing connector, lifecycle manager, sync manager, artifact loader, events, and UI. It connects with the exact backend project ID, polls `EXPORT_PROJECT`, acknowledges delivery, materializes structured Lua scripts and non-Lua metadata as Roblox instances, reports one exact ID/hash receipt per pipeline artifact, and shows Verified only after the backend accepts the evidence. Roblox-owned JSON content type is provided through `Enum.HttpContentType.ApplicationJson`; the plugin does not submit a forbidden custom `Content-Type` header.
 - **Studio plugin package**: `npm run studio:package` creates a deterministic installable `.rbxmx`, a source/bundle manifest, and SHA-256 checksums from an explicit active-module allowlist. The dedicated package workflow validates XML structure and checksums before uploading the desktop acceptance artifact.
 - **Verified acceptance package**: workflow run `30277078815`, artifact ID `8657228073`, bundle size `45932` bytes, bundle SHA-256 `a97e6268193f202cb5cc12ef5c174d0a028067c382327dd9432aacbe80f5ced7`, manifest SHA-256 `0655ae43b48f8c3bb90591da1e35170ff122136f8352bad73320c88c0eca3f14`.
-- **Real-time**: Socket.io with 50+ event types, project rooms, JWT-authenticated handshake (production)
-- **Authentication**: bcrypt password hashing (cost 12), storage-backed sessions/roles, cryptographic validation, httpOnly cookie delivery
+- **Real-time**: Socket.io with 50+ event types, project rooms, and storage-backed opaque-session authentication in production
+- **Authentication**: bcrypt password hashing (cost 12), storage-backed opaque sessions/roles, httpOnly cookie delivery, and production REST/Socket validation. TECH-AUDIT-2 found that register/login/refresh still return reusable access and refresh tokens in JSON; HARDEN-2A must remove those fields.
 
 ### Canonical Frontend
 
@@ -41,13 +41,15 @@
 - **Canonical replacement**: `kazakovak2001-lgtm/Frontend` remains the only web client.
 - **Guard**: The cleanup audit requires the exact removal diff and the architecture validator fails if root `src/` is reintroduced.
 
-### Health Scores
+### TECH-AUDIT-2 Evidence Baseline
 
-- Architecture Health: 9.2/10
-- Design System Compliance: 95%
-- Engineering Handbook Compliance: 88%
-- Import Strategy: 100%
-- Technical Debt: 2 remaining items (96% resolved from baseline of 47)
+- Backend: 61 passing test files, 672 passing tests, one skipped test file/test; typecheck, lint, format, build, PostgreSQL restart, release image, composed HTTPS, rollback, and cleanup invariant gates pass.
+- Frontend: TypeScript, production build, SSR image, responsive QA, and seven native Workspace tests pass. The 40-check production-mode integration suite also passes locally but is not protected by CI.
+- Frontend quality gap: lint reports 640 errors and 12 warnings; 70 files fail a separate Prettier check. Frontend CI currently runs neither gate.
+- Architecture gap: the manifest models 32 domains while 46 subsystems exist. The generated report contains four cycles and status `FAIL`, but the current CLI exits successfully.
+- Planning baseline: the evidence-scored feature matrix averages 66%; this is a prioritization aid, not a release SLA or substitute for closing P0 findings.
+
+See [Technical Audit v2.0](../02-audits/technical-v2/EXECUTIVE_AUDIT.md) for the complete evidence, limitations, and recommended order.
 
 ---
 
@@ -93,12 +95,14 @@
 | CLEANUP-1A        | Legacy frontend decommission audit                       | July 28, 2026 |
 | CLEANUP-1B        | Legacy frontend tooling decoupling                       | July 28, 2026 |
 | CLEANUP-1C        | Legacy frontend physical removal                         | July 28, 2026 |
+| CLEANUP-1D        | Post-removal verification and permanent guard            | July 28, 2026 |
+| TECH-AUDIT-2      | Two-repository technical and architecture baseline       | July 28, 2026 |
 
 ---
 
 ## Historical Feature Completion Status
 
-> The table below records the UX-4 delivery history for the embedded frontend. It is not the source of truth for new standalone frontend work. See [FRONTEND_CUTOVER.md](./FRONTEND_CUTOVER.md).
+> The table below records the UX-4 delivery history for the embedded frontend. It is not the source of truth for current production completeness or new standalone frontend work. See [FRONTEND_CUTOVER.md](./FRONTEND_CUTOVER.md) and the current [FEATURE_MATRIX.md](../02-audits/technical-v2/FEATURE_MATRIX.md).
 
 | ID   | Feature                  | Status       | Details                                              |
 | ---- | ------------------------ | ------------ | ---------------------------------------------------- |
@@ -111,27 +115,27 @@
 | F-7  | Knowledge Base UI        | ✅ Connected | knowledgeApi → /api/knowledge (page + 4 endpoints)   |
 | F-8  | Playtesting Dashboard    | ✅ Connected | playtestApi → /api/playtest (workspace panel)        |
 | F-9  | Multi-Project Workspace  | ✅ Complete  | SaaSProjectRepository + ownership + auth headers     |
-| F-10 | Real Authentication      | ✅ Complete  | bcrypt, JWT validation, httpOnly cookies             |
+| F-10 | Real Authentication      | ✅ Complete  | bcrypt, opaque-session validation, httpOnly cookies  |
 | F-11 | Persistent Storage       | ✅ Complete  | PostgreSQL with InMemory fallback                    |
 
 ---
 
 ## Security Hardening Status (Release Sprint)
 
-| Task | Description                                    | Status      |
-| ---- | ---------------------------------------------- | ----------- |
-| 1    | Bug condition exploration tests                | ✅ Complete |
-| 2    | Preservation property tests                    | ✅ Complete |
-| 3    | Auth route PUBLIC_PREFIXES fix                 | ✅ Complete |
-| 4    | bcrypt password hashing (replaces SHA-256)     | ✅ Complete |
-| 5    | httpOnly cookie token delivery                 | ✅ Complete |
-| 6    | JWT cryptographic validation in authMiddleware | ✅ Complete |
-| 7    | Socket.IO JWT handshake validation             | ✅ Complete |
-| 8    | Dead code removal                              | ✅ Complete |
-| 9    | Documentation synchronization                  | ✅ Complete |
-| 10   | Production infrastructure                      | ✅ Complete |
-| 11   | Final verification & release report            | ✅ Complete |
-| 12   | Checkpoint — all tests pass                    | ✅ Complete |
+| Task | Description                                 | Status                                           |
+| ---- | ------------------------------------------- | ------------------------------------------------ |
+| 1    | Bug condition exploration tests             | ✅ Complete                                      |
+| 2    | Preservation property tests                 | ✅ Complete                                      |
+| 3    | Auth route PUBLIC_PREFIXES fix              | ✅ Complete                                      |
+| 4    | bcrypt password hashing (replaces SHA-256)  | ✅ Complete                                      |
+| 5    | httpOnly cookie delivery                    | ⚠️ Transport complete; JSON response gap is open |
+| 6    | Opaque-session validation in authMiddleware | ✅ Complete                                      |
+| 7    | Socket.IO opaque-session validation         | ✅ Complete                                      |
+| 8    | Dead code removal                           | ✅ Historical scope complete                     |
+| 9    | Documentation synchronization               | ⚠️ TECH-AUDIT-2 found later drift                |
+| 10   | Production infrastructure                   | ✅ Complete                                      |
+| 11   | Final verification and release report       | ✅ Historical release scope complete             |
+| 12   | Checkpoint — protected backend checks pass  | ✅ Complete                                      |
 
 ---
 
@@ -163,16 +167,22 @@
 
 ## Known Problems
 
-1. **ESLint Config**: v10 installed with legacy `.eslintrc.json` format (functional but deprecated config style).
+1. **Auth response credential exposure (P0)**: register/login/refresh return reusable access and refresh tokens in JSON even though cookies are httpOnly.
+2. **Frontend Studio verification (P0)**: the standalone Frontend hardcodes `studioArtifactVerified` to false and discards the backend verification result.
+3. **Architecture gate (P0)**: 15 subsystems are unmodeled; layer rules/re-exports are not enforced; four cycles yield report status `FAIL` without failing CI.
+4. **Frontend quality gate (P1)**: 640 lint errors, 12 warnings, and 70 unformatted files are not covered by Frontend CI.
+5. **Autonomous pipeline (P1)**: the mounted lifecycle/events exist, but named engine phases are simulated.
+6. **Durability acknowledgement (P1)**: PostgreSQL writes are scheduled after synchronous cache mutation, so request success does not prove database acceptance.
 
 STUDIO-1 desktop delivery is no longer a known problem. The completed evidence is recorded in `STUDIO-1G_DESKTOP_ACCEPTANCE_RESULT.md` and closed issue #15.
 
 ---
 
-## Technical Debt (2 items)
+## Technical Debt
 
-1. **Broader frontend interaction coverage** (MEDIUM) — Workspace logic and production responsive gates are established. Expand coverage incrementally to authenticated mutations and long-running generation/realtime recovery.
-2. **Missing JSDoc** (MEDIUM) — Components and services lack JSDoc documentation.
+TECH-AUDIT-2 records 16 evidence-backed debt items. The six known problems above are the release/architecture priorities. Other material items include cross-repository contract CI, runtime/provider/memory consolidation, route-level RBAC, dependency/security automation, the unused parallel execution contract, Frontend bundle budgets, process-local state classification, documentation consolidation, Studio native asset/GUI scope, and compiled ESM/dependency hygiene.
+
+See [TECHNICAL_DEBT.md](../02-audits/technical-v2/TECHNICAL_DEBT.md) for definitions of done and [SPRINT_BACKLOG.md](../02-audits/technical-v2/SPRINT_BACKLOG.md) for ordered implementation work.
 
 ---
 
@@ -204,6 +214,8 @@ This template enforces:
 
 ## Last Changes
 
+- July 28, 2026: TECH-AUDIT-2 established the first official backend + standalone Frontend baseline at backend `a2f596dcb03d92791f96d1b217bf33a534eeddcb` and Frontend `1036c3ef9705d145cb9700cd14268a33d2abdd58`. The audit inventories 46 backend subsystems, the 99-file Frontend TypeScript surface, and the 14-source Studio plugin; reconciles historical completion claims; records 16 prioritized debt items; and orders HARDEN-2A → ARCH-2B → FRONTEND-2C → RUNTIME-2D → DURABILITY-2E → STUDIO-2F. Seven deliverables live under `docs/02-audits/technical-v2/`.
+- July 28, 2026: The schema-v5 steady-state cleanup guard merged through PR #43 as `a2f596dcb03d92791f96d1b217bf33a534eeddcb`. Post-merge CI run `30338196639` (#298) passed and artifact `8680037918` (`post-removal-invariant-audit`, digest `sha256:c7e908d07c64c8e6b9b5cf654d94501dbe9a25d85162e7c4d5638cab9e1528bb`) preserves historical cleanup proof without freezing future reviewed changes.
 - July 28, 2026: CLEANUP-1D completed through PR #42 and merge commit `f924079995059d9b86a5caaaf6364cb7b4879881` with zero file deletions. All six review findings were resolved in follow-up commit `5a7d9c84f8aabf6618684ecfdd77bc176283a925`, including traversal-safe path classification and stateless import guards. Pre-merge CI run `30336635283` (#295) and post-merge push run `30336910264` (#296) passed every applicable job and Merge Gate. Post-merge evidence artifact `8679552100` (`cleanup-1d-post-removal-verification`, digest `sha256:a8fa2cea2192b4f69471926521678307a0409e3a053c699f5783fdbfb04aa14c`) confirms 26 historical implementation paths, zero deletions, all 176 removed paths absent, all 12 removed packages without consumers, 1,088 deterministic tracked paths, and zero release-isolation violations. Issue #41 is closed. The schema-v5 guard now verifies these invariants without freezing future repository changes. See `docs/project/CLEANUP-1D_POST_REMOVAL_VERIFICATION.md`.
 - July 28, 2026: CLEANUP-1C completed through PR #39 and merge commit `1bc54753783610827750dbb11689c0fb24620923` — 168 root `src/` files, five frontend entry/config files, and three archival combined-deployment files were deleted (176 paths total). Five runtime and seven development-only direct package declarations were pruned; `socket.io-client` remains because the active composed-release verifier consumes it. The existing production-readiness audit now checks the canonical Studio plugin instead of removed `src/shared`. Final PR CI run `30329991563` (#290), Studio Plugin Package run #27, and post-merge push run `30330505927` (#291) passed every applicable job and Merge Gate. Post-merge evidence artifact `8677218198` (`cleanup-1c-physical-removal`, digest `sha256:b7693a9fac74b6e6615b5ba277e98ccb8575d21147e381d9ebcb5e400c89f74f`) confirms the exact removal, synchronized root lockfile declarations, zero remaining package consumers, and active-release isolation. Issue #37 is closed; CLEANUP-1D is next. See `docs/project/CLEANUP-1C_PHYSICAL_REMOVAL.md`.
 - July 28, 2026: CLEANUP-1B completed through PR #35 and merge commit `703fe0fbcfcb8706506e9351af1fe7874a1337f0` — root development/build/typecheck commands now target the backend, Vitest uses an explicit backend-only configuration, protected TypeScript and PostgreSQL CI reuse those commands, and architecture reporting identifies the standalone Frontend as canonical. PR CI run #282 and post-merge push run `30327587217` (#284) passed every applicable job and Merge Gate. Post-merge evidence artifact `8676270323` (`cleanup-1b-tooling-decoupling`, digest `sha256:5d14de17c49751392d009021dc9a7b14605447ae72d44e24414848d3331169ec`) confirms the exact 168-file legacy inventory, unchanged dependency maps and lockfile, active-release isolation, and `currentStageDeletionAuthorized=false`. Issue #34 is closed; CLEANUP-1C is next. See `docs/project/CLEANUP-1B_TOOLING_DECOUPLING.md`.

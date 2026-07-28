@@ -16,6 +16,13 @@ This sequence is authoritative for work after the standalone frontend integratio
 | WORKSPACE-1   | Workflow-oriented standalone Workspace                         | High     | ✅ Complete                         | CORE-1                |
 | STUDIO-1      | Generated artifact → Roblox Studio end-to-end validation       | High     | ✅ Complete — real desktop verified | CORE-1, WORKSPACE-1   |
 | CUTOVER-1     | Release promotion and legacy frontend removal                  | High     | ✅ Complete                         | WORKSPACE-1, STUDIO-1 |
+| TECH-AUDIT-2  | Evidence-based two-repository technical baseline               | Critical | ✅ Complete                         | CUTOVER-1             |
+| HARDEN-2A     | Auth response, Studio state, and contract-E2E correctness      | Critical | ▶ Next                              | TECH-AUDIT-2          |
+| ARCH-2B       | Exhaustive and truthful architecture boundary gate             | Critical | Planned                             | HARDEN-2A             |
+| FRONTEND-2C   | Protected Frontend quality and bundle baseline                 | High     | Planned                             | HARDEN-2A             |
+| RUNTIME-2D    | Runtime/provider/orchestration/memory consolidation            | High     | Planned                             | ARCH-2B               |
+| DURABILITY-2E | Request-level durability and operational-state classification  | High     | Planned                             | RUNTIME-2D            |
+| STUDIO-2F     | Optional native asset, GUI, runtime, and place delivery        | Medium   | Deferred                            | DURABILITY-2E         |
 
 See [FRONTEND_CUTOVER.md](./FRONTEND_CUTOVER.md) for ownership, branch, validation, and legacy-removal rules.
 See [CORE-1A_DURABLE_PROJECTS.md](./CORE-1A_DURABLE_PROJECTS.md) for the completed identity/project boundary.
@@ -37,6 +44,8 @@ See [CLEANUP-1A_LEGACY_FRONTEND_DECOMMISSION_AUDIT.md](../project/CLEANUP-1A_LEG
 See [CLEANUP-1B_TOOLING_DECOUPLING.md](../project/CLEANUP-1B_TOOLING_DECOUPLING.md) for the completed backend-tooling decoupling stage.
 See [CLEANUP-1C_PHYSICAL_REMOVAL.md](../project/CLEANUP-1C_PHYSICAL_REMOVAL.md) for the completed physical removal and dependency-pruning stage.
 See [CLEANUP-1D_POST_REMOVAL_VERIFICATION.md](../project/CLEANUP-1D_POST_REMOVAL_VERIFICATION.md) for the implemented final non-deletion verification stage.
+See [TECH-AUDIT-2 Executive Audit](../02-audits/technical-v2/EXECUTIVE_AUDIT.md) for the current technical baseline.
+See [ROADMAP v2 Update](../02-audits/technical-v2/ROADMAP_v2_UPDATE.md) and [Sprint Backlog](../02-audits/technical-v2/SPRINT_BACKLOG.md) for the ordered corrective sequence.
 See the standalone frontend documentation for the completed WORKSPACE-1 slices and production responsive QA:
 
 - [`WORKSPACE-1_WORKFLOW_SHELL.md`](https://github.com/kazakovak2001-lgtm/Frontend/blob/main/docs/WORKSPACE-1_WORKFLOW_SHELL.md)
@@ -103,6 +112,8 @@ The removed combined stack was archival only, not an executable rollback path: i
 | F-11 | Persistent Storage       | Future       | ✅ COMPLETE | —      |
 | F-12 | Collaborative Dev        | Experimental | —           | —      |
 
+These labels preserve delivery history. The current [TECH-AUDIT-2 feature matrix](../02-audits/technical-v2/FEATURE_MATRIX.md) reclassifies F-6 as a prototype because its mounted phases are simulated, F-10 as partial because browser responses expose credentials, and F-11 as operational because request-level durability and secondary stores remain.
+
 ## Active Bugfixes
 
 | ID        | Issue                                               | Status                |
@@ -131,23 +142,25 @@ The removed combined stack was archival only, not an executable rollback path: i
 - ✅ CLEANUP-1B COMPLETE — backend tooling decoupling and protected evidence
 - ✅ CLEANUP-1C COMPLETE — physical removal and protected post-merge verification passed
 - ✅ CLEANUP-1D COMPLETE — protected merge and post-merge verification passed
+- ✅ TECH-AUDIT-2 COMPLETE — first official backend + standalone Frontend technical baseline
+- ▶ HARDEN-2A NEXT — credential-free browser auth responses, real Frontend Studio verification, and protected production contract E2E
 
 ## Release Hardening Sprint Status
 
-| #    | Task                                             | Priority | Status  |
-| ---- | ------------------------------------------------ | -------- | ------- |
-| T-1  | Bug condition exploration tests                  | CRITICAL | ✅ Done |
-| T-2  | Preservation property tests                      | CRITICAL | ✅ Done |
-| T-3  | Fix auth route blocking (PUBLIC_PREFIXES)        | CRITICAL | ✅ Done |
-| T-4  | Replace SHA-256 with bcrypt for passwords        | CRITICAL | ✅ Done |
-| T-5  | Move tokens to httpOnly cookies                  | CRITICAL | ✅ Done |
-| T-6  | Wire AuthService.validateToken() into middleware | CRITICAL | ✅ Done |
-| T-7  | Socket.IO token validation (JWT handshake)       | HIGH     | ✅ Done |
-| T-8  | Remove dead code and merge studioService         | MEDIUM   | ✅ Done |
-| T-9  | Update stale documentation                       | MEDIUM   | ✅ Done |
-| T-10 | Add production infrastructure                    | HIGH     | ✅ Done |
-| T-11 | Final verification and release report            | HIGH     | ✅ Done |
-| T-12 | Checkpoint — ensure all tests pass               | HIGH     | ✅ Done |
+| #    | Task                                             | Priority | Status                                  |
+| ---- | ------------------------------------------------ | -------- | --------------------------------------- |
+| T-1  | Bug condition exploration tests                  | CRITICAL | ✅ Done                                 |
+| T-2  | Preservation property tests                      | CRITICAL | ✅ Done                                 |
+| T-3  | Fix auth route blocking (PUBLIC_PREFIXES)        | CRITICAL | ✅ Done                                 |
+| T-4  | Replace SHA-256 with bcrypt for passwords        | CRITICAL | ✅ Done                                 |
+| T-5  | Move tokens to httpOnly cookies                  | CRITICAL | ⚠️ Cookie transport done; JSON gap open |
+| T-6  | Wire AuthService.validateToken() into middleware | CRITICAL | ✅ Done                                 |
+| T-7  | Socket.IO opaque-session validation              | HIGH     | ✅ Done                                 |
+| T-8  | Remove dead code and merge studioService         | MEDIUM   | ✅ Done                                 |
+| T-9  | Update stale documentation                       | MEDIUM   | ✅ Done                                 |
+| T-10 | Add production infrastructure                    | HIGH     | ✅ Done                                 |
+| T-11 | Final verification and release report            | HIGH     | ✅ Done                                 |
+| T-12 | Checkpoint — ensure all tests pass               | HIGH     | ✅ Done                                 |
 
 ## Post-Launch Improvements
 
@@ -164,10 +177,10 @@ The removed combined stack was archival only, not an executable rollback path: i
 
 ## Release Readiness
 
-- **Feature-Complete**: All 11 historical UX-4 features (F-1 through F-11) are complete
-- **Security Status**: 12/12 hardening tasks completed (including final checkpoint)
+- **Historical delivery**: All 11 UX-4 implementation items (F-1 through F-11) were delivered; TECH-AUDIT-2 supersedes “feature-complete” as a production-readiness claim
+- **Security Status**: authentication/ownership foundations pass, but HARDEN-2A must remove credentials from browser JSON and add protected security/dependency automation
 - **Historical v1.0 Decision**: ✅ APPROVED for the embedded product baseline
 - **Studio Gate**: ✅ STUDIO-1 complete with real desktop evidence
-- **Current Cutover Decision**: ✅ CUTOVER-1 and the CLEANUP sequence are complete; TECH-AUDIT-2 is next
+- **Current Decision**: ✅ CUTOVER-1, CLEANUP, and TECH-AUDIT-2 are complete; ▶ HARDEN-2A is next
 - **Sign-Off Document**: `FINAL_V1_RELEASE_SIGN_OFF.md`
 - **Post-release**: F-12 (Collaborative Dev) deferred to post-launch
