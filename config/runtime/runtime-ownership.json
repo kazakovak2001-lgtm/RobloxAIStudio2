@@ -41,7 +41,7 @@
     },
     {
       "root": "server/src/integration",
-      "pattern": "PlatformIntegrationManager\\.ts$"
+      "pattern": "(?:PlatformIntegrationManager|EndToEndValidator)\\.ts$"
     },
     {
       "root": "server/src/providers",
@@ -148,6 +148,19 @@
       "owner": "integration",
       "productionUse": "preview-internal",
       "responsibility": "Internal preview composition root for legacy subsystem demonstrations; not a production bootstrap path.",
+      "replacement": "runtime-execution-controller",
+      "allowedImporters": [
+        "server/src/integration/EndToEndValidator.ts"
+      ]
+    },
+    {
+      "id": "platform-end-to-end-validator",
+      "capability": "platform-validation",
+      "path": "server/src/integration/EndToEndValidator.ts",
+      "classification": "preview",
+      "owner": "integration",
+      "productionUse": "preview-internal",
+      "responsibility": "Internal validator for the legacy preview platform composition stack; not the protected production contract suite.",
       "replacement": "runtime-execution-controller",
       "allowedImporters": []
     },
