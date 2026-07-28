@@ -33,7 +33,6 @@ interface StoredCredentials extends AuthCredentials {
 
 interface StoredAuthSession extends AuthSession {
   refreshTokenDigest?: string;
-  refreshExpiresAt?: number;
   /** Pre-HARDEN-2A compatibility field, removed during startup migration. */
   refreshToken?: string;
 }
@@ -178,20 +177,18 @@ export class AuthService {
       SESSIONS_COLLECTION,
       credential.sessionToken,
     );
-    const refreshExpiresAt =
-      session?.refreshExpiresAt ??
-      (session ? session.expiresAt + REFRESH_EXPIRY_MS : 0);
     if (
       !session ||
       !this.matchesRefreshCredential(
         session.refreshTokenDigest,
         refreshToken,
       ) ||
-      credential.expiresAt !== refreshExpiresAt ||
       now >= credential.expiresAt
     ) {
       this.storage.delete(REFRESH_CREDENTIALS_COLLECTION, refreshTokenDigest);
-      if (session && now >= refreshExpiresAt) this.deleteSession(session);
+      if (session && now >= credential.expiresAt) {
+        this.deleteSession(session);
+      }
       return { success: false, error: "Invalid refresh token" };
     }
 
@@ -235,19 +232,21 @@ export class AuthService {
         : plaintext === undefined
           ? undefined
           : this.digestRefreshToken(plaintext);
+      const existingIndex = digest
+        ? this.storage.get<RefreshCredentialRecord>(
+            REFRESH_CREDENTIALS_COLLECTION,
+            digest,
+          )
+        : null;
       const refreshExpiresAt =
-        session.refreshExpiresAt ??
+        existingIndex?.expiresAt ??
         (digest ? session.expiresAt + REFRESH_EXPIRY_MS : undefined);
 
-      const sessionChanged = !(
-        plaintext === undefined &&
-        digest === session.refreshTokenDigest &&
-        refreshExpiresAt === session.refreshExpiresAt
-      );
+      const sessionChanged =
+        plaintext !== undefined || digest !== session.refreshTokenDigest;
       const migratedSession: StoredAuthSession = {
         ...this.toPublicSession(session),
         ...(digest ? { refreshTokenDigest: digest } : {}),
-        ...(refreshExpiresAt ? { refreshExpiresAt } : {}),
       };
       if (sessionChanged) {
         this.storage.set(
@@ -259,10 +258,6 @@ export class AuthService {
 
       let indexChanged = false;
       if (digest && refreshExpiresAt) {
-        const existingIndex = this.storage.get<RefreshCredentialRecord>(
-          REFRESH_CREDENTIALS_COLLECTION,
-          digest,
-        );
         if (
           existingIndex?.sessionToken !== migratedSession.token ||
           existingIndex.expiresAt !== refreshExpiresAt
@@ -296,15 +291,16 @@ export class AuthService {
   private createSession(userId: string, role: UserRole): IssuedSession {
     const now = Date.now();
     const refreshToken = `ref_${randomBytes(32).toString("hex")}`;
+    const refreshTokenDigest = this.digestRefreshToken(refreshToken);
+    const refreshExpiresAt = now + REFRESH_EXPIRY_MS;
     const session: StoredAuthSession = {
       sessionId: randomUUID().slice(0, 12),
       userId,
       role,
       token: `tok_${randomUUID().replace(/-/g, "")}`,
-      refreshTokenDigest: this.digestRefreshToken(refreshToken),
+      refreshTokenDigest,
       createdAt: now,
       expiresAt: now + TOKEN_EXPIRY_MS,
-      refreshExpiresAt: now + REFRESH_EXPIRY_MS,
       lastActivity: now,
     };
     this.storage.set<StoredAuthSession>(
@@ -314,10 +310,10 @@ export class AuthService {
     );
     this.storage.set<RefreshCredentialRecord>(
       REFRESH_CREDENTIALS_COLLECTION,
-      session.refreshTokenDigest!,
+      refreshTokenDigest,
       {
         sessionToken: session.token,
-        expiresAt: session.refreshExpiresAt!,
+        expiresAt: refreshExpiresAt,
       },
     );
     return {

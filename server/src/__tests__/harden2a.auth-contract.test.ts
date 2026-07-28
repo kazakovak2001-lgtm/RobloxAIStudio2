@@ -167,6 +167,7 @@ describe("HARDEN-2A auth contract", () => {
     const stored = storage.list<Record<string, unknown>>("auth_sessions");
     expect(stored).toHaveLength(1);
     expect(stored[0]).not.toHaveProperty("refreshToken");
+    expect(stored[0]).not.toHaveProperty("refreshExpiresAt");
     expect(stored[0].refreshTokenDigest).toMatch(/^[a-f0-9]{64}$/);
     expect(JSON.stringify(stored)).not.toContain(login.refreshToken);
     expect(storage.count("auth_refresh_credentials")).toBe(1);
@@ -203,6 +204,7 @@ describe("HARDEN-2A auth contract", () => {
     );
     expect(migrated).not.toBeNull();
     expect(migrated).not.toHaveProperty("refreshToken");
+    expect(migrated).not.toHaveProperty("refreshExpiresAt");
     expect(migrated?.refreshTokenDigest).toBe(
       createHash("sha256").update(legacyRefreshToken).digest("hex"),
     );
