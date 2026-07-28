@@ -246,7 +246,19 @@ function main(): void {
   const criticalViolations = result.violations.filter(
     (violation) => violation.severity === "critical",
   );
-  const unresolvedInternalImports = astInventory.unresolvedInternalImports;
+  const excludedAstSources = new Set(
+    (manifest.excludedTopLevelEntries ?? []).map(
+      (entry) => `server/src/${entry.name}`,
+    ),
+  );
+  const ignoredCompositionRootImports =
+    astInventory.unresolvedInternalImports.filter((entry) =>
+      excludedAstSources.has(entry.file),
+    );
+  const unresolvedInternalImports =
+    astInventory.unresolvedInternalImports.filter(
+      (entry) => !excludedAstSources.has(entry.file),
+    );
   const layerViolations = collectLayerViolations(
     manifest,
     validator,
@@ -285,6 +297,7 @@ function main(): void {
       reExportsAnalyzed: astInventory.reExportsAnalyzed,
       internalEdges: astInventory.edges.length,
       unresolvedInternalImports,
+      ignoredCompositionRootImports,
     },
     layerEnforcement: {
       acknowledgedViolations: acknowledgedLayerViolations,
@@ -309,6 +322,7 @@ function main(): void {
   console.log(`  AST re-exports:      ${astInventory.reExportsAnalyzed}`);
   console.log(`  AST internal edges:  ${astInventory.edges.length}`);
   console.log(`  AST unresolved:      ${unresolvedInternalImports.length}`);
+  console.log(`  Composition imports: ${ignoredCompositionRootImports.length}`);
   console.log(`  Domain edges:        ${result.edges.length}`);
   console.log(`  Manifest errors:     ${manifestErrors.length}`);
   console.log(`  Allowed cycles:      ${acknowledgedCycles.length}`);
