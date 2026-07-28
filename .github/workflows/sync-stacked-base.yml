@@ -1,0 +1,38 @@
+name: Sync ARCH-204 Stacked Base
+
+on:
+  pull_request:
+
+permissions:
+  contents: write
+
+jobs:
+  sync-base:
+    if: github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout pull request head
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.ref }}
+          fetch-depth: 0
+
+      - name: Merge current ARCH-201/202/203 base
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git fetch origin agent/arch-201-truthful-boundary-gate
+          git merge --no-edit origin/agent/arch-201-truthful-boundary-gate
+
+      - name: Regenerate snapshots for synchronized final tree
+        run: |
+          git rm .github/workflows/sync-stacked-base.yml
+          node scripts/cleanup/generate-tracked-inventories.mjs
+          git restore --staged --worktree .github/workflows/sync-stacked-base.yml
+          git add _inventory_raw.txt ProjectStructure.txt project_structure.txt
+          if ! git diff --cached --quiet; then
+            git commit --amend --no-verify --no-edit
+          fi
+
+      - name: Push synchronized branch
+        run: git push origin HEAD:${{ github.event.pull_request.head.ref }}
