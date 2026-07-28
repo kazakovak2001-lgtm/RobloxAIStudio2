@@ -88,6 +88,41 @@ assert.deepEqual(
   "Tracked root src inventory changed; repeat CLEANUP-1A classification",
 );
 
+const auditOnlyProtectedFiles = new Set([
+  ...inventory.legacyFrontend.expectedTrackedFiles,
+  ...inventory.legacyFrontend.configurationFiles,
+  ...inventory.legacyFrontend.archivalDeploymentFiles,
+  ...inventory.legacyFrontend.separateInfrastructureFiles.map(
+    (entry) => entry.path,
+  ),
+  ...inventory.legacyFrontend.staleInventoryFiles,
+  "package.json",
+  "package-lock.json",
+  "scripts/validate-architecture.ts",
+  "scripts/validate-boundaries.ts",
+  "server/src/core/architecture/ImportBoundaryValidator.ts",
+]);
+const changedSinceBaseline = git(
+  "diff",
+  "--name-only",
+  `${inventory.baseline.minimumAncestorCommit}...HEAD`,
+)
+  .split("\n")
+  .map((file) => file.trim())
+  .filter(Boolean)
+  .sort();
+const protectedPathChanges = changedSinceBaseline.filter(
+  (file) =>
+    file.startsWith(sourcePrefix) || auditOnlyProtectedFiles.has(file),
+);
+assert.deepEqual(
+  protectedPathChanges,
+  [],
+  `CLEANUP-1A audit-only protected paths changed: ${protectedPathChanges.join(
+    ", ",
+  )}`,
+);
+
 const legacyFileEvidence = expectedLegacyFiles.map((file) => {
   const absolutePath = path.join(root, file);
   assert.ok(existsSync(absolutePath), `Missing legacy source file: ${file}`);
@@ -210,10 +245,28 @@ assert.ok(
   ciWorkflow.includes("audit-legacy-frontend-decommission.mjs"),
   "CLEANUP-1A audit invocation is missing from CI",
 );
+const gateJobMatch = ciWorkflow.match(
+  /\n  gate:\n([\s\S]*?)(?=\n  [A-Za-z0-9_-]+:\n|$)/,
+);
+assert.ok(gateJobMatch, "Unable to locate the Merge Gate job");
+const gateNeedsMatch = gateJobMatch[1].match(
+  /\n    needs:\n([\s\S]*?)\n    steps:/,
+);
+assert.ok(gateNeedsMatch, "Unable to locate the Merge Gate needs block");
+assert.match(
+  gateNeedsMatch[1],
+  /(?:^|[\s,\[])legacy-frontend-audit(?:[\s,\]]|$)/,
+  "Merge Gate does not depend on legacy-frontend-audit",
+);
 
 const releaseInventoryPath = path.join(root, inventory.sourceReleaseInventory);
 const releaseInventory = JSON.parse(readFileSync(releaseInventoryPath, "utf8"));
 assert.equal(releaseInventory.roadmapId, "CUTOVER-1D");
+assert.deepEqual(
+  inventory.canonicalFrontend,
+  releaseInventory.frontendRelease,
+  "Canonical Frontend identity differs from the CUTOVER release inventory",
+);
 for (const releasePath of releaseInventory.activeRelease.files) {
   const absolutePath = path.join(root, releasePath);
   assert.ok(
@@ -389,6 +442,12 @@ const result = {
   auditedHead: head,
   baseline: inventory.baseline,
   canonicalFrontend: inventory.canonicalFrontend,
+  auditOnlyImmutability: {
+    baselineCommit: inventory.baseline.minimumAncestorCommit,
+    protectedFileCount: auditOnlyProtectedFiles.size,
+    changedSinceBaseline,
+    protectedPathChanges,
+  },
   legacyFrontend: {
     sourceRoot: inventory.legacyFrontend.sourceRoot,
     trackedFileCount: actualLegacyFiles.length,
@@ -409,6 +468,9 @@ const result = {
     combinedDockerfileMarkers:
       inventory.currentBlockers.combinedDockerfileMarkers,
     ciMarkers: inventory.currentBlockers.ciMarkers,
+  },
+  workflow: {
+    mergeGateDependencyVerified: "legacy-frontend-audit",
   },
   packageConsumerEvidence,
   activeReleaseIsolation: {
