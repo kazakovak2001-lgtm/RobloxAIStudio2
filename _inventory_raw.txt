@@ -776,6 +776,7 @@ server/src/generation/lua/LuaGenerator.ts
 server/src/generation/lua/LuaTemplateRegistry.ts
 server/src/generation/lua/index.ts
 server/src/generation/validation/GameValidationEngine.ts
+server/src/governance/AssemblyGovernanceService.ts
 server/src/governance/CIControlPipeline.ts
 server/src/governance/GovernancePolicyEngine.ts
 server/src/governance/GovernanceValidator.ts

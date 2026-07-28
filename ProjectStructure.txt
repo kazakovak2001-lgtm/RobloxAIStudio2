@@ -940,6 +940,7 @@
 │   │   │       └── GameValidationEngine.ts
 │   │   ├── governance
 │   │   │   ├── aiGovernance.ts
+│   │   │   ├── AssemblyGovernanceService.ts
 │   │   │   ├── CIControlPipeline.ts
 │   │   │   ├── GovernancePolicyEngine.ts
 │   │   │   ├── GovernanceValidator.ts
