@@ -180,7 +180,9 @@
       "productionUse": "preview-internal",
       "responsibility": "Internal secondary factory retained only for the advanced provider preview stack and direct tests.",
       "replacement": "providers-llm-provider-factory",
-      "allowedImporters": ["server/src/integration/PlatformIntegrationManager.ts"]
+      "allowedImporters": [
+        "server/src/integration/PlatformIntegrationManager.ts"
+      ]
     },
     {
       "id": "providers-ai-provider-registry",
