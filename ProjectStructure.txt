@@ -145,6 +145,14 @@
 │   │   │   ├── PHASE_1_GATE_REVIEW.md
 │   │   │   └── POST_INTEGRATION_REALITY_AUDIT.md
 │   │   ├── SECURITY_RELEASE_AUDIT.md
+│   │   ├── technical-v2
+│   │   │   ├── ARCHITECTURE_GAP_REPORT.md
+│   │   │   ├── EXECUTIVE_AUDIT.md
+│   │   │   ├── FEATURE_MATRIX.md
+│   │   │   ├── MODULE_REGISTRY.md
+│   │   │   ├── ROADMAP_v2_UPDATE.md
+│   │   │   ├── SPRINT_BACKLOG.md
+│   │   │   └── TECHNICAL_DEBT.md
 │   │   └── ux
 │   │       └── .gitkeep
 │   ├── 03-features

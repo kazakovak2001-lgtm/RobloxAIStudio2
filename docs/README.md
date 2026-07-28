@@ -1,254 +1,128 @@
-# Roblox AI Studio DevKit Documentation
+# Roblox AI Studio Documentation
 
-**Version**: 1.3.3
-**Last Updated**: 2026-07-13
+**Last updated:** July 28, 2026
 
-Welcome to the Roblox AI Studio DevKit documentation. This is the central hub for all project documentation, architecture guides, development resources, and migration status.
+This directory documents the backend, standalone Frontend boundary, Roblox Studio plugin, release evidence, and current engineering roadmap.
 
----
+## Current authority
 
-## Quick Links
+Read these documents first:
 
-- **[Architecture Overview](#architecture)** - System architecture and design
-- **[Development Guide](#development)** - Setup and coding standards
-- **[API Documentation](docs/API.md)** - REST API reference
-- **[Migration Status](#migration-status)** - Current refactoring progress
-- **[Audit Reports](#audit-reports)** - Architecture and technical debt audits
+1. [Current Project State](./00-project-control/CURRENT_STATE.md) — current implementation and verification state.
+2. [Roadmap Status](./00-project-control/ROADMAP_STATUS.md) — completed delivery and next ordered work.
+3. [Decision Log](./00-project-control/DECISION_LOG.md) — significant architecture/product decisions.
+4. [Technical Audit v2.0](./02-audits/technical-v2/EXECUTIVE_AUDIT.md) — July 28 two-repository evidence baseline.
+5. [Sprint Backlog](./02-audits/technical-v2/SPRINT_BACKLOG.md) — ready implementation items.
 
----
+When an older report conflicts with these sources, the current project-control documents and TECH-AUDIT-2 win.
 
-## Project Overview
+## Repository ownership
 
-Roblox AI Studio DevKit is an enterprise-grade AI orchestration platform that transforms natural language prompts into complete, validated Roblox game blueprints. It features:
+| Surface              | Canonical location                                                              | Responsibility                                                                         |
+| -------------------- | ------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------- |
+| Backend/API/runtime  | `kazakovak2001-lgtm/RobloxAIStudio2`                                            | Express, Socket.IO, AI/generation, persistence, Studio command runtime                 |
+| Web application      | [`kazakovak2001-lgtm/Frontend`](https://github.com/kazakovak2001-lgtm/Frontend) | React 19/TanStack Start SSR application and Workspace                                  |
+| Roblox Studio plugin | `studio-plugin/`                                                                | Project connection, command polling, artifact materialization, exact receipt reporting |
 
-- **AI Agent Pipeline**: 13 specialized agents for game generation
-- **Real-time Streaming**: SSE and Socket.io for live updates
-- **Clean Architecture**: Strict separation of concerns
-- **Multi-Provider Support**: Anthropic, OpenAI, Google, Ollama
-- **Roblox Studio Integration**: Plugin for direct Studio sync
-- **Production-Ready**: Caching, retry logic, validation, error handling
+The old embedded root `src/` frontend is removed and protected by a permanent invariant guard. Do not create another web client in this repository.
 
-**Technology Stack**:
+## Current delivery sequence
 
-- Frontend: React 18, Vite, TailwindCSS
-- Backend: Node.js, Express, TypeScript 5.6
-- Database: Prisma ORM
-- AI: Multi-provider LLM integration
-- Real-time: Socket.io, SSE
+- CUTOVER-1 and CLEANUP-1A–1D: complete.
+- TECH-AUDIT-2: complete.
+- HARDEN-2A: next.
+- ARCH-2B, FRONTEND-2C, RUNTIME-2D, DURABILITY-2E: planned in that order.
+- STUDIO-2F native asset/GUI/place expansion: optional and deferred.
+- F-12 collaborative development: deferred until authorization, runtime, and durability gates pass.
 
----
+See [Roadmap v2 Update](./02-audits/technical-v2/ROADMAP_v2_UPDATE.md).
 
-## Architecture
+## Technical Audit v2.0
 
-### Core Architecture
+The complete audit set lives in `docs/02-audits/technical-v2/`:
 
-- **[System Architecture](docs/ARCHITECTURE.md)** - Complete system architecture overview
-- **[Agent Architecture](docs/AGENT_ARCHITECTURE.md)** - AI agent hierarchy and design
-- **[API Architecture](docs/API.md)** - REST API design and endpoints
+- [Executive Audit](./02-audits/technical-v2/EXECUTIVE_AUDIT.md)
+- [Module Registry](./02-audits/technical-v2/MODULE_REGISTRY.md)
+- [Feature Matrix](./02-audits/technical-v2/FEATURE_MATRIX.md)
+- [Architecture Gap Report](./02-audits/technical-v2/ARCHITECTURE_GAP_REPORT.md)
+- [Technical Debt](./02-audits/technical-v2/TECHNICAL_DEBT.md)
+- [Roadmap v2 Update](./02-audits/technical-v2/ROADMAP_v2_UPDATE.md)
+- [Sprint Backlog](./02-audits/technical-v2/SPRINT_BACKLOG.md)
 
-### Architecture Decision Records (ADRs)
+## Architecture and APIs
 
-Located in [docs/adr/](docs/adr/):
+- [Architecture overview](./ARCHITECTURE.md)
+- [API reference](./API.md)
+- [Architecture rules](./development/ARCHITECTURE_RULES.md)
+- [Agent architecture](./AGENT_ARCHITECTURE.md)
+- [Architecture Decision Records](./adr/)
+- [Frontend cutover contract](./00-project-control/FRONTEND_CUTOVER.md)
 
-- [ADR-0001: Template](docs/adr/ADR-0001-template.md)
-- [ADR-0002: Orchestrator Core](docs/adr/ADR-0002-orchestrator-core.md)
-- [ADR-0003: AI Router](docs/adr/ADR-0003-ai-router.md)
-- [ADR-0004: Evaluation Layer](docs/adr/ADR-0004-evaluation-layer.md)
-- [ADR-0005: Shared Project Memory](docs/adr/ADR-0005-shared-project-memory.md)
-- [ADR-0006: Autonomous Planning](docs/adr/ADR-0006-autonomous-planning.md)
-- [ADR-0007: Generation Pipeline](docs/adr/ADR-0007-generation-pipeline.md)
-- [ADR-0008: Project Assembly](docs/adr/ADR-0008-project-assembly.md)
+TECH-AUDIT-2 records known gaps in the current architecture manifest and boundary validator. A green boundary command is not authoritative until ARCH-2B closes those gaps.
 
----
+## Studio integration
 
-## Development
+- [Studio artifact lineage](./00-project-control/STUDIO-1A_ARTIFACT_LINEAGE.md)
+- [Shared Studio runtime](./00-project-control/STUDIO-1B_RUNTIME_CONSOLIDATION.md)
+- [Acknowledgement/result contract](./00-project-control/STUDIO-1C_IMPORT_ACKNOWLEDGEMENT.md)
+- [Canonical plugin acceptance](./00-project-control/STUDIO-1D_REAL_PLUGIN_ACCEPTANCE.md)
+- [Desktop package/runbook](./00-project-control/STUDIO-1E_DESKTOP_ACCEPTANCE_RUNBOOK.md)
+- [Desktop findings](./00-project-control/STUDIO-1F_DESKTOP_FINDINGS_AND_RERUN.md)
+- [Real desktop result](./00-project-control/STUDIO-1G_DESKTOP_ACCEPTANCE_RESULT.md)
+- [Plugin README](../studio-plugin/README.md)
 
-### Getting Started
+STUDIO-1 proves exact generated-artifact delivery and verification. Native model/mesh/audio/GUI/place generation is separate future scope.
 
-- **[Development Setup](docs/development/DEVELOPMENT_SETUP.md)** - Environment setup guide (TODO)
-- **[Development Workflow](docs/development/DEVELOPMENT_WORKFLOW.md)** - Development process and workflow
-- **[Validation Process](docs/development/VALIDATION_PROCESS.md)** - Code validation and testing
-- **[Architecture Rules](docs/development/ARCHITECTURE_RULES.md)** - Architectural guidelines
+## Development and validation
 
-### Standards
+Use [the implementation task template](./templates/IMPLEMENTATION_TASK_TEMPLATE.md) and [development workflow](./development/DEVELOPMENT_WORKFLOW.md).
 
-- **[Coding Standards](docs/development/CODING_STANDARDS.md)** - Code style and conventions (TODO)
-- **[Contributing](docs/development/CONTRIBUTING.md)** - Contribution guidelines (TODO)
-- **[Versioning](docs/development/VERSIONING.md)** - Version management
+Backend baseline:
 
-### Governance
-
-Located in [docs/governance/](docs/governance/):
-
-- [AI Development Governance](docs/governance/AI_DEVELOPMENT_GOVERNANCE.md)
-- [Agent Governance](docs/governance/AGENT_GOVERNANCE.md)
-- [Code Review Guidelines](docs/governance/CODE_REVIEW_GUIDELINES.md)
-- [Release Process](docs/governance/RELEASE_PROCESS.md)
-- [Security Guidelines](docs/governance/SECURITY_GUIDELINES.md)
-- [Testing Guidelines](docs/governance/TESTING_GUIDELINES.md)
-- [Versioning Guidelines](docs/governance/VERSIONING_GUIDELINES.md)
-
----
-
-## API Documentation
-
-- **[API Reference](docs/API.md)** - Complete REST API documentation
-- **Endpoints**:
-  - `POST /api/projects/:projectId/blueprints` - Create blueprint
-  - `GET /api/blueprints/:blueprintId` - Get blueprint
-  - `PUT /api/blueprints/:blueprintId` - Update blueprint
-  - `GET /api/blueprints/:blueprintId/validate` - Validate blueprint
-  - `POST /api/projects/:projectId/generate` - Start generation
-  - `GET /api/projects/:projectId/generation/stream` - Stream updates (SSE)
-  - `GET /api/projects/:projectId/generation/:executionId/status` - Get status
-
----
-
-## Migration Status
-
-### Current Migration Progress
-
-**Overall Progress**: ~35% complete
-
-| Phase     | Status      | Description                 |
-| --------- | ----------- | --------------------------- |
-| Phase 0   | ✅ Complete | Architecture Audit          |
-| Phase 0.5 | ✅ Complete | Audit Validation            |
-| Phase 1   | ✅ Complete | Immediate Safe Cleanup      |
-| Phase 2   | ✅ Complete | Plugin Merge Analysis       |
-| Phase 3   | ✅ Complete | Documentation Cleanup       |
-| Phase 2.5 | ⏸️ Pending  | Plugin Merge Execution Plan |
-| Phase 4   | ⏸️ Pending  | Frontend Migration          |
-| Phase 5   | ⏸️ Pending  | Server Refactor             |
-| Phase 6   | ⏸️ Pending  | Project Quality             |
-
-### Migration Documentation
-
-Located in [docs/migration/](docs/migration/):
-
-- [Migration Status](docs/migration/NEXT_PHASE_STATUS.md) - Detailed migration progress
-- [Plugin Merge Plan](docs/migration/PLUGIN_MERGE_PLAN.md) - Plugin consolidation strategy
-- [Documentation Cleanup Report](docs/migration/DOCUMENTATION_CLEANUP_REPORT.md) - Documentation reorganization
-
----
-
-## Audit Reports
-
-### Architecture Audits
-
-Located in [docs/audits/](docs/audits/):
-
-- [Master Architecture Audit](docs/audits/MASTER_ARCHITECTURE_AUDIT.md) - Complete architecture analysis
-- [Phase 0 Validation Report](docs/audits/PHASE_0_VALIDATION_REPORT.md) - Audit validation results
-- [Technical Debt Master](docs/audits/TECH_DEBT_MASTER.md) - Consolidated technical debt tracking
-- [Dead Code Removal Report](docs/audits/DEAD_CODE_REMOVAL_REPORT.md) - Dead code cleanup
-- [Documentation Status Report](docs/audits/DOCUMENTATION_STATUS_REPORT.md) - Documentation audit
-
-### Project Health
-
-- **Architecture Health**: 87/100
-- **Technical Debt**: 24/100 (improved from 27/100)
-- **Code Quality**: Improved (dead code removed)
-- **Git Hygiene**: Improved (build artifacts untracked)
-
----
-
-## DevOps
-
-Located in [docs/devops/](docs/devops/):
-
-- [Gitignore Audit](docs/devops/GITIGNORE_AUDIT.md) - .gitignore configuration
-
----
-
-## Archived Documentation
-
-Historical documentation has been moved to [docs/archive/](docs/archive/):
-
-- Implementation reports
-- Previous architecture audits
-- Technical debt reports
-- Analysis reports
-- Planning documents
-
-These documents are preserved for reference but are not current.
-
----
-
-## Roblox Plugin
-
-### Plugin Status
-
-The project currently has two Roblox Studio plugin directories:
-
-- **RobloxAIStudioPlugin/** - Legacy implementation (v2.1.0)
-- **studio-plugin/** - Current implementation (v1.7.0 Alpha)
-
-### Plugin Documentation
-
-- [RobloxAIStudioPlugin README](RobloxAIStudioPlugin/README.md)
-- [studio-plugin README](studio-plugin/README.md)
-- [Plugin Merge Plan](docs/migration/PLUGIN_MERGE_PLAN.md) - Consolidation strategy
-
----
-
-## Release Information
-
-Located in [release/](release/):
-
-- [Release Notes](release/RELEASE_NOTES.md)
-- [Known Limitations](release/KNOWN_LIMITATIONS.md)
-- [Beta Checklist](release/BETA_CHECKLIST.md)
-
----
-
-## Additional Reports
-
-- [Agent Merge Report](docs/AGENT_MERGE_REPORT.md) - Agent consolidation
-- [Changelog](docs/CHANGELOG.md) - Version history
-- [Performance Report](docs/PERFORMANCE_REPORT.md) - Performance analysis (archived)
-
----
-
-## Project Structure
-
-```
-RobloxAiStudio-DevKit/
-├── docs/                    # Documentation (this directory)
-│   ├── architecture/         # Architecture documentation
-│   ├── audits/              # Audit reports
-│   ├── migration/           # Migration documentation
-│   ├── development/         # Development guides
-│   ├── governance/          # Governance policies
-│   ├── devops/              # DevOps documentation
-│   ├── adr/                 # Architecture Decision Records
-│   ├── api/                 # API documentation
-│   └── archive/             # Archived documentation
-├── src/                     # Frontend (React/Vite)
-├── server/                  # Backend (Node/Express)
-├── RobloxAIStudioPlugin/     # Legacy Roblox plugin
-├── studio-plugin/            # Current Roblox plugin
-└── scripts/                 # Build/validation scripts
+```bash
+npm ci
+npm run ci
+npm run build
 ```
 
----
+Studio package:
 
-## Getting Help
+```bash
+npm run studio:package
+```
 
-- **Documentation**: Check the relevant section above
-- **Architecture**: See [Architecture](#architecture) section
-- **Development**: See [Development](#development) section
-- **Migration**: See [Migration Status](#migration-status) section
-- **Issues**: Check audit reports in [docs/audits/](docs/audits/)
+Standalone Frontend commands run in the separate Frontend repository:
 
----
+```bash
+npm ci
+npx tsc --noEmit
+npm run test:workspace
+npm run build
+```
 
-## Contributing
+TECH-AUDIT-2 found that Frontend lint/format are not yet green or protected; FRONTEND-2C owns that baseline.
 
-See [Development Workflow](docs/development/DEVELOPMENT_WORKFLOW.md) for contribution guidelines.
+## Documentation organization
 
----
+| Directory                                   | Purpose                                             |
+| ------------------------------------------- | --------------------------------------------------- |
+| `00-project-control/`                       | Current state, roadmap, decisions, release evidence |
+| `01-architecture/`, `architecture/`, `adr/` | Architecture and decisions                          |
+| `02-audits/`                                | Current structured audits                           |
+| `03-features/`                              | Feature-specific current documentation              |
+| `04-migrations/completed/`                  | Completed migration evidence                        |
+| `project/`, `migration/`                    | Delivery and migration records                      |
+| `archive/`                                  | Historical, non-authoritative documentation         |
+| `workspace-ux-redesign-v2/`                 | Historical/workstream design evidence               |
 
-**Documentation Version**: 1.3.3
-**Last Updated**: 2026-07-13
-**Maintained By**: Architecture Team
+Many top-level reports are implementation-era evidence. Their dates and status banners determine whether they are current.
+
+## Deployment
+
+- [Production deployment guide](./PRODUCTION_DEPLOYMENT_GUIDE.md)
+- [Production deployment checklist](./PRODUCTION_DEPLOYMENT_CHECKLIST.md)
+- [CUTOVER-1A backend release](./00-project-control/CUTOVER-1A_BACKEND_RELEASE_ARTIFACT.md)
+- [CUTOVER-1C composed release](./00-project-control/CUTOVER-1C_COMPOSED_RELEASE.md)
+- [CUTOVER-1D readiness and rollback](./00-project-control/CUTOVER-1D_RELEASE_BASELINE_READINESS.md)
+
+The backend and Frontend release images remain independently deployable. The composed release pins exact identities and validates production REST/Socket behavior behind HTTPS.

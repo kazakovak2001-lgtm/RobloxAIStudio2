@@ -113,6 +113,13 @@ docs/02-audits/integration/KNOWLEDGE_BASE_IMPLEMENTATION_PLAN.md
 docs/02-audits/integration/PLAYTESTING_PRE_IMPLEMENTATION_REPORT.md
 docs/02-audits/project/PHASE_1_GATE_REVIEW.md
 docs/02-audits/project/POST_INTEGRATION_REALITY_AUDIT.md
+docs/02-audits/technical-v2/ARCHITECTURE_GAP_REPORT.md
+docs/02-audits/technical-v2/EXECUTIVE_AUDIT.md
+docs/02-audits/technical-v2/FEATURE_MATRIX.md
+docs/02-audits/technical-v2/MODULE_REGISTRY.md
+docs/02-audits/technical-v2/ROADMAP_v2_UPDATE.md
+docs/02-audits/technical-v2/SPRINT_BACKLOG.md
+docs/02-audits/technical-v2/TECHNICAL_DEBT.md
 docs/02-audits/ux/.gitkeep
 docs/03-features/.gitkeep
 docs/03-features/authentication.md
