@@ -127,10 +127,7 @@
       "RUN npx vite build",
       "COPY --from=builder /app/dist ./dist"
     ],
-    "ciMarkers": [
-      "npx tsc --noEmit",
-      "name: Promoted Baseline Integrity"
-    ]
+    "ciMarkers": ["npx tsc --noEmit", "name: Promoted Baseline Integrity"]
   },
   "packageDisposition": {
     "retainOperational": [
