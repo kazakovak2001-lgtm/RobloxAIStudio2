@@ -1,6 +1,6 @@
 # CLEANUP-1B Legacy Frontend Tooling Decoupling
 
-**Status**: Implementation complete; protected CI verification pending
+**Status**: Protected implementation verification passed in PR #35
 **Date**: July 28, 2026
 **Tracking issue**: #34
 
@@ -113,7 +113,8 @@ uses it for authenticated Socket.IO acceptance.
 
 ## CI Evidence
 
-The protected CI run must pass:
+Protected CI run `30327076703` (#282) passed on implementation commit
+`12b2009f244caa77c8cfc21d9fd51c29afa519b1` in PR #35. It verified:
 
 - TypeScript Check;
 - ESLint;
@@ -128,7 +129,7 @@ The protected CI run must pass:
 - Commit Message Lint;
 - Merge Gate.
 
-The cleanup job publishes:
+The cleanup job published:
 
 ```text
 artifact: cleanup-1b-tooling-decoupling
@@ -136,8 +137,11 @@ path: artifacts/cleanup-1b
 result: legacy-frontend-audit-result.json
 ```
 
-The exact CI run, artifact ID, digest, pull request, and merge commit are added
-after protected verification completes.
+Evidence artifact `8676095415`, named `cleanup-1b-tooling-decoupling`, has
+digest
+`sha256:dc455ca74bdd823584eabc0b2de55adf3efd9b472dc1084d958408e5b30745d6`.
+The run passed the CLEANUP-1B audit and Merge Gate. The merge commit is recorded
+after the protected pull request transition completes.
 
 ## Safety Boundary
 

@@ -8,14 +8,14 @@
 
 This sequence is authoritative for work after the standalone frontend integration. It replaces the historical plan to further migrate the embedded frontend in this repository.
 
-| ID            | Delivery item                                                  | Priority | Status                                                       | Dependency            |
-| ------------- | -------------------------------------------------------------- | -------- | ------------------------------------------------------------ | --------------------- |
-| CUTOVER-0     | Standalone frontend governance and CI alignment                | Critical | ✅ Complete                                                  | —                     |
-| CI-BASELINE-1 | Portable green backend CI and repository hygiene               | Critical | ✅ Complete                                                  | CUTOVER-0             |
-| CORE-1        | Real project data, persistence, and API contract stabilization | Critical | ✅ Complete                                                  | CI-BASELINE-1         |
-| WORKSPACE-1   | Workflow-oriented standalone Workspace                         | High     | ✅ Complete                                                  | CORE-1                |
-| STUDIO-1      | Generated artifact → Roblox Studio end-to-end validation       | High     | ✅ Complete — real desktop verified                          | CORE-1, WORKSPACE-1   |
-| CUTOVER-1     | Release promotion and legacy frontend removal                  | High     | 🟡 Active — 1A–1F and CLEANUP-1A complete; CLEANUP-1B active | WORKSPACE-1, STUDIO-1 |
+| ID            | Delivery item                                                  | Priority | Status                                                   | Dependency            |
+| ------------- | -------------------------------------------------------------- | -------- | -------------------------------------------------------- | --------------------- |
+| CUTOVER-0     | Standalone frontend governance and CI alignment                | Critical | ✅ Complete                                              | —                     |
+| CI-BASELINE-1 | Portable green backend CI and repository hygiene               | Critical | ✅ Complete                                              | CUTOVER-0             |
+| CORE-1        | Real project data, persistence, and API contract stabilization | Critical | ✅ Complete                                              | CI-BASELINE-1         |
+| WORKSPACE-1   | Workflow-oriented standalone Workspace                         | High     | ✅ Complete                                              | CORE-1                |
+| STUDIO-1      | Generated artifact → Roblox Studio end-to-end validation       | High     | ✅ Complete — real desktop verified                      | CORE-1, WORKSPACE-1   |
+| CUTOVER-1     | Release promotion and legacy frontend removal                  | High     | 🟡 Active — CLEANUP-1B verified in PR #35; merge pending | WORKSPACE-1, STUDIO-1 |
 
 See [FRONTEND_CUTOVER.md](./FRONTEND_CUTOVER.md) for ownership, branch, validation, and legacy-removal rules.
 See [CORE-1A_DURABLE_PROJECTS.md](./CORE-1A_DURABLE_PROJECTS.md) for the completed identity/project boundary.
@@ -76,7 +76,7 @@ CUTOVER-1E promoted `release/cutover-1e-candidate` as the protected repository d
 
 CLEANUP-1A merged as `99b0de4a3b493d1e1fa98173deea8fae59d57842`. It inventories all 168 tracked root `src/` files, legacy configuration/deployment files, package consumers, tooling blockers, and ordered CLEANUP-1B/1C/1D waves. It authorizes no deletion.
 
-CLEANUP-1B is active under issue #34. It routes backend development, build, typecheck, Vitest, PostgreSQL acceptance, and architecture reporting away from the frozen React/Vite application. Every legacy source/configuration/deployment file, dependency declaration, and lockfile remains protected. CLEANUP-1C physical removal and dependency pruning is blocked until CLEANUP-1B passes protected CI and merges.
+CLEANUP-1B is implemented under issue #34 and PR #35. It routes backend development, build, typecheck, Vitest, PostgreSQL acceptance, and architecture reporting away from the frozen React/Vite application. Implementation commit `12b2009f244caa77c8cfc21d9fd51c29afa519b1` passed protected CI run `30327076703` (#282), including the CLEANUP-1B evidence job and Merge Gate. Artifact `8676095415` has digest `sha256:dc455ca74bdd823584eabc0b2de55adf3efd9b472dc1084d958408e5b30745d6`. Every legacy source/configuration/deployment file, dependency declaration, and lockfile remains protected. CLEANUP-1C physical removal and dependency pruning is blocked until CLEANUP-1B merges.
 
 The prior combined stack is archival only, not an executable rollback path: its root `Dockerfile` references the absent `public/` directory. Executable rollback uses the independently verified CUTOVER-1A backend and CUTOVER-1B Frontend artifacts. PR #1 must still not be merged directly.
 
@@ -160,6 +160,6 @@ The prior combined stack is archival only, not an executable rollback path: its 
 - **Security Status**: 12/12 hardening tasks completed (including final checkpoint)
 - **Historical v1.0 Decision**: ✅ APPROVED for the embedded product baseline
 - **Studio Gate**: ✅ STUDIO-1 complete with real desktop evidence
-- **Current Cutover Decision**: ✅ CUTOVER-1A through CUTOVER-1F and CLEANUP-1A are verified; CLEANUP-1B is the active tooling-only stage, while CLEANUP-1C deletion remains blocked pending protected verification and merge
+- **Current Cutover Decision**: ✅ CUTOVER-1A through CUTOVER-1F and CLEANUP-1A are verified; CLEANUP-1B passed protected implementation verification in PR #35, while CLEANUP-1C deletion remains blocked pending merge
 - **Sign-Off Document**: `FINAL_V1_RELEASE_SIGN_OFF.md`
 - **Post-release**: F-12 (Collaborative Dev) deferred to post-launch
