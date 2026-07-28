@@ -77,14 +77,14 @@ export class CodebaseKnowledge {
    * Also builds the resolved dependency graph.
    */
   indexSourceTree(): void {
-    const frontendDir = join(this.rootDir, "src");
     const backendDir = join(this.rootDir, "server", "src");
+    const studioPluginDir = join(this.rootDir, "studio-plugin", "src");
 
-    if (existsSync(frontendDir)) {
-      this.indexDirectory(frontendDir, "src");
-    }
     if (existsSync(backendDir)) {
       this.indexDirectory(backendDir, "server/src");
+    }
+    if (existsSync(studioPluginDir)) {
+      this.indexDirectory(studioPluginDir, "studio-plugin/src");
     }
 
     // Build dependency graph after all files are indexed
@@ -111,7 +111,11 @@ export class CodebaseKnowledge {
 
   private isSourceFile(name: string): boolean {
     const ext = extname(name);
-    return [".ts", ".tsx"].includes(ext) && !name.endsWith(".test.ts");
+    return (
+      [".ts", ".tsx", ".lua"].includes(ext) &&
+      !name.endsWith(".test.ts") &&
+      !name.endsWith(".spec.ts")
+    );
   }
 
   private extractFileMetadata(
@@ -124,7 +128,7 @@ export class CodebaseKnowledge {
       relPath
         .split("/")
         .pop()
-        ?.replace(/\.(ts|tsx)$/, "") ?? relPath;
+        ?.replace(/\.(ts|tsx|lua)$/, "") ?? relPath;
 
     return {
       path: relPath,
@@ -347,15 +351,14 @@ export class CodebaseKnowledge {
    * Resolve an import path to an indexed file path.
    */
   private resolveImport(fromFile: string, importPath: string): string | null {
-    // Skip external/node_modules imports
-    if (!importPath.startsWith(".") && !importPath.startsWith("@/")) {
+    // The retired @/ alias belonged to the removed root frontend.
+    if (importPath.startsWith("@/")) {
       return null;
     }
 
-    // Handle @/ alias
-    if (importPath.startsWith("@/")) {
-      const resolved = "src/" + importPath.slice(2);
-      return this.findFileMatch(resolved);
+    // Skip external/node_modules imports
+    if (!importPath.startsWith(".")) {
+      return null;
     }
 
     // Resolve relative import
@@ -381,11 +384,11 @@ export class CodebaseKnowledge {
     // Direct match
     if (this.files.has(basePath)) return basePath;
     // Try extensions
-    for (const ext of [".ts", ".tsx"]) {
+    for (const ext of [".ts", ".tsx", ".lua"]) {
       if (this.files.has(basePath + ext)) return basePath + ext;
     }
     // Try index file
-    for (const ext of [".ts", ".tsx"]) {
+    for (const ext of [".ts", ".tsx", ".lua"]) {
       const indexPath = basePath + "/index" + ext;
       if (this.files.has(indexPath)) return indexPath;
     }

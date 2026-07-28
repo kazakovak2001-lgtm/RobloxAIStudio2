@@ -4,6 +4,17 @@ All significant architectural and product decisions are recorded here.
 
 ---
 
+## 2026-07-28 — CLEANUP-1D Post-Removal Repository Verification
+
+**Decision**: Complete the cleanup sequence with a focused, zero-deletion verification stage based on protected default `9a728661ee7b0a635af78da56a5d147b296dc23c`.
+**Reason**: CLEANUP-1C removed the legacy web client, but older architecture helpers and three broad repository snapshots still modeled or listed the retired root. Leaving those contradictions would let agents and tooling recommend invalid paths even though production release gates were clean.
+**Implementation**: Upgrade the existing cleanup inventory/verifier to schema v4; recognize only `server/src` and `studio-plugin/src` as local source zones; forbid root `src/` in static, runtime, generation, lint, and staged-file checks; retire the `@/` alias; index Studio Luau alongside backend TypeScript; generate deterministic tracked-path inventories; classify historical, negative-guard, Studio-relative, and Roblox-artifact-relative references; rename protected evidence while retaining the Merge Gate dependency.
+**Preservation**: No deletion, dependency, lockfile, backend API, authentication, storage, generation output/API behavior, Studio protocol, Frontend identity, release topology, protected default, or rollback-reference change.
+**Rollback**: Revert the focused CLEANUP-1D commit. CLEANUP-1C and all independently verified release artifacts remain intact.
+**Status**: Implemented and locally verified; protected verification pending.
+
+---
+
 ## 2026-07-28 — CLEANUP-1C Legacy Frontend Physical Removal
 
 **Decision**: Execute the first deletion-authorized cleanup wave only after CLEANUP-1B was protected, verified, merged, and closed out. Reuse the single CLEANUP inventory and verifier; remove the exact classified embedded frontend surface and only direct packages already proven to have no active consumers.

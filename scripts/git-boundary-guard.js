@@ -9,6 +9,7 @@
 const { execSync } = require("child_process");
 
 const FORBIDDEN_ROOTS = [
+  "src/",
   "app/src/",
   "lib/src/",
   "packages/src/",
@@ -18,13 +19,8 @@ const FORBIDDEN_ROOTS = [
 const CROSS_BOUNDARY_PATTERNS = [
   {
     zone: "server/src/",
-    forbidden: /from\s+["']\.\.\/\.\.\/src\//g,
-    msg: "Backend imports frontend",
-  },
-  {
-    zone: "src/",
-    forbidden: /from\s+["']\.\.\/server\/src\//g,
-    msg: "Frontend imports backend",
+    forbidden: /(?:from\s+|import\s*\()\s*["'](?:@\/|(?:\.\.\/)+src\/)/,
+    msg: "Backend imports the removed root frontend",
   },
 ];
 

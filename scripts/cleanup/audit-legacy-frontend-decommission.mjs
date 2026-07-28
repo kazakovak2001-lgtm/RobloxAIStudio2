@@ -12,7 +12,7 @@ import path from "node:path";
 import ts from "typescript";
 
 const root = process.cwd();
-const stageId = "CLEANUP-1C";
+const stageId = "CLEANUP-1D";
 const inventoryPath = path.resolve(
   root,
   process.env.LEGACY_FRONTEND_AUDIT_INVENTORY ??
@@ -20,7 +20,7 @@ const inventoryPath = path.resolve(
 );
 const outputDirectory = path.resolve(
   root,
-  process.env.LEGACY_FRONTEND_AUDIT_OUTPUT ?? "artifacts/cleanup-1c",
+  process.env.LEGACY_FRONTEND_AUDIT_OUTPUT ?? "artifacts/cleanup-1d",
 );
 
 mkdirSync(outputDirectory, { recursive: true });
@@ -43,17 +43,16 @@ process.on("uncaughtException", (error) => {
 const inventory = JSON.parse(readFileSync(inventoryPath, "utf8"));
 assert.equal(
   inventory.schemaVersion,
-  3,
+  4,
   "Unsupported cleanup inventory schema",
 );
 assert.equal(inventory.roadmapId, stageId);
-assert.equal(inventory.status, "physical-removal-implemented");
+assert.equal(inventory.status, "post-removal-verification-implemented");
 assert.equal(
   inventory.currentStageDeletionAuthorized,
-  true,
-  "CLEANUP-1C must be the explicitly deletion-authorized wave",
+  false,
+  "CLEANUP-1D is a non-deletion verification stage",
 );
-assert.equal(inventory.nextStage, "CLEANUP-1D");
 
 const git = (...args) =>
   execFileSync("git", args, { cwd: root, encoding: "utf8" }).trim();
@@ -101,35 +100,12 @@ const changeByFile = new Map(
 assert.equal(
   changeByFile.size,
   changeEntries.length,
-  "CLEANUP-1C diff contains duplicate path entries",
+  "CLEANUP-1D diff contains duplicate path entries",
 );
-
-const sourcePrefix = `${inventory.legacyFrontend.sourceRoot}/`;
-const historicalLegacyFiles = [
-  ...inventory.legacyFrontend.expectedTrackedFiles,
-].sort();
-assert.equal(
-  historicalLegacyFiles.length,
-  168,
-  "The CLEANUP-1A source inventory must remain exactly 168 files",
-);
-assert.ok(
-  historicalLegacyFiles.every((file) => file.startsWith(sourcePrefix)),
-  "Legacy source inventory contains a path outside the removed root",
-);
-
-const requiredDeletedFiles = [
-  ...new Set([
-    ...historicalLegacyFiles,
-    ...inventory.legacyFrontend.configurationFiles,
-    ...inventory.legacyFrontend.generatedResidue,
-    ...inventory.legacyFrontend.archivalDeploymentFiles,
-  ]),
-].sort();
-assert.equal(
-  requiredDeletedFiles.length,
-  176,
-  "CLEANUP-1C must delete the exact 176-path authorized inventory",
+assert.deepEqual(
+  changeEntries.filter((entry) => entry.status.startsWith("D")),
+  [],
+  "CLEANUP-1D must not delete files",
 );
 
 const requiredModifiedFiles = [
@@ -138,31 +114,32 @@ const requiredModifiedFiles = [
 const requiredAddedFiles = [
   ...inventory.stageChangePolicy.requiredAddedFiles,
 ].sort();
+assert.deepEqual(
+  inventory.stageChangePolicy.requiredDeletedFiles,
+  [],
+  "CLEANUP-1D change policy must authorize zero deletions",
+);
 const expectedChanges = new Map([
-  ...requiredDeletedFiles.map((file) => [file, "D"]),
   ...requiredModifiedFiles.map((file) => [file, "M"]),
   ...requiredAddedFiles.map((file) => [file, "A"]),
 ]);
 assert.equal(
   expectedChanges.size,
-  requiredDeletedFiles.length +
-    requiredModifiedFiles.length +
-    requiredAddedFiles.length,
-  "CLEANUP-1C change policy contains overlapping paths",
+  requiredModifiedFiles.length + requiredAddedFiles.length,
+  "CLEANUP-1D change policy contains overlapping paths",
 );
 assert.deepEqual(
   [...changeByFile.keys()].sort(),
   [...expectedChanges.keys()].sort(),
-  "CLEANUP-1C changed paths differ from the exact authorized removal scope",
+  "CLEANUP-1D changed paths differ from the exact authorized scope",
 );
 for (const [file, expectedStatus] of expectedChanges) {
   assert.equal(
     changeByFile.get(file),
     expectedStatus,
-    `CLEANUP-1C expected ${expectedStatus} status for ${file}`,
+    `CLEANUP-1D expected ${expectedStatus} status for ${file}`,
   );
 }
-
 for (const file of inventory.stageChangePolicy.protectedUnchangedFiles) {
   assert.ok(
     existsSync(path.join(root, file)),
@@ -170,42 +147,52 @@ for (const file of inventory.stageChangePolicy.protectedUnchangedFiles) {
   );
   assert.ok(
     !changeByFile.has(file),
-    `Protected file changed during CLEANUP-1C: ${file}`,
+    `Protected file changed during CLEANUP-1D: ${file}`,
   );
 }
 
-const removedFileEvidence = requiredDeletedFiles.map((file) => {
-  const absolutePath = path.join(root, file);
-  assert.ok(!existsSync(absolutePath), `Removed path still exists: ${file}`);
+const sourcePrefix = `${inventory.legacyFrontend.sourceRoot}/`;
+const historicalLegacyFiles = [
+  ...inventory.legacyFrontend.expectedTrackedFiles,
+].sort();
+assert.equal(
+  historicalLegacyFiles.length,
+  168,
+  "Historical legacy source inventory must remain exactly 168 files",
+);
+assert.ok(
+  historicalLegacyFiles.every((file) => file.startsWith(sourcePrefix)),
+  "Legacy source inventory contains a path outside the removed root",
+);
+const requiredRemovedFiles = [
+  ...new Set([
+    ...historicalLegacyFiles,
+    ...inventory.legacyFrontend.configurationFiles,
+    ...inventory.legacyFrontend.generatedResidue,
+    ...inventory.legacyFrontend.archivalDeploymentFiles,
+  ]),
+].sort();
+assert.equal(
+  requiredRemovedFiles.length,
+  176,
+  "CLEANUP-1C removal evidence must remain exactly 176 paths",
+);
+
+const removalBaseline = inventory.baseline.cleanup1cRemovalBaselineCommit;
+const removedFileEvidence = requiredRemovedFiles.map((file) => {
+  assert.ok(!existsSync(path.join(root, file)), `Removed path exists: ${file}`);
   assert.ok(!trackedFileSet.has(file), `Removed path remains tracked: ${file}`);
-
-  const baselineContent = gitBuffer("show", `${baseline}:${file}`);
-  const classification = historicalLegacyFiles.includes(file)
-    ? "legacy-source"
-    : inventory.legacyFrontend.configurationFiles.includes(file)
-      ? "legacy-configuration"
-      : inventory.legacyFrontend.archivalDeploymentFiles.includes(file)
-        ? "archival-deployment"
-        : "generated-residue";
-
+  const baselineContent = gitBuffer("show", `${removalBaseline}:${file}`);
   return {
     path: file,
-    classification,
     baselineSizeBytes: baselineContent.byteLength,
     baselineSha256: createHash("sha256").update(baselineContent).digest("hex"),
   };
 });
-
 assert.ok(
   !existsSync(path.join(root, inventory.legacyFrontend.sourceRoot)),
   `Removed legacy root exists: ${inventory.legacyFrontend.sourceRoot}/`,
 );
-for (const entrypoint of inventory.legacyFrontend.entrypoints) {
-  assert.ok(
-    requiredDeletedFiles.includes(entrypoint),
-    `Legacy entrypoint was not in the removal inventory: ${entrypoint}`,
-  );
-}
 
 for (const entry of inventory.legacyFrontend.separateInfrastructureFiles) {
   const absolutePath = path.join(root, entry.path);
@@ -213,17 +200,10 @@ for (const entry of inventory.legacyFrontend.separateInfrastructureFiles) {
     existsSync(absolutePath) && statSync(absolutePath).isFile(),
     `Missing separate infrastructure file: ${entry.path}`,
   );
-  const content = readFileSync(absolutePath, "utf8");
   assert.doesNotMatch(
-    content,
+    readFileSync(absolutePath, "utf8"),
     /\b(?:src\/|vite|index\.html|frontend)\b/i,
     `${entry.path} is not independent from the removed frontend`,
-  );
-}
-for (const file of inventory.legacyFrontend.staleInventoryFiles) {
-  assert.ok(
-    existsSync(path.join(root, file)),
-    `Stale inventory reserved for CLEANUP-1D is missing: ${file}`,
   );
 }
 for (const entry of inventory.legacyFrontend.knownMissingPaths) {
@@ -233,10 +213,86 @@ for (const entry of inventory.legacyFrontend.knownMissingPaths) {
   );
 }
 
+function buildTree(files) {
+  const rootNode = new Map();
+  for (const file of files) {
+    let node = rootNode;
+    for (const segment of file.split("/")) {
+      if (!node.has(segment)) node.set(segment, new Map());
+      node = node.get(segment);
+    }
+  }
+  const lines = ["."];
+  const render = (node, prefix) => {
+    const entries = [...node.entries()].sort(([left], [right]) =>
+      left.localeCompare(right, "en"),
+    );
+    entries.forEach(([name, children], index) => {
+      const last = index === entries.length - 1;
+      lines.push(`${prefix}${last ? "└── " : "├── "}${name}`);
+      if (children.size > 0) {
+        render(children, `${prefix}${last ? "    " : "│   "}`);
+      }
+    });
+  };
+  render(rootNode, "");
+  return `${lines.join("\n")}\n`;
+}
+
+function readVerifiedUtf8(relativePath) {
+  const content = readFileSync(path.join(root, relativePath));
+  assert.ok(
+    !(content[0] === 0xff && content[1] === 0xfe) &&
+      !(content[0] === 0xfe && content[1] === 0xff),
+    `${relativePath} must not be UTF-16`,
+  );
+  assert.ok(!content.includes(0), `${relativePath} contains NUL bytes`);
+  const decoded = content.toString("utf8");
+  assert.ok(
+    !decoded.includes("\uFFFD"),
+    `${relativePath} is not deterministic UTF-8`,
+  );
+  return decoded;
+}
+
+assert.deepEqual(inventory.legacyFrontend.trackedInventoryFiles, [
+  "_inventory_raw.txt",
+  "ProjectStructure.txt",
+  "project_structure.txt",
+]);
+assert.equal(
+  readVerifiedUtf8("_inventory_raw.txt"),
+  `${trackedFiles.join("\n")}\n`,
+  "_inventory_raw.txt differs from the exact sorted git ls-files set",
+);
+assert.equal(
+  readVerifiedUtf8("ProjectStructure.txt"),
+  buildTree(trackedFiles),
+  "ProjectStructure.txt differs from the deterministic tracked-path tree",
+);
+const compatibilityPointer = [
+  "Compatibility pointer — no repository snapshot is stored here.",
+  "Canonical tracked-file inventory: _inventory_raw.txt",
+  "Canonical tracked-path tree: ProjectStructure.txt",
+  "Regenerate both files with:",
+  "node scripts/cleanup/generate-tracked-inventories.mjs",
+  "",
+].join("\n");
+assert.equal(
+  readVerifiedUtf8("project_structure.txt"),
+  compatibilityPointer,
+  "project_structure.txt must remain a small compatibility pointer",
+);
+
 const packageJson = JSON.parse(
   readFileSync(path.join(root, "package.json"), "utf8"),
 );
 const baselinePackageJson = JSON.parse(git("show", `${baseline}:package.json`));
+assert.deepEqual(
+  packageJson,
+  baselinePackageJson,
+  "CLEANUP-1D must not modify package declarations or scripts",
+);
 const removedRuntimePackages = [
   ...inventory.packageDisposition.removedRuntimeDirectPackages,
 ].sort();
@@ -250,188 +306,25 @@ const allRemovedDirectPackages = [
 assert.equal(
   allRemovedDirectPackages.length,
   12,
-  "CLEANUP-1C must prune exactly 12 direct package declarations",
-);
-assert.equal(
-  new Set(allRemovedDirectPackages).size,
-  allRemovedDirectPackages.length,
-  "Removed direct package inventory contains duplicates",
-);
-
-const expectedDependencies = { ...baselinePackageJson.dependencies };
-for (const packageName of removedRuntimePackages) {
-  assert.ok(
-    Object.hasOwn(expectedDependencies, packageName),
-    `Runtime removal was not declared at the baseline: ${packageName}`,
-  );
-  delete expectedDependencies[packageName];
-}
-const expectedDevDependencies = { ...baselinePackageJson.devDependencies };
-for (const packageName of removedDevelopmentPackages) {
-  assert.ok(
-    Object.hasOwn(expectedDevDependencies, packageName),
-    `Development removal was not declared at the baseline: ${packageName}`,
-  );
-  delete expectedDevDependencies[packageName];
-}
-assert.deepEqual(
-  packageJson.dependencies,
-  expectedDependencies,
-  "Runtime dependencies differ from the baseline minus authorized removals",
-);
-assert.deepEqual(
-  packageJson.devDependencies,
-  expectedDevDependencies,
-  "Development dependencies differ from the baseline minus authorized removals",
+  "Removed direct package inventory must remain exactly 12 packages",
 );
 for (const packageName of allRemovedDirectPackages) {
   assert.ok(
     !Object.hasOwn(packageJson.dependencies ?? {}, packageName) &&
       !Object.hasOwn(packageJson.devDependencies ?? {}, packageName),
-    `Removed package remains directly declared: ${packageName}`,
+    `Removed package is directly declared: ${packageName}`,
   );
 }
-
-for (const [name, expectedCommand] of Object.entries(
-  inventory.toolingContract.packageScripts,
-)) {
-  assert.equal(
-    packageJson.scripts?.[name],
-    expectedCommand,
-    `Backend tooling script ${name} differs from the CLEANUP-1C contract`,
-  );
-}
-assert.deepEqual(
-  packageJson.scripts,
-  baselinePackageJson.scripts,
-  "CLEANUP-1C must not change package commands",
-);
-
 const packageLock = JSON.parse(
   readFileSync(path.join(root, "package-lock.json"), "utf8"),
 );
 const lockRoot = packageLock.packages?.[""];
 assert.ok(lockRoot, "package-lock.json is missing its root package record");
-assert.deepEqual(
-  lockRoot.dependencies ?? {},
-  packageJson.dependencies ?? {},
-  "package-lock root runtime declarations differ from package.json",
-);
+assert.deepEqual(lockRoot.dependencies ?? {}, packageJson.dependencies ?? {});
 assert.deepEqual(
   lockRoot.devDependencies ?? {},
   packageJson.devDependencies ?? {},
-  "package-lock root development declarations differ from package.json",
 );
-
-const vitestConfigPath = inventory.toolingContract.vitestBackendConfig.path;
-const vitestConfig = readFileSync(path.join(root, vitestConfigPath), "utf8");
-for (const includePattern of inventory.toolingContract.vitestBackendConfig
-  .include) {
-  assert.ok(
-    vitestConfig.includes(includePattern),
-    `Backend Vitest include is missing: ${includePattern}`,
-  );
-}
-for (const marker of inventory.toolingContract.vitestBackendConfig
-  .forbiddenMarkers) {
-  assert.ok(
-    !vitestConfig.includes(marker),
-    `Backend Vitest config references removed frontend tooling: ${marker}`,
-  );
-}
-
-const productionAudit = readFileSync(
-  path.join(root, inventory.toolingContract.productionAudit.path),
-  "utf8",
-);
-for (const marker of inventory.toolingContract.productionAudit
-  .requiredMarkers) {
-  assert.ok(
-    productionAudit.includes(marker),
-    `Production audit marker is missing: ${marker}`,
-  );
-}
-for (const marker of inventory.toolingContract.productionAudit
-  .forbiddenMarkers) {
-  assert.ok(
-    !productionAudit.includes(marker),
-    `Production audit references a removed frontend path: ${marker}`,
-  );
-}
-
-const architectureValidator = readFileSync(
-  path.join(root, "scripts/validate-architecture.ts"),
-  "utf8",
-);
-for (const marker of inventory.toolingContract
-  .architectureValidatorRequiredMarkers) {
-  assert.ok(
-    architectureValidator.includes(marker),
-    `Architecture removal marker is missing: ${marker}`,
-  );
-}
-for (const marker of inventory.toolingContract
-  .architectureValidatorForbiddenMarkers) {
-  assert.ok(
-    !architectureValidator.includes(marker),
-    `Retired architecture marker remains active: ${marker}`,
-  );
-}
-
-const ciWorkflow = readFileSync(
-  path.join(root, ".github/workflows/ci.yml"),
-  "utf8",
-);
-for (const marker of inventory.toolingContract.ciRequiredMarkers) {
-  assert.ok(ciWorkflow.includes(marker), `CI marker is missing: ${marker}`);
-}
-for (const marker of inventory.toolingContract.ciForbiddenMarkers) {
-  assert.ok(
-    !ciWorkflow.includes(marker),
-    `CI contains a retired cleanup marker: ${marker}`,
-  );
-}
-assert.ok(
-  ciWorkflow.includes("audit-legacy-frontend-decommission.mjs"),
-  "The protected cleanup verifier invocation is missing from CI",
-);
-const gateJobMatch = ciWorkflow.match(
-  /\n  gate:\n([\s\S]*?)(?=\n  [A-Za-z0-9_-]+:\n|$)/,
-);
-assert.ok(gateJobMatch, "Unable to locate the Merge Gate job");
-const gateNeedsMatch = gateJobMatch[1].match(
-  /\n    needs:\n([\s\S]*?)\n    steps:/,
-);
-assert.ok(gateNeedsMatch, "Unable to locate the Merge Gate needs block");
-assert.match(
-  gateNeedsMatch[1],
-  /(?:^|[\s,\[])legacy-frontend-audit(?:[\s,\]]|$)/,
-  "Merge Gate does not depend on legacy-frontend-audit",
-);
-
-const releaseInventoryPath = path.join(root, inventory.sourceReleaseInventory);
-const releaseInventory = JSON.parse(readFileSync(releaseInventoryPath, "utf8"));
-assert.equal(releaseInventory.roadmapId, "CUTOVER-1D");
-assert.deepEqual(
-  inventory.canonicalFrontend,
-  releaseInventory.frontendRelease,
-  "Canonical Frontend identity differs from the CUTOVER release inventory",
-);
-for (const releasePath of releaseInventory.activeRelease.files) {
-  const absolutePath = path.join(root, releasePath);
-  assert.ok(
-    existsSync(absolutePath),
-    `Missing active release file: ${releasePath}`,
-  );
-  const content = readFileSync(absolutePath, "utf8");
-  for (const pattern of releaseInventory.activeRelease.forbiddenPatterns) {
-    const regex = new RegExp(pattern.regex, "i");
-    assert.ok(
-      !regex.test(content),
-      `${releasePath} violates ${pattern.id}: ${pattern.description}`,
-    );
-  }
-}
 
 const consumerExtensions = new Set([
   ".ts",
@@ -443,7 +336,6 @@ const consumerExtensions = new Set([
   ".mjs",
   ".cjs",
 ]);
-
 function scriptKindForFile(file) {
   if (file.endsWith(".tsx")) return ts.ScriptKind.TSX;
   if (file.endsWith(".jsx")) return ts.ScriptKind.JSX;
@@ -452,7 +344,6 @@ function scriptKindForFile(file) {
   }
   return ts.ScriptKind.JS;
 }
-
 function moduleSpecifiersInFile(file, content) {
   const sourceFile = ts.createSourceFile(
     file,
@@ -462,22 +353,13 @@ function moduleSpecifiersInFile(file, content) {
     scriptKindForFile(file),
   );
   const moduleSpecifiers = new Set();
-  const recordSpecifier = (node) => {
-    if (node && ts.isStringLiteralLike(node)) {
-      moduleSpecifiers.add(node.text);
-    }
-  };
   const visit = (node) => {
     if (
       (ts.isImportDeclaration(node) || ts.isExportDeclaration(node)) &&
-      node.moduleSpecifier
+      node.moduleSpecifier &&
+      ts.isStringLiteralLike(node.moduleSpecifier)
     ) {
-      recordSpecifier(node.moduleSpecifier);
-    } else if (
-      ts.isImportEqualsDeclaration(node) &&
-      ts.isExternalModuleReference(node.moduleReference)
-    ) {
-      recordSpecifier(node.moduleReference.expression);
+      moduleSpecifiers.add(node.moduleSpecifier.text);
     } else if (
       ts.isCallExpression(node) &&
       node.arguments.length === 1 &&
@@ -486,74 +368,235 @@ function moduleSpecifiersInFile(file, content) {
         (ts.isIdentifier(node.expression) &&
           node.expression.text === "require"))
     ) {
-      recordSpecifier(node.arguments[0]);
+      moduleSpecifiers.add(node.arguments[0].text);
     }
     ts.forEachChild(node, visit);
   };
   visit(sourceFile);
   return [...moduleSpecifiers];
 }
-
 function packageConsumers(packageName) {
   return trackedFiles.filter((file) => {
     if (!consumerExtensions.has(path.extname(file))) return false;
     const absolutePath = path.join(root, file);
     if (!existsSync(absolutePath)) return false;
-    const moduleSpecifiers = moduleSpecifiersInFile(
+    return moduleSpecifiersInFile(
       file,
       readFileSync(absolutePath, "utf8"),
-    );
-    return moduleSpecifiers.some(
+    ).some(
       (specifier) =>
         specifier === packageName || specifier.startsWith(`${packageName}/`),
     );
   });
 }
-
 const packageConsumerEvidence = {};
 for (const entry of inventory.packageDisposition.retainOperational) {
-  assert.equal(
-    packageJson.dependencies?.[entry.name] ??
-      packageJson.devDependencies?.[entry.name],
-    baselinePackageJson.dependencies?.[entry.name] ??
-      baselinePackageJson.devDependencies?.[entry.name],
-    `Operational package declaration changed: ${entry.name}`,
-  );
   const consumers = packageConsumers(entry.name).sort();
-  const expected = [...entry.expectedConsumersOutsideLegacyRoot].sort();
   assert.deepEqual(
     consumers,
-    expected,
+    [...entry.expectedConsumersOutsideLegacyRoot].sort(),
     `Operational package ${entry.name} consumers changed`,
   );
-  packageConsumerEvidence[entry.name] = {
-    classification: "retain-operational",
-    consumers,
-    reason: entry.reason,
-  };
+  packageConsumerEvidence[entry.name] = consumers;
 }
 for (const packageName of allRemovedDirectPackages) {
   const consumers = packageConsumers(packageName);
   assert.deepEqual(
     consumers,
     [],
-    `Removed direct package ${packageName} still has a repository consumer`,
+    `Removed direct package ${packageName} has repository consumers`,
   );
-  packageConsumerEvidence[packageName] = {
-    classification: "removed-direct-dependency",
-    consumers,
-  };
+  packageConsumerEvidence[packageName] = consumers;
+}
+
+const helperContracts = [
+  {
+    file: "server/src/core/architecture/ArchitecturePolicy.ts",
+    required: ["studioPluginRoot", "removedFrontendRoot"],
+    forbidden: ['frontendRoot: "src"', 'sharedRoot: "shared"'],
+  },
+  {
+    file: "server/src/core/ai/GenerationSandbox.ts",
+    required: ['"studio-plugin": "studio-plugin"'],
+    forbidden: ['"ui" |', 'ui: "src/"', 'shared: "shared/"'],
+  },
+  {
+    file: "server/src/knowledge/CodebaseKnowledge.ts",
+    required: ['"studio-plugin", "src"', '[".ts", ".tsx", ".lua"]'],
+    forbidden: ['const frontendDir = join(this.rootDir, "src")'],
+  },
+  {
+    file: "server/src/agents/implementations/CodeReviewControllerAgent.ts",
+    required: ["retired @/ frontend alias"],
+    forbidden: ["use @/ alias", "Use @/ path aliases"],
+  },
+  {
+    file: "scripts/git-boundary-guard.js",
+    required: ['"src/"', "removed root frontend"],
+    forbidden: ['zone: "src/"'],
+  },
+];
+for (const contract of helperContracts) {
+  const content = readFileSync(path.join(root, contract.file), "utf8");
+  for (const marker of contract.required) {
+    assert.ok(
+      content.includes(marker),
+      `${contract.file} is missing post-removal marker: ${marker}`,
+    );
+  }
+  for (const marker of contract.forbidden) {
+    assert.ok(
+      !content.includes(marker),
+      `${contract.file} retains retired marker: ${marker}`,
+    );
+  }
+}
+
+const architectureValidator = readFileSync(
+  path.join(root, "scripts/validate-architecture.ts"),
+  "utf8",
+);
+for (const marker of inventory.toolingContract
+  .architectureValidatorRequiredMarkers) {
+  assert.ok(
+    architectureValidator.includes(marker),
+    `Architecture validator marker is missing: ${marker}`,
+  );
+}
+for (const marker of inventory.toolingContract
+  .architectureValidatorForbiddenMarkers) {
+  assert.ok(
+    !architectureValidator.includes(marker),
+    `Retired architecture marker remains active: ${marker}`,
+  );
+}
+const ciWorkflow = readFileSync(
+  path.join(root, ".github/workflows/ci.yml"),
+  "utf8",
+);
+for (const marker of inventory.toolingContract.ciRequiredMarkers) {
+  assert.ok(ciWorkflow.includes(marker), `CI marker is missing: ${marker}`);
+}
+for (const marker of inventory.toolingContract.ciForbiddenMarkers) {
+  assert.ok(
+    !ciWorkflow.includes(marker),
+    `Retired CI marker remains: ${marker}`,
+  );
+}
+const gateJobMatch = ciWorkflow.match(
+  /\n  gate:\n([\s\S]*?)(?=\n  [A-Za-z0-9_-]+:\n|$)/,
+);
+assert.ok(gateJobMatch, "Unable to locate the Merge Gate job");
+assert.match(
+  gateJobMatch[1],
+  /(?:^|[\s,\[])legacy-frontend-audit(?:[\s,\]]|$)/,
+  "Merge Gate does not depend on legacy-frontend-audit",
+);
+
+const activeRoots = inventory.referencePolicy.activeAndToolingRoots;
+const intentionalExactReferenceFiles = new Set(
+  inventory.referencePolicy.intentionalExactReferenceFiles,
+);
+const classificationRules = inventory.referencePolicy.classificationRules;
+const classificationForFile = (file) =>
+  Object.entries(classificationRules).find(([, prefixes]) =>
+    prefixes.some((prefix) => file === prefix || file.startsWith(prefix)),
+  )?.[0];
+const escapeRegex = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+const activeToolingFiles = trackedFiles.filter((file) =>
+  activeRoots.some(
+    (rootPath) => file === rootPath || file.startsWith(`${rootPath}/`),
+  ),
+);
+const intentionalExactReferences = [];
+const exactRemovedPathViolations = [];
+for (const file of activeToolingFiles) {
+  const absolutePath = path.join(root, file);
+  if (!existsSync(absolutePath) || statSync(absolutePath).isDirectory()) {
+    continue;
+  }
+  const content = readFileSync(absolutePath, "utf8");
+  for (const removedPath of requiredRemovedFiles) {
+    const exactPathToken = new RegExp(
+      `(^|[^A-Za-z0-9_./-])${escapeRegex(removedPath)}($|[^A-Za-z0-9_./-])`,
+      "m",
+    );
+    if (!exactPathToken.test(content)) continue;
+
+    const classification = classificationForFile(file);
+    if (
+      intentionalExactReferenceFiles.has(file) ||
+      classification === "negativeGuard" ||
+      classification === "historical"
+    ) {
+      intentionalExactReferences.push({
+        file,
+        removedPath,
+        classification: classification ?? "explicit-inventory",
+      });
+    } else {
+      exactRemovedPathViolations.push({ file, removedPath, classification });
+    }
+  }
+}
+assert.deepEqual(
+  exactRemovedPathViolations,
+  [],
+  "Active/tooling files contain exact references to removed paths",
+);
+
+const classifiedRootReferences = [];
+const unclassifiedRootReferences = [];
+for (const file of trackedFiles) {
+  const absolutePath = path.join(root, file);
+  if (!existsSync(absolutePath) || statSync(absolutePath).isDirectory()) {
+    continue;
+  }
+  const content = readFileSync(absolutePath, "utf8");
+  const matchingLines = content
+    .split("\n")
+    .map((line, index) => ({ line: index + 1, text: line.trim() }))
+    .filter(({ text }) => /(^|["'`\s(])src\//.test(text));
+  if (matchingLines.length === 0) continue;
+
+  const classification = classificationForFile(file);
+  const evidence = { file, classification, references: matchingLines };
+  if (classification) {
+    classifiedRootReferences.push(evidence);
+  } else {
+    unclassifiedRootReferences.push(evidence);
+  }
+}
+assert.deepEqual(
+  unclassifiedRootReferences,
+  [],
+  "Root-relative src/ references must be explicitly classified",
+);
+
+const releaseInventory = JSON.parse(
+  readFileSync(path.join(root, inventory.sourceReleaseInventory), "utf8"),
+);
+assert.deepEqual(inventory.canonicalFrontend, releaseInventory.frontendRelease);
+for (const releasePath of releaseInventory.activeRelease.files) {
+  const absolutePath = path.join(root, releasePath);
+  assert.ok(existsSync(absolutePath), `Missing release file: ${releasePath}`);
+  const content = readFileSync(absolutePath, "utf8");
+  for (const pattern of releaseInventory.activeRelease.forbiddenPatterns) {
+    assert.ok(
+      !new RegExp(pattern.regex, "i").test(content),
+      `${releasePath} violates ${pattern.id}: ${pattern.description}`,
+    );
+  }
 }
 
 assert.deepEqual(
   inventory.removalWaves.map((wave) => wave.id),
   ["CLEANUP-1B", "CLEANUP-1C", "CLEANUP-1D"],
-  "Cleanup waves must remain ordered",
 );
 assert.equal(inventory.removalWaves[0].status, "complete");
-assert.equal(inventory.removalWaves[1].status, "implemented");
-assert.equal(inventory.removalWaves[1].deletionAuthorized, true);
-assert.equal(inventory.removalWaves[2].status, "next-after-cleanup-1c-merge");
+assert.equal(inventory.removalWaves[1].status, "complete");
+assert.equal(inventory.removalWaves[2].status, "implemented");
+assert.equal(inventory.removalWaves[2].deletionAuthorized, false);
 
 const result = {
   status: "passed",
@@ -565,44 +608,40 @@ const result = {
   stageChangePolicy: {
     changedFileCount: changeEntries.length,
     changes: changeEntries,
-    requiredModifiedFiles,
-    requiredAddedFiles,
-    protectedUnchangedFiles:
-      inventory.stageChangePolicy.protectedUnchangedFiles,
+    deletionCount: 0,
   },
   legacyFrontend: {
     sourceRoot: inventory.legacyFrontend.sourceRoot,
     sourceRootStatus: "removed",
     removedFileCount: removedFileEvidence.length,
     removedSourceFileCount: historicalLegacyFiles.length,
-    removedFiles: removedFileEvidence,
-    entrypoints: inventory.legacyFrontend.entrypoints,
-    separateInfrastructureFiles:
-      inventory.legacyFrontend.separateInfrastructureFiles,
-    staleInventoryFiles: inventory.legacyFrontend.staleInventoryFiles,
   },
-  tooling: {
-    packageScripts: inventory.toolingContract.packageScripts,
-    backendVitestConfig: inventory.toolingContract.vitestBackendConfig,
-    architectureModel: "BACKEND + STANDALONE FRONTEND",
+  inventories: {
+    trackedFileCount: trackedFiles.length,
+    files: inventory.legacyFrontend.trackedInventoryFiles,
+    deterministicUtf8: true,
+  },
+  boundaries: {
+    localSourceZones: ["server/src", "studio-plugin/src"],
     removedRootReintroductionGuard: "active",
-    mergeGateDependencyVerified: "legacy-frontend-audit",
+    exactRemovedPathViolations,
+  },
+  references: {
+    intentionalExactReferences,
+    classified: classifiedRootReferences,
+    unclassifiedCount: 0,
   },
   dependencies: {
     removedDirectPackageCount: allRemovedDirectPackages.length,
-    removedRuntimePackages,
-    removedDevelopmentPackages,
     packageLockRootSynchronized: true,
-    transitivePackagesPermitted: true,
     packageConsumerEvidence,
   },
   activeReleaseIsolation: {
-    sourceInventory: inventory.sourceReleaseInventory,
     filesVerified: releaseInventory.activeRelease.files,
     legacyReferenceViolations: 0,
   },
   removalWaves: inventory.removalWaves,
-  currentStageDeletionAuthorized: inventory.currentStageDeletionAuthorized,
+  currentStageDeletionAuthorized: false,
   nextStage: inventory.nextStage,
 };
 

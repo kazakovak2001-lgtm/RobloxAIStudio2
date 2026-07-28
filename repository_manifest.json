@@ -1,8 +1,8 @@
 {
   "name": "roblox-ai-studio-devkit",
   "version": "1.9.0",
-  "architectureVersion": "2.0.0",
-  "governanceVersion": "1.0.0",
+  "architectureVersion": "3.0.0",
+  "governanceVersion": "1.1.0",
   "contractVersion": "1.0.0",
   "validationStatus": "PASS",
   "buildStatus": "CLEAN",
@@ -13,14 +13,14 @@
     "reports/failure_mode_registry.json",
     "reports/codebase_audit_report.json"
   ],
-  "supportedNodeVersion": ">=18.0.0",
+  "supportedNodeVersion": ">=22.12.0",
   "supportedTypeScriptVersion": ">=5.6.0",
   "runtimeEngine": "PlanExecutor",
   "apiVersions": ["v1", "v2"],
   "modules": {
-    "frontend": "src/",
+    "frontend": "kazakovak2001-lgtm/Frontend",
     "backend": "server/src/",
-    "shared": "shared/",
+    "studioPlugin": "studio-plugin/src/",
     "scripts": "scripts/",
     "docs": "docs/",
     "reports": "reports/"
@@ -35,6 +35,6 @@
     "boundaries": "scripts/validate-boundaries.ts",
     "imports": "scripts/scan-imports.ts"
   },
-  "lastValidated": "2026-07-06",
-  "lastVersion": "v1.9-governance"
+  "lastValidated": "2026-07-28",
+  "lastVersion": "CLEANUP-1D"
 }

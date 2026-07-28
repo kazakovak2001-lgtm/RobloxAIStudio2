@@ -1,6 +1,6 @@
 # AI Development Governance
 
-**Version:** 1.0.0  
+**Version:** 1.1.0
 **Effective:** v1.9+  
 **Status:** CANONICAL — all AI assistants must follow this document.
 
@@ -25,10 +25,10 @@ The following rules are **mandatory** and must never be violated:
 
 1. **Never redesign architecture.** Extend, do not replace.
 2. **Preserve module boundaries.** Each domain lives in its designated directory under `server/src/`.
-3. **Preserve shared contracts.** Types in `shared/` are the source of truth for frontend-backend communication.
-4. **Preserve frontend/server separation.** `src/` is the React SPA. `server/src/` is the Node.js backend. They must never import from each other directly.
+3. **Preserve versioned contracts.** REST and Socket.IO contracts are the source of truth between this repository and `kazakovak2001-lgtm/Frontend`.
+4. **Preserve repository ownership.** `server/src/` is the Node.js backend, `studio-plugin/src/` is the Roblox Studio runtime, and the standalone Frontend repository is the only web client. Root `src/` is forbidden.
 5. **Preserve pipeline stages.** PlanExecutor → Agents → Evaluation → Memory → Artifacts is the canonical flow.
-6. **No cross-boundary imports.** Frontend must not import backend modules. Backend must not import frontend modules.
+6. **No cross-repository source imports.** Frontend integration uses REST and Socket.IO; backend and Studio communicate through the Studio protocol.
 7. **Respect Boundary Firewall.** `scripts/validate-boundaries.ts` must pass with 0 violations.
 8. **Respect Dependency Graph.** `architecture.manifest.json` defines allowed and forbidden edges.
 9. **PlanExecutor is the only runtime execution engine.** `aiPipelineIntegrator` is deprecated and hard-banned from runtime code.
@@ -37,16 +37,16 @@ The following rules are **mandatory** and must never be violated:
 
 ## 3. Development Rules
 
-| Rule                    | Requirement                                                                        |
-| ----------------------- | ---------------------------------------------------------------------------------- |
-| TypeScript strict mode  | All code compiles under `strict: true` with `noUnusedLocals`, `noUnusedParameters` |
-| Zero compiler errors    | `tsc --noEmit` must exit 0 for both frontend and backend                           |
-| Zero ESLint errors      | `eslint` must pass with no warnings in CI mode                                     |
-| Backward compatibility  | Existing API contracts must not break                                              |
-| No breaking API changes | New endpoints are additive; existing responses unchanged                           |
-| Explicit typing only    | No `any` in production code; use `unknown` with type guards                        |
-| Small focused commits   | One logical change per commit; Conventional Commits format                         |
-| Version-by-version      | Each version has a clear scope; no scope creep                                     |
+| Rule                    | Requirement                                                                            |
+| ----------------------- | -------------------------------------------------------------------------------------- |
+| TypeScript strict mode  | Backend code compiles under `strict: true` with `noUnusedLocals`, `noUnusedParameters` |
+| Zero compiler errors    | Backend and standalone Frontend type checks pass in their owning repositories          |
+| Zero ESLint errors      | `eslint` must pass with no warnings in CI mode                                         |
+| Backward compatibility  | Existing API contracts must not break                                                  |
+| No breaking API changes | New endpoints are additive; existing responses unchanged                               |
+| Explicit typing only    | No `any` in production code; use `unknown` with type guards                            |
+| Small focused commits   | One logical change per commit; Conventional Commits format                             |
+| Version-by-version      | Each version has a clear scope; no scope creep                                         |
 
 ---
 
@@ -192,9 +192,7 @@ Every AI assistant working on this repository MUST:
 ## References
 
 - `architecture.manifest.json` — Domain definitions and boundary rules
-- `scripts/validate-architecture.ts` — Dual-root architecture validator
+- `scripts/validate-architecture.ts` — Backend and Studio architecture validator
 - `scripts/validate-boundaries.ts` — Import boundary firewall
-- `shared/contracts/` — API contract types
-- `shared/events/` — Socket.io event definitions
 - `server/tsconfig.json` — Backend TypeScript configuration
-- `tsconfig.json` — Frontend TypeScript configuration
+- Standalone Frontend repository — Web-client TypeScript configuration

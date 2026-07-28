@@ -7,8 +7,8 @@
 
 import {
   resolveBoundary,
-  FRONTEND_RULES,
   BACKEND_RULES,
+  STUDIO_PLUGIN_RULES,
   type BoundaryZone,
 } from "./ArchitecturePolicy";
 
@@ -31,10 +31,10 @@ export class BoundaryValidator {
     const violations: BoundaryViolation[] = [];
     const zone = resolveBoundary(filePath);
 
-    if (zone === "frontend") {
-      this.validateFrontend(filePath, importStatements, violations);
-    } else if (zone === "backend") {
+    if (zone === "backend") {
       this.validateBackend(filePath, importStatements, violations);
+    } else if (zone === "studio-plugin") {
+      this.validateStudioPlugin(filePath, importStatements, violations);
     }
 
     return violations;
@@ -67,43 +67,24 @@ export class BoundaryValidator {
     return { allowed: true };
   }
 
-  private validateFrontend(
+  private validateStudioPlugin(
     filePath: string,
     imports: string[],
     violations: BoundaryViolation[],
   ): void {
     for (const imp of imports) {
-      // Frontend must not import from server/src
-      if (imp.includes("server/src") || imp.match(/\.\.\/.*server\/src/)) {
-        violations.push({
-          file: filePath,
-          zone: "frontend",
-          rule: "NO_BACKEND_IMPORT",
-          severity: "critical",
-          message: `Frontend file imports backend module: "${imp}"`,
-        });
-      }
-      // Frontend must not use Node-only modules
-      for (const forbidden of FRONTEND_RULES.forbiddenImports) {
+      for (const forbidden of STUDIO_PLUGIN_RULES.forbiddenImports) {
         if (forbidden.includes("*")) {
-          const prefix = forbidden.replace("*", "").replace("/**", "");
-          if (imp.startsWith(prefix)) {
+          const prefix = forbidden.replace(/\*\*/g, "").replace(/\*/g, "");
+          if (imp.includes(prefix)) {
             violations.push({
               file: filePath,
-              zone: "frontend",
-              rule: "NO_NODE_RUNTIME",
+              zone: "studio-plugin",
+              rule: "STUDIO_RUNTIME_ISOLATION",
               severity: "critical",
-              message: `Frontend file imports Node-only module: "${imp}"`,
+              message: `Studio plugin imports a local application source zone: "${imp}"`,
             });
           }
-        } else if (imp === forbidden || imp.startsWith(forbidden + "/")) {
-          violations.push({
-            file: filePath,
-            zone: "frontend",
-            rule: "NO_BACKEND_RUNTIME",
-            severity: "critical",
-            message: `Frontend file imports backend runtime: "${imp}"`,
-          });
         }
       }
     }
@@ -124,7 +105,7 @@ export class BoundaryValidator {
               zone: "backend",
               rule: "NO_FRONTEND_IMPORT",
               severity: "critical",
-              message: `Backend file imports frontend module: "${imp}"`,
+              message: `Backend file imports removed frontend module: "${imp}"`,
             });
           }
         } else if (imp === forbidden || imp.startsWith(forbidden)) {

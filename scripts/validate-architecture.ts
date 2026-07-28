@@ -1,5 +1,5 @@
 /**
- * Architecture Boundary Validator v4 — Backend + Standalone Frontend Model
+ * Architecture Boundary Validator v5 — Post-Removal Backend + Studio Model
  *
  * Enforces:
  *   - Backend: server/src/ (Node/Express AI compiler)
@@ -289,7 +289,7 @@ function main(): void {
   const legacyFrontendExists = existsSync(join(ROOT, legacyRoot));
 
   console.log("╔══════════════════════════════════════════════════╗");
-  console.log("║  Canonical Architecture Validator v4             ║");
+  console.log("║  Canonical Architecture Validator v5             ║");
   console.log("╚══════════════════════════════════════════════════╝\n");
 
   const violations: Violation[] = [
