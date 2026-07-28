@@ -1,0 +1,44 @@
+name: Format RUNTIME-202
+
+on:
+  pull_request:
+
+permissions:
+  contents: write
+
+jobs:
+  format-provider-slice:
+    if: github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.ref }}
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "npm"
+      - run: npm ci
+      - name: Format provider consolidation files
+        run: |
+          node node_modules/prettier/bin/prettier.cjs --write \
+            .github/workflows/runtime-202-format.yml \
+            config/runtime/runtime-ownership.json \
+            server/src/providers/ai/index.ts
+      - name: Validate provider consolidation
+        run: |
+          npm run typecheck
+          npm run validate:runtime
+          npm run lint
+          npm run format:check
+      - name: Commit formatter output
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add config/runtime/runtime-ownership.json server/src/providers/ai/index.ts
+          if git diff --cached --quiet; then
+            exit 0
+          fi
+          git commit --no-verify -m "style(providers): format consolidation slice"
+          git push origin HEAD:${{ github.event.pull_request.head.ref }}
