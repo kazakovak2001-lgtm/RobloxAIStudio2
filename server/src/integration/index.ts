@@ -1,12 +1,9 @@
 /**
  * Platform Integration — public API (v3.0)
+ *
+ * PlatformIntegrationManager remains an internal preview composition root and
+ * is intentionally not exported through the production integration barrel.
  */
-export {
-  PlatformIntegrationManager,
-  type PlatformComponents,
-  type PlatformHealthReport,
-  type PlatformStatus,
-} from "./PlatformIntegrationManager";
 export {
   EndToEndValidator,
   type E2EValidationReport,
