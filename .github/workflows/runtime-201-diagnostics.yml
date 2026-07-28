@@ -1,0 +1,41 @@
+name: RUNTIME-201 Diagnostics
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  diagnose-runtime:
+    if: github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.ref }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "npm"
+      - run: npm ci
+      - name: Capture repository validation
+        shell: bash
+        run: |
+          set +e
+          npm run validate > runtime-validation.log 2>&1
+          status=$?
+          echo "$status" > runtime-validation.status
+          cat runtime-validation.log
+          exit 0
+      - name: Publish runtime validation diagnostics
+        uses: actions/upload-artifact@v4
+        with:
+          name: runtime-201-diagnostics-${{ github.sha }}
+          path: |
+            runtime-validation.log
+            runtime-validation.status
+            artifacts/runtime/runtime-ownership-report.json
+          retention-days: 1
+      - name: Enforce repository validation result
+        run: test "$(cat runtime-validation.status)" = "0"
