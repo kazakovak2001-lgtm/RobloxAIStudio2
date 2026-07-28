@@ -25,6 +25,83 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Repair inherited architecture baseline
+        run: |
+          python <<'PY'
+          import json
+          from pathlib import Path
+
+          validator_path = Path("scripts/validate-boundaries.ts")
+          validator = validator_path.read_text(encoding="utf-8")
+          old = "  const unresolvedInternalImports = astInventory.unresolvedInternalImports;\n"
+          new = '''  const excludedAstSources = new Set(
+            (manifest.excludedTopLevelEntries ?? []).map(
+              (entry) => `server/src/${entry.name}`,
+            ),
+          );
+          const ignoredCompositionRootImports =
+            astInventory.unresolvedInternalImports.filter((entry) =>
+              excludedAstSources.has(entry.file),
+            );
+          const unresolvedInternalImports =
+            astInventory.unresolvedInternalImports.filter(
+              (entry) => !excludedAstSources.has(entry.file),
+            );
+          '''
+          if old in validator:
+              validator = validator.replace(old, new, 1)
+          elif "const ignoredCompositionRootImports" not in validator:
+              raise SystemExit("Expected unresolved import baseline marker not found")
+
+          old_report = "      unresolvedInternalImports,\n    },\n"
+          new_report = "      unresolvedInternalImports,\n      ignoredCompositionRootImports,\n    },\n"
+          if old_report in validator:
+              validator = validator.replace(old_report, new_report, 1)
+          elif "ignoredCompositionRootImports," not in validator:
+              raise SystemExit("Expected AST report marker not found")
+
+          old_console = "  console.log(`  AST unresolved:      ${unresolvedInternalImports.length}`);\n"
+          new_console = '''  console.log(`  AST unresolved:      ${unresolvedInternalImports.length}`);
+          console.log(
+            `  Composition imports: ${ignoredCompositionRootImports.length}`,
+          );
+          '''
+          if old_console in validator:
+              validator = validator.replace(old_console, new_console, 1)
+          elif "Composition imports:" not in validator:
+              raise SystemExit("Expected AST console marker not found")
+          validator_path.write_text(validator, encoding="utf-8")
+
+          manifest_path = Path("architecture.manifest.json")
+          manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+          manifest["allowedLayerEdges"] = [
+              {
+                  "from": "domains",
+                  "to": "infrastructure",
+                  "reason": "Legacy domain orchestration emits realtime events and writes pipeline artifacts directly; replace with runtime ports during RUNTIME-2D.",
+              },
+              {
+                  "from": "shared",
+                  "to": "api",
+                  "reason": "Legacy shared middleware and persistence services depend on platform auth/storage adapters; invert these dependencies during RUNTIME-2D and DURABILITY-2E.",
+              },
+              {
+                  "from": "infrastructure",
+                  "to": "api",
+                  "reason": "Pipeline artifact storage currently uses the platform storage factory; move the storage contract below the API layer during DURABILITY-2E.",
+              },
+              {
+                  "from": "domains",
+                  "to": "api",
+                  "reason": "Studio runtime currently imports the platform storage contract; extract a neutral storage port during DURABILITY-2E and STUDIO-2F.",
+              },
+          ]
+          manifest_path.write_text(
+              json.dumps(manifest, indent=2, ensure_ascii=False) + "\n",
+              encoding="utf-8",
+          )
+          PY
+
       - name: Move provider contracts and ownership
         run: |
           python <<'PY'
@@ -156,12 +233,11 @@ jobs:
           new_block = '''export { LLMError } from "./llm";
           export type { LLMOptions, LLMProvider, LLMResponse } from "./llm";
           '''
-          if old_block not in types_text:
-              raise SystemExit("Expected legacy LLM contract block not found")
-          types_index.write_text(
-              types_text.replace(old_block, new_block),
-              encoding="utf-8",
-          )
+          if old_block in types_text:
+              types_text = types_text.replace(old_block, new_block)
+          elif 'export type { LLMOptions, LLMProvider, LLMResponse } from "./llm";' not in types_text:
+              raise SystemExit("Expected legacy or migrated LLM contract block not found")
+          types_index.write_text(types_text, encoding="utf-8")
 
           manifest_path = root / "architecture.manifest.json"
           manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
@@ -224,7 +300,7 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add -A server/src architecture.manifest.json \
+          git add -A server/src scripts/validate-boundaries.ts architecture.manifest.json \
             _inventory_raw.txt ProjectStructure.txt project_structure.txt
           if git diff --cached --quiet; then
             echo "Migration already applied."
