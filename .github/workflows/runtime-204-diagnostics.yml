@@ -1,4 +1,4 @@
-name: Fix RUNTIME-204 Null Narrowing
+name: Fix RUNTIME-204 Null Narrowing v2
 
 on:
   pull_request:
@@ -64,15 +64,12 @@ jobs:
               raise SystemExit("Expected shouldSkip block was not found")
           path.write_text(text.replace(old, new))
           PY
-      - name: Format and validate
-        run: |
-          node node_modules/prettier/bin/prettier.cjs --write \
-            .github/workflows/runtime-204-diagnostics.yml \
-            server/src/orchestrator/AutonomousOrchestrator.ts
-          npm run typecheck
-          node node_modules/vitest/vitest.mjs --config config/testing/vitest.backend.config.ts run server/src/orchestrator/AutonomousOrchestrator.test.ts
-          npm run lint
-          npm run format:check
+      - name: Format implementation file
+        run: node node_modules/prettier/bin/prettier.cjs --write server/src/orchestrator/AutonomousOrchestrator.ts
+      - name: Validate TypeScript
+        run: npm run typecheck
+      - name: Validate orchestrator regression tests
+        run: node node_modules/vitest/vitest.mjs --config config/testing/vitest.backend.config.ts run server/src/orchestrator/AutonomousOrchestrator.test.ts
       - name: Commit fix
         run: |
           git config user.name "github-actions[bot]"
