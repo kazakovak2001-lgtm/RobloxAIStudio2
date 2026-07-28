@@ -1,13 +1,9 @@
 /**
  * Platform Integration — public API (v3.0)
  *
- * PlatformIntegrationManager remains an internal preview composition root and
- * is intentionally not exported through the production integration barrel.
+ * PlatformIntegrationManager and EndToEndValidator form an internal preview
+ * composition stack and are intentionally excluded from the production barrel.
  */
-export {
-  EndToEndValidator,
-  type E2EValidationReport,
-} from "./EndToEndValidator";
 export {
   ProductionAuditService,
   type ProductionAuditReport,
