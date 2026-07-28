@@ -43,12 +43,13 @@ These items are ready and should run in this order.
 
 ### FE-201 — Real Studio verification in Workspace
 
-| Field      | Value        |
-| ---------- | ------------ |
-| Priority   | P0           |
-| Repository | Frontend     |
-| Size       | S            |
-| Depends on | TECH-AUDIT-2 |
+| Field      | Value                              |
+| ---------- | ---------------------------------- |
+| Priority   | P0                                 |
+| Repository | Frontend                           |
+| Size       | S                                  |
+| Depends on | TECH-AUDIT-2                       |
+| Status     | Implemented — issue #13 and PR #14 |
 
 **Scope**
 
@@ -64,12 +65,13 @@ These items are ready and should run in this order.
 
 ### INT-201 — Protected 40-check production contract
 
-| Field      | Value           |
-| ---------- | --------------- |
-| Priority   | P0              |
-| Repository | Both            |
-| Size       | M               |
-| Depends on | SEC-201, FE-201 |
+| Field      | Value                    |
+| ---------- | ------------------------ |
+| Priority   | P0                       |
+| Repository | Both                     |
+| Size       | M                        |
+| Depends on | SEC-201, FE-201          |
+| Status     | Implementing — issue #47 |
 
 **Scope**
 

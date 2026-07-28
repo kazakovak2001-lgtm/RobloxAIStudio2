@@ -62,8 +62,10 @@ No phase may create a second web client, Studio protocol, production composition
 
 ## Phase 1 — HARDEN-2A
 
-**Progress:** SEC-2A-1 / SEC-201 is implemented under issue #45. FE-201 is
-next, followed by INT-201 and the remaining active-auth terminology guard.
+**Progress:** SEC-2A-1 / SEC-201 is implemented under backend issue #45.
+FE-201 is implemented through Frontend issue #13 and PR #14. Frontend PR #16
+protects its half of INT-201; backend issue #47 adds the reciprocal release
+gate. The remaining HARDEN-2A item is the active-auth terminology guard.
 
 ### Scope
 
