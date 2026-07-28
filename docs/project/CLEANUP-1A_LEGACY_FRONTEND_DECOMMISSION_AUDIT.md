@@ -87,17 +87,22 @@ Root `docker-compose.yml` is classified separately because it contains PostgreSQ
 
 ### Generated and stale residue
 
-The removal inventory also classifies:
+The current tracked tree retains the stale inventory files:
+
+```text
+_inventory_raw.txt
+ProjectStructure.txt
+```
+
+Those inventories reference historical generated residue that is already absent from the current tree:
 
 ```text
 vite.config.js
 vite.config.d.ts
 tsconfig.tsbuildinfo
-_inventory_raw.txt
-ProjectStructure.txt
 ```
 
-These must not be mistaken for canonical source or preserved rollback artifacts.
+The audit records these paths as known missing rather than treating them as deletion targets. None of them may be mistaken for canonical source or preserved rollback artifacts.
 
 ## Dependency Disposition
 
