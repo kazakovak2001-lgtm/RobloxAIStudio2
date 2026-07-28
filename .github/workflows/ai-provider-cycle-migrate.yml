@@ -1,0 +1,203 @@
+name: AI Provider Cycle Migration
+
+on:
+  pull_request:
+
+permissions:
+  contents: write
+
+jobs:
+  migrate-cycle:
+    if: github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout pull request head
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.ref }}
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Move provider contracts and ownership
+        run: |
+          python <<'PY'
+          import json
+          from pathlib import Path
+
+          root = Path(".")
+          types_dir = root / "server/src/types"
+          ai_dir = root / "server/src/ai"
+          providers_dir = root / "server/src/providers"
+
+          (types_dir / "llm.ts").write_text('''/**
+           * Neutral LLM provider contract shared by AI consumers and provider adapters.
+           */
+
+          export interface LLMOptions {
+            temperature?: number;
+            maxTokens?: number;
+            model?: string;
+            stop?: string[];
+            timeout?: number;
+            responseFormat?: "text" | "json";
+          }
+
+          export interface LLMResponse {
+            content: string;
+            model: string;
+            tokensUsed?: number;
+            finishReason?: "complete" | "length" | "error";
+            durationMs?: number;
+          }
+
+          export interface LLMProvider {
+            readonly name: string;
+            generate(prompt: string, options?: LLMOptions): Promise<string>;
+            generateWithMeta?(
+              prompt: string,
+              options?: LLMOptions,
+            ): Promise<LLMResponse>;
+            stream?(
+              prompt: string,
+              onChunk: (chunk: string) => void,
+              options?: LLMOptions,
+            ): Promise<void>;
+            healthCheck?(): Promise<boolean>;
+          }
+
+          export class LLMError extends Error {
+            constructor(
+              message: string,
+              public readonly provider: string,
+              public readonly statusCode?: number,
+              public readonly retryable: boolean = false,
+            ) {
+              super(message);
+              this.name = "LLMError";
+            }
+          }
+          ''', encoding="utf-8")
+
+          (ai_dir / "provider.ts").write_text('''/**
+           * Compatibility exports for the neutral shared LLM provider contract.
+           * New code should import from ../types/llm directly.
+           */
+          export { LLMError } from "../types/llm";
+          export type { LLMOptions, LLMProvider, LLMResponse } from "../types/llm";
+          ''', encoding="utf-8")
+
+          old_utils = ai_dir / "llmUtils.ts"
+          new_utils = providers_dir / "llmUtils.ts"
+          if old_utils.exists():
+              old_utils.replace(new_utils)
+          utils_text = new_utils.read_text(encoding="utf-8")
+          utils_text = utils_text.replace('from "./provider"', 'from "../types/llm"')
+          new_utils.write_text(utils_text, encoding="utf-8")
+
+          old_factory = ai_dir / "providerFactory.ts"
+          new_factory = providers_dir / "providerFactory.ts"
+          if old_factory.exists():
+              old_factory.replace(new_factory)
+          factory_text = new_factory.read_text(encoding="utf-8")
+          factory_text = factory_text.replace('from "./provider"', 'from "../types/llm"')
+          for name in ["openai", "anthropic", "gemini", "openrouter", "ollama", "groq"]:
+              factory_text = factory_text.replace(
+                  f'from "../providers/{name}"',
+                  f'from "./{name}"',
+              )
+          new_factory.write_text(factory_text, encoding="utf-8")
+
+          old_test = ai_dir / "__tests__/providerFactory.test.ts"
+          new_test = providers_dir / "__tests__/providerFactory.test.ts"
+          if old_test.exists():
+              old_test.replace(new_test)
+
+          for path in providers_dir.glob("*.ts"):
+              text = path.read_text(encoding="utf-8")
+              text = text.replace('from "../ai/provider"', 'from "../types/llm"')
+              text = text.replace('from "../ai/llmUtils"', 'from "./llmUtils"')
+              path.write_text(text, encoding="utf-8")
+
+          provider_tests = providers_dir / "__tests__/providers.test.ts"
+          test_text = provider_tests.read_text(encoding="utf-8")
+          test_text = test_text.replace('from "../../ai/provider"', 'from "../../types/llm"')
+          test_text = test_text.replace('from "../../ai/llmUtils"', 'from "../llmUtils"')
+          provider_tests.write_text(test_text, encoding="utf-8")
+
+          index_path = root / "server/src/index.ts"
+          index_text = index_path.read_text(encoding="utf-8")
+          index_text = index_text.replace(
+              'from "./ai/providerFactory"',
+              'from "./providers/providerFactory"',
+          )
+          index_path.write_text(index_text, encoding="utf-8")
+
+          types_index = types_dir / "index.ts"
+          types_text = types_index.read_text(encoding="utf-8")
+          old_block = '''export interface LLMProvider {
+            generate(prompt: string, options?: LLMOptions): Promise<string>;
+            stream?(prompt: string, onChunk: (chunk: string) => void): Promise<void>;
+          }
+
+          export interface LLMOptions {
+            model?: string;
+            temperature?: number;
+            maxTokens?: number;
+            stop?: string[];
+          }
+          '''
+          new_block = '''export { LLMError } from "./llm";
+          export type { LLMOptions, LLMProvider, LLMResponse } from "./llm";
+          '''
+          if old_block not in types_text:
+              raise SystemExit("Expected legacy LLM contract block not found")
+          types_index.write_text(
+              types_text.replace(old_block, new_block),
+              encoding="utf-8",
+          )
+
+          manifest_path = root / "architecture.manifest.json"
+          manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+          manifest["allowedCycles"] = [
+              cycle
+              for cycle in manifest.get("allowedCycles", [])
+              if set(cycle) != {"ai", "providers"}
+          ]
+          manifest_path.write_text(
+              json.dumps(manifest, indent=2, ensure_ascii=False) + "\n",
+              encoding="utf-8",
+          )
+          PY
+
+      - name: Format and validate migration
+        run: |
+          npm run format
+          npm run typecheck
+          npm run validate:boundaries
+          npm run format:check
+
+      - name: Regenerate canonical tracked snapshots
+        run: |
+          git rm .github/workflows/ai-provider-cycle-migrate.yml
+          node scripts/cleanup/generate-tracked-inventories.mjs
+          git restore --staged --worktree .github/workflows/ai-provider-cycle-migrate.yml
+
+      - name: Commit migration
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A server/src architecture.manifest.json \
+            _inventory_raw.txt ProjectStructure.txt project_structure.txt
+          if git diff --cached --quiet; then
+            echo "Migration already applied."
+            exit 0
+          fi
+          git commit -m "refactor(arch): remove AI provider dependency cycle"
+          git push origin HEAD:${{ github.event.pull_request.head.ref }}
