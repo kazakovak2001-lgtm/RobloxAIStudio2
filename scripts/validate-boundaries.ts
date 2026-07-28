@@ -61,7 +61,9 @@ function validateManifest(manifest: ArchitectureManifest): string[] {
     const relativePath = relative(serverSrc, absolutePath).replaceAll("\\", "/");
     const topLevel = relativePath.split("/")[0];
     if (!topLevel || topLevel.startsWith("..")) {
-      errors.push(`Domain '${domain}' is outside server/src: '${definition.path}'.`);
+      errors.push(
+        `Domain '${domain}' is outside server/src: '${definition.path}'.`,
+      );
       continue;
     }
 
