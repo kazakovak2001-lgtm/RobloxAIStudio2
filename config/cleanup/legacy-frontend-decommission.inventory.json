@@ -191,11 +191,7 @@
       "tailwind.config.js",
       "postcss.config.js"
     ],
-    "generatedResidue": [
-      "vite.config.js",
-      "vite.config.d.ts",
-      "tsconfig.tsbuildinfo"
-    ],
+    "generatedResidue": [],
     "archivalDeploymentFiles": [
       "Dockerfile",
       "deploy/docker-compose.yml",
@@ -213,6 +209,21 @@
         "path": "public",
         "referencedBy": "Dockerfile",
         "classification": "broken-archival-combined-build-input"
+      },
+      {
+        "path": "vite.config.js",
+        "referencedBy": "stale repository inventories",
+        "classification": "historical-generated-residue-already-absent"
+      },
+      {
+        "path": "vite.config.d.ts",
+        "referencedBy": "stale repository inventories",
+        "classification": "historical-generated-residue-already-absent"
+      },
+      {
+        "path": "tsconfig.tsbuildinfo",
+        "referencedBy": "stale repository inventories",
+        "classification": "historical-generated-residue-already-absent"
       }
     ]
   },
@@ -270,8 +281,6 @@
     ],
     "allowedLegacyToolConsumers": [
       "vite.config.ts",
-      "vite.config.js",
-      "vite.config.d.ts",
       "postcss.config.js",
       "tailwind.config.js"
     ]
