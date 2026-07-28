@@ -61,3 +61,10 @@ export type AgentType =
   | "tester"
   | "debugger"
   | "performance";
+
+export type {
+  PipelineEvent,
+  PipelineEventHandler,
+  PipelineEventPublisher,
+  PipelineEventType,
+} from "./pipeline-events";
