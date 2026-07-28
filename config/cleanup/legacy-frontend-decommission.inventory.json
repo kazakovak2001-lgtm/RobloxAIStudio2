@@ -1,16 +1,33 @@
 {
-  "schemaVersion": 4,
+  "schemaVersion": 5,
   "roadmapId": "CLEANUP-1D",
-  "status": "post-removal-verification-implemented",
+  "status": "post-removal-steady-state",
   "baseline": {
     "defaultBranch": "release/cutover-1e-candidate",
     "minimumAncestorCommit": "9a728661ee7b0a635af78da56a5d147b296dc23c",
+    "steadyStateCommit": "f924079995059d9b86a5caaaf6364cb7b4879881",
     "cleanup1cRemovalBaselineCommit": "85a2fa8d512738e6d02ffae42da77af7a27db6fc",
     "cleanup1aCommit": "99b0de4a3b493d1e1fa98173deea8fae59d57842",
     "cleanup1bCommit": "703fe0fbcfcb8706506e9351af1fe7874a1337f0",
     "cleanup1bCloseoutCommit": "85a2fa8d512738e6d02ffae42da77af7a27db6fc",
     "cleanup1cCommit": "1bc54753783610827750dbb11689c0fb24620923",
-    "cleanup1cCloseoutCommit": "9a728661ee7b0a635af78da56a5d147b296dc23c"
+    "cleanup1cCloseoutCommit": "9a728661ee7b0a635af78da56a5d147b296dc23c",
+    "cleanup1dReviewFixCommit": "5a7d9c84f8aabf6618684ecfdd77bc176283a925",
+    "cleanup1dMergeCommit": "f924079995059d9b86a5caaaf6364cb7b4879881"
+  },
+  "verificationEvidence": {
+    "preMerge": {
+      "runId": 30336635283,
+      "runNumber": 295,
+      "artifactId": 8679445799,
+      "artifactDigest": "sha256:229618c8498751d521de380beb0ed5c9b6ffcaf24da2b9a4b640fe52a7cd536d"
+    },
+    "postMerge": {
+      "runId": 30336910264,
+      "runNumber": 296,
+      "artifactId": 8679552100,
+      "artifactDigest": "sha256:a8fa2cea2192b4f69471926521678307a0409e3a053c699f5783fdbfb04aa14c"
+    }
   },
   "canonicalFrontend": {
     "repository": "kazakovak2001-lgtm/Frontend",
@@ -237,7 +254,7 @@
       }
     ]
   },
-  "stageChangePolicy": {
+  "historicalImplementationChangePolicy": {
     "requiredModifiedFiles": [
       ".github/workflows/ci.yml",
       ".eslintrc.json",
@@ -328,9 +345,9 @@
     "ciRequiredMarkers": [
       "- run: npm run typecheck",
       "run: npm run test:postgres",
-      "name: CLEANUP-1D Post-Removal Verification",
-      "LEGACY_FRONTEND_AUDIT_OUTPUT: artifacts/cleanup-1d",
-      "name: cleanup-1d-post-removal-verification",
+      "name: Post-Removal Invariant Guard",
+      "LEGACY_FRONTEND_AUDIT_OUTPUT: artifacts/post-removal-invariants",
+      "name: post-removal-invariant-audit",
       "name: Promoted Baseline Integrity"
     ],
     "ciForbiddenMarkers": [
@@ -338,8 +355,10 @@
       "npx vitest run server/src/__tests__/core1b.postgres.integration.test.ts",
       "LEGACY_FRONTEND_AUDIT_OUTPUT: artifacts/cleanup-1a",
       "LEGACY_FRONTEND_AUDIT_OUTPUT: artifacts/cleanup-1b",
+      "LEGACY_FRONTEND_AUDIT_OUTPUT: artifacts/cleanup-1d",
       "name: cleanup-1b-tooling-decoupling",
-      "name: cleanup-1c-physical-removal"
+      "name: cleanup-1c-physical-removal",
+      "name: cleanup-1d-post-removal-verification"
     ]
   },
   "referencePolicy": {
@@ -452,7 +471,7 @@
     {
       "id": "CLEANUP-1D",
       "name": "post-removal-verification",
-      "status": "implemented",
+      "status": "complete",
       "deletionAuthorized": false,
       "prerequisite": "CLEANUP-1C verified and merged",
       "actions": [
@@ -462,6 +481,6 @@
       ]
     }
   ],
-  "currentStageDeletionAuthorized": false,
-  "nextStage": "CLEANUP-1D protected merge and closeout"
+  "cleanupSequenceStatus": "complete",
+  "nextStage": "TECH-AUDIT-2"
 }
