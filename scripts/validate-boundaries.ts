@@ -10,7 +10,13 @@
  * violation or non-allowlisted cycle fails the command.
  */
 
-import { existsSync, readFileSync, readdirSync, statSync, writeFileSync } from "node:fs";
+import {
+  existsSync,
+  readFileSync,
+  readdirSync,
+  statSync,
+  writeFileSync,
+} from "node:fs";
 import { join, relative } from "node:path";
 import { ImportBoundaryValidator } from "../server/src/core/architecture/ImportBoundaryValidator";
 
@@ -26,16 +32,16 @@ interface ArchitectureManifest {
 }
 
 function canonicalCycle(cycle: string[]): string {
-  const clean = cycle.length > 1 && cycle[0] === cycle[cycle.length - 1]
-    ? cycle.slice(0, -1)
-    : [...cycle];
+  const clean =
+    cycle.length > 1 && cycle[0] === cycle[cycle.length - 1]
+      ? cycle.slice(0, -1)
+      : [...cycle];
 
   if (clean.length === 0) return "";
 
-  const rotations = clean.map((_, index) => [
-    ...clean.slice(index),
-    ...clean.slice(0, index),
-  ].join("→"));
+  const rotations = clean.map((_, index) =>
+    [...clean.slice(index), ...clean.slice(0, index)].join("→"),
+  );
 
   return rotations.sort()[0];
 }
@@ -57,7 +63,9 @@ function validateManifest(manifest: ArchitectureManifest): string[] {
   for (const [domain, definition] of Object.entries(manifest.domains)) {
     const absolutePath = join(ROOT, definition.path);
     if (!existsSync(absolutePath) || !statSync(absolutePath).isDirectory()) {
-      errors.push(`Domain '${domain}' points to missing directory '${definition.path}'.`);
+      errors.push(
+        `Domain '${domain}' points to missing directory '${definition.path}'.`,
+      );
       continue;
     }
 
@@ -70,16 +78,22 @@ function validateManifest(manifest: ArchitectureManifest): string[] {
 
     const previous = modeledByTopLevel.get(topLevel);
     if (previous) {
-      errors.push(`Subsystem '${topLevel}' is modeled by both '${previous}' and '${domain}'.`);
+      errors.push(
+        `Subsystem '${topLevel}' is modeled by both '${previous}' and '${domain}'.`,
+      );
     } else {
       modeledByTopLevel.set(topLevel, domain);
     }
 
     const layer = manifest.layers[definition.layer];
     if (!layer) {
-      errors.push(`Domain '${domain}' references unknown layer '${definition.layer}'.`);
+      errors.push(
+        `Domain '${domain}' references unknown layer '${definition.layer}'.`,
+      );
     } else if (layer.modules && !layer.modules.includes(domain)) {
-      errors.push(`Layer '${definition.layer}' does not list domain '${domain}'.`);
+      errors.push(
+        `Layer '${definition.layer}' does not list domain '${domain}'.`,
+      );
     }
   }
 
@@ -130,8 +144,8 @@ function main(): void {
   const unexpectedCycles = result.circularDeps.filter(
     (cycle) => !allowedCycles.has(canonicalCycle(cycle)),
   );
-  const acknowledgedCycles = result.circularDeps.filter(
-    (cycle) => allowedCycles.has(canonicalCycle(cycle)),
+  const acknowledgedCycles = result.circularDeps.filter((cycle) =>
+    allowedCycles.has(canonicalCycle(cycle)),
   );
   const criticalViolations = result.violations.filter(
     (violation) => violation.severity === "critical",
@@ -189,7 +203,9 @@ function main(): void {
   if (result.violations.length > 0) {
     console.error("  ❌ BOUNDARY VIOLATIONS:\n");
     for (const violation of result.violations) {
-      console.error(`  [${violation.severity.toUpperCase()}] ${violation.rule}`);
+      console.error(
+        `  [${violation.severity.toUpperCase()}] ${violation.rule}`,
+      );
       console.error(`    File:   ${violation.file}`);
       console.error(`    Import: ${violation.importPath}`);
       console.error(`    ${violation.sourceDomain} → ${violation.targetDomain}`);
@@ -198,7 +214,9 @@ function main(): void {
   }
 
   if (failed) {
-    console.error("  ❌ FAIL — architecture gate rejected the repository state.");
+    console.error(
+      "  ❌ FAIL — architecture gate rejected the repository state.",
+    );
     console.error("  Report saved to: boundary-report.json");
     process.exit(1);
   }
@@ -208,7 +226,9 @@ function main(): void {
       `  ⚠️  PASS WITH WARNINGS — ${result.violations.length} non-critical violation(s).`,
     );
   } else {
-    console.log("  ✅ PASS — manifest, cycles and critical boundaries are valid.");
+    console.log(
+      "  ✅ PASS — manifest, cycles and critical boundaries are valid.",
+    );
   }
   console.log("  Architecture Model: EXHAUSTIVE DOMAIN-ISOLATED PLATFORM");
   console.log("  Report saved to: boundary-report.json");
