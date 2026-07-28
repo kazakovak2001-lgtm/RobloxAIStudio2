@@ -24,12 +24,11 @@ jobs:
             | grep -v '^.github/workflows/inventory-evidence.yml$' \
             | LC_ALL=C sort \
             > _inventory_raw.txt
-          git rm .github/workflows/inventory-evidence.yml
 
-      - name: Commit exact inventory and remove repair workflow
+      - name: Commit exact inventory
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add -A _inventory_raw.txt .github/workflows/inventory-evidence.yml
+          git add _inventory_raw.txt
           git commit -m "chore(cleanup): refresh tracked-file inventory"
           git push origin HEAD:${{ github.event.pull_request.head.ref }}
