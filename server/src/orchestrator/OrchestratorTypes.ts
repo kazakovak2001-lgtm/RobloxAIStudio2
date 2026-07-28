@@ -27,12 +27,7 @@ export type ResultAuthority = "preview-only" | "production";
 export type EvidenceLevel = "heuristic" | "synthetic" | "verified";
 
 export type ExecutionStatus =
-  | "pending"
-  | "running"
-  | "completed"
-  | "simulated"
-  | "failed"
-  | "skipped";
+  "pending" | "running" | "completed" | "simulated" | "failed" | "skipped";
 
 export interface ExecutionNode {
   id: string;
@@ -85,12 +80,7 @@ export interface OrchestratorSession {
   executionMode: ExecutionMode;
   resultAuthority: ResultAuthority;
   status:
-    | "running"
-    | "completed"
-    | "simulated"
-    | "paused"
-    | "cancelled"
-    | "failed";
+    "running" | "completed" | "simulated" | "paused" | "cancelled" | "failed";
   currentPhase: OrchestratorPhase;
   phases: ExecutionNode[];
   goals: GoalConfig;

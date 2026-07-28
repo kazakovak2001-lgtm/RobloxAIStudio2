@@ -50,9 +50,7 @@ describe("AutonomousOrchestrator preview truthfulness", () => {
     expect(genre?.status).toBe("completed");
     expect(genre?.evidence).toBe("heuristic");
 
-    const playtest = session.phases.find(
-      (phase) => phase.phase === "playtest",
-    );
+    const playtest = session.phases.find((phase) => phase.phase === "playtest");
     expect(playtest?.status).toBe("simulated");
     expect(playtest?.evidence).toBe("synthetic");
     expect(playtest?.output).toMatchObject({
@@ -98,7 +96,10 @@ describe("AutonomousOrchestrator preview truthfulness", () => {
     });
 
     const first = orchestrator.run("Build a horror survival game", "project-a");
-    const second = orchestrator.run("Build a horror survival game", "project-b");
+    const second = orchestrator.run(
+      "Build a horror survival game",
+      "project-b",
+    );
 
     await Promise.all([waitForTerminal(first), waitForTerminal(second)]);
 
