@@ -9,6 +9,7 @@ import {
   writeFileSync,
 } from "node:fs";
 import path from "node:path";
+import ts from "typescript";
 
 const root = process.cwd();
 const inventoryPath = path.resolve(
@@ -232,21 +233,85 @@ for (const releasePath of releaseInventory.activeRelease.files) {
 const allowedLegacyToolConsumers = new Set(
   inventory.packageDisposition.allowedLegacyToolConsumers,
 );
-const consumerExtensions = new Set([".ts", ".tsx", ".js", ".mjs", ".cjs"]);
+const consumerExtensions = new Set([
+  ".ts",
+  ".tsx",
+  ".mts",
+  ".cts",
+  ".js",
+  ".jsx",
+  ".mjs",
+  ".cjs",
+]);
+
+function scriptKindForFile(file) {
+  if (file.endsWith(".tsx")) return ts.ScriptKind.TSX;
+  if (file.endsWith(".jsx")) return ts.ScriptKind.JSX;
+  if (file.endsWith(".ts") || file.endsWith(".mts") || file.endsWith(".cts")) {
+    return ts.ScriptKind.TS;
+  }
+  return ts.ScriptKind.JS;
+}
+
+function moduleSpecifiersInFile(file, content) {
+  const sourceFile = ts.createSourceFile(
+    file,
+    content,
+    ts.ScriptTarget.Latest,
+    true,
+    scriptKindForFile(file),
+  );
+  const moduleSpecifiers = new Set();
+
+  const recordSpecifier = (node) => {
+    if (node && ts.isStringLiteralLike(node)) {
+      moduleSpecifiers.add(node.text);
+    }
+  };
+
+  const visit = (node) => {
+    if (
+      (ts.isImportDeclaration(node) || ts.isExportDeclaration(node)) &&
+      node.moduleSpecifier
+    ) {
+      recordSpecifier(node.moduleSpecifier);
+    } else if (
+      ts.isImportEqualsDeclaration(node) &&
+      ts.isExternalModuleReference(node.moduleReference)
+    ) {
+      recordSpecifier(node.moduleReference.expression);
+    } else if (
+      ts.isCallExpression(node) &&
+      node.arguments.length === 1 &&
+      ts.isStringLiteralLike(node.arguments[0]) &&
+      (node.expression.kind === ts.SyntaxKind.ImportKeyword ||
+        (ts.isIdentifier(node.expression) && node.expression.text === "require"))
+    ) {
+      recordSpecifier(node.arguments[0]);
+    }
+
+    ts.forEachChild(node, visit);
+  };
+
+  visit(sourceFile);
+  return [...moduleSpecifiers];
+}
 
 function packageConsumersOutsideLegacyRoot(packageName) {
-  const escaped = packageName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-  const importPattern = new RegExp(
-    `(?:from\\s+|import\\s*\\(|require\\s*\\(|^\\s*import\\s+)["']${escaped}(?:/[^"']*)?["']`,
-    "m",
-  );
-
   return trackedFiles.filter((file) => {
     if (file.startsWith(sourcePrefix)) return false;
     if (!consumerExtensions.has(path.extname(file))) return false;
     const absolutePath = path.join(root, file);
     if (!existsSync(absolutePath)) return false;
-    return importPattern.test(readFileSync(absolutePath, "utf8"));
+
+    const moduleSpecifiers = moduleSpecifiersInFile(
+      file,
+      readFileSync(absolutePath, "utf8"),
+    );
+    return moduleSpecifiers.some(
+      (specifier) =>
+        specifier === packageName || specifier.startsWith(`${packageName}/`),
+    );
   });
 }
 
