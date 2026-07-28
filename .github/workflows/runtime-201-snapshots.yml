@@ -1,4 +1,4 @@
-name: Refresh RUNTIME-201 Snapshots
+name: Refresh RUNTIME-201 Snapshots v2
 
 on:
   pull_request:
