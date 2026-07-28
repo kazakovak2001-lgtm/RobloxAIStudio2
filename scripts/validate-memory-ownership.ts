@@ -5,7 +5,12 @@ const root = process.cwd();
 const registryPath = join(root, "config/runtime/runtime-ownership.json");
 const reportPath = join(root, "artifacts/runtime/memory-ownership-report.json");
 
-const allowedLifecycles = new Set(["request", "execution", "project", "process"]);
+const allowedLifecycles = new Set([
+  "request",
+  "execution",
+  "project",
+  "process",
+]);
 const allowedDurability = new Set(["none", "restart-volatile", "durable"]);
 
 type MemoryLifecycle = "request" | "execution" | "project" | "process";
@@ -62,11 +67,15 @@ function main(): void {
   if (!policy) {
     errors.push("Runtime ownership registry must define memoryPolicy.");
   } else if (!isNonEmptyString(policy.statement)) {
-    errors.push("memoryPolicy.statement must explain the durable ownership state.");
+    errors.push(
+      "memoryPolicy.statement must explain the durable ownership state.",
+    );
   }
 
   const entries = Array.isArray(registry.entries) ? registry.entries : [];
-  const memoryEntries = entries.filter((entry) => entry.capability.includes("memory"));
+  const memoryEntries = entries.filter((entry) =>
+    entry.capability.includes("memory"),
+  );
 
   if (memoryEntries.length === 0) {
     errors.push("At least one memory runtime entry must be registered.");
