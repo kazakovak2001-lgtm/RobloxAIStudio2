@@ -1065,6 +1065,7 @@ server/src/types/game-generation-result.ts
 server/src/types/gameDesignSeed.ts
 server/src/types/index.ts
 server/src/types/llm.ts
+server/src/types/pipeline-events.ts
 server/src/ui-gen/UIGenerationEngine.ts
 server/src/ui-gen/UIHierarchyBuilder.ts
 server/src/ui-gen/UILayoutBuilder.ts

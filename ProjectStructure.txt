@@ -1322,7 +1322,8 @@
 │   │   │   ├── game-generation-result.ts
 │   │   │   ├── gameDesignSeed.ts
 │   │   │   ├── index.ts
-│   │   │   └── llm.ts
+│   │   │   ├── llm.ts
+│   │   │   └── pipeline-events.ts
 │   │   ├── ui-gen
 │   │   │   ├── __tests__
 │   │   │   │   └── UIGeneration.test.ts
