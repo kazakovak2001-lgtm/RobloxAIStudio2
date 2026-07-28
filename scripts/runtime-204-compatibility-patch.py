@@ -47,12 +47,34 @@ replace_once(
 )
 replace_once(
     orchestrator,
+    '''    const next = session.phases.find((phase) => phase.status === "pending");
+''',
+    '''    const next = session.phases.find(
+      (phase) => phase.status === "pending" && phase.phase !== "simulated",
+    );
+''',
+)
+replace_once(
+    orchestrator,
     '''    for (const node of session.phases) {
       if (
 ''',
     '''    for (const node of session.phases) {
       if (node.phase === "simulated") continue;
       if (
+''',
+)
+replace_once(
+    orchestrator,
+    '''      const remaining = session.phases.some(
+        (phase) => phase.status === "pending" || phase.status === "running",
+      );
+''',
+    '''      const remaining = session.phases.some(
+        (phase) =>
+          phase.phase !== "simulated" &&
+          (phase.status === "pending" || phase.status === "running"),
+      );
 ''',
 )
 replace_once(
@@ -217,6 +239,53 @@ replace_all(
     "session transitions running → completed on success",
     "session transitions running → simulated on preview success",
 )
+replace_all(
+    preservation,
+    "cancel() on completed session returns false",
+    "cancel() on simulated session returns false",
+)
+replace_once(
+    preservation,
+    'if (current && current.status === "completed")',
+    'if (current && current.status === "simulated")',
+)
+replace_all(
+    preservation,
+    'if (current!.status === "completed")',
+    'if (current!.status === "simulated")',
+    3,
+)
+replace_once(
+    preservation,
+    "after run completes, session.cost.totalTokens > 0",
+    "after preview run, session.cost.totalTokens is zero",
+)
+replace_once(
+    preservation,
+    "after run completes, session.cost.totalCost > 0",
+    "after preview run, session.cost.totalCost is zero",
+)
+replace_once(
+    preservation,
+    "after run completes, session.qualityScore > 0",
+    "after preview run, session.qualityScore remains null",
+)
+replace_once(
+    preservation,
+    "expect(current!.cost.totalTokens).toBeGreaterThan(0);",
+    "expect(current!.cost.totalTokens).toBe(0);",
+)
+replace_once(
+    preservation,
+    "expect(current!.cost.totalCost).toBeGreaterThan(0);",
+    "expect(current!.cost.totalCost).toBe(0);",
+)
+replace_once(
+    preservation,
+    "expect(current!.qualityScore).toBeGreaterThan(0);",
+    "expect(current!.qualityScore).toBeNull();",
+)
+
 replace_once(
     "server/src/__tests__/integration.test.ts",
     'expect(final!.status).toBe("completed");',
