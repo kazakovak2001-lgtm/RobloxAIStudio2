@@ -40,6 +40,10 @@
       "pattern": "aiPipelineIntegrator\\.ts$"
     },
     {
+      "root": "server/src/integration",
+      "pattern": "PlatformIntegrationManager\\.ts$"
+    },
+    {
       "root": "server/src/providers",
       "pattern": "providerFactory\\.ts$"
     },
@@ -89,10 +93,13 @@
       "path": "server/src/pipeline/v2/PipelineEngine.ts",
       "classification": "preview",
       "owner": "pipeline",
-      "productionUse": "preview-internal",
+      "productionUse": "preview-route",
       "responsibility": "Preview stage pipeline with in-memory persistence and artifact review facilities.",
       "replacement": "planning-plan-executor",
-      "allowedImporters": ["server/src/pipeline/v2/index.ts"]
+      "allowedImporters": [
+        "server/src/pipeline/v2/index.ts",
+        "server/src/routes/concept.ts"
+      ]
     },
     {
       "id": "pipeline-v2-executor",
@@ -134,6 +141,17 @@
       "allowedImporters": []
     },
     {
+      "id": "platform-integration-manager",
+      "capability": "platform-orchestration",
+      "path": "server/src/integration/PlatformIntegrationManager.ts",
+      "classification": "preview",
+      "owner": "integration",
+      "productionUse": "preview-internal",
+      "responsibility": "Internal preview composition root for legacy subsystem demonstrations; not a production bootstrap path.",
+      "replacement": "runtime-execution-controller",
+      "allowedImporters": []
+    },
+    {
       "id": "providers-llm-provider-factory",
       "capability": "provider-construction",
       "path": "server/src/providers/providerFactory.ts",
@@ -151,7 +169,10 @@
       "productionUse": "preview-internal",
       "responsibility": "Secondary provider registry factory retained for the advanced provider preview stack.",
       "replacement": "providers-llm-provider-factory",
-      "allowedImporters": ["server/src/providers/ai/index.ts"]
+      "allowedImporters": [
+        "server/src/integration/PlatformIntegrationManager.ts",
+        "server/src/providers/ai/index.ts"
+      ]
     },
     {
       "id": "providers-ai-provider-registry",
@@ -162,8 +183,10 @@
       "productionUse": "preview-internal",
       "responsibility": "In-process registry for the advanced provider preview stack.",
       "allowedImporters": [
+        "server/src/integration/PlatformIntegrationManager.ts",
         "server/src/providers/ai/ProviderFactory.ts",
         "server/src/providers/ai/ProviderHealthService.ts",
+        "server/src/providers/ai/RetryPolicy.ts",
         "server/src/providers/ai/index.ts"
       ]
     },
@@ -183,20 +206,16 @@
       "classification": "bounded-adapter",
       "owner": "memory",
       "productionUse": "adapter-only",
-      "responsibility": "Non-blocking adapter between agent execution and the memory engine."
+      "responsibility": "Non-blocking adapter between agent execution and the process-local memory engine."
     },
     {
       "id": "memory-engine",
       "capability": "long-term-memory",
       "path": "server/src/memory/core/MemoryEngine.ts",
-      "classification": "preview",
+      "classification": "bounded-adapter",
       "owner": "memory",
-      "productionUse": "preview-route",
-      "responsibility": "Process-local long-term and semantic memory preview; not durable product-state storage.",
-      "allowedImporters": [
-        "server/src/memory/agents/AgentMemoryBridge.ts",
-        "server/src/routes/memory.ts"
-      ]
+      "productionUse": "adapter-only",
+      "responsibility": "Active process-local semantic memory adapter used by execution and feedback bridges; restart-volatile and not durable product-state storage."
     },
     {
       "id": "knowledge-memory-manager",
@@ -206,7 +225,12 @@
       "owner": "memory",
       "productionUse": "preview-internal",
       "responsibility": "Process-local project knowledge store with bounded entry eviction.",
-      "allowedImporters": ["server/src/memory/knowledge/index.ts"]
+      "allowedImporters": [
+        "server/src/integration/PlatformIntegrationManager.ts",
+        "server/src/memory/knowledge/ContextResolver.ts",
+        "server/src/memory/knowledge/MemoryMetrics.ts",
+        "server/src/memory/knowledge/index.ts"
+      ]
     }
   ]
 }
