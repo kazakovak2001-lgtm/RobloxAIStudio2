@@ -176,12 +176,43 @@ jobs:
           )
           PY
 
-      - name: Format and validate migration
+      - name: Apply repository formatter
+        run: npm run format > format-write.log 2>&1
+
+      - name: Capture validation evidence
         run: |
-          npm run format
-          npm run typecheck
-          npm run validate:boundaries
-          npm run format:check
+          set +e
+          npm run typecheck > typecheck.log 2>&1
+          echo "$?" > typecheck.exit
+          npm run validate:boundaries > boundaries.log 2>&1
+          echo "$?" > boundaries.exit
+          npm run format:check > format-check.log 2>&1
+          echo "$?" > format-check.exit
+          set -e
+
+      - name: Upload migration validation evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: ai-provider-migration-validation
+          path: |
+            format-write.log
+            typecheck.log
+            typecheck.exit
+            boundaries.log
+            boundaries.exit
+            format-check.log
+            format-check.exit
+          if-no-files-found: error
+
+      - name: Enforce migration validation
+        run: |
+          typecheck_exit="$(cat typecheck.exit)"
+          boundaries_exit="$(cat boundaries.exit)"
+          format_exit="$(cat format-check.exit)"
+          echo "typecheck=$typecheck_exit boundaries=$boundaries_exit format=$format_exit"
+          test "$typecheck_exit" = "0"
+          test "$boundaries_exit" = "0"
+          test "$format_exit" = "0"
 
       - name: Regenerate canonical tracked snapshots
         run: |
