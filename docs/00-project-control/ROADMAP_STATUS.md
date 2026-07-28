@@ -17,7 +17,7 @@ This sequence is authoritative for work after the standalone frontend integratio
 | STUDIO-1      | Generated artifact → Roblox Studio end-to-end validation       | High     | ✅ Complete — real desktop verified | CORE-1, WORKSPACE-1   |
 | CUTOVER-1     | Release promotion and legacy frontend removal                  | High     | ✅ Complete                         | WORKSPACE-1, STUDIO-1 |
 | TECH-AUDIT-2  | Evidence-based two-repository technical baseline               | Critical | ✅ Complete                         | CUTOVER-1             |
-| HARDEN-2A     | Auth response, Studio state, and contract-E2E correctness      | Critical | ◐ SEC-201 implemented; FE-201 next  | TECH-AUDIT-2          |
+| HARDEN-2A     | Auth response, Studio state, and contract-E2E correctness      | Critical | ◐ INT-201 backend gate in issue #47 | TECH-AUDIT-2          |
 | ARCH-2B       | Exhaustive and truthful architecture boundary gate             | Critical | Planned                             | HARDEN-2A             |
 | FRONTEND-2C   | Protected Frontend quality and bundle baseline                 | High     | Planned                             | HARDEN-2A             |
 | RUNTIME-2D    | Runtime/provider/orchestration/memory consolidation            | High     | Planned                             | ARCH-2B               |
@@ -143,7 +143,7 @@ These labels preserve delivery history. The current [TECH-AUDIT-2 feature matrix
 - ✅ CLEANUP-1C COMPLETE — physical removal and protected post-merge verification passed
 - ✅ CLEANUP-1D COMPLETE — protected merge and post-merge verification passed
 - ✅ TECH-AUDIT-2 COMPLETE — first official backend + standalone Frontend technical baseline
-- ◐ HARDEN-2A IN PROGRESS — SEC-201 cookie-only browser auth implemented; FE-201 real Frontend Studio verification is next, followed by protected production contract E2E
+- ◐ HARDEN-2A IN PROGRESS — SEC-201 and FE-201 are implemented; Frontend PR #16 protects the 40-check production contract and backend issue #47 adds the reciprocal release gate
 
 ## Release Hardening Sprint Status
 
@@ -181,6 +181,6 @@ These labels preserve delivery history. The current [TECH-AUDIT-2 feature matrix
 - **Security Status**: SEC-201 removes credentials from browser JSON and protects refresh persistence/rotation; route-level RBAC and protected security/dependency automation remain separate backlog items
 - **Historical v1.0 Decision**: ✅ APPROVED for the embedded product baseline
 - **Studio Gate**: ✅ STUDIO-1 complete with real desktop evidence
-- **Current Decision**: ✅ CUTOVER-1, CLEANUP, and TECH-AUDIT-2 are complete; ◐ HARDEN-2A is active with SEC-201 implemented and FE-201 next
+- **Current Decision**: ✅ CUTOVER-1, CLEANUP, and TECH-AUDIT-2 are complete; ◐ HARDEN-2A has SEC-201 and FE-201 merged, with INT-201 backend protection active under issue #47
 - **Sign-Off Document**: `FINAL_V1_RELEASE_SIGN_OFF.md`
 - **Post-release**: F-12 (Collaborative Dev) deferred to post-launch

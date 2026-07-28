@@ -4,6 +4,20 @@ All significant architectural and product decisions are recorded here.
 
 ---
 
+## 2026-07-28 — HARDEN-2A / INT-201 Protected Cross-Repository Contract
+
+**Decision**: Protect the existing Frontend 40-check integration suite in both repositories with immutable cross-repository pins. Each job checks out the exact proposed source SHA, builds the backend-only production image, starts it with `NODE_ENV=production`, and runs the canonical Frontend contract. Both Merge Gates depend on their local contract job, so either repository blocks an incompatible auth, ownership-isolation, realtime, generation, module, or guarded Studio-sync change.
+
+**Exact paired baseline**: Backend `7e98aba28911a20ff942e04ba5eaa51448c34b0c`; Frontend `739b43cbc5f991c1852e80b30fe38c0e7c02d681`. The backend workflow also replaces the earlier CUTOVER-1B Frontend pin in active composed-release and promoted-baseline checks. Historical CUTOVER evidence retains its original SHA.
+
+**Evidence contract**: Every contract run records the exact backend and Frontend SHAs, explicit production runtime configuration, expected/completed check counts, per-check durations, final status, E2E output, health response, image inspection, and backend logs. The Frontend implementation merged through PR #16 after CI run #71 passed 40/40 checks and Merge Gate. Evidence artifact `8683753669` has digest `sha256:9fd918b86b845186386c000059cbf27b0d534e58cbc60a9f3ccab4d1ebf0575d`. Post-merge run #72 also passed; artifact `8683827461` has digest `sha256:72e479cca3325067734dc1e61119ee00b81f52929342720e9bbd874620cf3761`.
+
+**Security boundary**: The backend intentionally bypasses REST and Socket.IO authentication when `NODE_ENV !== production`. Development-mode runs remain useful for feature work but cannot prove authentication or cross-user isolation and do not satisfy INT-201. The in-memory provider is explicit for this short-lived authorization contract; PostgreSQL restart durability remains a separate required backend job.
+
+**Status**: Frontend protection is merged and post-merge verified. Backend implementation is tracked by issue #47.
+
+---
+
 ## 2026-07-28 — HARDEN-2A / SEC-201 Cookie-Only Browser Authentication
 
 **Decision**: Keep the existing storage-backed opaque-session architecture and make the browser contract genuinely cookie-only. Register, login, and refresh continue to set scoped httpOnly cookies but return only non-secret user/session metadata. Do not introduce a signed-token format or a second Frontend transport.

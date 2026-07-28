@@ -35,8 +35,10 @@
 | TAV2-016 | P3       | Dependency/runtime  | Obsolete/redundant packages and the compiled-server `tsx` loader remain                                        | Both               |
 
 **Resolution tracking:** TAV2-001 is implemented by HARDEN-2A / SEC-201 under
-issue #45. The evidence below remains the immutable TECH-AUDIT-2 baseline;
-current project state is tracked in
+backend issue #45. TAV2-002 is implemented by FE-201 under Frontend issue #13
+and PR #14. Frontend PR #16 protects its side of TAV2-007; backend issue #47
+tracks the reciprocal protected release gate. The evidence below remains the
+immutable TECH-AUDIT-2 baseline; current project state is tracked in
 [`CURRENT_STATE.md`](../../00-project-control/CURRENT_STATE.md).
 
 ## Detailed remediation contracts

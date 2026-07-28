@@ -1,8 +1,8 @@
 # Current Project State
 
 **Last Updated**: July 28, 2026
-**Phase**: HARDEN-2A in progress — SEC-201 implemented; FE-201 next
-**Build Status**: TECH-AUDIT-2 merged through PR #44 as `5e3c2c83b7068ed47829993dce175441775680bf`; post-merge push run #301 passed every applicable job, the post-removal invariant guard, and Merge Gate. HARDEN-2A issue #45 implements the first P0 corrective unit: credential-free browser auth responses, digest-only refresh persistence with bounded lookup, startup migration, single-use rotation, and expanded production contract evidence. The standalone Frontend remains pinned at `1036c3ef9705d145cb9700cd14268a33d2abdd58` until FE-201.
+**Phase**: HARDEN-2A in progress — SEC-201 and FE-201 implemented; INT-201 backend gate tracked by issue #47
+**Build Status**: SEC-201 merged through backend PR #46 as `7e98aba28911a20ff942e04ba5eaa51448c34b0c`. FE-201 merged through Frontend PR #14 as `2aab7c3367bb55520edc2576422ebafec265d7c6`. Frontend PR #16 then merged the protected INT-201 production contract as `739b43cbc5f991c1852e80b30fe38c0e7c02d681`; post-merge CI run #72 passed the production backend image, all 40 contract checks, responsive QA, and Merge Gate. Backend issue #47 adds the reciprocal protected gate and promotes that exact Frontend SHA into active composed-release checks.
 
 ---
 
@@ -44,7 +44,7 @@
 ### TECH-AUDIT-2 Evidence Baseline
 
 - Backend: 61 passing test files, 672 passing tests, one skipped test file/test; typecheck, lint, format, build, PostgreSQL restart, release image, composed HTTPS, rollback, and cleanup invariant gates pass.
-- Frontend: TypeScript, production build, SSR image, responsive QA, and seven native Workspace tests pass. The 40-check production-mode integration suite also passes locally but is not protected by CI.
+- Frontend: TypeScript, production build, SSR image, responsive QA, and 12 native Workspace tests pass. The exact 40-check production-mode integration suite is protected by Frontend Merge Gate and records both repository SHAs plus runtime evidence.
 - Frontend quality gap: lint reports 640 errors and 12 warnings; 70 files fail a separate Prettier check. Frontend CI currently runs neither gate.
 - Architecture gap: the manifest models 32 domains while 46 subsystems exist. The generated report contains four cycles and status `FAIL`, but the current CLI exits successfully.
 - Planning baseline: the evidence-scored feature matrix averages 66%; this is a prioritization aid, not a release SLA or substitute for closing P0 findings.
@@ -179,7 +179,7 @@ Auth response credential exposure is resolved by HARDEN-2A / SEC-201 under issue
 
 ## Technical Debt
 
-TECH-AUDIT-2 records 16 evidence-backed debt items. SEC-201 resolves TAV2-001, leaving 15 open baseline items; the five known problems above are the immediate release/architecture priorities. Other material items include cross-repository contract CI, runtime/provider/memory consolidation, route-level RBAC, dependency/security automation, the unused parallel execution contract, Frontend bundle budgets, process-local state classification, documentation consolidation, Studio native asset/GUI scope, and compiled ESM/dependency hygiene.
+TECH-AUDIT-2 records 16 evidence-backed debt items. SEC-201 resolves TAV2-001 and FE-201 resolves TAV2-002. INT-201 closes TAV2-007 once the reciprocal backend gate under issue #47 merges. The remaining known problems above are the immediate release/architecture priorities. Other material items include runtime/provider/memory consolidation, route-level RBAC, dependency/security automation, the unused parallel execution contract, Frontend bundle budgets, process-local state classification, documentation consolidation, Studio native asset/GUI scope, and compiled ESM/dependency hygiene.
 
 See [TECHNICAL_DEBT.md](../02-audits/technical-v2/TECHNICAL_DEBT.md) for definitions of done and [SPRINT_BACKLOG.md](../02-audits/technical-v2/SPRINT_BACKLOG.md) for ordered implementation work.
 
