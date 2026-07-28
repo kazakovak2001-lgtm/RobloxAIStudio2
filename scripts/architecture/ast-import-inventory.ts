@@ -119,7 +119,10 @@ export function buildAstImportInventory(
   let reExportsAnalyzed = 0;
 
   for (const absoluteFile of files) {
-    const repositoryPath = relative(rootDir, absoluteFile).replaceAll("\\", "/");
+    const repositoryPath = relative(rootDir, absoluteFile).replaceAll(
+      "\\",
+      "/",
+    );
     const sourceText = readFileSync(absoluteFile, "utf8");
     const sourceFile = ts.createSourceFile(
       repositoryPath,
