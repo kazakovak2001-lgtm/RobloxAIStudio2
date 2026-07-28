@@ -1,0 +1,46 @@
+name: Format RUNTIME-201 Files
+
+on:
+  pull_request:
+
+permissions:
+  contents: write
+
+jobs:
+  format-runtime:
+    if: github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.ref }}
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "npm"
+      - run: npm ci
+      - name: Format runtime ownership files
+        run: |
+          node node_modules/prettier/bin/prettier.cjs --write \
+            config/runtime/runtime-ownership.json \
+            package.json \
+            scripts/validate-runtime-ownership.ts
+      - name: Validate static quality
+        run: |
+          npm run typecheck
+          npm run lint
+          npm run format:check
+      - name: Commit formatted runtime files
+        run: |
+          if git diff --quiet; then
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add \
+            config/runtime/runtime-ownership.json \
+            package.json \
+            scripts/validate-runtime-ownership.ts
+          git commit -m "style(runtime): format ownership registry"
+          git push origin HEAD:${{ github.event.pull_request.head.ref }}
