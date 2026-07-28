@@ -1,15 +1,3 @@
-/**
- * validate-boundaries.ts — protected architecture boundary gate.
- *
- * Exit codes:
- *   0 = PASS
- *   1 = FAIL
- *
- * The JSON report, console summary and process exit code are derived from the
- * same gate decision. A manifest configuration error, critical import
- * violation or non-allowlisted cycle fails the command.
- */
-
 import {
   existsSync,
   readFileSync,
@@ -18,8 +6,8 @@ import {
   writeFileSync,
 } from "node:fs";
 import { join, relative } from "node:path";
-import { ImportBoundaryValidator } from "../server/src/core/architecture/ImportBoundaryValidator";
 import { buildAstImportInventory } from "./architecture/ast-import-inventory";
+import { ImportBoundaryValidator } from "../server/src/core/architecture/ImportBoundaryValidator";
 
 const ROOT = process.cwd();
 const MANIFEST_PATH = join(ROOT, "architecture.manifest.json");
@@ -152,11 +140,13 @@ function main(): void {
   const criticalViolations = result.violations.filter(
     (violation) => violation.severity === "critical",
   );
+  const unresolvedInternalImports = astInventory.unresolvedInternalImports;
 
   const failed =
     manifestErrors.length > 0 ||
     criticalViolations.length > 0 ||
-    unexpectedCycles.length > 0;
+    unexpectedCycles.length > 0 ||
+    unresolvedInternalImports.length > 0;
 
   const report = {
     ...baseReport,
@@ -166,15 +156,14 @@ function main(): void {
       specificationsAnalyzed: astInventory.specificationsAnalyzed,
       reExportsAnalyzed: astInventory.reExportsAnalyzed,
       internalEdges: astInventory.edges.length,
-      unresolvedInternalImports: astInventory.unresolvedInternalImports,
-      regexToAstSpecificationDelta:
-        astInventory.specificationsAnalyzed - result.importsAnalyzed,
+      unresolvedInternalImports,
     },
     gate: {
       manifestErrors,
       criticalViolationCount: criticalViolations.length,
       acknowledgedCycles,
       unexpectedCycles,
+      unresolvedInternalImportCount: unresolvedInternalImports.length,
       exitCode: failed ? 1 : 0,
     },
   };
@@ -185,9 +174,7 @@ function main(): void {
   console.log(`  AST specifications:  ${astInventory.specificationsAnalyzed}`);
   console.log(`  AST re-exports:      ${astInventory.reExportsAnalyzed}`);
   console.log(`  AST internal edges:  ${astInventory.edges.length}`);
-  console.log(
-    `  AST unresolved:      ${astInventory.unresolvedInternalImports.length}`,
-  );
+  console.log(`  AST unresolved:      ${unresolvedInternalImports.length}`);
   console.log(`  Domain edges:        ${result.edges.length}`);
   console.log(`  Manifest errors:     ${manifestErrors.length}`);
   console.log(`  Allowed cycles:      ${acknowledgedCycles.length}`);
@@ -198,6 +185,14 @@ function main(): void {
   if (manifestErrors.length > 0) {
     console.error("  ❌ MANIFEST CONFIGURATION ERRORS:\n");
     for (const error of manifestErrors) console.error(`    - ${error}`);
+    console.error("");
+  }
+
+  if (unresolvedInternalImports.length > 0) {
+    console.error("  ❌ UNRESOLVED INTERNAL IMPORT DOMAINS:\n");
+    for (const unresolved of unresolvedInternalImports) {
+      console.error(`    ${unresolved.file}: ${unresolved.importPath}`);
+    }
     console.error("");
   }
 
@@ -244,7 +239,7 @@ function main(): void {
     );
   } else {
     console.log(
-      "  ✅ PASS — manifest, cycles and critical boundaries are valid.",
+      "  ✅ PASS — manifest, AST inventory, cycles and critical boundaries are valid.",
     );
   }
   console.log("  Architecture Model: EXHAUSTIVE DOMAIN-ISOLATED PLATFORM");
