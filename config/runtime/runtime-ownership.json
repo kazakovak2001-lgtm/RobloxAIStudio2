@@ -149,9 +149,7 @@
       "productionUse": "preview-internal",
       "responsibility": "Internal preview composition root for legacy subsystem demonstrations; not a production bootstrap path.",
       "replacement": "runtime-execution-controller",
-      "allowedImporters": [
-        "server/src/integration/EndToEndValidator.ts"
-      ]
+      "allowedImporters": ["server/src/integration/EndToEndValidator.ts"]
     },
     {
       "id": "platform-end-to-end-validator",
