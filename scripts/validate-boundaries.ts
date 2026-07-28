@@ -19,6 +19,7 @@ import {
 } from "node:fs";
 import { join, relative } from "node:path";
 import { ImportBoundaryValidator } from "../server/src/core/architecture/ImportBoundaryValidator";
+import { buildAstImportInventory } from "./architecture/ast-import-inventory";
 
 const ROOT = process.cwd();
 const MANIFEST_PATH = join(ROOT, "architecture.manifest.json");
@@ -136,6 +137,7 @@ function main(): void {
 
   const validator = new ImportBoundaryValidator(ROOT);
   const result = validator.scanProject();
+  const astInventory = buildAstImportInventory(ROOT, validator);
   const baseReport = validator.generateReport(result);
 
   const allowedCycles = new Set(
@@ -159,6 +161,15 @@ function main(): void {
   const report = {
     ...baseReport,
     status: failed ? "FAIL" : "PASS",
+    astInventory: {
+      filesScanned: astInventory.filesScanned,
+      specificationsAnalyzed: astInventory.specificationsAnalyzed,
+      reExportsAnalyzed: astInventory.reExportsAnalyzed,
+      internalEdges: astInventory.edges.length,
+      unresolvedInternalImports: astInventory.unresolvedInternalImports,
+      regexToAstSpecificationDelta:
+        astInventory.specificationsAnalyzed - result.importsAnalyzed,
+    },
     gate: {
       manifestErrors,
       criticalViolationCount: criticalViolations.length,
@@ -170,7 +181,13 @@ function main(): void {
   writeFileSync(REPORT_PATH, JSON.stringify(report, null, 2), "utf8");
 
   console.log(`  Files scanned:       ${result.filesScanned}`);
-  console.log(`  Imports analyzed:    ${result.importsAnalyzed}`);
+  console.log(`  Regex imports:       ${result.importsAnalyzed}`);
+  console.log(`  AST specifications:  ${astInventory.specificationsAnalyzed}`);
+  console.log(`  AST re-exports:      ${astInventory.reExportsAnalyzed}`);
+  console.log(`  AST internal edges:  ${astInventory.edges.length}`);
+  console.log(
+    `  AST unresolved:      ${astInventory.unresolvedInternalImports.length}`,
+  );
   console.log(`  Domain edges:        ${result.edges.length}`);
   console.log(`  Manifest errors:     ${manifestErrors.length}`);
   console.log(`  Allowed cycles:      ${acknowledgedCycles.length}`);
