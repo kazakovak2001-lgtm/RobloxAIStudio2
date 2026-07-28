@@ -58,7 +58,9 @@ export class AssemblyGovernanceService {
 
 let defaultService: AssemblyGovernanceService | null = null;
 
-export function getDefaultAssemblyGovernanceService(): AssemblyGovernanceService {
+export function getDefaultAssemblyGovernanceService():
+  | AssemblyGovernanceService
+  | null {
   if (!defaultService) defaultService = new AssemblyGovernanceService();
   return defaultService;
 }
