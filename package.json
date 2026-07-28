@@ -13,9 +13,10 @@
     "studio:package": "node --import tsx scripts/package-studio-plugin.ts",
     "validate:arch": "node --import tsx scripts/validate-architecture.ts",
     "validate:boundaries": "node --import tsx scripts/validate-boundaries.ts",
+    "validate:runtime": "node --import tsx scripts/validate-runtime-ownership.ts",
     "scan:imports": "node --import tsx scripts/scan-imports.ts",
     "build": "npm run build:server",
-    "build:server": "node --import tsx scripts/validate-architecture.ts && node --import tsx scripts/validate-boundaries.ts && node node_modules/typescript/bin/tsc --project server/tsconfig.json",
+    "build:server": "node --import tsx scripts/validate-architecture.ts && node --import tsx scripts/validate-boundaries.ts && node --import tsx scripts/validate-runtime-ownership.ts && node node_modules/typescript/bin/tsc --project server/tsconfig.json",
     "preview": "npm run start",
     "start": "node --import tsx dist/server/index.js",
     "lint": "node node_modules/eslint/bin/eslint.js server/src scripts config/testing --ext .ts --max-warnings 0",
@@ -26,7 +27,7 @@
     "test:watch": "node node_modules/vitest/vitest.mjs --config config/testing/vitest.backend.config.ts",
     "test:postgres": "node node_modules/vitest/vitest.mjs --config config/testing/vitest.backend.config.ts run server/src/__tests__/core1b.postgres.integration.test.ts",
     "validate": "node --import tsx scripts/validate.ts",
-    "ci": "npm run typecheck && npm run validate:arch && npm run validate:boundaries && npm run lint && npm run format:check && npm run test && npm run validate",
+    "ci": "npm run typecheck && npm run validate:arch && npm run validate:boundaries && npm run validate:runtime && npm run lint && npm run format:check && npm run test && npm run validate",
     "prepare": "husky"
   },
   "lint-staged": {
