@@ -1,4 +1,4 @@
-name: Format RUNTIME-201 Files
+name: Format RUNTIME-201 Files v2
 
 on:
   pull_request:
