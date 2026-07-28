@@ -1,11 +1,13 @@
 {
-  "schemaVersion": 2,
-  "roadmapId": "CLEANUP-1B",
-  "status": "tooling-decoupled",
+  "schemaVersion": 3,
+  "roadmapId": "CLEANUP-1C",
+  "status": "physical-removal-implemented",
   "baseline": {
     "defaultBranch": "release/cutover-1e-candidate",
-    "minimumAncestorCommit": "99b0de4a3b493d1e1fa98173deea8fae59d57842",
-    "cleanup1aCommit": "99b0de4a3b493d1e1fa98173deea8fae59d57842"
+    "minimumAncestorCommit": "85a2fa8d512738e6d02ffae42da77af7a27db6fc",
+    "cleanup1aCommit": "99b0de4a3b493d1e1fa98173deea8fae59d57842",
+    "cleanup1bCommit": "703fe0fbcfcb8706506e9351af1fe7874a1337f0",
+    "cleanup1bCloseoutCommit": "85a2fa8d512738e6d02ffae42da77af7a27db6fc"
   },
   "canonicalFrontend": {
     "repository": "kazakovak2001-lgtm/Frontend",
@@ -229,23 +231,28 @@
     ]
   },
   "stageChangePolicy": {
-    "allowedChangedFiles": [
+    "requiredModifiedFiles": [
       ".github/workflows/ci.yml",
       "config/cleanup/legacy-frontend-decommission.inventory.json",
-      "config/testing/vitest.backend.config.ts",
       "docs/00-project-control/CURRENT_STATE.md",
       "docs/00-project-control/DECISION_LOG.md",
       "docs/00-project-control/FRONTEND_CUTOVER.md",
       "docs/00-project-control/ROADMAP_STATUS.md",
-      "docs/project/CLEANUP-1B_TOOLING_DECOUPLING.md",
       "package.json",
+      "package-lock.json",
+      "server/src/integration/ProductionAuditService.ts",
       "scripts/cleanup/audit-legacy-frontend-decommission.mjs",
       "scripts/validate-architecture.ts"
     ],
-    "additionalProtectedFiles": [
+    "requiredAddedFiles": ["docs/project/CLEANUP-1C_PHYSICAL_REMOVAL.md"],
+    "protectedUnchangedFiles": [
       ".eslintrc.json",
       "architecture.manifest.json",
-      "package-lock.json",
+      "config/testing/vitest.backend.config.ts",
+      "docker-compose.yml",
+      "_inventory_raw.txt",
+      "ProjectStructure.txt",
+      "docs/project/CLEANUP-1B_TOOLING_DECOUPLING.md",
       "scripts/validate-boundaries.ts",
       "server/src/core/architecture/ImportBoundaryValidator.ts"
     ]
@@ -261,13 +268,6 @@
       "test:postgres": "node node_modules/vitest/vitest.mjs --config config/testing/vitest.backend.config.ts run server/src/__tests__/core1b.postgres.integration.test.ts",
       "lint": "node node_modules/eslint/bin/eslint.js server/src scripts config/testing --ext .ts --max-warnings 0"
     },
-    "rootTsconfig": {
-      "classification": "preserved-legacy-config-not-invoked-by-active-tooling",
-      "include": ["src"],
-      "pathAlias": {
-        "@/*": ["src/*"]
-      }
-    },
     "vitestBackendConfig": {
       "path": "config/testing/vitest.backend.config.ts",
       "include": ["server/src/**/*.test.ts", "server/src/**/*.spec.ts"],
@@ -278,35 +278,42 @@
         "'src/"
       ]
     },
+    "productionAudit": {
+      "path": "server/src/integration/ProductionAuditService.ts",
+      "requiredMarkers": [
+        "studio-plugin/src",
+        "Canonical Studio plugin source"
+      ],
+      "forbiddenMarkers": ["src/shared", "Shared contracts"]
+    },
     "architectureValidatorRequiredMarkers": [
-      "Backend + Standalone Frontend Model",
+      "Architecture Boundary Validator v4 — Backend + Standalone Frontend Model",
       "Canonical web client: kazakovak2001-lgtm/Frontend",
-      "FROZEN INVENTORY",
+      "Removed legacy root src/: forbidden to reintroduce",
+      "Removed legacy frontend root reintroduced",
       "Architecture Model: BACKEND + STANDALONE FRONTEND"
     ],
     "architectureValidatorForbiddenMarkers": [
+      "FROZEN INVENTORY",
+      "frozen root src",
       "Dual-Root Model",
       "collectTsFiles(join(ROOT, \"src\"))",
       "Architecture Model: MONOREPO DUAL-ROOT"
     ],
-    "combinedDockerfileMarkers": [
-      "COPY src/ src/",
-      "COPY public/ public/",
-      "RUN npx vite build",
-      "COPY --from=builder /app/dist ./dist"
-    ],
     "ciRequiredMarkers": [
       "- run: npm run typecheck",
       "run: npm run test:postgres",
-      "name: Legacy Frontend Tooling Decoupling",
-      "LEGACY_FRONTEND_AUDIT_OUTPUT: artifacts/cleanup-1b",
-      "name: cleanup-1b-tooling-decoupling",
+      "name: Legacy Frontend Physical Removal",
+      "LEGACY_FRONTEND_AUDIT_OUTPUT: artifacts/cleanup-1c",
+      "name: cleanup-1c-physical-removal",
       "name: Promoted Baseline Integrity"
     ],
     "ciForbiddenMarkers": [
       "- run: npx tsc --noEmit",
       "npx vitest run server/src/__tests__/core1b.postgres.integration.test.ts",
-      "LEGACY_FRONTEND_AUDIT_OUTPUT: artifacts/cleanup-1a"
+      "LEGACY_FRONTEND_AUDIT_OUTPUT: artifacts/cleanup-1a",
+      "LEGACY_FRONTEND_AUDIT_OUTPUT: artifacts/cleanup-1b",
+      "name: cleanup-1b-tooling-decoupling"
     ]
   },
   "packageDisposition": {
@@ -319,33 +326,28 @@
         "reason": "required by composed HTTPS release Socket.IO verification"
       }
     ],
-    "legacyOnlyCandidates": [
+    "removedRuntimeDirectPackages": [
       "framer-motion",
       "lucide-react",
       "react",
       "react-dom",
-      "react-router-dom",
-      "@types/react",
-      "@types/react-dom"
+      "react-router-dom"
     ],
-    "legacyToolingCandidates": [
+    "removedDevelopmentDirectPackages": [
+      "@types/react",
+      "@types/react-dom",
       "@vitejs/plugin-react",
       "autoprefixer",
       "postcss",
       "tailwindcss",
       "vite"
-    ],
-    "allowedLegacyToolConsumers": [
-      "vite.config.ts",
-      "postcss.config.js",
-      "tailwind.config.js"
     ]
   },
   "removalWaves": [
     {
       "id": "CLEANUP-1B",
       "name": "tooling-decoupling",
-      "status": "implemented",
+      "status": "complete",
       "deletionAuthorized": false,
       "actions": [
         "remove root frontend compilation from protected TypeScript checks",
@@ -357,7 +359,7 @@
     {
       "id": "CLEANUP-1C",
       "name": "physical-removal-and-dependency-pruning",
-      "status": "next-after-cleanup-1b-merge",
+      "status": "implemented",
       "deletionAuthorized": true,
       "prerequisite": "CLEANUP-1B verified and merged",
       "actions": [
@@ -371,7 +373,7 @@
     {
       "id": "CLEANUP-1D",
       "name": "post-removal-verification",
-      "status": "blocked-by-cleanup-1c",
+      "status": "next-after-cleanup-1c-merge",
       "deletionAuthorized": false,
       "prerequisite": "CLEANUP-1C verified and merged",
       "actions": [
@@ -381,6 +383,6 @@
       ]
     }
   ],
-  "currentStageDeletionAuthorized": false,
-  "nextStage": "CLEANUP-1C"
+  "currentStageDeletionAuthorized": true,
+  "nextStage": "CLEANUP-1D"
 }

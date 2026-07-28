@@ -1,8 +1,8 @@
 # Current Project State
 
 **Last Updated**: July 28, 2026
-**Phase**: CLEANUP-1B complete — CLEANUP-1C is next
-**Build Status**: CUTOVER-1A through CUTOVER-1F, CLEANUP-1A, and CLEANUP-1B are complete on the protected default branch `release/cutover-1e-candidate`. The active backend and standalone Frontend release artifacts, composed HTTPS topology, promoted baseline, and independent rollback path are verified. CLEANUP-1B removed the frozen root frontend from active development, build, typecheck, test, and architecture-tooling paths while preserving all 168 legacy source files, configuration, deployment inventory, package declarations, and lockfile. PR #35 merged as `703fe0fbcfcb8706506e9351af1fe7874a1337f0`; post-merge CI run #284 passed the protected cleanup audit and Merge Gate. CLEANUP-1C is now the first deletion-authorized stage, but no physical deletion or dependency pruning has begun.
+**Phase**: CLEANUP-1C active — protected implementation verification passed, merge pending
+**Build Status**: CUTOVER-1A through CUTOVER-1F, CLEANUP-1A, and CLEANUP-1B are complete on the protected default branch `release/cutover-1e-candidate`. CLEANUP-1C is implemented from the exact post-CLEANUP-1B baseline `85a2fa8d512738e6d02ffae42da77af7a27db6fc`: all 168 embedded frontend source files, five root frontend configuration files, and three archival combined-deployment files are removed; 12 proven legacy-only direct package declarations are pruned while `socket.io-client` remains for composed-release verification. Active backend, Studio, standalone Frontend, composed-release, and rollback contracts are unchanged. Local verification passed. PR #39 implementation head `600f17e8826da3a9d830760964b546d98674b75d` passed protected CI run `30329606556` (#289), Studio Plugin Package run #26, and Merge Gate. Evidence artifact `8676923623` has digest `sha256:a6006b891305ccc9ac00fe662b5dbc8e4a9bce4fe731e18991eadfec28920b15`. Merge and protected default-branch push verification remain required before CLEANUP-1D begins.
 
 ---
 
@@ -36,10 +36,10 @@
 
 ### Legacy Frontend
 
-- **Location**: repository root `src/`
-- **Status**: Frozen migration inventory; no new product features, pages, or parallel integrations.
-- **Tooling**: CLEANUP-1B routes backend development, build, typecheck, tests, and architecture reporting away from the frozen React/Vite application.
-- **Removal**: CLEANUP-1C is the first deletion-authorized stage, but it may begin only after CLEANUP-1B is protected, verified, and merged.
+- **Historical location**: repository root `src/`
+- **Status**: Physically removed by the CLEANUP-1C implementation; its exact 168-file baseline remains recorded in Git history and the cleanup inventory.
+- **Canonical replacement**: `kazakovak2001-lgtm/Frontend` remains the only web client.
+- **Guard**: The cleanup audit requires the exact removal diff and the architecture validator fails if root `src/` is reintroduced.
 
 ### Health Scores
 
@@ -91,6 +91,7 @@
 | CUTOVER-1E        | Controlled default-branch promotion                      | July 28, 2026 |
 | CUTOVER-1F        | Promoted baseline CI alignment                           | July 28, 2026 |
 | CLEANUP-1A        | Legacy frontend decommission audit                       | July 28, 2026 |
+| CLEANUP-1B        | Legacy frontend tooling decoupling                       | July 28, 2026 |
 
 ---
 
@@ -194,7 +195,7 @@ This template enforces:
 - **Standalone Frontend release image**: Frontend commit `1036c3ef9705d145cb9700cd14268a33d2abdd58` packages `.output` plus one shared worker-to-Node adapter as a non-root SSR process.
 - **Composed HTTPS release**: backend head `8bee44a284244033d73637b3e3cc4bddf72af035` and exact Frontend commit `1036c3ef9705d145cb9700cd14268a33d2abdd58` passed CI run `30312627413` (#219). Evidence artifact `8670986116` (`cutover-1c-composition-8bee44a284244033d73637b3e3cc4bddf72af035`, digest `sha256:6a941900d9b73bca852d1fe071f148d6ac19eae151b414a9e7f99aa3ad39b57a`) proves healthy PostgreSQL/backend/frontend/proxy services, HTTPS SSR and health, allowed/rejected production origins, secure host-only cookies, authenticated REST, unauthenticated Socket.IO rejection, and authenticated polling → WebSocket upgrade.
 - **Migration Runner**: `server/src/platform/storage/postgres/migrationRunner.ts` — auto-applies pending migrations on startup (skips when STORAGE_PROVIDER=inmemory).
-- **Rollback inventory**: CUTOVER-1A and CUTOVER-1B remain independently deployable. The prior combined `Dockerfile`, `deploy/nginx.conf`, `deploy/docker-compose.yml`, and frozen root `src/` remain unchanged through CLEANUP-1B. The promoted default and pinned pre-promotion rollback reference remain protected.
+- **Rollback inventory**: CUTOVER-1A and CUTOVER-1B remain independently deployable and are unaffected by removal of the non-executable combined stack. The deleted legacy source/configuration/deployment inventory remains recoverable by reverting the focused CLEANUP-1C change from baseline `85a2fa8d512738e6d02ffae42da77af7a27db6fc`. The promoted default and pinned pre-promotion rollback reference remain protected.
 - **Backup Script**: `scripts/backup-database.sh` — timestamped pg_dump with configurable retention
 - **Deployment Guide**: `docs/PRODUCTION_DEPLOYMENT_GUIDE.md`
 
@@ -202,6 +203,7 @@ This template enforces:
 
 ## Last Changes
 
+- July 28, 2026: CLEANUP-1C physical removal implemented under issue #37 from exact baseline `85a2fa8d512738e6d02ffae42da77af7a27db6fc` — 168 root `src/` files, five frontend entry/config files, and three archival combined-deployment files are deleted (176 paths total). Five runtime and seven development-only direct package declarations are pruned; `socket.io-client` remains because the active composed-release verifier consumes it. The existing production-readiness audit now checks the canonical Studio plugin instead of removed `src/shared`. The evolved audit requires the exact `D`/`M`/`A` diff, synchronized root lockfile declarations, zero remaining consumers, active-release isolation, and the protected Merge Gate dependency. Local verification passed. PR #39 implementation head `600f17e8826da3a9d830760964b546d98674b75d` passed CI run `30329606556` (#289), Studio Plugin Package run #26, and Merge Gate; the first backend-image attempt hit a transient Docker Hub timeout and the exact retry passed without a source change. Evidence artifact `8676923623` (`cleanup-1c-physical-removal`, digest `sha256:a6006b891305ccc9ac00fe662b5dbc8e4a9bce4fe731e18991eadfec28920b15`) records the protected audit. Merge and protected default-branch push evidence remain pending; CLEANUP-1D remains blocked. See `docs/project/CLEANUP-1C_PHYSICAL_REMOVAL.md`.
 - July 28, 2026: CLEANUP-1B completed through PR #35 and merge commit `703fe0fbcfcb8706506e9351af1fe7874a1337f0` — root development/build/typecheck commands now target the backend, Vitest uses an explicit backend-only configuration, protected TypeScript and PostgreSQL CI reuse those commands, and architecture reporting identifies the standalone Frontend as canonical. PR CI run #282 and post-merge push run `30327587217` (#284) passed every applicable job and Merge Gate. Post-merge evidence artifact `8676270323` (`cleanup-1b-tooling-decoupling`, digest `sha256:5d14de17c49751392d009021dc9a7b14605447ae72d44e24414848d3331169ec`) confirms the exact 168-file legacy inventory, unchanged dependency maps and lockfile, active-release isolation, and `currentStageDeletionAuthorized=false`. Issue #34 is closed; CLEANUP-1C is next. See `docs/project/CLEANUP-1B_TOOLING_DECOUPLING.md`.
 - July 28, 2026: CLEANUP-1A merged as `99b0de4a3b493d1e1fa98173deea8fae59d57842` — the audit classified all 168 tracked root `src/` files, package consumers, deployment inventory, tooling blockers, and ordered CLEANUP-1B/1C/1D waves without modifying legacy runtime files.
 - July 27, 2026: CUTOVER-1C verified — backend head `8bee44a284244033d73637b3e3cc4bddf72af035` composed the exact Frontend release commit `1036c3ef9705d145cb9700cd14268a33d2abdd58` behind one HTTPS origin. CI run #219 and evidence artifact `8670986116` proved healthy services, SSR, CORS allow/deny behavior, secure host-only cookies, authenticated REST, unauthenticated Socket.IO rejection, and authenticated polling → WebSocket upgrade. The prior release stack and legacy frontend remain preserved for rollback. See `CUTOVER-1C_COMPOSED_RELEASE.md`.

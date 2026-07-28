@@ -246,7 +246,7 @@ jobs:
           retention-days: 3
 
   legacy-frontend-audit:
-    name: Legacy Frontend Tooling Decoupling
+    name: Legacy Frontend Physical Removal
     runs-on: ubuntu-latest
     needs: release-readiness
     steps:
@@ -259,16 +259,16 @@ jobs:
           node-version: "22"
           cache: "npm"
       - run: npm ci
-      - name: Verify legacy frontend tooling decoupling
+      - name: Verify legacy frontend physical removal
         env:
-          LEGACY_FRONTEND_AUDIT_OUTPUT: artifacts/cleanup-1b
+          LEGACY_FRONTEND_AUDIT_OUTPUT: artifacts/cleanup-1c
         run: node scripts/cleanup/audit-legacy-frontend-decommission.mjs
-      - name: Publish tooling decoupling evidence
+      - name: Publish physical removal evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: cleanup-1b-tooling-decoupling
-          path: artifacts/cleanup-1b
+          name: cleanup-1c-physical-removal
+          path: artifacts/cleanup-1c
           if-no-files-found: error
           retention-days: 3
 
