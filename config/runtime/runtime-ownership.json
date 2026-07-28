@@ -14,6 +14,10 @@
     "preview-internal",
     "forbidden"
   ],
+  "memoryPolicy": {
+    "durableProductStateOwner": null,
+    "statement": "No registered memory runtime owns durable product state. Current memory systems are execution-scoped or process-local and all are restart-volatile."
+  },
   "canonicalByCapability": {
     "execution-engine": "planning-plan-executor",
     "provider-construction": "providers-llm-provider-factory"
@@ -206,7 +210,10 @@
       "classification": "bounded-adapter",
       "owner": "memory",
       "productionUse": "adapter-only",
-      "responsibility": "Bounded execution-scoped ProjectMemory registry with capped process-local history."
+      "responsibility": "Execution-scoped ProjectMemory registry with explicit post-run eviction behavior.",
+      "lifecycle": "execution",
+      "durability": "restart-volatile",
+      "bounds": "The default maxHistory is 10 retained inspection entries after explicit evictions; active executions have no hard cap, and each evict call removes at most one oldest non-current entry."
     },
     {
       "id": "memory-agent-bridge",
@@ -215,7 +222,10 @@
       "classification": "bounded-adapter",
       "owner": "memory",
       "productionUse": "adapter-only",
-      "responsibility": "Non-blocking adapter between agent execution and the process-local memory engine."
+      "responsibility": "Non-blocking adapter between agent execution and the process-local memory engine.",
+      "lifecycle": "execution",
+      "durability": "restart-volatile",
+      "bounds": "Owns no collection; default retrieval delegates to MemoryEngine with a limit of 5 recent entries and 5 semantic matches."
     },
     {
       "id": "memory-engine",
@@ -224,7 +234,10 @@
       "classification": "bounded-adapter",
       "owner": "memory",
       "productionUse": "adapter-only",
-      "responsibility": "Active process-local semantic memory adapter used by execution and feedback bridges; restart-volatile and not durable product-state storage."
+      "responsibility": "Active process-local semantic memory adapter used by execution and feedback bridges; restart-volatile and not durable product-state storage.",
+      "lifecycle": "process",
+      "durability": "restart-volatile",
+      "bounds": "The default MemoryStore retains at most 1,000 entries and the default SemanticRetriever indexes at most 500 documents per MemoryEngine instance."
     },
     {
       "id": "knowledge-memory-manager",
@@ -234,6 +247,9 @@
       "owner": "memory",
       "productionUse": "preview-internal",
       "responsibility": "Process-local project knowledge store with bounded entry eviction.",
+      "lifecycle": "process",
+      "durability": "restart-volatile",
+      "bounds": "Retains at most 5,000 entries per manager instance and evicts the least recently updated entries when the limit is exceeded.",
       "allowedImporters": [
         "server/src/integration/PlatformIntegrationManager.ts",
         "server/src/memory/knowledge/ContextResolver.ts",
