@@ -143,8 +143,7 @@
   "allowedCycles": [
     ["ai", "providers"],
     ["execution", "socket"],
-    ["execution", "planning", "socket"],
-    ["assembly", "governance"]
+    ["execution", "planning", "socket"]
   ],
   "forbiddenEdges": [
     {
