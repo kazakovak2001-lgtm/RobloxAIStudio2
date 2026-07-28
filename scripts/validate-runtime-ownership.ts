@@ -11,7 +11,10 @@ import ts from "typescript";
 
 const root = process.cwd();
 const registryPath = join(root, "config/runtime/runtime-ownership.json");
-const reportPath = join(root, "artifacts/runtime/runtime-ownership-report.json");
+const reportPath = join(
+  root,
+  "artifacts/runtime/runtime-ownership-report.json",
+);
 const sourceRoot = join(root, "server/src");
 
 const allowedClassifications = new Set([
@@ -34,11 +37,7 @@ interface RuntimeEntry {
   capability: string;
   path: string;
   classification:
-    | "canonical"
-    | "bounded-adapter"
-    | "preview"
-    | "deprecated"
-    | "removed";
+    "canonical" | "bounded-adapter" | "preview" | "deprecated" | "removed";
   owner: string;
   productionUse:
     | "allowed"
@@ -206,7 +205,9 @@ function main(): void {
   ) as RuntimeOwnershipRegistry;
 
   if (registry.schemaVersion !== 1) {
-    errors.push(`Unsupported registry schemaVersion: ${registry.schemaVersion}`);
+    errors.push(
+      `Unsupported registry schemaVersion: ${registry.schemaVersion}`,
+    );
   }
   if (!Array.isArray(registry.entries) || registry.entries.length === 0) {
     errors.push("Runtime ownership registry must contain at least one entry.");
@@ -415,7 +416,9 @@ function main(): void {
     }
   }
 
-  const countClassification = (classification: RuntimeEntry["classification"]): number =>
+  const countClassification = (
+    classification: RuntimeEntry["classification"],
+  ): number =>
     entries.filter((entry) => entry.classification === classification).length;
 
   const report: ValidationReport = {
@@ -456,7 +459,9 @@ function main(): void {
   console.log(
     `  discovered entrypoints: ${report.counts.discoveredEntrypoints}`,
   );
-  console.log(`  production files scanned: ${report.counts.productionFilesScanned}`);
+  console.log(
+    `  production files scanned: ${report.counts.productionFilesScanned}`,
+  );
   console.log(`  registered imports: ${report.counts.registeredImports}`);
   console.log(
     `  acknowledged preview imports: ${report.counts.acknowledgedPreviewImports}`,

@@ -92,9 +92,7 @@
       "productionUse": "preview-internal",
       "responsibility": "Preview stage pipeline with in-memory persistence and artifact review facilities.",
       "replacement": "planning-plan-executor",
-      "allowedImporters": [
-        "server/src/pipeline/v2/index.ts"
-      ]
+      "allowedImporters": ["server/src/pipeline/v2/index.ts"]
     },
     {
       "id": "pipeline-v2-executor",
@@ -153,9 +151,7 @@
       "productionUse": "preview-internal",
       "responsibility": "Secondary provider registry factory retained for the advanced provider preview stack.",
       "replacement": "providers-llm-provider-factory",
-      "allowedImporters": [
-        "server/src/providers/ai/index.ts"
-      ]
+      "allowedImporters": ["server/src/providers/ai/index.ts"]
     },
     {
       "id": "providers-ai-provider-registry",
@@ -210,9 +206,7 @@
       "owner": "memory",
       "productionUse": "preview-internal",
       "responsibility": "Process-local project knowledge store with bounded entry eviction.",
-      "allowedImporters": [
-        "server/src/memory/knowledge/index.ts"
-      ]
+      "allowedImporters": ["server/src/memory/knowledge/index.ts"]
     }
   ]
 }
