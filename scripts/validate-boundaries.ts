@@ -78,7 +78,10 @@ function validateManifest(manifest: ArchitectureManifest): string[] {
       continue;
     }
 
-    const relativePath = relative(serverSrc, absolutePath).replaceAll("\\", "/");
+    const relativePath = relative(serverSrc, absolutePath).replaceAll(
+      "\\",
+      "/",
+    );
     const topLevel = relativePath.split("/")[0];
     if (!topLevel || topLevel.startsWith("..")) {
       errors.push(
@@ -368,13 +371,17 @@ function main(): void {
       );
       console.error(`    File:   ${violation.file}`);
       console.error(`    Import: ${violation.importPath}`);
-      console.error(`    ${violation.sourceDomain} → ${violation.targetDomain}`);
+      console.error(
+        `    ${violation.sourceDomain} → ${violation.targetDomain}`,
+      );
       console.error(`    ${violation.message}\n`);
     }
   }
 
   if (failed) {
-    console.error("  ❌ FAIL — architecture gate rejected the repository state.");
+    console.error(
+      "  ❌ FAIL — architecture gate rejected the repository state.",
+    );
     console.error("  Report saved to: boundary-report.json");
     process.exit(1);
   }
