@@ -112,12 +112,13 @@ These items are ready and should run in this order.
 
 ### ARCH-201 — TypeScript AST import graph
 
-| Field      | Value           |
-| ---------- | --------------- |
-| Priority   | P0              |
-| Repository | RobloxAIStudio2 |
-| Size       | L               |
-| Depends on | INT-201         |
+| Field      | Value                   |
+| ---------- | ----------------------- |
+| Priority   | P0                      |
+| Repository | RobloxAIStudio2         |
+| Size       | L                       |
+| Depends on | INT-201                 |
+| Status     | Implemented — issue #51 |
 
 **Scope**
 
@@ -128,7 +129,8 @@ These items are ready and should run in this order.
 **Acceptance**
 
 - Fixtures prove every syntax form is detected.
-- Current scan reports all 1,446 baseline import-like specifications or a reviewed explained delta.
+- Current scan reports 1,460 specifications: the 1,446 audit baseline, 12
+  pre-existing import-type query nodes, and two lazy-loader specifications.
 - Re-export boundary violation fails CI.
 
 ### ARCH-202 — Exhaustive manifest and layer enforcement

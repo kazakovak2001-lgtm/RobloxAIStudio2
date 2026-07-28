@@ -1,8 +1,9 @@
 /**
  * ImportBoundaryValidator.ts
  *
- * Domain-level import firewall engine.
- * Validates all imports against the architecture manifest rules:
+ * Domain-level TypeScript AST import firewall engine.
+ * Validates all statically resolvable module specifications against the
+ * architecture manifest rules:
  *   - Layer isolation (core / domains / infrastructure / api / shared)
  *   - Forbidden cross-domain edges
  *   - Hard bans (deprecated modules)
@@ -15,12 +16,32 @@
  */
 
 import { readFileSync, readdirSync, existsSync } from "fs";
+import { createRequire } from "module";
 import { join, relative, dirname } from "path";
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
+type TypeScriptCompiler = typeof import("typescript");
+type CompilerNode = Parameters<TypeScriptCompiler["forEachChild"]>[0];
+
 export type Layer =
   "core" | "domains" | "infrastructure" | "api" | "shared" | "unknown";
+
+export type ImportSyntax =
+  | "static-import"
+  | "type-import"
+  | "side-effect-import"
+  | "re-export"
+  | "type-re-export"
+  | "dynamic-import"
+  | "require-call"
+  | "import-equals-require"
+  | "import-type-query";
+
+export interface ImportSpecification {
+  specifier: string;
+  syntax: ImportSyntax;
+}
 
 export interface DomainDefinition {
   path: string;
@@ -82,6 +103,102 @@ interface ArchitectureManifest {
     rule: string;
     message: string;
   }>;
+}
+
+// TypeScript is a development dependency and is pruned from the production
+// image. Load it only when source files actually need scanning; the production
+// runtime image contains compiled output but no server/src tree.
+const nodeRequire = createRequire(import.meta.url);
+let typescriptCompiler: TypeScriptCompiler | undefined;
+
+function getTypeScriptCompiler(): TypeScriptCompiler {
+  typescriptCompiler ??= nodeRequire("typescript") as TypeScriptCompiler;
+  return typescriptCompiler;
+}
+
+/**
+ * Extract statically resolvable module specifications from TypeScript syntax.
+ */
+export function extractImportSpecifications(
+  content: string,
+  fileName = "source.ts",
+): ImportSpecification[] {
+  const ts = getTypeScriptCompiler();
+  const sourceFile = ts.createSourceFile(
+    fileName,
+    content,
+    ts.ScriptTarget.Latest,
+    true,
+    fileName.endsWith(".tsx") ? ts.ScriptKind.TSX : ts.ScriptKind.TS,
+  );
+  const imports: ImportSpecification[] = [];
+
+  const add = (node: CompilerNode, syntax: ImportSyntax): void => {
+    if (ts.isStringLiteralLike(node)) {
+      imports.push({ specifier: node.text, syntax });
+    }
+  };
+
+  const visit = (node: CompilerNode): void => {
+    if (ts.isImportDeclaration(node)) {
+      const namedImportsAreTypeOnly =
+        node.importClause !== undefined &&
+        node.importClause.name === undefined &&
+        node.importClause.namedBindings !== undefined &&
+        ts.isNamedImports(node.importClause.namedBindings) &&
+        node.importClause.namedBindings.elements.length > 0 &&
+        node.importClause.namedBindings.elements.every(
+          (element) => element.isTypeOnly,
+        );
+      const syntax: ImportSyntax = !node.importClause
+        ? "side-effect-import"
+        : node.importClause.isTypeOnly || namedImportsAreTypeOnly
+          ? "type-import"
+          : "static-import";
+      add(node.moduleSpecifier, syntax);
+    } else if (ts.isExportDeclaration(node) && node.moduleSpecifier) {
+      const namedExportsAreTypeOnly =
+        node.exportClause !== undefined &&
+        ts.isNamedExports(node.exportClause) &&
+        node.exportClause.elements.length > 0 &&
+        node.exportClause.elements.every((element) => element.isTypeOnly);
+      add(
+        node.moduleSpecifier,
+        node.isTypeOnly || namedExportsAreTypeOnly
+          ? "type-re-export"
+          : "re-export",
+      );
+    } else if (
+      ts.isImportEqualsDeclaration(node) &&
+      ts.isExternalModuleReference(node.moduleReference) &&
+      node.moduleReference.expression
+    ) {
+      add(node.moduleReference.expression, "import-equals-require");
+    } else if (
+      ts.isCallExpression(node) &&
+      node.expression.kind === ts.SyntaxKind.ImportKeyword &&
+      node.arguments[0]
+    ) {
+      add(node.arguments[0], "dynamic-import");
+    } else if (
+      ts.isCallExpression(node) &&
+      ts.isIdentifier(node.expression) &&
+      node.expression.text === "require" &&
+      node.arguments[0]
+    ) {
+      add(node.arguments[0], "require-call");
+    } else if (
+      ts.isImportTypeNode(node) &&
+      ts.isLiteralTypeNode(node.argument)
+    ) {
+      add(node.argument.literal, "import-type-query");
+    }
+
+    ts.forEachChild(node, visit);
+  };
+
+  visit(sourceFile);
+  return imports;
 }
 
 // ─── Validator ──────────────────────────────────────────────────────────────
@@ -201,49 +318,12 @@ export class ImportBoundaryValidator {
    * Scan a single file for import violations.
    */
   scanFile(filePath: string): ImportViolation[] {
-    const violations: ImportViolation[] = [];
     const content = readFileSync(filePath, "utf-8");
-    const imports = this.extractImports(content);
     const relPath = relative(this.rootDir, filePath).replace(/\\/g, "/");
-    const sourceDomain = this.resolveDomain(relPath);
-
-    for (const imp of imports) {
-      // Check hard bans
-      for (const ban of this.hardBans) {
-        if (imp.includes(ban.pattern)) {
-          const isAllowed = ban.allowedIn.some((allowed) =>
-            relPath.includes(allowed),
-          );
-          if (!isAllowed) {
-            violations.push({
-              file: relPath,
-              importPath: imp,
-              sourceDomain,
-              targetDomain: "deprecated",
-              rule: ban.rule,
-              severity: "critical",
-              message: ban.message,
-            });
-          }
-        }
-      }
-
-      // Resolve target domain from import path
-      const targetDomain = this.resolveImportDomain(relPath, imp);
-      if (targetDomain === "unknown" || targetDomain === "external") continue;
-
-      // Check forbidden edges
-      const check = this.isImportAllowed(sourceDomain, targetDomain);
-      if (!check.allowed && check.violation) {
-        violations.push({
-          ...check.violation,
-          file: relPath,
-          importPath: imp,
-        });
-      }
-    }
-
-    return violations;
+    const imports = extractImportSpecifications(content, filePath).map(
+      ({ specifier }) => specifier,
+    );
+    return this.analyzeImports(relPath, imports).violations;
   }
 
   /**
@@ -272,68 +352,13 @@ export class ImportBoundaryValidator {
       if (relPath.includes("_quarantine")) continue;
 
       const content = readFileSync(file, "utf-8");
-      const imports = this.extractImports(content);
+      const imports = extractImportSpecifications(content, file).map(
+        ({ specifier }) => specifier,
+      );
       totalImports += imports.length;
-
-      const sourceDomain = this.resolveDomain(relPath);
-
-      for (const imp of imports) {
-        // Hard ban check
-        for (const ban of this.hardBans) {
-          if (imp.includes(ban.pattern)) {
-            const isAllowed = ban.allowedIn.some((allowed) =>
-              relPath.includes(allowed),
-            );
-            if (!isAllowed) {
-              allViolations.push({
-                file: relPath,
-                importPath: imp,
-                sourceDomain,
-                targetDomain: "deprecated",
-                rule: ban.rule,
-                severity: "critical",
-                message: ban.message,
-              });
-            }
-          }
-        }
-
-        const targetDomain = this.resolveImportDomain(relPath, imp);
-        if (targetDomain === "unknown" || targetDomain === "external") continue;
-
-        // Record edge
-        allEdges.push({
-          from: sourceDomain,
-          to: targetDomain,
-          file: relPath,
-          importPath: imp,
-        });
-
-        // Check forbidden
-        const check = this.isImportAllowed(sourceDomain, targetDomain);
-        if (!check.allowed && check.violation) {
-          allViolations.push({
-            ...check.violation,
-            file: relPath,
-            importPath: imp,
-          });
-        }
-      }
-
-      // Also run per-file violation scan for completeness
-      const fileViolations = this.scanFile(file);
-      for (const v of fileViolations) {
-        if (
-          !allViolations.some(
-            (av) =>
-              av.file === v.file &&
-              av.importPath === v.importPath &&
-              av.rule === v.rule,
-          )
-        ) {
-          allViolations.push(v);
-        }
-      }
+      const analysis = this.analyzeImports(relPath, imports);
+      allViolations.push(...analysis.violations);
+      allEdges.push(...analysis.edges);
     }
 
     // Detect circular dependencies
@@ -346,6 +371,57 @@ export class ImportBoundaryValidator {
       filesScanned: files.length,
       importsAnalyzed: totalImports,
     };
+  }
+
+  private analyzeImports(
+    relPath: string,
+    imports: string[],
+  ): { violations: ImportViolation[]; edges: DependencyEdge[] } {
+    const violations: ImportViolation[] = [];
+    const edges: DependencyEdge[] = [];
+    const sourceDomain = this.resolveDomain(relPath);
+
+    for (const imp of imports) {
+      for (const ban of this.hardBans) {
+        if (imp.includes(ban.pattern)) {
+          const isAllowed = ban.allowedIn.some((allowed) =>
+            relPath.includes(allowed),
+          );
+          if (!isAllowed) {
+            violations.push({
+              file: relPath,
+              importPath: imp,
+              sourceDomain,
+              targetDomain: "deprecated",
+              rule: ban.rule,
+              severity: "critical",
+              message: ban.message,
+            });
+          }
+        }
+      }
+
+      const targetDomain = this.resolveImportDomain(relPath, imp);
+      if (targetDomain === "unknown" || targetDomain === "external") continue;
+
+      edges.push({
+        from: sourceDomain,
+        to: targetDomain,
+        file: relPath,
+        importPath: imp,
+      });
+
+      const check = this.isImportAllowed(sourceDomain, targetDomain);
+      if (!check.allowed && check.violation) {
+        violations.push({
+          ...check.violation,
+          file: relPath,
+          importPath: imp,
+        });
+      }
+    }
+
+    return { violations, edges };
   }
 
   /**
@@ -429,37 +505,6 @@ export class ImportBoundaryValidator {
     const relResolved = relative(this.rootDir, resolved).replace(/\\/g, "/");
 
     return this.resolveDomain(relResolved);
-  }
-
-  /**
-   * Extract import paths from TypeScript source.
-   */
-  private extractImports(content: string): string[] {
-    const imports: string[] = [];
-
-    // Match: import ... from "path"
-    const staticImports = content.matchAll(
-      /import\s+(?:type\s+)?(?:\{[^}]*\}|[^;{]*)\s+from\s+["']([^"']+)["']/g,
-    );
-    for (const match of staticImports) {
-      imports.push(match[1]);
-    }
-
-    // Match: import("path")
-    const dynamicImports = content.matchAll(
-      /import\s*\(\s*["']([^"']+)["']\s*\)/g,
-    );
-    for (const match of dynamicImports) {
-      imports.push(match[1]);
-    }
-
-    // Match: require("path")
-    const requires = content.matchAll(/require\s*\(\s*["']([^"']+)["']\s*\)/g);
-    for (const match of requires) {
-      imports.push(match[1]);
-    }
-
-    return imports;
   }
 
   /**

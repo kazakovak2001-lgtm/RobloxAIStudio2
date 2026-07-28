@@ -64,9 +64,9 @@ No phase may create a second web client, Studio protocol, production composition
 
 **Progress:** Complete. SEC-201 merged through backend PR #46, FE-201 through
 Frontend PR #14, and reciprocal INT-201 protection through Frontend PR #16 plus
-backend PR #48. DOC-201 issue #49 synchronizes the active auth/release guides,
-marks conflicting historical decisions as superseded, and protects the
-terminology through the native auth-contract test. ARCH-2B is next.
+backend PR #48. DOC-201 issue #49 / PR #50 synchronized the active auth/release
+guides, marked conflicting historical decisions as superseded, and protected
+the terminology through the native auth-contract test. ARCH-2B is active.
 
 ### Scope
 
@@ -106,6 +106,12 @@ terminology through the native auth-contract test. ARCH-2B is next.
 - both repository SHAs captured in CI artifact.
 
 ## Phase 2 — ARCH-2B
+
+**Progress:** ARCH-201 is implemented under issue #51. TypeScript AST traversal
+now covers the reviewed 547-file / 1,460-specification graph, including
+re-exports and import-type queries, with native syntax/scope/violation fixtures.
+ARCH-202 is next; manifest and layer completeness plus cycle/exit semantics
+remain open by design.
 
 ### Scope
 

@@ -1,0 +1,25 @@
+import defaultExport from "./default";
+import * as namespaceExport from "./namespace";
+import { namedExport, type InlineType } from "./named";
+import type { TypeOnly } from "./type-only";
+import { type InlineOnlyType } from "./inline-type-only";
+import "./side-effect";
+
+export { namedExport as renamedExport } from "./re-export-named";
+export * from "./re-export-all";
+export * as groupedExport from "./re-export-namespace";
+export type { TypeOnly as ReExportedType } from "./re-export-type";
+export { type InlineType as ReExportedInlineType } from "./re-export-inline-type";
+
+const dynamicModule = import("./dynamic");
+const templateDynamicModule = import(`./template-dynamic`);
+const commonJsModule = require("./required");
+import legacyModule = require("./import-equals");
+type ImportedTypeQuery = import("./type-query").TypeOnly;
+
+const unresolvedSpecifier = "./ignored-variable";
+void import(unresolvedSpecifier);
+void require(unresolvedSpecifier);
+
+const fakeImport = 'import fake from "./ignored-string"';
+// export * from "./ignored-comment";

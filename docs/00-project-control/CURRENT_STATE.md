@@ -1,8 +1,8 @@
 # Current Project State
 
 **Last Updated**: July 28, 2026
-**Phase**: HARDEN-2A complete — ARCH-2B is next
-**Build Status**: SEC-201 merged through backend PR #46 as `7e98aba28911a20ff942e04ba5eaa51448c34b0c`. FE-201 merged through Frontend PR #14 as `2aab7c3367bb55520edc2576422ebafec265d7c6`. Frontend PR #16 merged its protected INT-201 gate as `739b43cbc5f991c1852e80b30fe38c0e7c02d681`. Backend PR #48 completed the reciprocal gate as `b30be04ce3c5458902561472d371f753b28f08c5`; post-merge CI run #307 passed 40/40 production checks, the composed HTTPS release, rollback, post-removal invariants, and Merge Gate. Contract artifact `8684538568` has digest `sha256:0babbaf1239615e15479a4adbbcc5f5745965632fb3417c06bc2ee9a70c3c0a9`. DOC-201 issue #49 then synchronized active auth/release authority and added a protected terminology/supersession guard without changing runtime behavior.
+**Phase**: ARCH-2B in progress — ARCH-201 implemented; ARCH-202 is next
+**Build Status**: HARDEN-2A closed through DOC-201 PR #50 and merge `2ecb3997eb6fab5074c438f10dedcc1715381e11`; post-merge CI run #310 passed the exact 40-check production contract, composed HTTPS release, rollback, post-removal invariants, and Merge Gate. ARCH-201 issue #51 replaces regex import extraction with a lazy TypeScript AST traversal. The reviewed production scan covers 547 files and 1,460 statically resolvable specifications with zero boundary violations; fixtures cover imports, type imports, side effects, re-exports, dynamic imports, `require`, import-equals, import-type queries, false-positive resistance, and a critical forbidden re-export.
 
 ---
 
@@ -11,7 +11,7 @@
 ### Backend
 
 - **Server**: Express + Socket.io (Node.js/TypeScript)
-- **Files**: 610 TypeScript files under `server/src`: 547 production files and 63 test files across 46 real top-level subsystems
+- **Files**: 611 TypeScript files under `server/src`: 547 production files and 64 test files across 46 real top-level subsystems
 - **API Routes**: 30 unique mounted `/api` prefixes (`/api/projects` mounts two routers), plus health and root endpoints
 - **AI Providers**: 6 configurable modes (OpenAI, Anthropic, Gemini, Groq, Ollama, OpenRouter), plus no-provider stub behavior and test mocks
 - **Storage**: One configured provider per process; PostgreSQL migrations and cache hydration complete before the server listens. `STORAGE_PROVIDER=postgres` requires `DATABASE_URL`.
@@ -47,7 +47,7 @@
 - Backend: 61 passing test files, 672 passing tests, one skipped test file/test; typecheck, lint, format, build, PostgreSQL restart, release image, composed HTTPS, rollback, and cleanup invariant gates pass.
 - Frontend: TypeScript, production build, SSR image, responsive QA, and 12 native Workspace tests pass. The exact 40-check production-mode integration suite is protected by Frontend Merge Gate and records both repository SHAs plus runtime evidence.
 - Frontend quality gap: lint reports 640 errors and 12 warnings; 70 files fail a separate Prettier check. Frontend CI currently runs neither gate.
-- Architecture gap: the manifest models 32 domains while 46 subsystems exist. The generated report contains four cycles and status `FAIL`, but the current CLI exits successfully.
+- Architecture gap: ARCH-201 now observes 1,460 AST specifications, including re-exports and import-type queries. The manifest still models 32 domains while 46 subsystems exist; layer rules remain unenforced, and four cycles produce report status `FAIL` while the current CLI exits successfully.
 - Planning baseline: the evidence-scored feature matrix averages 66%; this is a prioritization aid, not a release SLA or substitute for closing P0 findings.
 
 See [Technical Audit v2.0](../02-audits/technical-v2/EXECUTIVE_AUDIT.md) for the complete evidence, limitations, and recommended order.
@@ -102,6 +102,7 @@ See [Technical Audit v2.0](../02-audits/technical-v2/EXECUTIVE_AUDIT.md) for the
 | FE-201            | Real Studio verification in the canonical Workspace      | July 28, 2026 |
 | INT-201           | Reciprocal protected 40-check production contract        | July 28, 2026 |
 | DOC-201           | Active auth/release authority and terminology guard      | July 28, 2026 |
+| ARCH-201          | TypeScript AST import graph and re-export guard          | July 28, 2026 |
 
 ---
 
@@ -172,7 +173,7 @@ See [Technical Audit v2.0](../02-audits/technical-v2/EXECUTIVE_AUDIT.md) for the
 
 ## Known Problems
 
-1. **Architecture gate (P0)**: 15 subsystems are unmodeled; layer rules/re-exports are not enforced; four cycles yield report status `FAIL` without failing CI.
+1. **Architecture gate (P0)**: ARCH-201 covers re-exports and the complete reviewed AST syntax set. Fifteen subsystems remain unmodeled, layer rules are not enforced, and four cycles yield report status `FAIL` without failing CI; ARCH-202 and ARCH-203 own those remaining gaps.
 2. **Frontend quality gate (P1)**: 640 lint errors, 12 warnings, and 70 unformatted files are not covered by Frontend CI.
 3. **Autonomous pipeline (P1)**: the mounted lifecycle/events exist, but named engine phases are simulated.
 4. **Durability acknowledgement (P1)**: PostgreSQL writes are scheduled after synchronous cache mutation, so request success does not prove database acceptance.
@@ -189,8 +190,10 @@ closed issue #15.
 
 TECH-AUDIT-2 records 16 evidence-backed debt items. SEC-201 resolves TAV2-001,
 FE-201 resolves TAV2-002, and reciprocal Frontend PR #16 plus backend PR #48
-resolve TAV2-007. The remaining known problems above are the immediate
-release/architecture priorities. Other material items include
+resolve TAV2-007. ARCH-201 issue #51 resolves the parser/re-export portion of
+TAV2-003; ARCH-202 and ARCH-203 retain the manifest, layer, unknown-domain,
+cycle, and exit-semantics work. The remaining known problems above are the
+immediate release/architecture priorities. Other material items include
 runtime/provider/memory consolidation, route-level RBAC, dependency/security
 automation, the unused parallel execution contract, Frontend bundle budgets,
 process-local state classification, documentation consolidation, Studio native
@@ -228,7 +231,8 @@ This template enforces:
 
 ## Last Changes
 
-- July 28, 2026: HARDEN-2A / DOC-201 synchronized the active authentication and two-repository deployment guides, linked their claims to native/composed/protected evidence, annotated the conflicting July 16 decision records as superseded, and expanded the auth-contract test into a search-based authority guard. Issue #49 tracks the focused documentation-only implementation.
+- July 28, 2026: ARCH-2B / ARCH-201 replaced regex import matching with lazy TypeScript AST traversal while preserving the 547-file production/test/quarantine scan boundary and the pruned production dependency set. The reviewed graph contains 1,460 specifications and 1,049 domain edges with zero boundary violations and the same four known cycles. Three native tests cover every supported syntax, false-positive resistance, exact baseline, scope exclusions, and a critical forbidden re-export. Issue #51 tracks the focused implementation; ARCH-202 owns manifest and layer enforcement next.
+- July 28, 2026: HARDEN-2A / DOC-201 synchronized the active authentication and two-repository deployment guides, linked their claims to native/composed/protected evidence, annotated the conflicting July 16 decision records as superseded, and expanded the auth-contract test into a search-based authority guard. PR #50 merged as `2ecb3997eb6fab5074c438f10dedcc1715381e11`; post-merge run #310 passed every protected job, and issue #49 is closed.
 - July 28, 2026: HARDEN-2A / INT-201 completed in both repositories. Frontend PR #16 merged as `739b43cbc5f991c1852e80b30fe38c0e7c02d681`; backend PR #48 merged as `b30be04ce3c5458902561472d371f753b28f08c5` after its CodeRabbit supply-chain finding was fixed with read-only job permissions, non-persisted checkout credentials, and a single inventory-backed Frontend pin. Backend post-merge run #307 passed all protected jobs and 40/40 production checks. Contract artifact `8684538568` has digest `sha256:0babbaf1239615e15479a4adbbcc5f5745965632fb3417c06bc2ee9a70c3c0a9`.
 - July 28, 2026: HARDEN-2A / FE-201 merged through Frontend PR #14 as `2aab7c3367bb55520edc2576422ebafec265d7c6`. The Workspace now parses and renders verified, pending, failed, malformed, and disconnected Studio status instead of hardcoding verification false.
 - July 28, 2026: HARDEN-2A / SEC-201 removed reusable credentials from register/login/refresh JSON while preserving user/role metadata and httpOnly cookie auth. Refresh credentials are now 256-bit random values persisted only as SHA-256 digests with direct digest lookup, migrated from legacy plaintext records before startup traffic, and consumed before replacement so replay fails. Four native production-contract tests cover body shape, cookie policy, digest-only storage, migration, rotation, replay rejection, `/auth/me`, and active terminology. The composed HTTPS verifier now checks register/login/refresh body safety and rotation alongside REST and Socket.IO. Local verification passed `npm run ci` (62 test files passed, one skipped; 676 tests passed, one skipped), the production backend build, all 1,096 tracked-path invariants, and the pinned Frontend workspace tests/build. Issue #45 is closed as completed.

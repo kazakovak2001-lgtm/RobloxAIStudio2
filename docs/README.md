@@ -31,7 +31,9 @@ The old embedded root `src/` frontend is removed and protected by a permanent in
 - CUTOVER-1 and CLEANUP-1A–1D: complete.
 - TECH-AUDIT-2: complete.
 - HARDEN-2A: complete through SEC-201, FE-201, INT-201, and DOC-201.
-- ARCH-2B, FRONTEND-2C, RUNTIME-2D, DURABILITY-2E: planned in that order.
+- ARCH-2B: in progress; ARCH-201 AST import graph is implemented and ARCH-202
+  manifest/layer enforcement is next.
+- FRONTEND-2C, RUNTIME-2D, DURABILITY-2E: planned in that order.
 - STUDIO-2F native asset/GUI/place expansion: optional and deferred.
 - F-12 collaborative development: deferred until authorization, runtime, and durability gates pass.
 
@@ -58,7 +60,11 @@ The complete audit set lives in `docs/02-audits/technical-v2/`:
 - [Architecture Decision Records](./adr/)
 - [Frontend cutover contract](./00-project-control/FRONTEND_CUTOVER.md)
 
-TECH-AUDIT-2 records known gaps in the current architecture manifest and boundary validator. A green boundary command is not authoritative until ARCH-2B closes those gaps.
+TECH-AUDIT-2 records known gaps in the current architecture manifest and
+boundary validator. ARCH-201 closes regex/re-export visibility with a reviewed
+1,460-specification AST graph; a green boundary command is not fully
+authoritative until ARCH-202 and ARCH-203 close manifest, layer, unknown-domain,
+cycle, and exit-semantics gaps.
 
 ## Studio integration
 

@@ -39,8 +39,10 @@ backend issue #45. TAV2-002 is implemented by FE-201 under Frontend issue #13
 and PR #14. TAV2-007 is implemented by Frontend PR #16 and backend issue
 #47 / PR #48. DOC-201 issue #49 corrects the active auth/release subset of
 TAV2-014; the broader historical authority/metrics consolidation remains
-DOC-202 scope. The evidence below remains the immutable TECH-AUDIT-2 baseline;
-current project state is tracked in
+DOC-202 scope. ARCH-201 issue #51 resolves the parser/re-export portion of
+TAV2-003; ARCH-202 and ARCH-203 retain the manifest, layer, unknown-domain,
+cycle, and exit-semantics portions. The evidence below remains the immutable
+TECH-AUDIT-2 baseline; current project state is tracked in
 [`CURRENT_STATE.md`](../../00-project-control/CURRENT_STATE.md).
 
 ## Detailed remediation contracts
@@ -93,6 +95,15 @@ The canonical UI reports a permanent blocker after a successful, backend-verifie
 - TypeScript AST sees 1,446 import-like specs; regex validator sees 1,208 and misses 252 re-exports.
 - Four cycles set report status to `FAIL`, while the script returns zero.
 - `layers.*.canImportFrom` is not evaluated; unknown internal domains are skipped.
+
+**Resolution progress**
+
+ARCH-201 replaces the regex parser with TypeScript AST traversal. Its reviewed
+post-implementation baseline contains 1,460 specifications across the same 547
+production files: the original 1,446, 12 pre-existing import-type query nodes,
+and two lazy-loader specifications. Re-export and scope fixtures are protected.
+Manifest/layer/unknown-domain completeness and truthful cycle/exit policy remain
+open under ARCH-202 and ARCH-203.
 
 **Risk**
 

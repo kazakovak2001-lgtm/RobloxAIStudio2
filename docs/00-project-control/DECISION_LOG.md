@@ -4,6 +4,39 @@ All significant architectural and product decisions are recorded here.
 
 ---
 
+## 2026-07-28 — ARCH-2B / ARCH-201 TypeScript AST Import Graph
+
+**Decision**: Replace all regex extraction in `ImportBoundaryValidator` with
+TypeScript compiler AST traversal. Classify static, type-only, side-effect,
+re-export, dynamic-import, CommonJS `require`, import-equals, and import-type
+query specifications before applying the existing manifest, hard-ban, graph,
+and cycle logic.
+
+**Reviewed baseline**: The TECH-AUDIT-2 inventory counted 1,446 specifications:
+1,189 import declarations, 252 re-exports, three dynamic imports, and two
+`require` calls. ARCH-201 also observes 12 pre-existing import-type query nodes
+that the audit inventory excluded plus the two specifications required by the
+lazy AST loader itself. The post-implementation baseline is therefore 1,460
+specifications across the same 547 production files, producing 1,049 domain
+edges, zero boundary violations, and the same four known cycles.
+
+**Runtime preservation**: TypeScript remains a development dependency. The
+compiler is loaded only after a source tree is found, so the pruned production
+image can import the validator without bundling or resolving TypeScript.
+Production runtime, dependencies, manifest rules, release topology, auth, and
+Frontend behavior are unchanged.
+
+**Executable guard**: Native fixtures prove every supported syntax, ignore
+comment/string and non-literal false positives, preserve test/quarantine
+exclusions, pin the reviewed production count, and turn a forbidden re-export
+into a critical `API_NO_INFRA_BYPASS` violation.
+
+**Status**: Implemented under issue #51. ARCH-202 retains exhaustive manifest,
+path, layer, and unknown-domain enforcement; ARCH-203 retains cycle and
+report/exit semantics.
+
+---
+
 ## 2026-07-28 — HARDEN-2A / DOC-201 Active Auth and Release Authority
 
 **Decision**: Keep storage-backed opaque sessions and the independent backend /
@@ -24,8 +57,10 @@ authoritative file set for obsolete signed-token, signing-secret,
 cryptographic-validation, and strict-site cookie claims. It also requires
 supersession banners on the retained conflicting July 16 sections.
 
-**Status**: Implemented under issue #49. Protected CI and review remain the
-merge acceptance gate.
+**Status**: Complete under closed issue #49 and merged PR #50. Merge
+`2ecb3997eb6fab5074c438f10dedcc1715381e11` passed post-merge CI run #310,
+including the protected production contract, composed release, rollback,
+invariant guard, and Merge Gate.
 
 ---
 

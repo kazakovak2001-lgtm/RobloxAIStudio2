@@ -18,7 +18,7 @@ This sequence is authoritative for work after the standalone frontend integratio
 | CUTOVER-1     | Release promotion and legacy frontend removal                  | High     | ✅ Complete                         | WORKSPACE-1, STUDIO-1 |
 | TECH-AUDIT-2  | Evidence-based two-repository technical baseline               | Critical | ✅ Complete                         | CUTOVER-1             |
 | HARDEN-2A     | Auth response, Studio state, and contract-E2E correctness      | Critical | ✅ Complete                         | TECH-AUDIT-2          |
-| ARCH-2B       | Exhaustive and truthful architecture boundary gate             | Critical | Planned                             | HARDEN-2A             |
+| ARCH-2B       | Exhaustive and truthful architecture boundary gate             | Critical | ◐ ARCH-201 implemented              | HARDEN-2A             |
 | FRONTEND-2C   | Protected Frontend quality and bundle baseline                 | High     | Planned                             | HARDEN-2A             |
 | RUNTIME-2D    | Runtime/provider/orchestration/memory consolidation            | High     | Planned                             | ARCH-2B               |
 | DURABILITY-2E | Request-level durability and operational-state classification  | High     | Planned                             | RUNTIME-2D            |
@@ -105,6 +105,13 @@ release, exact 40/40 contract, promoted-baseline rollback, post-removal
 invariants, and Merge Gate. Contract artifact `8684538568` has digest
 `sha256:0babbaf1239615e15479a4adbbcc5f5745965632fb3417c06bc2ee9a70c3c0a9`.
 
+ARCH-2B / ARCH-201 is implemented under issue #51. The boundary validator now
+uses TypeScript AST traversal for static/type/side-effect imports, re-exports,
+dynamic imports, `require`, import-equals, and import-type queries. The reviewed
+production baseline is 547 files, 1,460 specifications, 1,049 domain edges, zero
+boundary violations, and the same four known cycles. ARCH-202 is next and owns
+manifest completeness, path validation, layer rules, and unknown domains.
+
 ## Historical Roadmap: UX-4 Feature Development
 
 | ID   | Feature                  | Priority     | Status      | Sprint |
@@ -159,6 +166,7 @@ separate SEC-202 scope.
 - ✅ CLEANUP-1D COMPLETE — protected merge and post-merge verification passed
 - ✅ TECH-AUDIT-2 COMPLETE — first official backend + standalone Frontend technical baseline
 - ✅ HARDEN-2A COMPLETE — SEC-201, FE-201, INT-201, and DOC-201 issue #49 close the release-correctness phase
+- ◐ ARCH-2B IN PROGRESS — ARCH-201 AST graph is implemented under issue #51; ARCH-202 is next
 
 ## Release Hardening Sprint Status
 
@@ -196,6 +204,6 @@ separate SEC-202 scope.
 - **Security Status**: SEC-201 removes credentials from browser JSON and protects refresh persistence/rotation; route-level RBAC and protected security/dependency automation remain separate backlog items
 - **Historical v1.0 Decision**: ✅ APPROVED for the embedded product baseline
 - **Studio Gate**: ✅ STUDIO-1 complete with real desktop evidence
-- **Current Decision**: ✅ CUTOVER-1, CLEANUP, TECH-AUDIT-2, and HARDEN-2A are complete; ARCH-2B is next
+- **Current Decision**: ✅ CUTOVER-1, CLEANUP, TECH-AUDIT-2, and HARDEN-2A are complete; ◐ ARCH-2B has ARCH-201 implemented and ARCH-202 next
 - **Sign-Off Document**: `FINAL_V1_RELEASE_SIGN_OFF.md`
 - **Post-release**: F-12 (Collaborative Dev) deferred to post-launch
