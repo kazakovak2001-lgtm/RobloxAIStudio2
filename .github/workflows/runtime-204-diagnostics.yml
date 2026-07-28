@@ -1,0 +1,51 @@
+name: RUNTIME-204 Diagnostics
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  diagnose-autonomous:
+    if: github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.ref }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "npm"
+      - run: npm ci
+      - name: Capture typecheck
+        shell: bash
+        run: |
+          set +e
+          npm run typecheck > typecheck.log 2>&1
+          echo "$?" > typecheck.status
+          cat typecheck.log
+          exit 0
+      - name: Capture orchestrator tests
+        shell: bash
+        run: |
+          set +e
+          node node_modules/vitest/vitest.mjs --config config/testing/vitest.backend.config.ts run server/src/orchestrator/AutonomousOrchestrator.test.ts > orchestrator-test.log 2>&1
+          echo "$?" > orchestrator-test.status
+          cat orchestrator-test.log
+          exit 0
+      - name: Publish diagnostics
+        uses: actions/upload-artifact@v4
+        with:
+          name: runtime-204-diagnostics-${{ github.sha }}
+          path: |
+            typecheck.log
+            typecheck.status
+            orchestrator-test.log
+            orchestrator-test.status
+          retention-days: 1
+      - name: Enforce diagnostics
+        run: |
+          test "$(cat typecheck.status)" = "0"
+          test "$(cat orchestrator-test.status)" = "0"
