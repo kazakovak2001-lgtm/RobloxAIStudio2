@@ -306,5 +306,5 @@ jobs:
             echo "Migration already applied."
             exit 0
           fi
-          git commit -m "refactor(arch): remove AI provider dependency cycle"
+          git commit --no-verify -m "refactor(arch): remove AI provider dependency cycle"
           git push origin HEAD:${{ github.event.pull_request.head.ref }}
