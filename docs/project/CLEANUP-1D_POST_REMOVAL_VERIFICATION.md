@@ -47,9 +47,10 @@ the staged-file guard.
 
 ## Preservation
 
-CLEANUP-1D changes no backend API, authentication, storage, generation, Studio
-protocol, dependency declaration, lockfile, release topology, canonical
-Frontend commit, protected default, or rollback reference. It deletes no file.
+CLEANUP-1D changes no backend API, authentication, storage, generation-output
+behavior, Studio protocol, dependency declaration, lockfile, release topology,
+canonical Frontend commit, protected default, or rollback reference. It deletes
+no file.
 
 Studio package-relative `src/**`, generated Roblox artifact-relative
 `src/server`, `src/client`, and `src/shared`, historical documentation, and

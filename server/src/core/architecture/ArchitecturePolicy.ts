@@ -5,6 +5,8 @@
  * Single source of truth for all boundary enforcement layers.
  */
 
+import { posix } from "node:path";
+
 export const ARCHITECTURE = {
   backendRoot: "server/src",
   studioPluginRoot: "studio-plugin/src",
@@ -40,7 +42,7 @@ export type BoundaryZone = "backend" | "studio-plugin" | "unknown";
  * Resolve which boundary zone a file path belongs to.
  */
 export function resolveBoundary(filePath: string): BoundaryZone {
-  const normalized = filePath.replace(/\\/g, "/");
+  const normalized = posix.normalize(filePath.replace(/\\/g, "/"));
   if (
     normalized === ARCHITECTURE.backendRoot ||
     normalized.startsWith(`${ARCHITECTURE.backendRoot}/`)

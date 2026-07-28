@@ -19,7 +19,7 @@ const FORBIDDEN_ROOTS = [
 const CROSS_BOUNDARY_PATTERNS = [
   {
     zone: "server/src/",
-    forbidden: /(?:from\s+|import\s*\()\s*["'](?:@\/|(?:\.\.\/)+src\/)/g,
+    forbidden: /(?:from\s+|import\s*\()\s*["'](?:@\/|(?:\.\.\/)+src\/)/,
     msg: "Backend imports the removed root frontend",
   },
 ];

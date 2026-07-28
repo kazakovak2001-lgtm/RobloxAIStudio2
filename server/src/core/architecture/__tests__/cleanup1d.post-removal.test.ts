@@ -2,6 +2,7 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { CodeReviewControllerAgent } from "../../../agents/implementations/CodeReviewControllerAgent";
 import { GenerationSandbox } from "../../ai/GenerationSandbox";
 import { CodebaseKnowledge } from "../../../knowledge/CodebaseKnowledge";
 import { ARCHITECTURE, resolveBoundary } from "../ArchitecturePolicy";
@@ -35,6 +36,7 @@ describe("CLEANUP-1D post-removal architecture", () => {
     expect(resolveBoundary("studio-plugin/src/Main.lua")).toBe("studio-plugin");
     expect(resolveBoundary("src/App.tsx")).toBe("unknown");
     expect(resolveBoundary("shared/contracts.ts")).toBe("unknown");
+    expect(resolveBoundary("server/src/../../src/App.tsx")).toBe("unknown");
   });
 
   it("rejects the removed root while allowing canonical source paths", () => {
@@ -60,11 +62,29 @@ describe("CLEANUP-1D post-removal architecture", () => {
     expect(sandbox.getValidPrefix("studio-plugin")).toBe("studio-plugin/src/");
     expect(sandbox.isValidTarget("backend", "src/generated.ts")).toBe(false);
     expect(
+      sandbox.isValidTarget("backend", "server/src/../../src/generated.ts"),
+    ).toBe(false);
+    expect(
       sandbox.isValidTarget(
         "studio-plugin",
         "studio-plugin/src/services/NewService.lua",
       ),
     ).toBe(true);
+  });
+
+  it("detects side-effect imports of the retired frontend alias", async () => {
+    const result = await new CodeReviewControllerAgent().execute({
+      code: 'import "@/retired-side-effect";\n',
+      filePath: "server/src/example.ts",
+    });
+
+    expect(result.success).toBe(true);
+    const review = result.data?.review as {
+      staticFindings: Array<{ rule: string; passed: boolean }>;
+    };
+    expect(review.staticFindings).toContainEqual(
+      expect.objectContaining({ rule: "R1", passed: false }),
+    );
   });
 
   it("fails the runtime guard when root src is reintroduced", () => {

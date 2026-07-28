@@ -115,7 +115,9 @@ export class CodeReviewControllerAgent extends BaseAgent {
       filePath.startsWith("server/src/") ||
       filePath.startsWith("studio-plugin/src/")
     ) {
-      const hasRetiredAlias = /(?:from\s+|import\s*\()\s*["']@\//.test(code);
+      const hasRetiredAlias = /(?:from\s+|import\s*(?:\(\s*)?)["']@\//.test(
+        code,
+      );
       findings.push({
         rule: "R1",
         passed: !hasRetiredAlias,

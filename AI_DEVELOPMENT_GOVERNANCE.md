@@ -192,9 +192,7 @@ Every AI assistant working on this repository MUST:
 ## References
 
 - `architecture.manifest.json` — Domain definitions and boundary rules
-- `scripts/validate-architecture.ts` — Dual-root architecture validator
+- `scripts/validate-architecture.ts` — Backend and Studio architecture validator
 - `scripts/validate-boundaries.ts` — Import boundary firewall
-- `shared/contracts/` — API contract types
-- `shared/events/` — Socket.io event definitions
 - `server/tsconfig.json` — Backend TypeScript configuration
 - Standalone Frontend repository — Web-client TypeScript configuration
