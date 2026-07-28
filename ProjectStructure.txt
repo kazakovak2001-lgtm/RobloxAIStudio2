@@ -8,11 +8,9 @@
 ├── .env.example
 ├── .eslintrc.json
 ├── .github
-│   ├── arch-204-trigger.txt
 │   ├── copilot-instructions.md
 │   └── workflows
 │       ├── ci.yml
-│       ├── patch-ai-provider-commit.yml
 │       └── studio-plugin-package.yml
 ├── .gitignore
 ├── .husky
@@ -623,8 +621,6 @@
 │   │   │       ├── SharedAgentContext.ts
 │   │   │       └── types.ts
 │   │   ├── ai
-│   │   │   ├── __tests__
-│   │   │   │   └── providerFactory.test.ts
 │   │   │   ├── agents
 │   │   │   │   ├── __tests__
 │   │   │   │   │   └── AgentRegistry.test.ts
@@ -648,7 +644,6 @@
 │   │   │   │   ├── GameIdeaAnalyzer.ts
 │   │   │   │   ├── index.ts
 │   │   │   │   └── PromptQualityValidator.ts
-│   │   │   ├── llmUtils.ts
 │   │   │   ├── memory
 │   │   │   │   ├── __tests__
 │   │   │   │   │   └── MemoryStore.test.ts
@@ -665,7 +660,6 @@
 │   │   │   │   └── PromptEngine.ts
 │   │   │   ├── promptTemplates.ts
 │   │   │   ├── provider.ts
-│   │   │   ├── providerFactory.ts
 │   │   │   ├── router.ts
 │   │   │   └── runtime
 │   │   │       ├── __tests__
@@ -1175,6 +1169,7 @@
 │   │   ├── providers
 │   │   │   ├── __tests__
 │   │   │   │   ├── groq.test.ts
+│   │   │   │   ├── providerFactory.test.ts
 │   │   │   │   └── providers.test.ts
 │   │   │   ├── ai
 │   │   │   │   ├── __tests__
@@ -1196,10 +1191,12 @@
 │   │   │   ├── anthropic.ts
 │   │   │   ├── gemini.ts
 │   │   │   ├── groq.ts
+│   │   │   ├── llmUtils.ts
 │   │   │   ├── mock.ts
 │   │   │   ├── ollama.ts
 │   │   │   ├── openai.ts
-│   │   │   └── openrouter.ts
+│   │   │   ├── openrouter.ts
+│   │   │   └── providerFactory.ts
 │   │   ├── repair
 │   │   │   ├── index.ts
 │   │   │   ├── RepairEngine.ts
@@ -1324,7 +1321,8 @@
 │   │   │   ├── blueprint.ts
 │   │   │   ├── game-generation-result.ts
 │   │   │   ├── gameDesignSeed.ts
-│   │   │   └── index.ts
+│   │   │   ├── index.ts
+│   │   │   └── llm.ts
 │   │   ├── ui-gen
 │   │   │   ├── __tests__
 │   │   │   │   └── UIGeneration.test.ts

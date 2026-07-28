@@ -3,10 +3,8 @@
 .dockerignore
 .env.example
 .eslintrc.json
-.github/arch-204-trigger.txt
 .github/copilot-instructions.md
 .github/workflows/ci.yml
-.github/workflows/patch-ai-provider-commit.yml
 .github/workflows/studio-plugin-package.yml
 .gitignore
 .husky/commit-msg
@@ -532,7 +530,6 @@ server/src/agents/orchestrator/SharedAgentContext.ts
 server/src/agents/orchestrator/__tests__/Orchestration.test.ts
 server/src/agents/orchestrator/index.ts
 server/src/agents/orchestrator/types.ts
-server/src/ai/__tests__/providerFactory.test.ts
 server/src/ai/agents/AgentMetadata.ts
 server/src/ai/agents/AgentRegistry.ts
 server/src/ai/agents/__tests__/AgentRegistry.test.ts
@@ -551,7 +548,6 @@ server/src/ai/gameArchitect/GameDesignGenerator.ts
 server/src/ai/gameArchitect/GameIdeaAnalyzer.ts
 server/src/ai/gameArchitect/PromptQualityValidator.ts
 server/src/ai/gameArchitect/index.ts
-server/src/ai/llmUtils.ts
 server/src/ai/memory/MemoryEntry.ts
 server/src/ai/memory/MemorySearch.ts
 server/src/ai/memory/MemoryStore.ts
@@ -564,7 +560,6 @@ server/src/ai/prompts/__tests__/PromptEngine.test.ts
 server/src/ai/prompts/defaultPrompts.ts
 server/src/ai/prompts/index.ts
 server/src/ai/provider.ts
-server/src/ai/providerFactory.ts
 server/src/ai/router.ts
 server/src/ai/runtime/AgentRuntime.ts
 server/src/ai/runtime/AgentValidator.ts
@@ -949,6 +944,7 @@ server/src/projects/services/project.service.ts
 server/src/projects/types/blueprint.ts
 server/src/projects/validation/project.validation.ts
 server/src/providers/__tests__/groq.test.ts
+server/src/providers/__tests__/providerFactory.test.ts
 server/src/providers/__tests__/providers.test.ts
 server/src/providers/ai/BaseProvider.ts
 server/src/providers/ai/PromptBuilder.ts
@@ -967,10 +963,12 @@ server/src/providers/ai/types.ts
 server/src/providers/anthropic.ts
 server/src/providers/gemini.ts
 server/src/providers/groq.ts
+server/src/providers/llmUtils.ts
 server/src/providers/mock.ts
 server/src/providers/ollama.ts
 server/src/providers/openai.ts
 server/src/providers/openrouter.ts
+server/src/providers/providerFactory.ts
 server/src/repair/RepairEngine.ts
 server/src/repair/RepairExecutor.ts
 server/src/repair/RepairPlanner.ts
@@ -1066,6 +1064,7 @@ server/src/types/blueprint.ts
 server/src/types/game-generation-result.ts
 server/src/types/gameDesignSeed.ts
 server/src/types/index.ts
+server/src/types/llm.ts
 server/src/ui-gen/UIGenerationEngine.ts
 server/src/ui-gen/UIHierarchyBuilder.ts
 server/src/ui-gen/UILayoutBuilder.ts
