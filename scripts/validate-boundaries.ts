@@ -6,18 +6,29 @@ import {
   writeFileSync,
 } from "node:fs";
 import { join, relative } from "node:path";
-import { buildAstImportInventory } from "./architecture/ast-import-inventory";
 import { ImportBoundaryValidator } from "../server/src/core/architecture/ImportBoundaryValidator";
+import { buildAstImportInventory } from "./architecture/ast-import-inventory";
 
 const ROOT = process.cwd();
 const MANIFEST_PATH = join(ROOT, "architecture.manifest.json");
 const REPORT_PATH = join(ROOT, "boundary-report.json");
 
+interface LayerDefinition {
+  modules?: string[];
+  canImportFrom?: string[];
+}
+
+interface AllowedLayerEdge {
+  from: string;
+  to: string;
+  reason: string;
+}
+
 interface ArchitectureManifest {
   domains: Record<string, { path: string; layer: string }>;
-  layers: Record<string, { modules?: string[]; canImportFrom?: string[] }>;
+  layers: Record<string, LayerDefinition>;
   allowedCycles?: string[][];
-  allowedLayerEdges?: Array<{ from: string; to: string; reason: string }>;
+  allowedLayerEdges?: AllowedLayerEdge[];
   excludedTopLevelEntries?: Array<{ name: string; reason: string }>;
 }
 
@@ -31,18 +42,15 @@ interface LayerViolation {
 }
 
 function canonicalCycle(cycle: string[]): string {
-  const clean =
-    cycle.length > 1 && cycle[0] === cycle[cycle.length - 1]
-      ? cycle.slice(0, -1)
-      : [...cycle];
-
+  const closesCycle = cycle.length > 1 && cycle[0] === cycle.at(-1);
+  const clean = closesCycle ? cycle.slice(0, -1) : [...cycle];
   if (clean.length === 0) return "";
 
-  const rotations = clean.map((_, index) =>
-    [...clean.slice(index), ...clean.slice(0, index)].join("→"),
-  );
-
-  return rotations.sort()[0];
+  return clean
+    .map((_, index) =>
+      [...clean.slice(index), ...clean.slice(0, index)].join("→"),
+    )
+    .sort()[0];
 }
 
 function layerEdgeKey(from: string, to: string): string {
@@ -55,12 +63,10 @@ function validateManifest(manifest: ArchitectureManifest): string[] {
   const exclusions = new Set(
     (manifest.excludedTopLevelEntries ?? []).map((entry) => entry.name),
   );
-
   const realSubsystems = readdirSync(serverSrc, { withFileTypes: true })
     .filter((entry) => entry.isDirectory() && !exclusions.has(entry.name))
     .map((entry) => entry.name)
     .sort();
-
   const modeledByTopLevel = new Map<string, string>();
 
   for (const [domain, definition] of Object.entries(manifest.domains)) {
@@ -108,19 +114,20 @@ function validateManifest(manifest: ArchitectureManifest): string[] {
     }
   }
 
-  for (const modeledSubsystem of modeledByTopLevel.keys()) {
-    if (!realSubsystems.includes(modeledSubsystem)) {
-      errors.push(`Manifest models non-subsystem path: '${modeledSubsystem}'.`);
+  for (const subsystem of modeledByTopLevel.keys()) {
+    if (!realSubsystems.includes(subsystem)) {
+      errors.push(`Manifest models non-subsystem path: '${subsystem}'.`);
     }
   }
 
   for (const [layerName, layer] of Object.entries(manifest.layers)) {
     for (const domain of layer.modules ?? []) {
-      if (!manifest.domains[domain]) {
+      const definition = manifest.domains[domain];
+      if (!definition) {
         errors.push(`Layer '${layerName}' lists unknown domain '${domain}'.`);
-      } else if (manifest.domains[domain].layer !== layerName) {
+      } else if (definition.layer !== layerName) {
         errors.push(
-          `Layer '${layerName}' lists '${domain}', but the domain declares '${manifest.domains[domain].layer}'.`,
+          `Layer '${layerName}' lists '${domain}', but the domain declares '${definition.layer}'.`,
         );
       }
     }
@@ -146,6 +153,12 @@ function validateManifest(manifest: ArchitectureManifest): string[] {
         `Allowed layer edge '${exception.from} → ${exception.to}' is stale because the edge is already permitted.`,
       );
     }
+
+    if (!exception.reason.trim()) {
+      errors.push(
+        `Allowed layer edge '${exception.from} → ${exception.to}' requires a reason.`,
+      );
+    }
   }
 
   return errors;
@@ -164,8 +177,8 @@ function collectLayerViolations(
     const targetLayer = validator.resolveLayer(edge.to);
     if (sourceLayer === targetLayer) continue;
 
-    const allowed = manifest.layers[sourceLayer]?.canImportFrom ?? [];
-    if (allowed.includes(targetLayer)) continue;
+    const allowedLayers = manifest.layers[sourceLayer]?.canImportFrom ?? [];
+    if (allowedLayers.includes(targetLayer)) continue;
 
     const key = [edge.file, edge.importPath, edge.from, edge.to].join("|");
     if (seen.has(key)) continue;
@@ -184,6 +197,26 @@ function collectLayerViolations(
   return violations;
 }
 
+function printLayerViolations(
+  title: string,
+  violations: LayerViolation[],
+): void {
+  if (violations.length === 0) return;
+
+  console.error(title);
+  for (const violation of violations.slice(0, 20)) {
+    const edge = `${violation.sourceLayer} → ${violation.targetLayer}`;
+    console.error(`    ${edge}: ${violation.file}`);
+    console.error(`      imports ${violation.importPath}`);
+  }
+  if (violations.length > 20) {
+    console.error(
+      `    ... ${violations.length - 20} additional violation(s) in boundary-report.json`,
+    );
+  }
+  console.error("");
+}
+
 function main(): void {
   console.log("╔══════════════════════════════════════════════════╗");
   console.log("║  Architecture Boundary Firewall v2.0             ║");
@@ -193,7 +226,6 @@ function main(): void {
     readFileSync(MANIFEST_PATH, "utf8"),
   ) as ArchitectureManifest;
   const manifestErrors = validateManifest(manifest);
-
   const validator = new ImportBoundaryValidator(ROOT);
   const result = validator.scanProject();
   const astInventory = buildAstImportInventory(ROOT, validator);
@@ -280,8 +312,7 @@ function main(): void {
   console.log(`  Unexpected cycles:   ${unexpectedCycles.length}`);
   console.log(`  Allowed layer debt:  ${acknowledgedLayerViolations.length}`);
   console.log(`  Layer violations:    ${unexpectedLayerViolations.length}`);
-  console.log(`  Violations:          ${result.violations.length}`);
-  console.log("");
+  console.log(`  Violations:          ${result.violations.length}\n`);
 
   if (manifestErrors.length > 0) {
     console.error("  ❌ MANIFEST CONFIGURATION ERRORS:\n");
@@ -308,20 +339,10 @@ function main(): void {
     console.warn("");
   }
 
-  if (unexpectedLayerViolations.length > 0) {
-    console.error("  ❌ NON-ALLOWLISTED LAYER VIOLATIONS:");
-    for (const violation of unexpectedLayerViolations.slice(0, 20)) {
-      console.error(
-        `    ${violation.sourceLayer} → ${violation.targetLayer}: ${violation.file} imports ${violation.importPath}`,
-      );
-    }
-    if (unexpectedLayerViolations.length > 20) {
-      console.error(
-        `    ... ${unexpectedLayerViolations.length - 20} additional violation(s) in boundary-report.json`,
-      );
-    }
-    console.error("");
-  }
+  printLayerViolations(
+    "  ❌ NON-ALLOWLISTED LAYER VIOLATIONS:",
+    unexpectedLayerViolations,
+  );
 
   if (acknowledgedCycles.length > 0) {
     console.warn("  ⚠️  TEMPORARILY ALLOWLISTED CYCLES:");
@@ -353,9 +374,7 @@ function main(): void {
   }
 
   if (failed) {
-    console.error(
-      "  ❌ FAIL — architecture gate rejected the repository state.",
-    );
+    console.error("  ❌ FAIL — architecture gate rejected the repository state.");
     console.error("  Report saved to: boundary-report.json");
     process.exit(1);
   }
@@ -371,7 +390,6 @@ function main(): void {
   }
   console.log("  Architecture Model: EXHAUSTIVE DOMAIN-ISOLATED PLATFORM");
   console.log("  Report saved to: boundary-report.json");
-  process.exit(0);
 }
 
 main();
