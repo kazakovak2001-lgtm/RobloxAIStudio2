@@ -1,21 +1,24 @@
 {
-  "version": "1.0.0",
-  "description": "Roblox AI Studio DevKit — Domain Boundary Manifest",
-
+  "version": "2.0.0",
+  "description": "Roblox AI Studio DevKit — exhaustive backend domain boundary manifest",
   "layers": {
     "core": {
       "path": "server/src/core",
-      "description": "Foundation layer — shared interfaces, architecture enforcement, AI sandbox",
+      "description": "Foundation layer — shared architecture and execution primitives",
       "canImportFrom": []
     },
     "domains": {
-      "description": "Business domain modules — isolated game generation capabilities",
+      "description": "Business-domain modules",
       "modules": [
         "agents",
         "ai",
+        "analytics",
         "artifacts",
         "assembly",
+        "assets",
         "collaboration",
+        "compiler",
+        "domain",
         "economy",
         "evaluation",
         "eventsource",
@@ -23,46 +26,62 @@
         "export",
         "generation",
         "governance",
+        "knowledge",
         "lifecycle",
+        "lua",
         "memory",
+        "orchestrator",
         "planning",
+        "playtest",
         "plugins",
+        "repair",
         "simulation",
         "studio",
+        "ui-gen",
         "world"
       ],
-      "canImportFrom": ["core", "common", "types"]
+      "canImportFrom": ["core", "shared"]
     },
     "infrastructure": {
-      "description": "Technical services — cloud, distributed, socket, providers",
+      "description": "Technical runtime and transport services",
       "modules": [
         "cloud",
         "distributed",
-        "socket",
+        "integration",
+        "jobs",
+        "pipeline",
         "providers",
-        "engine",
-        "pipeline"
+        "runtime",
+        "socket"
       ],
-      "canImportFrom": ["core", "common", "types"]
+      "canImportFrom": ["core", "shared", "domains"]
     },
     "api": {
-      "path": "server/src/routes",
-      "description": "HTTP/WebSocket API layer — must go through services",
-      "canImportFrom": ["core", "domains", "common", "types", "projects"]
+      "description": "HTTP, platform and composition-facing adapters",
+      "modules": ["api", "platform", "projects", "routes"],
+      "canImportFrom": ["core", "shared", "domains", "infrastructure"]
     },
     "shared": {
-      "modules": ["common", "types", "validation"],
-      "description": "Shared types, utilities, and validation schemas",
+      "description": "Shared types, utilities, services and validation schemas",
+      "modules": ["common", "services", "types", "validation"],
       "canImportFrom": []
     }
   },
-
   "domains": {
     "agents": { "path": "server/src/agents", "layer": "domains" },
     "ai": { "path": "server/src/ai", "layer": "domains" },
+    "analytics": { "path": "server/src/analytics", "layer": "domains" },
+    "api": { "path": "server/src/api", "layer": "api" },
     "artifacts": { "path": "server/src/artifacts", "layer": "domains" },
     "assembly": { "path": "server/src/assembly", "layer": "domains" },
+    "assets": { "path": "server/src/assets", "layer": "domains" },
+    "cloud": { "path": "server/src/cloud", "layer": "infrastructure" },
     "collaboration": { "path": "server/src/collaboration", "layer": "domains" },
+    "common": { "path": "server/src/common", "layer": "shared" },
+    "compiler": { "path": "server/src/compiler", "layer": "domains" },
+    "core": { "path": "server/src/core", "layer": "core" },
+    "distributed": { "path": "server/src/distributed", "layer": "infrastructure" },
+    "domain": { "path": "server/src/domain", "layer": "domains" },
     "economy": { "path": "server/src/economy", "layer": "domains" },
     "evaluation": { "path": "server/src/evaluation", "layer": "domains" },
     "eventsource": { "path": "server/src/eventsource", "layer": "domains" },
@@ -70,31 +89,48 @@
     "export": { "path": "server/src/export", "layer": "domains" },
     "generation": { "path": "server/src/generation", "layer": "domains" },
     "governance": { "path": "server/src/governance", "layer": "domains" },
+    "integration": { "path": "server/src/integration", "layer": "infrastructure" },
+    "jobs": { "path": "server/src/jobs", "layer": "infrastructure" },
+    "knowledge": { "path": "server/src/knowledge", "layer": "domains" },
     "lifecycle": { "path": "server/src/lifecycle", "layer": "domains" },
+    "lua": { "path": "server/src/lua", "layer": "domains" },
     "memory": { "path": "server/src/memory", "layer": "domains" },
-    "planning": { "path": "server/src/planning", "layer": "domains" },
-    "plugins": { "path": "server/src/plugins", "layer": "domains" },
-    "simulation": { "path": "server/src/simulation", "layer": "domains" },
-    "studio": { "path": "server/src/studio", "layer": "domains" },
-    "world": { "path": "server/src/world", "layer": "domains" },
-    "cloud": { "path": "server/src/cloud", "layer": "infrastructure" },
-    "distributed": {
-      "path": "server/src/distributed",
-      "layer": "infrastructure"
-    },
-    "socket": { "path": "server/src/socket", "layer": "infrastructure" },
-    "providers": { "path": "server/src/providers", "layer": "infrastructure" },
-    "engine": { "path": "server/src/engine", "layer": "infrastructure" },
+    "orchestrator": { "path": "server/src/orchestrator", "layer": "domains" },
     "pipeline": { "path": "server/src/pipeline", "layer": "infrastructure" },
-    "routes": { "path": "server/src/routes", "layer": "api" },
+    "planning": { "path": "server/src/planning", "layer": "domains" },
+    "platform": { "path": "server/src/platform", "layer": "api" },
+    "playtest": { "path": "server/src/playtest", "layer": "domains" },
+    "plugins": { "path": "server/src/plugins", "layer": "domains" },
     "projects": { "path": "server/src/projects", "layer": "api" },
-    "api": { "path": "server/src/api", "layer": "api" },
-    "core": { "path": "server/src/core", "layer": "core" },
-    "common": { "path": "server/src/common", "layer": "shared" },
+    "providers": { "path": "server/src/providers", "layer": "infrastructure" },
+    "repair": { "path": "server/src/repair", "layer": "domains" },
+    "routes": { "path": "server/src/routes", "layer": "api" },
+    "runtime": { "path": "server/src/runtime", "layer": "infrastructure" },
+    "services": { "path": "server/src/services", "layer": "shared" },
+    "simulation": { "path": "server/src/simulation", "layer": "domains" },
+    "socket": { "path": "server/src/socket", "layer": "infrastructure" },
+    "studio": { "path": "server/src/studio", "layer": "domains" },
     "types": { "path": "server/src/types", "layer": "shared" },
-    "validation": { "path": "server/src/validation", "layer": "shared" }
+    "ui-gen": { "path": "server/src/ui-gen", "layer": "domains" },
+    "validation": { "path": "server/src/validation", "layer": "shared" },
+    "world": { "path": "server/src/world", "layer": "domains" }
   },
-
+  "excludedTopLevelEntries": [
+    {
+      "name": "__tests__",
+      "reason": "Cross-domain test root; production architecture scans exclude tests."
+    },
+    {
+      "name": "index.ts",
+      "reason": "Canonical server composition root, not a subsystem directory."
+    }
+  ],
+  "allowedCycles": [
+    ["ai", "providers"],
+    ["execution", "socket"],
+    ["execution", "planning", "socket"],
+    ["assembly", "governance"]
+  ],
   "forbiddenEdges": [
     {
       "from": ["simulation", "economy", "world"],
@@ -112,36 +148,27 @@
       "from": "*",
       "to": ["_quarantine"],
       "rule": "QUARANTINE_HARD_BAN",
-      "message": "Quarantined modules must not be imported by any active code."
+      "message": "Quarantined modules must not be imported by active code."
     }
   ],
-
   "hardBans": [
     {
       "pattern": "execution/aiPipelineIntegrator",
       "allowedIn": ["server/src/execution/aiPipelineIntegrator.ts"],
       "rule": "DEPRECATED_INTEGRATOR_BAN",
-      "message": "aiPipelineIntegrator is deprecated. Use PlanExecutor as the only runtime engine."
+      "message": "aiPipelineIntegrator is deprecated. Use PlanExecutor as the runtime engine."
     }
   ],
-
   "entrypoints": {
     "runtimeExecution": "server/src/planning/execution/PlanExecutor.ts",
     "apiRoutes": "server/src/routes/",
     "serverBootstrap": "server/src/index.ts"
   },
-
   "deprecated": [
     {
       "module": "execution/aiPipelineIntegrator",
-      "reason": "Replaced by PlanExecutor — single runtime execution engine",
+      "reason": "Replaced by PlanExecutor",
       "preservedFor": ["PIPELINE_STAGES constant", "type references"],
-      "runtimeUsage": "FORBIDDEN"
-    },
-    {
-      "module": "_quarantine/llm/LLMProvider",
-      "reason": "Zero references — quarantined for removal",
-      "preservedFor": [],
       "runtimeUsage": "FORBIDDEN"
     }
   ]
