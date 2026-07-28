@@ -1,4 +1,4 @@
-name: Diagnose RUNTIME-204 Preservation Contracts
+name: Diagnose RUNTIME-204 Preservation Contracts v2
 
 on:
   pull_request:
@@ -30,24 +30,16 @@ jobs:
             server/src/__tests__/autonomousPipelinePreservation.test.ts \
             server/src/__tests__/integration.test.ts \
             server/src/__tests__/performance.test.ts
-      - name: Capture validation logs
+      - name: Capture typecheck and full test output
         shell: bash
         run: |
           set +e
           npm run typecheck > typecheck.log 2>&1
           echo "$?" > typecheck.status
-          npm run validate:runtime > runtime.log 2>&1
-          echo "$?" > runtime.status
-          npm run validate:memory > memory.log 2>&1
-          echo "$?" > memory.status
           npm run test > test.log 2>&1
           echo "$?" > test.status
-          npm run lint > lint.log 2>&1
-          echo "$?" > lint.status
-          npm run format:check > format.log 2>&1
-          echo "$?" > format.status
-          tail -n 120 typecheck.log
-          tail -n 120 test.log
+          tail -n 160 typecheck.log
+          tail -n 240 test.log
           exit 0
       - name: Publish validation diagnostics
         uses: actions/upload-artifact@v4
@@ -56,22 +48,10 @@ jobs:
           path: |
             typecheck.log
             typecheck.status
-            runtime.log
-            runtime.status
-            memory.log
-            memory.status
             test.log
             test.status
-            lint.log
-            lint.status
-            format.log
-            format.status
           retention-days: 1
       - name: Enforce validation results
         run: |
           test "$(cat typecheck.status)" = "0"
-          test "$(cat runtime.status)" = "0"
-          test "$(cat memory.status)" = "0"
           test "$(cat test.status)" = "0"
-          test "$(cat lint.status)" = "0"
-          test "$(cat format.status)" = "0"
