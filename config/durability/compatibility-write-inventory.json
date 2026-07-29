@@ -150,16 +150,6 @@
       "migrationTarget": "DATA-201B"
     },
     {
-      "key": "server/src/platform/users/UserRepository.ts#UserRepository.recordGeneration#set",
-      "path": "server/src/platform/users/UserRepository.ts",
-      "owner": "UserRepository.recordGeneration",
-      "operation": "set",
-      "expectedCalls": 1,
-      "classification": "internal-lifecycle-debt",
-      "reason": "Generation usage accounting is persisted through a synchronous lifecycle mutation.",
-      "migrationTarget": "DATA-201B"
-    },
-    {
       "key": "server/src/projects/repository/generationHistory.repository.ts#StorageGenerationHistoryRepository.record#set",
       "path": "server/src/projects/repository/generationHistory.repository.ts",
       "owner": "StorageGenerationHistoryRepository.record",
