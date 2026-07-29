@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { DurableStorageError } from "../StorageProvider";
+import {
+  DurableStorageConflictError,
+  DurableStorageError,
+} from "../StorageProvider";
 import {
   PostgresStorageProvider,
   type QueryablePool,
@@ -15,6 +18,7 @@ interface FakePoolOptions {
   rows?: Array<Record<string, unknown>>;
   reject?: "insert" | "delete";
   rejectId?: string;
+  conflictId?: string;
   queries?: RecordedQuery[];
   blockCommit?: Promise<void>;
   onCommit?: () => void;
@@ -49,6 +53,11 @@ function fakePool(options: FakePoolOptions = {}): QueryablePool {
     }
     if (text.includes("SELECT collection, id, data")) {
       return { rows: options.rows ?? [] };
+    }
+    if (text.includes("DO NOTHING") && text.includes("RETURNING id")) {
+      return params?.[1] === options.conflictId
+        ? { rows: [] }
+        : { rows: [{ id: params?.[1] }] };
     }
     return { rows: [] };
   };
@@ -234,6 +243,54 @@ describe("PostgresStorageProvider awaited mutations", () => {
       name: "Create",
     });
     expect(storage.get("projects", "project-delete")).toBeNull();
+  });
+
+  it("rolls back create-if-absent conflicts without cache publication", async () => {
+    const queries: RecordedQuery[] = [];
+    const options: FakePoolOptions = {
+      conflictId: "duplicate@example.com",
+      queries,
+    };
+    const storage = provider(options);
+    await storage.ready();
+
+    await expect(
+      storage.mutateDurably([
+        {
+          type: "create",
+          collection: "auth_credentials",
+          id: "duplicate@example.com",
+          data: { userId: "user-1" },
+        },
+        {
+          type: "set",
+          collection: "auth_roles",
+          id: "user-1",
+          data: "creator",
+        },
+      ]),
+    ).rejects.toBeInstanceOf(DurableStorageConflictError);
+
+    expect(clientStatements(queries)).toEqual([
+      "BEGIN",
+      "INSERT",
+      "ROLLBACK",
+    ]);
+    expect(storage.count("auth_credentials")).toBe(0);
+    expect(storage.count("auth_roles")).toBe(0);
+
+    options.conflictId = undefined;
+    await storage.mutateDurably([
+      {
+        type: "create",
+        collection: "auth_credentials",
+        id: "recovered@example.com",
+        data: { userId: "user-2" },
+      },
+    ]);
+    expect(storage.get("auth_credentials", "recovered@example.com")).toEqual({
+      userId: "user-2",
+    });
   });
 
   it("rolls back the database and preserves the exact cache after rejection", async () => {
