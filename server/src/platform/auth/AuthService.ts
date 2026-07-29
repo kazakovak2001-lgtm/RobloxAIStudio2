@@ -331,11 +331,7 @@ export class AuthService {
       throw error;
     }
 
-    return this.toLoginResult(
-      prepared.issued,
-      session.userId,
-      session.role,
-    );
+    return this.toLoginResult(prepared.issued, session.userId, session.role);
   }
 
   /**

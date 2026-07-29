@@ -1094,6 +1094,7 @@
 │   │   │   └── PlanningTypes.ts
 │   │   ├── platform
 │   │   │   ├── auth
+│   │   │   │   ├── AuthService.durability.test.ts
 │   │   │   │   ├── AuthService.ts
 │   │   │   │   ├── authServiceInstance.ts
 │   │   │   │   ├── AuthTypes.ts
@@ -1123,6 +1124,7 @@
 │   │   │   │   │   ├── index.ts
 │   │   │   │   │   ├── migrationRunner.ts
 │   │   │   │   │   ├── migrations.ts
+│   │   │   │   │   ├── PostgresStorageProvider.preconditions.test.ts
 │   │   │   │   │   ├── PostgresStorageProvider.test.ts
 │   │   │   │   │   └── PostgresStorageProvider.ts
 │   │   │   │   ├── StorageFactory.ts
@@ -1217,6 +1219,7 @@
 │   │   ├── routes
 │   │   │   ├── __tests__
 │   │   │   │   ├── chatPersistence.durability.test.ts
+│   │   │   │   ├── platform.auth.durability.test.ts
 │   │   │   │   ├── platform.users.durability.test.ts
 │   │   │   │   ├── projects.durability.test.ts
 │   │   │   │   ├── projects.runtime.test.ts

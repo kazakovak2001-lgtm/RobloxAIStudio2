@@ -889,6 +889,7 @@ server/src/planning/PlanningTypes.ts
 server/src/planning/core/PlannerEngine.ts
 server/src/planning/execution/PlanExecutor.ts
 server/src/planning/model/TaskGraph.ts
+server/src/platform/auth/AuthService.durability.test.ts
 server/src/platform/auth/AuthService.ts
 server/src/platform/auth/AuthTypes.ts
 server/src/platform/auth/SessionManager.ts
@@ -910,6 +911,7 @@ server/src/platform/storage/StorageFactory.ts
 server/src/platform/storage/StorageProvider.ts
 server/src/platform/storage/index.ts
 server/src/platform/storage/postgres/DatabaseHealth.ts
+server/src/platform/storage/postgres/PostgresStorageProvider.preconditions.test.ts
 server/src/platform/storage/postgres/PostgresStorageProvider.test.ts
 server/src/platform/storage/postgres/PostgresStorageProvider.ts
 server/src/platform/storage/postgres/index.ts
@@ -983,6 +985,7 @@ server/src/repair/RepairPlanner.ts
 server/src/repair/RepairTypes.ts
 server/src/repair/index.ts
 server/src/routes/__tests__/chatPersistence.durability.test.ts
+server/src/routes/__tests__/platform.auth.durability.test.ts
 server/src/routes/__tests__/platform.users.durability.test.ts
 server/src/routes/__tests__/projects.durability.test.ts
 server/src/routes/__tests__/projects.runtime.test.ts

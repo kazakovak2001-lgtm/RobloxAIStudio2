@@ -107,12 +107,14 @@ describe("PostgresStorageProvider durable preconditions", () => {
     await storage.ready();
     statements.length = 0;
 
-    await expect(storage.mutateDurably(replacementMutations)).rejects.toBeInstanceOf(
-      DurableStorageConflictError,
-    );
+    await expect(
+      storage.mutateDurably(replacementMutations),
+    ).rejects.toBeInstanceOf(DurableStorageConflictError);
 
     expect(statements).toEqual(["BEGIN", "DELETE", "ROLLBACK"]);
-    expect(storage.get("auth_refresh_credentials", "old-digest")).not.toBeNull();
+    expect(
+      storage.get("auth_refresh_credentials", "old-digest"),
+    ).not.toBeNull();
     expect(storage.get("auth_sessions", "old-token")).not.toBeNull();
     expect(storage.get("auth_refresh_credentials", "new-digest")).toBeNull();
     expect(storage.get("auth_sessions", "new-token")).toBeNull();
