@@ -59,6 +59,7 @@ const STAGE_ARTIFACT_CONFIG: Record<
 export class ArtifactStore {
   private artifacts: Map<string, PipelineArtifact> = new Map();
   private byPipeline: Map<string, string[]> = new Map();
+  private readonly mutationQueues = new Map<string, Promise<void>>();
 
   constructor(private readonly injectedStorage?: StorageProvider) {}
 
@@ -137,13 +138,10 @@ export class ArtifactStore {
    * Mark an artifact as validated after persistence acknowledgement.
    */
   async markValidated(artifactId: string): Promise<void> {
-    const current = this.getById(artifactId);
-    if (!current) return;
-
-    await this.persist({
+    await this.mutate(artifactId, (current) => ({
       ...current,
       validated: true,
-    });
+    }));
   }
 
   /**
@@ -156,88 +154,68 @@ export class ArtifactStore {
   /**
    * Approve an artifact after persistence acknowledgement.
    */
-  async approve(
+  approve(
     artifactId: string,
     reviewedBy: string,
   ): Promise<PipelineArtifact | null> {
-    const current = this.getById(artifactId);
-    if (!current) return null;
-
-    const artifact: PipelineArtifact = {
+    return this.mutate(artifactId, (current) => ({
       ...current,
       reviewStatus: "approved",
       reviewedAt: Date.now(),
       reviewedBy,
       validated: true,
-    };
-    await this.persist(artifact);
-    return artifact;
+    }));
   }
 
   /**
    * Reject an artifact after persistence acknowledgement.
    */
-  async reject(
+  reject(
     artifactId: string,
     reviewedBy: string,
     comment?: string,
   ): Promise<PipelineArtifact | null> {
-    const current = this.getById(artifactId);
-    if (!current) return null;
-
-    const artifact: PipelineArtifact = {
+    return this.mutate(artifactId, (current) => ({
       ...current,
       reviewStatus: "rejected",
       reviewedAt: Date.now(),
       reviewedBy,
       ...(comment ? { reviewComment: comment } : {}),
-    };
-    await this.persist(artifact);
-    return artifact;
+    }));
   }
 
   /**
    * Add a comment to an artifact after persistence acknowledgement.
    */
-  async comment(
+  comment(
     artifactId: string,
     reviewedBy: string,
     comment: string,
   ): Promise<PipelineArtifact | null> {
-    const current = this.getById(artifactId);
-    if (!current) return null;
-
-    const artifact: PipelineArtifact = {
+    return this.mutate(artifactId, (current) => ({
       ...current,
       reviewComment: comment,
       reviewedBy,
       reviewedAt: Date.now(),
-    };
-    await this.persist(artifact);
-    return artifact;
+    }));
   }
 
   /**
    * Update artifact content after persistence acknowledgement (marks as edited).
    */
-  async edit(
+  edit(
     artifactId: string,
     newContent: unknown,
     editedBy: string,
   ): Promise<PipelineArtifact | null> {
-    const current = this.getById(artifactId);
-    if (!current) return null;
-
-    const artifact: PipelineArtifact = {
+    return this.mutate(artifactId, (current) => ({
       ...current,
       content: newContent,
       sizeBytes: Buffer.byteLength(JSON.stringify(newContent), "utf8"),
       reviewStatus: "edited",
       reviewedAt: Date.now(),
       reviewedBy: editedBy,
-    };
-    await this.persist(artifact);
-    return artifact;
+    }));
   }
 
   /**
@@ -259,6 +237,36 @@ export class ArtifactStore {
 
   private get storage(): StorageProvider | undefined {
     return this.injectedStorage ?? getConfiguredStorageProvider() ?? undefined;
+  }
+
+  private async mutate(
+    artifactId: string,
+    build: (current: PipelineArtifact) => PipelineArtifact,
+  ): Promise<PipelineArtifact | null> {
+    const previous = this.mutationQueues.get(artifactId) ?? Promise.resolve();
+    const operation = previous
+      .catch(() => undefined)
+      .then(async () => {
+        const current = this.getById(artifactId);
+        if (!current) return null;
+
+        const artifact = build(current);
+        await this.persist(artifact);
+        return artifact;
+      });
+    const tracked = operation.then(
+      () => undefined,
+      () => undefined,
+    );
+    this.mutationQueues.set(artifactId, tracked);
+
+    try {
+      return await operation;
+    } finally {
+      if (this.mutationQueues.get(artifactId) === tracked) {
+        this.mutationQueues.delete(artifactId);
+      }
+    }
   }
 
   private async persist(artifact: PipelineArtifact): Promise<void> {
