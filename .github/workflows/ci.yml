@@ -1,4 +1,4 @@
-name: Temporary Blueprint Delete Transaction Migration
+name: Temporary Blueprint Inventory Refresh
 
 on:
   pull_request:
@@ -9,7 +9,7 @@ permissions:
   contents: write
 
 jobs:
-  migrate-blueprint-delete:
+  refresh-blueprint-inventories:
     if: github.head_ref == 'agent/data-201c-blueprint-delete-transaction'
     runs-on: ubuntu-latest
     steps:
@@ -19,289 +19,17 @@ jobs:
           ref: agent/data-201c-blueprint-delete-transaction
           fetch-depth: 0
 
-      - name: Set up Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: npm
-
-      - name: Install locked dependencies
-        run: npm ci
-
-      - name: Apply atomic blueprint cascade
+      - name: Stage new test and refresh tracked inventories
         run: |
-          node <<'NODE'
-          const fs = require('node:fs');
-
-          const repositoryPath = 'server/src/projects/repository/storageBlueprint.repository.ts';
-          let repository = fs.readFileSync(repositoryPath, 'utf8');
-          repository = repository.replace(
-            'import type { StorageProvider } from "../../platform/storage/StorageProvider";',
-            'import type {\n  DurableMutation,\n  StorageProvider,\n} from "../../platform/storage/StorageProvider";',
-          );
-
-          const before = [
-            '  async deleteBlueprint(id: string): Promise<boolean> {',
-            '    const deleted = this.storage.delete(BLUEPRINTS, id);',
-            '    if (!deleted) return false;',
-            '',
-            '    for (const version of this.storage.list<BlueprintVersion>(',
-            '      VERSIONS,',
-            '      (candidate) => candidate.blueprint_id === id,',
-            '    )) {',
-            '      this.storage.delete(VERSIONS, version.id);',
-            '    }',
-            '    for (const execution of this.storage.list<GenerationExecution>(',
-            '      EXECUTIONS,',
-            '      (candidate) => candidate.blueprint_id === id,',
-            '    )) {',
-            '      this.storage.delete(EXECUTIONS, execution.id);',
-            '    }',
-            '    return true;',
-            '  }',
-          ].join('\n');
-
-          const after = [
-            '  async deleteBlueprint(id: string): Promise<boolean> {',
-            '    if (!this.storage.get<GameBlueprint>(BLUEPRINTS, id)) return false;',
-            '',
-            '    const versions = this.storage.list<BlueprintVersion>(',
-            '      VERSIONS,',
-            '      (candidate) => candidate.blueprint_id === id,',
-            '    );',
-            '    const executions = this.storage.list<GenerationExecution>(',
-            '      EXECUTIONS,',
-            '      (candidate) => candidate.blueprint_id === id,',
-            '    );',
-            '    const mutations: DurableMutation[] = [',
-            '      ...versions.map((version) => ({',
-            '        operation: "delete" as const,',
-            '        collection: VERSIONS,',
-            '        id: version.id,',
-            '      })),',
-            '      ...executions.map((execution) => ({',
-            '        operation: "delete" as const,',
-            '        collection: EXECUTIONS,',
-            '        id: execution.id,',
-            '      })),',
-            '      { operation: "delete", collection: BLUEPRINTS, id },',
-            '    ];',
-            '',
-            '    const results = await this.storage.applyDurableBatch(mutations);',
-            '    const blueprintResult = results[results.length - 1];',
-            '    return blueprintResult?.operation === "delete" && blueprintResult.deleted === true;',
-            '  }',
-          ].join('\n');
-
-          const methodMatches = repository.split(before).length - 1;
-          if (methodMatches !== 1) {
-            throw new Error(`Expected one legacy deleteBlueprint method, found ${methodMatches}`);
-          }
-          repository = repository.replace(before, after);
-          fs.writeFileSync(repositoryPath, repository);
-
-          const inventoryPath = 'config/durability/compatibility-write-inventory.json';
-          const inventory = JSON.parse(fs.readFileSync(inventoryPath, 'utf8'));
-          const key = 'server/src/projects/repository/storageBlueprint.repository.ts#StorageBlueprintRepository.deleteBlueprint#delete';
-          const previousLength = inventory.entries.length;
-          inventory.entries = inventory.entries.filter((entry) => entry.key !== key);
-          if (inventory.entries.length !== previousLength - 1) {
-            throw new Error('Expected to remove exactly one blueprint delete inventory group');
-          }
-          fs.writeFileSync(inventoryPath, `${JSON.stringify(inventory, null, 2)}\n`);
-
-          const testPath = 'server/src/projects/repository/storageBlueprint.repository.durability.test.ts';
-          const test = [
-            'import { describe, expect, it } from "vitest";',
-            'import {',
-            '  DurableStorageError,',
-            '  InMemoryStorageProvider,',
-            '  type DurableMutation,',
-            '  type DurableMutationResult,',
-            '} from "../../platform/storage/StorageProvider";',
-            'import { StorageBlueprintRepository } from "./storageBlueprint.repository";',
-            '',
-            'const BLUEPRINTS = "game_blueprints";',
-            'const VERSIONS = "blueprint_versions";',
-            'const EXECUTIONS = "generation_executions";',
-            '',
-            'function seedAggregate(storage: InMemoryStorageProvider) {',
-            '  const blueprint = {',
-            '    id: "blueprint-1",',
-            '    project_id: "project-1",',
-            '    metadata: { exact: true },',
-            '  };',
-            '  const versionOne = {',
-            '    id: "version-1",',
-            '    blueprint_id: blueprint.id,',
-            '    snapshot: { version: 1 },',
-            '  };',
-            '  const versionTwo = {',
-            '    id: "version-2",',
-            '    blueprint_id: blueprint.id,',
-            '    snapshot: { version: 2 },',
-            '  };',
-            '  const execution = {',
-            '    id: "execution-1",',
-            '    blueprint_id: blueprint.id,',
-            '    state: { status: "completed" },',
-            '  };',
-            '  const unrelatedVersion = {',
-            '    id: "version-other",',
-            '    blueprint_id: "blueprint-other",',
-            '  };',
-            '',
-            '  storage.set(BLUEPRINTS, blueprint.id, blueprint);',
-            '  storage.set(VERSIONS, versionOne.id, versionOne);',
-            '  storage.set(VERSIONS, versionTwo.id, versionTwo);',
-            '  storage.set(EXECUTIONS, execution.id, execution);',
-            '  storage.set(VERSIONS, unrelatedVersion.id, unrelatedVersion);',
-            '',
-            '  return { blueprint, versionOne, versionTwo, execution, unrelatedVersion };',
-            '}',
-            '',
-            'class SpyBatchStorage extends InMemoryStorageProvider {',
-            '  batchCalls = 0;',
-            '',
-            '  override async applyDurableBatch(',
-            '    mutations: readonly DurableMutation[],',
-            '  ): Promise<readonly DurableMutationResult[]> {',
-            '    this.batchCalls += 1;',
-            '    return super.applyDurableBatch(mutations);',
-            '  }',
-            '}',
-            '',
-            'class DeferredBatchStorage extends InMemoryStorageProvider {',
-            '  received: readonly DurableMutation[] = [];',
-            '  private acknowledge!: () => void;',
-            '  private readonly acknowledged = new Promise<void>((resolve) => {',
-            '    this.acknowledge = resolve;',
-            '  });',
-            '',
-            '  release(): void {',
-            '    this.acknowledge();',
-            '  }',
-            '',
-            '  override async applyDurableBatch(',
-            '    mutations: readonly DurableMutation[],',
-            '  ): Promise<readonly DurableMutationResult[]> {',
-            '    this.received = mutations;',
-            '    await this.acknowledged;',
-            '    return super.applyDurableBatch(mutations);',
-            '  }',
-            '}',
-            '',
-            'class RejectingBatchStorage extends InMemoryStorageProvider {',
-            '  override async applyDurableBatch(',
-            '    _mutations: readonly DurableMutation[],',
-            '  ): Promise<readonly DurableMutationResult[]> {',
-            '    throw new DurableStorageError(',
-            '      "Injected blueprint cascade rejection",',
-            '      "transaction",',
-            '    );',
-            '  }',
-            '}',
-            '',
-            'describe("StorageBlueprintRepository durable deletion", () => {',
-            '  it("deletes the complete blueprint aggregate in one durable batch", async () => {',
-            '    const storage = new SpyBatchStorage();',
-            '    const records = seedAggregate(storage);',
-            '    const repository = new StorageBlueprintRepository(storage);',
-            '',
-            '    await expect(repository.deleteBlueprint(records.blueprint.id)).resolves.toBe(',
-            '      true,',
-            '    );',
-            '',
-            '    expect(storage.batchCalls).toBe(1);',
-            '    expect(storage.get(BLUEPRINTS, records.blueprint.id)).toBeNull();',
-            '    expect(storage.get(VERSIONS, records.versionOne.id)).toBeNull();',
-            '    expect(storage.get(VERSIONS, records.versionTwo.id)).toBeNull();',
-            '    expect(storage.get(EXECUTIONS, records.execution.id)).toBeNull();',
-            '    expect(storage.get(VERSIONS, records.unrelatedVersion.id)).toBe(',
-            '      records.unrelatedVersion,',
-            '    );',
-            '  });',
-            '',
-            '  it("does not start a batch for a missing blueprint", async () => {',
-            '    const storage = new SpyBatchStorage();',
-            '    const repository = new StorageBlueprintRepository(storage);',
-            '',
-            '    await expect(repository.deleteBlueprint("missing")).resolves.toBe(false);',
-            '    expect(storage.batchCalls).toBe(0);',
-            '  });',
-            '',
-            '  it("keeps the aggregate visible until the batch is acknowledged", async () => {',
-            '    const storage = new DeferredBatchStorage();',
-            '    const records = seedAggregate(storage);',
-            '    const repository = new StorageBlueprintRepository(storage);',
-            '',
-            '    const deletion = repository.deleteBlueprint(records.blueprint.id);',
-            '    await Promise.resolve();',
-            '    await Promise.resolve();',
-            '',
-            '    expect(storage.get(BLUEPRINTS, records.blueprint.id)).toBe(',
-            '      records.blueprint,',
-            '    );',
-            '    expect(storage.get(VERSIONS, records.versionOne.id)).toBe(',
-            '      records.versionOne,',
-            '    );',
-            '    expect(storage.get(EXECUTIONS, records.execution.id)).toBe(',
-            '      records.execution,',
-            '    );',
-            '    expect(',
-            '      storage.received.map((mutation) => [mutation.collection, mutation.id]),',
-            '    ).toEqual([',
-            '      [VERSIONS, records.versionOne.id],',
-            '      [VERSIONS, records.versionTwo.id],',
-            '      [EXECUTIONS, records.execution.id],',
-            '      [BLUEPRINTS, records.blueprint.id],',
-            '    ]);',
-            '',
-            '    storage.release();',
-            '    await expect(deletion).resolves.toBe(true);',
-            '    expect(storage.get(BLUEPRINTS, records.blueprint.id)).toBeNull();',
-            '  });',
-            '',
-            '  it("preserves the exact aggregate when the durable batch rejects", async () => {',
-            '    const storage = new RejectingBatchStorage();',
-            '    const records = seedAggregate(storage);',
-            '    const repository = new StorageBlueprintRepository(storage);',
-            '',
-            '    await expect(',
-            '      repository.deleteBlueprint(records.blueprint.id),',
-            '    ).rejects.toBeInstanceOf(DurableStorageError);',
-            '',
-            '    expect(storage.get(BLUEPRINTS, records.blueprint.id)).toBe(',
-            '      records.blueprint,',
-            '    );',
-            '    expect(storage.get(VERSIONS, records.versionOne.id)).toBe(',
-            '      records.versionOne,',
-            '    );',
-            '    expect(storage.get(VERSIONS, records.versionTwo.id)).toBe(',
-            '      records.versionTwo,',
-            '    );',
-            '    expect(storage.get(EXECUTIONS, records.execution.id)).toBe(',
-            '      records.execution,',
-            '    );',
-            '  });',
-            '});',
-            '',
-          ].join('\n');
-          fs.writeFileSync(testPath, test);
-          NODE
-
-          git rm .tmp/blueprint-delete-transaction-trigger
-          node node_modules/prettier/bin/prettier.cjs --write \
-            server/src/projects/repository/storageBlueprint.repository.ts \
-            server/src/projects/repository/storageBlueprint.repository.durability.test.ts \
-            config/durability/compatibility-write-inventory.json
+          git rm .tmp/blueprint-inventory-refresh-trigger
+          git add server/src/projects/repository/storageBlueprint.repository.durability.test.ts
           node scripts/cleanup/generate-tracked-inventories.mjs
 
-      - name: Commit migration to PR head
+      - name: Commit refreshed inventories to PR head
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add -A
           git diff --cached --quiet && exit 0
-          git commit -m "feat(storage): transact blueprint deletion cascade"
+          git commit -m "chore(repo): refresh blueprint test inventories"
           git push origin HEAD:agent/data-201c-blueprint-delete-transaction
