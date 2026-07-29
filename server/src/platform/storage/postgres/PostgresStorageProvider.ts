@@ -65,7 +65,9 @@ export class PostgresStorageProvider implements StorageProvider {
   private initialization: Promise<void> | null = null;
   private pendingWrites = new Set<Promise<void>>();
   private writeTail: Promise<void> = Promise.resolve();
+  private compatibilityMutationVersions = new Map<string, number>();
   private lastFailureAt?: string;
+  private closed = false;
 
   constructor(
     config?: Partial<PostgresConfig>,
@@ -82,13 +84,17 @@ export class PostgresStorageProvider implements StorageProvider {
   }
 
   set<T>(collection: string, id: string, data: T): void {
+    this.recordCompatibilityMutation(collection, id);
     this.getCollection(collection).set(id, data);
     this.scheduleWrite(() => this.persistSet(collection, id, data));
   }
 
   delete(collection: string, id: string): boolean {
     const deleted = this.getCollection(collection).delete(id);
-    if (deleted) this.scheduleWrite(() => this.persistDelete(collection, id));
+    if (deleted) {
+      this.recordCompatibilityMutation(collection, id);
+      this.scheduleWrite(() => this.persistDelete(collection, id));
+    }
     return deleted;
   }
 
@@ -137,6 +143,15 @@ export class PostgresStorageProvider implements StorageProvider {
     try {
       let results: readonly DurableMutationResult[] = [];
       await this.enqueueWrite(async () => {
+        const compatibilityVersions = new Map<string, number>();
+        for (const mutation of mutations) {
+          const key = this.mutationKey(mutation.collection, mutation.id);
+          compatibilityVersions.set(
+            key,
+            this.compatibilityMutationVersions.get(key) ?? 0,
+          );
+        }
+
         const pool = this.pool;
         if (!pool || !this.connected) {
           throw new Error("PostgreSQL connection is unavailable");
@@ -196,6 +211,12 @@ export class PostgresStorageProvider implements StorageProvider {
 
         // No cache mutation is published before the database COMMIT above.
         for (const mutation of mutations) {
+          const key = this.mutationKey(mutation.collection, mutation.id);
+          const capturedVersion = compatibilityVersions.get(key) ?? 0;
+          const currentVersion =
+            this.compatibilityMutationVersions.get(key) ?? 0;
+          if (currentVersion !== capturedVersion) continue;
+
           const collection = this.getCollection(mutation.collection);
           if (mutation.operation === "set") {
             collection.set(mutation.id, mutation.data);
@@ -219,11 +240,13 @@ export class PostgresStorageProvider implements StorageProvider {
   }
 
   getOperationalStatus(): StorageOperationalStatus {
-    const availability = this.connected
-      ? "available"
-      : this.lastFailureAt
-        ? "degraded"
-        : "unavailable";
+    const availability = this.closed
+      ? "unavailable"
+      : this.connected
+        ? "available"
+        : this.lastFailureAt
+          ? "degraded"
+          : "unavailable";
     return {
       availability,
       durability: "durable",
@@ -258,6 +281,7 @@ export class PostgresStorageProvider implements StorageProvider {
     if (this.pool) await this.pool.end();
     this.pool = null;
     this.connected = false;
+    this.closed = true;
   }
 
   isConnected(): boolean {
@@ -406,6 +430,18 @@ export class PostgresStorageProvider implements StorageProvider {
         error instanceof Error ? error.message : error,
       );
     });
+  }
+
+  private mutationKey(collection: string, id: string): string {
+    return `${collection}\u0000${id}`;
+  }
+
+  private recordCompatibilityMutation(collection: string, id: string): void {
+    const key = this.mutationKey(collection, id);
+    this.compatibilityMutationVersions.set(
+      key,
+      (this.compatibilityMutationVersions.get(key) ?? 0) + 1,
+    );
   }
 
   private validateMutations(mutations: readonly DurableMutation[]): void {

@@ -1,147 +1,449 @@
-name: PR89 Review Fix Publisher
+name: CI Pipeline
 
 on:
   push:
-    branches: [agent/data-201c-transaction-foundation]
+    branches: [release/cutover-1e-candidate, feature/plugin-merge]
   pull_request:
+  workflow_dispatch:
 
-permissions:
-  contents: write
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
-  publish:
+  typecheck:
+    name: TypeScript Check
     runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "npm"
+      - run: npm ci
+      - run: npm run typecheck
+
+  lint:
+    name: ESLint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "npm"
+      - run: npm ci
+      - run: npm run lint
+
+  format:
+    name: Prettier Check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "npm"
+      - run: npm ci
+      - run: npm run format:check
+
+  test:
+    name: Test Suite
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "npm"
+      - run: npm ci
+      - run: npm run test
+
+  postgres-e2e:
+    name: PostgreSQL Restart E2E
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: roblox_ai_studio_test
+          POSTGRES_USER: studio
+          POSTGRES_PASSWORD: studio_test_password
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U studio -d roblox_ai_studio_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "npm"
+      - run: npm ci
+      - name: Verify restart durability and ownership isolation
+        env:
+          STORAGE_PROVIDER: postgres
+          DATABASE_URL: postgresql://studio:studio_test_password@localhost:5432/roblox_ai_studio_test
+          RUN_POSTGRES_E2E: "true"
+        run: npm run test:postgres
+
+  backend-image:
+    name: Backend Release Image
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build backend-only image
+        run: docker build --file Dockerfile.backend --tag roblox-ai-studio-backend:cutover .
+      - name: Start backend-only container
+        run: |
+          docker run --detach \
+            --name roblox-ai-studio-backend-cutover \
+            --publish 5050:5000 \
+            --env NODE_ENV=production \
+            --env PORT=5000 \
+            --env STORAGE_PROVIDER=inmemory \
+            --env FRONTEND_URL=http://127.0.0.1:8080 \
+            roblox-ai-studio-backend:cutover
+      - name: Verify backend health
+        run: |
+          for attempt in $(seq 1 30); do
+            if curl --fail --silent http://127.0.0.1:5050/health > /tmp/backend-health.json; then
+              cat /tmp/backend-health.json
+              grep --quiet '"status":"healthy"' /tmp/backend-health.json
+              exit 0
+            fi
+            sleep 1
+          done
+          docker inspect roblox-ai-studio-backend-cutover || true
+          exit 1
+      - name: Capture backend container logs
+        if: always()
+        run: docker logs roblox-ai-studio-backend-cutover > backend-container.log 2>&1 || true
+      - name: Publish backend container diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-container-diagnostics-${{ github.event.pull_request.head.sha }}
+          path: backend-container.log
+          if-no-files-found: error
+          retention-days: 1
+      - name: Print backend logs on failure
+        if: failure()
+        run: cat backend-container.log || true
+      - name: Stop backend container
+        if: always()
+        run: docker rm --force roblox-ai-studio-backend-cutover || true
+
+  production-contract:
+    name: Frontend Production Contract
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    env:
+      INT201_BACKEND_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+      INT201_FRONTEND_ORIGIN: http://127.0.0.1:4173
+      INT201_API_URL: http://127.0.0.1:5051/api
+      INT201_SOCKET_URL: http://127.0.0.1:5051
+    steps:
+      - name: Checkout exact backend source
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.INT201_BACKEND_SHA }}
+          persist-credentials: false
+      - name: Resolve exact Frontend release commit
+        id: frontend-release
+        run: |
+          frontend_sha="$(jq --raw-output '.frontendRelease.commit' config/cutover/release-baseline.inventory.json)"
+          [[ "$frontend_sha" =~ ^[0-9a-f]{40}$ ]]
+          echo "sha=$frontend_sha" >> "$GITHUB_OUTPUT"
+      - name: Checkout exact Frontend contract
+        uses: actions/checkout@v4
+        with:
+          repository: kazakovak2001-lgtm/Frontend
+          ref: ${{ steps.frontend-release.outputs.sha }}
+          path: standalone-frontend
+          persist-credentials: false
+      - name: Verify and record exact contract sources
+        env:
+          INT201_FRONTEND_SHA: ${{ steps.frontend-release.outputs.sha }}
+        run: |
+          test "$(git rev-parse HEAD)" = "$INT201_BACKEND_SHA"
+          test "$(git -C standalone-frontend rev-parse HEAD)" = "$INT201_FRONTEND_SHA"
+          mkdir -p artifacts/int-201
+          printf '%s\n' \
+            "contract=INT-201" \
+            "backendSha=$INT201_BACKEND_SHA" \
+            "frontendSha=$INT201_FRONTEND_SHA" \
+            "nodeEnv=production" \
+            "storageProvider=inmemory" \
+            "frontendOrigin=$INT201_FRONTEND_ORIGIN" \
+            "apiUrl=$INT201_API_URL" \
+            "socketUrl=$INT201_SOCKET_URL" \
+            > artifacts/int-201/runtime.env
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "npm"
+          cache-dependency-path: standalone-frontend/package-lock.json
+      - name: Install exact Frontend contract dependencies
+        run: npm ci --prefix standalone-frontend
+      - name: Build exact production backend image
+        run: |
+          docker build \
+            --file Dockerfile.backend \
+            --label "org.opencontainers.image.revision=$INT201_BACKEND_SHA" \
+            --tag roblox-ai-studio-backend:int-201 \
+            .
+      - name: Start production backend
+        run: |
+          docker run --detach \
+            --name roblox-ai-studio-backend-int-201 \
+            --publish 5051:5000 \
+            --env NODE_ENV=production \
+            --env PORT=5000 \
+            --env STORAGE_PROVIDER=inmemory \
+            --env FRONTEND_URL="$INT201_FRONTEND_ORIGIN" \
+            roblox-ai-studio-backend:int-201
+      - name: Wait for production backend
+        run: |
+          for attempt in $(seq 1 30); do
+            if curl --fail --silent "$INT201_SOCKET_URL/health" > /tmp/int-201-health.json; then
+              grep --quiet '"status":"healthy"' /tmp/int-201-health.json
+              exit 0
+            fi
+            sleep 1
+          done
+          docker inspect roblox-ai-studio-backend-int-201 || true
+          exit 1
+      - name: Run protected 40-check contract
+        env:
+          E2E_API_URL: ${{ env.INT201_API_URL }}
+          E2E_SOCKET_URL: ${{ env.INT201_SOCKET_URL }}
+          E2E_EVIDENCE_PATH: ${{ github.workspace }}/artifacts/int-201/contract.json
+          E2E_CONTRACT_MODE: production
+          E2E_BACKEND_SHA: ${{ env.INT201_BACKEND_SHA }}
+          E2E_FRONTEND_SHA: ${{ steps.frontend-release.outputs.sha }}
+          E2E_BACKEND_NODE_ENV: production
+          E2E_STORAGE_PROVIDER: inmemory
+          E2E_FRONTEND_ORIGIN: ${{ env.INT201_FRONTEND_ORIGIN }}
+        run: |
+          set -o pipefail
+          npm --prefix standalone-frontend run test:e2e:integration 2>&1 | tee artifacts/int-201/e2e.log
+      - name: Capture production contract diagnostics
+        if: always()
+        run: |
+          mkdir -p artifacts/int-201
+          cp /tmp/int-201-health.json artifacts/int-201/backend-health.json 2>/dev/null || true
+          docker logs roblox-ai-studio-backend-int-201 > artifacts/int-201/backend.log 2>&1 || true
+          docker image inspect roblox-ai-studio-backend:int-201 > artifacts/int-201/backend-image.json 2>&1 || true
+      - name: Publish production contract evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: int-201-production-contract-${{ env.INT201_BACKEND_SHA }}
+          path: artifacts/int-201
+          if-no-files-found: error
+          retention-days: 14
+      - name: Print backend logs on failure
+        if: failure()
+        run: cat artifacts/int-201/backend.log || true
+      - name: Stop production backend
+        if: always()
+        run: docker rm --force roblox-ai-studio-backend-int-201 || true
+
+  composed-release:
+    name: Composed HTTPS Release
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout backend release source
+        uses: actions/checkout@v4
+      - name: Resolve exact Frontend release commit
+        id: frontend-release
+        run: |
+          frontend_sha="$(jq --raw-output '.frontendRelease.commit' config/cutover/release-baseline.inventory.json)"
+          [[ "$frontend_sha" =~ ^[0-9a-f]{40}$ ]]
+          echo "sha=$frontend_sha" >> "$GITHUB_OUTPUT"
+      - name: Checkout exact Frontend release commit
+        uses: actions/checkout@v4
+        with:
+          repository: kazakovak2001-lgtm/Frontend
+          ref: ${{ steps.frontend-release.outputs.sha }}
+          path: standalone-frontend
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "npm"
+      - run: npm ci
+      - name: Configure release identity
+        run: |
+          echo "BACKEND_IMAGE=roblox-ai-studio-backend:cutover-1c" >> "$GITHUB_ENV"
+          echo "FRONTEND_IMAGE=roblox-ai-studio-frontend:cutover-1c" >> "$GITHUB_ENV"
+          echo "POSTGRES_PASSWORD=cutover_1c_ci_password" >> "$GITHUB_ENV"
+          echo "RELEASE_ORIGIN=https://localhost:8443" >> "$GITHUB_ENV"
+          echo "RELEASE_PORT=8443" >> "$GITHUB_ENV"
+          echo "RELEASE_CERT_DIR=${GITHUB_WORKSPACE}/.cutover-certs" >> "$GITHUB_ENV"
+      - name: Generate CI-only TLS certificate
+        run: |
+          mkdir -p .cutover-certs
+          openssl req -x509 -newkey rsa:2048 -nodes -days 1 \
+            -keyout .cutover-certs/release.key \
+            -out .cutover-certs/release.crt \
+            -subj "/CN=localhost" \
+            -addext "subjectAltName=DNS:localhost,IP:127.0.0.1"
+      - name: Build exact backend and Frontend images
+        run: |
+          docker build \
+            --file Dockerfile.backend \
+            --tag "$BACKEND_IMAGE" \
+            .
+          docker build \
+            --build-arg VITE_API_URL="$RELEASE_ORIGIN/api" \
+            --build-arg VITE_SOCKET_URL="$RELEASE_ORIGIN" \
+            --tag "$FRONTEND_IMAGE" \
+            standalone-frontend
+      - name: Start composed HTTPS release
+        run: docker compose --project-name cutover1c --file deploy/docker-compose.release.yml up --detach
+      - name: Verify secure REST and Socket.IO composition
+        run: node scripts/cutover/verify-composed-release.mjs
+      - name: Capture composition diagnostics
+        if: always()
+        run: |
+          mkdir -p artifacts/cutover-1c
+          docker compose --project-name cutover1c --file deploy/docker-compose.release.yml ps --all > artifacts/cutover-1c/compose-ps.txt || true
+          docker compose --project-name cutover1c --file deploy/docker-compose.release.yml logs --no-color > artifacts/cutover-1c/compose.log 2>&1 || true
+      - name: Publish composition diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cutover-1c-composition-${{ github.event.pull_request.head.sha }}
+          path: artifacts/cutover-1c
+          if-no-files-found: error
+          retention-days: 3
+      - name: Stop composed release
+        if: always()
+        run: docker compose --project-name cutover1c --file deploy/docker-compose.release.yml down --volumes --remove-orphans || true
+
+  release-readiness:
+    name: Promoted Baseline Integrity
+    runs-on: ubuntu-latest
+    needs: composed-release
+    steps:
+      - name: Checkout promoted baseline source
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Resolve exact Frontend release commit
+        id: frontend-release
+        run: |
+          frontend_sha="$(jq --raw-output '.frontendRelease.commit' config/cutover/release-baseline.inventory.json)"
+          [[ "$frontend_sha" =~ ^[0-9a-f]{40}$ ]]
+          echo "sha=$frontend_sha" >> "$GITHUB_OUTPUT"
+      - name: Checkout exact Frontend release commit
+        uses: actions/checkout@v4
+        with:
+          repository: kazakovak2001-lgtm/Frontend
+          ref: ${{ steps.frontend-release.outputs.sha }}
+          path: standalone-frontend
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "npm"
+      - run: npm ci
+      - name: Fetch promoted and rollback references
+        run: git fetch origin release/cutover-1e-candidate backup/default-before-cutover-1e feature/plugin-merge
+      - name: Verify promoted default and release integrity
+        env:
+          PROMOTED_DEFAULT_REF: origin/release/cutover-1e-candidate
+          ROLLBACK_REF: origin/backup/default-before-cutover-1e
+          PROMOTED_BASELINE_OUTPUT: artifacts/cutover-1f
+        run: node scripts/cutover/verify-promoted-baseline-integrity.mjs
+      - name: Rehearse independent artifact rollback
+        env:
+          FRONTEND_SOURCE: standalone-frontend
+          RELEASE_BASELINE_OUTPUT: artifacts/cutover-1f
+        run: bash scripts/cutover/rehearse-independent-rollback.sh
+      - name: Publish promoted baseline evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cutover-1f-promotion-integrity
+          path: artifacts/cutover-1f
+          if-no-files-found: error
+          retention-days: 3
+
+  legacy-frontend-audit:
+    name: Post-Removal Invariant Guard
+    runs-on: ubuntu-latest
+    needs: release-readiness
+    steps:
+      - name: Checkout cleanup audit source
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "npm"
+      - run: npm ci
+      - name: Verify post-removal invariants
+        env:
+          LEGACY_FRONTEND_AUDIT_OUTPUT: artifacts/post-removal-invariants
+        run: node scripts/cleanup/audit-legacy-frontend-decommission.mjs
+      - name: Publish post-removal invariant evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: post-removal-invariant-audit
+          path: artifacts/post-removal-invariants
+          if-no-files-found: error
+          retention-days: 3
+
+  validate:
+    name: Repository Validation
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "npm"
+      - run: npm ci
+      - run: npm run validate
+
+  commit-lint:
+    name: Commit Message Lint
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-          persist-credentials: true
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "npm"
+      - run: npm ci
+      - run: npx commitlint --config commitlint.config.cjs --from ${{ github.event.pull_request.base.sha }} --to ${{ github.event.pull_request.head.sha }}
 
-      - name: Apply verified review fixes
-        shell: bash
-        run: |
-          set -euo pipefail
-          git fetch origin release/cutover-1e-candidate
-          python3 - <<'PY'
-          from pathlib import Path
-
-          def replace_once(text: str, old: str, new: str, label: str) -> str:
-              if text.count(old) != 1:
-                  raise SystemExit(f"{label}: expected exactly one match")
-              return text.replace(old, new)
-
-          path = Path("server/src/platform/storage/postgres/PostgresStorageProvider.ts")
-          text = path.read_text()
-          changes = [
-              (
-                  "fields",
-                  "  private pendingWrites = new Set<Promise<void>>();\n  private writeTail: Promise<void> = Promise.resolve();\n  private lastFailureAt?: string;",
-                  "  private pendingWrites = new Set<Promise<void>>();\n  private writeTail: Promise<void> = Promise.resolve();\n  private compatibilityMutationVersions = new Map<string, number>();\n  private lastFailureAt?: string;\n  private closed = false;",
-              ),
-              (
-                  "compatibility set",
-                  "  set<T>(collection: string, id: string, data: T): void {\n    this.getCollection(collection).set(id, data);\n    this.scheduleWrite(() => this.persistSet(collection, id, data));\n  }",
-                  "  set<T>(collection: string, id: string, data: T): void {\n    this.recordCompatibilityMutation(collection, id);\n    this.getCollection(collection).set(id, data);\n    this.scheduleWrite(() => this.persistSet(collection, id, data));\n  }",
-              ),
-              (
-                  "compatibility delete",
-                  "  delete(collection: string, id: string): boolean {\n    const deleted = this.getCollection(collection).delete(id);\n    if (deleted) this.scheduleWrite(() => this.persistDelete(collection, id));\n    return deleted;\n  }",
-                  "  delete(collection: string, id: string): boolean {\n    const deleted = this.getCollection(collection).delete(id);\n    if (deleted) {\n      this.recordCompatibilityMutation(collection, id);\n      this.scheduleWrite(() => this.persistDelete(collection, id));\n    }\n    return deleted;\n  }",
-              ),
-              (
-                  "batch capture",
-                  "      await this.enqueueWrite(async () => {\n        const pool = this.pool;",
-                  "      await this.enqueueWrite(async () => {\n        const compatibilityVersions = new Map<string, number>();\n        for (const mutation of mutations) {\n          const key = this.mutationKey(mutation.collection, mutation.id);\n          compatibilityVersions.set(\n            key,\n            this.compatibilityMutationVersions.get(key) ?? 0,\n          );\n        }\n\n        const pool = this.pool;",
-              ),
-              (
-                  "batch publication",
-                  "        for (const mutation of mutations) {\n          const collection = this.getCollection(mutation.collection);\n          if (mutation.operation === \"set\") {\n            collection.set(mutation.id, mutation.data);\n          } else {\n            collection.delete(mutation.id);\n          }\n        }",
-                  "        for (const mutation of mutations) {\n          const key = this.mutationKey(mutation.collection, mutation.id);\n          const capturedVersion = compatibilityVersions.get(key) ?? 0;\n          const currentVersion =\n            this.compatibilityMutationVersions.get(key) ?? 0;\n          if (currentVersion !== capturedVersion) continue;\n\n          const collection = this.getCollection(mutation.collection);\n          if (mutation.operation === \"set\") {\n            collection.set(mutation.id, mutation.data);\n          } else {\n            collection.delete(mutation.id);\n          }\n        }",
-              ),
-              (
-                  "availability",
-                  "    const availability = this.connected\n      ? \"available\"\n      : this.lastFailureAt\n        ? \"degraded\"\n        : \"unavailable\";",
-                  "    const availability = this.closed\n      ? \"unavailable\"\n      : this.connected\n        ? \"available\"\n        : this.lastFailureAt\n          ? \"degraded\"\n          : \"unavailable\";",
-              ),
-              (
-                  "close",
-                  "  async close(): Promise<void> {\n    await this.flush();\n    if (this.pool) await this.pool.end();\n    this.pool = null;\n    this.connected = false;\n  }",
-                  "  async close(): Promise<void> {\n    await this.flush();\n    if (this.pool) await this.pool.end();\n    this.pool = null;\n    this.connected = false;\n    this.closed = true;\n  }",
-              ),
-              (
-                  "helpers",
-                  "  private validateMutations(mutations: readonly DurableMutation[]): void {",
-                  "  private mutationKey(collection: string, id: string): string {\n    return `${collection}\\u0000${id}`;\n  }\n\n  private recordCompatibilityMutation(collection: string, id: string): void {\n    const key = this.mutationKey(collection, id);\n    this.compatibilityMutationVersions.set(\n      key,\n      (this.compatibilityMutationVersions.get(key) ?? 0) + 1,\n    );\n  }\n\n  private validateMutations(mutations: readonly DurableMutation[]): void {",
-              ),
-          ]
-          for label, old, new in changes:
-              text = replace_once(text, old, new, label)
-          path.write_text(text)
-
-          tests = Path("server/src/platform/storage/postgres/PostgresStorageProvider.test.ts")
-          text = tests.read_text()
-          boundary = '\n});\n\ndescribe("InMemoryStorageProvider durable batches", () => {'
-          inserted = '''
-
-          it("preserves a newer compatibility write while a batch commit is pending", async () => {
-            let releaseCommit!: () => void;
-            let commitStarted!: () => void;
-            const commitGate = new Promise<void>((resolve) => {
-              releaseCommit = resolve;
-            });
-            const commitReached = new Promise<void>((resolve) => {
-              commitStarted = resolve;
-            });
-            const { storage } = provider({
-              rows: [{ collection: "projects", id: "project-1", data: { name: "Before" } }],
-              commitGate,
-              onCommitStarted: commitStarted,
-            });
-            await storage.ready();
-
-            const batch = storage.applyDurableBatch([
-              { operation: "set", collection: "projects", id: "project-1", data: { name: "Batch" } },
-            ]);
-            await commitReached;
-            storage.set("projects", "project-1", { name: "Compatibility" });
-            releaseCommit();
-            await batch;
-            await storage.flush();
-
-            expect(storage.get("projects", "project-1")).toEqual({ name: "Compatibility" });
-          });
-
-          it("reports unavailable after a degraded provider is closed", async () => {
-            const { storage } = provider({ rejectBatchAt: 1 });
-            await storage.ready();
-            await expect(
-              storage.applyDurableBatch([
-                { operation: "set", collection: "projects", id: "project-1", data: { name: "Rejected" } },
-              ]),
-            ).rejects.toBeInstanceOf(DurableStorageError);
-            expect(storage.getOperationalStatus().availability).toBe("degraded");
-            await storage.close();
-            expect(storage.getOperationalStatus()).toMatchObject({
-              availability: "unavailable",
-              durability: "durable",
-            });
-          });
-          });
-
-          describe("InMemoryStorageProvider durable batches", () => {'''
-          tests.write_text(replace_once(text, boundary, inserted, "test boundary"))
-          PY
-
-          npm ci
-          npx prettier --write server/src/platform/storage/postgres/PostgresStorageProvider.ts server/src/platform/storage/postgres/PostgresStorageProvider.test.ts
-          npx vitest run server/src/platform/storage/postgres/PostgresStorageProvider.test.ts
-          npm run typecheck
-          git show origin/release/cutover-1e-candidate:.github/workflows/ci.yml > .github/workflows/ci.yml
-
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add server/src/platform/storage/postgres/PostgresStorageProvider.ts server/src/platform/storage/postgres/PostgresStorageProvider.test.ts .github/workflows/ci.yml
-          git commit -m "fix(storage): guard batch publication and closed status"
-
-          test "$(git diff --name-only origin/release/cutover-1e-candidate...HEAD | wc -l)" -eq 8
-          git push origin HEAD:agent/data-201c-transaction-foundation
+  gate:
+    name: Merge Gate
+    runs-on: ubuntu-latest
+    needs:
+      [
+        typecheck,
+        lint,
+        format,
+        test,
+        postgres-e2e,
+        backend-image,
+        production-contract,
+        composed-release,
+        release-readiness,
+        legacy-frontend-audit,
+        validate,
+      ]
+    steps:
+      - run: echo "All checks passed"

@@ -401,6 +401,64 @@ describe("PostgresStorageProvider durable batches", () => {
       pendingMutations: 0,
     });
   });
+
+  it("preserves a newer compatibility write while a batch commit is pending", async () => {
+    let releaseCommit!: () => void;
+    let commitStarted!: () => void;
+    const commitGate = new Promise<void>((resolve) => {
+      releaseCommit = resolve;
+    });
+    const commitReached = new Promise<void>((resolve) => {
+      commitStarted = resolve;
+    });
+    const { storage } = provider({
+      rows: [
+        { collection: "projects", id: "project-1", data: { name: "Before" } },
+      ],
+      commitGate,
+      onCommitStarted: commitStarted,
+    });
+    await storage.ready();
+
+    const batch = storage.applyDurableBatch([
+      {
+        operation: "set",
+        collection: "projects",
+        id: "project-1",
+        data: { name: "Batch" },
+      },
+    ]);
+    await commitReached;
+    storage.set("projects", "project-1", { name: "Compatibility" });
+    releaseCommit();
+    await batch;
+    await storage.flush();
+
+    expect(storage.get("projects", "project-1")).toEqual({
+      name: "Compatibility",
+    });
+  });
+
+  it("reports unavailable after a degraded provider is closed", async () => {
+    const { storage } = provider({ rejectBatchAt: 1 });
+    await storage.ready();
+    await expect(
+      storage.applyDurableBatch([
+        {
+          operation: "set",
+          collection: "projects",
+          id: "project-1",
+          data: { name: "Rejected" },
+        },
+      ]),
+    ).rejects.toBeInstanceOf(DurableStorageError);
+    expect(storage.getOperationalStatus().availability).toBe("degraded");
+    await storage.close();
+    expect(storage.getOperationalStatus()).toMatchObject({
+      availability: "unavailable",
+      durability: "durable",
+    });
+  });
 });
 
 describe("InMemoryStorageProvider durable batches", () => {
