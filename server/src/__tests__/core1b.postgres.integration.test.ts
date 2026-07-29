@@ -109,7 +109,7 @@ describePostgres("CORE-1b PostgreSQL restart acceptance", () => {
       firstProvider,
       authBeforeRestart,
     );
-    const project = runtimeBeforeRestart.projectRepository.create(
+    const project = await runtimeBeforeRestart.projectRepository.createDurable(
       ownerId,
       "Durable Project",
       "adventure",

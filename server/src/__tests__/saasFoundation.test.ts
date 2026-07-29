@@ -38,30 +38,30 @@ describe("SaaS Foundation", () => {
       repo = new SaaSProjectRepository(new InMemoryStorageProvider());
     });
 
-    it("creates project with ownership", () => {
-      const proj = repo.create("user-1", "My Game", "rpg");
+    it("creates project with ownership", async () => {
+      const proj = await repo.createDurable("user-1", "My Game", "rpg");
       expect(proj.ownerId).toBe("user-1");
       expect(proj.status).toBe("draft");
     });
 
-    it("isolates projects by owner", () => {
-      repo.create("user-1", "Game A", "rpg");
-      repo.create("user-2", "Game B", "obby");
-      repo.create("user-1", "Game C", "tycoon");
+    it("isolates projects by owner", async () => {
+      await repo.createDurable("user-1", "Game A", "rpg");
+      await repo.createDurable("user-2", "Game B", "obby");
+      await repo.createDurable("user-1", "Game C", "tycoon");
 
       expect(repo.getByOwner("user-1")).toHaveLength(2);
       expect(repo.getByOwner("user-2")).toHaveLength(1);
     });
 
-    it("verifies ownership", () => {
-      const proj = repo.create("user-1", "Game", "rpg");
+    it("verifies ownership", async () => {
+      const proj = await repo.createDurable("user-1", "Game", "rpg");
       expect(repo.verifyOwnership(proj.id, "user-1")).toBe(true);
       expect(repo.verifyOwnership(proj.id, "user-2")).toBe(false);
     });
 
-    it("duplicates project", () => {
-      const orig = repo.create("user-1", "Original", "rpg");
-      const copy = repo.duplicate(orig.id);
+    it("duplicates project", async () => {
+      const orig = await repo.createDurable("user-1", "Original", "rpg");
+      const copy = await repo.duplicate(orig.id);
       expect(copy).not.toBeNull();
       expect(copy!.name).toContain("copy");
       expect(copy!.ownerId).toBe("user-1");
@@ -69,7 +69,7 @@ describe("SaaS Foundation", () => {
     });
 
     it("updates project", async () => {
-      const proj = repo.create("user-1", "Game", "rpg");
+      const proj = await repo.createDurable("user-1", "Game", "rpg");
       const updated = await repo.updateDurable(proj.id, {
         status: "generating",
         qualityScore: 75,
@@ -79,7 +79,7 @@ describe("SaaS Foundation", () => {
     });
 
     it("deletes project", async () => {
-      const proj = repo.create("user-1", "ToDelete", "obby");
+      const proj = await repo.createDurable("user-1", "ToDelete", "obby");
       await expect(repo.deleteDurable(proj.id)).resolves.toBe(true);
       expect(repo.get(proj.id)).toBeNull();
     });
@@ -160,10 +160,10 @@ describe("SaaS Foundation", () => {
   });
 
   describe("Multi-User Isolation Security", () => {
-    it("user cannot access another user's project", () => {
+    it("user cannot access another user's project", async () => {
       const repo = new SaaSProjectRepository(new InMemoryStorageProvider());
-      const projA = repo.create("alice", "Alice Game", "rpg");
-      const projB = repo.create("bob", "Bob Game", "obby");
+      const projA = await repo.createDurable("alice", "Alice Game", "rpg");
+      const projB = await repo.createDurable("bob", "Bob Game", "obby");
 
       // Alice can access her project
       expect(repo.verifyOwnership(projA.id, "alice")).toBe(true);
@@ -173,11 +173,11 @@ describe("SaaS Foundation", () => {
       expect(repo.verifyOwnership(projA.id, "bob")).toBe(false);
     });
 
-    it("user only sees own projects in list", () => {
+    it("user only sees own projects in list", async () => {
       const repo = new SaaSProjectRepository(new InMemoryStorageProvider());
-      repo.create("alice", "A1", "rpg");
-      repo.create("alice", "A2", "obby");
-      repo.create("bob", "B1", "tycoon");
+      await repo.createDurable("alice", "A1", "rpg");
+      await repo.createDurable("alice", "A2", "obby");
+      await repo.createDurable("bob", "B1", "tycoon");
 
       const aliceProjects = repo.getByOwner("alice");
       const bobProjects = repo.getByOwner("bob");
