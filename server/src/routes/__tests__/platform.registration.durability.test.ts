@@ -139,9 +139,7 @@ describe("platform registration durable transaction", () => {
     await withServer(async (baseUrl, { storage, auth }) => {
       const first = await register(baseUrl);
       expect(first.status).toBe(200);
-      const firstToken = /roblox_ai_token=([^;]+)/.exec(
-        first.setCookie!,
-      )?.[1];
+      const firstToken = /roblox_ai_token=([^;]+)/.exec(first.setCookie!)?.[1];
       expect(firstToken).toBeTruthy();
       const committedSession = auth.validateToken(firstToken!);
       expect(committedSession).not.toBeNull();
