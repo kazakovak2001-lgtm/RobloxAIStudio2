@@ -7,7 +7,13 @@
  * writes remain compatibility-only until DATA-201B migrates every request path.
  */
 
-import { DurableStorageError, type StorageProvider } from "../StorageProvider";
+import {
+  DurableStorageError,
+  type DurableMutation,
+  type DurableMutationResult,
+  type StorageOperationalStatus,
+  type StorageProvider,
+} from "../StorageProvider";
 
 export interface PostgresConfig {
   connectionString: string;
@@ -30,8 +36,15 @@ export interface QueryResult {
   rows: Array<Record<string, unknown>>;
 }
 
+export interface QueryableClient {
+  query(text: string, params?: unknown[]): Promise<QueryResult>;
+  release(): void;
+}
+
 export interface QueryablePool {
   query(text: string, params?: unknown[]): Promise<QueryResult>;
+  /** Required for true multi-statement transaction affinity. */
+  connect?(): Promise<QueryableClient>;
   end(): Promise<void>;
 }
 
@@ -52,6 +65,9 @@ export class PostgresStorageProvider implements StorageProvider {
   private initialization: Promise<void> | null = null;
   private pendingWrites = new Set<Promise<void>>();
   private writeTail: Promise<void> = Promise.resolve();
+  private compatibilityMutationVersions = new Map<string, number>();
+  private lastFailureAt?: string;
+  private closed = false;
 
   constructor(
     config?: Partial<PostgresConfig>,
@@ -68,13 +84,17 @@ export class PostgresStorageProvider implements StorageProvider {
   }
 
   set<T>(collection: string, id: string, data: T): void {
+    this.recordCompatibilityMutation(collection, id);
     this.getCollection(collection).set(id, data);
     this.scheduleWrite(() => this.persistSet(collection, id, data));
   }
 
   delete(collection: string, id: string): boolean {
     const deleted = this.getCollection(collection).delete(id);
-    if (deleted) this.scheduleWrite(() => this.persistDelete(collection, id));
+    if (deleted) {
+      this.recordCompatibilityMutation(collection, id);
+      this.scheduleWrite(() => this.persistDelete(collection, id));
+    }
     return deleted;
   }
 
@@ -85,7 +105,7 @@ export class PostgresStorageProvider implements StorageProvider {
         this.getCollection(collection).set(id, data);
       });
     } catch (error) {
-      this.connected = false;
+      await this.refreshOperationalStateAfterMutationFailure();
       throw new DurableStorageError(
         `Durable set failed for ${collection}/${id}`,
         "set",
@@ -105,13 +125,134 @@ export class PostgresStorageProvider implements StorageProvider {
       });
       return true;
     } catch (error) {
-      this.connected = false;
+      await this.refreshOperationalStateAfterMutationFailure();
       throw new DurableStorageError(
         `Durable delete failed for ${collection}/${id}`,
         "delete",
         { cause: error },
       );
     }
+  }
+
+  async applyDurableBatch(
+    mutations: readonly DurableMutation[],
+  ): Promise<readonly DurableMutationResult[]> {
+    if (mutations.length === 0) return [];
+    this.validateMutations(mutations);
+
+    try {
+      let results: readonly DurableMutationResult[] = [];
+      await this.enqueueWrite(async () => {
+        const compatibilityVersions = new Map<string, number>();
+        for (const mutation of mutations) {
+          const key = this.mutationKey(mutation.collection, mutation.id);
+          compatibilityVersions.set(
+            key,
+            this.compatibilityMutationVersions.get(key) ?? 0,
+          );
+        }
+
+        const pool = this.pool;
+        if (!pool || !this.connected) {
+          throw new Error("PostgreSQL connection is unavailable");
+        }
+        if (!pool.connect) {
+          throw new Error(
+            "PostgreSQL pool does not provide a transaction-affine client",
+          );
+        }
+
+        const client = await pool.connect();
+        const pendingResults: DurableMutationResult[] = [];
+        let committed = false;
+        try {
+          await client.query("BEGIN");
+          for (const mutation of mutations) {
+            if (mutation.operation === "set") {
+              await client.query(
+                `INSERT INTO ${KV_TABLE} (collection, id, data) VALUES ($1, $2, $3)
+                 ON CONFLICT (collection, id) DO UPDATE SET data = $3, updated_at = NOW()`,
+                [
+                  mutation.collection,
+                  mutation.id,
+                  JSON.stringify(mutation.data),
+                ],
+              );
+              pendingResults.push({
+                operation: mutation.operation,
+                collection: mutation.collection,
+                id: mutation.id,
+              });
+              continue;
+            }
+
+            const result = await client.query(
+              `DELETE FROM ${KV_TABLE} WHERE collection = $1 AND id = $2 RETURNING id`,
+              [mutation.collection, mutation.id],
+            );
+            pendingResults.push({
+              operation: mutation.operation,
+              collection: mutation.collection,
+              id: mutation.id,
+              deleted: result.rows.length > 0,
+            });
+          }
+
+          await client.query("COMMIT");
+          committed = true;
+        } catch (error) {
+          if (!committed) {
+            await client.query("ROLLBACK").catch(() => undefined);
+          }
+          throw error;
+        } finally {
+          client.release();
+        }
+
+        // No cache mutation is published before the database COMMIT above.
+        for (const mutation of mutations) {
+          const key = this.mutationKey(mutation.collection, mutation.id);
+          const capturedVersion = compatibilityVersions.get(key) ?? 0;
+          const currentVersion =
+            this.compatibilityMutationVersions.get(key) ?? 0;
+          if (currentVersion !== capturedVersion) continue;
+
+          const collection = this.getCollection(mutation.collection);
+          if (mutation.operation === "set") {
+            collection.set(mutation.id, mutation.data);
+          } else {
+            collection.delete(mutation.id);
+          }
+        }
+        results = pendingResults;
+      });
+      return results;
+    } catch (error) {
+      await this.refreshOperationalStateAfterMutationFailure();
+      throw new DurableStorageError(
+        "Durable transaction failed",
+        "transaction",
+        {
+          cause: error,
+        },
+      );
+    }
+  }
+
+  getOperationalStatus(): StorageOperationalStatus {
+    const availability = this.closed
+      ? "unavailable"
+      : this.connected
+        ? "available"
+        : this.lastFailureAt
+          ? "degraded"
+          : "unavailable";
+    return {
+      availability,
+      durability: "durable",
+      pendingMutations: this.pendingWrites.size,
+      ...(this.lastFailureAt ? { lastFailureAt: this.lastFailureAt } : {}),
+    };
   }
 
   list<T>(collection: string, filter?: (item: T) => boolean): T[] {
@@ -124,12 +265,6 @@ export class PostgresStorageProvider implements StorageProvider {
   }
 
   // ─── PostgreSQL-specific methods ──────────────────────────────────
-
-  async transaction<T>(fn: () => T): Promise<T> {
-    // Multi-record database transactions are DATA-201C scope. This method is
-    // retained for compatibility and does not claim database atomicity.
-    return fn();
-  }
 
   ready(): Promise<void> {
     this.initialization ??= this.initialize();
@@ -146,6 +281,7 @@ export class PostgresStorageProvider implements StorageProvider {
     if (this.pool) await this.pool.end();
     this.pool = null;
     this.connected = false;
+    this.closed = true;
   }
 
   isConnected(): boolean {
@@ -165,7 +301,7 @@ export class PostgresStorageProvider implements StorageProvider {
       // A strict provider reports the unavailable state here; bootstrap is the
       // boundary that turns the same failure into a rejected application start.
     }
-    if (!this.pool || !this.connected) {
+    if (!this.pool || this.closed) {
       return {
         connected: false,
         latencyMs: 0,
@@ -177,6 +313,7 @@ export class PostgresStorageProvider implements StorageProvider {
     const start = Date.now();
     try {
       await this.pool.query("SELECT 1");
+      this.connected = true;
       return {
         connected: true,
         latencyMs: Date.now() - start,
@@ -185,6 +322,7 @@ export class PostgresStorageProvider implements StorageProvider {
         mode: "cache-with-write-through",
       };
     } catch {
+      this.markConnectionFailure();
       return {
         connected: false,
         latencyMs: Date.now() - start,
@@ -230,13 +368,14 @@ export class PostgresStorageProvider implements StorageProvider {
 
       this.pool = candidatePool;
       this.connected = true;
+      this.closed = false;
 
       console.log(
         `[PostgresStorage] Connected — loaded ${rows.length} records into cache (pool=${this.config.poolSize})`,
       );
     } catch (err) {
       if (candidatePool) await candidatePool.end().catch(() => undefined);
-      this.connected = false;
+      this.markConnectionFailure();
       this.pool = null;
       const message = (err as Error).message;
       if (this.config.strict) {
@@ -284,16 +423,58 @@ export class PostgresStorageProvider implements StorageProvider {
 
   private scheduleWrite(write: () => Promise<void>): void {
     // Compatibility writes intentionally retain historical non-awaited behavior.
-    // DATA-201B will remove request-level consumers of this path.
     if (!this.initialization && !this.connected) return;
 
-    void this.enqueueWrite(write).catch((error: unknown) => {
-      this.connected = false;
+    void this.enqueueWrite(write).catch(async (error: unknown) => {
+      await this.refreshOperationalStateAfterMutationFailure();
       console.error(
         "[PostgresStorage] Compatibility write failed:",
         error instanceof Error ? error.message : error,
       );
     });
+  }
+
+  private mutationKey(collection: string, id: string): string {
+    return `${collection}\u0000${id}`;
+  }
+
+  private recordCompatibilityMutation(collection: string, id: string): void {
+    const key = this.mutationKey(collection, id);
+    this.compatibilityMutationVersions.set(
+      key,
+      (this.compatibilityMutationVersions.get(key) ?? 0) + 1,
+    );
+  }
+
+  private validateMutations(mutations: readonly DurableMutation[]): void {
+    for (const mutation of mutations) {
+      if (!mutation.collection || !mutation.id) {
+        throw new DurableStorageError(
+          "Transaction mutations require collection and id",
+          "transaction",
+        );
+      }
+    }
+  }
+
+  private markConnectionFailure(): void {
+    this.connected = false;
+    this.lastFailureAt = new Date().toISOString();
+  }
+
+  private async refreshOperationalStateAfterMutationFailure(): Promise<void> {
+    this.lastFailureAt = new Date().toISOString();
+    if (!this.pool || this.closed) {
+      this.connected = false;
+      return;
+    }
+
+    try {
+      await this.pool.query("SELECT 1");
+      this.connected = true;
+    } catch {
+      this.connected = false;
+    }
   }
 
   private async persistSet(

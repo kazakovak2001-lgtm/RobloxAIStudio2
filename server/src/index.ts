@@ -684,9 +684,18 @@ app.get("/health/database", async (_req, res) => {
 });
 
 app.get("/health/storage", (_req, res) => {
+  const operational = storageProvider.getOperationalStatus();
   res.json({
     success: true,
-    data: { provider: getStorageType(), status: "available" },
+    data: {
+      provider: getStorageType(),
+      status: operational.availability,
+      durability: operational.durability,
+      pendingMutations: operational.pendingMutations,
+      ...(operational.lastFailureAt
+        ? { lastFailureAt: operational.lastFailureAt }
+        : {}),
+    },
   });
 });
 
