@@ -1,4 +1,4 @@
-name: Temporary Project Creation Caller Migration
+name: Temporary DATA-201 Lineage Conflict Probe
 
 on:
   pull_request:
@@ -6,193 +6,42 @@ on:
       - agent/tmp-pr81-lifecycle-migration-base
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
-  migrate-project-callers:
-    if: github.head_ref == 'agent/data-201b-remove-project-create-compat'
+  probe-lineage-conflicts:
+    if: github.head_ref == 'agent/data-201-lineage-convergence'
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout PR head branch
+      - name: Checkout convergence branch
         uses: actions/checkout@v4
         with:
-          ref: agent/data-201b-remove-project-create-compat
+          ref: agent/data-201-lineage-convergence
           fetch-depth: 0
 
-      - name: Set up Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: npm
-
-      - name: Install locked dependencies
-        run: npm ci
-
-      - name: Migrate project creation callers
+      - name: Probe merge against atomic registration head
+        shell: bash
         run: |
-          node <<'NODE'
-          const fs = require('node:fs');
-          const ts = require('typescript');
-
-          const files = [
-            'server/src/__tests__/core1b.postgres.integration.test.ts',
-            'server/src/__tests__/identityAccess.test.ts',
-            'server/src/__tests__/preservationProperty.test.ts',
-            'server/src/__tests__/saasFoundation.test.ts',
-            'server/src/routes/__tests__/projects.durability.test.ts',
-            'server/src/routes/__tests__/projects.runtime.test.ts',
-          ];
-          const allowedReceivers = new Set([
-            'repo',
-            'projects',
-            'projectRuntime.projectRepository',
-            'runtime.projectRepository',
-            'runtimeBeforeRestart.projectRepository',
-          ]);
-          let transformedCalls = 0;
-
-          for (const file of files) {
-            const source = fs.readFileSync(file, 'utf8');
-            const sourceFile = ts.createSourceFile(
-              file,
-              source,
-              ts.ScriptTarget.Latest,
-              true,
-              ts.ScriptKind.TS,
-            );
-            const edits = new Map();
-
-            const addEdit = (start, end, text) => {
-              const key = `${start}:${end}:${text}`;
-              edits.set(key, { start, end, text });
-            };
-
-            const ensureAsync = (fn) => {
-              if (!fn) return;
-              const modifiers = ts.canHaveModifiers(fn)
-                ? ts.getModifiers(fn) ?? []
-                : [];
-              if (modifiers.some((modifier) => modifier.kind === ts.SyntaxKind.AsyncKeyword)) {
-                return;
-              }
-              addEdit(fn.getStart(sourceFile), fn.getStart(sourceFile), 'async ');
-            };
-
-            const nearestFunction = (node) => {
-              let current = node.parent;
-              while (current) {
-                if (
-                  ts.isArrowFunction(current) ||
-                  ts.isFunctionExpression(current) ||
-                  ts.isFunctionDeclaration(current) ||
-                  ts.isMethodDeclaration(current)
-                ) {
-                  return current;
-                }
-                current = current.parent;
-              }
-              return undefined;
-            };
-
-            const ensureAwait = (call) => {
-              if (ts.isAwaitExpression(call.parent)) return;
-              addEdit(call.getStart(sourceFile), call.getStart(sourceFile), 'await ');
-            };
-
-            const propertyAccess = (node, receiver, name) =>
-              ts.isCallExpression(node) &&
-              ts.isPropertyAccessExpression(node.expression) &&
-              node.expression.expression.getText(sourceFile) === receiver &&
-              node.expression.name.text === name;
-
-            const visit = (node) => {
-              if (
-                ts.isCallExpression(node) &&
-                ts.isPropertyAccessExpression(node.expression)
-              ) {
-                const method = node.expression.name.text;
-                const receiver = node.expression.expression.getText(sourceFile);
-                const isCreate =
-                  method === 'create' &&
-                  allowedReceivers.has(receiver) &&
-                  node.arguments.length >= 3;
-                const isDuplicate = method === 'duplicate' && receiver === 'repo';
-
-                if (isCreate || isDuplicate) {
-                  transformedCalls += 1;
-                  if (isCreate) {
-                    addEdit(
-                      node.expression.name.getStart(sourceFile),
-                      node.expression.name.getEnd(),
-                      'createDurable',
-                    );
-                  }
-                  ensureAwait(node);
-                  ensureAsync(nearestFunction(node));
-
-                  let current = node.parent;
-                  let fastCheckProperty;
-                  while (current) {
-                    if (propertyAccess(current, 'fc', 'property')) {
-                      fastCheckProperty = current;
-                      break;
-                    }
-                    current = current.parent;
-                  }
-
-                  if (fastCheckProperty) {
-                    addEdit(
-                      fastCheckProperty.expression.name.getStart(sourceFile),
-                      fastCheckProperty.expression.name.getEnd(),
-                      'asyncProperty',
-                    );
-                    current = fastCheckProperty.parent;
-                    while (current) {
-                      if (propertyAccess(current, 'fc', 'assert')) {
-                        ensureAwait(current);
-                        ensureAsync(nearestFunction(current));
-                        break;
-                      }
-                      current = current.parent;
-                    }
-                  }
-                }
-              }
-              ts.forEachChild(node, visit);
-            };
-
-            visit(sourceFile);
-            const ordered = [...edits.values()].sort(
-              (left, right) => right.start - left.start || right.end - left.end,
-            );
-            let output = source;
-            for (const edit of ordered) {
-              output =
-                output.slice(0, edit.start) + edit.text + output.slice(edit.end);
-            }
-            fs.writeFileSync(file, output);
-          }
-
-          if (transformedCalls < 18) {
-            throw new Error(`Expected at least 18 project callers, transformed ${transformedCalls}`);
-          }
-          console.log(`Transformed ${transformedCalls} project creation/duplication callers.`);
-          NODE
-
-          git rm .tmp/project-caller-migration-trigger
-          node node_modules/prettier/bin/prettier.cjs --write \
-            server/src/__tests__/core1b.postgres.integration.test.ts \
-            server/src/__tests__/identityAccess.test.ts \
-            server/src/__tests__/preservationProperty.test.ts \
-            server/src/__tests__/saasFoundation.test.ts \
-            server/src/routes/__tests__/projects.durability.test.ts \
-            server/src/routes/__tests__/projects.runtime.test.ts
-
-      - name: Commit caller migration to PR head
-        run: |
+          set -uo pipefail
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add -A
-          git diff --cached --quiet && exit 0
-          git commit -m "test(projects): migrate durable creation callers"
-          git push origin HEAD:agent/data-201b-remove-project-create-compat
+          git fetch origin e2446096235524d214b679fc89c3df2109a1ca2e
+
+          set +e
+          git merge --no-commit --no-ff e2446096235524d214b679fc89c3df2109a1ca2e
+          merge_status=$?
+          set -e
+
+          echo "MERGE_STATUS=${merge_status}"
+          echo "MERGE_BASE=$(git merge-base HEAD e2446096235524d214b679fc89c3df2109a1ca2e)"
+          echo "CONFLICT_FILES_BEGIN"
+          git diff --name-only --diff-filter=U || true
+          echo "CONFLICT_FILES_END"
+          echo "UNMERGED_INDEX_BEGIN"
+          git ls-files -u || true
+          echo "UNMERGED_INDEX_END"
+          echo "WORKTREE_STATUS_BEGIN"
+          git status --short
+          echo "WORKTREE_STATUS_END"
+
+          git merge --abort || true
