@@ -38,7 +38,7 @@ export class StorageBlueprintRepository implements IBlueprintRepository {
       version: 1,
     } as GameBlueprint;
 
-    this.storage.set(BLUEPRINTS, blueprint.id, blueprint);
+    await this.storage.setDurable(BLUEPRINTS, blueprint.id, blueprint);
     return this.hydrateBlueprint(blueprint);
   }
 
@@ -80,7 +80,7 @@ export class StorageBlueprintRepository implements IBlueprintRepository {
       created_at: existing.created_at,
       updated_at: new Date(),
     });
-    this.storage.set(BLUEPRINTS, id, updated);
+    await this.storage.setDurable(BLUEPRINTS, id, updated);
     return updated;
   }
 
@@ -160,7 +160,7 @@ export class StorageBlueprintRepository implements IBlueprintRepository {
       change_description: description,
       is_active: true,
     };
-    this.storage.set(VERSIONS, version.id, version);
+    await this.storage.setDurable(VERSIONS, version.id, version);
     return this.hydrateVersion(version);
   }
 
@@ -211,7 +211,7 @@ export class StorageBlueprintRepository implements IBlueprintRepository {
       updated_at: new Date(),
       version: Math.max(blueprint.version, versionNumber) + 1,
     } as GameBlueprint);
-    this.storage.set(BLUEPRINTS, blueprintId, restored);
+    await this.storage.setDurable(BLUEPRINTS, blueprintId, restored);
     return restored;
   }
 
@@ -219,7 +219,7 @@ export class StorageBlueprintRepository implements IBlueprintRepository {
     execution: GenerationExecution,
   ): Promise<GenerationExecution> {
     const hydrated = this.hydrateExecution(execution);
-    this.storage.set(EXECUTIONS, execution.id, hydrated);
+    await this.storage.setDurable(EXECUTIONS, execution.id, hydrated);
     return hydrated;
   }
 
@@ -256,7 +256,7 @@ export class StorageBlueprintRepository implements IBlueprintRepository {
       user_id: existing.user_id,
       started_at: existing.started_at,
     });
-    this.storage.set(EXECUTIONS, id, updated);
+    await this.storage.setDurable(EXECUTIONS, id, updated);
     return updated;
   }
 
