@@ -271,11 +271,7 @@ describe("PostgresStorageProvider awaited mutations", () => {
       ]),
     ).rejects.toBeInstanceOf(DurableStorageConflictError);
 
-    expect(clientStatements(queries)).toEqual([
-      "BEGIN",
-      "INSERT",
-      "ROLLBACK",
-    ]);
+    expect(clientStatements(queries)).toEqual(["BEGIN", "INSERT", "ROLLBACK"]);
     expect(storage.count("auth_credentials")).toBe(0);
     expect(storage.count("auth_roles")).toBe(0);
 
