@@ -1,12 +1,42 @@
 import { afterEach, describe, expect, it } from "vitest";
 import { ApiKeyStore } from "../ApiKeyStore";
-import { InMemoryStorageProvider } from "../../storage/StorageProvider";
+import {
+  DurableStorageError,
+  InMemoryStorageProvider,
+} from "../../storage/StorageProvider";
+
+class ControlledMutationStorage extends InMemoryStorageProvider {
+  rejectSet = false;
+  setDurableCalls = 0;
+  onSetStart?: () => void;
+  setBarrier?: Promise<void>;
+
+  override async setDurable<T>(
+    collection: string,
+    id: string,
+    data: T,
+  ): Promise<void> {
+    this.setDurableCalls += 1;
+    this.onSetStart?.();
+    if (this.setBarrier) {
+      await this.setBarrier;
+    }
+    if (this.rejectSet) {
+      throw new DurableStorageError("injected set rejection", "set");
+    }
+    await super.setDurable(collection, id, data);
+  }
+}
 
 describe("ApiKeyStore", () => {
-  const storage = new InMemoryStorageProvider();
+  const storage = new ControlledMutationStorage();
   const store = new ApiKeyStore(storage);
 
   afterEach(() => {
+    storage.rejectSet = false;
+    storage.setDurableCalls = 0;
+    storage.onSetStart = undefined;
+    storage.setBarrier = undefined;
     store.clear();
   });
 
@@ -31,12 +61,52 @@ describe("ApiKeyStore", () => {
     );
   });
 
-  it("revokes a key and is idempotent for repeated revocation", () => {
+  it("revokes a key after acknowledgement and is idempotent", async () => {
     const issued = store.issue("revoke-api-key-123456789");
 
-    expect(store.revoke(issued.id)).toBe(true);
+    await expect(store.revokeDurable(issued.id)).resolves.toBe(true);
     expect(store.validate(issued.key)).toBe(false);
-    expect(store.revoke(issued.id)).toBe(false);
+    await expect(store.revokeDurable(issued.id)).resolves.toBe(false);
+  });
+
+  it("serializes concurrent revocations of the same key", async () => {
+    const issued = store.issue("concurrent-revoke-key-123456789");
+    let markStarted!: () => void;
+    let releaseWrite!: () => void;
+    const writeStarted = new Promise<void>((resolve) => {
+      markStarted = resolve;
+    });
+    storage.onSetStart = markStarted;
+    storage.setBarrier = new Promise<void>((resolve) => {
+      releaseWrite = resolve;
+    });
+
+    const first = store.revokeDurable(issued.id);
+    await writeStarted;
+    const second = store.revokeDurable(issued.id);
+    releaseWrite();
+
+    await expect(Promise.all([first, second])).resolves.toEqual([true, false]);
+    expect(storage.setDurableCalls).toBe(1);
+    expect(store.list()).toEqual([
+      expect.objectContaining({
+        id: issued.id,
+        revokedAt: expect.any(String),
+      }),
+    ]);
+  });
+
+  it("keeps a key valid when revocation persistence is rejected", async () => {
+    const issued = store.issue("rejected-revoke-key-123456789");
+    const previous = storage.get("platform_api_keys", issued.id);
+    storage.rejectSet = true;
+
+    await expect(store.revokeDurable(issued.id)).rejects.toMatchObject({
+      code: "DURABLE_STORAGE_MUTATION_FAILED",
+      operation: "set",
+    });
+    expect(store.validate(issued.key)).toBe(true);
+    expect(storage.get("platform_api_keys", issued.id)).toEqual(previous);
   });
 
   it("rejects malformed or short credentials", () => {

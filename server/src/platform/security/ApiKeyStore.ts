@@ -61,11 +61,13 @@ function isEqualDigest(left: string, right: string): boolean {
 /**
  * Storage-backed API key registry.
  *
- * The registry uses the existing synchronous StorageProvider contract. When
- * STORAGE_PROVIDER=postgres, records are persisted by the provider's
- * write-through key-value store; local/test environments stay in memory.
+ * Issuance and bootstrap seeding retain their compatibility path until their
+ * lifecycle is separated. Revocation is acknowledged before the revoked state
+ * becomes observable.
  */
 export class ApiKeyStore {
+  private readonly revocationQueues = new Map<string, Promise<void>>();
+
   constructor(private readonly storage: StorageProvider) {}
 
   issue(rawKey: string, metadata: ApiKeyMetadata = {}): IssuedApiKey {
@@ -106,15 +108,31 @@ export class ApiKeyStore {
       );
   }
 
-  revoke(id: string): boolean {
-    const record = this.storage.get<StoredApiKey>(COLLECTION, id);
-    if (!record || record.revokedAt) return false;
-
-    this.storage.set(COLLECTION, id, {
-      ...record,
-      revokedAt: new Date().toISOString(),
+  async revokeDurable(id: string): Promise<boolean> {
+    const predecessor = this.revocationQueues.get(id) ?? Promise.resolve();
+    let release!: () => void;
+    const current = new Promise<void>((resolve) => {
+      release = resolve;
     });
-    return true;
+    const queued = predecessor.then(() => current);
+    this.revocationQueues.set(id, queued);
+
+    await predecessor;
+    try {
+      const record = this.storage.get<StoredApiKey>(COLLECTION, id);
+      if (!record || record.revokedAt) return false;
+
+      await this.storage.setDurable(COLLECTION, id, {
+        ...record,
+        revokedAt: new Date().toISOString(),
+      });
+      return true;
+    } finally {
+      release();
+      if (this.revocationQueues.get(id) === queued) {
+        this.revocationQueues.delete(id);
+      }
+    }
   }
 
   list(): RedactedApiKey[] {
