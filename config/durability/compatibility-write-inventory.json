@@ -130,16 +130,6 @@
       "migrationTarget": "DATA-201B"
     },
     {
-      "key": "server/src/platform/security/ApiKeyStore.ts#ApiKeyStore.clear#delete",
-      "path": "server/src/platform/security/ApiKeyStore.ts",
-      "owner": "ApiKeyStore.clear",
-      "operation": "delete",
-      "expectedCalls": 1,
-      "classification": "internal-lifecycle-debt",
-      "reason": "Administrative and test cleanup deletes API-key records synchronously.",
-      "migrationTarget": "DATA-201B"
-    },
-    {
       "key": "server/src/platform/security/ApiKeyStore.ts#ApiKeyStore.issue#set",
       "path": "server/src/platform/security/ApiKeyStore.ts",
       "owner": "ApiKeyStore.issue",
