@@ -1,9 +1,11 @@
 /**
- * AI Provider Integration Layer — public API (v2.8)
+ * AI Provider Integration Layer — bounded preview API (v2.8)
+ *
+ * ProviderFactory and ProviderRegistry are intentionally not re-exported.
+ * Production provider construction is owned by ../providerFactory.ts.
+ * Advanced provider tests may import the preview files directly.
  */
 export { BaseProvider } from "./BaseProvider";
-export { ProviderRegistry } from "./ProviderRegistry";
-export { ProviderFactory } from "./ProviderFactory";
 export { ResponseNormalizer } from "./ResponseNormalizer";
 export {
   PromptBuilder,
