@@ -146,7 +146,7 @@ export function createGameGenerationRouter(
         blueprintId || projectId,
         userId,
       );
-      projectRepository.update(projectId, {
+      await projectRepository.updateDurable(projectId, {
         status: "generating",
         generationCount:
           (projectRepository.get(projectId)?.generationCount ?? 0) + 1,
@@ -265,12 +265,12 @@ export function createGameGenerationRouter(
         aiCost: 0,
       });
       if (execution.status === "completed") {
-        projectRepository.update(execution.project_id, {
+        await projectRepository.updateDurable(execution.project_id, {
           status: "ready",
           qualityScore: 100,
         });
       } else if (execution.status === "failed") {
-        projectRepository.update(execution.project_id, {
+        await projectRepository.updateDurable(execution.project_id, {
           status: "draft",
         });
       }
