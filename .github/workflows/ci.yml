@@ -43,7 +43,7 @@ jobs:
             server/src/platform/projects/ProjectLifecycleCoordinator.test.ts \
             server/src/platform/projects/ProjectLifecycleCoordinator.ts \
             server/src/routes/game-generation.ts
-          git commit -m "style(projects): format lifecycle coordination"
+          git commit -m "chore(projects): format lifecycle coordination"
 
           expected="$(printf '%s\n' \
             config/durability/compatibility-write-inventory.json \
