@@ -14,6 +14,7 @@ export type DurableMutation =
       data: unknown;
     }
   | {
+      /** Reject the whole batch instead of overwriting an existing key. */
       type: "create";
       collection: string;
       id: string;
