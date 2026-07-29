@@ -37,111 +37,109 @@ jobs:
           source_path = Path("server/src/orchestrator/AutonomousOrchestrator.ts")
           source = source_path.read_text()
 
-          field_marker = '''  private sessions: Map<string, OrchestratorSession> = new Map();
-            private events?: PipelineEventEmitter;'''
-          field_replacement = '''  private sessions: Map<string, OrchestratorSession> = new Map();
-            private runTokens: Map<string, number> = new Map();
-            private events?: PipelineEventEmitter;'''
-          if "private runTokens:" not in source:
-              if source.count(field_marker) != 1:
-                  raise SystemExit("Expected one run-token field insertion point")
-              source = source.replace(field_marker, field_replacement, 1)
+          replacements = [
+              (
+                  "  private sessions: Map<string, OrchestratorSession> = new Map();\n"
+                  "  private events?: PipelineEventEmitter;",
+                  "  private sessions: Map<string, OrchestratorSession> = new Map();\n"
+                  "  private runTokens: Map<string, number> = new Map();\n"
+                  "  private events?: PipelineEventEmitter;",
+                  "run-token field",
+              ),
+              (
+                  '    session.status = "paused";\n'
+                  '    session.currentPhase = "paused";\n'
+                  "    return true;",
+                  "    this.invalidateRun(session.id);\n"
+                  "    const activeNode = session.phases.find(\n"
+                  '      (phase) => phase.status === "running",\n'
+                  "    );\n"
+                  '    if (activeNode) activeNode.status = "pending";\n'
+                  '    session.status = "paused";\n'
+                  '    session.currentPhase = "paused";\n'
+                  "    return true;",
+                  "pause invalidation",
+              ),
+              (
+                  '    session.status = "cancelled";\n'
+                  '    session.currentPhase = "cancelled";\n'
+                  "    session.finishedAt = Date.now();",
+                  "    this.invalidateRun(session.id);\n"
+                  '    session.status = "cancelled";\n'
+                  '    session.currentPhase = "cancelled";\n'
+                  "    session.finishedAt = Date.now();",
+                  "cancel invalidation",
+              ),
+              (
+                  "  private async executePhases(session: OrchestratorSession): Promise<void> {\n"
+                  "    for (const node of session.phases) {",
+                  "  private beginRun(sessionId: string): number {\n"
+                  "    const token = (this.runTokens.get(sessionId) ?? 0) + 1;\n"
+                  "    this.runTokens.set(sessionId, token);\n"
+                  "    return token;\n"
+                  "  }\n\n"
+                  "  private invalidateRun(sessionId: string): void {\n"
+                  "    this.runTokens.set(sessionId, (this.runTokens.get(sessionId) ?? 0) + 1);\n"
+                  "  }\n\n"
+                  "  private isCurrentRun(sessionId: string, token: number): boolean {\n"
+                  "    return this.runTokens.get(sessionId) === token;\n"
+                  "  }\n\n"
+                  "  private async executePhases(session: OrchestratorSession): Promise<void> {\n"
+                  "    const runToken = this.beginRun(session.id);\n"
+                  "    for (const node of session.phases) {\n"
+                  "      if (!this.isCurrentRun(session.id, runToken)) return;",
+                  "execute run ownership",
+              ),
+              (
+                  "        const result = await this.executePhase(session, node.phase);\n"
+                  "        node.status = result.status;",
+                  "        const result = await this.executePhase(session, node.phase);\n"
+                  "        if (\n"
+                  "          !this.isCurrentRun(session.id, runToken) ||\n"
+                  '          session.status !== "running"\n'
+                  "        ) {\n"
+                  "          return;\n"
+                  "        }\n"
+                  "        node.status = result.status;",
+                  "post-await ownership guard",
+              ),
+              (
+                  "      } catch (error) {\n"
+                  "        this.failPhase(session, node, stepId, agentName, error);",
+                  "      } catch (error) {\n"
+                  "        if (\n"
+                  "          !this.isCurrentRun(session.id, runToken) ||\n"
+                  '          session.status !== "running"\n'
+                  "        ) {\n"
+                  "          return;\n"
+                  "        }\n"
+                  "        this.failPhase(session, node, stepId, agentName, error);",
+                  "catch ownership guard",
+              ),
+              (
+                  '    if (session.status === "running") {\n'
+                  "      const remaining = session.phases.some(",
+                  "    if (!this.isCurrentRun(session.id, runToken)) return;\n\n"
+                  '    if (session.status === "running") {\n'
+                  "      const remaining = session.phases.some(",
+                  "terminal ownership guard",
+              ),
+              (
+                  "        cost: { ...session.cost },",
+                  "        cost: {\n"
+                  "          ...session.cost,\n"
+                  "          perPhase: { ...session.cost.perPhase },\n"
+                  "        },",
+                  "checkpoint cost isolation",
+              ),
+          ]
 
-          pause_marker = '''    session.status = "paused";
-              session.currentPhase = "paused";
-              return true;'''
-          pause_replacement = '''    this.invalidateRun(session.id);
-              const activeNode = session.phases.find(
-                (phase) => phase.status === "running",
-              );
-              if (activeNode) activeNode.status = "pending";
-              session.status = "paused";
-              session.currentPhase = "paused";
-              return true;'''
-          if "const activeNode = session.phases.find" not in source:
-              if source.count(pause_marker) != 1:
-                  raise SystemExit("Expected one pause insertion point")
-              source = source.replace(pause_marker, pause_replacement, 1)
-
-          cancel_marker = '''    session.status = "cancelled";
-              session.currentPhase = "cancelled";
-              session.finishedAt = Date.now();'''
-          cancel_replacement = '''    this.invalidateRun(session.id);
-              session.status = "cancelled";
-              session.currentPhase = "cancelled";
-              session.finishedAt = Date.now();'''
-          if source.count(cancel_marker) == 1:
-              source = source.replace(cancel_marker, cancel_replacement, 1)
-
-          execute_marker = '''  private async executePhases(session: OrchestratorSession): Promise<void> {
-              for (const node of session.phases) {'''
-          execute_replacement = '''  private beginRun(sessionId: string): number {
-              const token = (this.runTokens.get(sessionId) ?? 0) + 1;
-              this.runTokens.set(sessionId, token);
-              return token;
-            }
-
-            private invalidateRun(sessionId: string): void {
-              this.runTokens.set(sessionId, (this.runTokens.get(sessionId) ?? 0) + 1);
-            }
-
-            private isCurrentRun(sessionId: string, token: number): boolean {
-              return this.runTokens.get(sessionId) === token;
-            }
-
-            private async executePhases(session: OrchestratorSession): Promise<void> {
-              const runToken = this.beginRun(session.id);
-              for (const node of session.phases) {
-                if (!this.isCurrentRun(session.id, runToken)) return;'''
-          if "private beginRun(" not in source:
-              if source.count(execute_marker) != 1:
-                  raise SystemExit("Expected one executePhases insertion point")
-              source = source.replace(execute_marker, execute_replacement, 1)
-
-          await_marker = '''        const result = await this.executePhase(session, node.phase);
-                    node.status = result.status;'''
-          await_replacement = '''        const result = await this.executePhase(session, node.phase);
-                    if (
-                      !this.isCurrentRun(session.id, runToken) ||
-                      session.status !== "running"
-                    ) {
-                      return;
-                    }
-                    node.status = result.status;'''
-          if source.count(await_marker) == 1:
-              source = source.replace(await_marker, await_replacement, 1)
-
-          catch_marker = '''      } catch (error) {
-                  this.failPhase(session, node, stepId, agentName, error);'''
-          catch_replacement = '''      } catch (error) {
-                  if (
-                    !this.isCurrentRun(session.id, runToken) ||
-                    session.status !== "running"
-                  ) {
-                    return;
-                  }
-                  this.failPhase(session, node, stepId, agentName, error);'''
-          if source.count(catch_marker) == 1:
-              source = source.replace(catch_marker, catch_replacement, 1)
-
-          finish_marker = '''    if (session.status === "running") {
-                const remaining = session.phases.some('''
-          finish_replacement = '''    if (!this.isCurrentRun(session.id, runToken)) return;
-
-              if (session.status === "running") {
-                const remaining = session.phases.some('''
-          if source.count(finish_marker) == 1:
-              source = source.replace(finish_marker, finish_replacement, 1)
-
-          cost_marker = '        cost: { ...session.cost },'
-          cost_replacement = (
-              '        cost: {\n'
-              '          ...session.cost,\n'
-              '          perPhase: { ...session.cost.perPhase },\n'
-              '        },'
-          )
-          if source.count(cost_marker) == 1:
-              source = source.replace(cost_marker, cost_replacement, 1)
+          for old, new, label in replacements:
+              if new in source:
+                  continue
+              if source.count(old) != 1:
+                  raise SystemExit(f"Expected exactly one {label} insertion point")
+              source = source.replace(old, new, 1)
 
           source_path.write_text(source)
 
@@ -151,67 +149,67 @@ jobs:
           if test_name not in tests:
               insertion = '''
 
-            it("prevents stale pause/resume loops from duplicating terminal evidence", async () => {
-              const events = new PipelineEventEmitter();
-              const published: PipelineEvent[] = [];
-              events.onEvent(async (event) => {
-                published.push(event);
-              });
+  it("prevents stale pause/resume loops from duplicating terminal evidence", async () => {
+    const events = new PipelineEventEmitter();
+    const published: PipelineEvent[] = [];
+    events.onEvent(async (event) => {
+      published.push(event);
+    });
 
-              const orchestrator = new AutonomousOrchestrator(events, {
-                simulationDelayMs: 25,
-              });
-              const session = orchestrator.run(
-                "Build a cooperative obby with safe pause and resume",
-                "project-race",
-              );
+    const orchestrator = new AutonomousOrchestrator(events, {
+      simulationDelayMs: 25,
+    });
+    const session = orchestrator.run(
+      "Build a cooperative obby with safe pause and resume",
+      "project-race",
+    );
 
-              for (let attempt = 0; attempt < 100; attempt += 1) {
-                if (session.phases.some((phase) => phase.status === "running")) break;
-                await new Promise((resolve) => setTimeout(resolve, 1));
-              }
+    for (let attempt = 0; attempt < 100; attempt += 1) {
+      if (session.phases.some((phase) => phase.status === "running")) break;
+      await new Promise((resolve) => setTimeout(resolve, 1));
+    }
 
-              expect(orchestrator.pause(session.id)).toBe(true);
-              expect(orchestrator.resume(session.id)).toBe(true);
-              await waitForTerminal(session);
+    expect(orchestrator.pause(session.id)).toBe(true);
+    expect(orchestrator.resume(session.id)).toBe(true);
+    await waitForTerminal(session);
 
-              const terminalEvents = published.filter(
-                (event) => event.type === "pipeline.preview.completed",
-              );
-              expect(terminalEvents).toHaveLength(1);
+    const terminalEvents = published.filter(
+      (event) => event.type === "pipeline.preview.completed",
+    );
+    expect(terminalEvents).toHaveLength(1);
 
-              const phaseTerminalEvents = published.filter(
-                (event) =>
-                  event.type === "step.completed" || event.type === "step.simulated",
-              );
-              const terminalStepIds = phaseTerminalEvents.map((event) => event.stepId);
-              expect(new Set(terminalStepIds).size).toBe(terminalStepIds.length);
-              expect(Object.keys(session.cost.perPhase)).toHaveLength(
-                phaseTerminalEvents.length,
-              );
-            });
+    const phaseTerminalEvents = published.filter(
+      (event) =>
+        event.type === "step.completed" || event.type === "step.simulated",
+    );
+    const terminalStepIds = phaseTerminalEvents.map((event) => event.stepId);
+    expect(new Set(terminalStepIds).size).toBe(terminalStepIds.length);
+    expect(Object.keys(session.cost.perPhase)).toHaveLength(
+      phaseTerminalEvents.length,
+    );
+  });
 
-            it("keeps checkpoint cost snapshots isolated from later phase costs", async () => {
-              const orchestrator = new AutonomousOrchestrator(undefined, {
-                simulationDelayMs: 0,
-              });
-              const session = orchestrator.run(
-                "Build a deterministic tycoon preview",
-                "project-checkpoint",
-              );
+  it("keeps checkpoint cost snapshots isolated from later phase costs", async () => {
+    const orchestrator = new AutonomousOrchestrator(undefined, {
+      simulationDelayMs: 0,
+    });
+    const session = orchestrator.run(
+      "Build a deterministic tycoon preview",
+      "project-checkpoint",
+    );
 
-              await waitForTerminal(session);
+    await waitForTerminal(session);
 
-              const firstCheckpoint = session.checkpoints[0];
-              const snapshotCost = firstCheckpoint.snapshot.cost as {
-                perPhase: Record<string, unknown>;
-              };
+    const firstCheckpoint = session.checkpoints[0];
+    const snapshotCost = firstCheckpoint.snapshot.cost as {
+      perPhase: Record<string, unknown>;
+    };
 
-              expect(snapshotCost.perPhase).not.toBe(session.cost.perPhase);
-              expect(Object.keys(snapshotCost.perPhase)).toEqual(["genre_detection"]);
-              expect(Object.keys(session.cost.perPhase).length).toBeGreaterThan(1);
-            });
-          '''
+    expect(snapshotCost.perPhase).not.toBe(session.cost.perPhase);
+    expect(Object.keys(snapshotCost.perPhase)).toEqual(["genre_detection"]);
+    expect(Object.keys(session.cost.perPhase).length).toBeGreaterThan(1);
+  });
+'''
               closing = "\n});\n"
               if not tests.endswith(closing):
                   raise SystemExit("Expected orchestrator test suite closing marker")
