@@ -5,6 +5,10 @@
 import { Router, type Request, type Response } from "express";
 import { UserRepository } from "../platform/users";
 import type { AuthService } from "../platform/auth/AuthService";
+import {
+  AccountRegistrationConflictError,
+  AccountRegistrationService,
+} from "../platform/auth/AccountRegistrationService";
 import { authService } from "../platform/auth/authServiceInstance";
 import {
   DurableStorageError,
@@ -34,16 +38,21 @@ export interface PlatformRouterDependencies {
   storage: StorageProvider;
   access: ProjectAccessControl;
   auth?: AuthService;
+  accountRegistration?: AccountRegistrationService;
 }
 
 export function createPlatformRouter({
   storage,
   access,
   auth: providedAuth,
+  accountRegistration: providedAccountRegistration,
 }: PlatformRouterDependencies): Router {
   const router = Router();
   const users = new UserRepository(storage);
   const auth = providedAuth ?? authService;
+  const accountRegistration =
+    providedAccountRegistration ??
+    new AccountRegistrationService(storage, users, auth);
   const versions = new VersionHistoryRepository();
   const registry = new AgentRegistryService();
   const preferences = new Map<string, UserPreferences>();
@@ -59,7 +68,7 @@ export function createPlatformRouter({
 
   // ─── Auth ─────────────────────────────────────────────────
 
-  router.post("/auth/register", (req, res) => {
+  router.post("/auth/register", async (req, res) => {
     const { email, password, displayName } = req.body;
     if (!email || !password || !displayName) {
       res.status(400).json({
@@ -68,31 +77,33 @@ export function createPlatformRouter({
       });
       return;
     }
-    const existing = users.getByEmail(email);
-    if (existing) {
-      res
-        .status(409)
-        .json({ success: false, error: "Email already registered" });
-      return;
+
+    try {
+      const registered = await accountRegistration.register({
+        email,
+        password,
+        displayName,
+      });
+      setAuthCookies(
+        res,
+        registered.loginResult.token!,
+        registered.loginResult.refreshToken!,
+      );
+      res.json({
+        success: true,
+        data: {
+          user: registered.user,
+        },
+      });
+    } catch (error) {
+      if (error instanceof AccountRegistrationConflictError) {
+        res
+          .status(409)
+          .json({ success: false, error: "Email already registered" });
+        return;
+      }
+      handlePlatformMutationError(error, res);
     }
-    // Registration remains the next DATA-201C orchestration slice because user,
-    // credentials, role and initial session must commit as one account batch.
-    const user = users.create({ email, displayName });
-    const registered = auth.register(email, password, user.id);
-    if (!registered) {
-      res
-        .status(409)
-        .json({ success: false, error: "Email already registered" });
-      return;
-    }
-    const loginResult = auth.login(email, password, user.id);
-    setAuthCookies(res, loginResult.token!, loginResult.refreshToken!);
-    res.json({
-      success: true,
-      data: {
-        user,
-      },
-    });
   });
 
   router.post("/auth/login", loginRateLimiter, async (req, res) => {
@@ -177,8 +188,6 @@ export function createPlatformRouter({
       res.status(400).json({ success: false, error: "email required" });
       return;
     }
-    // Do not reveal whether an account exists. A mail provider can consume this
-    // accepted request when configured without changing the public contract.
     res.status(202).json({
       success: true,
       data: {
