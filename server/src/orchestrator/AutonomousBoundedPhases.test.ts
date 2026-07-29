@@ -24,6 +24,25 @@ describe("Autonomous bounded phase contracts", () => {
 
     await waitForTerminal(session);
 
+    expect(session.status).toBe("preview_completed");
+    expect(session.phases.some((phase) => phase.status === "simulated")).toBe(
+      false,
+    );
+    expect(
+      session.phases.find((phase) => phase.phase === "preview_completed"),
+    ).toMatchObject({
+      status: "completed",
+      executionMode: "bounded",
+      evidence: "heuristic",
+      capability: "degraded",
+      service: "AutonomousOrchestrator",
+      output: {
+        productionCompleted: false,
+        resultAuthority: "preview-only",
+        verifiedStudioArtifacts: 0,
+      },
+    });
+
     const capabilities = orchestrator.getCapabilities(session.id);
     expect(capabilities).not.toBeNull();
     expect(capabilities?.lua_generation).toMatchObject({
