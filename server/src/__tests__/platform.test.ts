@@ -6,6 +6,59 @@ import { describe, it, expect, beforeEach } from "vitest";
 import { UserRepository } from "../platform/users";
 import { VersionHistoryRepository } from "../platform/versioning";
 import { AgentRegistryService } from "../platform/registry";
+import {
+  DurableStorageError,
+  InMemoryStorageProvider,
+} from "../platform/storage/StorageProvider";
+import { InMemoryBlueprintRepository } from "../projects/repository/blueprint.repository";
+import type { CreateBlueprintInput } from "../projects/types/blueprint";
+
+class ControlledMutationStorage extends InMemoryStorageProvider {
+  rejectSet = false;
+
+  override async setDurable<T>(
+    collection: string,
+    id: string,
+    data: T,
+  ): Promise<void> {
+    if (this.rejectSet) {
+      throw new DurableStorageError("injected set rejection", "set");
+    }
+    await super.setDurable(collection, id, data);
+  }
+}
+
+function blueprintInput(projectId = "project-1"): CreateBlueprintInput {
+  return {
+    project_id: projectId,
+    user_id: "owner",
+    name: "Durable Blueprint",
+    description: "Acknowledged blueprint persistence",
+    game_type: "obby",
+    genre: ["platformer"],
+    target_audience: "all",
+    difficulty: "medium",
+    estimated_players: "small-group",
+    gameplay: {
+      mechanics: [],
+      progression: {},
+      balance: {},
+    },
+    ui_layouts: [],
+    architecture: {
+      client_architecture: {},
+      server_architecture: {},
+      networking: {},
+    },
+    assets: {
+      models: [],
+      textures: [],
+      sounds: [],
+      animations: [],
+    },
+    code_spec: { modules: [], patterns: [] },
+  };
+}
 
 describe("Platform Layer", () => {
   describe("UserRepository", () => {
@@ -54,6 +107,50 @@ describe("Platform Layer", () => {
       const check = repo.checkLimits(user.id);
       expect(check.allowed).toBe(false);
       expect(check.reason).toContain("limit");
+    });
+  });
+
+  describe("BlueprintRepository durability", () => {
+    it("does not publish a rejected blueprint create", async () => {
+      const storage = new ControlledMutationStorage();
+      const repository = new InMemoryBlueprintRepository(storage);
+      storage.rejectSet = true;
+
+      await expect(
+        repository.createBlueprint("owner", blueprintInput()),
+      ).rejects.toBeInstanceOf(DurableStorageError);
+      expect(storage.count("game_blueprints")).toBe(0);
+    });
+
+    it("preserves the previous blueprint after rejected update", async () => {
+      const storage = new ControlledMutationStorage();
+      const repository = new InMemoryBlueprintRepository(storage);
+      const blueprint = await repository.createBlueprint(
+        "owner",
+        blueprintInput(),
+      );
+      storage.rejectSet = true;
+
+      await expect(
+        repository.updateBlueprint(blueprint.id, { name: "Rejected" }),
+      ).rejects.toBeInstanceOf(DurableStorageError);
+      expect(await repository.getBlueprint(blueprint.id)).toEqual(blueprint);
+    });
+
+    it("makes acknowledged blueprint mutations immediately readable", async () => {
+      const storage = new ControlledMutationStorage();
+      const repository = new InMemoryBlueprintRepository(storage);
+      const blueprint = await repository.createBlueprint(
+        "owner",
+        blueprintInput(),
+      );
+      const updated = await repository.updateBlueprint(blueprint.id, {
+        name: "Committed Blueprint",
+      });
+
+      expect(await repository.getBlueprint(blueprint.id)).toEqual(updated);
+      expect(updated?.name).toBe("Committed Blueprint");
+      expect(storage.count("game_blueprints")).toBe(1);
     });
   });
 
