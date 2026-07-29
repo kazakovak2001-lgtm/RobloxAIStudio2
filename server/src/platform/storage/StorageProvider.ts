@@ -6,13 +6,26 @@
  * awaited mutation methods so persistence rejection is observable.
  */
 
+export type DurableMutation =
+  | {
+      type: "set";
+      collection: string;
+      id: string;
+      data: unknown;
+    }
+  | {
+      type: "delete";
+      collection: string;
+      id: string;
+    };
+
 export class DurableStorageError extends Error {
   readonly code = "DURABLE_STORAGE_MUTATION_FAILED";
   readonly cause?: unknown;
 
   constructor(
     message: string,
-    readonly operation: "set" | "delete",
+    readonly operation: "set" | "delete" | "batch",
     options?: { cause?: unknown },
   ) {
     super(message);
@@ -31,6 +44,11 @@ export interface StorageProvider {
   setDurable<T>(collection: string, id: string, data: T): Promise<void>;
   /** Resolve only after the durable delete has been acknowledged. */
   deleteDurable(collection: string, id: string): Promise<boolean>;
+  /**
+   * Apply all mutations atomically. No mutation may become visible in the read
+   * cache unless the complete durable batch has been acknowledged.
+   */
+  mutateDurably(mutations: readonly DurableMutation[]): Promise<void>;
   list<T>(collection: string, filter?: (item: T) => boolean): T[];
   count(collection: string): number;
   /** Resolve once durable storage has loaded its read cache. */
@@ -58,11 +76,40 @@ export class InMemoryStorageProvider implements StorageProvider {
   }
 
   async setDurable<T>(collection: string, id: string, data: T): Promise<void> {
-    this.set(collection, id, data);
+    await this.mutateDurably([{ type: "set", collection, id, data }]);
   }
 
   async deleteDurable(collection: string, id: string): Promise<boolean> {
-    return this.delete(collection, id);
+    if (!this.store.get(collection)?.has(id)) return false;
+    await this.mutateDurably([{ type: "delete", collection, id }]);
+    return true;
+  }
+
+  async mutateDurably(mutations: readonly DurableMutation[]): Promise<void> {
+    if (mutations.length === 0) return;
+
+    const staged = new Map<string, Map<string, unknown>>();
+    const getStagedCollection = (name: string): Map<string, unknown> => {
+      let collection = staged.get(name);
+      if (!collection) {
+        collection = new Map(this.store.get(name) ?? []);
+        staged.set(name, collection);
+      }
+      return collection;
+    };
+
+    for (const mutation of mutations) {
+      const collection = getStagedCollection(mutation.collection);
+      if (mutation.type === "set") {
+        collection.set(mutation.id, mutation.data);
+      } else {
+        collection.delete(mutation.id);
+      }
+    }
+
+    for (const [name, collection] of staged) {
+      this.store.set(name, collection);
+    }
   }
 
   list<T>(collection: string, filter?: (item: T) => boolean): T[] {
