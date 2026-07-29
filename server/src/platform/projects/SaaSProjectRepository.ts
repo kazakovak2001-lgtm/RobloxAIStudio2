@@ -80,16 +80,7 @@ export class SaaSProjectRepository {
     );
   }
 
-  /** Compatibility-only mutation for internal consumers not yet migrated. */
-  update(projectId: string, updates: SaaSProjectUpdate): SaaSProject | null {
-    const existing = this.get(projectId);
-    if (!existing) return null;
-    const updated = { ...existing, ...updates, updatedAt: Date.now() };
-    this.storage.set(this.collection, projectId, updated);
-    return updated;
-  }
-
-  /** Request-safe update that preserves the previous cache value on rejection. */
+  /** Acknowledged update that preserves the previous cache value on rejection. */
   async updateDurable(
     projectId: string,
     updates: SaaSProjectUpdate,
