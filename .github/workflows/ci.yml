@@ -81,6 +81,12 @@ jobs:
               1,
           )
 
+          commit_old = "git commit -m 'chore(release): integrate durable API key issuance'\n"
+          commit_new = "git commit -m 'chore(release): integrate api key issuance'\n"
+          if text.count(commit_old) != 1:
+              raise SystemExit("publisher commit-message anchor mismatch")
+          text = text.replace(commit_old, commit_new, 1)
+
           path.write_text(text)
           PY
           bash -n /tmp/pr83-publish.sh
