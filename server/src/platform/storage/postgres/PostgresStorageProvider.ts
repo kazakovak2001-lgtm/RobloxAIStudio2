@@ -7,7 +7,11 @@
  * writes remain compatibility-only until DATA-201B migrates every request path.
  */
 
-import { DurableStorageError, type StorageProvider } from "../StorageProvider";
+import {
+  DurableStorageError,
+  type DurableMutation,
+  type StorageProvider,
+} from "../StorageProvider";
 
 export interface PostgresConfig {
   connectionString: string;
@@ -30,8 +34,16 @@ export interface QueryResult {
   rows: Array<Record<string, unknown>>;
 }
 
-export interface QueryablePool {
+export interface QueryExecutor {
   query(text: string, params?: unknown[]): Promise<QueryResult>;
+}
+
+export interface QueryableClient extends QueryExecutor {
+  release(): void;
+}
+
+export interface QueryablePool extends QueryExecutor {
+  connect(): Promise<QueryableClient>;
   end(): Promise<void>;
 }
 
@@ -114,6 +126,58 @@ export class PostgresStorageProvider implements StorageProvider {
     }
   }
 
+  async mutateDurably(
+    mutations: readonly DurableMutation[],
+  ): Promise<void> {
+    if (mutations.length === 0) return;
+
+    try {
+      await this.enqueueWrite(async () => {
+        const client = await this.requirePool().connect();
+        let committed = false;
+        try {
+          await client.query("BEGIN");
+          for (const mutation of mutations) {
+            if (mutation.type === "set") {
+              await this.persistSet(
+                mutation.collection,
+                mutation.id,
+                mutation.data,
+                client,
+              );
+            } else {
+              await this.persistDelete(
+                mutation.collection,
+                mutation.id,
+                client,
+              );
+            }
+          }
+          await client.query("COMMIT");
+          committed = true;
+        } catch (error) {
+          if (!committed) {
+            await client.query("ROLLBACK").catch(() => undefined);
+          }
+          throw error;
+        } finally {
+          try {
+            client.release();
+          } catch {
+            // A release error must not reinterpret an acknowledged COMMIT.
+          }
+        }
+
+        this.publishCacheMutations(mutations);
+      });
+    } catch (error) {
+      this.connected = false;
+      throw new DurableStorageError("Durable mutation batch failed", "batch", {
+        cause: error,
+      });
+    }
+  }
+
   list<T>(collection: string, filter?: (item: T) => boolean): T[] {
     const items = [...this.getCollection(collection).values()] as T[];
     return filter ? items.filter(filter) : items;
@@ -124,12 +188,6 @@ export class PostgresStorageProvider implements StorageProvider {
   }
 
   // ─── PostgreSQL-specific methods ──────────────────────────────────
-
-  async transaction<T>(fn: () => T): Promise<T> {
-    // Multi-record database transactions are DATA-201C scope. This method is
-    // retained for compatibility and does not claim database atomicity.
-    return fn();
-  }
 
   ready(): Promise<void> {
     this.initialization ??= this.initialize();
@@ -206,6 +264,24 @@ export class PostgresStorageProvider implements StorageProvider {
     return this.cache.get(name)!;
   }
 
+  private publishCacheMutations(mutations: readonly DurableMutation[]): void {
+    for (const mutation of mutations) {
+      const collection = this.getCollection(mutation.collection);
+      if (mutation.type === "set") {
+        collection.set(mutation.id, mutation.data);
+      } else {
+        collection.delete(mutation.id);
+      }
+    }
+  }
+
+  private requirePool(): QueryablePool {
+    if (!this.pool || !this.connected) {
+      throw new Error("PostgreSQL connection is unavailable");
+    }
+    return this.pool;
+  }
+
   private async initialize(): Promise<void> {
     let candidatePool: QueryablePool | null = null;
     try {
@@ -261,7 +337,7 @@ export class PostgresStorageProvider implements StorageProvider {
       connectionString: this.config.connectionString,
       max: this.config.poolSize,
       idleTimeoutMillis: this.config.poolTimeout,
-    }) as QueryablePool;
+    }) as unknown as QueryablePool;
   }
 
   private enqueueWrite(write: () => Promise<void>): Promise<void> {
@@ -300,22 +376,21 @@ export class PostgresStorageProvider implements StorageProvider {
     collection: string,
     id: string,
     data: unknown,
+    executor: QueryExecutor = this.requirePool(),
   ): Promise<void> {
-    if (!this.pool || !this.connected) {
-      throw new Error("PostgreSQL connection is unavailable");
-    }
-    await this.pool.query(
+    await executor.query(
       `INSERT INTO ${KV_TABLE} (collection, id, data) VALUES ($1, $2, $3)
        ON CONFLICT (collection, id) DO UPDATE SET data = $3, updated_at = NOW()`,
       [collection, id, JSON.stringify(data)],
     );
   }
 
-  private async persistDelete(collection: string, id: string): Promise<void> {
-    if (!this.pool || !this.connected) {
-      throw new Error("PostgreSQL connection is unavailable");
-    }
-    await this.pool.query(
+  private async persistDelete(
+    collection: string,
+    id: string,
+    executor: QueryExecutor = this.requirePool(),
+  ): Promise<void> {
+    await executor.query(
       `DELETE FROM ${KV_TABLE} WHERE collection = $1 AND id = $2`,
       [collection, id],
     );
