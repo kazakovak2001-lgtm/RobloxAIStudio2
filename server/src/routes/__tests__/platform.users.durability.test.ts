@@ -5,25 +5,24 @@ import { describe, expect, it } from "vitest";
 import {
   DurableStorageError,
   InMemoryStorageProvider,
+  type DurableMutation,
 } from "../../platform/storage/StorageProvider";
 import { UserRepository } from "../../platform/users";
 import { createPlatformRouter } from "../platform";
 import type { ProjectAccessControl } from "../projects";
 
 class ControlledMutationStorage extends InMemoryStorageProvider {
-  rejectSet = false;
-  durableSetCalls = 0;
+  rejectMutations = false;
+  durableMutationCalls = 0;
 
-  override async setDurable<T>(
-    collection: string,
-    id: string,
-    data: T,
+  override async mutateDurably(
+    mutations: readonly DurableMutation[],
   ): Promise<void> {
-    this.durableSetCalls += 1;
-    if (this.rejectSet) {
-      throw new DurableStorageError("injected set rejection", "set");
+    this.durableMutationCalls += 1;
+    if (this.rejectMutations) {
+      throw new DurableStorageError("injected mutation rejection", "batch");
     }
-    await super.setDurable(collection, id, data);
+    await super.mutateDurably(mutations);
   }
 }
 
@@ -78,7 +77,7 @@ async function mutation(
 describe("platform user durable HTTP acknowledgement", () => {
   it("returns 503 and exposes no user when create persistence is rejected", async () => {
     const storage = new ControlledMutationStorage();
-    storage.rejectSet = true;
+    storage.rejectMutations = true;
 
     await withServer(storage, "request-user", async (baseUrl) => {
       const result = await mutation(`${baseUrl}/users`, "POST", {
@@ -104,7 +103,7 @@ describe("platform user durable HTTP acknowledgement", () => {
       email: "before@example.com",
       displayName: "Before",
     });
-    storage.rejectSet = true;
+    storage.rejectMutations = true;
 
     await withServer(storage, user.id, async (baseUrl) => {
       const result = await mutation(`${baseUrl}/users/${user.id}`, "PATCH", {
@@ -131,7 +130,7 @@ describe("platform user durable HTTP acknowledgement", () => {
       });
 
       expect(result.status).toBe(403);
-      expect(storage.durableSetCalls).toBe(0);
+      expect(storage.durableMutationCalls).toBe(0);
       expect(users.getById(user.id)).toEqual(user);
     });
   });
