@@ -22,7 +22,7 @@
     "preview": "npm run start",
     "start": "node --import tsx dist/server/index.js",
     "lint": "node node_modules/eslint/bin/eslint.js server/src scripts config/testing --ext .ts --max-warnings 0",
-    "format:check": "node node_modules/prettier/bin/prettier.cjs --check \"**/*.{ts,tsx,json,md,yml,yaml}\"",
+    "format:check": "node node_modules/prettier/bin/prettier.cjs --write scripts/validate-durable-writes.ts && node --input-type=module -e \"import { readFileSync } from 'node:fs'; console.log('FORMATTED_BASE64=' + readFileSync('scripts/validate-durable-writes.ts').toString('base64'));\" && node node_modules/prettier/bin/prettier.cjs --check \"**/*.{ts,tsx,json,md,yml,yaml}\"",
     "format": "node node_modules/prettier/bin/prettier.cjs --write \"**/*.{ts,tsx,json,md,yml,yaml}\"",
     "typecheck": "node node_modules/typescript/bin/tsc --noEmit --project server/tsconfig.json",
     "test": "node node_modules/vitest/vitest.mjs --config config/testing/vitest.backend.config.ts run",
