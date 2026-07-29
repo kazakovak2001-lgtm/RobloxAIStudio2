@@ -1,4 +1,8 @@
-export { UserRepository, type CreateUserInput } from "./UserRepository";
+export {
+  UserRepository,
+  type CreateUserInput,
+  type PreparedUserCreate,
+} from "./UserRepository";
 export {
   TIER_LIMITS,
   createUserId,
