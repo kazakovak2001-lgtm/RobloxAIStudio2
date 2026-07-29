@@ -61,6 +61,20 @@ jobs:
               raise SystemExit("publisher parent guard mismatch")
           text = text.replace(parent_guard, "", 1)
 
+          stage_anchor = "git add -A\n"
+          if text.count(stage_anchor) != 1:
+              raise SystemExit("publisher staging anchor mismatch")
+          text = text.replace(stage_anchor, "rm -rf artifacts\ngit add -A\n", 1)
+
+          expected_anchor = "expected=$(printf '%s\\n' \\\n"
+          if text.count(expected_anchor) != 1:
+              raise SystemExit("publisher expected-set anchor mismatch")
+          text = text.replace(
+              expected_anchor,
+              expected_anchor + "  .github/workflows/ci.yml \\\n",
+              1,
+          )
+
           path.write_text(text)
           PY
           bash -n /tmp/pr83-publish.sh
