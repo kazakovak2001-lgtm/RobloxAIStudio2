@@ -4,6 +4,7 @@ import {
   DurableStorageError,
   InMemoryStorageProvider,
   type DurableMutation,
+  type DurableMutationResult,
 } from "../storage/StorageProvider";
 
 class ControlledAuthStorage extends InMemoryStorageProvider {
@@ -16,18 +17,21 @@ class ControlledAuthStorage extends InMemoryStorageProvider {
     this.releaseHeldBatches = resolve;
   });
 
-  override async mutateDurably(
+  override async applyDurableBatch(
     mutations: readonly DurableMutation[],
-  ): Promise<void> {
+  ): Promise<readonly DurableMutationResult[]> {
     this.batchCalls += 1;
     if (this.rejectBatches) {
-      throw new DurableStorageError("injected auth storage rejection", "batch");
+      throw new DurableStorageError(
+        "injected auth storage rejection",
+        "transaction",
+      );
     }
     if (this.holdBatches) {
       this.heldBatches += 1;
       await this.heldBatchGate;
     }
-    await super.applyDurableBatch(mutations);
+    return super.applyDurableBatch(mutations);
   }
 
   releaseBatches(): void {
