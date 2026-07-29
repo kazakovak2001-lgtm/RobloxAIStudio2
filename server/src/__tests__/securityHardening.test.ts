@@ -122,11 +122,11 @@ describe("Security Hardening", () => {
       process.env.NODE_ENV = originalEnv;
     });
 
-    it("allows a registered API key in production", () => {
+    it("allows a registered API key in production", async () => {
       const originalEnv = process.env.NODE_ENV;
       process.env.NODE_ENV = "production";
       const store = getApiKeyStore();
-      store.clear();
+      await store.clearDurable();
       const issued = store.issue("my-api-key-1234567", {
         label: "security-test",
       });
@@ -145,14 +145,14 @@ describe("Security Hardening", () => {
       authMiddleware(req, res, next);
       expect(nextCalled).toBe(true);
 
-      store.clear();
+      await store.clearDurable();
       process.env.NODE_ENV = originalEnv;
     });
 
-    it("rejects an unregistered API key in production", () => {
+    it("rejects an unregistered API key in production", async () => {
       const originalEnv = process.env.NODE_ENV;
       process.env.NODE_ENV = "production";
-      getApiKeyStore().clear();
+      await getApiKeyStore().clearDurable();
 
       let statusCode = 0;
       const req = {
@@ -173,11 +173,11 @@ describe("Security Hardening", () => {
       process.env.NODE_ENV = originalEnv;
     });
 
-    it("rejects an array API key header", () => {
+    it("rejects an array API key header", async () => {
       const originalEnv = process.env.NODE_ENV;
       process.env.NODE_ENV = "production";
       const store = getApiKeyStore();
-      store.clear();
+      await store.clearDurable();
       store.issue("array-header-api-key-123456", { label: "array-test" });
 
       let statusCode = 0;
@@ -196,7 +196,7 @@ describe("Security Hardening", () => {
       authMiddleware(req, res, () => undefined);
       expect(statusCode).toBe(401);
 
-      store.clear();
+      await store.clearDurable();
       process.env.NODE_ENV = originalEnv;
     });
 
