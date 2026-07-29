@@ -4,7 +4,10 @@ import {
   type SaaSProject,
   type SaaSProjectUpdate,
 } from "../platform/projects";
-import type { StorageProvider } from "../platform/storage/StorageProvider";
+import {
+  DurableStorageError,
+  type StorageProvider,
+} from "../platform/storage/StorageProvider";
 import type { AuthService } from "../platform/auth/AuthService";
 import { authService } from "../platform/auth/authServiceInstance";
 import {
@@ -121,26 +124,26 @@ export function createProjectsRouter(runtime: ProjectRuntime): Router {
     });
   });
 
-  router.post("/", (req, res) => {
+  router.post("/", async (req, res) => {
     const userId = access.requireAuthenticatedUser(req, res);
     if (!userId) return;
 
     try {
       const input = readCreateInput(req.body);
-      const created = projects.create(
+      const project = await projects.createDurable(
         userId,
         input.name,
         input.genre,
         input.description,
+        input.patch,
       );
-      const project = projects.update(created.id, input.patch) ?? created;
       res.json({ success: true, data: toProjectResponse(project) });
     } catch (error) {
       handleProjectInputError(error, res);
     }
   });
 
-  router.put("/:id", (req, res) => {
+  router.put("/:id", async (req, res) => {
     if (!access.requireProjectAccess(req, res, req.params.id)) return;
 
     try {
@@ -150,7 +153,7 @@ export function createProjectsRouter(runtime: ProjectRuntime): Router {
           "At least one editable project field is required",
         );
       }
-      const updated = projects.update(req.params.id, patch);
+      const updated = await projects.updateDurable(req.params.id, patch);
       if (!updated) {
         res.status(404).json({ success: false, error: "Project not found" });
         return;
@@ -161,12 +164,15 @@ export function createProjectsRouter(runtime: ProjectRuntime): Router {
     }
   });
 
-  router.delete("/:id", (req, res) => {
+  router.delete("/:id", async (req, res) => {
     if (!access.requireProjectAccess(req, res, req.params.id)) return;
-    res.json({
-      success: true,
-      data: { deleted: projects.delete(req.params.id) },
-    });
+
+    try {
+      const deleted = await projects.deleteDurable(req.params.id);
+      res.json({ success: true, data: { deleted } });
+    } catch (error) {
+      handleProjectInputError(error, res);
+    }
   });
 
   return router;
@@ -295,6 +301,14 @@ class ProjectInputError extends Error {
 function handleProjectInputError(error: unknown, res: Response): void {
   if (error instanceof ProjectInputError) {
     res.status(400).json({ success: false, error: error.message });
+    return;
+  }
+  if (error instanceof DurableStorageError) {
+    console.error("[projects] durable mutation rejected", error);
+    res.status(503).json({
+      success: false,
+      error: "Durable storage is temporarily unavailable",
+    });
     return;
   }
   console.error("[projects]", error);
