@@ -2,9 +2,11 @@ import { once } from "node:events";
 import type { AddressInfo } from "node:net";
 import express, { type Request, type Response } from "express";
 import { describe, expect, it } from "vitest";
+import { configureAuthService } from "../../platform/auth/authServiceInstance";
 import {
   DurableStorageError,
   InMemoryStorageProvider,
+  type DurableMutation,
 } from "../../platform/storage/StorageProvider";
 import { UserRepository } from "../../platform/users";
 import { createPlatformRouter } from "../platform";
@@ -12,7 +14,9 @@ import type { ProjectAccessControl } from "../projects";
 
 class ControlledMutationStorage extends InMemoryStorageProvider {
   rejectSet = false;
+  rejectBatch = false;
   durableSetCalls = 0;
+  durableBatchCalls = 0;
 
   override async setDurable<T>(
     collection: string,
@@ -24,6 +28,16 @@ class ControlledMutationStorage extends InMemoryStorageProvider {
       throw new DurableStorageError("injected set rejection", "set");
     }
     await super.setDurable(collection, id, data);
+  }
+
+  override async mutateDurably(
+    mutations: readonly DurableMutation[],
+  ): Promise<void> {
+    this.durableBatchCalls += 1;
+    if (this.rejectBatch) {
+      throw new DurableStorageError("injected batch rejection", "batch");
+    }
+    await super.mutateDurably(mutations);
   }
 }
 
@@ -40,6 +54,7 @@ async function withServer<T>(
   userId: string,
   callback: (baseUrl: string) => Promise<T>,
 ): Promise<T> {
+  configureAuthService(storage);
   const app = express();
   app.use(express.json());
   app.use(
@@ -75,7 +90,95 @@ async function mutation(
   };
 }
 
+const registration = {
+  email: "atomic-register@example.com",
+  password: "Atomic-Register-Password!",
+  displayName: "Atomic Register",
+};
+
+function expectRegistrationCounts(
+  storage: ControlledMutationStorage,
+  expected: number,
+): void {
+  expect(storage.count("users")).toBe(expected);
+  expect(storage.count("auth_credentials")).toBe(expected);
+  expect(storage.count("auth_roles")).toBe(expected);
+  expect(storage.count("auth_sessions")).toBe(expected);
+  expect(storage.count("auth_refresh_credentials")).toBe(expected);
+}
+
 describe("platform user durable HTTP acknowledgement", () => {
+  it("publishes user, credentials, role, session and refresh index atomically", async () => {
+    const storage = new ControlledMutationStorage();
+
+    await withServer(storage, "request-user", async (baseUrl) => {
+      const result = await mutation(
+        `${baseUrl}/auth/register`,
+        "POST",
+        registration,
+      );
+
+      expect(result.status).toBe(200);
+      expect(result.body.success).toBe(true);
+      expect(JSON.stringify(result.body)).not.toMatch(
+        /(?:tok|ref)_[a-f0-9]{16,}/,
+      );
+      expectRegistrationCounts(storage, 1);
+      expect(storage.durableBatchCalls).toBe(1);
+    });
+  });
+
+  it("returns 503 and publishes no registration state after batch rejection", async () => {
+    const storage = new ControlledMutationStorage();
+    storage.rejectBatch = true;
+
+    await withServer(storage, "request-user", async (baseUrl) => {
+      const result = await mutation(
+        `${baseUrl}/auth/register`,
+        "POST",
+        registration,
+      );
+
+      expect(result).toMatchObject({
+        status: 503,
+        body: {
+          success: false,
+          error: "Durable storage is temporarily unavailable",
+        },
+      });
+      expectRegistrationCounts(storage, 0);
+      expect(storage.durableBatchCalls).toBe(1);
+    });
+  });
+
+  it("returns 409 without creating a second session for duplicate email", async () => {
+    const storage = new ControlledMutationStorage();
+
+    await withServer(storage, "request-user", async (baseUrl) => {
+      const first = await mutation(
+        `${baseUrl}/auth/register`,
+        "POST",
+        registration,
+      );
+      const duplicate = await mutation(
+        `${baseUrl}/auth/register`,
+        "POST",
+        registration,
+      );
+
+      expect(first.status).toBe(200);
+      expect(duplicate).toMatchObject({
+        status: 409,
+        body: {
+          success: false,
+          error: "Email already registered",
+        },
+      });
+      expectRegistrationCounts(storage, 1);
+      expect(storage.durableBatchCalls).toBe(1);
+    });
+  });
+
   it("returns 503 and exposes no user when create persistence is rejected", async () => {
     const storage = new ControlledMutationStorage();
     storage.rejectSet = true;
