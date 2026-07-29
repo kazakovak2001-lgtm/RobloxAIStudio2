@@ -143,7 +143,7 @@ export function createPlatformRouter({
     res.json({ success: true });
   });
 
-  router.post("/auth/refresh", (req, res) => {
+  router.post("/auth/refresh", async (req, res) => {
     const refreshToken =
       getRefreshTokenFromCookies(req) ??
       (typeof req.body?.refreshToken === "string"
@@ -155,16 +155,21 @@ export function createPlatformRouter({
         .json({ success: false, error: "Refresh credential required" });
       return;
     }
-    const result = auth.refreshSession(refreshToken);
-    if (!result.success) {
-      res.status(401).json({ success: false, error: result.error });
-      return;
+
+    try {
+      const result = await auth.refreshSessionDurably(refreshToken);
+      if (!result.success) {
+        res.status(401).json({ success: false, error: result.error });
+        return;
+      }
+      setAuthCookies(res, result.token!, result.refreshToken!);
+      res.json({
+        success: true,
+        data: { refreshed: true },
+      });
+    } catch (error) {
+      handlePlatformMutationError(error, res);
     }
-    setAuthCookies(res, result.token!, result.refreshToken!);
-    res.json({
-      success: true,
-      data: { refreshed: true },
-    });
   });
 
   router.post("/auth/forgot-password", (req, res) => {
@@ -173,8 +178,6 @@ export function createPlatformRouter({
       res.status(400).json({ success: false, error: "email required" });
       return;
     }
-    // Do not reveal whether an account exists. A mail provider can consume this
-    // accepted request when configured without changing the public contract.
     res.status(202).json({
       success: true,
       data: {
