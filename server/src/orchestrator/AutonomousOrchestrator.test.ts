@@ -7,7 +7,7 @@ import type { OrchestratorSession } from "./OrchestratorTypes";
 async function waitForTerminal(
   session: OrchestratorSession,
 ): Promise<OrchestratorSession> {
-  for (let attempt = 0; attempt < 200; attempt += 1) {
+  for (let attempt = 0; attempt < 1000; attempt += 1) {
     if (session.status !== "running" && session.status !== "paused") {
       await Promise.resolve();
       return session;
@@ -144,5 +144,58 @@ describe("AutonomousOrchestrator bounded preview truthfulness", () => {
       totalCost: 0,
       source: "measured",
     });
+  });
+
+  it("resumes an interrupted bounded run without duplicate terminal evidence", async () => {
+    const events = new PipelineEventEmitter();
+    const published: PipelineEvent[] = [];
+    events.onEvent(async (event) => {
+      published.push(event);
+    });
+
+    const orchestrator = new AutonomousOrchestrator(events);
+    const session = orchestrator.run(
+      "Build a cooperative obby with safe pause and resume",
+      "project-race",
+    );
+
+    expect(orchestrator.pause(session.id)).toBe(true);
+    expect(orchestrator.resume(session.id)).toBe(true);
+    await waitForTerminal(session);
+
+    expect(session.status).toBe("preview_completed");
+    expect(
+      published.filter((event) => event.type === "pipeline.preview.completed"),
+    ).toHaveLength(1);
+
+    const phaseTerminalEvents = published.filter(
+      (event) =>
+        event.type === "step.completed" || event.type === "step.skipped",
+    );
+    const terminalStepIds = phaseTerminalEvents.map((event) => event.stepId);
+    expect(new Set(terminalStepIds).size).toBe(terminalStepIds.length);
+    expect(session.checkpoints).toHaveLength(phaseTerminalEvents.length);
+    expect(Object.keys(session.cost.perPhase)).toHaveLength(
+      phaseTerminalEvents.length,
+    );
+  });
+
+  it("keeps bounded checkpoint cost snapshots isolated", async () => {
+    const orchestrator = new AutonomousOrchestrator();
+    const session = orchestrator.run(
+      "Build a deterministic tycoon preview",
+      "project-checkpoint",
+    );
+
+    await waitForTerminal(session);
+
+    const firstCheckpoint = session.checkpoints[0];
+    const snapshotCost = firstCheckpoint.snapshot.cost as {
+      perPhase: Record<string, unknown>;
+    };
+
+    expect(snapshotCost.perPhase).not.toBe(session.cost.perPhase);
+    expect(Object.keys(snapshotCost.perPhase)).toEqual(["genre_detection"]);
+    expect(Object.keys(session.cost.perPhase).length).toBeGreaterThan(1);
   });
 });

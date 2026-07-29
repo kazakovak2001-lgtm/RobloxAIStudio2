@@ -63,6 +63,7 @@ export class AutonomousOrchestrator {
   private readonly contexts = new Map<string, AutonomousPhaseContext>();
   private readonly controllers = new Map<string, AbortController>();
   private readonly activeExecutions = new Set<string>();
+  private readonly restartRequests = new Set<string>();
   private readonly events?: PipelineEventEmitter;
   private readonly phaseRegistry: AutonomousPhaseRegistry;
 
@@ -135,7 +136,7 @@ export class AutonomousOrchestrator {
       timestamp: new Date(),
     });
 
-    void this.executePhases(session);
+    this.startExecution(session);
     return session;
   }
 
@@ -168,7 +169,7 @@ export class AutonomousOrchestrator {
     const next = this.nextPendingNode(session);
     if (next) {
       session.currentPhase = next.phase;
-      void this.executePhases(session);
+      this.startExecution(session);
     } else {
       this.finishPreview(session);
     }
@@ -232,8 +233,17 @@ export class AutonomousOrchestrator {
 
     session.currentPhase = next.phase;
     this.controllers.set(sessionId, new AbortController());
-    void this.executePhases(session);
+    this.startExecution(session);
     return true;
+  }
+
+  private startExecution(session: OrchestratorSession): void {
+    if (this.activeExecutions.has(session.id)) {
+      this.restartRequests.add(session.id);
+      return;
+    }
+
+    void this.executePhases(session);
   }
 
   private async executePhases(session: OrchestratorSession): Promise<void> {
@@ -364,6 +374,13 @@ export class AutonomousOrchestrator {
       }
     } finally {
       this.activeExecutions.delete(session.id);
+      const restartRequested = this.restartRequests.delete(session.id);
+      if (
+        session.status === "running" &&
+        (restartRequested || this.nextPendingNode(session))
+      ) {
+        this.startExecution(session);
+      }
     }
   }
 
