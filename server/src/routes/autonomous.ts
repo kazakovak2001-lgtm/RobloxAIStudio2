@@ -90,15 +90,21 @@ export function createAutonomousRouter(events?: PipelineEventEmitter): Router {
   });
 
   router.post("/recover/:sessionId", (req, res) => {
-    const timestamp = req.body?.checkpointTimestamp;
-    if (timestamp !== undefined && !Number.isFinite(timestamp)) {
+    const rawCheckpointId: unknown = req.body?.checkpointId;
+    if (
+      rawCheckpointId !== undefined &&
+      (typeof rawCheckpointId !== "string" ||
+        rawCheckpointId.trim().length === 0)
+    ) {
       res.status(400).json({
         success: false,
-        error: "checkpointTimestamp must be a finite number",
+        error: "checkpointId must be a non-empty string",
       });
       return;
     }
-    const ok = orchestrator.recover(req.params.sessionId, timestamp);
+    const checkpointId =
+      typeof rawCheckpointId === "string" ? rawCheckpointId.trim() : undefined;
+    const ok = orchestrator.recover(req.params.sessionId, checkpointId);
     if (!ok) {
       res.status(400).json({
         success: false,
