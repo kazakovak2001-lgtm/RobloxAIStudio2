@@ -110,16 +110,6 @@
       "migrationTarget": "DATA-201B"
     },
     {
-      "key": "server/src/platform/projects/SaaSProjectRepository.ts#SaaSProjectRepository.update#set",
-      "path": "server/src/platform/projects/SaaSProjectRepository.ts",
-      "owner": "SaaSProjectRepository.update",
-      "operation": "set",
-      "expectedCalls": 1,
-      "classification": "internal-lifecycle-debt",
-      "reason": "Pipeline lifecycle events still use the compatibility update path outside request handlers.",
-      "migrationTarget": "DATA-201B"
-    },
-    {
       "key": "server/src/platform/security/ApiKeyStore.ts#ApiKeyStore.issue#set",
       "path": "server/src/platform/security/ApiKeyStore.ts",
       "owner": "ApiKeyStore.issue",
