@@ -621,8 +621,6 @@
 │   │   │       ├── SharedAgentContext.ts
 │   │   │       └── types.ts
 │   │   ├── ai
-│   │   │   ├── __tests__
-│   │   │   │   └── providerFactory.test.ts
 │   │   │   ├── agents
 │   │   │   │   ├── __tests__
 │   │   │   │   │   └── AgentRegistry.test.ts
@@ -646,7 +644,6 @@
 │   │   │   │   ├── GameIdeaAnalyzer.ts
 │   │   │   │   ├── index.ts
 │   │   │   │   └── PromptQualityValidator.ts
-│   │   │   ├── llmUtils.ts
 │   │   │   ├── memory
 │   │   │   │   ├── __tests__
 │   │   │   │   │   └── MemoryStore.test.ts
@@ -663,7 +660,6 @@
 │   │   │   │   └── PromptEngine.ts
 │   │   │   ├── promptTemplates.ts
 │   │   │   ├── provider.ts
-│   │   │   ├── providerFactory.ts
 │   │   │   ├── router.ts
 │   │   │   └── runtime
 │   │   │       ├── __tests__
@@ -940,6 +936,7 @@
 │   │   │       └── GameValidationEngine.ts
 │   │   ├── governance
 │   │   │   ├── aiGovernance.ts
+│   │   │   ├── AssemblyGovernanceService.ts
 │   │   │   ├── CIControlPipeline.ts
 │   │   │   ├── GovernancePolicyEngine.ts
 │   │   │   ├── GovernanceValidator.ts
@@ -1172,6 +1169,7 @@
 │   │   ├── providers
 │   │   │   ├── __tests__
 │   │   │   │   ├── groq.test.ts
+│   │   │   │   ├── providerFactory.test.ts
 │   │   │   │   └── providers.test.ts
 │   │   │   ├── ai
 │   │   │   │   ├── __tests__
@@ -1193,10 +1191,12 @@
 │   │   │   ├── anthropic.ts
 │   │   │   ├── gemini.ts
 │   │   │   ├── groq.ts
+│   │   │   ├── llmUtils.ts
 │   │   │   ├── mock.ts
 │   │   │   ├── ollama.ts
 │   │   │   ├── openai.ts
-│   │   │   └── openrouter.ts
+│   │   │   ├── openrouter.ts
+│   │   │   └── providerFactory.ts
 │   │   ├── repair
 │   │   │   ├── index.ts
 │   │   │   ├── RepairEngine.ts
@@ -1321,7 +1321,9 @@
 │   │   │   ├── blueprint.ts
 │   │   │   ├── game-generation-result.ts
 │   │   │   ├── gameDesignSeed.ts
-│   │   │   └── index.ts
+│   │   │   ├── index.ts
+│   │   │   ├── llm.ts
+│   │   │   └── pipeline-events.ts
 │   │   ├── ui-gen
 │   │   │   ├── __tests__
 │   │   │   │   └── UIGeneration.test.ts

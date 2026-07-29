@@ -11,7 +11,7 @@ import { AgentMemoryBridge } from "../../memory/agents/AgentMemoryBridge";
 import { AgentEvaluator } from "../../evaluation/agents/AgentEvaluator";
 import { ExecutionTracer } from "../../core/observability/ExecutionTracer";
 import { AgentDecisionEngine } from "../../core/agents/AgentDecisionEngine";
-import type { PipelineEventEmitter } from "../../socket/streaming";
+import type { PipelineEventPublisher } from "../../types/pipeline-events";
 
 export interface ExecutionOptions {
   projectId?: string;
@@ -35,14 +35,14 @@ export class PlanExecutor {
   private evaluator: AgentEvaluator;
   private tracer: ExecutionTracer;
   private decisionEngine: AgentDecisionEngine;
-  private events?: PipelineEventEmitter;
+  private events?: PipelineEventPublisher;
 
   constructor(
     memoryBridge?: AgentMemoryBridge,
     evaluator?: AgentEvaluator,
     tracer?: ExecutionTracer,
     decisionEngine?: AgentDecisionEngine,
-    events?: PipelineEventEmitter,
+    events?: PipelineEventPublisher,
   ) {
     this.memoryBridge = memoryBridge ?? new AgentMemoryBridge();
     this.evaluator = evaluator ?? new AgentEvaluator();

@@ -1,5 +1,8 @@
 import type { Response } from "express";
-import type { PipelineEvent } from "../execution/pipelineTypes";
+import type {
+  PipelineEvent,
+  PipelineEventPublisher,
+} from "../types/pipeline-events";
 
 /**
  * Server-Sent Events (SSE) Handler
@@ -160,7 +163,7 @@ export class StreamingUpdateHandler {
  * Event Emitter for pipeline execution
  * Integrates with StreamingUpdateHandler to emit events
  */
-export class PipelineEventEmitter {
+export class PipelineEventEmitter implements PipelineEventPublisher {
   private handlers: Array<(event: PipelineEvent) => Promise<void>> = [];
   private streamHandler?: StreamingUpdateHandler;
 

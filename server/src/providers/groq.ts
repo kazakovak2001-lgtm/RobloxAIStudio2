@@ -2,9 +2,9 @@
  * GroqProvider — Optimized for fast blueprint generation and low latency.
  */
 
-import type { LLMProvider, LLMOptions, LLMResponse } from "../ai/provider";
-import { LLMError } from "../ai/provider";
-import { fetchWithTimeout, withRetry } from "../ai/llmUtils";
+import type { LLMProvider, LLMOptions, LLMResponse } from "../types/llm";
+import { LLMError } from "../types/llm";
+import { fetchWithTimeout, withRetry } from "./llmUtils";
 
 export class GroqProvider implements LLMProvider {
   readonly name = "groq";

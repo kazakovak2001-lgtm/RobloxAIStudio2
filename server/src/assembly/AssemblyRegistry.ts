@@ -24,6 +24,10 @@ import type { GameBlueprint } from "../generation/GenerationBlueprint";
  * Automatically persists assemblies to disk on store/update.
  * Loads from disk on cache miss.
  * Provides cached replay and diff operations.
+ *
+ * Governance decisions are intentionally owned by the governance domain.
+ * Consumers that need ALLOW/WARN/BLOCK evaluation should compose this registry
+ * through AssemblyGovernanceService rather than importing governance here.
  */
 export class AssemblyRegistry {
   private cache = new Map<string, ProjectAssembly>();
@@ -181,41 +185,6 @@ export class AssemblyRegistry {
     const analysis = this.impactAnalyzer.analyzeImpact(diff, graph);
     this.impactCache.set(cacheKey, analysis);
     return analysis;
-  }
-
-  // ─── Governance ────────────────────────────────────────────────────────────
-
-  /**
-   * Run governance check between two versions.
-   * Returns the GovernanceDecision (ALLOW/WARN/BLOCK).
-   */
-  runGovernanceCheck(
-    assemblyId: string,
-    fromVersion: string,
-    toVersion: string,
-  ): import("../governance/GovernancePolicyEngine").GovernanceDecision | null {
-    const analysis = this.getImpactAnalysis(assemblyId, fromVersion, toVersion);
-    if (!analysis) return null;
-    const { GovernancePolicyEngine } =
-      require("../governance/GovernancePolicyEngine") as typeof import("../governance/GovernancePolicyEngine");
-    const engine = new GovernancePolicyEngine();
-    return engine.evaluatePolicies(analysis);
-  }
-
-  /**
-   * Get the CI status for the latest build of an assembly.
-   * Returns "PASSED", "BLOCKED", or null if no versions to compare.
-   */
-  getCIStatus(assemblyId: string): "PASSED" | "BLOCKED" | "WARN" | null {
-    const versions = this.listVersions(assemblyId);
-    if (versions.length < 2) return "PASSED"; // first build always passes
-    const from = versions[versions.length - 2];
-    const to = versions[versions.length - 1];
-    const decision = this.runGovernanceCheck(assemblyId, from, to);
-    if (!decision) return null;
-    if (decision.status === "BLOCK") return "BLOCKED";
-    if (decision.status === "WARN") return "WARN";
-    return "PASSED";
   }
 
   get size(): number {

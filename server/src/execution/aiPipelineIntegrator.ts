@@ -10,9 +10,11 @@
  * will throw in production mode.
  */
 
-import type { PipelineEvent } from "./pipelineTypes";
+import type {
+  PipelineEvent,
+  PipelineEventPublisher,
+} from "../types/pipeline-events";
 import type { GameBlueprint, GameDesignSeed } from "../types/blueprint";
-import { PipelineEventEmitter } from "../socket/streaming";
 import type { GameGenerationResult } from "../types/game-generation-result";
 import { aggregateToGameGenerationResult } from "./gameGenerationResultAggregator";
 import {
@@ -95,7 +97,7 @@ export class AIPipelineIntegrator {
   private planningRegistry: PlanningRegistry;
 
   constructor(
-    private readonly events: PipelineEventEmitter,
+    private readonly events: PipelineEventPublisher,
     evaluationRegistry?: EvaluationRegistry,
     memoryRegistry?: MemoryRegistry,
     planningRegistry?: PlanningRegistry,

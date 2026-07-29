@@ -263,12 +263,7 @@
       "reason": "Canonical server composition root, not a subsystem directory."
     }
   ],
-  "allowedCycles": [
-    ["ai", "providers"],
-    ["execution", "socket"],
-    ["execution", "planning", "socket"],
-    ["assembly", "governance"]
-  ],
+  "allowedCycles": [],
   "forbiddenEdges": [
     {
       "from": ["simulation", "economy", "world"],

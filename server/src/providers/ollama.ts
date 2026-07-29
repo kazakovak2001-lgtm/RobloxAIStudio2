@@ -1,6 +1,6 @@
-import type { LLMProvider, LLMOptions, LLMResponse } from "../ai/provider";
-import { LLMError } from "../ai/provider";
-import { fetchWithTimeout, withRetry } from "../ai/llmUtils";
+import type { LLMProvider, LLMOptions, LLMResponse } from "../types/llm";
+import { LLMError } from "../types/llm";
+import { fetchWithTimeout, withRetry } from "./llmUtils";
 
 export class OllamaProvider implements LLMProvider {
   readonly name = "ollama";
