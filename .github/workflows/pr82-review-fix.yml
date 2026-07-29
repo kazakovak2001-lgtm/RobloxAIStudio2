@@ -1,0 +1,486 @@
+name: PR82 Review Fix
+
+on:
+  push:
+    branches:
+      - agent/data-201b-project-lifecycle-update-ack
+    paths:
+      - .github/workflows/pr82-review-fix.yml
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout feature branch
+        uses: actions/checkout@v4
+        with:
+          ref: agent/data-201b-project-lifecycle-update-ack
+          fetch-depth: 0
+
+      - name: Apply fail-closed lifecycle fixes
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 <<'PY'
+          from pathlib import Path
+
+          def replace_once(path: str, old: str, new: str) -> None:
+              target = Path(path)
+              text = target.read_text()
+              count = text.count(old)
+              if count != 1:
+                  raise SystemExit(f"expected exactly one match in {path}, found {count}")
+              target.write_text(text.replace(old, new, 1))
+
+          replace_once(
+              "server/src/routes/game-generation.ts",
+              'import type { ProjectRuntime } from "./projects";\n',
+              'import type { ProjectRuntime } from "./projects";\n'
+              'import { ProjectGenerationStartCoordinator } from "../platform/projects/ProjectLifecycleCoordinator";\n',
+          )
+          replace_once(
+              "server/src/routes/game-generation.ts",
+              '  const { projectRepository, generationHistory, access } = projectRuntime;\n',
+              '  const { projectRepository, generationHistory, access } = projectRuntime;\n'
+              '  const generationStartCoordinator =\n'
+              '    new ProjectGenerationStartCoordinator(projectRepository);\n',
+          )
+          replace_once(
+              "server/src/routes/game-generation.ts",
+              '''      const result = await gameService.startGeneration(
+                blueprintId || projectId,
+                userId,
+              );
+              await projectRepository.updateDurable(projectId, {
+                status: "generating",
+                generationCount:
+                  (projectRepository.get(projectId)?.generationCount ?? 0) + 1,
+              });
+              generationHistory.record({
+                id: result.id,
+                projectId,
+                pipelineId: result.id,
+                status: result.status,
+                startedAt: result.started_at.getTime(),
+                stagesCompleted: 0,
+                stagesTotal: 0,
+                failures: 0,
+                tokenUsage: 0,
+                aiCost: 0,
+              });
+          ''',
+              '''      const result = await generationStartCoordinator.start(
+                projectId,
+                () => gameService.startGeneration(blueprintId || projectId, userId),
+                (execution) => {
+                  generationHistory.record({
+                    id: execution.id,
+                    projectId,
+                    pipelineId: execution.id,
+                    status: execution.status,
+                    startedAt: execution.started_at.getTime(),
+                    stagesCompleted: 0,
+                    stagesTotal: 0,
+                    failures: 0,
+                    tokenUsage: 0,
+                    aiCost: 0,
+                  });
+                },
+              );
+          ''',
+          )
+
+          replace_once(
+              "server/src/index.ts",
+              'import { createGameGenerationRouter } from "./routes/game-generation";\n',
+              'import { createGameGenerationRouter } from "./routes/game-generation";\n'
+              'import { recordProjectOutcomeBestEffort } from "./platform/projects/ProjectLifecycleCoordinator";\n',
+          )
+          replace_once(
+              "server/src/index.ts",
+              '''      if (evt.projectId) {
+                await projectRepository.updateDurable(evt.projectId, {
+                  status: "ready",
+                  qualityScore: 100,
+                });
+                const record = generationHistory.getByPipeline(evt.pipelineId);
+                if (record) {
+                  const finishedAt = evt.timestamp.getTime();
+                  const completed = Number(
+                    evt.data?.completedSteps ?? record.stagesCompleted,
+                  );
+                  const failed = Number(evt.data?.failedSteps ?? record.failures);
+                  generationHistory.record({
+                    ...record,
+                    status: "completed",
+                    finishedAt,
+                    duration: finishedAt - record.startedAt,
+                    stagesCompleted: completed,
+                    stagesTotal: Math.max(record.stagesTotal, completed + failed),
+                    failures: failed,
+                  });
+                }
+              }
+          ''',
+              '''      const projectId = evt.projectId;
+              if (projectId) {
+                await recordProjectOutcomeBestEffort(
+                  () => {
+                    const record = generationHistory.getByPipeline(evt.pipelineId);
+                    if (record) {
+                      const finishedAt = evt.timestamp.getTime();
+                      const completed = Number(
+                        evt.data?.completedSteps ?? record.stagesCompleted,
+                      );
+                      const failed = Number(
+                        evt.data?.failedSteps ?? record.failures,
+                      );
+                      generationHistory.record({
+                        ...record,
+                        status: "completed",
+                        finishedAt,
+                        duration: finishedAt - record.startedAt,
+                        stagesCompleted: completed,
+                        stagesTotal: Math.max(
+                          record.stagesTotal,
+                          completed + failed,
+                        ),
+                        failures: failed,
+                      });
+                    }
+                  },
+                  () =>
+                    projectRepository.updateDurable(projectId, {
+                      status: "ready",
+                      qualityScore: 100,
+                    }),
+                  (error) => {
+                    console.error(
+                      `[pipeline-bridge] failed to persist completed project ${projectId}:`,
+                      error,
+                    );
+                  },
+                );
+              }
+          ''',
+          )
+          replace_once(
+              "server/src/index.ts",
+              '''      if (evt.projectId) {
+                await projectRepository.updateDurable(evt.projectId, {
+                  status: "draft",
+                });
+                const record = generationHistory.getByPipeline(evt.pipelineId);
+                if (record) {
+                  const finishedAt = evt.timestamp.getTime();
+                  const completed = Number(
+                    evt.data?.completedSteps ?? record.stagesCompleted,
+                  );
+                  const failed = Number(
+                    evt.data?.failedSteps ?? (record.failures || 1),
+                  );
+                  generationHistory.record({
+                    ...record,
+                    status: "failed",
+                    finishedAt,
+                    duration: finishedAt - record.startedAt,
+                    stagesCompleted: completed,
+                    stagesTotal: Math.max(record.stagesTotal, completed + failed),
+                    failures: failed,
+                  });
+                }
+              }
+          ''',
+              '''      const projectId = evt.projectId;
+              if (projectId) {
+                await recordProjectOutcomeBestEffort(
+                  () => {
+                    const record = generationHistory.getByPipeline(evt.pipelineId);
+                    if (record) {
+                      const finishedAt = evt.timestamp.getTime();
+                      const completed = Number(
+                        evt.data?.completedSteps ?? record.stagesCompleted,
+                      );
+                      const failed = Number(
+                        evt.data?.failedSteps ?? (record.failures || 1),
+                      );
+                      generationHistory.record({
+                        ...record,
+                        status: "failed",
+                        finishedAt,
+                        duration: finishedAt - record.startedAt,
+                        stagesCompleted: completed,
+                        stagesTotal: Math.max(
+                          record.stagesTotal,
+                          completed + failed,
+                        ),
+                        failures: failed,
+                      });
+                    }
+                  },
+                  () =>
+                    projectRepository.updateDurable(projectId, {
+                      status: "draft",
+                    }),
+                  (error) => {
+                    console.error(
+                      `[pipeline-bridge] failed to persist failed project ${projectId}:`,
+                      error,
+                    );
+                  },
+                );
+              }
+          ''',
+          )
+
+          Path("server/src/platform/projects/ProjectLifecycleCoordinator.ts").write_text('''interface GenerationProjectState {
+            generationCount: number;
+          }
+
+          interface GenerationProjectRepository {
+            get(projectId: string): GenerationProjectState | null;
+            updateDurable(
+              projectId: string,
+              updates: { status: "generating"; generationCount: number },
+            ): Promise<unknown>;
+          }
+
+          export class ProjectGenerationStartCoordinator {
+            private readonly queues = new Map<string, Promise<void>>();
+
+            constructor(private readonly projects: GenerationProjectRepository) {}
+
+            async start<T>(
+              projectId: string,
+              schedule: () => Promise<T>,
+              recordHistory: (result: T) => void,
+            ): Promise<T> {
+              const previous = this.queues.get(projectId) ?? Promise.resolve();
+              const operation = previous.catch(() => undefined).then(async () => {
+                const project = this.projects.get(projectId);
+                if (!project) {
+                  throw new Error(`Project ${projectId} not found`);
+                }
+
+                await this.projects.updateDurable(projectId, {
+                  status: "generating",
+                  generationCount: project.generationCount + 1,
+                });
+
+                const result = await schedule();
+                recordHistory(result);
+                return result;
+              });
+              const tracked = operation.then(
+                () => undefined,
+                () => undefined,
+              );
+              this.queues.set(projectId, tracked);
+
+              try {
+                return await operation;
+              } finally {
+                if (this.queues.get(projectId) === tracked) {
+                  this.queues.delete(projectId);
+                }
+              }
+            }
+          }
+
+          export async function recordProjectOutcomeBestEffort(
+            recordOutcome: () => void,
+            persistProject: () => Promise<unknown>,
+            reportFailure: (error: unknown) => void,
+          ): Promise<void> {
+            recordOutcome();
+            try {
+              await persistProject();
+            } catch (error) {
+              reportFailure(error);
+            }
+          }
+          ''')
+
+          Path("server/src/platform/projects/ProjectLifecycleCoordinator.test.ts").write_text('''import { describe, expect, it } from "vitest";
+          import {
+            ProjectGenerationStartCoordinator,
+            recordProjectOutcomeBestEffort,
+          } from "./ProjectLifecycleCoordinator";
+
+          function deferred() {
+            let resolve!: () => void;
+            const promise = new Promise<void>((done) => {
+              resolve = done;
+            });
+            return { promise, resolve };
+          }
+
+          class ControlledProjectRepository {
+            private generationCount = 0;
+            readonly updateCounts: number[] = [];
+            readonly firstUpdateStarted = deferred();
+            readonly releaseFirstUpdate = deferred();
+            rejectNext = false;
+
+            constructor(private readonly holdFirstUpdate = false) {}
+
+            get(projectId: string) {
+              return projectId === "project"
+                ? { generationCount: this.generationCount }
+                : null;
+            }
+
+            async updateDurable(
+              projectId: string,
+              updates: { status: "generating"; generationCount: number },
+            ) {
+              if (projectId !== "project") return null;
+              this.updateCounts.push(updates.generationCount);
+              if (this.updateCounts.length === 1 && this.holdFirstUpdate) {
+                this.firstUpdateStarted.resolve();
+                await this.releaseFirstUpdate.promise;
+              }
+              if (this.rejectNext) {
+                this.rejectNext = false;
+                throw new Error("injected project write rejection");
+              }
+              this.generationCount = updates.generationCount;
+              return { generationCount: this.generationCount };
+            }
+
+            currentCount() {
+              return this.generationCount;
+            }
+          }
+
+          describe("ProjectGenerationStartCoordinator", () => {
+            it("serializes project bookkeeping before scheduling generation", async () => {
+              const projects = new ControlledProjectRepository(true);
+              const coordinator = new ProjectGenerationStartCoordinator(projects);
+              const order: string[] = [];
+
+              const first = coordinator.start(
+                "project",
+                async () => {
+                  order.push("schedule-one");
+                  return "one";
+                },
+                (result) => order.push(`record-${result}`),
+              );
+              await projects.firstUpdateStarted.promise;
+
+              const second = coordinator.start(
+                "project",
+                async () => {
+                  order.push("schedule-two");
+                  return "two";
+                },
+                (result) => order.push(`record-${result}`),
+              );
+              await Promise.resolve();
+
+              expect(projects.updateCounts).toEqual([1]);
+              expect(order).toEqual([]);
+
+              projects.releaseFirstUpdate.resolve();
+              await expect(Promise.all([first, second])).resolves.toEqual([
+                "one",
+                "two",
+              ]);
+
+              expect(projects.updateCounts).toEqual([1, 2]);
+              expect(projects.currentCount()).toBe(2);
+              expect(order).toEqual([
+                "schedule-one",
+                "record-one",
+                "schedule-two",
+                "record-two",
+              ]);
+            });
+
+            it("does not schedule generation after rejected bookkeeping", async () => {
+              const projects = new ControlledProjectRepository();
+              projects.rejectNext = true;
+              const coordinator = new ProjectGenerationStartCoordinator(projects);
+              let scheduled = false;
+
+              await expect(
+                coordinator.start(
+                  "project",
+                  async () => {
+                    scheduled = true;
+                    return "execution";
+                  },
+                  () => undefined,
+                ),
+              ).rejects.toThrow("injected project write rejection");
+
+              expect(scheduled).toBe(false);
+              expect(projects.currentCount()).toBe(0);
+            });
+          });
+
+          describe("recordProjectOutcomeBestEffort", () => {
+            it("records the outcome and absorbs independent project persistence failure", async () => {
+              const order: string[] = [];
+              const rejection = new Error("injected outcome rejection");
+
+              await expect(
+                recordProjectOutcomeBestEffort(
+                  () => order.push("record"),
+                  async () => {
+                    order.push("persist");
+                    throw rejection;
+                  },
+                  (error) => {
+                    expect(error).toBe(rejection);
+                    order.push("report");
+                  },
+                ),
+              ).resolves.toBeUndefined();
+
+              expect(order).toEqual(["record", "persist", "report"]);
+            });
+          });
+          ''')
+          PY
+
+      - name: Validate targeted lifecycle contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm ci
+          npx vitest run server/src/platform/projects/ProjectLifecycleCoordinator.test.ts
+          npm run typecheck
+          npm run format:check
+
+      - name: Commit verified result and remove helper
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          rm .github/workflows/pr82-review-fix.yml
+          git add -A
+          git commit -m "fix(projects): serialize lifecycle bookkeeping"
+
+          git fetch origin release/cutover-1e-candidate
+          expected="$(printf '%s\n' \
+            config/durability/compatibility-write-inventory.json \
+            server/src/__tests__/preservationProperty.test.ts \
+            server/src/__tests__/saasFoundation.test.ts \
+            server/src/index.ts \
+            server/src/platform/projects/ProjectLifecycleCoordinator.test.ts \
+            server/src/platform/projects/ProjectLifecycleCoordinator.ts \
+            server/src/platform/projects/SaaSProjectRepository.ts \
+            server/src/routes/game-generation.ts | sort)"
+          actual="$(git diff --name-only origin/release/cutover-1e-candidate...HEAD | sort)"
+          test "$actual" = "$expected"
+          test "$(git rev-list --count HEAD..origin/release/cutover-1e-candidate)" = "0"
+          test ! -e .github/workflows/pr82-review-fix.yml
+
+          git push origin HEAD:agent/data-201b-project-lifecycle-update-ack
