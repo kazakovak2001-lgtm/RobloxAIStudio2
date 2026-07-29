@@ -87,6 +87,8 @@
 │   ├── cutover
 │   │   ├── promoted-baseline.inventory.json
 │   │   └── release-baseline.inventory.json
+│   ├── durability
+│   │   └── compatibility-write-inventory.json
 │   ├── runtime
 │   │   └── runtime-ownership.json
 │   └── testing
@@ -552,6 +554,7 @@
 │   ├── validate-architecture.ts
 │   ├── validate-boundaries.ts
 │   ├── validate-controller.ts
+│   ├── validate-durable-writes.ts
 │   ├── validate-memory-ownership.ts
 │   ├── validate-runtime-ownership.ts
 │   └── validate.ts
