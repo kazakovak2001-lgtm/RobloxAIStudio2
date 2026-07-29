@@ -88,6 +88,7 @@ export class InMemoryBlueprintRepository extends StorageBlueprintRepository {
       version: 1,
     } as GameBlueprint;
 
+    // The provider cache may change only after durable acknowledgement succeeds.
     await this.acknowledgedStorage.setDurable(
       BLUEPRINTS,
       blueprint.id,
@@ -113,6 +114,7 @@ export class InMemoryBlueprintRepository extends StorageBlueprintRepository {
       updated_at: new Date(),
     } as GameBlueprint;
 
+    // The provider cache may change only after durable acknowledgement succeeds.
     await this.acknowledgedStorage.setDurable(BLUEPRINTS, id, updated);
     return updated;
   }
