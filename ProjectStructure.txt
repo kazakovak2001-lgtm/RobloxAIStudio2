@@ -1067,6 +1067,7 @@
 │   │   │   │   └── PipelineMetrics.ts
 │   │   │   └── v2
 │   │   │       ├── __tests__
+│   │   │       │   ├── ArtifactStore.durability.test.ts
 │   │   │       │   ├── Pipeline.test.ts
 │   │   │       │   └── PipelineStore.test.ts
 │   │   │       ├── ArtifactStore.ts
