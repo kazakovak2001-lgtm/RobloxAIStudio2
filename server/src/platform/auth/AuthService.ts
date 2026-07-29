@@ -7,7 +7,9 @@
 import { randomBytes, randomUUID, createHash, timingSafeEqual } from "crypto";
 import bcrypt from "bcryptjs";
 import {
+  DurableStorageConflictError,
   InMemoryStorageProvider,
+  type DurableMutation,
   type StorageProvider,
 } from "../storage/StorageProvider";
 import type {
@@ -40,6 +42,14 @@ interface StoredAuthSession extends AuthSession {
 interface IssuedSession {
   session: AuthSession;
   refreshToken: string;
+}
+
+interface PreparedSession {
+  issued: IssuedSession;
+  storedSession: StoredAuthSession;
+  refreshTokenDigest: string;
+  refreshCredential: RefreshCredentialRecord;
+  mutations: DurableMutation[];
 }
 
 interface RefreshCredentialRecord {
@@ -129,13 +139,53 @@ export class AuthService {
     const role =
       this.storage.get<UserRole>(ROLES_COLLECTION, userId) ?? "creator";
     const issued = this.createSession(userId, role);
-    return {
-      success: true,
-      token: issued.session.token,
-      refreshToken: issued.refreshToken,
-      userId,
-      role,
-    };
+    return this.toLoginResult(issued, userId, role);
+  }
+
+  async loginDurable(
+    email: string,
+    password: string,
+    userId: string,
+  ): Promise<LoginResult> {
+    const normalizedEmail = this.normalizeEmail(email);
+    const creds = this.storage.get<StoredCredentials>(
+      CREDENTIALS_COLLECTION,
+      normalizedEmail,
+    );
+    if (!creds || creds.userId !== userId) {
+      return { success: false, error: "Invalid credentials" };
+    }
+
+    const mutations: DurableMutation[] = [];
+    let passwordValid = false;
+    if (this.isLegacyHash(creds.passwordHash)) {
+      const sha256Hash = createHash("sha256").update(password).digest("hex");
+      passwordValid = sha256Hash === creds.passwordHash;
+      if (passwordValid) {
+        mutations.push({
+          type: "set",
+          collection: CREDENTIALS_COLLECTION,
+          id: normalizedEmail,
+          data: {
+            ...creds,
+            passwordHash: bcrypt.hashSync(password, BCRYPT_COST_FACTOR),
+          } satisfies StoredCredentials,
+        });
+      }
+    } else {
+      passwordValid = bcrypt.compareSync(password, creds.passwordHash);
+    }
+
+    if (!passwordValid) {
+      return { success: false, error: "Invalid credentials" };
+    }
+
+    const role =
+      this.storage.get<UserRole>(ROLES_COLLECTION, userId) ?? "creator";
+    const prepared = this.prepareSession(userId, role);
+    mutations.push(...prepared.mutations);
+    await this.storage.mutateDurably(mutations);
+    return this.toLoginResult(prepared.issued, userId, role);
   }
 
   logout(token: string): boolean {
@@ -145,6 +195,30 @@ export class AuthService {
     );
     if (!session) return false;
     return this.deleteSession(session);
+  }
+
+  async logoutDurable(token: string): Promise<boolean> {
+    const session = this.storage.get<StoredAuthSession>(
+      SESSIONS_COLLECTION,
+      token,
+    );
+    if (!session) return false;
+
+    const mutations: DurableMutation[] = [];
+    if (this.isRefreshDigest(session.refreshTokenDigest)) {
+      mutations.push({
+        type: "delete",
+        collection: REFRESH_CREDENTIALS_COLLECTION,
+        id: session.refreshTokenDigest,
+      });
+    }
+    mutations.push({
+      type: "delete",
+      collection: SESSIONS_COLLECTION,
+      id: session.token,
+    });
+    await this.storage.mutateDurably(mutations);
+    return true;
   }
 
   validateToken(token: string): AuthSession | null {
@@ -192,9 +266,8 @@ export class AuthService {
       return { success: false, error: "Invalid refresh token" };
     }
 
-    // Consume the digest index before issuing its replacement. Both cache
-    // mutations are synchronous, so another request cannot replay the same
-    // credential between the consume and replace operations.
+    // Compatibility path retained for non-request callers. Production HTTP
+    // refresh uses refreshSessionDurable so consume-and-rotate is transactional.
     if (
       !this.storage.delete(
         REFRESH_CREDENTIALS_COLLECTION,
@@ -205,13 +278,64 @@ export class AuthService {
       return { success: false, error: "Invalid refresh token" };
     }
     const issued = this.createSession(session.userId, session.role);
-    return {
-      success: true,
-      token: issued.session.token,
-      refreshToken: issued.refreshToken,
-      userId: session.userId,
-      role: session.role,
-    };
+    return this.toLoginResult(issued, session.userId, session.role);
+  }
+
+  async refreshSessionDurable(refreshToken: string): Promise<LoginResult> {
+    const now = Date.now();
+    const refreshTokenDigest = this.digestRefreshToken(refreshToken);
+    const credential = this.storage.get<RefreshCredentialRecord>(
+      REFRESH_CREDENTIALS_COLLECTION,
+      refreshTokenDigest,
+    );
+    if (!credential) {
+      return { success: false, error: "Invalid refresh token" };
+    }
+
+    const session = this.storage.get<StoredAuthSession>(
+      SESSIONS_COLLECTION,
+      credential.sessionToken,
+    );
+    if (
+      !session ||
+      !this.matchesRefreshCredential(
+        session.refreshTokenDigest,
+        refreshToken,
+      ) ||
+      now >= credential.expiresAt
+    ) {
+      return { success: false, error: "Invalid refresh token" };
+    }
+
+    const prepared = this.prepareSession(session.userId, session.role);
+    try {
+      await this.storage.mutateDurably([
+        {
+          type: "delete",
+          collection: REFRESH_CREDENTIALS_COLLECTION,
+          id: refreshTokenDigest,
+          requireExisting: true,
+        },
+        {
+          type: "delete",
+          collection: SESSIONS_COLLECTION,
+          id: session.token,
+          requireExisting: true,
+        },
+        ...prepared.mutations,
+      ]);
+    } catch (error) {
+      if (error instanceof DurableStorageConflictError) {
+        return { success: false, error: "Invalid refresh token" };
+      }
+      throw error;
+    }
+
+    return this.toLoginResult(
+      prepared.issued,
+      session.userId,
+      session.role,
+    );
   }
 
   /**
@@ -289,11 +413,29 @@ export class AuthService {
   }
 
   private createSession(userId: string, role: UserRole): IssuedSession {
+    const prepared = this.prepareSession(userId, role);
+    this.storage.set<StoredAuthSession>(
+      SESSIONS_COLLECTION,
+      prepared.storedSession.token,
+      prepared.storedSession,
+    );
+    this.storage.set<RefreshCredentialRecord>(
+      REFRESH_CREDENTIALS_COLLECTION,
+      prepared.refreshTokenDigest,
+      prepared.refreshCredential,
+    );
+    return prepared.issued;
+  }
+
+  private prepareSession(userId: string, role: UserRole): PreparedSession {
     const now = Date.now();
     const refreshToken = `ref_${randomBytes(32).toString("hex")}`;
     const refreshTokenDigest = this.digestRefreshToken(refreshToken);
-    const refreshExpiresAt = now + REFRESH_EXPIRY_MS;
-    const session: StoredAuthSession = {
+    const refreshCredential: RefreshCredentialRecord = {
+      sessionToken: "",
+      expiresAt: now + REFRESH_EXPIRY_MS,
+    };
+    const storedSession: StoredAuthSession = {
       sessionId: randomUUID().slice(0, 12),
       userId,
       role,
@@ -303,22 +445,44 @@ export class AuthService {
       expiresAt: now + TOKEN_EXPIRY_MS,
       lastActivity: now,
     };
-    this.storage.set<StoredAuthSession>(
-      SESSIONS_COLLECTION,
-      session.token,
-      session,
-    );
-    this.storage.set<RefreshCredentialRecord>(
-      REFRESH_CREDENTIALS_COLLECTION,
-      refreshTokenDigest,
-      {
-        sessionToken: session.token,
-        expiresAt: refreshExpiresAt,
-      },
-    );
-    return {
-      session: this.toPublicSession(session),
+    refreshCredential.sessionToken = storedSession.token;
+    const issued: IssuedSession = {
+      session: this.toPublicSession(storedSession),
       refreshToken,
+    };
+    return {
+      issued,
+      storedSession,
+      refreshTokenDigest,
+      refreshCredential,
+      mutations: [
+        {
+          type: "set",
+          collection: SESSIONS_COLLECTION,
+          id: storedSession.token,
+          data: storedSession,
+        },
+        {
+          type: "set",
+          collection: REFRESH_CREDENTIALS_COLLECTION,
+          id: refreshTokenDigest,
+          data: refreshCredential,
+        },
+      ],
+    };
+  }
+
+  private toLoginResult(
+    issued: IssuedSession,
+    userId: string,
+    role: UserRole,
+  ): LoginResult {
+    return {
+      success: true,
+      token: issued.session.token,
+      refreshToken: issued.refreshToken,
+      userId,
+      role,
     };
   }
 
