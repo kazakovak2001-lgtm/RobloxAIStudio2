@@ -28,12 +28,12 @@ jobs:
         run: npm ci
       - name: Regenerate deterministic tracked inventories
         run: node scripts/cleanup/generate-tracked-inventories.mjs
-      - name: Verify post-removal invariants
-        run: node scripts/cleanup/audit-legacy-frontend-decommission.mjs
-      - name: Restore canonical CI
+      - name: Restore canonical CI before audit
         run: |
           git fetch origin agent/runtime-2d-autonomous-truthfulness
           git checkout origin/agent/runtime-2d-autonomous-truthfulness -- .github/workflows/ci.yml
+      - name: Verify final post-removal invariants
+        run: node scripts/cleanup/audit-legacy-frontend-decommission.mjs
       - name: Commit validated inventories only
         run: |
           git config user.name github-actions[bot]
