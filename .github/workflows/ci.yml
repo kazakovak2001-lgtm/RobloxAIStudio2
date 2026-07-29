@@ -1,4 +1,4 @@
-name: Temporary PR84 Artifact Async Propagation
+name: Temporary PR84 Artifact Caller Migration
 
 on:
   pull_request:
@@ -9,7 +9,7 @@ permissions:
   contents: write
 
 jobs:
-  propagate-artifact-async-contract:
+  migrate-artifact-callers:
     if: github.head_ref == 'agent/data-201b-artifact-store-ack'
     runs-on: ubuntu-latest
     steps:
@@ -28,65 +28,265 @@ jobs:
       - name: Install locked dependencies
         run: npm ci
 
-      - name: Apply exact PipelineEngine propagation
+      - name: Apply exact route and recorder migration
         run: |
           node <<'NODE'
           const fs = require('node:fs');
-          const path = 'server/src/pipeline/v2/PipelineEngine.ts';
-          let source = fs.readFileSync(path, 'utf8');
 
-          const replaceExactly = (before, after, expected = 1) => {
+          const replaceExactly = (path, before, after, expected = 1) => {
+            let source = fs.readFileSync(path, 'utf8');
             const matches = source.split(before).length - 1;
             if (matches !== expected) {
               throw new Error(`${path}: expected ${expected} matches, found ${matches}`);
             }
             source = source.split(before).join(after);
+            fs.writeFileSync(path, source);
           };
 
-          replaceExactly('.then((result) => {', '.then(async (result) => {');
           replaceExactly(
-            'this.storeArtifactsFromState(result.state);',
-            'await this.storeArtifactsFromState(result.state);',
-            6,
+            'server/src/routes/concept.ts',
+            'import { Router } from "express";',
+            'import { Router, type Response } from "express";',
           );
           replaceExactly(
-            'private storeArtifactsFromState(state: PipelineState): void {',
-            'private async storeArtifactsFromState(state: PipelineState): Promise<void> {',
-          );
-          replaceExactly(
-            '          this.artifactStore.store(',
-            '          await this.artifactStore.store(',
-          );
-          replaceExactly(
-            '  ): PipelineArtifact | null {\n    return this.artifactStore.approve(artifactId, reviewedBy);\n  }',
-            '  ): Promise<PipelineArtifact | null> {\n    return this.artifactStore.approve(artifactId, reviewedBy);\n  }',
-          );
-          replaceExactly(
-            '  ): PipelineArtifact | null {\n    return this.artifactStore.reject(artifactId, reviewedBy, comment);\n  }',
-            '  ): Promise<PipelineArtifact | null> {\n    return this.artifactStore.reject(artifactId, reviewedBy, comment);\n  }',
-          );
-          replaceExactly(
-            '  ): PipelineArtifact | null {\n    return this.artifactStore.comment(artifactId, reviewedBy, comment);\n  }',
-            '  ): Promise<PipelineArtifact | null> {\n    return this.artifactStore.comment(artifactId, reviewedBy, comment);\n  }',
-          );
-          replaceExactly(
-            '  ): PipelineArtifact | null {\n    return this.artifactStore.edit(artifactId, newContent, editedBy);\n  }',
-            '  ): Promise<PipelineArtifact | null> {\n    return this.artifactStore.edit(artifactId, newContent, editedBy);\n  }',
+            'server/src/routes/concept.ts',
+            'import type { GenerationHistoryRepository } from "../projects/repository/generationHistory.repository";',
+            'import type { GenerationHistoryRepository } from "../projects/repository/generationHistory.repository";\nimport { DurableStorageError } from "../platform/storage/StorageProvider";',
           );
 
-          fs.writeFileSync(path, source);
+          const oldRoutes = `  // POST /api/concept/experience/artifact/:artifactId/approve
+  router.post("/experience/artifact/:artifactId/approve", (req, res) => {
+    const { reviewedBy } = req.body;
+    const result = pipelineEngine.approveArtifact(
+      req.params.artifactId,
+      reviewedBy ?? "user",
+    );
+    if (!result) {
+      res.status(404).json({ success: false, error: "Artifact not found" });
+      return;
+    }
+    res.json({
+      success: true,
+      data: { id: result.id, reviewStatus: result.reviewStatus },
+    });
+  });
+
+  // POST /api/concept/experience/artifact/:artifactId/reject
+  router.post("/experience/artifact/:artifactId/reject", (req, res) => {
+    const { reviewedBy, comment } = req.body;
+    const result = pipelineEngine.rejectArtifact(
+      req.params.artifactId,
+      reviewedBy ?? "user",
+      comment,
+    );
+    if (!result) {
+      res.status(404).json({ success: false, error: "Artifact not found" });
+      return;
+    }
+    res.json({
+      success: true,
+      data: { id: result.id, reviewStatus: result.reviewStatus },
+    });
+  });
+
+  // POST /api/concept/experience/artifact/:artifactId/comment
+  router.post("/experience/artifact/:artifactId/comment", (req, res) => {
+    const { reviewedBy, comment } = req.body;
+    if (!comment || typeof comment !== "string") {
+      res.status(400).json({ success: false, error: "comment is required" });
+      return;
+    }
+    const result = pipelineEngine.commentArtifact(
+      req.params.artifactId,
+      reviewedBy ?? "user",
+      comment,
+    );
+    if (!result) {
+      res.status(404).json({ success: false, error: "Artifact not found" });
+      return;
+    }
+    res.json({
+      success: true,
+      data: { id: result.id, reviewComment: result.reviewComment },
+    });
+  });
+
+  // POST /api/concept/experience/artifact/:artifactId/edit
+  router.post("/experience/artifact/:artifactId/edit", (req, res) => {
+    const { content, editedBy } = req.body;
+    if (content === undefined) {
+      res.status(400).json({ success: false, error: "content is required" });
+      return;
+    }
+    const result = pipelineEngine.editArtifact(
+      req.params.artifactId,
+      content,
+      editedBy ?? "user",
+    );
+    if (!result) {
+      res.status(404).json({ success: false, error: "Artifact not found" });
+      return;
+    }
+    res.json({
+      success: true,
+      data: {
+        id: result.id,
+        reviewStatus: result.reviewStatus,
+        sizeBytes: result.sizeBytes,
+      },
+    });
+  });`;
+
+          const newRoutes = `  // POST /api/concept/experience/artifact/:artifactId/approve
+  router.post("/experience/artifact/:artifactId/approve", async (req, res) => {
+    try {
+      const { reviewedBy } = req.body;
+      const result = await pipelineEngine.approveArtifact(
+        req.params.artifactId,
+        reviewedBy ?? "user",
+      );
+      if (!result) {
+        res.status(404).json({ success: false, error: "Artifact not found" });
+        return;
+      }
+      res.json({
+        success: true,
+        data: { id: result.id, reviewStatus: result.reviewStatus },
+      });
+    } catch (error) {
+      handleArtifactMutationError(error, res);
+    }
+  });
+
+  // POST /api/concept/experience/artifact/:artifactId/reject
+  router.post("/experience/artifact/:artifactId/reject", async (req, res) => {
+    try {
+      const { reviewedBy, comment } = req.body;
+      const result = await pipelineEngine.rejectArtifact(
+        req.params.artifactId,
+        reviewedBy ?? "user",
+        comment,
+      );
+      if (!result) {
+        res.status(404).json({ success: false, error: "Artifact not found" });
+        return;
+      }
+      res.json({
+        success: true,
+        data: { id: result.id, reviewStatus: result.reviewStatus },
+      });
+    } catch (error) {
+      handleArtifactMutationError(error, res);
+    }
+  });
+
+  // POST /api/concept/experience/artifact/:artifactId/comment
+  router.post("/experience/artifact/:artifactId/comment", async (req, res) => {
+    const { reviewedBy, comment } = req.body;
+    if (!comment || typeof comment !== "string") {
+      res.status(400).json({ success: false, error: "comment is required" });
+      return;
+    }
+
+    try {
+      const result = await pipelineEngine.commentArtifact(
+        req.params.artifactId,
+        reviewedBy ?? "user",
+        comment,
+      );
+      if (!result) {
+        res.status(404).json({ success: false, error: "Artifact not found" });
+        return;
+      }
+      res.json({
+        success: true,
+        data: { id: result.id, reviewComment: result.reviewComment },
+      });
+    } catch (error) {
+      handleArtifactMutationError(error, res);
+    }
+  });
+
+  // POST /api/concept/experience/artifact/:artifactId/edit
+  router.post("/experience/artifact/:artifactId/edit", async (req, res) => {
+    const { content, editedBy } = req.body;
+    if (content === undefined) {
+      res.status(400).json({ success: false, error: "content is required" });
+      return;
+    }
+
+    try {
+      const result = await pipelineEngine.editArtifact(
+        req.params.artifactId,
+        content,
+        editedBy ?? "user",
+      );
+      if (!result) {
+        res.status(404).json({ success: false, error: "Artifact not found" });
+        return;
+      }
+      res.json({
+        success: true,
+        data: {
+          id: result.id,
+          reviewStatus: result.reviewStatus,
+          sizeBytes: result.sizeBytes,
+        },
+      });
+    } catch (error) {
+      handleArtifactMutationError(error, res);
+    }
+  });`;
+
+          replaceExactly('server/src/routes/concept.ts', oldRoutes, newRoutes);
+          replaceExactly(
+            'server/src/routes/concept.ts',
+            '  return router;\n}\n\nfunction extractTitle(description: string): string {',
+            `  return router;
+}
+
+function handleArtifactMutationError(error: unknown, res: Response): void {
+  if (error instanceof DurableStorageError) {
+    console.error("[concept] artifact mutation rejected", error);
+    res.status(503).json({
+      success: false,
+      error: "Durable storage is temporarily unavailable",
+    });
+    return;
+  }
+
+  console.error("[concept] artifact mutation failed", error);
+  res.status(500).json({
+    success: false,
+    error: "Artifact mutation failed",
+  });
+}
+
+function extractTitle(description: string): string {`,
+          );
+
+          replaceExactly(
+            'server/src/studio/artifacts/GenerationArtifactRecorder.ts',
+            '  record(executionId: string, nodes: readonly TaskNode[]): PipelineArtifact[] {',
+            '  async record(\n    executionId: string,\n    nodes: readonly TaskNode[],\n  ): Promise<PipelineArtifact[]> {',
+          );
+          replaceExactly(
+            'server/src/studio/artifacts/GenerationArtifactRecorder.ts',
+            '        this.artifactStore.store(executionId, stage, node.agent, content),',
+            '        await this.artifactStore.store(\n          executionId,\n          stage,\n          node.agent,\n          content,\n        ),',
+          );
           NODE
 
           node node_modules/prettier/bin/prettier.cjs --write \
-            server/src/pipeline/v2/ArtifactStore.ts \
-            server/src/pipeline/v2/PipelineEngine.ts
-          rm -f .tmp/pr84-artifact-propagation-trigger
+            server/src/routes/concept.ts \
+            server/src/studio/artifacts/GenerationArtifactRecorder.ts
+          rm -f .tmp/pr84-artifact-callers-trigger
 
-      - name: Commit exact propagation to PR head
+      - name: Commit exact migration to PR head
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add -A
           git diff --cached --quiet && exit 0
-          git commit -m "fix(storage): propagate artifact acknowledgement"
+          git commit -m "fix(storage): await artifact mutation callers"
           git push origin HEAD:agent/data-201b-artifact-store-ack
