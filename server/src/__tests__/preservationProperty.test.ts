@@ -817,7 +817,7 @@ describe("Preservation Property Tests - Baseline Behavior Guards", () => {
       );
     });
 
-    it("unit: project repository works with in-memory storage", () => {
+    it("unit: project repository works with in-memory storage", async () => {
       const storage = new InMemoryStorageProvider();
       const projects = new SaaSProjectRepository(storage);
 
@@ -836,7 +836,7 @@ describe("Preservation Property Tests - Baseline Behavior Guards", () => {
       expect(updated!.name).toBe("Updated Game");
 
       // Delete
-      const deleted = projects.delete(p.id);
+      const deleted = await projects.deleteDurable(p.id);
       expect(deleted).toBe(true);
       expect(projects.get(p.id)).toBeNull();
     });
