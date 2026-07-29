@@ -13,12 +13,12 @@ import { ArtifactTransferManager } from "../ArtifactTransferManager";
 // ---------------------------------------------------------------------------
 
 /** Seed the store with one artifact and return it. */
-function seedArtifact(
+async function seedArtifact(
   store: ArtifactStore,
   pipelineId: string,
   content: unknown = { hello: "world" },
 ) {
-  return store.store(pipelineId, "LUA_GENERATION", "test-agent", content);
+  return await store.store(pipelineId, "LUA_GENERATION", "test-agent", content);
 }
 
 // ---------------------------------------------------------------------------
@@ -45,10 +45,10 @@ describe("ArtifactTransferManager — transfer()", () => {
   });
 
   // Requirement 2.1, 2.4 — single known artifact
-  it("returns correct content and metadata for a single known artifact", () => {
+  it("returns correct content and metadata for a single known artifact", async () => {
     const pipelineId = "pipe-single";
     const content = { script: "print('hello')", lineCount: 1 };
-    const stored = seedArtifact(store, pipelineId, content);
+    const stored = await seedArtifact(store, pipelineId, content);
 
     const result = manager.transfer([stored.id]);
 
@@ -81,15 +81,15 @@ describe("ArtifactTransferManager — transfer()", () => {
   });
 
   // Requirement 2.1, 2.3, 2.4 — multiple known IDs all returned
-  it("returns all known artifacts when multiple IDs are requested", () => {
+  it("returns all known artifacts when multiple IDs are requested", async () => {
     const pipelineId = "pipe-multi";
-    const a1 = store.store(pipelineId, "LUA_GENERATION", null, {
+    const a1 = await store.store(pipelineId, "LUA_GENERATION", null, {
       script: "a",
     });
-    const a2 = store.store(pipelineId, "DOCUMENTATION", null, {
+    const a2 = await store.store(pipelineId, "DOCUMENTATION", null, {
       text: "docs",
     });
-    const a3 = store.store(pipelineId, "REQUIREMENTS", null, {
+    const a3 = await store.store(pipelineId, "REQUIREMENTS", null, {
       items: [1, 2, 3],
     });
 
@@ -106,12 +106,12 @@ describe("ArtifactTransferManager — transfer()", () => {
   });
 
   // Requirement 2.1, 2.2 — mix of known and unknown IDs
-  it("correctly splits known and unknown IDs into artifacts and missing", () => {
+  it("correctly splits known and unknown IDs into artifacts and missing", async () => {
     const pipelineId = "pipe-mixed";
-    const known1 = store.store(pipelineId, "GAME_DESIGN", null, {
+    const known1 = await store.store(pipelineId, "GAME_DESIGN", null, {
       genre: "RPG",
     });
-    const known2 = store.store(pipelineId, "ARCHITECTURE", null, {
+    const known2 = await store.store(pipelineId, "ARCHITECTURE", null, {
       modules: 5,
     });
     const unknownId1 = "ghost-id-aaa";
@@ -139,10 +139,10 @@ describe("ArtifactTransferManager — transfer()", () => {
   });
 
   // Requirement 2.4 — totalSize reflects the actual byte count
-  it("accumulates totalSize across returned artifacts", () => {
+  it("accumulates totalSize across returned artifacts", async () => {
     const pipelineId = "pipe-size";
     const content = { data: "x".repeat(100) };
-    const stored = seedArtifact(store, pipelineId, content);
+    const stored = await seedArtifact(store, pipelineId, content);
 
     const result = manager.transfer([stored.id]);
 
@@ -153,9 +153,9 @@ describe("ArtifactTransferManager — transfer()", () => {
   });
 
   // Edge case — requesting the same ID twice is well-defined
-  it("handles duplicate IDs in the request list without errors", () => {
+  it("handles duplicate IDs in the request list without errors", async () => {
     const pipelineId = "pipe-dup";
-    const stored = seedArtifact(store, pipelineId, { dup: true });
+    const stored = await seedArtifact(store, pipelineId, { dup: true });
 
     // Behaviour is implementation-defined; we only assert no exception is thrown
     // and that the result is structurally valid.

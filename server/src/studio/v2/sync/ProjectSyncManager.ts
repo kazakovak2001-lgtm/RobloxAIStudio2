@@ -56,9 +56,13 @@ export class ProjectSyncManager {
   }
 
   /**
-   * Process a sync request with changes from Studio.
+   * Process a sync request with changes from Studio after artifact mutations are
+   * durably acknowledged.
    */
-  processSyncRequest(pipelineId: string, changes: SyncChange[]): SyncResult {
+  async processSyncRequest(
+    pipelineId: string,
+    changes: SyncChange[],
+  ): Promise<SyncResult> {
     if (changes.length === 0) {
       return {
         status: "no_changes",
@@ -98,12 +102,13 @@ export class ProjectSyncManager {
       if (conflict) {
         detectedConflicts.push(conflict);
       } else {
-        this.applyChange(pipelineId, change);
+        await this.applyChange(pipelineId, change);
         appliedChanges.push(change.changeId);
       }
     }
 
-    // Update version
+    // Publish the new version only after all accepted artifact mutations are
+    // acknowledged.
     const newVersion = this.generateVersion(pipelineId, Date.now());
     this.versions.set(pipelineId, newVersion);
     this.lastSyncTimestamp = Date.now();
@@ -170,9 +175,16 @@ export class ProjectSyncManager {
     return null;
   }
 
-  private applyChange(_pipelineId: string, change: SyncChange): void {
+  private async applyChange(
+    _pipelineId: string,
+    change: SyncChange,
+  ): Promise<void> {
     if (change.changeType === "update") {
-      this.artifactStore.edit(change.artifactId, change.content, "studio-sync");
+      await this.artifactStore.edit(
+        change.artifactId,
+        change.content,
+        "studio-sync",
+      );
     }
     // create and delete are logged but not yet fully implemented
     // (would require extending ArtifactStore further)

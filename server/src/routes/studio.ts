@@ -196,7 +196,7 @@ export function createStudioRouter(
     );
   });
 
-  dispatcher.register("SYNC_REQUEST", (msg) => {
+  dispatcher.register("SYNC_REQUEST", async (msg) => {
     const { projectId, changes } = msg.payload;
     if (!projectId || typeof projectId !== "string") {
       return createResponse(msg, "error", {}, "Missing projectId");
@@ -204,7 +204,7 @@ export function createStudioRouter(
     if (!changes || !Array.isArray(changes)) {
       return createResponse(msg, "error", {}, "Missing changes array");
     }
-    const result = syncManager.processSyncRequest(
+    const result = await syncManager.processSyncRequest(
       projectId,
       changes as Array<Record<string, unknown>> as never,
     );

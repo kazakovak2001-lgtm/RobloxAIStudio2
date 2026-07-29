@@ -36,7 +36,10 @@ interface StudioLuaArtifactContent {
 export class GenerationArtifactRecorder {
   constructor(private readonly artifactStore: ArtifactStore) {}
 
-  record(executionId: string, nodes: readonly TaskNode[]): PipelineArtifact[] {
+  async record(
+    executionId: string,
+    nodes: readonly TaskNode[],
+  ): Promise<PipelineArtifact[]> {
     const recorded: PipelineArtifact[] = [];
 
     for (const node of nodes) {
@@ -50,7 +53,7 @@ export class GenerationArtifactRecorder {
           : node.output;
 
       recorded.push(
-        this.artifactStore.store(executionId, stage, node.agent, content),
+        await this.artifactStore.store(executionId, stage, node.agent, content),
       );
     }
 

@@ -24,7 +24,7 @@ function completedNode(
 }
 
 describe("STUDIO-1a canonical artifact lineage", () => {
-  it("stores only real completed task outputs under the durable execution ID", () => {
+  it("stores only real completed task outputs under the durable execution ID", async () => {
     const storage = new InMemoryStorageProvider();
     const store = new ArtifactStore(storage);
     const recorder = new GenerationArtifactRecorder(store);
@@ -38,7 +38,7 @@ describe("STUDIO-1a canonical artifact lineage", () => {
       ],
     };
 
-    const recorded = recorder.record(executionId, [
+    const recorded = await recorder.record(executionId, [
       completedNode("requirements", { requirements: ["durable", "typed"] }),
       completedNode("lua_generator", luaOutput),
       completedNode("orchestrator", { manifest: { scripts: 1 } }),
@@ -63,12 +63,12 @@ describe("STUDIO-1a canonical artifact lineage", () => {
     expect(store.count).toBe(3);
   });
 
-  it("normalizes the real LuaGeneratorAgent output into Studio scripts", () => {
+  it("normalizes the real LuaGeneratorAgent output into Studio scripts", async () => {
     const storage = new InMemoryStorageProvider();
     const store = new ArtifactStore(storage);
     const recorder = new GenerationArtifactRecorder(store);
 
-    const [artifact] = recorder.record("exec-real-lua-output", [
+    const [artifact] = await recorder.record("exec-real-lua-output", [
       completedNode("lua_generator", {
         generatedCode: { scripts: [], modules: {} },
         lua_generator: {
@@ -114,11 +114,11 @@ describe("STUDIO-1a canonical artifact lineage", () => {
     });
   });
 
-  it("rejects completed Lua outputs that cannot materialize real scripts", () => {
+  it("rejects completed Lua outputs that cannot materialize real scripts", async () => {
     const storage = new InMemoryStorageProvider();
     const recorder = new GenerationArtifactRecorder(new ArtifactStore(storage));
 
-    expect(() =>
+    await expect(
       recorder.record("exec-empty-lua-output", [
         completedNode("lua_generator", {
           generatedCode: { scripts: [], modules: {} },
@@ -130,17 +130,17 @@ describe("STUDIO-1a canonical artifact lineage", () => {
           },
         }),
       ]),
-    ).toThrow("non-empty Studio scripts array");
+    ).rejects.toThrow("non-empty Studio scripts array");
     expect(storage.count("pipeline_artifacts")).toBe(0);
   });
 
-  it("reconstructs artifacts, reviews, snapshots, and transfers from storage", () => {
+  it("reconstructs artifacts, reviews, snapshots, and transfers from storage", async () => {
     const storage = new InMemoryStorageProvider();
     const executionId = "exec-studio-restart";
     const storeBeforeRestart = new ArtifactStore(storage);
     const recorder = new GenerationArtifactRecorder(storeBeforeRestart);
 
-    const [luaArtifact, exportArtifact] = recorder.record(executionId, [
+    const [luaArtifact, exportArtifact] = await recorder.record(executionId, [
       completedNode("lua_generator", {
         scripts: [
           {
@@ -157,8 +157,8 @@ describe("STUDIO-1a canonical artifact lineage", () => {
 
     expect(luaArtifact).toBeDefined();
     expect(exportArtifact).toBeDefined();
-    storeBeforeRestart.approve(luaArtifact!.id, "quality-controller");
-    storeBeforeRestart.edit(
+    await storeBeforeRestart.approve(luaArtifact!.id, "quality-controller");
+    await storeBeforeRestart.edit(
       exportArtifact!.id,
       { package: "reviewed", artifactCount: 1 },
       "release-controller",

@@ -189,10 +189,14 @@ describe("Studio Integration", () => {
       expect(snapshot!.version).toBeTruthy();
     });
 
-    it("returns snapshot with artifacts after generation", () => {
+    it("returns snapshot with artifacts after generation", async () => {
       const store = new ArtifactStore();
-      store.store("pipe-1", "REQUIREMENTS", "requirements", { data: "test" });
-      store.store("pipe-1", "GAME_DESIGN", "game_designer", { design: "rpg" });
+      await store.store("pipe-1", "REQUIREMENTS", "requirements", {
+        data: "test",
+      });
+      await store.store("pipe-1", "GAME_DESIGN", "game_designer", {
+        design: "rpg",
+      });
 
       const syncManager = new ProjectSyncManager(store);
       const snapshot = syncManager.getProjectSnapshot("pipe-1");
@@ -202,11 +206,16 @@ describe("Studio Integration", () => {
       expect(snapshot!.artifacts[0].hash).toBeTruthy();
     });
 
-    it("transfers artifacts with content", () => {
+    it("transfers artifacts with content", async () => {
       const store = new ArtifactStore();
-      const art1 = store.store("pipe-1", "LUA_GENERATION", "lua_generator", {
-        script: "print('hello')",
-      });
+      const art1 = await store.store(
+        "pipe-1",
+        "LUA_GENERATION",
+        "lua_generator",
+        {
+          script: "print('hello')",
+        },
+      );
 
       const syncManager = new ProjectSyncManager(store);
       const transfer = syncManager.getTransferManager().transfer([art1.id]);
@@ -231,7 +240,7 @@ describe("Studio Integration", () => {
   });
 
   describe("Full Generation → Sync Flow", () => {
-    it("generates scripts and syncs to studio", () => {
+    it("generates scripts and syncs to studio", async () => {
       // Step 1: Generate Lua scripts
       const luaEngine = new LuaGenerationEngine();
       const result = luaEngine.generateFullPackage(
@@ -250,7 +259,7 @@ describe("Studio Integration", () => {
       // Step 3: Store artifacts for sync
       const store = new ArtifactStore();
       for (const artifact of result.artifacts) {
-        store.store(
+        await store.store(
           "studio-pipe",
           artifact.scriptType as never,
           "lua_generator",

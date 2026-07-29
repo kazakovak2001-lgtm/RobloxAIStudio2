@@ -69,8 +69,8 @@ describe("Plugin Protocol", () => {
       syncManager = new ProjectSyncManager(store);
     });
 
-    it("artifact transfer succeeds", () => {
-      const art = store.store("pipe-1", "LUA_GENERATION", "lua_gen", {
+    it("artifact transfer succeeds", async () => {
+      const art = await store.store("pipe-1", "LUA_GENERATION", "lua_gen", {
         code: "print('hi')",
       });
       const transfer = syncManager.getTransferManager().transfer([art.id]);
@@ -79,10 +79,10 @@ describe("Plugin Protocol", () => {
       expect(transfer.artifacts[0].content).toEqual({ code: "print('hi')" });
     });
 
-    it("hierarchy creation from snapshot", () => {
-      store.store("pipe-1", "REQUIREMENTS", "req", { req: "data" });
-      store.store("pipe-1", "LUA_GENERATION", "lua", { script: "..." });
-      store.store("pipe-1", "UI_GENERATION", "ui", { layout: "..." });
+    it("hierarchy creation from snapshot", async () => {
+      await store.store("pipe-1", "REQUIREMENTS", "req", { req: "data" });
+      await store.store("pipe-1", "LUA_GENERATION", "lua", { script: "..." });
+      await store.store("pipe-1", "UI_GENERATION", "ui", { layout: "..." });
 
       const snapshot = syncManager.getProjectSnapshot("pipe-1");
       expect(snapshot!.artifacts).toHaveLength(3);
@@ -99,14 +99,16 @@ describe("Plugin Protocol", () => {
   });
 
   describe("rollback", () => {
-    it("failed sync change is not applied", () => {
+    it("failed sync change is not applied", async () => {
       const store = new ArtifactStore();
-      store.store("pipe-1", "LUA_GENERATION", "lua", { code: "original" });
+      await store.store("pipe-1", "LUA_GENERATION", "lua", {
+        code: "original",
+      });
 
       const syncManager = new ProjectSyncManager(store);
 
       // Try to update a non-existent artifact (should fail validation)
-      const result = syncManager.processSyncRequest("pipe-1", [
+      const result = await syncManager.processSyncRequest("pipe-1", [
         {
           changeId: "change-1",
           artifactId: "nonexistent",
@@ -121,14 +123,14 @@ describe("Plugin Protocol", () => {
       expect(result.appliedChanges).toHaveLength(0);
     });
 
-    it("valid change is applied", () => {
+    it("valid change is applied", async () => {
       const store = new ArtifactStore();
-      const art = store.store("pipe-1", "LUA_GENERATION", "lua", {
+      const art = await store.store("pipe-1", "LUA_GENERATION", "lua", {
         code: "original",
       });
 
       const syncManager = new ProjectSyncManager(store);
-      const result = syncManager.processSyncRequest("pipe-1", [
+      const result = await syncManager.processSyncRequest("pipe-1", [
         {
           changeId: "change-1",
           artifactId: art.id,
