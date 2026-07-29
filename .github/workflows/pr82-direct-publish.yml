@@ -1,0 +1,76 @@
+name: PR82 Direct Patch Publish
+
+on:
+  push:
+    branches:
+      - agent/data-201b-project-lifecycle-update-ack
+    paths:
+      - .github/workflows/pr82-direct-publish.yml
+
+permissions:
+  contents: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout feature branch
+        uses: actions/checkout@v4
+        with:
+          ref: agent/data-201b-project-lifecycle-update-ack
+          fetch-depth: 0
+
+      - name: Apply asserted patch and publish clean tree
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 <<'PY'
+          from pathlib import Path
+
+          source = Path('.github/workflows/pr82-review-fix.yml').read_text().splitlines()
+          marker = '      - name: Apply fail-closed lifecycle fixes'
+          start = source.index(marker)
+          run_line = next(
+              index
+              for index in range(start + 1, len(source))
+              if source[index] == '        run: |'
+          )
+          block = []
+          for line in source[run_line + 1:]:
+              if line.startswith('      - name:'):
+                  break
+              if line and not line.startswith('          '):
+                  raise SystemExit(f'unexpected workflow indentation: {line!r}')
+              block.append(line[10:] if line else '')
+          script = '\n'.join(block).rstrip() + '\n'
+          if 'replace_once(' not in script or 'ProjectLifecycleCoordinator.ts' not in script:
+              raise SystemExit('extracted patch failed integrity check')
+          Path('/tmp/pr82-apply.sh').write_text(script)
+          PY
+          bash /tmp/pr82-apply.sh
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          rm .github/workflows/pr82-review-fix.yml
+          rm .github/workflows/pr82-review-fix-runner.yml
+          rm .github/workflows/pr82-direct-publish.yml
+          git add -A
+          git commit -m "fix(projects): serialize lifecycle bookkeeping"
+
+          git fetch origin release/cutover-1e-candidate
+          expected="$(printf '%s\n' \
+            config/durability/compatibility-write-inventory.json \
+            server/src/__tests__/preservationProperty.test.ts \
+            server/src/__tests__/saasFoundation.test.ts \
+            server/src/index.ts \
+            server/src/platform/projects/ProjectLifecycleCoordinator.test.ts \
+            server/src/platform/projects/ProjectLifecycleCoordinator.ts \
+            server/src/platform/projects/SaaSProjectRepository.ts \
+            server/src/routes/game-generation.ts | sort)"
+          actual="$(git diff --name-only origin/release/cutover-1e-candidate...HEAD | sort)"
+          test "$actual" = "$expected"
+          test "$(git rev-list --count HEAD..origin/release/cutover-1e-candidate)" = "0"
+          test ! -e .github/workflows/pr82-review-fix.yml
+          test ! -e .github/workflows/pr82-review-fix-runner.yml
+          test ! -e .github/workflows/pr82-direct-publish.yml
+          git push origin HEAD:agent/data-201b-project-lifecycle-update-ack
