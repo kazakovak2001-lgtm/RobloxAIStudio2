@@ -77,9 +77,7 @@ export class ChatPersistenceService {
     };
   }
 
-  async createMessage(
-    input: CreateMessageInput,
-  ): Promise<ConversationMessage> {
+  async createMessage(input: CreateMessageInput): Promise<ConversationMessage> {
     const content = this.requireText(input.content, "content");
     if (!["user", "assistant", "system"].includes(input.role)) {
       throw new ChatValidationError("role must be user, assistant, or system");

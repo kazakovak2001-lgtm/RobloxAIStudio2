@@ -65,11 +65,8 @@ class RejectingBatchStorage extends InMemoryStorageProvider {
 const allowAccess: ProjectAccessControl = {
   getRequestUserId: (_req: Request) => "owner",
   requireAuthenticatedUser: (_req: Request, _res: Response) => "owner",
-  requireProjectAccess: (
-    _req: Request,
-    _res: Response,
-    _projectId: string,
-  ) => true,
+  requireProjectAccess: (_req: Request, _res: Response, _projectId: string) =>
+    true,
 };
 
 async function withServer<T>(
