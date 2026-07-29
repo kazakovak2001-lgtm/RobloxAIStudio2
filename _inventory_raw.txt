@@ -910,6 +910,7 @@ server/src/platform/storage/StorageFactory.ts
 server/src/platform/storage/StorageProvider.ts
 server/src/platform/storage/index.ts
 server/src/platform/storage/postgres/DatabaseHealth.ts
+server/src/platform/storage/postgres/PostgresStorageProvider.test.ts
 server/src/platform/storage/postgres/PostgresStorageProvider.ts
 server/src/platform/storage/postgres/index.ts
 server/src/platform/storage/postgres/migrationRunner.ts
@@ -981,6 +982,7 @@ server/src/repair/RepairExecutor.ts
 server/src/repair/RepairPlanner.ts
 server/src/repair/RepairTypes.ts
 server/src/repair/index.ts
+server/src/routes/__tests__/projects.durability.test.ts
 server/src/routes/__tests__/projects.runtime.test.ts
 server/src/routes/__tests__/studioProtocol.smoke.test.ts
 server/src/routes/agentCollaboration.ts
