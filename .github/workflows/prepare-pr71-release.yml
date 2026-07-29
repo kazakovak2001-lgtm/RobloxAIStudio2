@@ -1,0 +1,55 @@
+name: Prepare PR 71 Release Integration
+
+on:
+  push:
+    branches:
+      - agent/data-201b-compatibility-write-gate
+
+permissions:
+  contents: write
+
+concurrency:
+  group: prepare-pr71-release
+  cancel-in-progress: false
+
+jobs:
+  integrate-release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Check out PR branch
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: agent/data-201b-compatibility-write-gate
+
+      - name: Configure Git identity
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+      - name: Merge current release head
+        run: |
+          git fetch origin release/cutover-1e-candidate
+          git merge --no-ff origin/release/cutover-1e-candidate \
+            -m "chore(data): integrate release history for PR 71"
+
+      - name: Remove temporary workflow
+        run: |
+          rm .github/workflows/prepare-pr71-release.yml
+          git add .github/workflows/prepare-pr71-release.yml
+          git commit -m "chore(ci): remove PR 71 integration helper"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Validate final tree
+        run: |
+          npm run format:check
+          npm run lint
+          npm run typecheck
+          npm run validate
+          npm run test
+
+      - name: Push validated integration
+        run: git push origin HEAD:agent/data-201b-compatibility-write-gate
