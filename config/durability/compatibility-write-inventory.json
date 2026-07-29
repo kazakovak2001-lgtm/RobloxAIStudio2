@@ -150,16 +150,6 @@
       "migrationTarget": "DATA-201B"
     },
     {
-      "key": "server/src/platform/security/ApiKeyStore.ts#ApiKeyStore.revoke#set",
-      "path": "server/src/platform/security/ApiKeyStore.ts",
-      "owner": "ApiKeyStore.revoke",
-      "operation": "set",
-      "expectedCalls": 1,
-      "classification": "request-level-debt",
-      "reason": "API-key revocation can report success before persistence acknowledgement.",
-      "migrationTarget": "DATA-201B"
-    },
-    {
       "key": "server/src/platform/users/UserRepository.ts#UserRepository.create#set",
       "path": "server/src/platform/users/UserRepository.ts",
       "owner": "UserRepository.create",
