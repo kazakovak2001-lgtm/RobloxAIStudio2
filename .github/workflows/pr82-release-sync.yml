@@ -1,0 +1,48 @@
+name: PR82 Release Sync
+
+on:
+  push:
+    branches:
+      - agent/data-201b-project-lifecycle-update-ack
+    paths:
+      - .github/workflows/pr82-release-sync.yml
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout feature branch
+        uses: actions/checkout@v4
+        with:
+          ref: agent/data-201b-project-lifecycle-update-ack
+          fetch-depth: 0
+
+      - name: Merge current release and remove helper
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git fetch origin release/cutover-1e-candidate
+          git merge --no-ff origin/release/cutover-1e-candidate -m "chore(release): integrate project lifecycle history"
+          rm .github/workflows/pr82-release-sync.yml
+          git add -A
+          git commit -m "chore(ci): remove project lifecycle sync helper"
+
+          expected="$(printf '%s\n' \
+            config/durability/compatibility-write-inventory.json \
+            server/src/__tests__/preservationProperty.test.ts \
+            server/src/__tests__/saasFoundation.test.ts \
+            server/src/index.ts \
+            server/src/platform/projects/SaaSProjectRepository.ts \
+            server/src/routes/game-generation.ts | sort)"
+          actual="$(git diff --name-only origin/release/cutover-1e-candidate...HEAD | sort)"
+          test "$actual" = "$expected"
+          test "$(git rev-list --count HEAD..origin/release/cutover-1e-candidate)" = "0"
+          test ! -e .github/workflows/pr82-release-sync.yml
+
+          git push origin HEAD:agent/data-201b-project-lifecycle-update-ack
