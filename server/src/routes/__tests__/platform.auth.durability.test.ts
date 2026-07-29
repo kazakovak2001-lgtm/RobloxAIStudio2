@@ -8,6 +8,7 @@ import {
   DurableStorageError,
   InMemoryStorageProvider,
   type DurableMutation,
+  type DurableMutationResult,
 } from "../../platform/storage/StorageProvider";
 import { UserRepository } from "../../platform/users";
 import { createPlatformRouter } from "../platform";
@@ -16,13 +17,16 @@ import type { ProjectAccessControl } from "../projects";
 class RejectableAuthStorage extends InMemoryStorageProvider {
   rejectBatches = false;
 
-  override async mutateDurably(
+  override async applyDurableBatch(
     mutations: readonly DurableMutation[],
-  ): Promise<void> {
+  ): Promise<readonly DurableMutationResult[]> {
     if (this.rejectBatches) {
-      throw new DurableStorageError("injected auth batch rejection", "batch");
+      throw new DurableStorageError(
+        "injected auth batch rejection",
+        "transaction",
+      );
     }
-    await super.applyDurableBatch(mutations);
+    return super.applyDurableBatch(mutations);
   }
 }
 
