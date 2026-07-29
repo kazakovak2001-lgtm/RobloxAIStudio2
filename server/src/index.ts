@@ -3,6 +3,7 @@ import { createServer } from "http";
 import { Server as SocketServer } from "socket.io";
 import { createProjectsRouter, createProjectRuntime } from "./routes/projects";
 import { createGameGenerationRouter } from "./routes/game-generation";
+import { recordProjectOutcomeBestEffort } from "./platform/projects/ProjectLifecycleCoordinator";
 import { createChatPersistenceRouter } from "./routes/chatPersistence";
 import { createEvaluationRouter } from "./routes/evaluation";
 import { createMemoryRouter } from "./routes/memory";
@@ -291,28 +292,40 @@ events.onEvent(async (evt) => {
         outputs: evt.data?.outputs,
         timestamp: evt.timestamp.toISOString(),
       };
-      if (evt.projectId) {
-        await projectRepository.updateDurable(evt.projectId, {
-          status: "ready",
-          qualityScore: 100,
-        });
-        const record = generationHistory.getByPipeline(evt.pipelineId);
-        if (record) {
-          const finishedAt = evt.timestamp.getTime();
-          const completed = Number(
-            evt.data?.completedSteps ?? record.stagesCompleted,
-          );
-          const failed = Number(evt.data?.failedSteps ?? record.failures);
-          generationHistory.record({
-            ...record,
-            status: "completed",
-            finishedAt,
-            duration: finishedAt - record.startedAt,
-            stagesCompleted: completed,
-            stagesTotal: Math.max(record.stagesTotal, completed + failed),
-            failures: failed,
-          });
-        }
+      const projectId = evt.projectId;
+      if (projectId) {
+        await recordProjectOutcomeBestEffort(
+          () => {
+            const record = generationHistory.getByPipeline(evt.pipelineId);
+            if (record) {
+              const finishedAt = evt.timestamp.getTime();
+              const completed = Number(
+                evt.data?.completedSteps ?? record.stagesCompleted,
+              );
+              const failed = Number(evt.data?.failedSteps ?? record.failures);
+              generationHistory.record({
+                ...record,
+                status: "completed",
+                finishedAt,
+                duration: finishedAt - record.startedAt,
+                stagesCompleted: completed,
+                stagesTotal: Math.max(record.stagesTotal, completed + failed),
+                failures: failed,
+              });
+            }
+          },
+          () =>
+            projectRepository.updateDurable(projectId, {
+              status: "ready",
+              qualityScore: 100,
+            }),
+          (error) => {
+            console.error(
+              `[pipeline-bridge] failed to persist completed project ${projectId}:`,
+              error,
+            );
+          },
+        );
       }
       console.log(
         "[pipeline-bridge] forwarding",
@@ -320,6 +333,22 @@ events.onEvent(async (evt) => {
         payload,
       );
       emitForProject("pipeline.completed", payload);
+      break;
+    }
+    case "pipeline.preview.completed": {
+      const payload = {
+        ...evt.data,
+        pipelineId: evt.pipelineId,
+        projectId: evt.projectId,
+        timestamp: evt.timestamp.toISOString(),
+        productionCompleted: false,
+      };
+      console.log(
+        "[pipeline-bridge] forwarding",
+        "pipeline.preview.completed",
+        payload,
+      );
+      emitForProject("pipeline.preview.completed", payload);
       break;
     }
     case "pipeline.failed": {
@@ -335,29 +364,41 @@ events.onEvent(async (evt) => {
         failedSteps: evt.data?.failedSteps,
         completedSteps: evt.data?.completedSteps,
       };
-      if (evt.projectId) {
-        await projectRepository.updateDurable(evt.projectId, {
-          status: "draft",
-        });
-        const record = generationHistory.getByPipeline(evt.pipelineId);
-        if (record) {
-          const finishedAt = evt.timestamp.getTime();
-          const completed = Number(
-            evt.data?.completedSteps ?? record.stagesCompleted,
-          );
-          const failed = Number(
-            evt.data?.failedSteps ?? (record.failures || 1),
-          );
-          generationHistory.record({
-            ...record,
-            status: "failed",
-            finishedAt,
-            duration: finishedAt - record.startedAt,
-            stagesCompleted: completed,
-            stagesTotal: Math.max(record.stagesTotal, completed + failed),
-            failures: failed,
-          });
-        }
+      const projectId = evt.projectId;
+      if (projectId) {
+        await recordProjectOutcomeBestEffort(
+          () => {
+            const record = generationHistory.getByPipeline(evt.pipelineId);
+            if (record) {
+              const finishedAt = evt.timestamp.getTime();
+              const completed = Number(
+                evt.data?.completedSteps ?? record.stagesCompleted,
+              );
+              const failed = Number(
+                evt.data?.failedSteps ?? (record.failures || 1),
+              );
+              generationHistory.record({
+                ...record,
+                status: "failed",
+                finishedAt,
+                duration: finishedAt - record.startedAt,
+                stagesCompleted: completed,
+                stagesTotal: Math.max(record.stagesTotal, completed + failed),
+                failures: failed,
+              });
+            }
+          },
+          () =>
+            projectRepository.updateDurable(projectId, {
+              status: "draft",
+            }),
+          (error) => {
+            console.error(
+              `[pipeline-bridge] failed to persist failed project ${projectId}:`,
+              error,
+            );
+          },
+        );
       }
       console.log("[pipeline-bridge] forwarding", "pipeline.failed", payload);
       emitForProject("pipeline.failed", payload);

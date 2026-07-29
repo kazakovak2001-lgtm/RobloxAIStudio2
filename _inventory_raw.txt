@@ -874,7 +874,6 @@ server/src/pipeline/v2/PipelineEngine.ts
 server/src/pipeline/v2/PipelineEvents.ts
 server/src/pipeline/v2/PipelineExecutor.ts
 server/src/pipeline/v2/PipelineStage.ts
-server/src/pipeline/v2/__tests__/ArtifactStore.durability.test.ts
 server/src/pipeline/v2/__tests__/Pipeline.test.ts
 server/src/pipeline/v2/__tests__/PipelineStore.test.ts
 server/src/pipeline/v2/index.ts
@@ -899,6 +898,8 @@ server/src/platform/auth/TokenProvider.ts
 server/src/platform/auth/authServiceInstance.ts
 server/src/platform/auth/index.ts
 server/src/platform/index.ts
+server/src/platform/projects/ProjectLifecycleCoordinator.test.ts
+server/src/platform/projects/ProjectLifecycleCoordinator.ts
 server/src/platform/projects/SaaSProjectRepository.ts
 server/src/platform/projects/index.ts
 server/src/platform/queue/GenerationQueue.ts
