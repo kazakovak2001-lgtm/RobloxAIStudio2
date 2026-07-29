@@ -1,0 +1,48 @@
+name: RUNTIME-205 Merge Tree Diagnostic
+
+on:
+  push:
+    branches:
+      - agent/runtime-2d-bounded-phases
+
+permissions:
+  contents: write
+
+concurrency:
+  group: runtime-205-merge-tree-diagnostic
+  cancel-in-progress: true
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout writable PR branch
+        uses: actions/checkout@v4
+        with:
+          ref: agent/runtime-2d-bounded-phases
+          fetch-depth: 0
+
+      - name: Inspect merge tree
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch origin release/cutover-1e-candidate
+          mkdir -p .ci
+          {
+            echo "HEAD=$(git rev-parse HEAD)"
+            echo "BASE=$(git rev-parse origin/release/cutover-1e-candidate)"
+            echo "MERGE_BASE=$(git merge-base HEAD origin/release/cutover-1e-candidate)"
+            echo "--- MERGE TREE ---"
+            git merge-tree --write-tree --messages HEAD origin/release/cutover-1e-candidate || true
+          } > .ci/runtime205-merge-diagnostic.txt 2>&1
+
+      - name: Commit diagnostic result
+        shell: bash
+        run: |
+          set -euo pipefail
+          git rm .github/workflows/runtime205-merge-tree-diagnostic.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add .ci/runtime205-merge-diagnostic.txt
+          git commit --no-verify -m "chore(ci): refine runtime 205 merge diagnostics"
+          git push origin HEAD:agent/runtime-2d-bounded-phases
