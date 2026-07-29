@@ -95,9 +95,9 @@ describe("PostgresStorageProvider awaited mutations", () => {
       name: "Committed",
     });
 
-    await expect(
-      storage.deleteDurable("projects", "project-1"),
-    ).resolves.toBe(true);
+    await expect(storage.deleteDurable("projects", "project-1")).resolves.toBe(
+      true,
+    );
     expect(storage.get("projects", "project-1")).toBeNull();
   });
 });

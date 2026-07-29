@@ -8,10 +8,7 @@ import {
   InMemoryStorageProvider,
 } from "../../platform/storage/StorageProvider";
 import type { GenerationHistoryRepository } from "../../projects/repository/generationHistory.repository";
-import {
-  createProjectsRouter,
-  type ProjectRuntime,
-} from "../projects";
+import { createProjectsRouter, type ProjectRuntime } from "../projects";
 
 class ControlledMutationStorage extends InMemoryStorageProvider {
   rejectSet = false;

@@ -7,10 +7,7 @@
  * writes remain compatibility-only until DATA-201B migrates every request path.
  */
 
-import {
-  DurableStorageError,
-  type StorageProvider,
-} from "../StorageProvider";
+import { DurableStorageError, type StorageProvider } from "../StorageProvider";
 
 export interface PostgresConfig {
   connectionString: string;
