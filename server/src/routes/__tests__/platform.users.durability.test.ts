@@ -12,12 +12,14 @@ import type { ProjectAccessControl } from "../projects";
 
 class ControlledMutationStorage extends InMemoryStorageProvider {
   rejectSet = false;
+  durableSetCalls = 0;
 
   override async setDurable<T>(
     collection: string,
     id: string,
     data: T,
   ): Promise<void> {
+    this.durableSetCalls += 1;
     if (this.rejectSet) {
       throw new DurableStorageError("injected set rejection", "set");
     }
@@ -115,6 +117,25 @@ describe("platform user durable HTTP acknowledgement", () => {
     });
   });
 
+  it("rejects foreign profile mutation before durable persistence", async () => {
+    const storage = new ControlledMutationStorage();
+    const users = new UserRepository(storage);
+    const user = users.create({
+      email: "owner@example.com",
+      displayName: "Owner",
+    });
+
+    await withServer(storage, "intruder", async (baseUrl) => {
+      const result = await mutation(`${baseUrl}/users/${user.id}`, "PATCH", {
+        displayName: "Hijacked",
+      });
+
+      expect(result.status).toBe(403);
+      expect(storage.durableSetCalls).toBe(0);
+      expect(users.getById(user.id)).toEqual(user);
+    });
+  });
+
   it("makes an acknowledged create immediately readable", async () => {
     const storage = new ControlledMutationStorage();
     const users = new UserRepository(storage);
@@ -136,8 +157,8 @@ describe("platform user durable HTTP acknowledgement", () => {
     const storage = new ControlledMutationStorage();
     const users = new UserRepository(storage);
     const user = users.create({
-      email: "owner@example.com",
-      displayName: "Owner",
+      email: "profile@example.com",
+      displayName: "Profile Owner",
     });
 
     await withServer(storage, user.id, async (baseUrl) => {
