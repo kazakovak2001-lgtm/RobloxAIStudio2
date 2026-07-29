@@ -118,7 +118,7 @@ export class PipelineEngine {
     );
     this.metrics.start(result.state.pipelineId, result.state.stages.length);
     this.store.save(result.state);
-    this.storeArtifactsFromState(result.state);
+    await this.storeArtifactsFromState(result.state);
     this.metrics.finish(result.state.pipelineId);
     return result;
   }
@@ -151,9 +151,9 @@ export class PipelineEngine {
 
     void this.executor
       .execute(projectId, blueprint, agentExecutor, state)
-      .then((result) => {
+      .then(async (result) => {
         this.store.save(result.state);
-        this.storeArtifactsFromState(result.state);
+        await this.storeArtifactsFromState(result.state);
         this.activeExecutions.delete(projectId);
         console.log(
           `[JOB_COMPLETED] pipelineId=${state.pipelineId} status=${result.state.status} stages=${result.state.completedStages.length}`,
@@ -180,7 +180,7 @@ export class PipelineEngine {
     if (!state || state.status !== "failed") return null;
     const result = await this.executor.resume(state, blueprint, agentExecutor);
     this.store.save(result.state);
-    this.storeArtifactsFromState(result.state);
+    await this.storeArtifactsFromState(result.state);
     return result;
   }
 
@@ -204,13 +204,13 @@ export class PipelineEngine {
     return this.store.count();
   }
 
-  private storeArtifactsFromState(state: PipelineState): void {
+  private async storeArtifactsFromState(state: PipelineState): Promise<void> {
     for (const stage of state.stages) {
       if (stage.status === "completed" && stage.output) {
         const existing = this.artifactStore.getByPipeline(state.pipelineId);
         const alreadyStored = existing.some((a) => a.stage === stage.name);
         if (!alreadyStored) {
-          this.artifactStore.store(
+          await this.artifactStore.store(
             state.pipelineId,
             stage.name,
             stage.agentId,
@@ -232,7 +232,7 @@ export class PipelineEngine {
   approveArtifact(
     artifactId: string,
     reviewedBy: string,
-  ): PipelineArtifact | null {
+  ): Promise<PipelineArtifact | null> {
     return this.artifactStore.approve(artifactId, reviewedBy);
   }
 
@@ -240,7 +240,7 @@ export class PipelineEngine {
     artifactId: string,
     reviewedBy: string,
     comment?: string,
-  ): PipelineArtifact | null {
+  ): Promise<PipelineArtifact | null> {
     return this.artifactStore.reject(artifactId, reviewedBy, comment);
   }
 
@@ -248,7 +248,7 @@ export class PipelineEngine {
     artifactId: string,
     reviewedBy: string,
     comment: string,
-  ): PipelineArtifact | null {
+  ): Promise<PipelineArtifact | null> {
     return this.artifactStore.comment(artifactId, reviewedBy, comment);
   }
 
@@ -256,7 +256,7 @@ export class PipelineEngine {
     artifactId: string,
     newContent: unknown,
     editedBy: string,
-  ): PipelineArtifact | null {
+  ): Promise<PipelineArtifact | null> {
     return this.artifactStore.edit(artifactId, newContent, editedBy);
   }
 
@@ -288,7 +288,7 @@ export class PipelineEngine {
     state.status = "running";
     const result = await this.executor.resume(state, blueprint, agentExecutor);
     this.store.save(result.state);
-    this.storeArtifactsFromState(result.state);
+    await this.storeArtifactsFromState(result.state);
     return result;
   }
 
@@ -319,7 +319,7 @@ export class PipelineEngine {
     if (!state || state.status !== "failed") return null;
     const result = await this.executor.resume(state, blueprint, agentExecutor);
     this.store.save(result.state);
-    this.storeArtifactsFromState(result.state);
+    await this.storeArtifactsFromState(result.state);
     return result;
   }
 
@@ -348,7 +348,7 @@ export class PipelineEngine {
       state,
     );
     this.store.save(result.state);
-    this.storeArtifactsFromState(result.state);
+    await this.storeArtifactsFromState(result.state);
     return result;
   }
 
