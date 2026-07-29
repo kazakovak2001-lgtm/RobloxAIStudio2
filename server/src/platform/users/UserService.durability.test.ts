@@ -21,7 +21,7 @@ class ControlledMutationStorage extends InMemoryStorageProvider {
   }
 }
 
-describe("user administration durable acknowledgement", () => {
+describe("user durable acknowledgement", () => {
   it("retains the exact previous user after rejected tier mutation", async () => {
     const storage = new ControlledMutationStorage();
     const repository = new UserRepository(storage);
@@ -78,6 +78,46 @@ describe("user administration durable acknowledgement", () => {
       id: user.id,
       tier: "pro",
       status: "suspended",
+    });
+  });
+
+  it("retains the exact previous user after rejected usage accounting", async () => {
+    const storage = new ControlledMutationStorage();
+    const repository = new UserRepository(storage);
+    const user = repository.create({
+      email: "usage-before@example.com",
+      displayName: "Usage Before",
+    });
+    storage.rejectSet = true;
+
+    await expect(
+      repository.recordGenerationDurable(user.id, 1500),
+    ).rejects.toMatchObject({
+      code: "DURABLE_STORAGE_MUTATION_FAILED",
+      operation: "set",
+    });
+    expect(repository.getById(user.id)).toEqual(user);
+  });
+
+  it("publishes acknowledged generation usage", async () => {
+    const storage = new ControlledMutationStorage();
+    const repository = new UserRepository(storage);
+    const user = repository.create({
+      email: "usage-committed@example.com",
+      displayName: "Usage Committed",
+    });
+
+    await expect(
+      repository.recordGenerationDurable(user.id, 1500),
+    ).resolves.toBe(true);
+    expect(repository.getById(user.id)).toMatchObject({
+      id: user.id,
+      usage: {
+        generationsToday: 1,
+        generationsTotal: 1,
+        tokensUsedToday: 1500,
+        tokensUsedTotal: 1500,
+      },
     });
   });
 });
