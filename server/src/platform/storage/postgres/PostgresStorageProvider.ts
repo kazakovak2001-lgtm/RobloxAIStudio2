@@ -10,6 +10,7 @@
 import {
   DurableStorageConflictError,
   DurableStorageError,
+  DurableStoragePreconditionError,
   type DurableMutation,
   type StorageProvider,
 } from "../StorageProvider";
@@ -73,8 +74,6 @@ export class PostgresStorageProvider implements StorageProvider {
     this.config = { ...DEFAULT_POSTGRES_CONFIG, ...config };
     this.dependencies = dependencies;
   }
-
-  // ─── StorageProvider Interface (sync reads + compatibility writes) ─────
 
   get<T>(collection: string, id: string): T | null {
     return (this.getCollection(collection).get(id) as T) ?? null;
@@ -151,6 +150,13 @@ export class PostgresStorageProvider implements StorageProvider {
                 mutation.data,
                 client,
               );
+            } else if (mutation.type === "delete-matched") {
+              await this.persistDeleteMatched(
+                mutation.collection,
+                mutation.id,
+                mutation.expectedData,
+                client,
+              );
             } else {
               await this.persistDelete(
                 mutation.collection,
@@ -177,7 +183,12 @@ export class PostgresStorageProvider implements StorageProvider {
         this.publishCacheMutations(mutations);
       });
     } catch (error) {
-      if (error instanceof DurableStorageConflictError) throw error;
+      if (
+        error instanceof DurableStorageConflictError ||
+        error instanceof DurableStoragePreconditionError
+      ) {
+        throw error;
+      }
       throw new DurableStorageError("Durable mutation batch failed", "batch", {
         cause: error,
       });
@@ -192,8 +203,6 @@ export class PostgresStorageProvider implements StorageProvider {
   count(collection: string): number {
     return this.getCollection(collection).size;
   }
-
-  // ─── PostgreSQL-specific methods ──────────────────────────────────
 
   ready(): Promise<void> {
     this.initialization ??= this.initialize();
@@ -263,8 +272,6 @@ export class PostgresStorageProvider implements StorageProvider {
     return { ...this.config };
   }
 
-  // ─── Private ──────────────────────────────────────────────────────
-
   private getCollection(name: string): Map<string, unknown> {
     if (!this.cache.has(name)) this.cache.set(name, new Map());
     return this.cache.get(name)!;
@@ -273,7 +280,7 @@ export class PostgresStorageProvider implements StorageProvider {
   private publishCacheMutations(mutations: readonly DurableMutation[]): void {
     for (const mutation of mutations) {
       const collection = this.getCollection(mutation.collection);
-      if (mutation.type === "delete") {
+      if (mutation.type === "delete" || mutation.type === "delete-matched") {
         collection.delete(mutation.id);
       } else {
         collection.set(mutation.id, mutation.data);
@@ -295,11 +302,7 @@ export class PostgresStorageProvider implements StorageProvider {
         ? await this.dependencies.createPool(this.config)
         : await this.createDefaultPool();
 
-      // Test connection
       await candidatePool.query("SELECT 1");
-
-      // kv_store is owned by the migration registry. Loading only happens after
-      // bootstrap has successfully applied that registry.
       const { rows } = await candidatePool.query(
         `SELECT collection, id, data FROM ${KV_TABLE}`,
       );
@@ -312,7 +315,6 @@ export class PostgresStorageProvider implements StorageProvider {
 
       this.pool = candidatePool;
       this.connected = true;
-
       console.log(
         `[PostgresStorage] Connected — loaded ${rows.length} records into cache (pool=${this.config.poolSize})`,
       );
@@ -332,7 +334,6 @@ export class PostgresStorageProvider implements StorageProvider {
   }
 
   private async createDefaultPool(): Promise<QueryablePool> {
-    // Dynamic import preserves the dependency-free in-memory/test path.
     const pg = await import("pg").catch(() => null);
     if (!pg) throw new Error("The pg package is not available");
 
@@ -352,8 +353,6 @@ export class PostgresStorageProvider implements StorageProvider {
       await write();
     });
 
-    // A rejected operation must not poison later mutations. The original
-    // promise is still returned to awaited callers so they observe rejection.
     this.writeTail = operation.catch(() => undefined);
     const tracked = operation.then(
       () => undefined,
@@ -365,8 +364,6 @@ export class PostgresStorageProvider implements StorageProvider {
   }
 
   private scheduleWrite(write: () => Promise<void>): void {
-    // Compatibility writes intentionally retain historical non-awaited behavior.
-    // DATA-201B will remove request-level consumers of this path.
     if (!this.initialization && !this.connected) return;
 
     void this.enqueueWrite(write).catch((error: unknown) => {
@@ -417,5 +414,22 @@ export class PostgresStorageProvider implements StorageProvider {
       `DELETE FROM ${KV_TABLE} WHERE collection = $1 AND id = $2`,
       [collection, id],
     );
+  }
+
+  private async persistDeleteMatched(
+    collection: string,
+    id: string,
+    expectedData: unknown,
+    executor: QueryExecutor = this.requirePool(),
+  ): Promise<void> {
+    const result = await executor.query(
+      `DELETE FROM ${KV_TABLE}
+       WHERE collection = $1 AND id = $2 AND data = $3::jsonb
+       RETURNING id`,
+      [collection, id, JSON.stringify(expectedData)],
+    );
+    if (result.rows.length === 0) {
+      throw new DurableStoragePreconditionError(collection, id);
+    }
   }
 }
