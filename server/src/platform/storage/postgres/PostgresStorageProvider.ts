@@ -2,12 +2,15 @@
  * PostgresStorageProvider — Production persistence using cache-with-write-through.
  *
  * Architecture: synchronous reads from an in-memory cache with durable,
- * ordered write-through to PostgreSQL. The cache is populated before the
- * server begins accepting requests, so existing synchronous repositories keep
- * their contract without silently losing production data.
+ * ordered write-through to PostgreSQL. Awaited mutation methods commit the
+ * database operation before exposing the new cache state. Legacy synchronous
+ * writes remain compatibility-only until DATA-201B migrates every request path.
  */
 
-import type { StorageProvider } from "../StorageProvider";
+import {
+  DurableStorageError,
+  type StorageProvider,
+} from "../StorageProvider";
 
 export interface PostgresConfig {
   connectionString: string;
@@ -26,28 +29,42 @@ export const DEFAULT_POSTGRES_CONFIG: PostgresConfig = {
 };
 
 const KV_TABLE = "kv_store";
-interface QueryResult {
+export interface QueryResult {
   rows: Array<Record<string, unknown>>;
 }
 
-interface QueryablePool {
+export interface QueryablePool {
   query(text: string, params?: unknown[]): Promise<QueryResult>;
   end(): Promise<void>;
+}
+
+export type PostgresPoolFactory = (
+  config: PostgresConfig,
+) => QueryablePool | Promise<QueryablePool>;
+
+export interface PostgresStorageDependencies {
+  createPool?: PostgresPoolFactory;
 }
 
 export class PostgresStorageProvider implements StorageProvider {
   private cache: Map<string, Map<string, unknown>> = new Map();
   private config: PostgresConfig;
+  private dependencies: PostgresStorageDependencies;
   private pool: QueryablePool | null = null;
   private connected = false;
   private initialization: Promise<void> | null = null;
   private pendingWrites = new Set<Promise<void>>();
+  private writeTail: Promise<void> = Promise.resolve();
 
-  constructor(config?: Partial<PostgresConfig>) {
+  constructor(
+    config?: Partial<PostgresConfig>,
+    dependencies: PostgresStorageDependencies = {},
+  ) {
     this.config = { ...DEFAULT_POSTGRES_CONFIG, ...config };
+    this.dependencies = dependencies;
   }
 
-  // ─── StorageProvider Interface (sync — reads from cache) ──────────
+  // ─── StorageProvider Interface (sync reads + compatibility writes) ─────
 
   get<T>(collection: string, id: string): T | null {
     return (this.getCollection(collection).get(id) as T) ?? null;
@@ -64,6 +81,42 @@ export class PostgresStorageProvider implements StorageProvider {
     return deleted;
   }
 
+  async setDurable<T>(collection: string, id: string, data: T): Promise<void> {
+    try {
+      await this.enqueueWrite(async () => {
+        await this.persistSet(collection, id, data);
+        this.getCollection(collection).set(id, data);
+      });
+    } catch (error) {
+      this.connected = false;
+      throw new DurableStorageError(
+        `Durable set failed for ${collection}/${id}`,
+        "set",
+        { cause: error },
+      );
+    }
+  }
+
+  async deleteDurable(collection: string, id: string): Promise<boolean> {
+    const collectionCache = this.getCollection(collection);
+    if (!collectionCache.has(id)) return false;
+
+    try {
+      await this.enqueueWrite(async () => {
+        await this.persistDelete(collection, id);
+        collectionCache.delete(id);
+      });
+      return true;
+    } catch (error) {
+      this.connected = false;
+      throw new DurableStorageError(
+        `Durable delete failed for ${collection}/${id}`,
+        "delete",
+        { cause: error },
+      );
+    }
+  }
+
   list<T>(collection: string, filter?: (item: T) => boolean): T[] {
     const items = [...this.getCollection(collection).values()] as T[];
     return filter ? items.filter(filter) : items;
@@ -76,7 +129,8 @@ export class PostgresStorageProvider implements StorageProvider {
   // ─── PostgreSQL-specific methods ──────────────────────────────────
 
   async transaction<T>(fn: () => T): Promise<T> {
-    // In cache-with-write-through, transactions are local
+    // Multi-record database transactions are DATA-201C scope. This method is
+    // retained for compatibility and does not claim database atomicity.
     return fn();
   }
 
@@ -119,7 +173,7 @@ export class PostgresStorageProvider implements StorageProvider {
         connected: false,
         latencyMs: 0,
         poolSize: 0,
-        pendingTransactions: 0,
+        pendingTransactions: this.pendingWrites.size,
         mode: "cache-only",
       };
     }
@@ -130,7 +184,7 @@ export class PostgresStorageProvider implements StorageProvider {
         connected: true,
         latencyMs: Date.now() - start,
         poolSize: this.config.poolSize,
-        pendingTransactions: 0,
+        pendingTransactions: this.pendingWrites.size,
         mode: "cache-with-write-through",
       };
     } catch {
@@ -138,7 +192,7 @@ export class PostgresStorageProvider implements StorageProvider {
         connected: false,
         latencyMs: Date.now() - start,
         poolSize: 0,
-        pendingTransactions: 0,
+        pendingTransactions: this.pendingWrites.size,
         mode: "cache-only (db error)",
       };
     }
@@ -158,20 +212,9 @@ export class PostgresStorageProvider implements StorageProvider {
   private async initialize(): Promise<void> {
     let candidatePool: QueryablePool | null = null;
     try {
-      // Dynamic import preserves the dependency-free in-memory/test path.
-      const pg = await import("pg").catch(() => null);
-      if (!pg) {
-        throw new Error("The pg package is not available");
-      }
-
-      const Pool = pg.Pool ?? pg.default?.Pool;
-      if (!Pool) throw new Error("The pg Pool constructor is not available");
-
-      candidatePool = new Pool({
-        connectionString: this.config.connectionString,
-        max: this.config.poolSize,
-        idleTimeoutMillis: this.config.poolTimeout,
-      }) as QueryablePool;
+      candidatePool = this.dependencies.createPool
+        ? await this.dependencies.createPool(this.config)
+        : await this.createDefaultPool();
 
       // Test connection
       await candidatePool.query("SELECT 1");
@@ -209,23 +252,51 @@ export class PostgresStorageProvider implements StorageProvider {
     }
   }
 
+  private async createDefaultPool(): Promise<QueryablePool> {
+    // Dynamic import preserves the dependency-free in-memory/test path.
+    const pg = await import("pg").catch(() => null);
+    if (!pg) throw new Error("The pg package is not available");
+
+    const Pool = pg.Pool ?? pg.default?.Pool;
+    if (!Pool) throw new Error("The pg Pool constructor is not available");
+
+    return new Pool({
+      connectionString: this.config.connectionString,
+      max: this.config.poolSize,
+      idleTimeoutMillis: this.config.poolTimeout,
+    }) as QueryablePool;
+  }
+
+  private enqueueWrite(write: () => Promise<void>): Promise<void> {
+    const operation = this.writeTail.then(async () => {
+      await this.ready();
+      await write();
+    });
+
+    // A rejected operation must not poison later mutations. The original
+    // promise is still returned to awaited callers so they observe rejection.
+    this.writeTail = operation.catch(() => undefined);
+    const tracked = operation.then(
+      () => undefined,
+      () => undefined,
+    );
+    this.pendingWrites.add(tracked);
+    void tracked.finally(() => this.pendingWrites.delete(tracked));
+    return operation;
+  }
+
   private scheduleWrite(write: () => Promise<void>): void {
-    // Unit and local cache-mode providers intentionally stay dependency-free
-    // until somebody explicitly requests ready(). Production bootstrap always
-    // calls ready() before routes are registered.
+    // Compatibility writes intentionally retain historical non-awaited behavior.
+    // DATA-201B will remove request-level consumers of this path.
     if (!this.initialization && !this.connected) return;
 
-    const pending = this.ready()
-      .then(write)
-      .catch((error: unknown) => {
-        this.connected = false;
-        console.error(
-          "[PostgresStorage] Durable write failed:",
-          error instanceof Error ? error.message : error,
-        );
-      });
-    this.pendingWrites.add(pending);
-    void pending.finally(() => this.pendingWrites.delete(pending));
+    void this.enqueueWrite(write).catch((error: unknown) => {
+      this.connected = false;
+      console.error(
+        "[PostgresStorage] Compatibility write failed:",
+        error instanceof Error ? error.message : error,
+      );
+    });
   }
 
   private async persistSet(
