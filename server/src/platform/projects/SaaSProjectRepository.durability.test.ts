@@ -33,7 +33,10 @@ class RejectingSetStorage extends InMemoryStorageProvider {
     _id: string,
     _data: T,
   ): Promise<void> {
-    throw new DurableStorageError("Injected project duplication rejection", "set");
+    throw new DurableStorageError(
+      "Injected project duplication rejection",
+      "set",
+    );
   }
 }
 

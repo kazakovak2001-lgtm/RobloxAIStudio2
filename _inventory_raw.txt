@@ -900,6 +900,7 @@ server/src/platform/auth/TokenProvider.ts
 server/src/platform/auth/authServiceInstance.ts
 server/src/platform/auth/index.ts
 server/src/platform/index.ts
+server/src/platform/projects/SaaSProjectRepository.durability.test.ts
 server/src/platform/projects/SaaSProjectRepository.ts
 server/src/platform/projects/index.ts
 server/src/platform/queue/GenerationQueue.ts

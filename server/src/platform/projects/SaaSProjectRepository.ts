@@ -17,12 +17,7 @@ export interface SaaSProject {
   targetAudience?: string;
   coverUrl?: string;
   status:
-    | "draft"
-    | "generating"
-    | "testing"
-    | "ready"
-    | "published"
-    | "archived";
+    "draft" | "generating" | "testing" | "ready" | "published" | "archived";
   qualityScore: number;
   generationCount: number;
   scriptCount: number;
