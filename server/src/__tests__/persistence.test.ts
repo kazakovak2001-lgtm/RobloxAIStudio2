@@ -131,13 +131,30 @@ describe("Persistence Infrastructure", () => {
     expect(status.latencyMs).toBeGreaterThanOrEqual(0);
   });
 
-  it("postgres provider supports transaction wrapper", async () => {
-    const provider = new PostgresStorageProvider();
-    const result = await provider.transaction(() => {
-      provider.set("tx_test", "1", { data: "txn" });
-      return provider.get("tx_test", "1");
-    });
-    expect(result).toEqual({ data: "txn" });
+  it("in-memory provider applies a durable batch atomically", async () => {
+    const provider = new InMemoryStorageProvider();
+
+    const results = await provider.applyDurableBatch([
+      {
+        operation: "set",
+        collection: "tx_test",
+        id: "1",
+        data: { data: "txn" },
+      },
+      {
+        operation: "set",
+        collection: "tx_test",
+        id: "2",
+        data: { data: "txn-2" },
+      },
+    ]);
+
+    expect(results).toEqual([
+      { operation: "set", collection: "tx_test", id: "1" },
+      { operation: "set", collection: "tx_test", id: "2" },
+    ]);
+    expect(provider.get("tx_test", "1")).toEqual({ data: "txn" });
+    expect(provider.get("tx_test", "2")).toEqual({ data: "txn-2" });
   });
 
   it("keeps identity, session, and user records across service recreation", () => {
