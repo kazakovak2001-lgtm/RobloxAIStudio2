@@ -80,7 +80,7 @@ export class SaaSProjectRepository {
     );
   }
 
-  /** Acknowledged update that preserves the previous cache value on rejection. */
+  /** Lifecycle-safe update that publishes state only after acknowledgement. */
   async updateDurable(
     projectId: string,
     updates: SaaSProjectUpdate,
