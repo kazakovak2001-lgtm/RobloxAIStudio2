@@ -24,6 +24,13 @@ export type DurableMutation =
       type: "delete";
       collection: string;
       id: string;
+    }
+  | {
+      /** Delete only when the current value still matches the expected value. */
+      type: "delete-matched";
+      collection: string;
+      id: string;
+      expectedData: unknown;
     };
 
 export class DurableStorageError extends Error {
@@ -55,6 +62,23 @@ export class DurableStorageConflictError extends DurableStorageError {
       options,
     );
     this.name = "DurableStorageConflictError";
+  }
+}
+
+export class DurableStoragePreconditionError extends DurableStorageError {
+  override readonly code = "DURABLE_STORAGE_PRECONDITION_FAILED";
+
+  constructor(
+    readonly collection: string,
+    readonly id: string,
+    options?: { cause?: unknown },
+  ) {
+    super(
+      `Durable record no longer matches: ${collection}/${id}`,
+      "batch",
+      options,
+    );
+    this.name = "DurableStoragePreconditionError";
   }
 }
 
@@ -133,6 +157,15 @@ export class InMemoryStorageProvider implements StorageProvider {
         collection.set(mutation.id, mutation.data);
       } else if (mutation.type === "set") {
         collection.set(mutation.id, mutation.data);
+      } else if (mutation.type === "delete-matched") {
+        const current = collection.get(mutation.id);
+        if (!matchesDurableValue(current, mutation.expectedData)) {
+          throw new DurableStoragePreconditionError(
+            mutation.collection,
+            mutation.id,
+          );
+        }
+        collection.delete(mutation.id);
       } else {
         collection.delete(mutation.id);
       }
@@ -157,4 +190,8 @@ export class InMemoryStorageProvider implements StorageProvider {
   async flush(): Promise<void> {}
 
   async close(): Promise<void> {}
+}
+
+function matchesDurableValue(current: unknown, expected: unknown): boolean {
+  return JSON.stringify(current) === JSON.stringify(expected);
 }
