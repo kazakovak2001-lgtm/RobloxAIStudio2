@@ -34,27 +34,31 @@ jobs:
           const fs = require('node:fs');
           const path = 'server/src/index.ts';
           let source = fs.readFileSync(path, 'utf8');
-          const before = `app.get("/health/storage", (_req, res) => {
-  res.json({
-    success: true,
-    data: { provider: getStorageType(), status: "available" },
-  });
-});`;
-          const after = `app.get("/health/storage", (_req, res) => {
-  const operational = storageProvider.getOperationalStatus();
-  res.json({
-    success: true,
-    data: {
-      provider: getStorageType(),
-      status: operational.availability,
-      durability: operational.durability,
-      pendingMutations: operational.pendingMutations,
-      ...(operational.lastFailureAt
-        ? { lastFailureAt: operational.lastFailureAt }
-        : {}),
-    },
-  });
-});`;
+          const before = [
+            'app.get("/health/storage", (_req, res) => {',
+            '  res.json({',
+            '    success: true,',
+            '    data: { provider: getStorageType(), status: "available" },',
+            '  });',
+            '});',
+          ].join('\n');
+          const after = [
+            'app.get("/health/storage", (_req, res) => {',
+            '  const operational = storageProvider.getOperationalStatus();',
+            '  res.json({',
+            '    success: true,',
+            '    data: {',
+            '      provider: getStorageType(),',
+            '      status: operational.availability,',
+            '      durability: operational.durability,',
+            '      pendingMutations: operational.pendingMutations,',
+            '      ...(operational.lastFailureAt',
+            '        ? { lastFailureAt: operational.lastFailureAt }',
+            '        : {}),',
+            '    },',
+            '  });',
+            '});',
+          ].join('\n');
           const matches = source.split(before).length - 1;
           if (matches !== 1) {
             throw new Error(`Expected one storage health block, found ${matches}`);
