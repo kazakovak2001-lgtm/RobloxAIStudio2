@@ -14,13 +14,19 @@ export type DurableMutation =
       data: unknown;
     }
   | {
+      type: "create";
+      collection: string;
+      id: string;
+      data: unknown;
+    }
+  | {
       type: "delete";
       collection: string;
       id: string;
     };
 
 export class DurableStorageError extends Error {
-  readonly code = "DURABLE_STORAGE_MUTATION_FAILED";
+  readonly code: string = "DURABLE_STORAGE_MUTATION_FAILED";
   readonly cause?: unknown;
 
   constructor(
@@ -31,6 +37,19 @@ export class DurableStorageError extends Error {
     super(message);
     this.name = "DurableStorageError";
     this.cause = options?.cause;
+  }
+}
+
+export class DurableStorageConflictError extends DurableStorageError {
+  override readonly code = "DURABLE_STORAGE_CONFLICT";
+
+  constructor(
+    readonly collection: string,
+    readonly id: string,
+    options?: { cause?: unknown },
+  ) {
+    super(`Durable record already exists: ${collection}/${id}`, "batch", options);
+    this.name = "DurableStorageConflictError";
   }
 }
 
@@ -99,7 +118,15 @@ export class InMemoryStorageProvider implements StorageProvider {
         collection = new Map();
         nextStore.set(mutation.collection, collection);
       }
-      if (mutation.type === "set") {
+      if (mutation.type === "create") {
+        if (collection.has(mutation.id)) {
+          throw new DurableStorageConflictError(
+            mutation.collection,
+            mutation.id,
+          );
+        }
+        collection.set(mutation.id, mutation.data);
+      } else if (mutation.type === "set") {
         collection.set(mutation.id, mutation.data);
       } else {
         collection.delete(mutation.id);
