@@ -76,6 +76,9 @@
 │   └── settings.json
 ├── AI_DEVELOPMENT_GOVERNANCE.md
 ├── architecture.manifest.json
+├── artifacts
+│   └── runtime
+│       └── runtime-ownership-report.json
 ├── commitlint.config.cjs
 ├── commitlint.config.js
 ├── config
@@ -1038,8 +1041,10 @@
 │   │   │   └── store
 │   │   │       └── MemoryStore.ts
 │   │   ├── orchestrator
+│   │   │   ├── AutonomousBoundedPhases.test.ts
 │   │   │   ├── AutonomousOrchestrator.test.ts
 │   │   │   ├── AutonomousOrchestrator.ts
+│   │   │   ├── AutonomousPhaseRegistry.ts
 │   │   │   ├── index.ts
 │   │   │   └── OrchestratorTypes.ts
 │   │   ├── pipeline
