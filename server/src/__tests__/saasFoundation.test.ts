@@ -78,9 +78,9 @@ describe("SaaS Foundation", () => {
       expect(updated!.qualityScore).toBe(75);
     });
 
-    it("deletes project", () => {
+    it("deletes project", async () => {
       const proj = repo.create("user-1", "ToDelete", "obby");
-      expect(repo.delete(proj.id)).toBe(true);
+      await expect(repo.deleteDurable(proj.id)).resolves.toBe(true);
       expect(repo.get(proj.id)).toBeNull();
     });
   });
