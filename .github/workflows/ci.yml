@@ -1,4 +1,4 @@
-name: Temporary PR82 Preservation Formatting
+name: Temporary PR82 Exact Prettier
 
 on:
   pull_request:
@@ -9,7 +9,7 @@ permissions:
   contents: write
 
 jobs:
-  format-preservation-test:
+  prettier-preservation-test:
     if: github.head_ref == 'agent/data-201b-project-lifecycle-update-ack'
     runs-on: ubuntu-latest
     steps:
@@ -19,30 +19,25 @@ jobs:
           ref: agent/data-201b-project-lifecycle-update-ack
           fetch-depth: 0
 
-      - name: Apply exact preservation formatting
-        run: |
-          node <<'NODE'
-          const fs = require('node:fs');
-          const path = 'server/src/__tests__/preservationProperty.test.ts';
-          let source = fs.readFileSync(path, 'utf8');
-          const oldLine = 'const updated = await projects.updateDurable(p.id, { name: "Updated Game" });';
-          const newBlock = `const updated = await projects.updateDurable(p.id, {
-            name: "Updated Game",
-          });`;
-          const matches = source.split(oldLine).length - 1;
-          if (matches !== 1) {
-            throw new Error(`Expected exactly one unformatted durable update call, found ${matches}`);
-          }
-          source = source.replace(oldLine, newBlock);
-          fs.writeFileSync(path, source);
-          NODE
-          rm -f .tmp/pr82-prettier-trigger
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
 
-      - name: Commit exact formatting to PR head
+      - name: Install locked dependencies
+        run: npm ci
+
+      - name: Run exact repository Prettier
+        run: |
+          node node_modules/prettier/bin/prettier.cjs --write server/src/__tests__/preservationProperty.test.ts
+          rm -f .tmp/pr82-prettier-exact-trigger
+
+      - name: Commit exact Prettier output to PR head
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add -A
           git diff --cached --quiet && exit 0
-          git commit -m "style(storage): format preservation update"
+          git commit -m "style(storage): apply exact preservation formatting"
           git push origin HEAD:agent/data-201b-project-lifecycle-update-ack
