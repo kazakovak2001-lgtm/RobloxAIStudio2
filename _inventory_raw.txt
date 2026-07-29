@@ -448,6 +448,7 @@ reports/v2.8_provider_integration_report.md
 reports/v2.9_memory_system_report.md
 reports/v3.0_beta_release_report.md
 repository_manifest.json
+scripts/architecture/ast-import-inventory.ts
 scripts/backup-database.sh
 scripts/cleanup/audit-legacy-frontend-decommission.mjs
 scripts/cleanup/generate-tracked-inventories.mjs

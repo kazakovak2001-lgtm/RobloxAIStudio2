@@ -525,6 +525,8 @@
 │   └── v3.0_beta_release_report.md
 ├── repository_manifest.json
 ├── scripts
+│   ├── architecture
+│   │   └── ast-import-inventory.ts
 │   ├── backup-database.sh
 │   ├── cleanup
 │   │   ├── audit-legacy-frontend-decommission.mjs
