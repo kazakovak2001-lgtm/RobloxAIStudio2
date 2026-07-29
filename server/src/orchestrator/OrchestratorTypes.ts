@@ -74,6 +74,7 @@ export interface CostTracker {
 }
 
 export interface Checkpoint {
+  id: string;
   phase: OrchestratorPhase;
   timestamp: number;
   snapshot: Record<string, unknown>;
