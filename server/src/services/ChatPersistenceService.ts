@@ -2,6 +2,7 @@ import { randomUUID } from "crypto";
 import { getConfiguredStorageProvider } from "../platform/storage/StorageFactory";
 import {
   InMemoryStorageProvider,
+  type DurableMutation,
   type StorageProvider,
 } from "../platform/storage/StorageProvider";
 
@@ -76,47 +77,64 @@ export class ChatPersistenceService {
     };
   }
 
-  createMessage(input: CreateMessageInput): ConversationMessage {
+  async createMessage(
+    input: CreateMessageInput,
+  ): Promise<ConversationMessage> {
     const content = this.requireText(input.content, "content");
     if (!["user", "assistant", "system"].includes(input.role)) {
       throw new ChatValidationError("role must be user, assistant, or system");
     }
 
-    let conversationId = input.conversationId;
-    if (!conversationId) {
+    const now = new Date().toISOString();
+    let conversation: Conversation;
+    if (input.conversationId) {
+      const existing = this.storage.get<Conversation>(
+        CONVERSATIONS,
+        input.conversationId,
+      );
+      if (!existing) {
+        throw new ChatValidationError("conversationId does not exist");
+      }
+      conversation = existing;
+    } else {
       const projectId = this.requireText(input.projectId, "projectId");
-      const now = new Date().toISOString();
-      conversationId = `conversation-${randomUUID()}`;
-      this.storage.set<Conversation>(CONVERSATIONS, conversationId, {
-        id: conversationId,
+      conversation = {
+        id: `conversation-${randomUUID()}`,
         projectId,
         title: content.slice(0, 80),
         createdAt: now,
         updatedAt: now,
-      });
-    }
-
-    const conversation = this.storage.get<Conversation>(
-      CONVERSATIONS,
-      conversationId,
-    );
-    if (!conversation) {
-      throw new ChatValidationError("conversationId does not exist");
+      };
     }
 
     const message: ConversationMessage = {
       id: `message-${randomUUID()}`,
-      conversationId,
+      conversationId: conversation.id,
       role: input.role,
       content,
       metadata: input.metadata,
-      createdAt: new Date().toISOString(),
+      createdAt: now,
     };
-    this.storage.set(MESSAGES, message.id, message);
-    this.storage.set(CONVERSATIONS, conversationId, {
+    const updatedConversation: Conversation = {
       ...conversation,
       updatedAt: message.createdAt,
-    });
+    };
+    const mutations: DurableMutation[] = [
+      {
+        operation: "set",
+        collection: MESSAGES,
+        id: message.id,
+        data: message,
+      },
+      {
+        operation: "set",
+        collection: CONVERSATIONS,
+        id: conversation.id,
+        data: updatedConversation,
+      },
+    ];
+
+    await this.storage.applyDurableBatch(mutations);
     return message;
   }
 
