@@ -3,6 +3,7 @@ name: PR89 Review Fix Publisher
 on:
   push:
     branches: [agent/data-201c-transaction-foundation]
+  pull_request:
 
 permissions:
   contents: write
