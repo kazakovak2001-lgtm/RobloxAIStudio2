@@ -62,8 +62,8 @@ function isEqualDigest(left: string, right: string): boolean {
  * Storage-backed API key registry.
  *
  * Issuance and bootstrap seeding retain their compatibility path until their
- * lifecycle is separated. Revocation is acknowledged before the revoked state
- * becomes observable.
+ * lifecycle is separated. Revocation and administrative cleanup are
+ * acknowledged before their mutations become observable.
  */
 export class ApiKeyStore {
   constructor(private readonly storage: StorageProvider) {}
@@ -151,10 +151,20 @@ export class ApiKeyStore {
     return added;
   }
 
-  /** Test and administrative cleanup; never returns a credential. */
-  clear(): void {
+  /**
+   * Test and administrative cleanup; never returns a credential.
+   *
+   * Deletions are acknowledged individually. A rejection is propagated to the
+   * caller and the rejected record remains visible. This is not an atomic
+   * all-or-nothing batch across multiple keys.
+   */
+  async clearDurable(): Promise<number> {
+    let deleted = 0;
     for (const record of this.storage.list<StoredApiKey>(COLLECTION)) {
-      this.storage.delete(COLLECTION, record.id);
+      if (await this.storage.deleteDurable(COLLECTION, record.id)) {
+        deleted += 1;
+      }
     }
+    return deleted;
   }
 }
