@@ -303,7 +303,7 @@ events.onEvent(async (evt) => {
             evt.data?.completedSteps ?? record.stagesCompleted,
           );
           const failed = Number(evt.data?.failedSteps ?? record.failures);
-          generationHistory.record({
+          await generationHistory.record({
             ...record,
             status: "completed",
             finishedAt,
@@ -348,7 +348,7 @@ events.onEvent(async (evt) => {
           const failed = Number(
             evt.data?.failedSteps ?? (record.failures || 1),
           );
-          generationHistory.record({
+          await generationHistory.record({
             ...record,
             status: "failed",
             finishedAt,

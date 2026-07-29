@@ -10,9 +10,7 @@ import {
 
 const COLLECTION = "generation_history";
 
-function record(
-  overrides: Partial<GenerationRecord> = {},
-): GenerationRecord {
+function record(overrides: Partial<GenerationRecord> = {}): GenerationRecord {
   return {
     id: "run-1",
     projectId: "project-1",
