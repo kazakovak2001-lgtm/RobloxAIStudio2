@@ -75,7 +75,7 @@ export function createChatPersistenceRouter(
     }
   });
 
-  router.delete("/conversation/:id", (req, res) => {
+  router.delete("/conversation/:id", async (req, res) => {
     try {
       const conversation = chatPersistence.getConversation(req.params.id);
       if (!conversation) {
@@ -86,7 +86,7 @@ export function createChatPersistenceRouter(
       }
       if (!access.requireProjectAccess(req, res, conversation.projectId))
         return;
-      const deleted = chatPersistence.deleteConversation(req.params.id);
+      const deleted = await chatPersistence.deleteConversation(req.params.id);
       res.json({ success: true, data: { deleted } });
     } catch (error) {
       handleChatError(error, res);
