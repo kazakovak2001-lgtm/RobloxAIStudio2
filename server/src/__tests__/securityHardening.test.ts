@@ -127,7 +127,7 @@ describe("Security Hardening", () => {
       process.env.NODE_ENV = "production";
       const store = getApiKeyStore();
       await store.clearDurable();
-      const issued = store.issue("my-api-key-1234567", {
+      const issued = await store.issueDurable("my-api-key-1234567", {
         label: "security-test",
       });
 
@@ -178,7 +178,9 @@ describe("Security Hardening", () => {
       process.env.NODE_ENV = "production";
       const store = getApiKeyStore();
       await store.clearDurable();
-      store.issue("array-header-api-key-123456", { label: "array-test" });
+      await store.issueDurable("array-header-api-key-123456", {
+        label: "array-test",
+      });
 
       let statusCode = 0;
       const req = {
