@@ -63,14 +63,15 @@ export class ArtifactStore {
   constructor(private readonly injectedStorage?: StorageProvider) {}
 
   /**
-   * Store an artifact produced by a pipeline stage.
+   * Store an artifact produced by a pipeline stage after persistence is
+   * acknowledged.
    */
-  store(
+  async store(
     pipelineId: string,
     stage: StageName,
     agent: string | null,
     content: unknown,
-  ): PipelineArtifact {
+  ): Promise<PipelineArtifact> {
     const config = STAGE_ARTIFACT_CONFIG[stage];
     const artifactName = config?.name ?? `${stage.toLowerCase()}.json`;
     const artifactType = config?.type ?? "json";
@@ -90,7 +91,7 @@ export class ArtifactStore {
       reviewStatus: "pending",
     };
 
-    this.persist(artifact);
+    await this.persist(artifact);
     return artifact;
   }
 
@@ -133,14 +134,16 @@ export class ArtifactStore {
   }
 
   /**
-   * Mark an artifact as validated.
+   * Mark an artifact as validated after persistence acknowledgement.
    */
-  markValidated(artifactId: string): void {
-    const artifact = this.getById(artifactId);
-    if (artifact) {
-      artifact.validated = true;
-      this.persist(artifact);
-    }
+  async markValidated(artifactId: string): Promise<void> {
+    const current = this.getById(artifactId);
+    if (!current) return;
+
+    await this.persist({
+      ...current,
+      validated: true,
+    });
   }
 
   /**
@@ -151,70 +154,89 @@ export class ArtifactStore {
   }
 
   /**
-   * Approve an artifact.
+   * Approve an artifact after persistence acknowledgement.
    */
-  approve(artifactId: string, reviewedBy: string): PipelineArtifact | null {
-    const artifact = this.getById(artifactId);
-    if (!artifact) return null;
-    artifact.reviewStatus = "approved";
-    artifact.reviewedAt = Date.now();
-    artifact.reviewedBy = reviewedBy;
-    artifact.validated = true;
-    this.persist(artifact);
+  async approve(
+    artifactId: string,
+    reviewedBy: string,
+  ): Promise<PipelineArtifact | null> {
+    const current = this.getById(artifactId);
+    if (!current) return null;
+
+    const artifact: PipelineArtifact = {
+      ...current,
+      reviewStatus: "approved",
+      reviewedAt: Date.now(),
+      reviewedBy,
+      validated: true,
+    };
+    await this.persist(artifact);
     return artifact;
   }
 
   /**
-   * Reject an artifact.
+   * Reject an artifact after persistence acknowledgement.
    */
-  reject(
+  async reject(
     artifactId: string,
     reviewedBy: string,
     comment?: string,
-  ): PipelineArtifact | null {
-    const artifact = this.getById(artifactId);
-    if (!artifact) return null;
-    artifact.reviewStatus = "rejected";
-    artifact.reviewedAt = Date.now();
-    artifact.reviewedBy = reviewedBy;
-    if (comment) artifact.reviewComment = comment;
-    this.persist(artifact);
+  ): Promise<PipelineArtifact | null> {
+    const current = this.getById(artifactId);
+    if (!current) return null;
+
+    const artifact: PipelineArtifact = {
+      ...current,
+      reviewStatus: "rejected",
+      reviewedAt: Date.now(),
+      reviewedBy,
+      ...(comment ? { reviewComment: comment } : {}),
+    };
+    await this.persist(artifact);
     return artifact;
   }
 
   /**
-   * Add a comment to an artifact.
+   * Add a comment to an artifact after persistence acknowledgement.
    */
-  comment(
+  async comment(
     artifactId: string,
     reviewedBy: string,
     comment: string,
-  ): PipelineArtifact | null {
-    const artifact = this.getById(artifactId);
-    if (!artifact) return null;
-    artifact.reviewComment = comment;
-    artifact.reviewedBy = reviewedBy;
-    artifact.reviewedAt = Date.now();
-    this.persist(artifact);
+  ): Promise<PipelineArtifact | null> {
+    const current = this.getById(artifactId);
+    if (!current) return null;
+
+    const artifact: PipelineArtifact = {
+      ...current,
+      reviewComment: comment,
+      reviewedBy,
+      reviewedAt: Date.now(),
+    };
+    await this.persist(artifact);
     return artifact;
   }
 
   /**
-   * Update artifact content (marks as edited).
+   * Update artifact content after persistence acknowledgement (marks as edited).
    */
-  edit(
+  async edit(
     artifactId: string,
     newContent: unknown,
     editedBy: string,
-  ): PipelineArtifact | null {
-    const artifact = this.getById(artifactId);
-    if (!artifact) return null;
-    artifact.content = newContent;
-    artifact.sizeBytes = Buffer.byteLength(JSON.stringify(newContent), "utf8");
-    artifact.reviewStatus = "edited";
-    artifact.reviewedAt = Date.now();
-    artifact.reviewedBy = editedBy;
-    this.persist(artifact);
+  ): Promise<PipelineArtifact | null> {
+    const current = this.getById(artifactId);
+    if (!current) return null;
+
+    const artifact: PipelineArtifact = {
+      ...current,
+      content: newContent,
+      sizeBytes: Buffer.byteLength(JSON.stringify(newContent), "utf8"),
+      reviewStatus: "edited",
+      reviewedAt: Date.now(),
+      reviewedBy: editedBy,
+    };
+    await this.persist(artifact);
     return artifact;
   }
 
@@ -239,9 +261,12 @@ export class ArtifactStore {
     return this.injectedStorage ?? getConfiguredStorageProvider() ?? undefined;
   }
 
-  private persist(artifact: PipelineArtifact): void {
+  private async persist(artifact: PipelineArtifact): Promise<void> {
+    const storage = this.storage;
+    if (storage) {
+      await storage.setDurable(ARTIFACT_COLLECTION, artifact.id, artifact);
+    }
     this.cache(artifact);
-    this.storage?.set(ARTIFACT_COLLECTION, artifact.id, artifact);
   }
 
   private cache(artifact: PipelineArtifact): void {
