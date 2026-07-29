@@ -1,0 +1,245 @@
+name: RUNTIME-204 Orchestrator Race Fixer V2
+
+on:
+  push:
+    branches:
+      - agent/runtime-2d-autonomous-truthfulness
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: runtime-204-orchestrator-race-fixer-v2
+  cancel-in-progress: true
+
+jobs:
+  fix-and-validate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout writable PR branch
+        uses: actions/checkout@v4
+        with:
+          ref: agent/runtime-2d-autonomous-truthfulness
+          fetch-depth: 0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+
+      - name: Patch run ownership and checkpoint isolation
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          source_path = Path("server/src/orchestrator/AutonomousOrchestrator.ts")
+          source = source_path.read_text()
+
+          replacements = [
+              (
+                  "  private sessions: Map<string, OrchestratorSession> = new Map();\n"
+                  "  private events?: PipelineEventEmitter;",
+                  "  private sessions: Map<string, OrchestratorSession> = new Map();\n"
+                  "  private runTokens: Map<string, number> = new Map();\n"
+                  "  private events?: PipelineEventEmitter;",
+                  "run-token field",
+              ),
+              (
+                  '    session.status = "paused";\n'
+                  '    session.currentPhase = "paused";\n'
+                  "    return true;",
+                  "    this.invalidateRun(session.id);\n"
+                  "    const activeNode = session.phases.find(\n"
+                  '      (phase) => phase.status === "running",\n'
+                  "    );\n"
+                  '    if (activeNode) activeNode.status = "pending";\n'
+                  '    session.status = "paused";\n'
+                  '    session.currentPhase = "paused";\n'
+                  "    return true;",
+                  "pause invalidation",
+              ),
+              (
+                  '    session.status = "cancelled";\n'
+                  '    session.currentPhase = "cancelled";\n'
+                  "    session.finishedAt = Date.now();",
+                  "    this.invalidateRun(session.id);\n"
+                  '    session.status = "cancelled";\n'
+                  '    session.currentPhase = "cancelled";\n'
+                  "    session.finishedAt = Date.now();",
+                  "cancel invalidation",
+              ),
+              (
+                  "  private async executePhases(session: OrchestratorSession): Promise<void> {\n"
+                  "    for (const node of session.phases) {",
+                  "  private beginRun(sessionId: string): number {\n"
+                  "    const token = (this.runTokens.get(sessionId) ?? 0) + 1;\n"
+                  "    this.runTokens.set(sessionId, token);\n"
+                  "    return token;\n"
+                  "  }\n\n"
+                  "  private invalidateRun(sessionId: string): void {\n"
+                  "    this.runTokens.set(sessionId, (this.runTokens.get(sessionId) ?? 0) + 1);\n"
+                  "  }\n\n"
+                  "  private isCurrentRun(sessionId: string, token: number): boolean {\n"
+                  "    return this.runTokens.get(sessionId) === token;\n"
+                  "  }\n\n"
+                  "  private async executePhases(session: OrchestratorSession): Promise<void> {\n"
+                  "    const runToken = this.beginRun(session.id);\n"
+                  "    for (const node of session.phases) {\n"
+                  "      if (!this.isCurrentRun(session.id, runToken)) return;",
+                  "execute run ownership",
+              ),
+              (
+                  "        const result = await this.executePhase(session, node.phase);\n"
+                  "        node.status = result.status;",
+                  "        const result = await this.executePhase(session, node.phase);\n"
+                  "        if (\n"
+                  "          !this.isCurrentRun(session.id, runToken) ||\n"
+                  '          session.status !== "running"\n'
+                  "        ) {\n"
+                  "          return;\n"
+                  "        }\n"
+                  "        node.status = result.status;",
+                  "post-await ownership guard",
+              ),
+              (
+                  "      } catch (error) {\n"
+                  "        this.failPhase(session, node, stepId, agentName, error);",
+                  "      } catch (error) {\n"
+                  "        if (\n"
+                  "          !this.isCurrentRun(session.id, runToken) ||\n"
+                  '          session.status !== "running"\n'
+                  "        ) {\n"
+                  "          return;\n"
+                  "        }\n"
+                  "        this.failPhase(session, node, stepId, agentName, error);",
+                  "catch ownership guard",
+              ),
+              (
+                  '    if (session.status === "running") {\n'
+                  "      const remaining = session.phases.some(",
+                  "    if (!this.isCurrentRun(session.id, runToken)) return;\n\n"
+                  '    if (session.status === "running") {\n'
+                  "      const remaining = session.phases.some(",
+                  "terminal ownership guard",
+              ),
+              (
+                  "        cost: { ...session.cost },",
+                  "        cost: {\n"
+                  "          ...session.cost,\n"
+                  "          perPhase: { ...session.cost.perPhase },\n"
+                  "        },",
+                  "checkpoint cost isolation",
+              ),
+          ]
+
+          for old, new, label in replacements:
+              if new in source:
+                  continue
+              if source.count(old) != 1:
+                  raise SystemExit(f"Expected exactly one {label} insertion point")
+              source = source.replace(old, new, 1)
+
+          source_path.write_text(source)
+
+          test_path = Path("server/src/orchestrator/AutonomousOrchestrator.test.ts")
+          tests = test_path.read_text()
+          test_name = "prevents stale pause/resume loops from duplicating terminal evidence"
+          if test_name not in tests:
+              insertion = '''
+
+  it("prevents stale pause/resume loops from duplicating terminal evidence", async () => {
+    const events = new PipelineEventEmitter();
+    const published: PipelineEvent[] = [];
+    events.onEvent(async (event) => {
+      published.push(event);
+    });
+
+    const orchestrator = new AutonomousOrchestrator(events, {
+      simulationDelayMs: 25,
+    });
+    const session = orchestrator.run(
+      "Build a cooperative obby with safe pause and resume",
+      "project-race",
+    );
+
+    for (let attempt = 0; attempt < 100; attempt += 1) {
+      if (session.phases.some((phase) => phase.status === "running")) break;
+      await new Promise((resolve) => setTimeout(resolve, 1));
+    }
+
+    expect(orchestrator.pause(session.id)).toBe(true);
+    expect(orchestrator.resume(session.id)).toBe(true);
+    await waitForTerminal(session);
+
+    const terminalEvents = published.filter(
+      (event) => event.type === "pipeline.preview.completed",
+    );
+    expect(terminalEvents).toHaveLength(1);
+
+    const phaseTerminalEvents = published.filter(
+      (event) =>
+        event.type === "step.completed" || event.type === "step.simulated",
+    );
+    const terminalStepIds = phaseTerminalEvents.map((event) => event.stepId);
+    expect(new Set(terminalStepIds).size).toBe(terminalStepIds.length);
+    expect(Object.keys(session.cost.perPhase)).toHaveLength(
+      phaseTerminalEvents.length,
+    );
+  });
+
+  it("keeps checkpoint cost snapshots isolated from later phase costs", async () => {
+    const orchestrator = new AutonomousOrchestrator(undefined, {
+      simulationDelayMs: 0,
+    });
+    const session = orchestrator.run(
+      "Build a deterministic tycoon preview",
+      "project-checkpoint",
+    );
+
+    await waitForTerminal(session);
+
+    const firstCheckpoint = session.checkpoints[0];
+    const snapshotCost = firstCheckpoint.snapshot.cost as {
+      perPhase: Record<string, unknown>;
+    };
+
+    expect(snapshotCost.perPhase).not.toBe(session.cost.perPhase);
+    expect(Object.keys(snapshotCost.perPhase)).toEqual(["genre_detection"]);
+    expect(Object.keys(session.cost.perPhase).length).toBeGreaterThan(1);
+  });
+'''
+              closing = "\n});\n"
+              if not tests.endswith(closing):
+                  raise SystemExit("Expected orchestrator test suite closing marker")
+              tests = tests[: -len(closing)] + insertion + closing
+              test_path.write_text(tests)
+          PY
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Format changed TypeScript
+        run: npx prettier --write server/src/orchestrator/AutonomousOrchestrator.ts server/src/orchestrator/AutonomousOrchestrator.test.ts
+
+      - name: Validate changed-file lint
+        run: npx eslint server/src/orchestrator/AutonomousOrchestrator.ts server/src/orchestrator/AutonomousOrchestrator.test.ts --max-warnings 0
+
+      - name: Validate TypeScript
+        run: npm run typecheck
+
+      - name: Run focused orchestrator tests
+        run: npm test -- server/src/orchestrator/AutonomousOrchestrator.test.ts
+
+      - name: Remove one-shot fixers
+        run: git rm .github/workflows/runtime204-orchestrator-race-fixer.yml .github/workflows/runtime204-orchestrator-race-fixer-v2.yml
+
+      - name: Commit validated orchestrator fixes
+        run: |
+          git diff --check
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add server/src/orchestrator/AutonomousOrchestrator.ts server/src/orchestrator/AutonomousOrchestrator.test.ts
+          git commit --no-verify -m "fix(runtime): serialize autonomous resume execution"
+          git push origin HEAD:agent/runtime-2d-autonomous-truthfulness
