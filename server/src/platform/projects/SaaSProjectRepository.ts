@@ -17,7 +17,12 @@ export interface SaaSProject {
   targetAudience?: string;
   coverUrl?: string;
   status:
-    "draft" | "generating" | "testing" | "ready" | "published" | "archived";
+    | "draft"
+    | "generating"
+    | "testing"
+    | "ready"
+    | "published"
+    | "archived";
   qualityScore: number;
   generationCount: number;
   scriptCount: number;
@@ -99,11 +104,6 @@ export class SaaSProjectRepository {
     const updated = { ...existing, ...updates, updatedAt: Date.now() };
     await this.storage.setDurable(this.collection, projectId, updated);
     return updated;
-  }
-
-  /** Compatibility-only mutation for internal consumers not yet migrated. */
-  delete(projectId: string): boolean {
-    return this.storage.delete(this.collection, projectId);
   }
 
   /** Request-safe delete that preserves cache state on rejection. */
