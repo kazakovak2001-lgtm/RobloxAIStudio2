@@ -57,6 +57,13 @@ interface RefreshCredentialRecord {
   expiresAt: number;
 }
 
+export interface PreparedAuthRegistration {
+  normalizedEmail: string;
+  role: UserRole;
+  loginResult: LoginResult;
+  mutations: DurableMutation[];
+}
+
 export class AuthService {
   constructor(
     private readonly storage: StorageProvider = new InMemoryStorageProvider(),
@@ -95,6 +102,44 @@ export class AuthService {
     return true;
   }
 
+  prepareRegistration(
+    email: string,
+    password: string,
+    userId: string,
+    role: UserRole = "creator",
+  ): PreparedAuthRegistration {
+    const normalizedEmail = this.normalizeEmail(email);
+    const preparedSession = this.prepareSession(userId, role);
+    const credentials: StoredCredentials = {
+      email: normalizedEmail,
+      passwordHash: bcrypt.hashSync(password, BCRYPT_COST_FACTOR),
+      userId,
+    };
+
+    return {
+      normalizedEmail,
+      role,
+      loginResult: this.toLoginResult(preparedSession.issued, userId, role),
+      mutations: [
+        {
+          type: "set",
+          collection: CREDENTIALS_COLLECTION,
+          id: normalizedEmail,
+          data: credentials,
+          requireAbsent: true,
+        },
+        {
+          type: "set",
+          collection: ROLES_COLLECTION,
+          id: userId,
+          data: role,
+          requireAbsent: true,
+        },
+        ...preparedSession.mutations,
+      ],
+    };
+  }
+
   login(email: string, password: string, userId: string): LoginResult {
     const normalizedEmail = this.normalizeEmail(email);
     const creds = this.storage.get<StoredCredentials>(
@@ -113,11 +158,9 @@ export class AuthService {
 
     let passwordValid = false;
     if (isLegacySha256) {
-      // Compare using SHA-256 for legacy hashes
       const sha256Hash = createHash("sha256").update(password).digest("hex");
       passwordValid = sha256Hash === creds.passwordHash;
       if (passwordValid) {
-        // Transparent upgrade: re-hash with bcrypt
         this.storage.set<StoredCredentials>(
           CREDENTIALS_COLLECTION,
           normalizedEmail,
@@ -128,7 +171,6 @@ export class AuthService {
         );
       }
     } else {
-      // Compare using bcrypt for modern hashes
       passwordValid = bcrypt.compareSync(password, creds.passwordHash);
     }
 
@@ -266,8 +308,6 @@ export class AuthService {
       return { success: false, error: "Invalid refresh token" };
     }
 
-    // Compatibility path retained for non-request callers. Production HTTP
-    // refresh uses refreshSessionDurable so consume-and-rotate is transactional.
     if (
       !this.storage.delete(
         REFRESH_CREDENTIALS_COLLECTION,
@@ -334,10 +374,6 @@ export class AuthService {
     return this.toLoginResult(prepared.issued, session.userId, session.role);
   }
 
-  /**
-   * Rewrites pre-HARDEN-2A plaintext refresh credentials as digests. Call this
-   * after a durable provider hydrates its cache and before accepting traffic.
-   */
   migrateLegacyRefreshCredentials(): number {
     let migrated = 0;
     for (const session of this.storage.list<StoredAuthSession>(
@@ -457,12 +493,14 @@ export class AuthService {
           collection: SESSIONS_COLLECTION,
           id: storedSession.token,
           data: storedSession,
+          requireAbsent: true,
         },
         {
           type: "set",
           collection: REFRESH_CREDENTIALS_COLLECTION,
           id: refreshTokenDigest,
           data: refreshCredential,
+          requireAbsent: true,
         },
       ],
     };
@@ -486,10 +524,6 @@ export class AuthService {
     return email.trim().toLowerCase();
   }
 
-  /**
-   * Determines if a stored hash is a legacy SHA-256 hash (64 hex characters)
-   * vs a bcrypt hash (starts with $2a$ or $2b$).
-   */
   private isLegacyHash(hash: string): boolean {
     return /^[a-f0-9]{64}$/.test(hash);
   }
