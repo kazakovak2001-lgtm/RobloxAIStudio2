@@ -23,27 +23,14 @@ export class UserRepository {
   ) {}
 
   create(input: CreateUserInput): User {
-    const tier = input.tier ?? "free";
-    const email = this.normalizeEmail(input.email);
-    const user: User = {
-      id: createUserId(),
-      email,
-      displayName: input.displayName,
-      tier,
-      status: "active",
-      createdAt: Date.now(),
-      lastLoginAt: Date.now(),
-      usage: {
-        generationsToday: 0,
-        generationsTotal: 0,
-        tokensUsedToday: 0,
-        tokensUsedTotal: 0,
-        projectCount: 0,
-        storageUsedBytes: 0,
-      },
-      limits: TIER_LIMITS[tier],
-    };
+    const user = this.buildUser(input);
     this.storage.set(this.collection, user.id, user);
+    return user;
+  }
+
+  async createDurable(input: CreateUserInput): Promise<User> {
+    const user = this.buildUser(input);
+    await this.storage.setDurable(this.collection, user.id, user);
     return user;
   }
 
@@ -65,23 +52,19 @@ export class UserRepository {
     userId: string,
     updates: { email?: string; displayName?: string },
   ): User | null {
-    const user = this.getById(userId);
-    if (!user) return null;
-
-    let email = user.email;
-    if (updates.email && this.normalizeEmail(updates.email) !== user.email) {
-      const existing = this.getByEmail(updates.email);
-      if (existing && existing.id !== userId) return null;
-      email = this.normalizeEmail(updates.email);
-    }
-    const updated: User = {
-      ...user,
-      email,
-      ...(updates.displayName?.trim()
-        ? { displayName: updates.displayName.trim() }
-        : {}),
-    };
+    const updated = this.prepareProfileUpdate(userId, updates);
+    if (!updated) return null;
     this.storage.set(this.collection, userId, updated);
+    return updated;
+  }
+
+  async updateProfileDurable(
+    userId: string,
+    updates: { email?: string; displayName?: string },
+  ): Promise<User | null> {
+    const updated = this.prepareProfileUpdate(userId, updates);
+    if (!updated) return null;
+    await this.storage.setDurable(this.collection, userId, updated);
     return updated;
   }
 
@@ -145,6 +128,52 @@ export class UserRepository {
 
   count(): number {
     return this.storage.count(this.collection);
+  }
+
+  private buildUser(input: CreateUserInput): User {
+    const tier = input.tier ?? "free";
+    const email = this.normalizeEmail(input.email);
+    return {
+      id: createUserId(),
+      email,
+      displayName: input.displayName,
+      tier,
+      status: "active",
+      createdAt: Date.now(),
+      lastLoginAt: Date.now(),
+      usage: {
+        generationsToday: 0,
+        generationsTotal: 0,
+        tokensUsedToday: 0,
+        tokensUsedTotal: 0,
+        projectCount: 0,
+        storageUsedBytes: 0,
+      },
+      limits: TIER_LIMITS[tier],
+    };
+  }
+
+  private prepareProfileUpdate(
+    userId: string,
+    updates: { email?: string; displayName?: string },
+  ): User | null {
+    const user = this.getById(userId);
+    if (!user) return null;
+
+    let email = user.email;
+    if (updates.email && this.normalizeEmail(updates.email) !== user.email) {
+      const existing = this.getByEmail(updates.email);
+      if (existing && existing.id !== userId) return null;
+      email = this.normalizeEmail(updates.email);
+    }
+
+    return {
+      ...user,
+      email,
+      ...(updates.displayName?.trim()
+        ? { displayName: updates.displayName.trim() }
+        : {}),
+    };
   }
 
   private normalizeEmail(email: string): string {
