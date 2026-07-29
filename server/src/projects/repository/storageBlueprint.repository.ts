@@ -1,5 +1,8 @@
 import { randomUUID } from "crypto";
-import type { StorageProvider } from "../../platform/storage/StorageProvider";
+import type {
+  DurableMutation,
+  StorageProvider,
+} from "../../platform/storage/StorageProvider";
 import type {
   BlueprintQueryOptions,
   BlueprintVersion,
@@ -85,22 +88,36 @@ export class StorageBlueprintRepository implements IBlueprintRepository {
   }
 
   async deleteBlueprint(id: string): Promise<boolean> {
-    const deleted = this.storage.delete(BLUEPRINTS, id);
-    if (!deleted) return false;
+    if (!this.storage.get<GameBlueprint>(BLUEPRINTS, id)) return false;
 
-    for (const version of this.storage.list<BlueprintVersion>(
+    const versions = this.storage.list<BlueprintVersion>(
       VERSIONS,
       (candidate) => candidate.blueprint_id === id,
-    )) {
-      this.storage.delete(VERSIONS, version.id);
-    }
-    for (const execution of this.storage.list<GenerationExecution>(
+    );
+    const executions = this.storage.list<GenerationExecution>(
       EXECUTIONS,
       (candidate) => candidate.blueprint_id === id,
-    )) {
-      this.storage.delete(EXECUTIONS, execution.id);
-    }
-    return true;
+    );
+    const mutations: DurableMutation[] = [
+      ...versions.map((version) => ({
+        operation: "delete" as const,
+        collection: VERSIONS,
+        id: version.id,
+      })),
+      ...executions.map((execution) => ({
+        operation: "delete" as const,
+        collection: EXECUTIONS,
+        id: execution.id,
+      })),
+      { operation: "delete", collection: BLUEPRINTS, id },
+    ];
+
+    const results = await this.storage.applyDurableBatch(mutations);
+    const blueprintResult = results[results.length - 1];
+    return (
+      blueprintResult?.operation === "delete" &&
+      blueprintResult.deleted === true
+    );
   }
 
   async listBlueprints(
