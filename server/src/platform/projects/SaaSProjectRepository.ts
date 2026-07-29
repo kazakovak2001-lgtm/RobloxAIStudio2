@@ -17,7 +17,12 @@ export interface SaaSProject {
   targetAudience?: string;
   coverUrl?: string;
   status:
-    "draft" | "generating" | "testing" | "ready" | "published" | "archived";
+    | "draft"
+    | "generating"
+    | "testing"
+    | "ready"
+    | "published"
+    | "archived";
   qualityScore: number;
   generationCount: number;
   scriptCount: number;
@@ -36,18 +41,6 @@ export class SaaSProjectRepository {
 
   constructor(storage: StorageProvider) {
     this.storage = storage;
-  }
-
-  /** Compatibility-only mutation for internal consumers not yet migrated. */
-  create(
-    ownerId: string,
-    name: string,
-    genre: string,
-    description = "",
-  ): SaaSProject {
-    const project = this.buildProject(ownerId, name, genre, description);
-    this.storage.set(this.collection, project.id, project);
-    return project;
   }
 
   /** Request-safe create that resolves only after storage acknowledgement. */
@@ -76,7 +69,7 @@ export class SaaSProjectRepository {
   getByOwner(ownerId: string): SaaSProject[] {
     return this.storage.list<SaaSProject>(
       this.collection,
-      (p) => p.ownerId === ownerId,
+      (project) => project.ownerId === ownerId,
     );
   }
 
@@ -97,10 +90,13 @@ export class SaaSProjectRepository {
     return this.storage.deleteDurable(this.collection, projectId);
   }
 
-  duplicate(projectId: string, newOwnerId?: string): SaaSProject | null {
+  async duplicate(
+    projectId: string,
+    newOwnerId?: string,
+  ): Promise<SaaSProject | null> {
     const existing = this.get(projectId);
     if (!existing) return null;
-    return this.create(
+    return this.createDurable(
       newOwnerId ?? existing.ownerId,
       `${existing.name} (copy)`,
       existing.genre,
