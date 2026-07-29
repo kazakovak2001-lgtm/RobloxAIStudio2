@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { AutonomousOrchestrator } from "./AutonomousOrchestrator";
+import {
+  AutonomousPhaseRegistry,
+  createAutonomousPhaseContext,
+} from "./AutonomousPhaseRegistry";
 import type { OrchestratorSession } from "./OrchestratorTypes";
 
 async function waitForTerminal(
@@ -49,11 +53,13 @@ describe("Autonomous bounded phase contracts", () => {
       status: "available",
       evidence: "verified",
       service: "generation/lua/LuaGenerationEngine",
+      cancellable: false,
     });
     expect(capabilities?.playtest).toMatchObject({
       status: "degraded",
       evidence: "heuristic",
       service: "PlaytestEngine",
+      cancellable: false,
     });
     expect(capabilities?.repair).toMatchObject({
       status: "unavailable",
@@ -82,7 +88,14 @@ describe("Autonomous bounded phase contracts", () => {
       ) ?? session.checkpoints[0];
     expect(checkpoint).toBeDefined();
 
-    expect(orchestrator.recover(session.id, checkpoint.timestamp)).toBe(true);
+    const checkpointIds = session.checkpoints.map((item) => item.id);
+    expect(new Set(checkpointIds).size).toBe(checkpointIds.length);
+    expect(checkpoint.phase).toBe("blueprint");
+
+    expect(orchestrator.recover(session.id, checkpoint.id)).toBe(true);
+    expect(
+      session.phases.find((phase) => phase.phase === checkpoint.phase)?.status,
+    ).toBe("completed");
     await waitForTerminal(session);
 
     expect(session.status).toBe("preview_completed");
@@ -93,5 +106,33 @@ describe("Autonomous bounded phase contracts", () => {
     expect(
       session.phases.find((phase) => phase.phase === "studio_sync")?.status,
     ).toBe("skipped");
+  });
+
+  it("returns a partial capability map for a partial registry", () => {
+    const registry = new AutonomousPhaseRegistry([]);
+    const capabilities = registry.listCapabilities(
+      createAutonomousPhaseContext("partial-project", "Build an obby"),
+    );
+
+    expect(capabilities).toEqual({});
+    expect(capabilities.lua_generation).toBeUndefined();
+  });
+
+  it("throws a portable AbortError at phase boundaries", async () => {
+    const registry = new AutonomousPhaseRegistry();
+    const adapter = registry.get("lua_generation");
+    const controller = new AbortController();
+    controller.abort("test cancellation");
+
+    expect(adapter).toBeDefined();
+    await expect(
+      adapter?.execute(
+        createAutonomousPhaseContext("abort-project", "Build an RPG"),
+        controller.signal,
+      ),
+    ).rejects.toMatchObject({
+      name: "AbortError",
+      message: "Autonomous phase cancelled",
+    });
   });
 });
