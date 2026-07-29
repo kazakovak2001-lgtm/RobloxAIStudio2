@@ -1,16 +1,16 @@
 name: DATA-201B Project Lifecycle Update Migration
 
 on:
-  push:
+  pull_request:
     branches:
-      - agent/data-201b-project-lifecycle-update-ack
+      - agent/data-201b-remove-project-delete-compat
 
 permissions:
   contents: write
 
 jobs:
   migrate-lifecycle-callers:
-    if: github.actor != 'github-actions[bot]'
+    if: github.actor != 'github-actions[bot]' && github.head_ref == 'agent/data-201b-project-lifecycle-update-ack'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout branch
