@@ -64,7 +64,13 @@ jobs:
           stage_anchor = "git add -A\n"
           if text.count(stage_anchor) != 1:
               raise SystemExit("publisher staging anchor mismatch")
-          text = text.replace(stage_anchor, "rm -rf artifacts\ngit add -A\n", 1)
+          text = text.replace(
+              stage_anchor,
+              'git checkout "origin/$release_branch" -- artifacts 2>/dev/null || true\n'
+              'git clean -fd artifacts\n'
+              'git add -A\n',
+              1,
+          )
 
           expected_anchor = "expected=$(printf '%s\\n' \\\n"
           if text.count(expected_anchor) != 1:
