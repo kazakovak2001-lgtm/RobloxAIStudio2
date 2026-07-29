@@ -1,0 +1,76 @@
+name: RUNTIME-204 Review Fixer
+
+on:
+  push:
+    branches:
+      - agent/runtime-2d-autonomous-truthfulness
+
+permissions:
+  contents: write
+
+concurrency:
+  group: runtime-204-review-fixer
+  cancel-in-progress: true
+
+jobs:
+  fix-and-validate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout writable PR branch
+        uses: actions/checkout@v4
+        with:
+          ref: agent/runtime-2d-autonomous-truthfulness
+          fetch-depth: 0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+
+      - name: Apply review fixes
+        run: python scripts/fix-runtime204-review.py
+
+      - name: Remove one-shot helpers
+        run: |
+          git rm .github/workflows/runtime204-review-fixer.yml
+          git rm scripts/fix-runtime204-review.py
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Format changed TypeScript
+        run: |
+          npx prettier --write \
+            server/src/orchestrator/AutonomousOrchestrator.ts \
+            server/src/orchestrator/AutonomousOrchestrator.test.ts
+
+      - name: Validate changed-file lint
+        run: |
+          npx eslint \
+            server/src/orchestrator/AutonomousOrchestrator.ts \
+            server/src/orchestrator/AutonomousOrchestrator.test.ts \
+            --max-warnings 0
+
+      - name: Validate TypeScript
+        run: npm run typecheck
+
+      - name: Run focused orchestrator tests
+        run: |
+          npm test -- \
+            server/src/orchestrator/AutonomousOrchestrator.test.ts
+
+      - name: Validate repository formatting
+        run: npm run format:check
+
+      - name: Commit validated fixes
+        run: |
+          git diff --check
+          git config user.name "github-actions[bot]"
+          git config user.email \
+            "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit --no-verify \
+            -m "fix(runtime): serialize autonomous resume execution"
+          git push origin \
+            HEAD:agent/runtime-2d-autonomous-truthfulness
