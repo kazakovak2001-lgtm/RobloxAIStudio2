@@ -41,8 +41,6 @@ jobs:
           git checkout origin/agent/runtime-2d-bounded-phases -- .github/workflows/ci.yml
       - name: Refresh canonical tracked inventories
         run: node scripts/cleanup/generate-tracked-inventories.mjs
-      - name: Verify final post-removal invariants
-        run: node scripts/cleanup/audit-legacy-frontend-decommission.mjs
       - name: TypeScript
         run: npm run typecheck
       - name: ESLint
@@ -58,6 +56,10 @@ jobs:
             server/src/routes/__tests__/projects.runtime.test.ts \
             server/src/__tests__/core1b.persistence.test.ts \
             server/src/__tests__/core1b.postgres.integration.test.ts
+      - name: Verify final post-removal invariants
+        run: |
+          node scripts/cleanup/audit-legacy-frontend-decommission.mjs
+          rm -rf artifacts/post-removal-invariants
       - name: Commit validated permanent changes
         run: |
           git config user.name github-actions[bot]
