@@ -7,7 +7,7 @@ import type { OrchestratorSession } from "./OrchestratorTypes";
 async function waitForTerminal(
   session: OrchestratorSession,
 ): Promise<OrchestratorSession> {
-  for (let attempt = 0; attempt < 100; attempt += 1) {
+  for (let attempt = 0; attempt < 1000; attempt += 1) {
     if (session.status !== "running" && session.status !== "paused") {
       await Promise.resolve();
       return session;
@@ -117,5 +117,73 @@ describe("AutonomousOrchestrator preview truthfulness", () => {
       totalCost: 0,
       source: "synthetic",
     });
+  });
+
+  it("serializes rapid pause and resume without duplicate phase evidence", async () => {
+    const events = new PipelineEventEmitter();
+    const published: PipelineEvent[] = [];
+    events.onEvent(async (event) => {
+      published.push(event);
+    });
+
+    const orchestrator = new AutonomousOrchestrator(events, {
+      simulationDelayMs: 25,
+    });
+    const session = orchestrator.run(
+      "Build a cooperative obby with safe pause and resume",
+      "project-race",
+    );
+
+    for (let attempt = 0; attempt < 100; attempt += 1) {
+      if (session.phases.some((phase) => phase.status === "running")) break;
+      await new Promise((resolve) => setTimeout(resolve, 1));
+    }
+
+    expect(orchestrator.pause(session.id)).toBe(true);
+    expect(orchestrator.resume(session.id)).toBe(true);
+    await waitForTerminal(session);
+
+    const terminalEvents = published.filter(
+      (event) => event.type === "pipeline.preview.completed",
+    );
+    expect(terminalEvents).toHaveLength(1);
+
+    const phaseStarts = published.filter(
+      (event) => event.type === "step.started",
+    );
+    const startedStepIds = phaseStarts.map((event) => event.stepId);
+    expect(new Set(startedStepIds).size).toBe(startedStepIds.length);
+
+    const phaseTerminalEvents = published.filter(
+      (event) =>
+        event.type === "step.completed" || event.type === "step.simulated",
+    );
+    const terminalStepIds = phaseTerminalEvents.map((event) => event.stepId);
+    expect(new Set(terminalStepIds).size).toBe(terminalStepIds.length);
+    expect(session.checkpoints).toHaveLength(phaseTerminalEvents.length);
+    expect(Object.keys(session.cost.perPhase)).toHaveLength(
+      phaseTerminalEvents.length,
+    );
+  });
+
+  it("keeps checkpoint cost snapshots isolated from later phase costs", async () => {
+    const orchestrator = new AutonomousOrchestrator(undefined, {
+      simulationDelayMs: 0,
+    });
+    const session = orchestrator.run(
+      "Build a deterministic tycoon preview",
+      "project-checkpoint",
+    );
+
+    await waitForTerminal(session);
+
+    const firstCheckpoint = session.checkpoints[0];
+    const snapshotCost = firstCheckpoint.snapshot.cost as {
+      perPhase: Record<string, unknown>;
+    };
+
+    expect(snapshotCost.perPhase).not.toBe(session.cost.perPhase);
+    expect(Object.keys(snapshotCost.perPhase)).toEqual(["genre_detection"]);
+    expect(Object.keys(session.cost.perPhase).length).toBeGreaterThan(1);
   });
 });

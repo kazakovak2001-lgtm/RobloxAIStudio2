@@ -65,6 +65,7 @@ interface PhaseExecutionResult {
 
 export class AutonomousOrchestrator {
   private sessions: Map<string, OrchestratorSession> = new Map();
+  private activeRuns: Map<string, Promise<void>> = new Map();
   private events?: PipelineEventEmitter;
   private options: AutonomousOrchestratorOptions;
 
@@ -133,7 +134,7 @@ export class AutonomousOrchestrator {
       timestamp: new Date(),
     });
 
-    void this.executePhases(session);
+    this.startExecution(session);
     return session;
   }
 
@@ -154,11 +155,13 @@ export class AutonomousOrchestrator {
     if (!session || session.status !== "paused") return false;
     session.status = "running";
     const next = session.phases.find(
-      (phase) => phase.status === "pending" && phase.phase !== "simulated",
+      (phase) =>
+        phase.phase !== "simulated" &&
+        (phase.status === "pending" || phase.status === "running"),
     );
     if (next) {
       session.currentPhase = next.phase;
-      void this.executePhases(session);
+      this.startExecution(session);
     } else {
       this.finishPreview(session);
     }
@@ -177,6 +180,21 @@ export class AutonomousOrchestrator {
     session.currentPhase = "cancelled";
     session.finishedAt = Date.now();
     return true;
+  }
+
+  private startExecution(session: OrchestratorSession): void {
+    if (this.activeRuns.has(session.id)) return;
+
+    const run = this.executePhases(session).finally(() => {
+      if (this.activeRuns.get(session.id) !== run) return;
+      this.activeRuns.delete(session.id);
+
+      if (session.status === "running" && this.hasRemainingWork(session)) {
+        this.startExecution(session);
+      }
+    });
+
+    this.activeRuns.set(session.id, run);
   }
 
   private async executePhases(session: OrchestratorSession): Promise<void> {
@@ -219,6 +237,11 @@ export class AutonomousOrchestrator {
 
       try {
         const result = await this.executePhase(session, node.phase);
+        if (session.status !== "running") {
+          node.status = "pending";
+          return;
+        }
+
         node.status = result.status;
         node.executionMode = "simulation";
         node.evidence = result.evidence;
@@ -258,19 +281,27 @@ export class AutonomousOrchestrator {
 
         this.checkpoint(session, node.phase);
       } catch (error) {
+        if (session.status !== "running") {
+          node.status = "pending";
+          return;
+        }
+
         this.failPhase(session, node, stepId, agentName, error);
         break;
       }
     }
 
-    if (session.status === "running") {
-      const remaining = session.phases.some(
-        (phase) =>
-          phase.phase !== "simulated" &&
-          (phase.status === "pending" || phase.status === "running"),
-      );
-      if (!remaining) this.finishPreview(session);
+    if (session.status === "running" && !this.hasRemainingWork(session)) {
+      this.finishPreview(session);
     }
+  }
+
+  private hasRemainingWork(session: OrchestratorSession): boolean {
+    return session.phases.some(
+      (phase) =>
+        phase.phase !== "simulated" &&
+        (phase.status === "pending" || phase.status === "running"),
+    );
   }
 
   private async executePhase(
@@ -517,7 +548,10 @@ export class AutonomousOrchestrator {
         executionMode: session.executionMode,
         resultAuthority: session.resultAuthority,
         qualityScore: session.qualityScore,
-        cost: { ...session.cost },
+        cost: {
+          ...session.cost,
+          perPhase: { ...session.cost.perPhase },
+        },
         completedHeuristics: session.phases.filter(
           (item) => item.status === "completed",
         ).length,
