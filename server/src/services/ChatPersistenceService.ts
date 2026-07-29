@@ -136,15 +136,35 @@ export class ChatPersistenceService {
     return message;
   }
 
-  deleteConversation(id: string): boolean {
-    this.requireText(id, "id");
-    for (const message of this.storage.list<ConversationMessage>(
-      MESSAGES,
-      (candidate) => candidate.conversationId === id,
-    )) {
-      this.storage.delete(MESSAGES, message.id);
+  async deleteConversation(id: string): Promise<boolean> {
+    const conversationId = this.requireText(id, "id");
+    if (!this.storage.get<Conversation>(CONVERSATIONS, conversationId)) {
+      return false;
     }
-    return this.storage.delete(CONVERSATIONS, id);
+
+    const messages = this.storage.list<ConversationMessage>(
+      MESSAGES,
+      (candidate) => candidate.conversationId === conversationId,
+    );
+    const mutations: DurableMutation[] = [
+      ...messages.map((message) => ({
+        operation: "delete" as const,
+        collection: MESSAGES,
+        id: message.id,
+      })),
+      {
+        operation: "delete",
+        collection: CONVERSATIONS,
+        id: conversationId,
+      },
+    ];
+
+    const results = await this.storage.applyDurableBatch(mutations);
+    const conversationResult = results[results.length - 1];
+    return (
+      conversationResult?.operation === "delete" &&
+      conversationResult.deleted === true
+    );
   }
 
   private requireText(value: unknown, field: string): string {
