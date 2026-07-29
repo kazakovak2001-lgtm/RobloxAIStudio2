@@ -85,9 +85,7 @@ export class InMemoryStorageProvider implements StorageProvider {
     return true;
   }
 
-  async mutateDurably(
-    mutations: readonly DurableMutation[],
-  ): Promise<void> {
+  async mutateDurably(mutations: readonly DurableMutation[]): Promise<void> {
     if (mutations.length === 0) return;
 
     const nextStore = new Map<string, Map<string, unknown>>();
