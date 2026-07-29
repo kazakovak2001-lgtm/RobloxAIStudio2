@@ -292,7 +292,7 @@ events.onEvent(async (evt) => {
         timestamp: evt.timestamp.toISOString(),
       };
       if (evt.projectId) {
-        projectRepository.update(evt.projectId, {
+        await projectRepository.updateDurable(evt.projectId, {
           status: "ready",
           qualityScore: 100,
         });
@@ -336,7 +336,9 @@ events.onEvent(async (evt) => {
         completedSteps: evt.data?.completedSteps,
       };
       if (evt.projectId) {
-        projectRepository.update(evt.projectId, { status: "draft" });
+        await projectRepository.updateDurable(evt.projectId, {
+          status: "draft",
+        });
         const record = generationHistory.getByPipeline(evt.pipelineId);
         if (record) {
           const finishedAt = evt.timestamp.getTime();
