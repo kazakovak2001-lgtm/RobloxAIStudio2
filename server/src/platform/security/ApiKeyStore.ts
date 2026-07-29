@@ -85,9 +85,7 @@ export class ApiKeyStore {
     return { id, key };
   }
 
-  async generateDurable(
-    metadata: ApiKeyMetadata = {},
-  ): Promise<IssuedApiKey> {
+  async generateDurable(metadata: ApiKeyMetadata = {}): Promise<IssuedApiKey> {
     return this.issueDurable(
       `rai_${randomBytes(32).toString("hex")}`,
       metadata,

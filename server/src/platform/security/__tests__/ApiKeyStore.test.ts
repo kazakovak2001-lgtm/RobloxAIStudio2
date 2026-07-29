@@ -102,9 +102,7 @@ describe("ApiKeyStore", () => {
   });
 
   it("keeps a key valid when revocation persistence is rejected", async () => {
-    const issued = await store.issueDurable(
-      "rejected-revoke-key-123456789",
-    );
+    const issued = await store.issueDurable("rejected-revoke-key-123456789");
     const previous = storage.get("platform_api_keys", issued.id);
     storage.rejectSet = true;
 
@@ -125,9 +123,7 @@ describe("ApiKeyStore", () => {
   });
 
   it("retains a key when cleanup persistence is rejected", async () => {
-    const issued = await store.issueDurable(
-      "rejected-cleanup-key-123456789",
-    );
+    const issued = await store.issueDurable("rejected-cleanup-key-123456789");
     const previous = storage.get("platform_api_keys", issued.id);
     storage.rejectDelete = true;
 
@@ -142,7 +138,9 @@ describe("ApiKeyStore", () => {
   it("rejects malformed or short credentials", async () => {
     expect(store.validate(undefined)).toBe(false);
     expect(store.validate(["test-api-key-123456789"])).toBe(false);
-    await expect(store.issueDurable("too-short")).rejects.toThrow(/at least 16/);
+    await expect(store.issueDurable("too-short")).rejects.toThrow(
+      /at least 16/,
+    );
   });
 
   it("seeds unique keys from API_KEYS without duplicating records", async () => {

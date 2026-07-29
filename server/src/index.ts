@@ -727,7 +727,7 @@ async function bootstrap(): Promise<void> {
       `[auth] Migrated ${migratedRefreshCredentials} legacy refresh credential(s) to digests`,
     );
   }
-  getApiKeyStore().seedFromEnvironment();
+  await getApiKeyStore().seedFromEnvironmentDurable();
   startServer(PORT);
 }
 
