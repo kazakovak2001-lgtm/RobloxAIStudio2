@@ -98,7 +98,7 @@ describe("Preservation - Autonomous Pipeline API Behavior", () => {
     );
   });
 
-  it("property: session phases array contains 12 entries (11 phases + simulated terminal node)", () => {
+  it("property: session phases array contains 12 entries (11 phases + preview terminal node)", () => {
     fc.assert(
       fc.property(fc.string({ minLength: 5, maxLength: 100 }), (prompt) => {
         const orchestrator = new AutonomousOrchestrator();
@@ -135,7 +135,7 @@ describe("Preservation - Autonomous Pipeline API Behavior", () => {
 
           expect(current).not.toBeNull();
           // Should have finished (completed or failed due to skip conditions)
-          expect(["simulated", "failed"]).toContain(current!.status);
+          expect(["preview_completed", "failed"]).toContain(current!.status);
         },
       ),
       { numRuns: 5 },
@@ -156,16 +156,20 @@ describe("Preservation - Status Polling Behavior", () => {
         expect(polled).not.toBeNull();
         expect(polled!.status).toBeDefined();
         expect(
-          ["running", "simulated", "paused", "cancelled", "failed"].includes(
-            polled!.status,
-          ),
+          [
+            "running",
+            "preview_completed",
+            "paused",
+            "cancelled",
+            "failed",
+          ].includes(polled!.status),
         ).toBe(true);
       }),
       { numRuns: 5 },
     );
   });
 
-  it("property: session transitions running → simulated on preview success", async () => {
+  it("property: session transitions running → preview_completed on bounded preview success", async () => {
     await fc.assert(
       fc.asyncProperty(
         fc.string({ minLength: 5, maxLength: 30 }),
@@ -190,7 +194,7 @@ describe("Preservation - Status Polling Behavior", () => {
           }
 
           expect(current).not.toBeNull();
-          expect(["simulated", "failed"]).toContain(current!.status);
+          expect(["preview_completed", "failed"]).toContain(current!.status);
         },
       ),
       { numRuns: 5 },

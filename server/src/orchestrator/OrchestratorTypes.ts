@@ -17,14 +17,16 @@ export type OrchestratorPhase =
   | "benchmark"
   | "studio_sync"
   | "completed"
+  | "preview_completed"
   | "simulated"
   | "failed"
   | "paused"
   | "cancelled";
 
-export type ExecutionMode = "simulation" | "production";
+export type ExecutionMode = "simulation" | "bounded" | "production";
 export type ResultAuthority = "preview-only" | "production";
 export type EvidenceLevel = "heuristic" | "synthetic" | "verified";
+export type PhaseCapabilityStatus = "available" | "degraded" | "unavailable";
 
 export type ExecutionStatus =
   "pending" | "running" | "completed" | "simulated" | "failed" | "skipped";
@@ -35,6 +37,10 @@ export interface ExecutionNode {
   status: ExecutionStatus;
   executionMode?: ExecutionMode;
   evidence?: EvidenceLevel;
+  capability?: PhaseCapabilityStatus;
+  service?: string;
+  cancellable?: boolean;
+  checkpointable?: boolean;
   startedAt?: number;
   completedAt?: number;
   durationMs?: number;
@@ -68,6 +74,7 @@ export interface CostTracker {
 }
 
 export interface Checkpoint {
+  id: string;
   phase: OrchestratorPhase;
   timestamp: number;
   snapshot: Record<string, unknown>;
@@ -80,7 +87,13 @@ export interface OrchestratorSession {
   executionMode: ExecutionMode;
   resultAuthority: ResultAuthority;
   status:
-    "running" | "completed" | "simulated" | "paused" | "cancelled" | "failed";
+    | "running"
+    | "completed"
+    | "preview_completed"
+    | "simulated"
+    | "paused"
+    | "cancelled"
+    | "failed";
   currentPhase: OrchestratorPhase;
   phases: ExecutionNode[];
   goals: GoalConfig;
@@ -92,6 +105,7 @@ export interface OrchestratorSession {
   genre?: string;
   estimatedTimeMs?: number;
   estimatedCost?: number;
+  recoveryCount: number;
 }
 
 export const DEFAULT_GOALS: GoalConfig = {
