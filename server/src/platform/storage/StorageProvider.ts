@@ -24,8 +24,7 @@ export type DurableMutation =
     };
 
 export type DurableStorageErrorCode =
-  | "DURABLE_STORAGE_MUTATION_FAILED"
-  | "DURABLE_STORAGE_CONFLICT";
+  "DURABLE_STORAGE_MUTATION_FAILED" | "DURABLE_STORAGE_CONFLICT";
 
 export class DurableStorageError extends Error {
   readonly code: DurableStorageErrorCode = "DURABLE_STORAGE_MUTATION_FAILED";

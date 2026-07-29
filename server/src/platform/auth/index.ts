@@ -1,7 +1,4 @@
-export {
-  AuthService,
-  type PreparedAuthRegistration,
-} from "./AuthService";
+export { AuthService, type PreparedAuthRegistration } from "./AuthService";
 export {
   AccountRegistrationService,
   AccountRegistrationConflictError,

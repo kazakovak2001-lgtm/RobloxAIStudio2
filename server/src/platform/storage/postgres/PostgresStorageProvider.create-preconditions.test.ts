@@ -111,11 +111,13 @@ describe("PostgresStorageProvider durable create preconditions", () => {
     await storage.ready();
     statements.length = 0;
 
-    await expect(storage.mutateDurably(accountMutations)).rejects.toMatchObject({
-      name: "DurableStorageConflictError",
-      collection: "auth_credentials",
-      id: "owner@example.test",
-    });
+    await expect(storage.mutateDurably(accountMutations)).rejects.toMatchObject(
+      {
+        name: "DurableStorageConflictError",
+        collection: "auth_credentials",
+        id: "owner@example.test",
+      },
+    );
 
     expect(statements).toEqual(["BEGIN", "INSERT", "INSERT", "ROLLBACK"]);
     expect(storage.isConnected()).toBe(true);
@@ -165,8 +167,8 @@ describe("PostgresStorageProvider durable create preconditions", () => {
     const storage = provider({ conflictCollection: "users", statements });
     await storage.ready();
 
-    await expect(storage.mutateDurably(accountMutations)).rejects.toBeInstanceOf(
-      DurableStorageConflictError,
-    );
+    await expect(
+      storage.mutateDurably(accountMutations),
+    ).rejects.toBeInstanceOf(DurableStorageConflictError);
   });
 });

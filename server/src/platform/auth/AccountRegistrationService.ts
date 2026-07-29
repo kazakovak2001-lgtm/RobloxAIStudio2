@@ -4,10 +4,7 @@ import {
   DurableStorageConflictError,
   type StorageProvider,
 } from "../storage/StorageProvider";
-import {
-  UserRepository,
-  type CreateUserInput,
-} from "../users/UserRepository";
+import { UserRepository, type CreateUserInput } from "../users/UserRepository";
 import type { User } from "../users/UserTypes";
 
 const CREDENTIALS_COLLECTION = "auth_credentials";
@@ -50,9 +47,7 @@ export class AccountRegistrationService {
     );
 
     if (this.users.getByEmail(preparedAuth.normalizedEmail)) {
-      throw new AccountRegistrationConflictError(
-        preparedAuth.normalizedEmail,
-      );
+      throw new AccountRegistrationConflictError(preparedAuth.normalizedEmail);
     }
 
     try {
