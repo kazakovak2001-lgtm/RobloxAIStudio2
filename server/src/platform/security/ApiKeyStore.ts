@@ -66,6 +66,8 @@ function isEqualDigest(left: string, right: string): boolean {
  * becomes observable.
  */
 export class ApiKeyStore {
+  private readonly revocationQueues = new Map<string, Promise<void>>();
+
   constructor(private readonly storage: StorageProvider) {}
 
   issue(rawKey: string, metadata: ApiKeyMetadata = {}): IssuedApiKey {
@@ -107,14 +109,30 @@ export class ApiKeyStore {
   }
 
   async revokeDurable(id: string): Promise<boolean> {
-    const record = this.storage.get<StoredApiKey>(COLLECTION, id);
-    if (!record || record.revokedAt) return false;
-
-    await this.storage.setDurable(COLLECTION, id, {
-      ...record,
-      revokedAt: new Date().toISOString(),
+    const predecessor = this.revocationQueues.get(id) ?? Promise.resolve();
+    let release!: () => void;
+    const current = new Promise<void>((resolve) => {
+      release = resolve;
     });
-    return true;
+    const queued = predecessor.then(() => current);
+    this.revocationQueues.set(id, queued);
+
+    await predecessor;
+    try {
+      const record = this.storage.get<StoredApiKey>(COLLECTION, id);
+      if (!record || record.revokedAt) return false;
+
+      await this.storage.setDurable(COLLECTION, id, {
+        ...record,
+        revokedAt: new Date().toISOString(),
+      });
+      return true;
+    } finally {
+      release();
+      if (this.revocationQueues.get(id) === queued) {
+        this.revocationQueues.delete(id);
+      }
+    }
   }
 
   list(): RedactedApiKey[] {
