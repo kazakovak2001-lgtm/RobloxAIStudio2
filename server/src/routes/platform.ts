@@ -4,6 +4,7 @@
 
 import { Router, type Request, type Response } from "express";
 import { UserRepository } from "../platform/users";
+import type { AuthService } from "../platform/auth/AuthService";
 import { authService } from "../platform/auth/authServiceInstance";
 import {
   DurableStorageError,
@@ -32,15 +33,17 @@ interface UserPreferences {
 export interface PlatformRouterDependencies {
   storage: StorageProvider;
   access: ProjectAccessControl;
+  auth?: AuthService;
 }
 
 export function createPlatformRouter({
   storage,
   access,
+  auth: providedAuth,
 }: PlatformRouterDependencies): Router {
   const router = Router();
   const users = new UserRepository(storage);
-  const auth = authService;
+  const auth = providedAuth ?? authService;
   const versions = new VersionHistoryRepository();
   const registry = new AgentRegistryService();
   const preferences = new Map<string, UserPreferences>();
@@ -72,6 +75,8 @@ export function createPlatformRouter({
         .json({ success: false, error: "Email already registered" });
       return;
     }
+    // Registration remains the next DATA-201C orchestration slice because user,
+    // credentials, role and initial session must commit as one account batch.
     const user = users.create({ email, displayName });
     const registered = auth.register(email, password, user.id);
     if (!registered) {
@@ -90,7 +95,7 @@ export function createPlatformRouter({
     });
   });
 
-  router.post("/auth/login", loginRateLimiter, (req, res) => {
+  router.post("/auth/login", loginRateLimiter, async (req, res) => {
     const { email, password } = req.body;
     if (!email || !password) {
       res
@@ -103,31 +108,41 @@ export function createPlatformRouter({
       res.status(401).json({ success: false, error: "Invalid credentials" });
       return;
     }
-    const result = auth.login(email, password, user.id);
-    if (!result.success) {
-      res.status(401).json({ success: false, error: result.error });
-      return;
+
+    try {
+      const result = await auth.loginDurable(email, password, user.id);
+      if (!result.success) {
+        res.status(401).json({ success: false, error: result.error });
+        return;
+      }
+      setAuthCookies(res, result.token!, result.refreshToken!);
+      res.json({
+        success: true,
+        data: {
+          user,
+          role: result.role,
+        },
+      });
+    } catch (error) {
+      handlePlatformMutationError(error, res);
     }
-    setAuthCookies(res, result.token!, result.refreshToken!);
-    res.json({
-      success: true,
-      data: {
-        user,
-        role: result.role,
-      },
-    });
   });
 
-  router.post("/auth/logout", (req, res) => {
+  router.post("/auth/logout", async (req, res) => {
     const token =
       req.headers.authorization?.replace("Bearer ", "") ??
       getTokenFromCookies(req);
-    if (token) auth.logout(token);
-    clearAuthCookies(res);
-    res.json({ success: true });
+
+    try {
+      if (token) await auth.logoutDurable(token);
+      clearAuthCookies(res);
+      res.json({ success: true });
+    } catch (error) {
+      handlePlatformMutationError(error, res);
+    }
   });
 
-  router.post("/auth/refresh", (req, res) => {
+  router.post("/auth/refresh", async (req, res) => {
     const refreshToken =
       getRefreshTokenFromCookies(req) ??
       (typeof req.body?.refreshToken === "string"
@@ -139,16 +154,21 @@ export function createPlatformRouter({
         .json({ success: false, error: "Refresh credential required" });
       return;
     }
-    const result = auth.refreshSession(refreshToken);
-    if (!result.success) {
-      res.status(401).json({ success: false, error: result.error });
-      return;
+
+    try {
+      const result = await auth.refreshSessionDurable(refreshToken);
+      if (!result.success) {
+        res.status(401).json({ success: false, error: result.error });
+        return;
+      }
+      setAuthCookies(res, result.token!, result.refreshToken!);
+      res.json({
+        success: true,
+        data: { refreshed: true },
+      });
+    } catch (error) {
+      handlePlatformMutationError(error, res);
     }
-    setAuthCookies(res, result.token!, result.refreshToken!);
-    res.json({
-      success: true,
-      data: { refreshed: true },
-    });
   });
 
   router.post("/auth/forgot-password", (req, res) => {
