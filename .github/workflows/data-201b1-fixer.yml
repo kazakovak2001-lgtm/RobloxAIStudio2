@@ -1,0 +1,73 @@
+name: DATA-201B1 Fixer
+
+on:
+  push:
+    branches:
+      - agent/durability-2e-user-ack
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  validate-and-commit:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout writable PR branch
+        uses: actions/checkout@v4
+        with:
+          ref: agent/durability-2e-user-ack
+          fetch-depth: 0
+      - name: Run actions/setup-node@v4
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+      - name: Install dependencies
+        run: npm ci
+      - name: Format DATA-201B1 files
+        run: |
+          node node_modules/prettier/bin/prettier.cjs --write \
+            server/src/platform/users/UserRepository.ts \
+            server/src/routes/platform.ts \
+            server/src/routes/__tests__/platform.users.durability.test.ts
+      - name: Remove temporary workflow
+        run: git rm -f .github/workflows/data-201b1-fixer.yml
+      - name: Refresh canonical tracked inventories
+        run: node scripts/cleanup/generate-tracked-inventories.mjs
+      - name: TypeScript
+        run: npm run typecheck
+      - name: ESLint
+        run: npm run lint
+      - name: Formatting
+        run: npm run format:check
+      - name: Targeted user durability tests
+        run: >-
+          node node_modules/vitest/vitest.mjs
+          --config config/testing/vitest.backend.config.ts run
+          server/src/routes/__tests__/platform.users.durability.test.ts
+          server/src/__tests__/platform.test.ts
+          server/src/routes/__tests__/projects.durability.test.ts
+      - name: Verify final post-removal invariants
+        run: |
+          node scripts/cleanup/audit-legacy-frontend-decommission.mjs
+          rm -rf artifacts/post-removal-invariants
+          rm -f artifacts/post-removal-invariant-audit-result.json
+      - name: Commit validated permanent changes
+        run: |
+          set -euo pipefail
+          allowed='^(ProjectStructure\.txt|_inventory_raw\.txt|server/src/platform/users/UserRepository\.ts|server/src/routes/platform\.ts|server/src/routes/__tests__/platform\.users\.durability\.test\.ts)$'
+          unexpected="$(git status --short | awk '{print $2}' | grep -Ev "$allowed" || true)"
+          if [[ -n "$unexpected" ]]; then
+            printf 'Unexpected changed paths:\n%s\n' "$unexpected"
+            exit 1
+          fi
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add -A
+          if git diff --cached --quiet; then
+            echo 'No permanent changes to commit'
+            exit 0
+          fi
+          git commit -m 'test(data): validate user durability acknowledgements'
+          git push origin HEAD:agent/durability-2e-user-ack
