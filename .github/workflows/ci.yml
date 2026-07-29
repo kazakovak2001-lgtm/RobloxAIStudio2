@@ -1,4 +1,4 @@
-name: Temporary PR89 Transaction Health Migration
+name: Temporary PR89 Tracked Inventory Refresh
 
 on:
   pull_request:
@@ -9,7 +9,7 @@ permissions:
   contents: write
 
 jobs:
-  migrate-storage-health:
+  refresh-tracked-inventories:
     if: github.head_ref == 'agent/data-201c-transaction-foundation'
     runs-on: ubuntu-latest
     steps:
@@ -19,67 +19,16 @@ jobs:
           ref: agent/data-201c-transaction-foundation
           fetch-depth: 0
 
-      - name: Set up Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: npm
-
-      - name: Install locked dependencies
-        run: npm ci
-
-      - name: Apply normalized storage health response
+      - name: Remove temporary trigger and refresh inventories
         run: |
-          node <<'NODE'
-          const fs = require('node:fs');
-          const path = 'server/src/index.ts';
-          let source = fs.readFileSync(path, 'utf8');
-          const before = [
-            'app.get("/health/storage", (_req, res) => {',
-            '  res.json({',
-            '    success: true,',
-            '    data: { provider: getStorageType(), status: "available" },',
-            '  });',
-            '});',
-          ].join('\n');
-          const after = [
-            'app.get("/health/storage", (_req, res) => {',
-            '  const operational = storageProvider.getOperationalStatus();',
-            '  res.json({',
-            '    success: true,',
-            '    data: {',
-            '      provider: getStorageType(),',
-            '      status: operational.availability,',
-            '      durability: operational.durability,',
-            '      pendingMutations: operational.pendingMutations,',
-            '      ...(operational.lastFailureAt',
-            '        ? { lastFailureAt: operational.lastFailureAt }',
-            '        : {}),',
-            '    },',
-            '  });',
-            '});',
-          ].join('\n');
-          const matches = source.split(before).length - 1;
-          if (matches !== 1) {
-            throw new Error(`Expected one storage health block, found ${matches}`);
-          }
-          source = source.replace(before, after);
-          fs.writeFileSync(path, source);
-          NODE
+          git rm .tmp/pr89-inventory-refresh-trigger
+          node scripts/cleanup/generate-tracked-inventories.mjs
 
-          node node_modules/prettier/bin/prettier.cjs --write \
-            server/src/index.ts \
-            server/src/platform/storage/StorageProvider.ts \
-            server/src/platform/storage/postgres/PostgresStorageProvider.ts \
-            server/src/platform/storage/postgres/PostgresStorageProvider.test.ts \
-            docs/00-project-control/DATA-201C_TRANSACTION_DEGRADATION_POLICY.md
-          rm -f .tmp/pr89-health-trigger
-
-      - name: Commit migration to PR head
+      - name: Commit refreshed inventories to PR head
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add -A
           git diff --cached --quiet && exit 0
-          git commit -m "feat(storage): expose normalized degradation status"
+          git commit -m "chore(repo): refresh tracked inventories"
           git push origin HEAD:agent/data-201c-transaction-foundation
