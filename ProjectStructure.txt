@@ -1106,6 +1106,8 @@
 │   │   │   ├── index.ts
 │   │   │   ├── projects
 │   │   │   │   ├── index.ts
+│   │   │   │   ├── ProjectLifecycleCoordinator.test.ts
+│   │   │   │   ├── ProjectLifecycleCoordinator.ts
 │   │   │   │   └── SaaSProjectRepository.ts
 │   │   │   ├── queue
 │   │   │   │   ├── GenerationQueue.ts

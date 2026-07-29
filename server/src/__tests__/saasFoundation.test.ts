@@ -68,9 +68,9 @@ describe("SaaS Foundation", () => {
       expect(copy!.id).not.toBe(orig.id);
     });
 
-    it("updates project", () => {
+    it("updates project", async () => {
       const proj = repo.create("user-1", "Game", "rpg");
-      const updated = repo.update(proj.id, {
+      const updated = await repo.updateDurable(proj.id, {
         status: "generating",
         qualityScore: 75,
       });

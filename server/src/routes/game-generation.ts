@@ -6,6 +6,7 @@ import type {
   StudioProjectSession,
 } from "../studio/integration/types";
 import type { ProjectRuntime } from "./projects";
+import { ProjectGenerationStartCoordinator } from "../platform/projects/ProjectLifecycleCoordinator";
 
 type StudioConnectionStatus =
   "connected" | "disconnected" | "syncing" | "error";
@@ -39,6 +40,9 @@ export function createGameGenerationRouter(
 ): Router {
   const router = Router();
   const { projectRepository, generationHistory, access } = projectRuntime;
+  const generationStartCoordinator = new ProjectGenerationStartCoordinator(
+    projectRepository,
+  );
 
   const mapStudioStatus = (
     session: StudioProjectSession | null,
@@ -142,27 +146,24 @@ export function createGameGenerationRouter(
         } as never);
       }
 
-      const result = await gameService.startGeneration(
-        blueprintId || projectId,
-        userId,
-      );
-      projectRepository.update(projectId, {
-        status: "generating",
-        generationCount:
-          (projectRepository.get(projectId)?.generationCount ?? 0) + 1,
-      });
-      generationHistory.record({
-        id: result.id,
+      const result = await generationStartCoordinator.start(
         projectId,
-        pipelineId: result.id,
-        status: result.status,
-        startedAt: result.started_at.getTime(),
-        stagesCompleted: 0,
-        stagesTotal: 0,
-        failures: 0,
-        tokenUsage: 0,
-        aiCost: 0,
-      });
+        () => gameService.startGeneration(blueprintId || projectId, userId),
+        (execution) => {
+          generationHistory.record({
+            id: execution.id,
+            projectId,
+            pipelineId: execution.id,
+            status: execution.status,
+            startedAt: execution.started_at.getTime(),
+            stagesCompleted: 0,
+            stagesTotal: 0,
+            failures: 0,
+            tokenUsage: 0,
+            aiCost: 0,
+          });
+        },
+      );
       res.json({
         success: true,
         executionId: result.id,
@@ -265,12 +266,12 @@ export function createGameGenerationRouter(
         aiCost: 0,
       });
       if (execution.status === "completed") {
-        projectRepository.update(execution.project_id, {
+        await projectRepository.updateDurable(execution.project_id, {
           status: "ready",
           qualityScore: 100,
         });
       } else if (execution.status === "failed") {
-        projectRepository.update(execution.project_id, {
+        await projectRepository.updateDurable(execution.project_id, {
           status: "draft",
         });
       }
