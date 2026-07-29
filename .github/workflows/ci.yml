@@ -80,27 +80,8 @@ jobs:
 
           tests = Path("server/src/platform/storage/postgres/PostgresStorageProvider.test.ts")
           text = tests.read_text()
-          anchor = '''  it("reports an available durable provider after initialization", async () => {
-            const { storage } = provider();
-            await storage.ready();
-
-            expect(storage.getOperationalStatus()).toEqual({
-              availability: "available",
-              durability: "durable",
-              pendingMutations: 0,
-            });
-          });
-          });'''
-          inserted = '''  it("reports an available durable provider after initialization", async () => {
-            const { storage } = provider();
-            await storage.ready();
-
-            expect(storage.getOperationalStatus()).toEqual({
-              availability: "available",
-              durability: "durable",
-              pendingMutations: 0,
-            });
-          });
+          boundary = '\n});\n\ndescribe("InMemoryStorageProvider durable batches", () => {'
+          inserted = '''
 
           it("preserves a newer compatibility write while a batch commit is pending", async () => {
             let releaseCommit!: () => void;
@@ -145,8 +126,10 @@ jobs:
               durability: "durable",
             });
           });
-          });'''
-          tests.write_text(replace_once(text, anchor, inserted, "tests"))
+          });
+
+          describe("InMemoryStorageProvider durable batches", () => {'''
+          tests.write_text(replace_once(text, boundary, inserted, "test boundary"))
           PY
 
           npm ci
