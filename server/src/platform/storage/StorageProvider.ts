@@ -8,14 +8,16 @@
 
 export class DurableStorageError extends Error {
   readonly code = "DURABLE_STORAGE_MUTATION_FAILED";
+  readonly cause?: unknown;
 
   constructor(
     message: string,
     readonly operation: "set" | "delete",
     options?: { cause?: unknown },
   ) {
-    super(message, options);
+    super(message);
     this.name = "DurableStorageError";
+    this.cause = options?.cause;
   }
 }
 
