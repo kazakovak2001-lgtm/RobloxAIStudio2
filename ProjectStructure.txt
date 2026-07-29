@@ -1038,6 +1038,7 @@
 │   │   │   └── store
 │   │   │       └── MemoryStore.ts
 │   │   ├── orchestrator
+│   │   │   ├── AutonomousOrchestrator.test.ts
 │   │   │   ├── AutonomousOrchestrator.ts
 │   │   │   ├── index.ts
 │   │   │   └── OrchestratorTypes.ts

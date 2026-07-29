@@ -1,5 +1,8 @@
 /**
- * Autonomous Orchestrator API — Single-prompt to complete Roblox Experience.
+ * Autonomous Orchestrator Preview API.
+ *
+ * This route currently runs a deterministic simulation. It does not invoke the
+ * production generation, playtest, Studio delivery or verification engines.
  */
 
 import { Router } from "express";
@@ -10,7 +13,7 @@ export function createAutonomousRouter(events?: PipelineEventEmitter): Router {
   const router = Router();
   const orchestrator = new AutonomousOrchestrator(events);
 
-  // POST /api/autonomous/run — start autonomous generation
+  // POST /api/autonomous/run — start preview-only autonomous simulation
   router.post("/run", (req, res) => {
     const { prompt, projectId, goals } = req.body;
 
@@ -33,6 +36,11 @@ export function createAutonomousRouter(events?: PipelineEventEmitter): Router {
         sessionId: session.id,
         status: session.status,
         currentPhase: session.currentPhase,
+        executionMode: session.executionMode,
+        resultAuthority: session.resultAuthority,
+        productionCompleted: false,
+        warning:
+          "Preview simulation only. No production generation, Roblox playtest, Studio delivery or artifact verification is performed.",
       },
     });
   });
@@ -47,7 +55,6 @@ export function createAutonomousRouter(events?: PipelineEventEmitter): Router {
     res.json({ success: true, data: session });
   });
 
-  // POST /api/autonomous/pause/:sessionId
   router.post("/pause/:sessionId", (req, res) => {
     const ok = orchestrator.pause(req.params.sessionId);
     if (!ok) {
@@ -59,7 +66,6 @@ export function createAutonomousRouter(events?: PipelineEventEmitter): Router {
     res.json({ success: true, data: { status: "paused" } });
   });
 
-  // POST /api/autonomous/resume/:sessionId
   router.post("/resume/:sessionId", (req, res) => {
     const ok = orchestrator.resume(req.params.sessionId);
     if (!ok) {
@@ -71,7 +77,6 @@ export function createAutonomousRouter(events?: PipelineEventEmitter): Router {
     res.json({ success: true, data: { status: "running" } });
   });
 
-  // POST /api/autonomous/cancel/:sessionId
   router.post("/cancel/:sessionId", (req, res) => {
     const ok = orchestrator.cancel(req.params.sessionId);
     if (!ok) {

@@ -849,6 +849,7 @@ server/src/memory/knowledge/index.ts
 server/src/memory/knowledge/types.ts
 server/src/memory/semantic/SemanticRetriever.ts
 server/src/memory/store/MemoryStore.ts
+server/src/orchestrator/AutonomousOrchestrator.test.ts
 server/src/orchestrator/AutonomousOrchestrator.ts
 server/src/orchestrator/OrchestratorTypes.ts
 server/src/orchestrator/index.ts

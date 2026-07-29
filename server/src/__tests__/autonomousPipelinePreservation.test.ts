@@ -98,7 +98,7 @@ describe("Preservation - Autonomous Pipeline API Behavior", () => {
     );
   });
 
-  it("property: session phases array contains 12 entries (11 phases + completed node)", () => {
+  it("property: session phases array contains 12 entries (11 phases + simulated terminal node)", () => {
     fc.assert(
       fc.property(fc.string({ minLength: 5, maxLength: 100 }), (prompt) => {
         const orchestrator = new AutonomousOrchestrator();
@@ -135,7 +135,7 @@ describe("Preservation - Autonomous Pipeline API Behavior", () => {
 
           expect(current).not.toBeNull();
           // Should have finished (completed or failed due to skip conditions)
-          expect(["completed", "failed"]).toContain(current!.status);
+          expect(["simulated", "failed"]).toContain(current!.status);
         },
       ),
       { numRuns: 5 },
@@ -156,7 +156,7 @@ describe("Preservation - Status Polling Behavior", () => {
         expect(polled).not.toBeNull();
         expect(polled!.status).toBeDefined();
         expect(
-          ["running", "completed", "paused", "cancelled", "failed"].includes(
+          ["running", "simulated", "paused", "cancelled", "failed"].includes(
             polled!.status,
           ),
         ).toBe(true);
@@ -165,7 +165,7 @@ describe("Preservation - Status Polling Behavior", () => {
     );
   });
 
-  it("property: session transitions running → completed on success", async () => {
+  it("property: session transitions running → simulated on preview success", async () => {
     await fc.assert(
       fc.asyncProperty(
         fc.string({ minLength: 5, maxLength: 30 }),
@@ -190,7 +190,7 @@ describe("Preservation - Status Polling Behavior", () => {
           }
 
           expect(current).not.toBeNull();
-          expect(["completed", "failed"]).toContain(current!.status);
+          expect(["simulated", "failed"]).toContain(current!.status);
         },
       ),
       { numRuns: 5 },
@@ -603,7 +603,7 @@ describe("Preservation - Error Handling", () => {
     );
   });
 
-  it("property: cancel() on completed session returns false", async () => {
+  it("property: cancel() on simulated session returns false", async () => {
     await fc.assert(
       fc.asyncProperty(
         fc.string({ minLength: 5, maxLength: 30 }),
@@ -626,7 +626,7 @@ describe("Preservation - Error Handling", () => {
           }
 
           // If completed, cancel should return false
-          if (current && current.status === "completed") {
+          if (current && current.status === "simulated") {
             const result = orchestrator.cancel(session.id);
             expect(result).toBe(false);
           }
@@ -640,7 +640,7 @@ describe("Preservation - Error Handling", () => {
 // ─── 6. Cost and Quality Tracking ──────────────────────────────────────────
 
 describe("Preservation - Cost and Quality Tracking", () => {
-  it("property: after run completes, session.cost.totalTokens > 0", async () => {
+  it("property: after preview run, session.cost.totalTokens is zero", async () => {
     await fc.assert(
       fc.asyncProperty(
         fc.string({ minLength: 5, maxLength: 30 }),
@@ -663,8 +663,8 @@ describe("Preservation - Cost and Quality Tracking", () => {
           }
 
           expect(current).not.toBeNull();
-          if (current!.status === "completed") {
-            expect(current!.cost.totalTokens).toBeGreaterThan(0);
+          if (current!.status === "simulated") {
+            expect(current!.cost.totalTokens).toBe(0);
           }
         },
       ),
@@ -672,7 +672,7 @@ describe("Preservation - Cost and Quality Tracking", () => {
     );
   }, 60000);
 
-  it("property: after run completes, session.cost.totalCost > 0", async () => {
+  it("property: after preview run, session.cost.totalCost is zero", async () => {
     await fc.assert(
       fc.asyncProperty(
         fc.string({ minLength: 5, maxLength: 30 }),
@@ -695,8 +695,8 @@ describe("Preservation - Cost and Quality Tracking", () => {
           }
 
           expect(current).not.toBeNull();
-          if (current!.status === "completed") {
-            expect(current!.cost.totalCost).toBeGreaterThan(0);
+          if (current!.status === "simulated") {
+            expect(current!.cost.totalCost).toBe(0);
           }
         },
       ),
@@ -704,7 +704,7 @@ describe("Preservation - Cost and Quality Tracking", () => {
     );
   }, 60000);
 
-  it("property: after run completes, session.qualityScore > 0", async () => {
+  it("property: after preview run, session.qualityScore remains null", async () => {
     await fc.assert(
       fc.asyncProperty(
         fc.string({ minLength: 5, maxLength: 30 }),
@@ -727,8 +727,8 @@ describe("Preservation - Cost and Quality Tracking", () => {
           }
 
           expect(current).not.toBeNull();
-          if (current!.status === "completed") {
-            expect(current!.qualityScore).toBeGreaterThan(0);
+          if (current!.status === "simulated") {
+            expect(current!.qualityScore).toBeNull();
           }
         },
       ),

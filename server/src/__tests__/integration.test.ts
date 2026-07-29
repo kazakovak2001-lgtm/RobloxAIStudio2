@@ -159,7 +159,7 @@ describe("Integration: Full Pipeline", () => {
     await new Promise((r) => setTimeout(r, 2500));
     const final = orch.getSession(session.id);
     expect(final).not.toBeNull();
-    expect(final!.status).toBe("completed");
+    expect(final!.status).toBe("simulated");
     expect(final!.genre).toBe("obby");
     expect(final!.checkpoints.length).toBeGreaterThan(0);
   });

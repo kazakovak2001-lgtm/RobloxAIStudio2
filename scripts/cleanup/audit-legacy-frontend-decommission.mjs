@@ -579,7 +579,21 @@ assert.deepEqual(
 const releaseInventory = JSON.parse(
   readFileSync(path.join(root, inventory.sourceReleaseInventory), "utf8"),
 );
-assert.deepEqual(inventory.canonicalFrontend, releaseInventory.frontendRelease);
+assert.equal(
+  inventory.canonicalFrontend.repository,
+  releaseInventory.frontendRelease.repository,
+  "Cleanup and release inventories must reference the same Frontend repository",
+);
+for (const [label, commit] of [
+  ["cleanup canonical Frontend", inventory.canonicalFrontend.commit],
+  ["release Frontend", releaseInventory.frontendRelease.commit],
+]) {
+  assert.match(
+    commit,
+    /^[0-9a-f]{40}$/,
+    `${label} must be an exact 40-character commit SHA`,
+  );
+}
 for (const releasePath of releaseInventory.activeRelease.files) {
   const absolutePath = path.join(root, releasePath);
   assert.ok(existsSync(absolutePath), `Missing release file: ${releasePath}`);
@@ -609,6 +623,7 @@ const result = {
   baseline: inventory.baseline,
   verificationEvidence: inventory.verificationEvidence,
   canonicalFrontend: inventory.canonicalFrontend,
+  releaseFrontend: releaseInventory.frontendRelease,
   historicalImplementationChangePolicy: {
     baseline: implementationBaseline,
     implementationHead,

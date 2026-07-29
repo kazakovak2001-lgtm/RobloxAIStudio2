@@ -17,17 +17,24 @@ export type OrchestratorPhase =
   | "benchmark"
   | "studio_sync"
   | "completed"
+  | "simulated"
   | "failed"
   | "paused"
   | "cancelled";
 
+export type ExecutionMode = "simulation" | "production";
+export type ResultAuthority = "preview-only" | "production";
+export type EvidenceLevel = "heuristic" | "synthetic" | "verified";
+
 export type ExecutionStatus =
-  "pending" | "running" | "completed" | "failed" | "skipped";
+  "pending" | "running" | "completed" | "simulated" | "failed" | "skipped";
 
 export interface ExecutionNode {
   id: string;
   phase: OrchestratorPhase;
   status: ExecutionStatus;
+  executionMode?: ExecutionMode;
+  evidence?: EvidenceLevel;
   startedAt?: number;
   completedAt?: number;
   durationMs?: number;
@@ -45,11 +52,19 @@ export interface GoalConfig {
   maxRepairIterations: number;
 }
 
+export interface PhaseCost {
+  tokens: number;
+  cost: number;
+  timeMs: number;
+  source: "synthetic" | "measured";
+}
+
 export interface CostTracker {
   totalTokens: number;
   totalCost: number;
   totalTimeMs: number;
-  perPhase: Record<string, { tokens: number; cost: number; timeMs: number }>;
+  source: "synthetic" | "measured";
+  perPhase: Record<string, PhaseCost>;
 }
 
 export interface Checkpoint {
@@ -62,13 +77,16 @@ export interface OrchestratorSession {
   id: string;
   projectId: string;
   prompt: string;
-  status: "running" | "completed" | "paused" | "cancelled" | "failed";
+  executionMode: ExecutionMode;
+  resultAuthority: ResultAuthority;
+  status:
+    "running" | "completed" | "simulated" | "paused" | "cancelled" | "failed";
   currentPhase: OrchestratorPhase;
   phases: ExecutionNode[];
   goals: GoalConfig;
   cost: CostTracker;
   checkpoints: Checkpoint[];
-  qualityScore: number;
+  qualityScore: number | null;
   startedAt: number;
   finishedAt?: number;
   genre?: string;
