@@ -1,4 +1,4 @@
-name: Temporary PR81 Lifecycle Migration
+name: Temporary PR82 Preservation Test Migration
 
 on:
   pull_request:
@@ -9,7 +9,7 @@ permissions:
   contents: write
 
 jobs:
-  migrate-lifecycle-callers:
+  migrate-preservation-test:
     if: github.head_ref == 'agent/data-201b-project-lifecycle-update-ack'
     runs-on: ubuntu-latest
     steps:
@@ -19,34 +19,19 @@ jobs:
           ref: agent/data-201b-project-lifecycle-update-ack
           fetch-depth: 0
 
-      - name: Apply exact lifecycle caller migration
+      - name: Apply exact preservation test migration
         run: |
           node <<'NODE'
           const fs = require('node:fs');
-          const path = 'server/src/index.ts';
+          const path = 'server/src/__tests__/preservationProperty.test.ts';
           let source = fs.readFileSync(path, 'utf8');
-
-          const completedOld = `projectRepository.update(evt.projectId, {
-          status: "ready",
-          qualityScore: 100,
-        });`;
-          const completedNew = `await projectRepository.updateDurable(evt.projectId, {
-          status: "ready",
-          qualityScore: 100,
-        });`;
-          const failedOld = `projectRepository.update(evt.projectId, { status: "draft" });`;
-          const failedNew = `await projectRepository.updateDurable(evt.projectId, {
-          status: "draft",
-        });`;
-
-          if (!source.includes(completedOld)) {
-            throw new Error('Missing expected pipeline.completed project update');
+          const oldLine = 'const updated = projects.update(p.id, { name: "Updated Game" });';
+          const newLine = 'const updated = await projects.updateDurable(p.id, { name: "Updated Game" });';
+          const matches = source.split(oldLine).length - 1;
+          if (matches !== 1) {
+            throw new Error(`Expected exactly one stale project update test call, found ${matches}`);
           }
-          if (!source.includes(failedOld)) {
-            throw new Error('Missing expected pipeline.failed project update');
-          }
-
-          source = source.replace(completedOld, completedNew).replace(failedOld, failedNew);
+          source = source.replace(oldLine, newLine);
           fs.writeFileSync(path, source);
           NODE
 
@@ -54,7 +39,7 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add server/src/index.ts
+          git add server/src/__tests__/preservationProperty.test.ts
           git diff --cached --quiet && exit 0
-          git commit -m "fix(storage): await project lifecycle updates"
+          git commit -m "test(storage): await preservation project update"
           git push origin HEAD:agent/data-201b-project-lifecycle-update-ack
