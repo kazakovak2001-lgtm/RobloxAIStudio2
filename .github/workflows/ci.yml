@@ -1,4 +1,4 @@
-name: Temporary PR82 Exact Prettier
+name: Temporary PR83 API Key Caller Migration
 
 on:
   pull_request:
@@ -9,14 +9,14 @@ permissions:
   contents: write
 
 jobs:
-  prettier-preservation-test:
-    if: github.head_ref == 'agent/data-201b-project-lifecycle-update-ack'
+  migrate-api-key-callers:
+    if: github.head_ref == 'agent/data-201b-api-key-issuance-ack'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout PR head branch
         uses: actions/checkout@v4
         with:
-          ref: agent/data-201b-project-lifecycle-update-ack
+          ref: agent/data-201b-api-key-issuance-ack
           fetch-depth: 0
 
       - name: Set up Node
@@ -28,16 +28,51 @@ jobs:
       - name: Install locked dependencies
         run: npm ci
 
-      - name: Run exact repository Prettier
+      - name: Apply exact API key caller migration
         run: |
-          node node_modules/prettier/bin/prettier.cjs --write server/src/__tests__/preservationProperty.test.ts
-          rm -f .tmp/pr82-prettier-exact-trigger
+          node <<'NODE'
+          const fs = require('node:fs');
 
-      - name: Commit exact Prettier output to PR head
+          const replaceExactly = (path, before, after, expected = 1) => {
+            let source = fs.readFileSync(path, 'utf8');
+            const matches = source.split(before).length - 1;
+            if (matches !== expected) {
+              throw new Error(`${path}: expected ${expected} matches, found ${matches}`);
+            }
+            source = source.split(before).join(after);
+            fs.writeFileSync(path, source);
+          };
+
+          replaceExactly(
+            'server/src/index.ts',
+            'getApiKeyStore().seedFromEnvironment();',
+            'await getApiKeyStore().seedFromEnvironmentDurable();',
+          );
+
+          replaceExactly(
+            'server/src/__tests__/securityHardening.test.ts',
+            'const issued = store.issue("my-api-key-1234567", {',
+            'const issued = await store.issueDurable("my-api-key-1234567", {',
+          );
+          replaceExactly(
+            'server/src/__tests__/securityHardening.test.ts',
+            'store.issue("array-header-api-key-123456", { label: "array-test" });',
+            'await store.issueDurable("array-header-api-key-123456", { label: "array-test" });',
+          );
+          NODE
+
+          node node_modules/prettier/bin/prettier.cjs --write \
+            server/src/index.ts \
+            server/src/__tests__/securityHardening.test.ts \
+            server/src/platform/security/ApiKeyStore.ts \
+            server/src/platform/security/__tests__/ApiKeyStore.test.ts
+          rm -f .tmp/pr83-api-key-caller-trigger
+
+      - name: Commit exact migration to PR head
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add -A
           git diff --cached --quiet && exit 0
-          git commit -m "chore(storage): apply exact preservation formatting"
-          git push origin HEAD:agent/data-201b-project-lifecycle-update-ack
+          git commit -m "fix(storage): await api key issuance callers"
+          git push origin HEAD:agent/data-201b-api-key-issuance-ack
