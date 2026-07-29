@@ -110,16 +110,6 @@
       "migrationTarget": "DATA-201B"
     },
     {
-      "key": "server/src/platform/projects/SaaSProjectRepository.ts#SaaSProjectRepository.delete#delete",
-      "path": "server/src/platform/projects/SaaSProjectRepository.ts",
-      "owner": "SaaSProjectRepository.delete",
-      "operation": "delete",
-      "expectedCalls": 1,
-      "classification": "internal-lifecycle-debt",
-      "reason": "Compatibility deletion remains available for bounded internal and legacy callers after request routes moved to deleteDurable.",
-      "migrationTarget": "DATA-201B"
-    },
-    {
       "key": "server/src/platform/projects/SaaSProjectRepository.ts#SaaSProjectRepository.update#set",
       "path": "server/src/platform/projects/SaaSProjectRepository.ts",
       "owner": "SaaSProjectRepository.update",

@@ -101,11 +101,6 @@ export class SaaSProjectRepository {
     return updated;
   }
 
-  /** Compatibility-only mutation for internal consumers not yet migrated. */
-  delete(projectId: string): boolean {
-    return this.storage.delete(this.collection, projectId);
-  }
-
   /** Request-safe delete that preserves cache state on rejection. */
   async deleteDurable(projectId: string): Promise<boolean> {
     return this.storage.deleteDurable(this.collection, projectId);
