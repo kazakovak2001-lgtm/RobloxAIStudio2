@@ -1,8 +1,5 @@
 import { describe, expect, it } from "vitest";
-import {
-  ArtifactStore,
-  type PipelineArtifact,
-} from "../ArtifactStore";
+import { ArtifactStore, type PipelineArtifact } from "../ArtifactStore";
 import {
   DurableStorageError,
   InMemoryStorageProvider,
