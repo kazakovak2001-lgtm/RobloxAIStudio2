@@ -1,0 +1,63 @@
+name: DATA-201B Project Lifecycle Update Migration
+
+on:
+  push:
+    branches:
+      - agent/data-201b-project-lifecycle-update-ack
+
+permissions:
+  contents: write
+
+jobs:
+  migrate-lifecycle-callers:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout branch
+        uses: actions/checkout@v4
+        with:
+          ref: agent/data-201b-project-lifecycle-update-ack
+          fetch-depth: 0
+
+      - name: Apply exact lifecycle caller migration
+        run: |
+          node <<'NODE'
+          const fs = require('node:fs');
+          const path = 'server/src/index.ts';
+          let source = fs.readFileSync(path, 'utf8');
+
+          const completedOld = `projectRepository.update(evt.projectId, {
+          status: "ready",
+          qualityScore: 100,
+        });`;
+          const completedNew = `await projectRepository.updateDurable(evt.projectId, {
+          status: "ready",
+          qualityScore: 100,
+        });`;
+          const failedOld = `projectRepository.update(evt.projectId, { status: "draft" });`;
+          const failedNew = `await projectRepository.updateDurable(evt.projectId, {
+          status: "draft",
+        });`;
+
+          if (!source.includes(completedOld)) {
+            throw new Error('Missing expected pipeline.completed project update');
+          }
+          if (!source.includes(failedOld)) {
+            throw new Error('Missing expected pipeline.failed project update');
+          }
+
+          source = source.replace(completedOld, completedNew).replace(failedOld, failedNew);
+          fs.writeFileSync(path, source);
+          NODE
+
+      - name: Remove temporary workflow
+        run: rm .github/workflows/data-201b-project-lifecycle-update-migration.yml
+
+      - name: Commit exact migration
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git diff --cached --quiet && exit 0
+          git commit -m "fix(storage): await project lifecycle updates"
+          git push origin HEAD:agent/data-201b-project-lifecycle-update-ack
