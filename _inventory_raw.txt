@@ -949,6 +949,7 @@ server/src/projects/repository/blueprint.repository.ts
 server/src/projects/repository/generationHistory.repository.ts
 server/src/projects/repository/inMemoryProject.repository.ts
 server/src/projects/repository/project.repository.ts
+server/src/projects/repository/storageBlueprint.repository.durability.test.ts
 server/src/projects/repository/storageBlueprint.repository.ts
 server/src/projects/services/blueprint.validator.ts
 server/src/projects/services/controller-secret-status.service.ts
