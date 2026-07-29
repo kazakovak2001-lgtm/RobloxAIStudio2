@@ -105,14 +105,10 @@ describe("platform user durable HTTP acknowledgement", () => {
     storage.rejectSet = true;
 
     await withServer(storage, user.id, async (baseUrl) => {
-      const result = await mutation(
-        `${baseUrl}/users/${user.id}`,
-        "PATCH",
-        {
-          email: "after@example.com",
-          displayName: "After",
-        },
-      );
+      const result = await mutation(`${baseUrl}/users/${user.id}`, "PATCH", {
+        email: "after@example.com",
+        displayName: "After",
+      });
 
       expect(result.status).toBe(503);
       expect(users.getById(user.id)).toEqual(user);
@@ -145,11 +141,9 @@ describe("platform user durable HTTP acknowledgement", () => {
     });
 
     await withServer(storage, user.id, async (baseUrl) => {
-      const result = await mutation(
-        `${baseUrl}/users/${user.id}`,
-        "PATCH",
-        { displayName: "Updated Owner" },
-      );
+      const result = await mutation(`${baseUrl}/users/${user.id}`, "PATCH", {
+        displayName: "Updated Owner",
+      });
 
       expect(result.status).toBe(200);
       expect(users.getById(user.id)?.displayName).toBe("Updated Owner");
