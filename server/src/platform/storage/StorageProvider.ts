@@ -17,6 +17,8 @@ export type DurableMutation =
       type: "delete";
       collection: string;
       id: string;
+      /** Fail the complete batch when the durable record was already consumed. */
+      requireExisting?: boolean;
     };
 
 export class DurableStorageError extends Error {
@@ -31,6 +33,19 @@ export class DurableStorageError extends Error {
     super(message);
     this.name = "DurableStorageError";
     this.cause = options?.cause;
+  }
+}
+
+export class DurableStorageConflictError extends DurableStorageError {
+  override readonly code = "DURABLE_STORAGE_CONFLICT";
+
+  constructor(
+    message: string,
+    readonly collection: string,
+    readonly id: string,
+  ) {
+    super(message, "batch");
+    this.name = "DurableStorageConflictError";
   }
 }
 
@@ -102,9 +117,16 @@ export class InMemoryStorageProvider implements StorageProvider {
       const collection = getStagedCollection(mutation.collection);
       if (mutation.type === "set") {
         collection.set(mutation.id, mutation.data);
-      } else {
-        collection.delete(mutation.id);
+        continue;
       }
+      if (mutation.requireExisting && !collection.has(mutation.id)) {
+        throw new DurableStorageConflictError(
+          `Required durable record is unavailable: ${mutation.collection}/${mutation.id}`,
+          mutation.collection,
+          mutation.id,
+        );
+      }
+      collection.delete(mutation.id);
     }
 
     for (const [name, collection] of staged) {
