@@ -49,27 +49,14 @@ jobs:
           text = once(text, "  const statements: string[] = [];\n  let database = new Map<string, unknown>();", "  const statements: string[] = [];\n  let database = new Map<string, unknown>();\n  let healthCheckIndex = 0;", "health counter")
           text = once(text, "    if (text === \"SELECT 1\") return { rows: [] };", "    if (text === \"SELECT 1\") {\n      healthCheckIndex += 1;\n      if (healthCheckIndex === options.rejectHealthCheckAt) {\n        throw new Error(\"injected health-check rejection\");\n      }\n      return { rows: [] };\n    }", "health rejection")
           text = once(text, "      availability: \"degraded\",\n      durability: \"durable\",\n      lastFailureAt: expect.any(String),", "      availability: \"available\",\n      durability: \"durable\",\n      lastFailureAt: expect.any(String),", "rollback status")
-          old_closed = '''  it("reports unavailable after a degraded provider is closed", async () => {
-            const { storage } = provider({ rejectBatchAt: 1 });
-            await storage.ready();
-            await expect(
-              storage.applyDurableBatch([
-                {
-                  operation: "set",
-                  collection: "projects",
-                  id: "project-1",
-                  data: { name: "Rejected" },
-                },
-              ]),
-            ).rejects.toBeInstanceOf(DurableStorageError);
-            expect(storage.getOperationalStatus().availability).toBe("degraded");
-            await storage.close();
-            expect(storage.getOperationalStatus()).toMatchObject({
-              availability: "unavailable",
-              durability: "durable",
-            });
-          });'''
-          new_closed = '''  it("recovers availability after a successful health probe", async () => {
+
+          start_marker = '  it("reports unavailable after a degraded provider is closed", async () => {'
+          end_marker = '\n});\n\ndescribe("InMemoryStorageProvider durable batches", () => {'
+          start = text.find(start_marker)
+          end = text.find(end_marker, start)
+          if start < 0 or end < 0:
+              raise SystemExit("closed and recovery tests: boundary not found")
+          replacement = '''  it("recovers availability after a successful health probe", async () => {
             const { storage } = provider({ rejectHealthCheckAt: 2 });
             await storage.ready();
 
@@ -96,7 +83,7 @@ jobs:
               durability: "durable",
             });
           });'''
-          text = once(text, old_closed, new_closed, "closed and recovery tests")
+          text = text[:start] + replacement + text[end:]
           tests.write_text(text)
           PY
 
