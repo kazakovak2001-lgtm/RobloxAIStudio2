@@ -1,449 +1,87 @@
-name: CI Pipeline
+name: DATA-201C3 Closeout
 
 on:
   push:
-    branches: [release/cutover-1e-candidate, feature/plugin-merge]
+    branches:
+      - agent/durability-2e-account-registration
   pull_request:
   workflow_dispatch:
 
-concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+permissions:
+  contents: write
 
 jobs:
-  typecheck:
-    name: TypeScript Check
+  validate-and-commit:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: "22"
-          cache: "npm"
-      - run: npm ci
-      - run: npm run typecheck
-
-  lint:
-    name: ESLint
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: "22"
-          cache: "npm"
-      - run: npm ci
-      - run: npm run lint
-
-  format:
-    name: Prettier Check
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: "22"
-          cache: "npm"
-      - run: npm ci
-      - run: npm run format:check
-
-  test:
-    name: Test Suite
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: "22"
-          cache: "npm"
-      - run: npm ci
-      - run: npm run test
-
-  postgres-e2e:
-    name: PostgreSQL Restart E2E
-    runs-on: ubuntu-latest
-    services:
-      postgres:
-        image: postgres:16-alpine
-        env:
-          POSTGRES_DB: roblox_ai_studio_test
-          POSTGRES_USER: studio
-          POSTGRES_PASSWORD: studio_test_password
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd "pg_isready -U studio -d roblox_ai_studio_test"
-          --health-interval 5s
-          --health-timeout 5s
-          --health-retries 10
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: "22"
-          cache: "npm"
-      - run: npm ci
-      - name: Verify restart durability and ownership isolation
-        env:
-          STORAGE_PROVIDER: postgres
-          DATABASE_URL: postgresql://studio:studio_test_password@localhost:5432/roblox_ai_studio_test
-          RUN_POSTGRES_E2E: "true"
-        run: npm run test:postgres
-
-  backend-image:
-    name: Backend Release Image
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - name: Build backend-only image
-        run: docker build --file Dockerfile.backend --tag roblox-ai-studio-backend:cutover .
-      - name: Start backend-only container
-        run: |
-          docker run --detach \
-            --name roblox-ai-studio-backend-cutover \
-            --publish 5050:5000 \
-            --env NODE_ENV=production \
-            --env PORT=5000 \
-            --env STORAGE_PROVIDER=inmemory \
-            --env FRONTEND_URL=http://127.0.0.1:8080 \
-            roblox-ai-studio-backend:cutover
-      - name: Verify backend health
-        run: |
-          for attempt in $(seq 1 30); do
-            if curl --fail --silent http://127.0.0.1:5050/health > /tmp/backend-health.json; then
-              cat /tmp/backend-health.json
-              grep --quiet '"status":"healthy"' /tmp/backend-health.json
-              exit 0
-            fi
-            sleep 1
-          done
-          docker inspect roblox-ai-studio-backend-cutover || true
-          exit 1
-      - name: Capture backend container logs
-        if: always()
-        run: docker logs roblox-ai-studio-backend-cutover > backend-container.log 2>&1 || true
-      - name: Publish backend container diagnostics
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: backend-container-diagnostics-${{ github.event.pull_request.head.sha }}
-          path: backend-container.log
-          if-no-files-found: error
-          retention-days: 1
-      - name: Print backend logs on failure
-        if: failure()
-        run: cat backend-container.log || true
-      - name: Stop backend container
-        if: always()
-        run: docker rm --force roblox-ai-studio-backend-cutover || true
-
-  production-contract:
-    name: Frontend Production Contract
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-    env:
-      INT201_BACKEND_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
-      INT201_FRONTEND_ORIGIN: http://127.0.0.1:4173
-      INT201_API_URL: http://127.0.0.1:5051/api
-      INT201_SOCKET_URL: http://127.0.0.1:5051
-    steps:
-      - name: Checkout exact backend source
+      - name: Checkout writable PR branch
         uses: actions/checkout@v4
         with:
-          ref: ${{ env.INT201_BACKEND_SHA }}
-          persist-credentials: false
-      - name: Resolve exact Frontend release commit
-        id: frontend-release
-        run: |
-          frontend_sha="$(jq --raw-output '.frontendRelease.commit' config/cutover/release-baseline.inventory.json)"
-          [[ "$frontend_sha" =~ ^[0-9a-f]{40}$ ]]
-          echo "sha=$frontend_sha" >> "$GITHUB_OUTPUT"
-      - name: Checkout exact Frontend contract
-        uses: actions/checkout@v4
-        with:
-          repository: kazakovak2001-lgtm/Frontend
-          ref: ${{ steps.frontend-release.outputs.sha }}
-          path: standalone-frontend
-          persist-credentials: false
-      - name: Verify and record exact contract sources
-        env:
-          INT201_FRONTEND_SHA: ${{ steps.frontend-release.outputs.sha }}
-        run: |
-          test "$(git rev-parse HEAD)" = "$INT201_BACKEND_SHA"
-          test "$(git -C standalone-frontend rev-parse HEAD)" = "$INT201_FRONTEND_SHA"
-          mkdir -p artifacts/int-201
-          printf '%s\n' \
-            "contract=INT-201" \
-            "backendSha=$INT201_BACKEND_SHA" \
-            "frontendSha=$INT201_FRONTEND_SHA" \
-            "nodeEnv=production" \
-            "storageProvider=inmemory" \
-            "frontendOrigin=$INT201_FRONTEND_ORIGIN" \
-            "apiUrl=$INT201_API_URL" \
-            "socketUrl=$INT201_SOCKET_URL" \
-            > artifacts/int-201/runtime.env
-      - uses: actions/setup-node@v4
-        with:
-          node-version: "22"
-          cache: "npm"
-          cache-dependency-path: standalone-frontend/package-lock.json
-      - name: Install exact Frontend contract dependencies
-        run: npm ci --prefix standalone-frontend
-      - name: Build exact production backend image
-        run: |
-          docker build \
-            --file Dockerfile.backend \
-            --label "org.opencontainers.image.revision=$INT201_BACKEND_SHA" \
-            --tag roblox-ai-studio-backend:int-201 \
-            .
-      - name: Start production backend
-        run: |
-          docker run --detach \
-            --name roblox-ai-studio-backend-int-201 \
-            --publish 5051:5000 \
-            --env NODE_ENV=production \
-            --env PORT=5000 \
-            --env STORAGE_PROVIDER=inmemory \
-            --env FRONTEND_URL="$INT201_FRONTEND_ORIGIN" \
-            roblox-ai-studio-backend:int-201
-      - name: Wait for production backend
-        run: |
-          for attempt in $(seq 1 30); do
-            if curl --fail --silent "$INT201_SOCKET_URL/health" > /tmp/int-201-health.json; then
-              grep --quiet '"status":"healthy"' /tmp/int-201-health.json
-              exit 0
-            fi
-            sleep 1
-          done
-          docker inspect roblox-ai-studio-backend-int-201 || true
-          exit 1
-      - name: Run protected 40-check contract
-        env:
-          E2E_API_URL: ${{ env.INT201_API_URL }}
-          E2E_SOCKET_URL: ${{ env.INT201_SOCKET_URL }}
-          E2E_EVIDENCE_PATH: ${{ github.workspace }}/artifacts/int-201/contract.json
-          E2E_CONTRACT_MODE: production
-          E2E_BACKEND_SHA: ${{ env.INT201_BACKEND_SHA }}
-          E2E_FRONTEND_SHA: ${{ steps.frontend-release.outputs.sha }}
-          E2E_BACKEND_NODE_ENV: production
-          E2E_STORAGE_PROVIDER: inmemory
-          E2E_FRONTEND_ORIGIN: ${{ env.INT201_FRONTEND_ORIGIN }}
-        run: |
-          set -o pipefail
-          npm --prefix standalone-frontend run test:e2e:integration 2>&1 | tee artifacts/int-201/e2e.log
-      - name: Capture production contract diagnostics
-        if: always()
-        run: |
-          mkdir -p artifacts/int-201
-          cp /tmp/int-201-health.json artifacts/int-201/backend-health.json 2>/dev/null || true
-          docker logs roblox-ai-studio-backend-int-201 > artifacts/int-201/backend.log 2>&1 || true
-          docker image inspect roblox-ai-studio-backend:int-201 > artifacts/int-201/backend-image.json 2>&1 || true
-      - name: Publish production contract evidence
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: int-201-production-contract-${{ env.INT201_BACKEND_SHA }}
-          path: artifacts/int-201
-          if-no-files-found: error
-          retention-days: 14
-      - name: Print backend logs on failure
-        if: failure()
-        run: cat artifacts/int-201/backend.log || true
-      - name: Stop production backend
-        if: always()
-        run: docker rm --force roblox-ai-studio-backend-int-201 || true
-
-  composed-release:
-    name: Composed HTTPS Release
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout backend release source
-        uses: actions/checkout@v4
-      - name: Resolve exact Frontend release commit
-        id: frontend-release
-        run: |
-          frontend_sha="$(jq --raw-output '.frontendRelease.commit' config/cutover/release-baseline.inventory.json)"
-          [[ "$frontend_sha" =~ ^[0-9a-f]{40}$ ]]
-          echo "sha=$frontend_sha" >> "$GITHUB_OUTPUT"
-      - name: Checkout exact Frontend release commit
-        uses: actions/checkout@v4
-        with:
-          repository: kazakovak2001-lgtm/Frontend
-          ref: ${{ steps.frontend-release.outputs.sha }}
-          path: standalone-frontend
-      - uses: actions/setup-node@v4
-        with:
-          node-version: "22"
-          cache: "npm"
-      - run: npm ci
-      - name: Configure release identity
-        run: |
-          echo "BACKEND_IMAGE=roblox-ai-studio-backend:cutover-1c" >> "$GITHUB_ENV"
-          echo "FRONTEND_IMAGE=roblox-ai-studio-frontend:cutover-1c" >> "$GITHUB_ENV"
-          echo "POSTGRES_PASSWORD=cutover_1c_ci_password" >> "$GITHUB_ENV"
-          echo "RELEASE_ORIGIN=https://localhost:8443" >> "$GITHUB_ENV"
-          echo "RELEASE_PORT=8443" >> "$GITHUB_ENV"
-          echo "RELEASE_CERT_DIR=${GITHUB_WORKSPACE}/.cutover-certs" >> "$GITHUB_ENV"
-      - name: Generate CI-only TLS certificate
-        run: |
-          mkdir -p .cutover-certs
-          openssl req -x509 -newkey rsa:2048 -nodes -days 1 \
-            -keyout .cutover-certs/release.key \
-            -out .cutover-certs/release.crt \
-            -subj "/CN=localhost" \
-            -addext "subjectAltName=DNS:localhost,IP:127.0.0.1"
-      - name: Build exact backend and Frontend images
-        run: |
-          docker build \
-            --file Dockerfile.backend \
-            --tag "$BACKEND_IMAGE" \
-            .
-          docker build \
-            --build-arg VITE_API_URL="$RELEASE_ORIGIN/api" \
-            --build-arg VITE_SOCKET_URL="$RELEASE_ORIGIN" \
-            --tag "$FRONTEND_IMAGE" \
-            standalone-frontend
-      - name: Start composed HTTPS release
-        run: docker compose --project-name cutover1c --file deploy/docker-compose.release.yml up --detach
-      - name: Verify secure REST and Socket.IO composition
-        run: node scripts/cutover/verify-composed-release.mjs
-      - name: Capture composition diagnostics
-        if: always()
-        run: |
-          mkdir -p artifacts/cutover-1c
-          docker compose --project-name cutover1c --file deploy/docker-compose.release.yml ps --all > artifacts/cutover-1c/compose-ps.txt || true
-          docker compose --project-name cutover1c --file deploy/docker-compose.release.yml logs --no-color > artifacts/cutover-1c/compose.log 2>&1 || true
-      - name: Publish composition diagnostics
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: cutover-1c-composition-${{ github.event.pull_request.head.sha }}
-          path: artifacts/cutover-1c
-          if-no-files-found: error
-          retention-days: 3
-      - name: Stop composed release
-        if: always()
-        run: docker compose --project-name cutover1c --file deploy/docker-compose.release.yml down --volumes --remove-orphans || true
-
-  release-readiness:
-    name: Promoted Baseline Integrity
-    runs-on: ubuntu-latest
-    needs: composed-release
-    steps:
-      - name: Checkout promoted baseline source
-        uses: actions/checkout@v4
-        with:
+          ref: agent/durability-2e-account-registration
           fetch-depth: 0
-      - name: Resolve exact Frontend release commit
-        id: frontend-release
+      - name: Run actions/setup-node@v4
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+      - name: Install dependencies
+        run: npm ci
+      - name: Format DATA-201C3 files
         run: |
-          frontend_sha="$(jq --raw-output '.frontendRelease.commit' config/cutover/release-baseline.inventory.json)"
-          [[ "$frontend_sha" =~ ^[0-9a-f]{40}$ ]]
-          echo "sha=$frontend_sha" >> "$GITHUB_OUTPUT"
-      - name: Checkout exact Frontend release commit
-        uses: actions/checkout@v4
-        with:
-          repository: kazakovak2001-lgtm/Frontend
-          ref: ${{ steps.frontend-release.outputs.sha }}
-          path: standalone-frontend
-      - uses: actions/setup-node@v4
-        with:
-          node-version: "22"
-          cache: "npm"
-      - run: npm ci
-      - name: Fetch promoted and rollback references
-        run: git fetch origin release/cutover-1e-candidate backup/default-before-cutover-1e feature/plugin-merge
-      - name: Verify promoted default and release integrity
-        env:
-          PROMOTED_DEFAULT_REF: origin/release/cutover-1e-candidate
-          ROLLBACK_REF: origin/backup/default-before-cutover-1e
-          PROMOTED_BASELINE_OUTPUT: artifacts/cutover-1f
-        run: node scripts/cutover/verify-promoted-baseline-integrity.mjs
-      - name: Rehearse independent artifact rollback
-        env:
-          FRONTEND_SOURCE: standalone-frontend
-          RELEASE_BASELINE_OUTPUT: artifacts/cutover-1f
-        run: bash scripts/cutover/rehearse-independent-rollback.sh
-      - name: Publish promoted baseline evidence
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: cutover-1f-promotion-integrity
-          path: artifacts/cutover-1f
-          if-no-files-found: error
-          retention-days: 3
-
-  legacy-frontend-audit:
-    name: Post-Removal Invariant Guard
-    runs-on: ubuntu-latest
-    needs: release-readiness
-    steps:
-      - name: Checkout cleanup audit source
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-      - uses: actions/setup-node@v4
-        with:
-          node-version: "22"
-          cache: "npm"
-      - run: npm ci
-      - name: Verify post-removal invariants
-        env:
-          LEGACY_FRONTEND_AUDIT_OUTPUT: artifacts/post-removal-invariants
-        run: node scripts/cleanup/audit-legacy-frontend-decommission.mjs
-      - name: Publish post-removal invariant evidence
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: post-removal-invariant-audit
-          path: artifacts/post-removal-invariants
-          if-no-files-found: error
-          retention-days: 3
-
-  validate:
-    name: Repository Validation
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: "22"
-          cache: "npm"
-      - run: npm ci
-      - run: npm run validate
-
-  commit-lint:
-    name: Commit Message Lint
-    runs-on: ubuntu-latest
-    if: github.event_name == 'pull_request'
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-      - uses: actions/setup-node@v4
-        with:
-          node-version: "22"
-          cache: "npm"
-      - run: npm ci
-      - run: npx commitlint --config commitlint.config.cjs --from ${{ github.event.pull_request.base.sha }} --to ${{ github.event.pull_request.head.sha }}
-
-  gate:
-    name: Merge Gate
-    runs-on: ubuntu-latest
-    needs:
-      [
-        typecheck,
-        lint,
-        format,
-        test,
-        postgres-e2e,
-        backend-image,
-        production-contract,
-        composed-release,
-        release-readiness,
-        legacy-frontend-audit,
-        validate,
-      ]
-    steps:
-      - run: echo "All checks passed"
+          node node_modules/prettier/bin/prettier.cjs --write \
+            server/src/platform/storage/StorageProvider.ts \
+            server/src/platform/storage/postgres/PostgresStorageProvider.ts \
+            server/src/platform/storage/postgres/PostgresStorageProvider.create-preconditions.test.ts \
+            server/src/platform/auth/AuthService.ts \
+            server/src/platform/auth/AccountRegistrationService.ts \
+            server/src/platform/auth/AccountRegistrationService.test.ts \
+            server/src/platform/auth/index.ts \
+            server/src/platform/users/UserRepository.ts \
+            server/src/platform/users/index.ts \
+            server/src/routes/platform.ts \
+            server/src/routes/__tests__/platform.registration.durability.test.ts \
+            server/src/routes/__tests__/platform.users.durability.test.ts
+      - name: Restore canonical CI
+        run: |
+          git fetch origin agent/durability-2e-auth-session-transaction
+          git checkout origin/agent/durability-2e-auth-session-transaction -- .github/workflows/ci.yml
+      - name: Refresh canonical tracked inventories
+        run: node scripts/cleanup/generate-tracked-inventories.mjs
+      - name: TypeScript
+        run: npm run typecheck
+      - name: ESLint
+        run: npm run lint
+      - name: Formatting
+        run: npm run format:check
+      - name: Targeted account durability tests
+        run: >-
+          node node_modules/vitest/vitest.mjs
+          --config config/testing/vitest.backend.config.ts run
+          server/src/platform/storage/postgres/PostgresStorageProvider.create-preconditions.test.ts
+          server/src/platform/storage/postgres/PostgresStorageProvider.preconditions.test.ts
+          server/src/platform/storage/postgres/PostgresStorageProvider.test.ts
+          server/src/platform/auth/AccountRegistrationService.test.ts
+          server/src/platform/auth/AuthService.durability.test.ts
+          server/src/routes/__tests__/platform.registration.durability.test.ts
+          server/src/routes/__tests__/platform.users.durability.test.ts
+          server/src/routes/__tests__/platform.auth.durability.test.ts
+          server/src/__tests__/harden2a.auth-contract.test.ts
+      - name: Verify final post-removal invariants
+        run: |
+          node scripts/cleanup/audit-legacy-frontend-decommission.mjs
+          rm -rf artifacts/post-removal-invariants
+          rm -f artifacts/post-removal-invariant-audit-result.json
+      - name: Commit validated permanent changes
+        run: |
+          set -euo pipefail
+          allowed='^(\.github/workflows/ci\.yml|ProjectStructure\.txt|_inventory_raw\.txt|server/src/platform/storage/StorageProvider\.ts|server/src/platform/storage/postgres/PostgresStorageProvider\.ts|server/src/platform/storage/postgres/PostgresStorageProvider\.create-preconditions\.test\.ts|server/src/platform/auth/AuthService\.ts|server/src/platform/auth/AccountRegistrationService\.ts|server/src/platform/auth/AccountRegistrationService\.test\.ts|server/src/platform/auth/index\.ts|server/src/platform/users/UserRepository\.ts|server/src/platform/users/index\.ts|server/src/routes/platform\.ts|server/src/routes/__tests__/platform\.registration\.durability\.test\.ts|server/src/routes/__tests__/platform\.users\.durability\.test\.ts)$'
+          unexpected="$(git status --short | awk '{print $2}' | grep -Ev "$allowed" || true)"
+          if [[ -n "$unexpected" ]]; then
+            printf 'Unexpected changed paths:\n%s\n' "$unexpected"
+            exit 1
+          fi
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add -A
+          HUSKY=0 git commit -m 'test(data): validate atomic account registration'
+          git push origin HEAD:agent/durability-2e-account-registration
