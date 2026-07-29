@@ -48,7 +48,11 @@ export class DurableStorageConflictError extends DurableStorageError {
     readonly id: string,
     options?: { cause?: unknown },
   ) {
-    super(`Durable record already exists: ${collection}/${id}`, "batch", options);
+    super(
+      `Durable record already exists: ${collection}/${id}`,
+      "batch",
+      options,
+    );
     this.name = "DurableStorageConflictError";
   }
 }
