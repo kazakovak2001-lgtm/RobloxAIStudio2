@@ -6,6 +6,7 @@ import {
   DurableStorageError,
   InMemoryStorageProvider,
   type DurableMutation,
+  type DurableMutationResult,
 } from "../../platform/storage/StorageProvider";
 import { ChatPersistenceService } from "../../services/ChatPersistenceService";
 import { createChatPersistenceRouter } from "../chatPersistence";
@@ -15,14 +16,14 @@ class ControlledBatchStorage extends InMemoryStorageProvider {
   rejectBatch = false;
   batchCalls = 0;
 
-  override async mutateDurably(
+  override async applyDurableBatch(
     mutations: readonly DurableMutation[],
-  ): Promise<void> {
+  ): Promise<readonly DurableMutationResult[]> {
     this.batchCalls += 1;
     if (this.rejectBatch) {
-      throw new DurableStorageError("injected batch rejection", "batch");
+      throw new DurableStorageError("injected batch rejection", "transaction");
     }
-    await super.applyDurableBatch(mutations);
+    return super.applyDurableBatch(mutations);
   }
 }
 
@@ -104,7 +105,7 @@ describe("chat persistence durable transaction boundary", () => {
     const storage = new ControlledBatchStorage();
 
     await withServer(storage, async (baseUrl, service) => {
-      const first = service.createMessage({
+      const first = await service.createMessage({
         projectId: "project-1",
         role: "user",
         content: "Committed first message",
@@ -127,12 +128,12 @@ describe("chat persistence durable transaction boundary", () => {
     const storage = new ControlledBatchStorage();
 
     await withServer(storage, async (baseUrl, service) => {
-      const first = service.createMessage({
+      const first = await service.createMessage({
         projectId: "project-1",
         role: "user",
         content: "Keep this conversation",
       });
-      service.createMessage({
+      await service.createMessage({
         conversationId: first.conversationId,
         role: "assistant",
         content: "Keep this reply",
