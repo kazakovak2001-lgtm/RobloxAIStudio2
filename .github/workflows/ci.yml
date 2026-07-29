@@ -43,238 +43,28 @@ jobs:
             fs.writeFileSync(path, source);
           };
 
-          replaceExactly(
-            'server/src/routes/concept.ts',
-            'import { Router } from "express";',
-            'import { Router, type Response } from "express";',
-          );
-          replaceExactly(
-            'server/src/routes/concept.ts',
-            'import type { GenerationHistoryRepository } from "../projects/repository/generationHistory.repository";',
-            'import type { GenerationHistoryRepository } from "../projects/repository/generationHistory.repository";\nimport { DurableStorageError } from "../platform/storage/StorageProvider";',
-          );
+          const concept = 'server/src/routes/concept.ts';
+          replaceExactly(concept, 'import { Router } from "express";', 'import { Router, type Request, type RequestHandler, type Response } from "express";');
+          replaceExactly(concept, 'import type { GenerationHistoryRepository } from "../projects/repository/generationHistory.repository";', 'import type { GenerationHistoryRepository } from "../projects/repository/generationHistory.repository";\nimport { DurableStorageError } from "../platform/storage/StorageProvider";');
+          replaceExactly(concept, 'router.post("/experience/artifact/:artifactId/approve", (req, res) => {', 'router.post(\n    "/experience/artifact/:artifactId/approve",\n    asyncArtifactMutation(async (req, res) => {');
+          replaceExactly(concept, 'router.post("/experience/artifact/:artifactId/reject", (req, res) => {', 'router.post(\n    "/experience/artifact/:artifactId/reject",\n    asyncArtifactMutation(async (req, res) => {');
+          replaceExactly(concept, 'router.post("/experience/artifact/:artifactId/comment", (req, res) => {', 'router.post(\n    "/experience/artifact/:artifactId/comment",\n    asyncArtifactMutation(async (req, res) => {');
+          replaceExactly(concept, 'router.post("/experience/artifact/:artifactId/edit", (req, res) => {', 'router.post(\n    "/experience/artifact/:artifactId/edit",\n    asyncArtifactMutation(async (req, res) => {');
+          replaceExactly(concept, 'const result = pipelineEngine.approveArtifact(', 'const result = await pipelineEngine.approveArtifact(');
+          replaceExactly(concept, 'const result = pipelineEngine.rejectArtifact(', 'const result = await pipelineEngine.rejectArtifact(');
+          replaceExactly(concept, 'const result = pipelineEngine.commentArtifact(', 'const result = await pipelineEngine.commentArtifact(');
+          replaceExactly(concept, 'const result = pipelineEngine.editArtifact(', 'const result = await pipelineEngine.editArtifact(');
+          replaceExactly(concept, '    res.json({\n      success: true,\n      data: { id: result.id, reviewStatus: result.reviewStatus },\n    });\n  });', '    res.json({\n      success: true,\n      data: { id: result.id, reviewStatus: result.reviewStatus },\n    });\n    }),\n  );', 2);
+          replaceExactly(concept, '    res.json({\n      success: true,\n      data: { id: result.id, reviewComment: result.reviewComment },\n    });\n  });', '    res.json({\n      success: true,\n      data: { id: result.id, reviewComment: result.reviewComment },\n    });\n    }),\n  );');
+          replaceExactly(concept, '    res.json({\n      success: true,\n      data: {\n        id: result.id,\n        reviewStatus: result.reviewStatus,\n        sizeBytes: result.sizeBytes,\n      },\n    });\n  });', '    res.json({\n      success: true,\n      data: {\n        id: result.id,\n        reviewStatus: result.reviewStatus,\n        sizeBytes: result.sizeBytes,\n      },\n    });\n    }),\n  );');
 
-          const oldRoutes = `  // POST /api/concept/experience/artifact/:artifactId/approve
-  router.post("/experience/artifact/:artifactId/approve", (req, res) => {
-    const { reviewedBy } = req.body;
-    const result = pipelineEngine.approveArtifact(
-      req.params.artifactId,
-      reviewedBy ?? "user",
-    );
-    if (!result) {
-      res.status(404).json({ success: false, error: "Artifact not found" });
-      return;
-    }
-    res.json({
-      success: true,
-      data: { id: result.id, reviewStatus: result.reviewStatus },
-    });
-  });
+          const helperBefore = '  return router;\n}\n\nfunction extractTitle(description: string): string {';
+          const helperAfter = '  return router;\n}\n\nfunction asyncArtifactMutation(\n  handler: (req: Request, res: Response) => Promise<void>,\n): RequestHandler {\n  return (req, res) => {\n    void handler(req, res).catch((error: unknown) => {\n      handleArtifactMutationError(error, res);\n    });\n  };\n}\n\nfunction handleArtifactMutationError(error: unknown, res: Response): void {\n  if (error instanceof DurableStorageError) {\n    console.error("[concept] artifact mutation rejected", error);\n    res.status(503).json({\n      success: false,\n      error: "Durable storage is temporarily unavailable",\n    });\n    return;\n  }\n\n  console.error("[concept] artifact mutation failed", error);\n  res.status(500).json({ success: false, error: "Artifact mutation failed" });\n}\n\nfunction extractTitle(description: string): string {';
+          replaceExactly(concept, helperBefore, helperAfter);
 
-  // POST /api/concept/experience/artifact/:artifactId/reject
-  router.post("/experience/artifact/:artifactId/reject", (req, res) => {
-    const { reviewedBy, comment } = req.body;
-    const result = pipelineEngine.rejectArtifact(
-      req.params.artifactId,
-      reviewedBy ?? "user",
-      comment,
-    );
-    if (!result) {
-      res.status(404).json({ success: false, error: "Artifact not found" });
-      return;
-    }
-    res.json({
-      success: true,
-      data: { id: result.id, reviewStatus: result.reviewStatus },
-    });
-  });
-
-  // POST /api/concept/experience/artifact/:artifactId/comment
-  router.post("/experience/artifact/:artifactId/comment", (req, res) => {
-    const { reviewedBy, comment } = req.body;
-    if (!comment || typeof comment !== "string") {
-      res.status(400).json({ success: false, error: "comment is required" });
-      return;
-    }
-    const result = pipelineEngine.commentArtifact(
-      req.params.artifactId,
-      reviewedBy ?? "user",
-      comment,
-    );
-    if (!result) {
-      res.status(404).json({ success: false, error: "Artifact not found" });
-      return;
-    }
-    res.json({
-      success: true,
-      data: { id: result.id, reviewComment: result.reviewComment },
-    });
-  });
-
-  // POST /api/concept/experience/artifact/:artifactId/edit
-  router.post("/experience/artifact/:artifactId/edit", (req, res) => {
-    const { content, editedBy } = req.body;
-    if (content === undefined) {
-      res.status(400).json({ success: false, error: "content is required" });
-      return;
-    }
-    const result = pipelineEngine.editArtifact(
-      req.params.artifactId,
-      content,
-      editedBy ?? "user",
-    );
-    if (!result) {
-      res.status(404).json({ success: false, error: "Artifact not found" });
-      return;
-    }
-    res.json({
-      success: true,
-      data: {
-        id: result.id,
-        reviewStatus: result.reviewStatus,
-        sizeBytes: result.sizeBytes,
-      },
-    });
-  });`;
-
-          const newRoutes = `  // POST /api/concept/experience/artifact/:artifactId/approve
-  router.post("/experience/artifact/:artifactId/approve", async (req, res) => {
-    try {
-      const { reviewedBy } = req.body;
-      const result = await pipelineEngine.approveArtifact(
-        req.params.artifactId,
-        reviewedBy ?? "user",
-      );
-      if (!result) {
-        res.status(404).json({ success: false, error: "Artifact not found" });
-        return;
-      }
-      res.json({
-        success: true,
-        data: { id: result.id, reviewStatus: result.reviewStatus },
-      });
-    } catch (error) {
-      handleArtifactMutationError(error, res);
-    }
-  });
-
-  // POST /api/concept/experience/artifact/:artifactId/reject
-  router.post("/experience/artifact/:artifactId/reject", async (req, res) => {
-    try {
-      const { reviewedBy, comment } = req.body;
-      const result = await pipelineEngine.rejectArtifact(
-        req.params.artifactId,
-        reviewedBy ?? "user",
-        comment,
-      );
-      if (!result) {
-        res.status(404).json({ success: false, error: "Artifact not found" });
-        return;
-      }
-      res.json({
-        success: true,
-        data: { id: result.id, reviewStatus: result.reviewStatus },
-      });
-    } catch (error) {
-      handleArtifactMutationError(error, res);
-    }
-  });
-
-  // POST /api/concept/experience/artifact/:artifactId/comment
-  router.post("/experience/artifact/:artifactId/comment", async (req, res) => {
-    const { reviewedBy, comment } = req.body;
-    if (!comment || typeof comment !== "string") {
-      res.status(400).json({ success: false, error: "comment is required" });
-      return;
-    }
-
-    try {
-      const result = await pipelineEngine.commentArtifact(
-        req.params.artifactId,
-        reviewedBy ?? "user",
-        comment,
-      );
-      if (!result) {
-        res.status(404).json({ success: false, error: "Artifact not found" });
-        return;
-      }
-      res.json({
-        success: true,
-        data: { id: result.id, reviewComment: result.reviewComment },
-      });
-    } catch (error) {
-      handleArtifactMutationError(error, res);
-    }
-  });
-
-  // POST /api/concept/experience/artifact/:artifactId/edit
-  router.post("/experience/artifact/:artifactId/edit", async (req, res) => {
-    const { content, editedBy } = req.body;
-    if (content === undefined) {
-      res.status(400).json({ success: false, error: "content is required" });
-      return;
-    }
-
-    try {
-      const result = await pipelineEngine.editArtifact(
-        req.params.artifactId,
-        content,
-        editedBy ?? "user",
-      );
-      if (!result) {
-        res.status(404).json({ success: false, error: "Artifact not found" });
-        return;
-      }
-      res.json({
-        success: true,
-        data: {
-          id: result.id,
-          reviewStatus: result.reviewStatus,
-          sizeBytes: result.sizeBytes,
-        },
-      });
-    } catch (error) {
-      handleArtifactMutationError(error, res);
-    }
-  });`;
-
-          replaceExactly('server/src/routes/concept.ts', oldRoutes, newRoutes);
-          replaceExactly(
-            'server/src/routes/concept.ts',
-            '  return router;\n}\n\nfunction extractTitle(description: string): string {',
-            `  return router;
-}
-
-function handleArtifactMutationError(error: unknown, res: Response): void {
-  if (error instanceof DurableStorageError) {
-    console.error("[concept] artifact mutation rejected", error);
-    res.status(503).json({
-      success: false,
-      error: "Durable storage is temporarily unavailable",
-    });
-    return;
-  }
-
-  console.error("[concept] artifact mutation failed", error);
-  res.status(500).json({
-    success: false,
-    error: "Artifact mutation failed",
-  });
-}
-
-function extractTitle(description: string): string {`,
-          );
-
-          replaceExactly(
-            'server/src/studio/artifacts/GenerationArtifactRecorder.ts',
-            '  record(executionId: string, nodes: readonly TaskNode[]): PipelineArtifact[] {',
-            '  async record(\n    executionId: string,\n    nodes: readonly TaskNode[],\n  ): Promise<PipelineArtifact[]> {',
-          );
-          replaceExactly(
-            'server/src/studio/artifacts/GenerationArtifactRecorder.ts',
-            '        this.artifactStore.store(executionId, stage, node.agent, content),',
-            '        await this.artifactStore.store(\n          executionId,\n          stage,\n          node.agent,\n          content,\n        ),',
-          );
+          const recorder = 'server/src/studio/artifacts/GenerationArtifactRecorder.ts';
+          replaceExactly(recorder, '  record(executionId: string, nodes: readonly TaskNode[]): PipelineArtifact[] {', '  async record(\n    executionId: string,\n    nodes: readonly TaskNode[],\n  ): Promise<PipelineArtifact[]> {');
+          replaceExactly(recorder, '        this.artifactStore.store(executionId, stage, node.agent, content),', '        await this.artifactStore.store(\n          executionId,\n          stage,\n          node.agent,\n          content,\n        ),');
           NODE
 
           node node_modules/prettier/bin/prettier.cjs --write \
