@@ -39,5 +39,5 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add -A
           git diff --cached --quiet && exit 0
-          git commit -m "style(storage): apply exact preservation formatting"
+          git commit -m "chore(storage): apply exact preservation formatting"
           git push origin HEAD:agent/data-201b-project-lifecycle-update-ack
