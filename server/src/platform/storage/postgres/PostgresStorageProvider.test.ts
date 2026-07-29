@@ -86,6 +86,45 @@ describe("PostgresStorageProvider awaited mutations", () => {
     expect(storage.get("projects", "project-1")).toEqual(previous);
   });
 
+  it("does not publish a pending write before database acknowledgement", async () => {
+    let acknowledgeInsert: (() => void) | undefined;
+    const insertAcknowledged = new Promise<void>((resolve) => {
+      acknowledgeInsert = resolve;
+    });
+    const pool: QueryablePool = {
+      async query(text: string) {
+        if (text.includes("SELECT collection, id, data")) return { rows: [] };
+        if (text.includes("INSERT INTO")) await insertAcknowledged;
+        return { rows: [] };
+      },
+      async end() {},
+    };
+    const storage = new PostgresStorageProvider(
+      {
+        connectionString: "postgresql://test",
+        poolSize: 1,
+        poolTimeout: 1000,
+        strict: true,
+      },
+      { createPool: () => pool },
+    );
+    await storage.ready();
+
+    const mutation = storage.setDurable("projects", "project-pending", {
+      name: "Pending",
+    });
+    await Promise.resolve();
+    await Promise.resolve();
+
+    expect(storage.get("projects", "project-pending")).toBeNull();
+
+    acknowledgeInsert?.();
+    await mutation;
+    expect(storage.get("projects", "project-pending")).toEqual({
+      name: "Pending",
+    });
+  });
+
   it("publishes successful mutations only after acknowledgement", async () => {
     const storage = provider();
     await storage.ready();
