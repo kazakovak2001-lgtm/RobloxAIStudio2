@@ -1,4 +1,4 @@
-name: Temporary Chat Message Transaction Formatting
+name: Temporary Chat Deletion Transaction Formatting
 
 on:
   pull_request:
@@ -9,14 +9,14 @@ permissions:
   contents: write
 
 jobs:
-  format-chat-transaction:
-    if: github.head_ref == 'agent/data-201c-chat-message-transaction'
+  format-chat-delete-transaction:
+    if: github.head_ref == 'agent/data-201c-chat-delete-transaction'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout PR head branch
         uses: actions/checkout@v4
         with:
-          ref: agent/data-201c-chat-message-transaction
+          ref: agent/data-201c-chat-delete-transaction
           fetch-depth: 0
 
       - name: Set up Node
@@ -28,13 +28,13 @@ jobs:
       - name: Install locked dependencies
         run: npm ci
 
-      - name: Format chat transaction and refresh inventories
+      - name: Format chat deletion and refresh inventories
         run: |
-          git rm .tmp/chat-message-transaction-trigger
-          git add server/src/services/ChatPersistenceService.durability.test.ts
+          git rm .tmp/chat-delete-transaction-trigger
+          git add server/src/services/ChatPersistenceService.delete.durability.test.ts
           node node_modules/prettier/bin/prettier.cjs --write \
             server/src/services/ChatPersistenceService.ts \
-            server/src/services/ChatPersistenceService.durability.test.ts \
+            server/src/services/ChatPersistenceService.delete.durability.test.ts \
             server/src/routes/chatPersistence.ts \
             config/durability/compatibility-write-inventory.json
           node scripts/cleanup/generate-tracked-inventories.mjs
@@ -45,5 +45,5 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add -A
           git diff --cached --quiet && exit 0
-          git commit -m "feat(chat): finalize message transaction"
-          git push origin HEAD:agent/data-201c-chat-message-transaction
+          git commit -m "feat(chat): finalize deletion transaction"
+          git push origin HEAD:agent/data-201c-chat-delete-transaction
