@@ -36,21 +36,23 @@ describe("Platform Layer", () => {
       expect(updated!.limits.maxProjects).toBe(50);
     });
 
-    it("tracks generation usage", () => {
+    it("tracks generation usage", async () => {
       const user = repo.create({ email: "u@v.com", displayName: "U" });
-      repo.recordGeneration(user.id, 1000);
-      repo.recordGeneration(user.id, 2000);
+      await repo.recordGenerationDurable(user.id, 1000);
+      await repo.recordGenerationDurable(user.id, 2000);
       const fetched = repo.getById(user.id);
       expect(fetched!.usage.generationsTotal).toBe(2);
       expect(fetched!.usage.tokensUsedTotal).toBe(3000);
     });
 
-    it("enforces daily generation limit", () => {
+    it("enforces daily generation limit", async () => {
       const user = repo.create({
         email: "limit@test.com",
         displayName: "Limit",
       });
-      for (let i = 0; i < 5; i++) repo.recordGeneration(user.id, 100);
+      for (let i = 0; i < 5; i++) {
+        await repo.recordGenerationDurable(user.id, 100);
+      }
       const check = repo.checkLimits(user.id);
       expect(check.allowed).toBe(false);
       expect(check.reason).toContain("limit");
