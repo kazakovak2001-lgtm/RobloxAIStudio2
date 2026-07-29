@@ -8,6 +8,7 @@ import { randomBytes, randomUUID, createHash, timingSafeEqual } from "crypto";
 import bcrypt from "bcryptjs";
 import {
   DurableStorageConflictError,
+  DurableStoragePreconditionError,
   InMemoryStorageProvider,
   type DurableMutation,
   type StorageProvider,
@@ -21,8 +22,8 @@ import type {
 } from "./AuthTypes";
 import { ROLE_PERMISSIONS } from "./AuthTypes";
 
-const TOKEN_EXPIRY_MS = 24 * 60 * 60 * 1000; // 24h
-const REFRESH_EXPIRY_MS = 7 * 24 * 60 * 60 * 1000; // 7d
+const TOKEN_EXPIRY_MS = 24 * 60 * 60 * 1000;
+const REFRESH_EXPIRY_MS = 7 * 24 * 60 * 60 * 1000;
 const BCRYPT_COST_FACTOR = 12;
 const CREDENTIALS_COLLECTION = "auth_credentials";
 const SESSIONS_COLLECTION = "auth_sessions";
@@ -60,8 +61,6 @@ export class AuthService {
   constructor(
     private readonly storage: StorageProvider = new InMemoryStorageProvider(),
   ) {
-    // In-memory and already-hydrated providers migrate immediately. PostgreSQL
-    // is migrated a second time after its cache is hydrated during bootstrap.
     this.migrateLegacyRefreshCredentials();
   }
 
@@ -94,10 +93,6 @@ export class AuthService {
     return true;
   }
 
-  /**
-   * Atomically creates credentials, role, initial access session and refresh
-   * index together with caller-supplied registration records such as the user.
-   */
   async registerAndIssueSessionDurably(
     email: string,
     password: string,
@@ -176,23 +171,16 @@ export class AuthService {
       CREDENTIALS_COLLECTION,
       normalizedEmail,
     );
-    if (!creds) {
-      return { success: false, error: "Invalid credentials" };
-    }
-    if (creds.userId !== userId) {
+    if (!creds || creds.userId !== userId) {
       return { success: false, error: "Invalid credentials" };
     }
 
-    // Migration path: if stored hash is legacy SHA-256 (64 hex chars, no bcrypt prefix)
     const isLegacySha256 = this.isLegacyHash(creds.passwordHash);
-
     let passwordValid = false;
     if (isLegacySha256) {
-      // Compare using SHA-256 for legacy hashes
       const sha256Hash = createHash("sha256").update(password).digest("hex");
       passwordValid = sha256Hash === creds.passwordHash;
       if (passwordValid) {
-        // Transparent upgrade: re-hash with bcrypt
         this.storage.set<StoredCredentials>(
           CREDENTIALS_COLLECTION,
           normalizedEmail,
@@ -203,7 +191,6 @@ export class AuthService {
         );
       }
     } else {
-      // Compare using bcrypt for modern hashes
       passwordValid = bcrypt.compareSync(password, creds.passwordHash);
     }
 
@@ -277,9 +264,6 @@ export class AuthService {
       return { success: false, error: "Invalid refresh token" };
     }
 
-    // Consume the digest index before issuing its replacement. Both cache
-    // mutations are synchronous, so another request cannot replay the same
-    // credential between the consume and replace operations.
     if (
       !this.storage.delete(
         REFRESH_CREDENTIALS_COLLECTION,
@@ -300,9 +284,82 @@ export class AuthService {
   }
 
   /**
-   * Rewrites pre-HARDEN-2A plaintext refresh credentials as digests. Call this
-   * after a durable provider hydrates its cache and before accepting traffic.
+   * Compare-and-consume refresh rotation. Exactly one concurrent request can
+   * consume the current refresh index and publish a replacement session pair.
    */
+  async refreshSessionDurably(refreshToken: string): Promise<LoginResult> {
+    const now = Date.now();
+    const refreshTokenDigest = this.digestRefreshToken(refreshToken);
+    const credential = this.storage.get<RefreshCredentialRecord>(
+      REFRESH_CREDENTIALS_COLLECTION,
+      refreshTokenDigest,
+    );
+    if (!credential) {
+      return { success: false, error: "Invalid refresh token" };
+    }
+
+    const session = this.storage.get<StoredAuthSession>(
+      SESSIONS_COLLECTION,
+      credential.sessionToken,
+    );
+    if (
+      !session ||
+      !this.matchesRefreshCredential(
+        session.refreshTokenDigest,
+        refreshToken,
+      ) ||
+      now >= credential.expiresAt
+    ) {
+      return { success: false, error: "Invalid refresh token" };
+    }
+
+    const replacement = this.prepareSession(session.userId, session.role);
+    try {
+      await this.storage.mutateDurably([
+        {
+          type: "delete-matched",
+          collection: REFRESH_CREDENTIALS_COLLECTION,
+          id: refreshTokenDigest,
+          expectedData: credential,
+        },
+        {
+          type: "delete",
+          collection: SESSIONS_COLLECTION,
+          id: session.token,
+        },
+        {
+          type: "create",
+          collection: SESSIONS_COLLECTION,
+          id: replacement.stored.token,
+          data: replacement.stored,
+        },
+        {
+          type: "create",
+          collection: REFRESH_CREDENTIALS_COLLECTION,
+          id: replacement.refreshTokenDigest,
+          data: replacement.refreshCredential,
+        },
+      ]);
+    } catch (error) {
+      if (
+        error instanceof DurableStoragePreconditionError &&
+        error.collection === REFRESH_CREDENTIALS_COLLECTION &&
+        error.id === refreshTokenDigest
+      ) {
+        return { success: false, error: "Invalid refresh token" };
+      }
+      throw error;
+    }
+
+    return {
+      success: true,
+      token: replacement.issued.session.token,
+      refreshToken: replacement.issued.refreshToken,
+      userId: session.userId,
+      role: session.role,
+    };
+  }
+
   migrateLegacyRefreshCredentials(): number {
     let migrated = 0;
     for (const session of this.storage.list<StoredAuthSession>(
@@ -423,10 +480,6 @@ export class AuthService {
     return email.trim().toLowerCase();
   }
 
-  /**
-   * Determines if a stored hash is a legacy SHA-256 hash (64 hex characters)
-   * vs a bcrypt hash (starts with $2a$ or $2b$).
-   */
   private isLegacyHash(hash: string): boolean {
     return /^[a-f0-9]{64}$/.test(hash);
   }
