@@ -126,9 +126,7 @@ export class PostgresStorageProvider implements StorageProvider {
     }
   }
 
-  async mutateDurably(
-    mutations: readonly DurableMutation[],
-  ): Promise<void> {
+  async mutateDurably(mutations: readonly DurableMutation[]): Promise<void> {
     if (mutations.length === 0) return;
 
     try {
