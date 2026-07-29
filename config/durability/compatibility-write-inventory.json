@@ -7,5 +7,246 @@
     "bootstrap-compatibility",
     "multi-record-deferred"
   ],
-  "entries": []
+  "entries": [
+    {
+      "key": "server/src/pipeline/v2/ArtifactStore.ts#ArtifactStore.persist#set",
+      "path": "server/src/pipeline/v2/ArtifactStore.ts",
+      "owner": "ArtifactStore.persist",
+      "operation": "set",
+      "expectedCalls": 1,
+      "classification": "internal-lifecycle-debt",
+      "reason": "Artifact cache publication and durable persistence are still coupled behind a synchronous private helper.",
+      "migrationTarget": "DATA-201B"
+    },
+    {
+      "key": "server/src/platform/auth/AuthService.ts#AuthService.createSession#set",
+      "path": "server/src/platform/auth/AuthService.ts",
+      "owner": "AuthService.createSession",
+      "operation": "set",
+      "expectedCalls": 2,
+      "classification": "request-level-debt",
+      "reason": "Login and refresh responses can expose a session before both session records are acknowledged.",
+      "migrationTarget": "DATA-201B"
+    },
+    {
+      "key": "server/src/platform/auth/AuthService.ts#AuthService.deleteSession#delete",
+      "path": "server/src/platform/auth/AuthService.ts",
+      "owner": "AuthService.deleteSession",
+      "operation": "delete",
+      "expectedCalls": 2,
+      "classification": "request-level-debt",
+      "reason": "Logout and expiry cleanup still use unacknowledged session and refresh-index deletion.",
+      "migrationTarget": "DATA-201B"
+    },
+    {
+      "key": "server/src/platform/auth/AuthService.ts#AuthService.login#set",
+      "path": "server/src/platform/auth/AuthService.ts",
+      "owner": "AuthService.login",
+      "operation": "set",
+      "expectedCalls": 1,
+      "classification": "request-level-debt",
+      "reason": "Legacy password-hash upgrade is persisted during a login request without acknowledgement.",
+      "migrationTarget": "DATA-201B"
+    },
+    {
+      "key": "server/src/platform/auth/AuthService.ts#AuthService.migrateLegacyRefreshCredentials#set",
+      "path": "server/src/platform/auth/AuthService.ts",
+      "owner": "AuthService.migrateLegacyRefreshCredentials",
+      "operation": "set",
+      "expectedCalls": 2,
+      "classification": "bootstrap-compatibility",
+      "reason": "Startup refresh-credential migration predates the awaitable mutation contract.",
+      "migrationTarget": "DATA-201B"
+    },
+    {
+      "key": "server/src/platform/auth/AuthService.ts#AuthService.refreshSession#delete",
+      "path": "server/src/platform/auth/AuthService.ts",
+      "owner": "AuthService.refreshSession",
+      "operation": "delete",
+      "expectedCalls": 3,
+      "classification": "request-level-debt",
+      "reason": "Refresh-token rotation consumes old session records before durable deletion is acknowledged.",
+      "migrationTarget": "DATA-201B"
+    },
+    {
+      "key": "server/src/platform/auth/AuthService.ts#AuthService.register#set",
+      "path": "server/src/platform/auth/AuthService.ts",
+      "owner": "AuthService.register",
+      "operation": "set",
+      "expectedCalls": 2,
+      "classification": "request-level-debt",
+      "reason": "Credential and role records are written during registration without acknowledgement.",
+      "migrationTarget": "DATA-201B"
+    },
+    {
+      "key": "server/src/platform/auth/AuthService.ts#AuthService.setRole#set",
+      "path": "server/src/platform/auth/AuthService.ts",
+      "owner": "AuthService.setRole",
+      "operation": "set",
+      "expectedCalls": 1,
+      "classification": "request-level-debt",
+      "reason": "Role mutation remains a synchronous administrative write.",
+      "migrationTarget": "DATA-201B"
+    },
+    {
+      "key": "server/src/platform/auth/AuthService.ts#AuthService.validateToken#set",
+      "path": "server/src/platform/auth/AuthService.ts",
+      "owner": "AuthService.validateToken",
+      "operation": "set",
+      "expectedCalls": 1,
+      "classification": "request-level-debt",
+      "reason": "Request authentication updates session activity through an unacknowledged write.",
+      "migrationTarget": "DATA-201B"
+    },
+    {
+      "key": "server/src/platform/projects/SaaSProjectRepository.ts#SaaSProjectRepository.create#set",
+      "path": "server/src/platform/projects/SaaSProjectRepository.ts",
+      "owner": "SaaSProjectRepository.create",
+      "operation": "set",
+      "expectedCalls": 1,
+      "classification": "internal-lifecycle-debt",
+      "reason": "Compatibility creation remains available for bounded internal and legacy callers after request routes moved to createDurable.",
+      "migrationTarget": "DATA-201B"
+    },
+    {
+      "key": "server/src/platform/projects/SaaSProjectRepository.ts#SaaSProjectRepository.delete#delete",
+      "path": "server/src/platform/projects/SaaSProjectRepository.ts",
+      "owner": "SaaSProjectRepository.delete",
+      "operation": "delete",
+      "expectedCalls": 1,
+      "classification": "internal-lifecycle-debt",
+      "reason": "Compatibility deletion remains available for bounded internal and legacy callers after request routes moved to deleteDurable.",
+      "migrationTarget": "DATA-201B"
+    },
+    {
+      "key": "server/src/platform/projects/SaaSProjectRepository.ts#SaaSProjectRepository.update#set",
+      "path": "server/src/platform/projects/SaaSProjectRepository.ts",
+      "owner": "SaaSProjectRepository.update",
+      "operation": "set",
+      "expectedCalls": 1,
+      "classification": "internal-lifecycle-debt",
+      "reason": "Pipeline lifecycle events still use the compatibility update path outside request handlers.",
+      "migrationTarget": "DATA-201B"
+    },
+    {
+      "key": "server/src/platform/security/ApiKeyStore.ts#ApiKeyStore.clear#delete",
+      "path": "server/src/platform/security/ApiKeyStore.ts",
+      "owner": "ApiKeyStore.clear",
+      "operation": "delete",
+      "expectedCalls": 1,
+      "classification": "internal-lifecycle-debt",
+      "reason": "Administrative and test cleanup deletes API-key records synchronously.",
+      "migrationTarget": "DATA-201B"
+    },
+    {
+      "key": "server/src/platform/security/ApiKeyStore.ts#ApiKeyStore.issue#set",
+      "path": "server/src/platform/security/ApiKeyStore.ts",
+      "owner": "ApiKeyStore.issue",
+      "operation": "set",
+      "expectedCalls": 1,
+      "classification": "bootstrap-compatibility",
+      "reason": "Environment API-key seeding and programmatic issuance still share a synchronous write path.",
+      "migrationTarget": "DATA-201B"
+    },
+    {
+      "key": "server/src/platform/security/ApiKeyStore.ts#ApiKeyStore.revoke#set",
+      "path": "server/src/platform/security/ApiKeyStore.ts",
+      "owner": "ApiKeyStore.revoke",
+      "operation": "set",
+      "expectedCalls": 1,
+      "classification": "request-level-debt",
+      "reason": "API-key revocation can report success before persistence acknowledgement.",
+      "migrationTarget": "DATA-201B"
+    },
+    {
+      "key": "server/src/platform/users/UserRepository.ts#UserRepository.create#set",
+      "path": "server/src/platform/users/UserRepository.ts",
+      "owner": "UserRepository.create",
+      "operation": "set",
+      "expectedCalls": 1,
+      "classification": "request-level-debt",
+      "reason": "User creation is returned by platform routes before persistence acknowledgement.",
+      "migrationTarget": "DATA-201B"
+    },
+    {
+      "key": "server/src/platform/users/UserRepository.ts#UserRepository.recordGeneration#set",
+      "path": "server/src/platform/users/UserRepository.ts",
+      "owner": "UserRepository.recordGeneration",
+      "operation": "set",
+      "expectedCalls": 1,
+      "classification": "internal-lifecycle-debt",
+      "reason": "Generation usage accounting is persisted through a synchronous lifecycle mutation.",
+      "migrationTarget": "DATA-201B"
+    },
+    {
+      "key": "server/src/platform/users/UserRepository.ts#UserRepository.updateProfile#set",
+      "path": "server/src/platform/users/UserRepository.ts",
+      "owner": "UserRepository.updateProfile",
+      "operation": "set",
+      "expectedCalls": 1,
+      "classification": "request-level-debt",
+      "reason": "Profile updates can return the new user record before durable acknowledgement.",
+      "migrationTarget": "DATA-201B"
+    },
+    {
+      "key": "server/src/platform/users/UserRepository.ts#UserRepository.updateStatus#set",
+      "path": "server/src/platform/users/UserRepository.ts",
+      "owner": "UserRepository.updateStatus",
+      "operation": "set",
+      "expectedCalls": 1,
+      "classification": "request-level-debt",
+      "reason": "Account status mutation remains an unacknowledged administrative write.",
+      "migrationTarget": "DATA-201B"
+    },
+    {
+      "key": "server/src/platform/users/UserRepository.ts#UserRepository.updateTier#set",
+      "path": "server/src/platform/users/UserRepository.ts",
+      "owner": "UserRepository.updateTier",
+      "operation": "set",
+      "expectedCalls": 1,
+      "classification": "request-level-debt",
+      "reason": "Account tier mutation remains an unacknowledged administrative write.",
+      "migrationTarget": "DATA-201B"
+    },
+    {
+      "key": "server/src/projects/repository/generationHistory.repository.ts#StorageGenerationHistoryRepository.record#set",
+      "path": "server/src/projects/repository/generationHistory.repository.ts",
+      "owner": "StorageGenerationHistoryRepository.record",
+      "operation": "set",
+      "expectedCalls": 1,
+      "classification": "internal-lifecycle-debt",
+      "reason": "Generation lifecycle history is written by event handling without persistence acknowledgement.",
+      "migrationTarget": "DATA-201B"
+    },
+    {
+      "key": "server/src/projects/repository/storageBlueprint.repository.ts#StorageBlueprintRepository.deleteBlueprint#delete",
+      "path": "server/src/projects/repository/storageBlueprint.repository.ts",
+      "owner": "StorageBlueprintRepository.deleteBlueprint",
+      "operation": "delete",
+      "expectedCalls": 3,
+      "classification": "multi-record-deferred",
+      "reason": "Blueprint deletion cascades across blueprint, version and execution collections and needs transaction or compensation semantics.",
+      "migrationTarget": "DATA-201C"
+    },
+    {
+      "key": "server/src/services/ChatPersistenceService.ts#ChatPersistenceService.createMessage#set",
+      "path": "server/src/services/ChatPersistenceService.ts",
+      "owner": "ChatPersistenceService.createMessage",
+      "operation": "set",
+      "expectedCalls": 3,
+      "classification": "multi-record-deferred",
+      "reason": "Creating a message may create a conversation, insert a message and update conversation metadata as one logical mutation.",
+      "migrationTarget": "DATA-201C"
+    },
+    {
+      "key": "server/src/services/ChatPersistenceService.ts#ChatPersistenceService.deleteConversation#delete",
+      "path": "server/src/services/ChatPersistenceService.ts",
+      "owner": "ChatPersistenceService.deleteConversation",
+      "operation": "delete",
+      "expectedCalls": 2,
+      "classification": "multi-record-deferred",
+      "reason": "Conversation deletion cascades over messages and the conversation record and needs transaction or compensation semantics.",
+      "migrationTarget": "DATA-201C"
+    }
+  ]
 }
