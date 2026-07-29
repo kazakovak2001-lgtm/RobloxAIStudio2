@@ -17,7 +17,12 @@ export interface SaaSProject {
   targetAudience?: string;
   coverUrl?: string;
   status:
-    "draft" | "generating" | "testing" | "ready" | "published" | "archived";
+    | "draft"
+    | "generating"
+    | "testing"
+    | "ready"
+    | "published"
+    | "archived";
   qualityScore: number;
   generationCount: number;
   scriptCount: number;
@@ -38,27 +43,34 @@ export class SaaSProjectRepository {
     this.storage = storage;
   }
 
+  /** Compatibility-only mutation for internal consumers not yet migrated. */
   create(
     ownerId: string,
     name: string,
     genre: string,
     description = "",
   ): SaaSProject {
-    const project: SaaSProject = {
-      id: `proj-${randomUUID().slice(0, 10)}`,
+    const project = this.buildProject(ownerId, name, genre, description);
+    this.storage.set(this.collection, project.id, project);
+    return project;
+  }
+
+  /** Request-safe create that resolves only after storage acknowledgement. */
+  async createDurable(
+    ownerId: string,
+    name: string,
+    genre: string,
+    description = "",
+    initial: SaaSProjectUpdate = {},
+  ): Promise<SaaSProject> {
+    const project = this.buildProject(
       ownerId,
       name,
-      description,
       genre,
-      status: "draft",
-      qualityScore: 0,
-      generationCount: 0,
-      scriptCount: 0,
-      assetCount: 0,
-      createdAt: Date.now(),
-      updatedAt: Date.now(),
-    };
-    this.storage.set(this.collection, project.id, project);
+      description,
+      initial,
+    );
+    await this.storage.setDurable(this.collection, project.id, project);
     return project;
   }
 
@@ -73,6 +85,7 @@ export class SaaSProjectRepository {
     );
   }
 
+  /** Compatibility-only mutation for internal consumers not yet migrated. */
   update(projectId: string, updates: SaaSProjectUpdate): SaaSProject | null {
     const existing = this.get(projectId);
     if (!existing) return null;
@@ -81,8 +94,26 @@ export class SaaSProjectRepository {
     return updated;
   }
 
+  /** Request-safe update that preserves the previous cache value on rejection. */
+  async updateDurable(
+    projectId: string,
+    updates: SaaSProjectUpdate,
+  ): Promise<SaaSProject | null> {
+    const existing = this.get(projectId);
+    if (!existing) return null;
+    const updated = { ...existing, ...updates, updatedAt: Date.now() };
+    await this.storage.setDurable(this.collection, projectId, updated);
+    return updated;
+  }
+
+  /** Compatibility-only mutation for internal consumers not yet migrated. */
   delete(projectId: string): boolean {
     return this.storage.delete(this.collection, projectId);
+  }
+
+  /** Request-safe delete that preserves cache state on rejection. */
+  async deleteDurable(projectId: string): Promise<boolean> {
+    return this.storage.deleteDurable(this.collection, projectId);
   }
 
   duplicate(projectId: string, newOwnerId?: string): SaaSProject | null {
@@ -100,5 +131,30 @@ export class SaaSProjectRepository {
   verifyOwnership(projectId: string, userId: string): boolean {
     const project = this.get(projectId);
     return project?.ownerId === userId;
+  }
+
+  private buildProject(
+    ownerId: string,
+    name: string,
+    genre: string,
+    description: string,
+    initial: SaaSProjectUpdate = {},
+  ): SaaSProject {
+    const now = Date.now();
+    return {
+      id: `proj-${randomUUID().slice(0, 10)}`,
+      ownerId,
+      name,
+      description,
+      genre,
+      ...initial,
+      status: "draft",
+      qualityScore: 0,
+      generationCount: 0,
+      scriptCount: 0,
+      assetCount: 0,
+      createdAt: now,
+      updatedAt: now,
+    };
   }
 }
