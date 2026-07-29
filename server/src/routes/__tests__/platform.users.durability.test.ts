@@ -6,6 +6,7 @@ import {
   DurableStorageError,
   InMemoryStorageProvider,
   type DurableMutation,
+  type DurableMutationResult,
 } from "../../platform/storage/StorageProvider";
 import { UserRepository } from "../../platform/users";
 import { createPlatformRouter } from "../platform";
@@ -15,14 +16,14 @@ class ControlledMutationStorage extends InMemoryStorageProvider {
   rejectMutations = false;
   durableMutationCalls = 0;
 
-  override async mutateDurably(
+  override async applyDurableBatch(
     mutations: readonly DurableMutation[],
-  ): Promise<void> {
+  ): Promise<readonly DurableMutationResult[]> {
     this.durableMutationCalls += 1;
     if (this.rejectMutations) {
-      throw new DurableStorageError("injected mutation rejection", "batch");
+      throw new DurableStorageError("injected mutation rejection", "transaction");
     }
-    await super.applyDurableBatch(mutations);
+    return super.applyDurableBatch(mutations);
   }
 }
 
