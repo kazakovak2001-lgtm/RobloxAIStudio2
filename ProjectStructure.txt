@@ -1139,6 +1139,7 @@
 │   │   │   ├── users
 │   │   │   │   ├── index.ts
 │   │   │   │   ├── UserRepository.ts
+│   │   │   │   ├── UserService.durability.test.ts
 │   │   │   │   ├── UserService.ts
 │   │   │   │   └── UserTypes.ts
 │   │   │   └── versioning
