@@ -21,7 +21,10 @@ class ControlledMutationStorage extends InMemoryStorageProvider {
   ): Promise<readonly DurableMutationResult[]> {
     this.durableMutationCalls += 1;
     if (this.rejectMutations) {
-      throw new DurableStorageError("injected mutation rejection", "transaction");
+      throw new DurableStorageError(
+        "injected mutation rejection",
+        "transaction",
+      );
     }
     return super.applyDurableBatch(mutations);
   }
