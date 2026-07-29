@@ -8,12 +8,20 @@ import {
 
 class ControlledMutationStorage extends InMemoryStorageProvider {
   rejectSet = false;
+  setDurableCalls = 0;
+  onSetStart?: () => void;
+  setBarrier?: Promise<void>;
 
   override async setDurable<T>(
     collection: string,
     id: string,
     data: T,
   ): Promise<void> {
+    this.setDurableCalls += 1;
+    this.onSetStart?.();
+    if (this.setBarrier) {
+      await this.setBarrier;
+    }
     if (this.rejectSet) {
       throw new DurableStorageError("injected set rejection", "set");
     }
@@ -117,6 +125,43 @@ describe("user durable acknowledgement", () => {
         generationsTotal: 1,
         tokensUsedToday: 1500,
         tokensUsedTotal: 1500,
+      },
+    });
+  });
+
+  it("serializes concurrent generation usage for the same user", async () => {
+    const storage = new ControlledMutationStorage();
+    const repository = new UserRepository(storage);
+    const user = repository.create({
+      email: "usage-concurrent@example.com",
+      displayName: "Usage Concurrent",
+    });
+    let markStarted!: () => void;
+    let releaseWrite!: () => void;
+    const writeStarted = new Promise<void>((resolve) => {
+      markStarted = resolve;
+    });
+    storage.onSetStart = markStarted;
+    storage.setBarrier = new Promise<void>((resolve) => {
+      releaseWrite = resolve;
+    });
+
+    const first = repository.recordGenerationDurable(user.id, 100);
+    await writeStarted;
+    const second = repository.recordGenerationDurable(user.id, 250);
+
+    expect(storage.setDurableCalls).toBe(1);
+    releaseWrite();
+
+    await expect(Promise.all([first, second])).resolves.toEqual([true, true]);
+    expect(storage.setDurableCalls).toBe(2);
+    expect(repository.getById(user.id)).toMatchObject({
+      id: user.id,
+      usage: {
+        generationsToday: 2,
+        generationsTotal: 2,
+        tokensUsedToday: 350,
+        tokensUsedTotal: 350,
       },
     });
   });

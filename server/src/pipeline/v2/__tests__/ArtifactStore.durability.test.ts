@@ -132,4 +132,43 @@ describe("ArtifactStore durable mutation boundaries", () => {
     expect(store.getById(artifact.id)).toEqual(approved);
     expect(storage.get("pipeline_artifacts", artifact.id)).toEqual(approved);
   });
+
+  it("serializes concurrent review mutations against the latest acknowledged state", async () => {
+    const storage = new ControlledMutationStorage();
+    const store = new ArtifactStore(storage);
+    const artifact = await store.store(
+      "pipeline-concurrent-review",
+      "VALIDATION",
+      "validator",
+      { passed: true },
+    );
+    const visibleBefore = structuredClone(store.getById(artifact.id));
+    const releaseApproval = storage.deferNextSet();
+
+    const approval = store.approve(artifact.id, "approver");
+    await Promise.resolve();
+    const comment = store.comment(artifact.id, "commenter", "ready to ship");
+    await Promise.resolve();
+
+    expect(store.getById(artifact.id)).toEqual(visibleBefore);
+
+    releaseApproval();
+    const [approved, commented] = await Promise.all([approval, comment]);
+
+    expect(approved).toMatchObject({
+      id: artifact.id,
+      reviewStatus: "approved",
+      reviewedBy: "approver",
+      validated: true,
+    });
+    expect(commented).toMatchObject({
+      id: artifact.id,
+      reviewStatus: "approved",
+      reviewComment: "ready to ship",
+      reviewedBy: "commenter",
+      validated: true,
+    });
+    expect(store.getById(artifact.id)).toEqual(commented);
+    expect(storage.get("pipeline_artifacts", artifact.id)).toEqual(commented);
+  });
 });

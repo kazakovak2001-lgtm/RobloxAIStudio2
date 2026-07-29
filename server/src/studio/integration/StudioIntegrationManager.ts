@@ -84,7 +84,10 @@ export class StudioIntegrationManager {
    * The package is recorded into the canonical ArtifactStore and queued through
    * the same v2 command transport used by project synchronization.
    */
-  synchronize(studioId: string, pkg: GenerationPackage): SyncResult {
+  async synchronize(
+    studioId: string,
+    pkg: GenerationPackage,
+  ): Promise<SyncResult> {
     const validation = this.validator.validate(pkg);
     this.emit({
       type: "ImportValidated",
@@ -102,14 +105,14 @@ export class StudioIntegrationManager {
 
     if (this.runtime.artifacts.getByPipeline(pkg.packageId).length === 0) {
       if (pkg.scripts.length > 0) {
-        this.runtime.artifacts.store(
+        await this.runtime.artifacts.store(
           pkg.packageId,
           "LUA_GENERATION",
           "legacy-package-adapter",
           { scripts: pkg.scripts },
         );
       }
-      this.runtime.artifacts.store(
+      await this.runtime.artifacts.store(
         pkg.packageId,
         "EXPORT",
         "legacy-package-adapter",

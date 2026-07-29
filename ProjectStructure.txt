@@ -108,7 +108,6 @@
 │   │   ├── CUTOVER-1A_BACKEND_RELEASE_ARTIFACT.md
 │   │   ├── CUTOVER-1C_COMPOSED_RELEASE.md
 │   │   ├── CUTOVER-1D_RELEASE_BASELINE_READINESS.md
-│   │   ├── DATA-201C_TRANSACTION_DEGRADATION_POLICY.md
 │   │   ├── DECISION_LOG.md
 │   │   ├── decisions
 │   │   │   └── 2026-07-24-core-1b-durable-runtime.md
@@ -1108,6 +1107,8 @@
 │   │   │   ├── index.ts
 │   │   │   ├── projects
 │   │   │   │   ├── index.ts
+│   │   │   │   ├── ProjectLifecycleCoordinator.test.ts
+│   │   │   │   ├── ProjectLifecycleCoordinator.ts
 │   │   │   │   └── SaaSProjectRepository.ts
 │   │   │   ├── queue
 │   │   │   │   ├── GenerationQueue.ts
