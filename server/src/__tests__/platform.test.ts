@@ -29,9 +29,9 @@ describe("Platform Layer", () => {
       expect(found!.displayName).toBe("A");
     });
 
-    it("upgrades tier and updates limits", () => {
+    it("upgrades tier and updates limits", async () => {
       const user = repo.create({ email: "x@y.com", displayName: "X" });
-      const updated = repo.updateTier(user.id, "pro");
+      const updated = await repo.updateTierDurable(user.id, "pro");
       expect(updated!.tier).toBe("pro");
       expect(updated!.limits.maxProjects).toBe(50);
     });
