@@ -1099,6 +1099,9 @@
 │   │   │   └── PlanningTypes.ts
 │   │   ├── platform
 │   │   │   ├── auth
+│   │   │   │   ├── AccountRegistrationService.test.ts
+│   │   │   │   ├── AccountRegistrationService.ts
+│   │   │   │   ├── AuthService.durability.test.ts
 │   │   │   │   ├── AuthService.ts
 │   │   │   │   ├── authServiceInstance.ts
 │   │   │   │   ├── AuthTypes.ts
@@ -1129,6 +1132,8 @@
 │   │   │   │   │   ├── index.ts
 │   │   │   │   │   ├── migrationRunner.ts
 │   │   │   │   │   ├── migrations.ts
+│   │   │   │   │   ├── PostgresStorageProvider.create-preconditions.test.ts
+│   │   │   │   │   ├── PostgresStorageProvider.preconditions.test.ts
 │   │   │   │   │   ├── PostgresStorageProvider.test.ts
 │   │   │   │   │   └── PostgresStorageProvider.ts
 │   │   │   │   ├── StorageFactory.ts
@@ -1225,7 +1230,11 @@
 │   │   │   └── RepairTypes.ts
 │   │   ├── routes
 │   │   │   ├── __tests__
+│   │   │   │   ├── chatPersistence.durability.test.ts
+│   │   │   │   ├── platform.auth.durability.test.ts
 │   │   │   │   ├── platform.durability.test.ts
+│   │   │   │   ├── platform.registration.durability.test.ts
+│   │   │   │   ├── platform.users.durability.test.ts
 │   │   │   │   ├── projects.durability.test.ts
 │   │   │   │   ├── projects.runtime.test.ts
 │   │   │   │   └── studioProtocol.smoke.test.ts

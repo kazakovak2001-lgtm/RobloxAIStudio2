@@ -8,6 +8,7 @@
  */
 
 import {
+  DurableStorageConflictError,
   DurableStorageError,
   type DurableMutation,
   type DurableMutationResult,
@@ -154,15 +155,25 @@ export class PostgresStorageProvider implements StorageProvider {
           await client.query("BEGIN");
           for (const mutation of mutations) {
             if (mutation.operation === "set") {
-              await client.query(
-                `INSERT INTO ${KV_TABLE} (collection, id, data) VALUES ($1, $2, $3)
-                 ON CONFLICT (collection, id) DO UPDATE SET data = $3, updated_at = NOW()`,
+              const result = await client.query(
+                mutation.requireAbsent
+                  ? `INSERT INTO ${KV_TABLE} (collection, id, data) VALUES ($1, $2, $3)
+                     ON CONFLICT (collection, id) DO NOTHING RETURNING id`
+                  : `INSERT INTO ${KV_TABLE} (collection, id, data) VALUES ($1, $2, $3)
+                     ON CONFLICT (collection, id) DO UPDATE SET data = $3, updated_at = NOW()`,
                 [
                   mutation.collection,
                   mutation.id,
                   JSON.stringify(mutation.data),
                 ],
               );
+              if (mutation.requireAbsent && result.rows.length === 0) {
+                throw new DurableStorageConflictError(
+                  `Required durable record already exists: ${mutation.collection}/${mutation.id}`,
+                  mutation.collection,
+                  mutation.id,
+                );
+              }
               pendingResults.push({
                 operation: mutation.operation,
                 collection: mutation.collection,
@@ -175,6 +186,13 @@ export class PostgresStorageProvider implements StorageProvider {
               `DELETE FROM ${KV_TABLE} WHERE collection = $1 AND id = $2 RETURNING id`,
               [mutation.collection, mutation.id],
             );
+            if (mutation.requireExisting && result.rows.length === 0) {
+              throw new DurableStorageConflictError(
+                `Required durable record is unavailable: ${mutation.collection}/${mutation.id}`,
+                mutation.collection,
+                mutation.id,
+              );
+            }
             pendingResults.push({
               operation: mutation.operation,
               collection: mutation.collection,
@@ -207,6 +225,7 @@ export class PostgresStorageProvider implements StorageProvider {
       });
       return results;
     } catch (error) {
+      if (error instanceof DurableStorageConflictError) throw error;
       this.markFailure();
       throw new DurableStorageError(
         "Durable transaction failed",
