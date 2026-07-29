@@ -1,4 +1,4 @@
-name: Temporary PR84 Artifact Caller Migration
+name: Temporary PR84 Artifact Test Migration
 
 on:
   pull_request:
@@ -9,7 +9,7 @@ permissions:
   contents: write
 
 jobs:
-  migrate-artifact-callers:
+  migrate-artifact-tests:
     if: github.head_ref == 'agent/data-201b-artifact-store-ack'
     runs-on: ubuntu-latest
     steps:
@@ -28,49 +28,149 @@ jobs:
       - name: Install locked dependencies
         run: npm ci
 
-      - name: Apply exact route and recorder migration
+      - name: Apply AST-based async migration
         run: |
           node <<'NODE'
           const fs = require('node:fs');
+          const ts = require('typescript');
 
-          const replaceExactly = (path, before, after, expected = 1) => {
-            let source = fs.readFileSync(path, 'utf8');
-            const matches = source.split(before).length - 1;
-            if (matches !== expected) {
-              throw new Error(`${path}: expected ${expected} matches, found ${matches}`);
+          const paths = [
+            'server/src/routes/studio.ts',
+            'server/src/__tests__/pluginProtocol.test.ts',
+            'server/src/__tests__/studio1.artifact-lineage.test.ts',
+            'server/src/__tests__/studioIntegration.test.ts',
+            'server/src/studio/v2/sync/__tests__/ArtifactTransferManager.unit.test.ts',
+            'server/src/studio/v2/sync/__tests__/ProjectSyncManager.unit.test.ts',
+          ];
+          const propertyMethods = new Set([
+            'store',
+            'record',
+            'approve',
+            'edit',
+            'processSyncRequest',
+          ]);
+          const identifierMethods = new Set(['seedArtifact']);
+
+          const isFunctionLike = (node) =>
+            ts.isArrowFunction(node) ||
+            ts.isFunctionExpression(node) ||
+            ts.isFunctionDeclaration(node) ||
+            ts.isMethodDeclaration(node);
+
+          const isAsync = (node) =>
+            node.modifiers?.some(
+              (modifier) => modifier.kind === ts.SyntaxKind.AsyncKeyword,
+            ) ?? false;
+
+          const nearestFunction = (node) => {
+            let current = node.parent;
+            while (current) {
+              if (isFunctionLike(current)) return current;
+              current = current.parent;
             }
-            source = source.split(before).join(after);
-            fs.writeFileSync(path, source);
+            return undefined;
           };
 
-          const concept = 'server/src/routes/concept.ts';
-          replaceExactly(concept, 'import { Router } from "express";', 'import { Router, type Request, type RequestHandler, type Response } from "express";');
-          replaceExactly(concept, 'import type { GenerationHistoryRepository } from "../projects/repository/generationHistory.repository";', 'import type { GenerationHistoryRepository } from "../projects/repository/generationHistory.repository";\nimport { DurableStorageError } from "../platform/storage/StorageProvider";');
-          replaceExactly(concept, 'router.post("/experience/artifact/:artifactId/approve", (req, res) => {', 'router.post(\n    "/experience/artifact/:artifactId/approve",\n    asyncArtifactMutation(async (req, res) => {');
-          replaceExactly(concept, 'router.post("/experience/artifact/:artifactId/reject", (req, res) => {', 'router.post(\n    "/experience/artifact/:artifactId/reject",\n    asyncArtifactMutation(async (req, res) => {');
-          replaceExactly(concept, 'router.post("/experience/artifact/:artifactId/comment", (req, res) => {', 'router.post(\n    "/experience/artifact/:artifactId/comment",\n    asyncArtifactMutation(async (req, res) => {');
-          replaceExactly(concept, 'router.post("/experience/artifact/:artifactId/edit", (req, res) => {', 'router.post(\n    "/experience/artifact/:artifactId/edit",\n    asyncArtifactMutation(async (req, res) => {');
-          replaceExactly(concept, 'const result = pipelineEngine.approveArtifact(', 'const result = await pipelineEngine.approveArtifact(');
-          replaceExactly(concept, 'const result = pipelineEngine.rejectArtifact(', 'const result = await pipelineEngine.rejectArtifact(');
-          replaceExactly(concept, 'const result = pipelineEngine.commentArtifact(', 'const result = await pipelineEngine.commentArtifact(');
-          replaceExactly(concept, 'const result = pipelineEngine.editArtifact(', 'const result = await pipelineEngine.editArtifact(');
-          replaceExactly(concept, '    res.json({\n      success: true,\n      data: { id: result.id, reviewStatus: result.reviewStatus },\n    });\n  });', '    res.json({\n      success: true,\n      data: { id: result.id, reviewStatus: result.reviewStatus },\n    });\n    }),\n  );', 2);
-          replaceExactly(concept, '    res.json({\n      success: true,\n      data: { id: result.id, reviewComment: result.reviewComment },\n    });\n  });', '    res.json({\n      success: true,\n      data: { id: result.id, reviewComment: result.reviewComment },\n    });\n    }),\n  );');
-          replaceExactly(concept, '    res.json({\n      success: true,\n      data: {\n        id: result.id,\n        reviewStatus: result.reviewStatus,\n        sizeBytes: result.sizeBytes,\n      },\n    });\n  });', '    res.json({\n      success: true,\n      data: {\n        id: result.id,\n        reviewStatus: result.reviewStatus,\n        sizeBytes: result.sizeBytes,\n      },\n    });\n    }),\n  );');
+          const isInsideRejects = (node) => {
+            let current = node.parent;
+            while (current && !isFunctionLike(current)) {
+              if (
+                ts.isPropertyAccessExpression(current) &&
+                current.name.text === 'rejects'
+              ) {
+                return true;
+              }
+              current = current.parent;
+            }
+            return false;
+          };
 
-          const helperBefore = '  return router;\n}\n\nfunction extractTitle(description: string): string {';
-          const helperAfter = '  return router;\n}\n\nfunction asyncArtifactMutation(\n  handler: (req: Request, res: Response) => Promise<void>,\n): RequestHandler {\n  return (req, res) => {\n    void handler(req, res).catch((error: unknown) => {\n      handleArtifactMutationError(error, res);\n    });\n  };\n}\n\nfunction handleArtifactMutationError(error: unknown, res: Response): void {\n  if (error instanceof DurableStorageError) {\n    console.error("[concept] artifact mutation rejected", error);\n    res.status(503).json({\n      success: false,\n      error: "Durable storage is temporarily unavailable",\n    });\n    return;\n  }\n\n  console.error("[concept] artifact mutation failed", error);\n  res.status(500).json({ success: false, error: "Artifact mutation failed" });\n}\n\nfunction extractTitle(description: string): string {';
-          replaceExactly(concept, helperBefore, helperAfter);
+          for (const path of paths) {
+            let source = fs.readFileSync(path, 'utf8');
 
-          const recorder = 'server/src/studio/artifacts/GenerationArtifactRecorder.ts';
-          replaceExactly(recorder, '  record(executionId: string, nodes: readonly TaskNode[]): PipelineArtifact[] {', '  async record(\n    executionId: string,\n    nodes: readonly TaskNode[],\n  ): Promise<PipelineArtifact[]> {');
-          replaceExactly(recorder, '        this.artifactStore.store(executionId, stage, node.agent, content),', '        await this.artifactStore.store(\n          executionId,\n          stage,\n          node.agent,\n          content,\n        ),');
+            if (path.endsWith('studio1.artifact-lineage.test.ts')) {
+              const pattern = /expect\(\(\) =>\s*recorder\.record\("exec-empty-lua-output",\s*\[([\s\S]*?)\]\),\s*\)\.toThrow\("non-empty Studio scripts array"\);/;
+              const match = source.match(pattern);
+              if (!match) {
+                throw new Error(`${path}: rejection assertion was not found`);
+              }
+              source = source.replace(
+                pattern,
+                'await expect(\n      recorder.record("exec-empty-lua-output", [$1]),\n    ).rejects.toThrow("non-empty Studio scripts array");',
+              );
+            }
+
+            const sourceFile = ts.createSourceFile(
+              path,
+              source,
+              ts.ScriptTarget.Latest,
+              true,
+              ts.ScriptKind.TS,
+            );
+            const insertions = new Map();
+
+            const markAsync = (node) => {
+              const fn = nearestFunction(node);
+              if (fn && !isAsync(fn)) {
+                insertions.set(fn.getStart(sourceFile), 'async ');
+              }
+            };
+
+            const visit = (node) => {
+              if (ts.isAwaitExpression(node)) {
+                markAsync(node);
+              }
+
+              if (ts.isCallExpression(node)) {
+                let target = false;
+                if (
+                  ts.isPropertyAccessExpression(node.expression) &&
+                  propertyMethods.has(node.expression.name.text)
+                ) {
+                  target = true;
+                } else if (
+                  ts.isIdentifier(node.expression) &&
+                  identifierMethods.has(node.expression.text)
+                ) {
+                  target = true;
+                }
+
+                if (
+                  target &&
+                  !ts.isAwaitExpression(node.parent) &&
+                  !isInsideRejects(node)
+                ) {
+                  insertions.set(node.getStart(sourceFile), 'await ');
+                  markAsync(node);
+                }
+              }
+
+              ts.forEachChild(node, visit);
+            };
+            visit(sourceFile);
+
+            const edits = [...insertions.entries()]
+              .map(([position, text]) => ({ position, text }))
+              .sort((left, right) => right.position - left.position);
+            for (const edit of edits) {
+              source =
+                source.slice(0, edit.position) +
+                edit.text +
+                source.slice(edit.position);
+            }
+            fs.writeFileSync(path, source);
+          }
           NODE
 
           node node_modules/prettier/bin/prettier.cjs --write \
-            server/src/routes/concept.ts \
-            server/src/studio/artifacts/GenerationArtifactRecorder.ts
-          rm -f .tmp/pr84-artifact-callers-trigger
+            server/src/routes/studio.ts \
+            server/src/__tests__/pluginProtocol.test.ts \
+            server/src/__tests__/studio1.artifact-lineage.test.ts \
+            server/src/__tests__/studioIntegration.test.ts \
+            server/src/studio/v2/sync/__tests__/ArtifactTransferManager.unit.test.ts \
+            server/src/studio/v2/sync/__tests__/ProjectSyncManager.unit.test.ts \
+            server/src/studio/v2/sync/ProjectSyncManager.ts
+          rm -f .tmp/pr84-artifact-test-trigger
 
       - name: Commit exact migration to PR head
         run: |
@@ -78,5 +178,5 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add -A
           git diff --cached --quiet && exit 0
-          git commit -m "fix(storage): await artifact mutation callers"
+          git commit -m "test(storage): await artifact persistence in tests"
           git push origin HEAD:agent/data-201b-artifact-store-ack
