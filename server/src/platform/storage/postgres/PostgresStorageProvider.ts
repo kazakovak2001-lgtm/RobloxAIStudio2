@@ -8,6 +8,7 @@
  */
 
 import {
+  DurableStorageConflictError,
   DurableStorageError,
   type DurableMutation,
   type StorageProvider,
@@ -149,6 +150,7 @@ export class PostgresStorageProvider implements StorageProvider {
                 client,
                 mutation.collection,
                 mutation.id,
+                mutation.requireExisting ?? false,
               );
             }
           }
@@ -163,6 +165,7 @@ export class PostgresStorageProvider implements StorageProvider {
         this.applyCacheMutations(batch);
       });
     } catch (error) {
+      if (error instanceof DurableStorageConflictError) throw error;
       this.connected = false;
       throw new DurableStorageError("Durable batch mutation failed", "batch", {
         cause: error,
@@ -404,10 +407,20 @@ export class PostgresStorageProvider implements StorageProvider {
     queryable: Queryable,
     collection: string,
     id: string,
+    requireExisting = false,
   ): Promise<void> {
-    await queryable.query(
-      `DELETE FROM ${KV_TABLE} WHERE collection = $1 AND id = $2`,
+    const result = await queryable.query(
+      requireExisting
+        ? `DELETE FROM ${KV_TABLE} WHERE collection = $1 AND id = $2 RETURNING id`
+        : `DELETE FROM ${KV_TABLE} WHERE collection = $1 AND id = $2`,
       [collection, id],
     );
+    if (requireExisting && result.rows.length === 0) {
+      throw new DurableStorageConflictError(
+        `Required durable record is unavailable: ${collection}/${id}`,
+        collection,
+        id,
+      );
+    }
   }
 }
