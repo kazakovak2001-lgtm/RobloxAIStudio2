@@ -5,7 +5,10 @@
 import { Router, type Request, type Response } from "express";
 import { UserRepository } from "../platform/users";
 import { authService } from "../platform/auth/authServiceInstance";
-import type { StorageProvider } from "../platform/storage/StorageProvider";
+import {
+  DurableStorageError,
+  type StorageProvider,
+} from "../platform/storage/StorageProvider";
 import { VersionHistoryRepository } from "../platform/versioning";
 import { AgentRegistryService } from "../platform/registry";
 import {
@@ -186,7 +189,7 @@ export function createPlatformRouter({
 
   // ─── Users ────────────────────────────────────────────────
 
-  router.post("/users", (req, res) => {
+  router.post("/users", async (req, res) => {
     const { email, displayName, tier } = req.body;
     if (!email || !displayName) {
       res
@@ -201,8 +204,12 @@ export function createPlatformRouter({
         .json({ success: false, error: "Email already registered" });
       return;
     }
-    const user = users.create({ email, displayName, tier });
-    res.json({ success: true, data: user });
+    try {
+      const user = await users.createDurable({ email, displayName, tier });
+      res.json({ success: true, data: user });
+    } catch (error) {
+      handlePlatformMutationError(error, res);
+    }
   });
 
   router.get("/users/:id", (req, res) => {
@@ -215,7 +222,7 @@ export function createPlatformRouter({
     res.json({ success: true, data: user });
   });
 
-  router.patch("/users/:id", (req, res) => {
+  router.patch("/users/:id", async (req, res) => {
     if (!requireSelf(req, res, req.params.id)) return;
     const { email, displayName } = req.body;
     const existing = typeof email === "string" ? users.getByEmail(email) : null;
@@ -225,15 +232,19 @@ export function createPlatformRouter({
         .json({ success: false, error: "Email already registered" });
       return;
     }
-    const updated = users.updateProfile(req.params.id, {
-      email: typeof email === "string" ? email : undefined,
-      displayName: typeof displayName === "string" ? displayName : undefined,
-    });
-    if (!updated) {
-      res.status(404).json({ success: false, error: "User not found" });
-      return;
+    try {
+      const updated = await users.updateProfileDurable(req.params.id, {
+        email: typeof email === "string" ? email : undefined,
+        displayName: typeof displayName === "string" ? displayName : undefined,
+      });
+      if (!updated) {
+        res.status(404).json({ success: false, error: "User not found" });
+        return;
+      }
+      res.json({ success: true, data: updated });
+    } catch (error) {
+      handlePlatformMutationError(error, res);
     }
-    res.json({ success: true, data: updated });
   });
 
   router.get("/users/:id/preferences", (req, res) => {
@@ -331,4 +342,16 @@ export function createPlatformRouter({
   });
 
   return router;
+}
+
+function handlePlatformMutationError(error: unknown, res: Response): void {
+  if (error instanceof DurableStorageError) {
+    res.status(503).json({
+      success: false,
+      error: "Durable storage is temporarily unavailable",
+    });
+    return;
+  }
+  console.error("[platform]", error);
+  res.status(500).json({ success: false, error: "Platform mutation failed" });
 }
