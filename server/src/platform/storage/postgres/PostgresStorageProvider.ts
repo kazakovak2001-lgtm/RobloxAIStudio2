@@ -171,7 +171,6 @@ export class PostgresStorageProvider implements StorageProvider {
         this.publishCacheMutations(mutations);
       });
     } catch (error) {
-      this.connected = false;
       throw new DurableStorageError("Durable mutation batch failed", "batch", {
         cause: error,
       });
