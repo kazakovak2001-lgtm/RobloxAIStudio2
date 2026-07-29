@@ -6,6 +6,7 @@ import type { User, AccountTier } from "./UserTypes";
 import { TIER_LIMITS, createUserId } from "./UserTypes";
 import {
   InMemoryStorageProvider,
+  type DurableMutation,
   type StorageProvider,
 } from "../storage/StorageProvider";
 
@@ -13,6 +14,11 @@ export interface CreateUserInput {
   email: string;
   displayName: string;
   tier?: AccountTier;
+}
+
+export interface PreparedUserCreate {
+  user: User;
+  mutation: DurableMutation;
 }
 
 export class UserRepository {
@@ -29,9 +35,23 @@ export class UserRepository {
   }
 
   async createDurable(input: CreateUserInput): Promise<User> {
+    const prepared = this.prepareCreate(input);
+    await this.storage.mutateDurably([prepared.mutation]);
+    return prepared.user;
+  }
+
+  prepareCreate(input: CreateUserInput): PreparedUserCreate {
     const user = this.buildUser(input);
-    await this.storage.setDurable(this.collection, user.id, user);
-    return user;
+    return {
+      user,
+      mutation: {
+        type: "set",
+        collection: this.collection,
+        id: user.id,
+        data: user,
+        requireAbsent: true,
+      },
+    };
   }
 
   getById(id: string): User | null {
@@ -136,7 +156,7 @@ export class UserRepository {
     return {
       id: createUserId(),
       email,
-      displayName: input.displayName,
+      displayName: input.displayName.trim(),
       tier,
       status: "active",
       createdAt: Date.now(),
