@@ -246,8 +246,6 @@ describe("blueprint durable repository acknowledgement", () => {
       code: "DURABLE_STORAGE_MUTATION_FAILED",
       operation: "set",
     });
-    expect((await repository.getBlueprint(blueprint.id))?.name).toBe(
-      "Durable Blueprint",
-    );
+    expect(await repository.getBlueprint(blueprint.id)).toEqual(blueprint);
   });
 });
