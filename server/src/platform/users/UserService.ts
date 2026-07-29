@@ -43,20 +43,22 @@ export class UserService {
     return this.repo.getByEmail(email);
   }
 
-  updateUser(
+  async updateUser(
     id: string,
     updates: Partial<Pick<User, "displayName" | "tier">>,
-  ): User | null {
+  ): Promise<User | null> {
     const user = this.repo.getById(id);
     if (!user) return null;
-    if (updates.tier) this.repo.updateTier(id, updates.tier);
+    if (updates.tier) {
+      await this.repo.updateTierDurable(id, updates.tier);
+    }
     return this.repo.getById(id);
   }
 
-  deactivateUser(id: string): boolean {
+  async deactivateUser(id: string): Promise<boolean> {
     const user = this.repo.getById(id);
     if (!user) return false;
-    return this.repo.updateStatus(id, "suspended") !== null;
+    return (await this.repo.updateStatusDurable(id, "suspended")) !== null;
   }
 
   validateAccess(id: string): { allowed: boolean; reason?: string } {

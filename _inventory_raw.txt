@@ -922,6 +922,7 @@ server/src/platform/teams/index.ts
 server/src/platform/usage/UsageService.ts
 server/src/platform/usage/index.ts
 server/src/platform/users/UserRepository.ts
+server/src/platform/users/UserService.durability.test.ts
 server/src/platform/users/UserService.ts
 server/src/platform/users/UserTypes.ts
 server/src/platform/users/index.ts

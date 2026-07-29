@@ -180,26 +180,6 @@
       "migrationTarget": "DATA-201B"
     },
     {
-      "key": "server/src/platform/users/UserRepository.ts#UserRepository.updateStatus#set",
-      "path": "server/src/platform/users/UserRepository.ts",
-      "owner": "UserRepository.updateStatus",
-      "operation": "set",
-      "expectedCalls": 1,
-      "classification": "request-level-debt",
-      "reason": "Account status mutation remains an unacknowledged administrative write.",
-      "migrationTarget": "DATA-201B"
-    },
-    {
-      "key": "server/src/platform/users/UserRepository.ts#UserRepository.updateTier#set",
-      "path": "server/src/platform/users/UserRepository.ts",
-      "owner": "UserRepository.updateTier",
-      "operation": "set",
-      "expectedCalls": 1,
-      "classification": "request-level-debt",
-      "reason": "Account tier mutation remains an unacknowledged administrative write.",
-      "migrationTarget": "DATA-201B"
-    },
-    {
       "key": "server/src/projects/repository/generationHistory.repository.ts#StorageGenerationHistoryRepository.record#set",
       "path": "server/src/projects/repository/generationHistory.repository.ts",
       "owner": "StorageGenerationHistoryRepository.record",

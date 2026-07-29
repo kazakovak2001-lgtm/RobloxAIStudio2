@@ -72,19 +72,25 @@ export class UserRepository {
     return updated;
   }
 
-  updateTier(userId: string, tier: AccountTier): User | null {
+  async updateTierDurable(
+    userId: string,
+    tier: AccountTier,
+  ): Promise<User | null> {
     const user = this.getById(userId);
     if (!user) return null;
-    const updated = { ...user, tier, limits: TIER_LIMITS[tier] };
-    this.storage.set(this.collection, userId, updated);
+    const updated: User = { ...user, tier, limits: TIER_LIMITS[tier] };
+    await this.storage.setDurable(this.collection, userId, updated);
     return updated;
   }
 
-  updateStatus(userId: string, status: User["status"]): User | null {
+  async updateStatusDurable(
+    userId: string,
+    status: User["status"],
+  ): Promise<User | null> {
     const user = this.getById(userId);
     if (!user) return null;
-    const updated = { ...user, status };
-    this.storage.set(this.collection, userId, updated);
+    const updated: User = { ...user, status };
+    await this.storage.setDurable(this.collection, userId, updated);
     return updated;
   }
 
