@@ -56,7 +56,7 @@ export function createPlatformRouter({
 
   // ─── Auth ─────────────────────────────────────────────────
 
-  router.post("/auth/register", (req, res) => {
+  router.post("/auth/register", async (req, res) => {
     const { email, password, displayName } = req.body;
     if (!email || !password || !displayName) {
       res.status(400).json({
@@ -72,22 +72,38 @@ export function createPlatformRouter({
         .json({ success: false, error: "Email already registered" });
       return;
     }
-    const user = users.create({ email, displayName });
-    const registered = auth.register(email, password, user.id);
-    if (!registered) {
-      res
-        .status(409)
-        .json({ success: false, error: "Email already registered" });
-      return;
+
+    const user = users.prepareCreate({ email, displayName });
+    try {
+      const result = await auth.registerAndIssueSessionDurably(
+        email,
+        password,
+        user.id,
+        "creator",
+        [
+          {
+            type: "create",
+            collection: "users",
+            id: user.id,
+            data: user,
+          },
+        ],
+      );
+      if (!result.success) {
+        res.status(409).json({ success: false, error: result.error });
+        return;
+      }
+
+      setAuthCookies(res, result.token!, result.refreshToken!);
+      res.json({
+        success: true,
+        data: {
+          user,
+        },
+      });
+    } catch (error) {
+      handlePlatformMutationError(error, res);
     }
-    const loginResult = auth.login(email, password, user.id);
-    setAuthCookies(res, loginResult.token!, loginResult.refreshToken!);
-    res.json({
-      success: true,
-      data: {
-        user,
-      },
-    });
   });
 
   router.post("/auth/login", loginRateLimiter, (req, res) => {
