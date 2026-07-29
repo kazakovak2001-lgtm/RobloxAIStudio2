@@ -166,7 +166,7 @@
       "operation": "set",
       "expectedCalls": 1,
       "classification": "request-level-debt",
-      "reason": "User creation is returned by platform routes before persistence acknowledgement.",
+      "reason": "Coordinated auth registration and compatibility UserService creation still expose a user before persistence acknowledgement.",
       "migrationTarget": "DATA-201B"
     },
     {
@@ -177,16 +177,6 @@
       "expectedCalls": 1,
       "classification": "internal-lifecycle-debt",
       "reason": "Generation usage accounting is persisted through a synchronous lifecycle mutation.",
-      "migrationTarget": "DATA-201B"
-    },
-    {
-      "key": "server/src/platform/users/UserRepository.ts#UserRepository.updateProfile#set",
-      "path": "server/src/platform/users/UserRepository.ts",
-      "owner": "UserRepository.updateProfile",
-      "operation": "set",
-      "expectedCalls": 1,
-      "classification": "request-level-debt",
-      "reason": "Profile updates can return the new user record before durable acknowledgement.",
       "migrationTarget": "DATA-201B"
     },
     {

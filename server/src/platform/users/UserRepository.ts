@@ -23,27 +23,14 @@ export class UserRepository {
   ) {}
 
   create(input: CreateUserInput): User {
-    const tier = input.tier ?? "free";
-    const email = this.normalizeEmail(input.email);
-    const user: User = {
-      id: createUserId(),
-      email,
-      displayName: input.displayName,
-      tier,
-      status: "active",
-      createdAt: Date.now(),
-      lastLoginAt: Date.now(),
-      usage: {
-        generationsToday: 0,
-        generationsTotal: 0,
-        tokensUsedToday: 0,
-        tokensUsedTotal: 0,
-        projectCount: 0,
-        storageUsedBytes: 0,
-      },
-      limits: TIER_LIMITS[tier],
-    };
+    const user = this.buildUser(input);
     this.storage.set(this.collection, user.id, user);
+    return user;
+  }
+
+  async createDurable(input: CreateUserInput): Promise<User> {
+    const user = this.buildUser(input);
+    await this.storage.setDurable(this.collection, user.id, user);
     return user;
   }
 
@@ -61,10 +48,10 @@ export class UserRepository {
     );
   }
 
-  updateProfile(
+  async updateProfileDurable(
     userId: string,
     updates: { email?: string; displayName?: string },
-  ): User | null {
+  ): Promise<User | null> {
     const user = this.getById(userId);
     if (!user) return null;
 
@@ -81,7 +68,7 @@ export class UserRepository {
         ? { displayName: updates.displayName.trim() }
         : {}),
     };
-    this.storage.set(this.collection, userId, updated);
+    await this.storage.setDurable(this.collection, userId, updated);
     return updated;
   }
 
@@ -145,6 +132,28 @@ export class UserRepository {
 
   count(): number {
     return this.storage.count(this.collection);
+  }
+
+  private buildUser(input: CreateUserInput): User {
+    const tier = input.tier ?? "free";
+    return {
+      id: createUserId(),
+      email: this.normalizeEmail(input.email),
+      displayName: input.displayName,
+      tier,
+      status: "active",
+      createdAt: Date.now(),
+      lastLoginAt: Date.now(),
+      usage: {
+        generationsToday: 0,
+        generationsTotal: 0,
+        tokensUsedToday: 0,
+        tokensUsedTotal: 0,
+        projectCount: 0,
+        storageUsedBytes: 0,
+      },
+      limits: TIER_LIMITS[tier],
+    };
   }
 
   private normalizeEmail(email: string): string {
