@@ -21,8 +21,12 @@ export type DurableMutation =
       requireExisting?: boolean;
     };
 
+export type DurableStorageErrorCode =
+  | "DURABLE_STORAGE_MUTATION_FAILED"
+  | "DURABLE_STORAGE_CONFLICT";
+
 export class DurableStorageError extends Error {
-  readonly code = "DURABLE_STORAGE_MUTATION_FAILED";
+  readonly code: DurableStorageErrorCode = "DURABLE_STORAGE_MUTATION_FAILED";
   readonly cause?: unknown;
 
   constructor(
@@ -37,7 +41,7 @@ export class DurableStorageError extends Error {
 }
 
 export class DurableStorageConflictError extends DurableStorageError {
-  override readonly code = "DURABLE_STORAGE_CONFLICT";
+  override readonly code: DurableStorageErrorCode = "DURABLE_STORAGE_CONFLICT";
 
   constructor(
     message: string,
