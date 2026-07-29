@@ -7,7 +7,9 @@
 import { randomBytes, randomUUID, createHash, timingSafeEqual } from "crypto";
 import bcrypt from "bcryptjs";
 import {
+  DurableStorageConflictError,
   InMemoryStorageProvider,
+  type DurableMutation,
   type StorageProvider,
 } from "../storage/StorageProvider";
 import type {
@@ -47,6 +49,13 @@ interface RefreshCredentialRecord {
   expiresAt: number;
 }
 
+interface PreparedSession {
+  issued: IssuedSession;
+  stored: StoredAuthSession;
+  refreshTokenDigest: string;
+  refreshCredential: RefreshCredentialRecord;
+}
+
 export class AuthService {
   constructor(
     private readonly storage: StorageProvider = new InMemoryStorageProvider(),
@@ -83,6 +92,82 @@ export class AuthService {
     );
     this.storage.set<UserRole>(ROLES_COLLECTION, userId, role);
     return true;
+  }
+
+  /**
+   * Atomically creates credentials, role, initial access session and refresh
+   * index together with caller-supplied registration records such as the user.
+   */
+  async registerAndIssueSessionDurably(
+    email: string,
+    password: string,
+    userId: string,
+    role: UserRole = "creator",
+    registrationMutations: readonly DurableMutation[] = [],
+  ): Promise<LoginResult> {
+    const normalizedEmail = this.normalizeEmail(email);
+    if (
+      this.storage.get<StoredCredentials>(
+        CREDENTIALS_COLLECTION,
+        normalizedEmail,
+      )
+    ) {
+      return { success: false, error: "Email already registered" };
+    }
+
+    const credentials: StoredCredentials = {
+      email: normalizedEmail,
+      passwordHash: bcrypt.hashSync(password, BCRYPT_COST_FACTOR),
+      userId,
+    };
+    const prepared = this.prepareSession(userId, role);
+
+    try {
+      await this.storage.mutateDurably([
+        ...registrationMutations,
+        {
+          type: "create",
+          collection: CREDENTIALS_COLLECTION,
+          id: normalizedEmail,
+          data: credentials,
+        },
+        {
+          type: "set",
+          collection: ROLES_COLLECTION,
+          id: userId,
+          data: role,
+        },
+        {
+          type: "create",
+          collection: SESSIONS_COLLECTION,
+          id: prepared.stored.token,
+          data: prepared.stored,
+        },
+        {
+          type: "create",
+          collection: REFRESH_CREDENTIALS_COLLECTION,
+          id: prepared.refreshTokenDigest,
+          data: prepared.refreshCredential,
+        },
+      ]);
+    } catch (error) {
+      if (
+        error instanceof DurableStorageConflictError &&
+        error.collection === CREDENTIALS_COLLECTION &&
+        error.id === normalizedEmail
+      ) {
+        return { success: false, error: "Email already registered" };
+      }
+      throw error;
+    }
+
+    return {
+      success: true,
+      token: prepared.issued.session.token,
+      refreshToken: prepared.issued.refreshToken,
+      userId,
+      role,
+    };
   }
 
   login(email: string, password: string, userId: string): LoginResult {
@@ -289,11 +374,26 @@ export class AuthService {
   }
 
   private createSession(userId: string, role: UserRole): IssuedSession {
+    const prepared = this.prepareSession(userId, role);
+    this.storage.set<StoredAuthSession>(
+      SESSIONS_COLLECTION,
+      prepared.stored.token,
+      prepared.stored,
+    );
+    this.storage.set<RefreshCredentialRecord>(
+      REFRESH_CREDENTIALS_COLLECTION,
+      prepared.refreshTokenDigest,
+      prepared.refreshCredential,
+    );
+    return prepared.issued;
+  }
+
+  private prepareSession(userId: string, role: UserRole): PreparedSession {
     const now = Date.now();
     const refreshToken = `ref_${randomBytes(32).toString("hex")}`;
     const refreshTokenDigest = this.digestRefreshToken(refreshToken);
     const refreshExpiresAt = now + REFRESH_EXPIRY_MS;
-    const session: StoredAuthSession = {
+    const stored: StoredAuthSession = {
       sessionId: randomUUID().slice(0, 12),
       userId,
       role,
@@ -303,22 +403,19 @@ export class AuthService {
       expiresAt: now + TOKEN_EXPIRY_MS,
       lastActivity: now,
     };
-    this.storage.set<StoredAuthSession>(
-      SESSIONS_COLLECTION,
-      session.token,
-      session,
-    );
-    this.storage.set<RefreshCredentialRecord>(
-      REFRESH_CREDENTIALS_COLLECTION,
-      refreshTokenDigest,
-      {
-        sessionToken: session.token,
-        expiresAt: refreshExpiresAt,
-      },
-    );
+    const refreshCredential = {
+      sessionToken: stored.token,
+      expiresAt: refreshExpiresAt,
+    } satisfies RefreshCredentialRecord;
+
     return {
-      session: this.toPublicSession(session),
-      refreshToken,
+      issued: {
+        session: this.toPublicSession(stored),
+        refreshToken,
+      },
+      stored,
+      refreshTokenDigest,
+      refreshCredential,
     };
   }
 
