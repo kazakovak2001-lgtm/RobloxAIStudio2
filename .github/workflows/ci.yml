@@ -1,4 +1,4 @@
-name: Temporary PR83 API Key Caller Migration
+name: Temporary PR84 Artifact Async Propagation
 
 on:
   pull_request:
@@ -9,14 +9,14 @@ permissions:
   contents: write
 
 jobs:
-  migrate-api-key-callers:
-    if: github.head_ref == 'agent/data-201b-api-key-issuance-ack'
+  propagate-artifact-async-contract:
+    if: github.head_ref == 'agent/data-201b-artifact-store-ack'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout PR head branch
         uses: actions/checkout@v4
         with:
-          ref: agent/data-201b-api-key-issuance-ack
+          ref: agent/data-201b-artifact-store-ack
           fetch-depth: 0
 
       - name: Set up Node
@@ -28,51 +28,65 @@ jobs:
       - name: Install locked dependencies
         run: npm ci
 
-      - name: Apply exact API key caller migration
+      - name: Apply exact PipelineEngine propagation
         run: |
           node <<'NODE'
           const fs = require('node:fs');
+          const path = 'server/src/pipeline/v2/PipelineEngine.ts';
+          let source = fs.readFileSync(path, 'utf8');
 
-          const replaceExactly = (path, before, after, expected = 1) => {
-            let source = fs.readFileSync(path, 'utf8');
+          const replaceExactly = (before, after, expected = 1) => {
             const matches = source.split(before).length - 1;
             if (matches !== expected) {
               throw new Error(`${path}: expected ${expected} matches, found ${matches}`);
             }
             source = source.split(before).join(after);
-            fs.writeFileSync(path, source);
           };
 
+          replaceExactly('.then((result) => {', '.then(async (result) => {');
           replaceExactly(
-            'server/src/index.ts',
-            'getApiKeyStore().seedFromEnvironment();',
-            'await getApiKeyStore().seedFromEnvironmentDurable();',
+            'this.storeArtifactsFromState(result.state);',
+            'await this.storeArtifactsFromState(result.state);',
+            6,
+          );
+          replaceExactly(
+            'private storeArtifactsFromState(state: PipelineState): void {',
+            'private async storeArtifactsFromState(state: PipelineState): Promise<void> {',
+          );
+          replaceExactly(
+            '          this.artifactStore.store(',
+            '          await this.artifactStore.store(',
+          );
+          replaceExactly(
+            '  ): PipelineArtifact | null {\n    return this.artifactStore.approve(artifactId, reviewedBy);\n  }',
+            '  ): Promise<PipelineArtifact | null> {\n    return this.artifactStore.approve(artifactId, reviewedBy);\n  }',
+          );
+          replaceExactly(
+            '  ): PipelineArtifact | null {\n    return this.artifactStore.reject(artifactId, reviewedBy, comment);\n  }',
+            '  ): Promise<PipelineArtifact | null> {\n    return this.artifactStore.reject(artifactId, reviewedBy, comment);\n  }',
+          );
+          replaceExactly(
+            '  ): PipelineArtifact | null {\n    return this.artifactStore.comment(artifactId, reviewedBy, comment);\n  }',
+            '  ): Promise<PipelineArtifact | null> {\n    return this.artifactStore.comment(artifactId, reviewedBy, comment);\n  }',
+          );
+          replaceExactly(
+            '  ): PipelineArtifact | null {\n    return this.artifactStore.edit(artifactId, newContent, editedBy);\n  }',
+            '  ): Promise<PipelineArtifact | null> {\n    return this.artifactStore.edit(artifactId, newContent, editedBy);\n  }',
           );
 
-          replaceExactly(
-            'server/src/__tests__/securityHardening.test.ts',
-            'const issued = store.issue("my-api-key-1234567", {',
-            'const issued = await store.issueDurable("my-api-key-1234567", {',
-          );
-          replaceExactly(
-            'server/src/__tests__/securityHardening.test.ts',
-            'store.issue("array-header-api-key-123456", { label: "array-test" });',
-            'await store.issueDurable("array-header-api-key-123456", { label: "array-test" });',
-          );
+          fs.writeFileSync(path, source);
           NODE
 
           node node_modules/prettier/bin/prettier.cjs --write \
-            server/src/index.ts \
-            server/src/__tests__/securityHardening.test.ts \
-            server/src/platform/security/ApiKeyStore.ts \
-            server/src/platform/security/__tests__/ApiKeyStore.test.ts
-          rm -f .tmp/pr83-api-key-caller-trigger
+            server/src/pipeline/v2/ArtifactStore.ts \
+            server/src/pipeline/v2/PipelineEngine.ts
+          rm -f .tmp/pr84-artifact-propagation-trigger
 
-      - name: Commit exact migration to PR head
+      - name: Commit exact propagation to PR head
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add -A
           git diff --cached --quiet && exit 0
-          git commit -m "fix(storage): await api key issuance callers"
-          git push origin HEAD:agent/data-201b-api-key-issuance-ack
+          git commit -m "fix(storage): propagate artifact acknowledgement"
+          git push origin HEAD:agent/data-201b-artifact-store-ack
