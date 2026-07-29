@@ -2,27 +2,65 @@ import { describe, expect, it } from "vitest";
 import { DurableStorageError } from "../StorageProvider";
 import {
   PostgresStorageProvider,
+  type QueryableClient,
   type QueryablePool,
 } from "./PostgresStorageProvider";
 
 interface FakePoolOptions {
   rows?: Array<Record<string, unknown>>;
-  reject?: "insert" | "delete";
+  reject?: "insert" | "delete" | "commit";
+  rejectInsertAt?: number;
+  statements?: string[];
+  onRelease?: () => void;
+}
+
+function statementType(text: string): string {
+  const normalized = text.trim().toUpperCase();
+  if (normalized.startsWith("SELECT COLLECTION")) return "SELECT_DATA";
+  if (normalized.startsWith("SELECT")) return "SELECT";
+  if (normalized.startsWith("INSERT")) return "INSERT";
+  if (normalized.startsWith("DELETE")) return "DELETE";
+  if (normalized.startsWith("BEGIN")) return "BEGIN";
+  if (normalized.startsWith("COMMIT")) return "COMMIT";
+  if (normalized.startsWith("ROLLBACK")) return "ROLLBACK";
+  return normalized.split(/\s+/)[0] ?? normalized;
 }
 
 function fakePool(options: FakePoolOptions = {}): QueryablePool {
-  return {
-    async query(text: string) {
-      if (options.reject === "insert" && text.includes("INSERT INTO")) {
+  let insertCount = 0;
+  const query = async (text: string) => {
+    const type = statementType(text);
+    options.statements?.push(type);
+    if (type === "INSERT") {
+      insertCount += 1;
+      if (
+        options.reject === "insert" ||
+        options.rejectInsertAt === insertCount
+      ) {
         throw new Error("injected insert rejection");
       }
-      if (options.reject === "delete" && text.includes("DELETE FROM")) {
-        throw new Error("injected delete rejection");
-      }
-      if (text.includes("SELECT collection, id, data")) {
-        return { rows: options.rows ?? [] };
-      }
-      return { rows: [] };
+    }
+    if (options.reject === "delete" && type === "DELETE") {
+      throw new Error("injected delete rejection");
+    }
+    if (options.reject === "commit" && type === "COMMIT") {
+      throw new Error("injected commit rejection");
+    }
+    if (type === "SELECT_DATA") {
+      return { rows: options.rows ?? [] };
+    }
+    return { rows: [] };
+  };
+  const client: QueryableClient = {
+    query,
+    release() {
+      options.onRelease?.();
+    },
+  };
+  return {
+    query,
+    async connect() {
+      return client;
     },
     async end() {},
   };
@@ -91,11 +129,15 @@ describe("PostgresStorageProvider awaited mutations", () => {
     const insertAcknowledged = new Promise<void>((resolve) => {
       acknowledgeInsert = resolve;
     });
+    const query = async (text: string) => {
+      if (statementType(text) === "SELECT_DATA") return { rows: [] };
+      if (statementType(text) === "INSERT") await insertAcknowledged;
+      return { rows: [] };
+    };
     const pool: QueryablePool = {
-      async query(text: string) {
-        if (text.includes("SELECT collection, id, data")) return { rows: [] };
-        if (text.includes("INSERT INTO")) await insertAcknowledged;
-        return { rows: [] };
+      query,
+      async connect() {
+        return { query, release() {} };
       },
       async end() {},
     };
@@ -138,5 +180,86 @@ describe("PostgresStorageProvider awaited mutations", () => {
       true,
     );
     expect(storage.get("projects", "project-1")).toBeNull();
+  });
+
+  it("commits a durable batch on one client before publishing cache state", async () => {
+    const statements: string[] = [];
+    let releases = 0;
+    const storage = provider({
+      statements,
+      onRelease: () => {
+        releases += 1;
+      },
+    });
+    await storage.ready();
+    statements.length = 0;
+
+    await storage.mutateDurably([
+      {
+        type: "set",
+        collection: "chat_conversations",
+        id: "conversation-1",
+        data: { updatedAt: "now" },
+      },
+      {
+        type: "set",
+        collection: "chat_messages",
+        id: "message-1",
+        data: { conversationId: "conversation-1" },
+      },
+    ]);
+
+    expect(statements).toEqual(["BEGIN", "INSERT", "INSERT", "COMMIT"]);
+    expect(releases).toBe(1);
+    expect(storage.get("chat_conversations", "conversation-1")).toEqual({
+      updatedAt: "now",
+    });
+    expect(storage.get("chat_messages", "message-1")).toEqual({
+      conversationId: "conversation-1",
+    });
+  });
+
+  it("rolls back the database and preserves all cache values when a batch fails", async () => {
+    const statements: string[] = [];
+    const previous = { updatedAt: "before" };
+    const storage = provider({
+      rows: [
+        {
+          collection: "chat_conversations",
+          id: "conversation-1",
+          data: previous,
+        },
+      ],
+      rejectInsertAt: 2,
+      statements,
+    });
+    await storage.ready();
+    statements.length = 0;
+
+    await expect(
+      storage.mutateDurably([
+        {
+          type: "set",
+          collection: "chat_conversations",
+          id: "conversation-1",
+          data: { updatedAt: "after" },
+        },
+        {
+          type: "set",
+          collection: "chat_messages",
+          id: "message-1",
+          data: { conversationId: "conversation-1" },
+        },
+      ]),
+    ).rejects.toMatchObject({
+      name: "DurableStorageError",
+      operation: "batch",
+    });
+
+    expect(statements).toEqual(["BEGIN", "INSERT", "INSERT", "ROLLBACK"]);
+    expect(storage.get("chat_conversations", "conversation-1")).toEqual(
+      previous,
+    );
+    expect(storage.get("chat_messages", "message-1")).toBeNull();
   });
 });
