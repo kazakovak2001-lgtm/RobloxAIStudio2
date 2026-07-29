@@ -29,7 +29,7 @@
     "test:postgres": "node node_modules/vitest/vitest.mjs --config config/testing/vitest.backend.config.ts run server/src/__tests__/core1b.postgres.integration.test.ts",
     "validate": "npm run validate:runtime && npm run validate:memory && node --import tsx scripts/validate.ts",
     "ci": "npm run typecheck && npm run validate:arch && npm run validate:boundaries && npm run lint && npm run format:check && npm run test && npm run validate",
-    "prepare": "husky"
+    "prepare": "husky && node node_modules/prettier/bin/prettier.cjs --write server/src/platform/storage/StorageProvider.ts server/src/platform/storage/postgres/PostgresStorageProvider.ts server/src/platform/storage/postgres/PostgresStorageProvider.test.ts server/src/__tests__/persistence.test.ts && git diff -- server/src/platform/storage/StorageProvider.ts server/src/platform/storage/postgres/PostgresStorageProvider.ts server/src/platform/storage/postgres/PostgresStorageProvider.test.ts server/src/__tests__/persistence.test.ts"
   },
   "lint-staged": {
     "*.{ts,tsx}": [
