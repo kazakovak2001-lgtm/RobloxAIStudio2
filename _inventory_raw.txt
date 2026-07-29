@@ -468,6 +468,7 @@ scripts/test-pre-check.ts
 scripts/validate-architecture.ts
 scripts/validate-boundaries.ts
 scripts/validate-controller.ts
+scripts/validate-memory-ownership.ts
 scripts/validate-runtime-ownership.ts
 scripts/validate.ts
 server/prisma/schema.prisma
