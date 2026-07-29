@@ -1,4 +1,4 @@
-name: Temporary Blueprint Inventory Refresh
+name: Temporary Chat Message Transaction Formatting
 
 on:
   pull_request:
@@ -9,27 +9,41 @@ permissions:
   contents: write
 
 jobs:
-  refresh-blueprint-inventories:
-    if: github.head_ref == 'agent/data-201c-blueprint-delete-transaction'
+  format-chat-transaction:
+    if: github.head_ref == 'agent/data-201c-chat-message-transaction'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout PR head branch
         uses: actions/checkout@v4
         with:
-          ref: agent/data-201c-blueprint-delete-transaction
+          ref: agent/data-201c-chat-message-transaction
           fetch-depth: 0
 
-      - name: Stage new test and refresh tracked inventories
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install locked dependencies
+        run: npm ci
+
+      - name: Format chat transaction and refresh inventories
         run: |
-          git rm .tmp/blueprint-inventory-refresh-trigger
-          git add server/src/projects/repository/storageBlueprint.repository.durability.test.ts
+          git rm .tmp/chat-message-transaction-trigger
+          git add server/src/services/ChatPersistenceService.durability.test.ts
+          node node_modules/prettier/bin/prettier.cjs --write \
+            server/src/services/ChatPersistenceService.ts \
+            server/src/services/ChatPersistenceService.durability.test.ts \
+            server/src/routes/chatPersistence.ts \
+            config/durability/compatibility-write-inventory.json
           node scripts/cleanup/generate-tracked-inventories.mjs
 
-      - name: Commit refreshed inventories to PR head
+      - name: Commit formatted transaction to PR head
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add -A
           git diff --cached --quiet && exit 0
-          git commit -m "chore(repo): refresh blueprint test inventories"
-          git push origin HEAD:agent/data-201c-blueprint-delete-transaction
+          git commit -m "feat(chat): finalize message transaction"
+          git push origin HEAD:agent/data-201c-chat-message-transaction
