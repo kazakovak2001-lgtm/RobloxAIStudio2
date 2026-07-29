@@ -126,9 +126,7 @@ export class PostgresStorageProvider implements StorageProvider {
     }
   }
 
-  async mutateDurably(
-    mutations: readonly DurableMutation[],
-  ): Promise<void> {
+  async mutateDurably(mutations: readonly DurableMutation[]): Promise<void> {
     if (mutations.length === 0) return;
     const batch = [...mutations];
 
@@ -386,11 +384,7 @@ export class PostgresStorageProvider implements StorageProvider {
   }
 
   private async persistDelete(collection: string, id: string): Promise<void> {
-    await this.persistDeleteWith(
-      this.requireConnectedPool(),
-      collection,
-      id,
-    );
+    await this.persistDeleteWith(this.requireConnectedPool(), collection, id);
   }
 
   private async persistSetWith(

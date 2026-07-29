@@ -40,10 +40,7 @@ function access(allowed = true): ProjectAccessControl {
 
 async function withServer<T>(
   storage: ControlledBatchStorage,
-  callback: (
-    baseUrl: string,
-    service: ChatPersistenceService,
-  ) => Promise<T>,
+  callback: (baseUrl: string, service: ChatPersistenceService) => Promise<T>,
   allowed = true,
 ): Promise<T> {
   const service = new ChatPersistenceService(storage);
@@ -165,9 +162,9 @@ describe("chat persistence durable transaction boundary", () => {
 
       expect(created.status).toBe(201);
       const message = created.body.data as { conversationId: string };
-      expect(service.getConversation(message.conversationId)?.messages).toHaveLength(
-        1,
-      );
+      expect(
+        service.getConversation(message.conversationId)?.messages,
+      ).toHaveLength(1);
 
       const deleted = await requestJson(
         `${baseUrl}/conversation/${message.conversationId}`,

@@ -84,7 +84,11 @@ export class ChatPersistenceService {
 
   createMessage(input: CreateMessageInput): ConversationMessage {
     const prepared = this.prepareMessageMutation(input);
-    this.storage.set(CONVERSATIONS, prepared.conversation.id, prepared.conversation);
+    this.storage.set(
+      CONVERSATIONS,
+      prepared.conversation.id,
+      prepared.conversation,
+    );
     this.storage.set(MESSAGES, prepared.message.id, prepared.message);
     return prepared.message;
   }
