@@ -1,4 +1,4 @@
-name: Temporary PR82 Preservation Test Migration
+name: Temporary PR82 Preservation Formatting
 
 on:
   pull_request:
@@ -9,7 +9,7 @@ permissions:
   contents: write
 
 jobs:
-  migrate-preservation-test:
+  format-preservation-test:
     if: github.head_ref == 'agent/data-201b-project-lifecycle-update-ack'
     runs-on: ubuntu-latest
     steps:
@@ -19,27 +19,30 @@ jobs:
           ref: agent/data-201b-project-lifecycle-update-ack
           fetch-depth: 0
 
-      - name: Apply exact preservation test migration
+      - name: Apply exact preservation formatting
         run: |
           node <<'NODE'
           const fs = require('node:fs');
           const path = 'server/src/__tests__/preservationProperty.test.ts';
           let source = fs.readFileSync(path, 'utf8');
-          const oldLine = 'const updated = projects.update(p.id, { name: "Updated Game" });';
-          const newLine = 'const updated = await projects.updateDurable(p.id, { name: "Updated Game" });';
+          const oldLine = 'const updated = await projects.updateDurable(p.id, { name: "Updated Game" });';
+          const newBlock = `const updated = await projects.updateDurable(p.id, {
+            name: "Updated Game",
+          });`;
           const matches = source.split(oldLine).length - 1;
           if (matches !== 1) {
-            throw new Error(`Expected exactly one stale project update test call, found ${matches}`);
+            throw new Error(`Expected exactly one unformatted durable update call, found ${matches}`);
           }
-          source = source.replace(oldLine, newLine);
+          source = source.replace(oldLine, newBlock);
           fs.writeFileSync(path, source);
           NODE
+          rm -f .tmp/pr82-prettier-trigger
 
-      - name: Commit exact migration to PR head
+      - name: Commit exact formatting to PR head
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add server/src/__tests__/preservationProperty.test.ts
+          git add -A
           git diff --cached --quiet && exit 0
-          git commit -m "test(storage): await preservation project update"
+          git commit -m "style(storage): format preservation update"
           git push origin HEAD:agent/data-201b-project-lifecycle-update-ack
