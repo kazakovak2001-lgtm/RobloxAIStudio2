@@ -23,15 +23,39 @@ export class UserRepository {
   ) {}
 
   create(input: CreateUserInput): User {
-    const user = this.buildUser(input);
+    const user = this.prepareCreate(input);
     this.storage.set(this.collection, user.id, user);
     return user;
   }
 
   async createDurable(input: CreateUserInput): Promise<User> {
-    const user = this.buildUser(input);
+    const user = this.prepareCreate(input);
     await this.storage.setDurable(this.collection, user.id, user);
     return user;
+  }
+
+  /** Build a user record without publishing it to storage. */
+  prepareCreate(input: CreateUserInput): User {
+    const tier = input.tier ?? "free";
+    const email = this.normalizeEmail(input.email);
+    return {
+      id: createUserId(),
+      email,
+      displayName: input.displayName,
+      tier,
+      status: "active",
+      createdAt: Date.now(),
+      lastLoginAt: Date.now(),
+      usage: {
+        generationsToday: 0,
+        generationsTotal: 0,
+        tokensUsedToday: 0,
+        tokensUsedTotal: 0,
+        projectCount: 0,
+        storageUsedBytes: 0,
+      },
+      limits: TIER_LIMITS[tier],
+    };
   }
 
   getById(id: string): User | null {
@@ -128,29 +152,6 @@ export class UserRepository {
 
   count(): number {
     return this.storage.count(this.collection);
-  }
-
-  private buildUser(input: CreateUserInput): User {
-    const tier = input.tier ?? "free";
-    const email = this.normalizeEmail(input.email);
-    return {
-      id: createUserId(),
-      email,
-      displayName: input.displayName,
-      tier,
-      status: "active",
-      createdAt: Date.now(),
-      lastLoginAt: Date.now(),
-      usage: {
-        generationsToday: 0,
-        generationsTotal: 0,
-        tokensUsedToday: 0,
-        tokensUsedTotal: 0,
-        projectCount: 0,
-        storageUsedBytes: 0,
-      },
-      limits: TIER_LIMITS[tier],
-    };
   }
 
   private prepareProfileUpdate(
