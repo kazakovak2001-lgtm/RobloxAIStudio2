@@ -144,6 +144,7 @@ export class PostgresStorageProvider implements StorageProvider {
                 mutation.collection,
                 mutation.id,
                 mutation.data,
+                mutation.requireAbsent ?? false,
               );
             } else {
               await this.persistDeleteWith(
@@ -283,11 +284,8 @@ export class PostgresStorageProvider implements StorageProvider {
         ? await this.dependencies.createPool(this.config)
         : await this.createDefaultPool();
 
-      // Test connection
       await candidatePool.query("SELECT 1");
 
-      // kv_store is owned by the migration registry. Loading only happens after
-      // bootstrap has successfully applied that registry.
       const { rows } = await candidatePool.query(
         `SELECT collection, id, data FROM ${KV_TABLE}`,
       );
@@ -320,7 +318,6 @@ export class PostgresStorageProvider implements StorageProvider {
   }
 
   private async createDefaultPool(): Promise<QueryablePool> {
-    // Dynamic import preserves the dependency-free in-memory/test path.
     const pg = await import("pg").catch(() => null);
     if (!pg) throw new Error("The pg package is not available");
 
@@ -340,8 +337,6 @@ export class PostgresStorageProvider implements StorageProvider {
       await write();
     });
 
-    // A rejected operation must not poison later mutations. The original
-    // promise is still returned to awaited callers so they observe rejection.
     this.writeTail = operation.catch(() => undefined);
     const tracked = operation.then(
       () => undefined,
@@ -353,8 +348,6 @@ export class PostgresStorageProvider implements StorageProvider {
   }
 
   private scheduleWrite(write: () => Promise<void>): void {
-    // Compatibility writes intentionally retain historical non-awaited behavior.
-    // DATA-201B will remove request-level consumers of this path.
     if (!this.initialization && !this.connected) return;
 
     void this.enqueueWrite(write).catch((error: unknown) => {
@@ -395,12 +388,23 @@ export class PostgresStorageProvider implements StorageProvider {
     collection: string,
     id: string,
     data: unknown,
+    requireAbsent = false,
   ): Promise<void> {
-    await queryable.query(
-      `INSERT INTO ${KV_TABLE} (collection, id, data) VALUES ($1, $2, $3)
-       ON CONFLICT (collection, id) DO UPDATE SET data = $3, updated_at = NOW()`,
+    const result = await queryable.query(
+      requireAbsent
+        ? `INSERT INTO ${KV_TABLE} (collection, id, data) VALUES ($1, $2, $3)
+           ON CONFLICT (collection, id) DO NOTHING RETURNING id`
+        : `INSERT INTO ${KV_TABLE} (collection, id, data) VALUES ($1, $2, $3)
+           ON CONFLICT (collection, id) DO UPDATE SET data = $3, updated_at = NOW()`,
       [collection, id, JSON.stringify(data)],
     );
+    if (requireAbsent && result.rows.length === 0) {
+      throw new DurableStorageConflictError(
+        `Required durable record already exists: ${collection}/${id}`,
+        collection,
+        id,
+      );
+    }
   }
 
   private async persistDeleteWith(
