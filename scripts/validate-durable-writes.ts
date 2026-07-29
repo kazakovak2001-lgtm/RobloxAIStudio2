@@ -1,9 +1,4 @@
-import {
-  existsSync,
-  mkdirSync,
-  readFileSync,
-  writeFileSync,
-} from "node:fs";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join, relative, resolve } from "node:path";
 import ts from "typescript";
 
@@ -218,7 +213,9 @@ function loadProgram(): ts.Program {
   return ts.createProgram(parsed.fileNames, parsed.options);
 }
 
-function discoverCompatibilityWrites(program: ts.Program): CompatibilityWriteUse[] {
+function discoverCompatibilityWrites(
+  program: ts.Program,
+): CompatibilityWriteUse[] {
   const checker = program.getTypeChecker();
   const uses: CompatibilityWriteUse[] = [];
 
@@ -342,7 +339,10 @@ function main(): void {
         `Compatibility write entry ${entry.key} must document a reason.`,
       );
     }
-    if (entry.migrationTarget !== "DATA-201B" && entry.migrationTarget !== "DATA-201C") {
+    if (
+      entry.migrationTarget !== "DATA-201B" &&
+      entry.migrationTarget !== "DATA-201C"
+    ) {
       errors.push(
         `Compatibility write entry ${entry.key} has invalid migrationTarget ${String(entry.migrationTarget)}.`,
       );
