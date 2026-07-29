@@ -61,9 +61,9 @@ function isEqualDigest(left: string, right: string): boolean {
 /**
  * Storage-backed API key registry.
  *
- * The registry uses the existing synchronous StorageProvider contract. When
- * STORAGE_PROVIDER=postgres, records are persisted by the provider's
- * write-through key-value store; local/test environments stay in memory.
+ * Issuance and bootstrap seeding retain their compatibility path until their
+ * lifecycle is separated. Revocation is acknowledged before the revoked state
+ * becomes observable.
  */
 export class ApiKeyStore {
   constructor(private readonly storage: StorageProvider) {}
@@ -106,11 +106,11 @@ export class ApiKeyStore {
       );
   }
 
-  revoke(id: string): boolean {
+  async revokeDurable(id: string): Promise<boolean> {
     const record = this.storage.get<StoredApiKey>(COLLECTION, id);
     if (!record || record.revokedAt) return false;
 
-    this.storage.set(COLLECTION, id, {
+    await this.storage.setDurable(COLLECTION, id, {
       ...record,
       revokedAt: new Date().toISOString(),
     });
