@@ -12,6 +12,8 @@ export type DurableMutation =
       collection: string;
       id: string;
       data: unknown;
+      /** Fail the complete batch when the durable record already exists. */
+      requireAbsent?: boolean;
     }
   | {
       type: "delete";
@@ -22,7 +24,8 @@ export type DurableMutation =
     };
 
 export type DurableStorageErrorCode =
-  "DURABLE_STORAGE_MUTATION_FAILED" | "DURABLE_STORAGE_CONFLICT";
+  | "DURABLE_STORAGE_MUTATION_FAILED"
+  | "DURABLE_STORAGE_CONFLICT";
 
 export class DurableStorageError extends Error {
   readonly code: DurableStorageErrorCode = "DURABLE_STORAGE_MUTATION_FAILED";
@@ -119,6 +122,13 @@ export class InMemoryStorageProvider implements StorageProvider {
     for (const mutation of mutations) {
       const collection = getStagedCollection(mutation.collection);
       if (mutation.type === "set") {
+        if (mutation.requireAbsent && collection.has(mutation.id)) {
+          throw new DurableStorageConflictError(
+            `Required durable record already exists: ${mutation.collection}/${mutation.id}`,
+            mutation.collection,
+            mutation.id,
+          );
+        }
         collection.set(mutation.id, mutation.data);
         continue;
       }
