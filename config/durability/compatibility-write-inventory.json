@@ -110,6 +110,16 @@
       "migrationTarget": "DATA-201B"
     },
     {
+      "key": "server/src/platform/security/ApiKeyStore.ts#ApiKeyStore.issue#set",
+      "path": "server/src/platform/security/ApiKeyStore.ts",
+      "owner": "ApiKeyStore.issue",
+      "operation": "set",
+      "expectedCalls": 1,
+      "classification": "bootstrap-compatibility",
+      "reason": "Environment API-key seeding and programmatic issuance still share a synchronous write path.",
+      "migrationTarget": "DATA-201B"
+    },
+    {
       "key": "server/src/platform/users/UserRepository.ts#UserRepository.create#set",
       "path": "server/src/platform/users/UserRepository.ts",
       "owner": "UserRepository.create",

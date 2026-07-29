@@ -76,7 +76,9 @@ export interface AutonomousPhaseAdapter {
 
 function ensureNotAborted(signal: AbortSignal): void {
   if (signal.aborted) {
-    throw new DOMException("Autonomous phase cancelled", "AbortError");
+    const error = new Error("Autonomous phase cancelled");
+    error.name = "AbortError";
+    throw error;
   }
 }
 
@@ -201,7 +203,7 @@ class GenreDetectionAdapter extends BaseAdapter {
       evidence: "heuristic",
       service: "PromptGenreHeuristic",
       reason: "Keyword classification is deterministic but not model-verified.",
-      cancellable: true,
+      cancellable: false,
       checkpointable: true,
     };
   }
@@ -233,7 +235,7 @@ class KnowledgeSearchAdapter extends BaseAdapter {
       status: "available",
       evidence: "heuristic",
       service: "KnowledgeEngine",
-      cancellable: true,
+      cancellable: false,
       checkpointable: true,
     };
   }
@@ -265,7 +267,7 @@ class BlueprintAdapter extends BaseAdapter {
       status: "available",
       evidence: "heuristic",
       service: "GameBlueprintEngine",
-      cancellable: true,
+      cancellable: false,
       checkpointable: true,
     };
   }
@@ -307,7 +309,7 @@ class CollaborationAdapter extends BaseAdapter {
       service: "AgentCoordinator",
       reason:
         "The bounded coordinator creates assigned tasks but does not execute AI agents.",
-      cancellable: true,
+      cancellable: false,
       checkpointable: true,
     };
   }
@@ -351,7 +353,7 @@ class LuaGenerationAdapter extends BaseAdapter {
       status: "available",
       evidence: "verified",
       service: "generation/lua/LuaGenerationEngine",
-      cancellable: true,
+      cancellable: false,
       checkpointable: true,
     };
   }
@@ -394,7 +396,7 @@ class AssetGenerationAdapter extends BaseAdapter {
       service: "generation/assets/AssetGenerationEngine",
       reason:
         "The engine produces validated asset definitions and placeholders, not native uploaded Roblox assets.",
-      cancellable: true,
+      cancellable: false,
       checkpointable: true,
     };
   }
@@ -439,7 +441,7 @@ class ExperienceAssemblyAdapter extends BaseAdapter {
           status: "available",
           evidence: "verified",
           service: "generation/experience/ExperienceAssembler",
-          cancellable: true,
+          cancellable: false,
           checkpointable: true,
         }
       : {
@@ -447,7 +449,7 @@ class ExperienceAssemblyAdapter extends BaseAdapter {
           evidence: "synthetic",
           service: "generation/experience/ExperienceAssembler",
           reason: "Lua generation output is required before assembly.",
-          cancellable: true,
+          cancellable: false,
           checkpointable: true,
         };
   }
@@ -488,7 +490,7 @@ class PlaytestAdapter extends BaseAdapter {
           service: "PlaytestEngine",
           reason:
             "PlaytestEngine performs deterministic static analysis, not a Roblox runtime play session.",
-          cancellable: true,
+          cancellable: false,
           checkpointable: true,
         }
       : {
@@ -496,7 +498,7 @@ class PlaytestAdapter extends BaseAdapter {
           evidence: "synthetic",
           service: "PlaytestEngine",
           reason: "Lua and asset outputs are required before static playtest.",
-          cancellable: true,
+          cancellable: false,
           checkpointable: true,
         };
   }
@@ -562,7 +564,7 @@ class RepairAdapter extends BaseAdapter {
       service: "RepairEngine",
       reason:
         "RepairEngine currently simulates score improvement and cost instead of modifying and revalidating artifacts.",
-      cancellable: true,
+      cancellable: false,
       checkpointable: true,
     };
   }
@@ -585,7 +587,7 @@ class BenchmarkAdapter extends BaseAdapter {
       service: "BenchmarkEngine",
       reason:
         "Benchmarking compares static structure against genre references.",
-      cancellable: true,
+      cancellable: false,
       checkpointable: true,
     };
   }
@@ -626,7 +628,7 @@ class StudioSyncAdapter extends BaseAdapter {
       service: "StudioBridgeServer",
       reason:
         "No authenticated Studio session and exact artifact verification context is attached to this autonomous run.",
-      cancellable: true,
+      cancellable: false,
       checkpointable: true,
     };
   }
@@ -660,13 +662,14 @@ export class AutonomousPhaseRegistry {
 
   listCapabilities(
     context: AutonomousPhaseContext,
-  ): Record<RunnableOrchestratorPhase, PhaseCapability> {
-    return Object.fromEntries(
-      [...this.adapters.entries()].map(([phase, adapter]) => [
-        phase,
-        adapter.capability(context),
-      ]),
-    ) as Record<RunnableOrchestratorPhase, PhaseCapability>;
+  ): Partial<Record<RunnableOrchestratorPhase, PhaseCapability>> {
+    const capabilities: Partial<
+      Record<RunnableOrchestratorPhase, PhaseCapability>
+    > = {};
+    for (const [phase, adapter] of this.adapters) {
+      capabilities[phase] = adapter.capability(context);
+    }
+    return capabilities;
   }
 }
 

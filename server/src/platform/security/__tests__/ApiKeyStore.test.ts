@@ -8,12 +8,22 @@ import {
 class ControlledMutationStorage extends InMemoryStorageProvider {
   rejectSet = false;
   rejectDelete = false;
+  setDurableCalls = 0;
+  onSetStart?: () => void;
+  setBarrier?: Promise<void>;
+  onDeleteStart?: () => void;
+  deleteBarrier?: Promise<void>;
 
   override async setDurable<T>(
     collection: string,
     id: string,
     data: T,
   ): Promise<void> {
+    this.setDurableCalls += 1;
+    this.onSetStart?.();
+    if (this.setBarrier) {
+      await this.setBarrier;
+    }
     if (this.rejectSet) {
       throw new DurableStorageError("injected set rejection", "set");
     }
@@ -24,6 +34,10 @@ class ControlledMutationStorage extends InMemoryStorageProvider {
     collection: string,
     id: string,
   ): Promise<boolean> {
+    this.onDeleteStart?.();
+    if (this.deleteBarrier) {
+      await this.deleteBarrier;
+    }
     if (this.rejectDelete) {
       throw new DurableStorageError("injected delete rejection", "delete");
     }
@@ -38,11 +52,16 @@ describe("ApiKeyStore", () => {
   afterEach(async () => {
     storage.rejectSet = false;
     storage.rejectDelete = false;
+    storage.setDurableCalls = 0;
+    storage.onSetStart = undefined;
+    storage.setBarrier = undefined;
+    storage.onDeleteStart = undefined;
+    storage.deleteBarrier = undefined;
     await store.clearDurable();
   });
 
-  it("validates an issued key without storing the plain-text credential", async () => {
-    const issued = await store.issueDurable("test-api-key-123456789", {
+  it("validates an issued key without storing the plain-text credential", () => {
+    const issued = store.issue("test-api-key-123456789", {
       label: "test",
       ownerId: "user-1",
     });
@@ -62,47 +81,43 @@ describe("ApiKeyStore", () => {
     );
   });
 
-  it("does not publish an issued key when persistence is rejected", async () => {
-    storage.rejectSet = true;
-
-    await expect(
-      store.issueDurable("rejected-issue-key-123456789", {
-        id: "rejected-issue",
-        label: "rejected",
-      }),
-    ).rejects.toMatchObject({
-      code: "DURABLE_STORAGE_MUTATION_FAILED",
-      operation: "set",
-    });
-    expect(store.validate("rejected-issue-key-123456789")).toBe(false);
-    expect(storage.get("platform_api_keys", "rejected-issue")).toBeNull();
-    expect(store.list()).toEqual([]);
-  });
-
-  it("generates a key only after persistence acknowledgement", async () => {
-    const issued = await store.generateDurable({ label: "generated" });
-
-    expect(issued.key).toMatch(/^rai_[0-9a-f]{64}$/);
-    expect(store.validate(issued.key)).toBe(true);
-    expect(store.list()).toEqual([
-      {
-        id: issued.id,
-        createdAt: expect.any(String),
-        label: "generated",
-      },
-    ]);
-  });
-
   it("revokes a key after acknowledgement and is idempotent", async () => {
-    const issued = await store.issueDurable("revoke-api-key-123456789");
+    const issued = store.issue("revoke-api-key-123456789");
 
     await expect(store.revokeDurable(issued.id)).resolves.toBe(true);
     expect(store.validate(issued.key)).toBe(false);
     await expect(store.revokeDurable(issued.id)).resolves.toBe(false);
   });
 
+  it("serializes concurrent revocations of the same key", async () => {
+    const issued = store.issue("concurrent-revoke-key-123456789");
+    let markStarted!: () => void;
+    let releaseWrite!: () => void;
+    const writeStarted = new Promise<void>((resolve) => {
+      markStarted = resolve;
+    });
+    storage.onSetStart = markStarted;
+    storage.setBarrier = new Promise<void>((resolve) => {
+      releaseWrite = resolve;
+    });
+
+    const first = store.revokeDurable(issued.id);
+    await writeStarted;
+    const second = store.revokeDurable(issued.id);
+    releaseWrite();
+
+    await expect(Promise.all([first, second])).resolves.toEqual([true, false]);
+    expect(storage.setDurableCalls).toBe(1);
+    expect(store.list()).toEqual([
+      expect.objectContaining({
+        id: issued.id,
+        revokedAt: expect.any(String),
+      }),
+    ]);
+  });
+
   it("keeps a key valid when revocation persistence is rejected", async () => {
-    const issued = await store.issueDurable("rejected-revoke-key-123456789");
+    const issued = store.issue("rejected-revoke-key-123456789");
     const previous = storage.get("platform_api_keys", issued.id);
     storage.rejectSet = true;
 
@@ -115,15 +130,66 @@ describe("ApiKeyStore", () => {
   });
 
   it("deletes all keys only after individual acknowledgements", async () => {
-    await store.issueDurable("cleanup-api-key-one-123456789");
-    await store.issueDurable("cleanup-api-key-two-123456789");
+    store.issue("cleanup-api-key-one-123456789");
+    store.issue("cleanup-api-key-two-123456789");
 
     await expect(store.clearDurable()).resolves.toBe(2);
     expect(store.list()).toEqual([]);
   });
 
+  it("waits for an in-flight revocation before cleanup", async () => {
+    const issued = store.issue("cleanup-revocation-key-123456789");
+    let markStarted!: () => void;
+    let releaseWrite!: () => void;
+    const writeStarted = new Promise<void>((resolve) => {
+      markStarted = resolve;
+    });
+    storage.onSetStart = markStarted;
+    storage.setBarrier = new Promise<void>((resolve) => {
+      releaseWrite = resolve;
+    });
+
+    const revocation = store.revokeDurable(issued.id);
+    await writeStarted;
+    const cleanup = store.clearDurable();
+    releaseWrite();
+
+    await expect(revocation).resolves.toBe(true);
+    await expect(cleanup).resolves.toBe(1);
+    expect(store.list()).toEqual([]);
+  });
+
+  it("rejects issuance while cleanup is in progress", async () => {
+    const id = "cleanup-issuance-race";
+    store.issue("original-cleanup-key-123456789", { id });
+    let markStarted!: () => void;
+    let releaseDelete!: () => void;
+    const deleteStarted = new Promise<void>((resolve) => {
+      markStarted = resolve;
+    });
+    storage.onDeleteStart = markStarted;
+    storage.deleteBarrier = new Promise<void>((resolve) => {
+      releaseDelete = resolve;
+    });
+
+    const cleanup = store.clearDurable();
+    await deleteStarted;
+
+    expect(() =>
+      store.issue("replacement-cleanup-key-123456789", { id }),
+    ).toThrow("API key cleanup is in progress");
+
+    releaseDelete();
+    await expect(cleanup).resolves.toBe(1);
+
+    const replacement = store.issue("replacement-cleanup-key-123456789", {
+      id,
+    });
+    expect(store.validate(replacement.key)).toBe(true);
+  });
+
   it("retains a key when cleanup persistence is rejected", async () => {
-    const issued = await store.issueDurable("rejected-cleanup-key-123456789");
+    const issued = store.issue("rejected-cleanup-key-123456789");
     const previous = storage.get("platform_api_keys", issued.id);
     storage.rejectDelete = true;
 
@@ -135,20 +201,18 @@ describe("ApiKeyStore", () => {
     expect(storage.get("platform_api_keys", issued.id)).toEqual(previous);
   });
 
-  it("rejects malformed or short credentials", async () => {
+  it("rejects malformed or short credentials", () => {
     expect(store.validate(undefined)).toBe(false);
     expect(store.validate(["test-api-key-123456789"])).toBe(false);
-    await expect(store.issueDurable("too-short")).rejects.toThrow(
-      /at least 16/,
-    );
+    expect(() => store.issue("too-short")).toThrow(/at least 16/);
   });
 
-  it("seeds unique keys from API_KEYS without duplicating records", async () => {
+  it("seeds unique keys from API_KEYS without duplicating records", () => {
     const value =
       "seed-api-key-123456789, seed-api-key-123456789, another-seed-api-key-123456";
 
-    await expect(store.seedFromEnvironmentDurable(value)).resolves.toBe(2);
-    await expect(store.seedFromEnvironmentDurable(value)).resolves.toBe(0);
+    expect(store.seedFromEnvironment(value)).toBe(2);
+    expect(store.seedFromEnvironment(value)).toBe(0);
     expect(store.validate("seed-api-key-123456789")).toBe(true);
     expect(store.validate("another-seed-api-key-123456")).toBe(true);
     expect(store.list()).toHaveLength(2);
