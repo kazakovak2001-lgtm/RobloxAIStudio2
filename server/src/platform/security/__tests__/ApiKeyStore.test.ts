@@ -11,6 +11,8 @@ class ControlledMutationStorage extends InMemoryStorageProvider {
   setDurableCalls = 0;
   onSetStart?: () => void;
   setBarrier?: Promise<void>;
+  onDeleteStart?: () => void;
+  deleteBarrier?: Promise<void>;
 
   override async setDurable<T>(
     collection: string,
@@ -32,6 +34,10 @@ class ControlledMutationStorage extends InMemoryStorageProvider {
     collection: string,
     id: string,
   ): Promise<boolean> {
+    this.onDeleteStart?.();
+    if (this.deleteBarrier) {
+      await this.deleteBarrier;
+    }
     if (this.rejectDelete) {
       throw new DurableStorageError("injected delete rejection", "delete");
     }
@@ -49,6 +55,8 @@ describe("ApiKeyStore", () => {
     storage.setDurableCalls = 0;
     storage.onSetStart = undefined;
     storage.setBarrier = undefined;
+    storage.onDeleteStart = undefined;
+    storage.deleteBarrier = undefined;
     await store.clearDurable();
   });
 
@@ -127,6 +135,57 @@ describe("ApiKeyStore", () => {
 
     await expect(store.clearDurable()).resolves.toBe(2);
     expect(store.list()).toEqual([]);
+  });
+
+  it("waits for an in-flight revocation before cleanup", async () => {
+    const issued = store.issue("cleanup-revocation-key-123456789");
+    let markStarted!: () => void;
+    let releaseWrite!: () => void;
+    const writeStarted = new Promise<void>((resolve) => {
+      markStarted = resolve;
+    });
+    storage.onSetStart = markStarted;
+    storage.setBarrier = new Promise<void>((resolve) => {
+      releaseWrite = resolve;
+    });
+
+    const revocation = store.revokeDurable(issued.id);
+    await writeStarted;
+    const cleanup = store.clearDurable();
+    releaseWrite();
+
+    await expect(revocation).resolves.toBe(true);
+    await expect(cleanup).resolves.toBe(1);
+    expect(store.list()).toEqual([]);
+  });
+
+  it("rejects issuance while cleanup is in progress", async () => {
+    const id = "cleanup-issuance-race";
+    store.issue("original-cleanup-key-123456789", { id });
+    let markStarted!: () => void;
+    let releaseDelete!: () => void;
+    const deleteStarted = new Promise<void>((resolve) => {
+      markStarted = resolve;
+    });
+    storage.onDeleteStart = markStarted;
+    storage.deleteBarrier = new Promise<void>((resolve) => {
+      releaseDelete = resolve;
+    });
+
+    const cleanup = store.clearDurable();
+    await deleteStarted;
+
+    expect(() =>
+      store.issue("replacement-cleanup-key-123456789", { id }),
+    ).toThrow("API key cleanup is in progress");
+
+    releaseDelete();
+    await expect(cleanup).resolves.toBe(1);
+
+    const replacement = store.issue("replacement-cleanup-key-123456789", {
+      id,
+    });
+    expect(store.validate(replacement.key)).toBe(true);
   });
 
   it("retains a key when cleanup persistence is rejected", async () => {
