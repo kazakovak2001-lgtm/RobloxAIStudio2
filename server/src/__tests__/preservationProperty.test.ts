@@ -831,7 +831,9 @@ describe("Preservation Property Tests - Baseline Behavior Guards", () => {
       expect(fetched!.name).toBe("Game");
 
       // Update
-      const updated = await projects.updateDurable(p.id, { name: "Updated Game" });
+      const updated = await projects.updateDurable(p.id, {
+  name: "Updated Game",
+});
       expect(updated).not.toBeNull();
       expect(updated!.name).toBe("Updated Game");
 
