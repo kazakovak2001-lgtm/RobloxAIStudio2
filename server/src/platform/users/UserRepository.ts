@@ -17,6 +17,7 @@ export interface CreateUserInput {
 
 export class UserRepository {
   private readonly collection = "users";
+  private readonly generationMutationQueues = new Map<string, Promise<void>>();
 
   constructor(
     private readonly storage: StorageProvider = new InMemoryStorageProvider(),
@@ -94,25 +95,24 @@ export class UserRepository {
     return updated;
   }
 
-  async recordGenerationDurable(
-    userId: string,
-    tokens: number,
-  ): Promise<boolean> {
-    const user = this.getById(userId);
-    if (!user) return false;
-    const updated: User = {
-      ...user,
-      lastLoginAt: Date.now(),
-      usage: {
-        ...user.usage,
-        generationsToday: user.usage.generationsToday + 1,
-        generationsTotal: user.usage.generationsTotal + 1,
-        tokensUsedToday: user.usage.tokensUsedToday + tokens,
-        tokensUsedTotal: user.usage.tokensUsedTotal + tokens,
-      },
-    };
-    await this.storage.setDurable(this.collection, userId, updated);
-    return true;
+  recordGenerationDurable(userId: string, tokens: number): Promise<boolean> {
+    return this.enqueueGenerationMutation(userId, async () => {
+      const user = this.getById(userId);
+      if (!user) return false;
+      const updated: User = {
+        ...user,
+        lastLoginAt: Date.now(),
+        usage: {
+          ...user.usage,
+          generationsToday: user.usage.generationsToday + 1,
+          generationsTotal: user.usage.generationsTotal + 1,
+          tokensUsedToday: user.usage.tokensUsedToday + tokens,
+          tokensUsedTotal: user.usage.tokensUsedTotal + tokens,
+        },
+      };
+      await this.storage.setDurable(this.collection, userId, updated);
+      return true;
+    });
   }
 
   checkLimits(userId: string): { allowed: boolean; reason?: string } {
@@ -142,6 +142,26 @@ export class UserRepository {
 
   count(): number {
     return this.storage.count(this.collection);
+  }
+
+  private enqueueGenerationMutation<T>(
+    userId: string,
+    operation: () => Promise<T>,
+  ): Promise<T> {
+    const previous =
+      this.generationMutationQueues.get(userId) ?? Promise.resolve();
+    const result = previous.then(operation);
+    const tail = result.then(
+      () => undefined,
+      () => undefined,
+    );
+    this.generationMutationQueues.set(userId, tail);
+
+    return result.finally(() => {
+      if (this.generationMutationQueues.get(userId) === tail) {
+        this.generationMutationQueues.delete(userId);
+      }
+    });
   }
 
   private buildUser(input: CreateUserInput): User {

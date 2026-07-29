@@ -322,6 +322,22 @@ events.onEvent(async (evt) => {
       emitForProject("pipeline.completed", payload);
       break;
     }
+    case "pipeline.preview.completed": {
+      const payload = {
+        ...evt.data,
+        pipelineId: evt.pipelineId,
+        projectId: evt.projectId,
+        timestamp: evt.timestamp.toISOString(),
+        productionCompleted: false,
+      };
+      console.log(
+        "[pipeline-bridge] forwarding",
+        "pipeline.preview.completed",
+        payload,
+      );
+      emitForProject("pipeline.preview.completed", payload);
+      break;
+    }
     case "pipeline.failed": {
       const payload = {
         pipelineId: evt.pipelineId,

@@ -63,9 +63,15 @@ function isEqualDigest(left: string, right: string): boolean {
  *
  * Issuance and bootstrap seeding retain their compatibility path until their
  * lifecycle is separated. Revocation and administrative cleanup are
- * acknowledged before their mutations become observable.
+ * acknowledged before their mutations become observable. Because issuance is
+ * synchronous, it fails explicitly while cleanup is queued or running rather
+ * than racing an acknowledged deletion.
  */
 export class ApiKeyStore {
+  private readonly revocationQueues = new Map<string, Promise<void>>();
+  private cleanupTail: Promise<void> = Promise.resolve();
+  private cleanupRequests = 0;
+
   constructor(private readonly storage: StorageProvider) {}
 
   issue(rawKey: string, metadata: ApiKeyMetadata = {}): IssuedApiKey {
@@ -74,6 +80,9 @@ export class ApiKeyStore {
       throw new Error(
         `API key must contain at least ${MIN_KEY_LENGTH} characters`,
       );
+    }
+    if (this.cleanupRequests > 0) {
+      throw new Error("API key cleanup is in progress");
     }
 
     const id = metadata.id ?? randomUUID();
@@ -107,14 +116,34 @@ export class ApiKeyStore {
   }
 
   async revokeDurable(id: string): Promise<boolean> {
-    const record = this.storage.get<StoredApiKey>(COLLECTION, id);
-    if (!record || record.revokedAt) return false;
+    if (this.cleanupRequests > 0) {
+      await this.cleanupTail;
+    }
 
-    await this.storage.setDurable(COLLECTION, id, {
-      ...record,
-      revokedAt: new Date().toISOString(),
+    const predecessor = this.revocationQueues.get(id) ?? Promise.resolve();
+    let release!: () => void;
+    const current = new Promise<void>((resolve) => {
+      release = resolve;
     });
-    return true;
+    const queued = predecessor.then(() => current);
+    this.revocationQueues.set(id, queued);
+
+    await predecessor;
+    try {
+      const record = this.storage.get<StoredApiKey>(COLLECTION, id);
+      if (!record || record.revokedAt) return false;
+
+      await this.storage.setDurable(COLLECTION, id, {
+        ...record,
+        revokedAt: new Date().toISOString(),
+      });
+      return true;
+    } finally {
+      release();
+      if (this.revocationQueues.get(id) === queued) {
+        this.revocationQueues.delete(id);
+      }
+    }
   }
 
   list(): RedactedApiKey[] {
@@ -154,17 +183,35 @@ export class ApiKeyStore {
   /**
    * Test and administrative cleanup; never returns a credential.
    *
+   * Cleanup calls are serialized. Each cleanup waits for revocations that were
+   * already in flight, and new revocations wait for all queued cleanups.
    * Deletions are acknowledged individually. A rejection is propagated to the
    * caller and the rejected record remains visible. This is not an atomic
    * all-or-nothing batch across multiple keys.
    */
   async clearDurable(): Promise<number> {
-    let deleted = 0;
-    for (const record of this.storage.list<StoredApiKey>(COLLECTION)) {
-      if (await this.storage.deleteDurable(COLLECTION, record.id)) {
-        deleted += 1;
+    this.cleanupRequests += 1;
+    const predecessor = this.cleanupTail;
+    let release!: () => void;
+    const current = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    this.cleanupTail = predecessor.then(() => current);
+
+    await predecessor;
+    try {
+      await Promise.all([...this.revocationQueues.values()]);
+
+      let deleted = 0;
+      for (const record of this.storage.list<StoredApiKey>(COLLECTION)) {
+        if (await this.storage.deleteDurable(COLLECTION, record.id)) {
+          deleted += 1;
+        }
       }
+      return deleted;
+    } finally {
+      this.cleanupRequests -= 1;
+      release();
     }
-    return deleted;
   }
 }
