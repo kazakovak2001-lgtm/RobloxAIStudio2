@@ -81,12 +81,12 @@ describe("CORE-1b durable runtime repositories", () => {
     await blueprintsBeforeRestart.recordExecution(execution);
 
     const chatBeforeRestart = new ChatPersistenceService(storage);
-    const firstMessage = chatBeforeRestart.createMessage({
+    const firstMessage = await chatBeforeRestart.createMessage({
       projectId,
       role: "user",
       content: "Create a persistent Roblox adventure.",
     });
-    chatBeforeRestart.createMessage({
+    await chatBeforeRestart.createMessage({
       conversationId: firstMessage.conversationId,
       role: "assistant",
       content: "The durable blueprint is ready.",
@@ -149,7 +149,7 @@ describe("CORE-1b durable runtime repositories", () => {
     expect(await repository.listExecutions(blueprint.id)).toEqual([]);
 
     const chat = new ChatPersistenceService(storage);
-    const message = chat.createMessage({
+    const message = await chat.createMessage({
       projectId: "project-delete",
       role: "user",
       content: "Delete this conversation.",
