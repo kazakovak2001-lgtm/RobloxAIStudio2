@@ -1,4 +1,4 @@
-name: Temporary Generation History Acknowledgement
+name: Temporary Project Create Compatibility Removal
 
 on:
   pull_request:
@@ -9,14 +9,14 @@ permissions:
   contents: write
 
 jobs:
-  migrate-generation-history:
-    if: github.head_ref == 'agent/data-201b-generation-history-ack'
+  finalize-project-create-removal:
+    if: github.head_ref == 'agent/data-201b-remove-project-create-compat'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout PR head branch
         uses: actions/checkout@v4
         with:
-          ref: agent/data-201b-generation-history-ack
+          ref: agent/data-201b-remove-project-create-compat
           fetch-depth: 0
 
       - name: Set up Node
@@ -28,46 +28,21 @@ jobs:
       - name: Install locked dependencies
         run: npm ci
 
-      - name: Await history callers and refresh inventories
+      - name: Format project repository and refresh inventories
         run: |
-          node <<'NODE'
-          const fs = require('node:fs');
-
-          const indexPath = 'server/src/index.ts';
-          let index = fs.readFileSync(indexPath, 'utf8');
-          const before = '          generationHistory.record({';
-          const matches = index.split(before).length - 1;
-          if (matches !== 2) {
-            throw new Error(`Expected two generationHistory.record callers, found ${matches}`);
-          }
-          index = index.split(before).join('          await generationHistory.record({');
-          fs.writeFileSync(indexPath, index);
-
-          const inventoryPath = 'config/durability/compatibility-write-inventory.json';
-          const inventory = JSON.parse(fs.readFileSync(inventoryPath, 'utf8'));
-          const key = 'server/src/projects/repository/generationHistory.repository.ts#StorageGenerationHistoryRepository.record#set';
-          const previousLength = inventory.entries.length;
-          inventory.entries = inventory.entries.filter((entry) => entry.key !== key);
-          if (inventory.entries.length !== previousLength - 1) {
-            throw new Error('Expected to remove exactly one generation history inventory group');
-          }
-          fs.writeFileSync(inventoryPath, `${JSON.stringify(inventory, null, 2)}\n`);
-          NODE
-
-          git rm .tmp/generation-history-ack-trigger
-          git add server/src/projects/repository/generationHistory.repository.durability.test.ts
+          git rm .tmp/project-create-removal-trigger
+          git add server/src/platform/projects/SaaSProjectRepository.durability.test.ts
           node node_modules/prettier/bin/prettier.cjs --write \
-            server/src/index.ts \
-            server/src/projects/repository/generationHistory.repository.ts \
-            server/src/projects/repository/generationHistory.repository.durability.test.ts \
+            server/src/platform/projects/SaaSProjectRepository.ts \
+            server/src/platform/projects/SaaSProjectRepository.durability.test.ts \
             config/durability/compatibility-write-inventory.json
           node scripts/cleanup/generate-tracked-inventories.mjs
 
-      - name: Commit migration to PR head
+      - name: Commit formatted removal to PR head
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add -A
           git diff --cached --quiet && exit 0
-          git commit -m "feat(history): await generation lifecycle records"
-          git push origin HEAD:agent/data-201b-generation-history-ack
+          git commit -m "feat(projects): finalize create compatibility removal"
+          git push origin HEAD:agent/data-201b-remove-project-create-compat
