@@ -32,7 +32,9 @@ describe("user administration durable acknowledgement", () => {
     });
     storage.rejectSet = true;
 
-    await expect(service.updateUser(user.id, { tier: "pro" })).rejects.toMatchObject({
+    await expect(
+      service.updateUser(user.id, { tier: "pro" }),
+    ).rejects.toMatchObject({
       code: "DURABLE_STORAGE_MUTATION_FAILED",
       operation: "set",
     });
@@ -65,7 +67,9 @@ describe("user administration durable acknowledgement", () => {
       displayName: "Admin Committed",
     });
 
-    await expect(service.updateUser(user.id, { tier: "pro" })).resolves.toMatchObject({
+    await expect(
+      service.updateUser(user.id, { tier: "pro" }),
+    ).resolves.toMatchObject({
       id: user.id,
       tier: "pro",
     });
