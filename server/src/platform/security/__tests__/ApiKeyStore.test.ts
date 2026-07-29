@@ -7,6 +7,7 @@ import {
 
 class ControlledMutationStorage extends InMemoryStorageProvider {
   rejectSet = false;
+  rejectDelete = false;
 
   override async setDurable<T>(
     collection: string,
@@ -18,15 +19,26 @@ class ControlledMutationStorage extends InMemoryStorageProvider {
     }
     await super.setDurable(collection, id, data);
   }
+
+  override async deleteDurable(
+    collection: string,
+    id: string,
+  ): Promise<boolean> {
+    if (this.rejectDelete) {
+      throw new DurableStorageError("injected delete rejection", "delete");
+    }
+    return super.deleteDurable(collection, id);
+  }
 }
 
 describe("ApiKeyStore", () => {
   const storage = new ControlledMutationStorage();
   const store = new ApiKeyStore(storage);
 
-  afterEach(() => {
+  afterEach(async () => {
     storage.rejectSet = false;
-    store.clear();
+    storage.rejectDelete = false;
+    await store.clearDurable();
   });
 
   it("validates an issued key without storing the plain-text credential", () => {
@@ -66,6 +78,27 @@ describe("ApiKeyStore", () => {
     await expect(store.revokeDurable(issued.id)).rejects.toMatchObject({
       code: "DURABLE_STORAGE_MUTATION_FAILED",
       operation: "set",
+    });
+    expect(store.validate(issued.key)).toBe(true);
+    expect(storage.get("platform_api_keys", issued.id)).toEqual(previous);
+  });
+
+  it("deletes all keys only after individual acknowledgements", async () => {
+    store.issue("cleanup-api-key-one-123456789");
+    store.issue("cleanup-api-key-two-123456789");
+
+    await expect(store.clearDurable()).resolves.toBe(2);
+    expect(store.list()).toEqual([]);
+  });
+
+  it("retains a key when cleanup persistence is rejected", async () => {
+    const issued = store.issue("rejected-cleanup-key-123456789");
+    const previous = storage.get("platform_api_keys", issued.id);
+    storage.rejectDelete = true;
+
+    await expect(store.clearDurable()).rejects.toMatchObject({
+      code: "DURABLE_STORAGE_MUTATION_FAILED",
+      operation: "delete",
     });
     expect(store.validate(issued.key)).toBe(true);
     expect(storage.get("platform_api_keys", issued.id)).toEqual(previous);
