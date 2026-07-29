@@ -1,0 +1,11 @@
+{
+  "schemaVersion": 1,
+  "purpose": "Fail closed when a new production consumer uses synchronous StorageProvider.set/delete compatibility mutations.",
+  "classifications": [
+    "request-level-debt",
+    "internal-lifecycle-debt",
+    "bootstrap-compatibility",
+    "multi-record-deferred"
+  ],
+  "entries": []
+}
