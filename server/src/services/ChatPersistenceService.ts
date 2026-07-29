@@ -2,6 +2,7 @@ import { randomUUID } from "crypto";
 import { getConfiguredStorageProvider } from "../platform/storage/StorageFactory";
 import {
   InMemoryStorageProvider,
+  type DurableMutation,
   type StorageProvider,
 } from "../platform/storage/StorageProvider";
 
@@ -38,6 +39,11 @@ export interface CreateMessageInput {
 
 const CONVERSATIONS = "chat_conversations";
 const MESSAGES = "chat_messages";
+
+interface PreparedMessageMutation {
+  conversation: Conversation;
+  message: ConversationMessage;
+}
 
 /**
  * Project chat persistence over the same process-wide StorageProvider used by
@@ -77,58 +83,105 @@ export class ChatPersistenceService {
   }
 
   createMessage(input: CreateMessageInput): ConversationMessage {
+    const prepared = this.prepareMessageMutation(input);
+    this.storage.set(CONVERSATIONS, prepared.conversation.id, prepared.conversation);
+    this.storage.set(MESSAGES, prepared.message.id, prepared.message);
+    return prepared.message;
+  }
+
+  async createMessageDurable(
+    input: CreateMessageInput,
+  ): Promise<ConversationMessage> {
+    const prepared = this.prepareMessageMutation(input);
+    await this.storage.mutateDurably([
+      {
+        type: "set",
+        collection: CONVERSATIONS,
+        id: prepared.conversation.id,
+        data: prepared.conversation,
+      },
+      {
+        type: "set",
+        collection: MESSAGES,
+        id: prepared.message.id,
+        data: prepared.message,
+      },
+    ]);
+    return prepared.message;
+  }
+
+  deleteConversation(id: string): boolean {
+    this.requireText(id, "id");
+    for (const message of this.getConversationMessages(id)) {
+      this.storage.delete(MESSAGES, message.id);
+    }
+    return this.storage.delete(CONVERSATIONS, id);
+  }
+
+  async deleteConversationDurable(id: string): Promise<boolean> {
+    this.requireText(id, "id");
+    if (!this.storage.get<Conversation>(CONVERSATIONS, id)) return false;
+
+    const mutations: DurableMutation[] = this.getConversationMessages(id).map(
+      (message) => ({
+        type: "delete",
+        collection: MESSAGES,
+        id: message.id,
+      }),
+    );
+    mutations.push({ type: "delete", collection: CONVERSATIONS, id });
+    await this.storage.mutateDurably(mutations);
+    return true;
+  }
+
+  private prepareMessageMutation(
+    input: CreateMessageInput,
+  ): PreparedMessageMutation {
     const content = this.requireText(input.content, "content");
     if (!["user", "assistant", "system"].includes(input.role)) {
       throw new ChatValidationError("role must be user, assistant, or system");
     }
 
-    let conversationId = input.conversationId;
-    if (!conversationId) {
+    const createdAt = new Date().toISOString();
+    let conversation: Conversation;
+    if (input.conversationId) {
+      const existing = this.storage.get<Conversation>(
+        CONVERSATIONS,
+        input.conversationId,
+      );
+      if (!existing) {
+        throw new ChatValidationError("conversationId does not exist");
+      }
+      conversation = { ...existing, updatedAt: createdAt };
+    } else {
       const projectId = this.requireText(input.projectId, "projectId");
-      const now = new Date().toISOString();
-      conversationId = `conversation-${randomUUID()}`;
-      this.storage.set<Conversation>(CONVERSATIONS, conversationId, {
+      const conversationId = `conversation-${randomUUID()}`;
+      conversation = {
         id: conversationId,
         projectId,
         title: content.slice(0, 80),
-        createdAt: now,
-        updatedAt: now,
-      });
-    }
-
-    const conversation = this.storage.get<Conversation>(
-      CONVERSATIONS,
-      conversationId,
-    );
-    if (!conversation) {
-      throw new ChatValidationError("conversationId does not exist");
+        createdAt,
+        updatedAt: createdAt,
+      };
     }
 
     const message: ConversationMessage = {
       id: `message-${randomUUID()}`,
-      conversationId,
+      conversationId: conversation.id,
       role: input.role,
       content,
       metadata: input.metadata,
-      createdAt: new Date().toISOString(),
+      createdAt,
     };
-    this.storage.set(MESSAGES, message.id, message);
-    this.storage.set(CONVERSATIONS, conversationId, {
-      ...conversation,
-      updatedAt: message.createdAt,
-    });
-    return message;
+
+    return { conversation, message };
   }
 
-  deleteConversation(id: string): boolean {
-    this.requireText(id, "id");
-    for (const message of this.storage.list<ConversationMessage>(
+  private getConversationMessages(id: string): ConversationMessage[] {
+    return this.storage.list<ConversationMessage>(
       MESSAGES,
       (candidate) => candidate.conversationId === id,
-    )) {
-      this.storage.delete(MESSAGES, message.id);
-    }
-    return this.storage.delete(CONVERSATIONS, id);
+    );
   }
 
   private requireText(value: unknown, field: string): string {
