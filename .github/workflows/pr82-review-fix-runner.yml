@@ -1,4 +1,5 @@
 name: PR82 Review Fix Runner
+# Retry after the canonical helper-head CI released the runner.
 
 on:
   push:
