@@ -58,17 +58,14 @@ function isEqualDigest(left: string, right: string): boolean {
   );
 }
 
-/**
- * Storage-backed API key registry.
- *
- * Issuance and bootstrap seeding retain their compatibility path until their
- * lifecycle is separated. Revocation and administrative cleanup are
- * acknowledged before their mutations become observable.
- */
+/** Storage-backed API key registry with acknowledged mutation boundaries. */
 export class ApiKeyStore {
   constructor(private readonly storage: StorageProvider) {}
 
-  issue(rawKey: string, metadata: ApiKeyMetadata = {}): IssuedApiKey {
+  async issueDurable(
+    rawKey: string,
+    metadata: ApiKeyMetadata = {},
+  ): Promise<IssuedApiKey> {
     const key = rawKey.trim();
     if (key.length < MIN_KEY_LENGTH) {
       throw new Error(
@@ -84,12 +81,17 @@ export class ApiKeyStore {
       ...(metadata.label ? { label: metadata.label } : {}),
       ...(metadata.ownerId ? { ownerId: metadata.ownerId } : {}),
     };
-    this.storage.set(COLLECTION, id, record);
+    await this.storage.setDurable(COLLECTION, id, record);
     return { id, key };
   }
 
-  generate(metadata: ApiKeyMetadata = {}): IssuedApiKey {
-    return this.issue(`rai_${randomBytes(32).toString("hex")}`, metadata);
+  async generateDurable(
+    metadata: ApiKeyMetadata = {},
+  ): Promise<IssuedApiKey> {
+    return this.issueDurable(
+      `rai_${randomBytes(32).toString("hex")}`,
+      metadata,
+    );
   }
 
   validate(rawKey: unknown): boolean {
@@ -127,8 +129,10 @@ export class ApiKeyStore {
     }));
   }
 
-  /** Seed comma-separated bootstrap keys from API_KEYS. */
-  seedFromEnvironment(value = process.env.API_KEYS): number {
+  /** Seed comma-separated bootstrap keys from API_KEYS after acknowledgement. */
+  async seedFromEnvironmentDurable(
+    value = process.env.API_KEYS,
+  ): Promise<number> {
     if (!value) return 0;
 
     let added = 0;
@@ -142,7 +146,7 @@ export class ApiKeyStore {
         .some((record) => record.digest === digest);
       if (exists) continue;
 
-      this.issue(key, {
+      await this.issueDurable(key, {
         id: `env-${digest.slice(0, 24)}`,
         label: "environment",
       });
