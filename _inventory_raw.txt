@@ -81,6 +81,7 @@ docs/00-project-control/CURRENT_STATE.md
 docs/00-project-control/CUTOVER-1A_BACKEND_RELEASE_ARTIFACT.md
 docs/00-project-control/CUTOVER-1C_COMPOSED_RELEASE.md
 docs/00-project-control/CUTOVER-1D_RELEASE_BASELINE_READINESS.md
+docs/00-project-control/DATA-201C_TRANSACTION_DEGRADATION_POLICY.md
 docs/00-project-control/DECISION_LOG.md
 docs/00-project-control/FRONTEND_CUTOVER.md
 docs/00-project-control/ROADMAP_STATUS.md
