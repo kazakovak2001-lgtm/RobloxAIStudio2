@@ -8,12 +8,20 @@ import {
 class ControlledMutationStorage extends InMemoryStorageProvider {
   rejectSet = false;
   rejectDelete = false;
+  setDurableCalls = 0;
+  onSetStart?: () => void;
+  setBarrier?: Promise<void>;
 
   override async setDurable<T>(
     collection: string,
     id: string,
     data: T,
   ): Promise<void> {
+    this.setDurableCalls += 1;
+    this.onSetStart?.();
+    if (this.setBarrier) {
+      await this.setBarrier;
+    }
     if (this.rejectSet) {
       throw new DurableStorageError("injected set rejection", "set");
     }
@@ -38,6 +46,9 @@ describe("ApiKeyStore", () => {
   afterEach(async () => {
     storage.rejectSet = false;
     storage.rejectDelete = false;
+    storage.setDurableCalls = 0;
+    storage.onSetStart = undefined;
+    storage.setBarrier = undefined;
     await store.clearDurable();
   });
 
@@ -68,6 +79,33 @@ describe("ApiKeyStore", () => {
     await expect(store.revokeDurable(issued.id)).resolves.toBe(true);
     expect(store.validate(issued.key)).toBe(false);
     await expect(store.revokeDurable(issued.id)).resolves.toBe(false);
+  });
+
+  it("serializes concurrent revocations of the same key", async () => {
+    const issued = store.issue("concurrent-revoke-key-123456789");
+    let markStarted!: () => void;
+    let releaseWrite!: () => void;
+    const writeStarted = new Promise<void>((resolve) => {
+      markStarted = resolve;
+    });
+    storage.onSetStart = markStarted;
+    storage.setBarrier = new Promise<void>((resolve) => {
+      releaseWrite = resolve;
+    });
+
+    const first = store.revokeDurable(issued.id);
+    await writeStarted;
+    const second = store.revokeDurable(issued.id);
+    releaseWrite();
+
+    await expect(Promise.all([first, second])).resolves.toEqual([true, false]);
+    expect(storage.setDurableCalls).toBe(1);
+    expect(store.list()).toEqual([
+      expect.objectContaining({
+        id: issued.id,
+        revokedAt: expect.any(String),
+      }),
+    ]);
   });
 
   it("keeps a key valid when revocation persistence is rejected", async () => {
