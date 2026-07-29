@@ -135,10 +135,16 @@ describe("platform registration durable transaction", () => {
     });
   });
 
-  it("returns 409 without creating a second user or session", async () => {
-    await withServer(async (baseUrl, { storage }) => {
+  it("returns 409 without changing the committed account session", async () => {
+    await withServer(async (baseUrl, { storage, auth }) => {
       const first = await register(baseUrl);
       expect(first.status).toBe(200);
+      const firstToken = /roblox_ai_token=([^;]+)/.exec(
+        first.setCookie!,
+      )?.[1];
+      expect(firstToken).toBeTruthy();
+      const committedSession = auth.validateToken(firstToken!);
+      expect(committedSession).not.toBeNull();
 
       const duplicate = await register(baseUrl, {
         email: " OWNER@example.test ",
@@ -150,6 +156,10 @@ describe("platform registration durable transaction", () => {
         body: { success: false, error: "Email already registered" },
       });
       expect(duplicate.setCookie).toBeNull();
+      expect(auth.validateToken(firstToken!)).toMatchObject({
+        sessionId: committedSession!.sessionId,
+        userId: committedSession!.userId,
+      });
       expect(storage.count("users")).toBe(1);
       expect(storage.count("auth_credentials")).toBe(1);
       expect(storage.count("auth_roles")).toBe(1);
