@@ -80,10 +80,7 @@ describe("ProjectGenerationStartCoordinator", () => {
     expect(order).toEqual([]);
 
     projects.releaseFirstUpdate.resolve();
-    await expect(Promise.all([first, second])).resolves.toEqual([
-      "one",
-      "two",
-    ]);
+    await expect(Promise.all([first, second])).resolves.toEqual(["one", "two"]);
 
     expect(projects.updateCounts).toEqual([1, 2]);
     expect(projects.currentCount()).toBe(2);

@@ -21,21 +21,23 @@ export class ProjectGenerationStartCoordinator {
     recordHistory: (result: T) => void,
   ): Promise<T> {
     const previous = this.queues.get(projectId) ?? Promise.resolve();
-    const operation = previous.catch(() => undefined).then(async () => {
-      const project = this.projects.get(projectId);
-      if (!project) {
-        throw new Error(`Project ${projectId} not found`);
-      }
+    const operation = previous
+      .catch(() => undefined)
+      .then(async () => {
+        const project = this.projects.get(projectId);
+        if (!project) {
+          throw new Error(`Project ${projectId} not found`);
+        }
 
-      await this.projects.updateDurable(projectId, {
-        status: "generating",
-        generationCount: project.generationCount + 1,
+        await this.projects.updateDurable(projectId, {
+          status: "generating",
+          generationCount: project.generationCount + 1,
+        });
+
+        const result = await schedule();
+        recordHistory(result);
+        return result;
       });
-
-      const result = await schedule();
-      recordHistory(result);
-      return result;
-    });
     const tracked = operation.then(
       () => undefined,
       () => undefined,
