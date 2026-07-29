@@ -4,6 +4,10 @@ on:
   push:
     branches: [agent/data-201b-api-key-issuance-ack]
 
+concurrency:
+  group: pr83-integration-publisher
+  cancel-in-progress: false
+
 permissions:
   contents: write
 
@@ -30,5 +34,21 @@ jobs:
           test -s /tmp/pr83-publish.sh
           grep -q "release_sha='4a0ae15e5959e31470fc1d22c8ae3671bca8829a'" /tmp/pr83-publish.sh
           grep -q "git push origin" /tmp/pr83-publish.sh
+          python3 <<'PY'
+          from pathlib import Path
+
+          path = Path("/tmp/pr83-publish.sh")
+          text = path.read_text()
+          old = 'text = text.replace("store.issue(", "await store.issueDurable(")'
+          new = '''issue_call_count = text.count("store.issue(")
+          if issue_call_count != 8:
+              raise SystemExit(
+                  f"ApiKeyStore test issue call count mismatch: {issue_call_count}"
+              )
+          text = text.replace("store.issue(", "await store.issueDurable(")'''
+          if text.count(old) != 1:
+              raise SystemExit("publisher issue transformation anchor mismatch")
+          path.write_text(text.replace(old, new, 1))
+          PY
           bash -n /tmp/pr83-publish.sh
           bash /tmp/pr83-publish.sh
