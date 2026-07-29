@@ -34,7 +34,7 @@ jobs:
           git checkout origin/agent/runtime-2d-autonomous-truthfulness -- .github/workflows/ci.yml
       - name: Verify final post-removal invariants
         run: node scripts/cleanup/audit-legacy-frontend-decommission.mjs
-      - name: Commit validated inventories only
+      - name: Commit validated closeout files
         run: |
           git config user.name github-actions[bot]
           git config user.email 41898282+github-actions[bot]@users.noreply.github.com
@@ -45,7 +45,7 @@ jobs:
           fi
           changed="$(git diff --cached --name-only | tr '\n' ' ')"
           echo "$changed"
-          test "$changed" = "ProjectStructure.txt _inventory_raw.txt " || \
-            test "$changed" = "ProjectStructure.txt _inventory_raw.txt project_structure.txt "
+          test "$changed" = ".github/workflows/ci.yml ProjectStructure.txt _inventory_raw.txt " || \
+            test "$changed" = ".github/workflows/ci.yml ProjectStructure.txt _inventory_raw.txt project_structure.txt "
           git commit -m "chore(runtime): refresh tracked file inventories"
           git push origin HEAD:agent/runtime-2d-bounded-phases
