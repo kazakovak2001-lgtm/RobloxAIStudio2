@@ -1,4 +1,4 @@
-name: Temporary DATA-201 Lineage Conflict Probe
+name: Temporary DATA-201 Lineage Convergence
 
 on:
   pull_request:
@@ -6,10 +6,10 @@ on:
       - agent/tmp-pr81-lifecycle-migration-base
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
-  probe-lineage-conflicts:
+  converge-lineages:
     if: github.head_ref == 'agent/data-201-lineage-convergence'
     runs-on: ubuntu-latest
     steps:
@@ -19,29 +19,224 @@ jobs:
           ref: agent/data-201-lineage-convergence
           fetch-depth: 0
 
-      - name: Probe merge against atomic registration head
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install locked dependencies
+        run: npm ci
+
+      - name: Squash auth lineage and resolve canonical contracts
         shell: bash
         run: |
-          set -uo pipefail
+          set -euo pipefail
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git fetch origin e2446096235524d214b679fc89c3df2109a1ca2e
 
           set +e
-          git merge --no-commit --no-ff e2446096235524d214b679fc89c3df2109a1ca2e
+          git merge --squash e2446096235524d214b679fc89c3df2109a1ca2e
           merge_status=$?
           set -e
+          test "${merge_status}" -eq 1
 
-          echo "MERGE_STATUS=${merge_status}"
-          echo "MERGE_BASE=$(git merge-base HEAD e2446096235524d214b679fc89c3df2109a1ca2e)"
-          echo "CONFLICT_FILES_BEGIN"
-          git diff --name-only --diff-filter=U || true
-          echo "CONFLICT_FILES_END"
-          echo "UNMERGED_INDEX_BEGIN"
-          git ls-files -u || true
-          echo "UNMERGED_INDEX_END"
-          echo "WORKTREE_STATUS_BEGIN"
-          git status --short
-          echo "WORKTREE_STATUS_END"
+          # Deterministic conflict ownership.
+          git checkout --ours -- \
+            ProjectStructure.txt \
+            _inventory_raw.txt \
+            server/src/platform/storage/StorageProvider.ts \
+            server/src/platform/storage/postgres/PostgresStorageProvider.test.ts \
+            server/src/platform/storage/postgres/PostgresStorageProvider.ts \
+            server/src/platform/users/UserRepository.ts \
+            server/src/routes/chatPersistence.ts \
+            server/src/services/ChatPersistenceService.ts
+          git checkout --theirs -- server/src/routes/platform.ts
+          git add \
+            ProjectStructure.txt \
+            _inventory_raw.txt \
+            server/src/platform/storage/StorageProvider.ts \
+            server/src/platform/storage/postgres/PostgresStorageProvider.test.ts \
+            server/src/platform/storage/postgres/PostgresStorageProvider.ts \
+            server/src/platform/users/UserRepository.ts \
+            server/src/routes/chatPersistence.ts \
+            server/src/routes/platform.ts \
+            server/src/services/ChatPersistenceService.ts
 
-          git merge --abort || true
+          node <<'NODE'
+          const fs = require('node:fs');
+
+          function replaceExactly(source, before, after, expected, label) {
+            const matches = source.split(before).length - 1;
+            if (matches !== expected) {
+              throw new Error(`${label}: expected ${expected} matches, found ${matches}`);
+            }
+            return source.split(before).join(after);
+          }
+
+          const storagePath = 'server/src/platform/storage/StorageProvider.ts';
+          let storage = fs.readFileSync(storagePath, 'utf8');
+          storage = replaceExactly(
+            storage,
+            'export type DurableStorageOperation = "set" | "delete" | "transaction";\n\nexport class DurableStorageError extends Error {\n  readonly code = "DURABLE_STORAGE_MUTATION_FAILED";',
+            'export type DurableStorageOperation = "set" | "delete" | "transaction";\n\nexport type DurableStorageErrorCode =\n  | "DURABLE_STORAGE_MUTATION_FAILED"\n  | "DURABLE_STORAGE_CONFLICT";\n\nexport class DurableStorageError extends Error {\n  readonly code: DurableStorageErrorCode = "DURABLE_STORAGE_MUTATION_FAILED";',
+            1,
+            'storage error code union',
+          );
+          storage = replaceExactly(
+            storage,
+            '}\n\nexport type DurableMutation =',
+            '}\n\nexport class DurableStorageConflictError extends DurableStorageError {\n  override readonly code: DurableStorageErrorCode = "DURABLE_STORAGE_CONFLICT";\n\n  constructor(\n    message: string,\n    readonly collection: string,\n    readonly id: string,\n  ) {\n    super(message, "transaction");\n    this.name = "DurableStorageConflictError";\n  }\n}\n\nexport type DurableMutation =',
+            1,
+            'conflict error insertion',
+          );
+          storage = replaceExactly(
+            storage,
+            '      data: unknown;\n    }',
+            '      data: unknown;\n      /** Fail the complete batch when the durable record already exists. */\n      requireAbsent?: boolean;\n    }',
+            1,
+            'set precondition',
+          );
+          storage = replaceExactly(
+            storage,
+            '      collection: string;\n      id: string;\n    };',
+            '      collection: string;\n      id: string;\n      /** Fail the complete batch when the durable record is unavailable. */\n      requireExisting?: boolean;\n    };',
+            1,
+            'delete precondition',
+          );
+          storage = replaceExactly(
+            storage,
+            '        if (mutation.operation === "set") {\n          collection.set(mutation.id, mutation.data);',
+            '        if (mutation.operation === "set") {\n          if (mutation.requireAbsent && collection.has(mutation.id)) {\n            throw new DurableStorageConflictError(\n              `Required durable record already exists: ${mutation.collection}/${mutation.id}`,\n              mutation.collection,\n              mutation.id,\n            );\n          }\n          collection.set(mutation.id, mutation.data);',
+            1,
+            'in-memory requireAbsent',
+          );
+          storage = replaceExactly(
+            storage,
+            '        const deleted = collection.delete(mutation.id);',
+            '        if (mutation.requireExisting && !collection.has(mutation.id)) {\n          throw new DurableStorageConflictError(\n            `Required durable record is unavailable: ${mutation.collection}/${mutation.id}`,\n            mutation.collection,\n            mutation.id,\n          );\n        }\n        const deleted = collection.delete(mutation.id);',
+            1,
+            'in-memory requireExisting',
+          );
+          storage = replaceExactly(
+            storage,
+            '    } catch (error) {\n      throw new DurableStorageError(\n        "In-memory durable transaction failed",',
+            '    } catch (error) {\n      if (error instanceof DurableStorageConflictError) throw error;\n      throw new DurableStorageError(\n        "In-memory durable transaction failed",',
+            1,
+            'in-memory conflict propagation',
+          );
+          fs.writeFileSync(storagePath, storage);
+
+          const postgresPath = 'server/src/platform/storage/postgres/PostgresStorageProvider.ts';
+          let postgres = fs.readFileSync(postgresPath, 'utf8');
+          postgres = replaceExactly(
+            postgres,
+            'import {\n  DurableStorageError,',
+            'import {\n  DurableStorageConflictError,\n  DurableStorageError,',
+            1,
+            'postgres conflict import',
+          );
+          postgres = replaceExactly(
+            postgres,
+            '              await client.query(\n                `INSERT INTO ${KV_TABLE} (collection, id, data) VALUES ($1, $2, $3)\n                 ON CONFLICT (collection, id) DO UPDATE SET data = $3, updated_at = NOW()`,\n                [\n                  mutation.collection,\n                  mutation.id,\n                  JSON.stringify(mutation.data),\n                ],\n              );',
+            '              const result = await client.query(\n                mutation.requireAbsent\n                  ? `INSERT INTO ${KV_TABLE} (collection, id, data) VALUES ($1, $2, $3)\n                     ON CONFLICT (collection, id) DO NOTHING RETURNING id`\n                  : `INSERT INTO ${KV_TABLE} (collection, id, data) VALUES ($1, $2, $3)\n                     ON CONFLICT (collection, id) DO UPDATE SET data = $3, updated_at = NOW()`,\n                [\n                  mutation.collection,\n                  mutation.id,\n                  JSON.stringify(mutation.data),\n                ],\n              );\n              if (mutation.requireAbsent && result.rows.length === 0) {\n                throw new DurableStorageConflictError(\n                  `Required durable record already exists: ${mutation.collection}/${mutation.id}`,\n                  mutation.collection,\n                  mutation.id,\n                );\n              }',
+            1,
+            'postgres requireAbsent query',
+          );
+          postgres = replaceExactly(
+            postgres,
+            '            pendingResults.push({\n              operation: mutation.operation,\n              collection: mutation.collection,\n              id: mutation.id,\n              deleted: result.rows.length > 0,\n            });',
+            '            if (mutation.requireExisting && result.rows.length === 0) {\n              throw new DurableStorageConflictError(\n                `Required durable record is unavailable: ${mutation.collection}/${mutation.id}`,\n                mutation.collection,\n                mutation.id,\n              );\n            }\n            pendingResults.push({\n              operation: mutation.operation,\n              collection: mutation.collection,\n              id: mutation.id,\n              deleted: result.rows.length > 0,\n            });',
+            1,
+            'postgres requireExisting result',
+          );
+          postgres = replaceExactly(
+            postgres,
+            '      return results;\n    } catch (error) {\n      this.markFailure();\n      throw new DurableStorageError(\n        "Durable transaction failed",',
+            '      return results;\n    } catch (error) {\n      if (error instanceof DurableStorageConflictError) throw error;\n      this.markFailure();\n      throw new DurableStorageError(\n        "Durable transaction failed",',
+            1,
+            'postgres conflict propagation',
+          );
+          fs.writeFileSync(postgresPath, postgres);
+
+          const usersPath = 'server/src/platform/users/UserRepository.ts';
+          let users = fs.readFileSync(usersPath, 'utf8');
+          users = replaceExactly(
+            users,
+            '  InMemoryStorageProvider,\n  type StorageProvider,',
+            '  InMemoryStorageProvider,\n  type DurableMutation,\n  type StorageProvider,',
+            1,
+            'user durable mutation import',
+          );
+          users = replaceExactly(
+            users,
+            '}\n\nexport class UserRepository {',
+            '}\n\nexport interface PreparedUserCreate {\n  user: User;\n  mutation: DurableMutation;\n}\n\nexport class UserRepository {',
+            1,
+            'prepared user interface',
+          );
+          users = replaceExactly(
+            users,
+            '  async createDurable(input: CreateUserInput): Promise<User> {\n    const user = this.buildUser(input);\n    await this.storage.setDurable(this.collection, user.id, user);\n    return user;\n  }',
+            '  async createDurable(input: CreateUserInput): Promise<User> {\n    const prepared = this.prepareCreate(input);\n    await this.storage.applyDurableBatch([prepared.mutation]);\n    return prepared.user;\n  }\n\n  prepareCreate(input: CreateUserInput): PreparedUserCreate {\n    const user = this.buildUser(input);\n    return {\n      user,\n      mutation: {\n        operation: "set",\n        collection: this.collection,\n        id: user.id,\n        data: user,\n        requireAbsent: true,\n      },\n    };\n  }',
+            1,
+            'prepared durable user creation',
+          );
+          users = replaceExactly(
+            users,
+            '      displayName: input.displayName,',
+            '      displayName: input.displayName.trim(),',
+            1,
+            'user display name normalization',
+          );
+          fs.writeFileSync(usersPath, users);
+
+          const changedFiles = require('node:child_process')
+            .execFileSync('git', ['diff', '--cached', '--name-only', '--', '*.ts'], {
+              encoding: 'utf8',
+            })
+            .trim()
+            .split('\n')
+            .filter(Boolean);
+          for (const file of changedFiles) {
+            let source = fs.readFileSync(file, 'utf8');
+            source = source
+              .replace(/\.mutateDurably\(/g, '.applyDurableBatch(')
+              .replace(/\btype: "set"/g, 'operation: "set"')
+              .replace(/\btype: "delete"/g, 'operation: "delete"')
+              .replace(/mutation\.type/g, 'mutation.operation')
+              .replace(/\.toBe\("batch"\)/g, '.toBe("transaction")');
+            fs.writeFileSync(file, source);
+          }
+          NODE
+
+          # Re-stage all auth additions and conflict resolutions before inventory generation.
+          git add -A
+          node scripts/cleanup/generate-tracked-inventories.mjs
+          git add -A
+
+          node node_modules/prettier/bin/prettier.cjs --write \
+            server/src/platform/auth \
+            server/src/platform/storage/StorageProvider.ts \
+            server/src/platform/storage/postgres/PostgresStorageProvider.ts \
+            server/src/platform/storage/postgres/PostgresStorageProvider.test.ts \
+            server/src/platform/storage/postgres/PostgresStorageProvider.preconditions.test.ts \
+            server/src/platform/storage/postgres/PostgresStorageProvider.create-preconditions.test.ts \
+            server/src/platform/users/UserRepository.ts \
+            server/src/platform/users/index.ts \
+            server/src/routes/platform.ts \
+            server/src/routes/__tests__/platform.auth.durability.test.ts \
+            server/src/routes/__tests__/platform.registration.durability.test.ts \
+            server/src/routes/__tests__/platform.users.durability.test.ts \
+            server/src/routes/__tests__/chatPersistence.durability.test.ts
+          git add -A
+
+          npm run typecheck
+          npm run format:check
+
+      - name: Commit converged lineage
+        run: |
+          git diff --cached --quiet && exit 1
+          git commit -m "feat(durability): converge auth and storage lineages"
+          git push origin HEAD:agent/data-201-lineage-convergence
