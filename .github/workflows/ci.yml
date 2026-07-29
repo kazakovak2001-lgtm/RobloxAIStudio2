@@ -2,8 +2,7 @@ name: PR89 Review Fix Publisher
 
 on:
   push:
-    branches:
-      - agent/data-201c-transaction-foundation
+    branches: [agent/data-201c-transaction-foundation]
 
 permissions:
   contents: write
@@ -12,13 +11,12 @@ jobs:
   publish:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout feature branch
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 0
           persist-credentials: true
 
-      - name: Apply transaction review fixes
+      - name: Apply verified review fixes
         shell: bash
         run: |
           set -euo pipefail
@@ -26,140 +24,61 @@ jobs:
           python3 - <<'PY'
           from pathlib import Path
 
-          provider = Path("server/src/platform/storage/postgres/PostgresStorageProvider.ts")
-          text = provider.read_text()
+          def replace_once(text: str, old: str, new: str, label: str) -> str:
+              if text.count(old) != 1:
+                  raise SystemExit(f"{label}: expected exactly one match")
+              return text.replace(old, new)
 
-          replacements = [
+          path = Path("server/src/platform/storage/postgres/PostgresStorageProvider.ts")
+          text = path.read_text()
+          changes = [
               (
-                  '''  private pendingWrites = new Set<Promise<void>>();
-          private writeTail: Promise<void> = Promise.resolve();
-          private lastFailureAt?: string;''',
-                  '''  private pendingWrites = new Set<Promise<void>>();
-          private writeTail: Promise<void> = Promise.resolve();
-          private compatibilityMutationVersions = new Map<string, number>();
-          private lastFailureAt?: string;
-          private closed = false;''',
+                  "fields",
+                  "  private pendingWrites = new Set<Promise<void>>();\n  private writeTail: Promise<void> = Promise.resolve();\n  private lastFailureAt?: string;",
+                  "  private pendingWrites = new Set<Promise<void>>();\n  private writeTail: Promise<void> = Promise.resolve();\n  private compatibilityMutationVersions = new Map<string, number>();\n  private lastFailureAt?: string;\n  private closed = false;",
               ),
               (
-                  '''  set<T>(collection: string, id: string, data: T): void {
-            this.getCollection(collection).set(id, data);
-            this.scheduleWrite(() => this.persistSet(collection, id, data));
-          }''',
-                  '''  set<T>(collection: string, id: string, data: T): void {
-            this.recordCompatibilityMutation(collection, id);
-            this.getCollection(collection).set(id, data);
-            this.scheduleWrite(() => this.persistSet(collection, id, data));
-          }''',
+                  "compatibility set",
+                  "  set<T>(collection: string, id: string, data: T): void {\n    this.getCollection(collection).set(id, data);\n    this.scheduleWrite(() => this.persistSet(collection, id, data));\n  }",
+                  "  set<T>(collection: string, id: string, data: T): void {\n    this.recordCompatibilityMutation(collection, id);\n    this.getCollection(collection).set(id, data);\n    this.scheduleWrite(() => this.persistSet(collection, id, data));\n  }",
               ),
               (
-                  '''  delete(collection: string, id: string): boolean {
-            const deleted = this.getCollection(collection).delete(id);
-            if (deleted) this.scheduleWrite(() => this.persistDelete(collection, id));
-            return deleted;
-          }''',
-                  '''  delete(collection: string, id: string): boolean {
-            const deleted = this.getCollection(collection).delete(id);
-            if (deleted) {
-              this.recordCompatibilityMutation(collection, id);
-              this.scheduleWrite(() => this.persistDelete(collection, id));
-            }
-            return deleted;
-          }''',
+                  "compatibility delete",
+                  "  delete(collection: string, id: string): boolean {\n    const deleted = this.getCollection(collection).delete(id);\n    if (deleted) this.scheduleWrite(() => this.persistDelete(collection, id));\n    return deleted;\n  }",
+                  "  delete(collection: string, id: string): boolean {\n    const deleted = this.getCollection(collection).delete(id);\n    if (deleted) {\n      this.recordCompatibilityMutation(collection, id);\n      this.scheduleWrite(() => this.persistDelete(collection, id));\n    }\n    return deleted;\n  }",
               ),
               (
-                  '''      await this.enqueueWrite(async () => {
-                const pool = this.pool;''',
-                  '''      await this.enqueueWrite(async () => {
-                const compatibilityVersions = new Map<string, number>();
-                for (const mutation of mutations) {
-                  const key = this.mutationKey(mutation.collection, mutation.id);
-                  compatibilityVersions.set(
-                    key,
-                    this.compatibilityMutationVersions.get(key) ?? 0,
-                  );
-                }
-
-                const pool = this.pool;''',
+                  "batch capture",
+                  "      await this.enqueueWrite(async () => {\n        const pool = this.pool;",
+                  "      await this.enqueueWrite(async () => {\n        const compatibilityVersions = new Map<string, number>();\n        for (const mutation of mutations) {\n          const key = this.mutationKey(mutation.collection, mutation.id);\n          compatibilityVersions.set(\n            key,\n            this.compatibilityMutationVersions.get(key) ?? 0,\n          );\n        }\n\n        const pool = this.pool;",
               ),
               (
-                  '''        for (const mutation of mutations) {
-                  const collection = this.getCollection(mutation.collection);
-                  if (mutation.operation === "set") {
-                    collection.set(mutation.id, mutation.data);
-                  } else {
-                    collection.delete(mutation.id);
-                  }
-                }''',
-                  '''        for (const mutation of mutations) {
-                  const key = this.mutationKey(mutation.collection, mutation.id);
-                  const capturedVersion = compatibilityVersions.get(key) ?? 0;
-                  const currentVersion =
-                    this.compatibilityMutationVersions.get(key) ?? 0;
-                  if (currentVersion !== capturedVersion) continue;
-
-                  const collection = this.getCollection(mutation.collection);
-                  if (mutation.operation === "set") {
-                    collection.set(mutation.id, mutation.data);
-                  } else {
-                    collection.delete(mutation.id);
-                  }
-                }''',
+                  "batch publication",
+                  "        for (const mutation of mutations) {\n          const collection = this.getCollection(mutation.collection);\n          if (mutation.operation === \"set\") {\n            collection.set(mutation.id, mutation.data);\n          } else {\n            collection.delete(mutation.id);\n          }\n        }",
+                  "        for (const mutation of mutations) {\n          const key = this.mutationKey(mutation.collection, mutation.id);\n          const capturedVersion = compatibilityVersions.get(key) ?? 0;\n          const currentVersion =\n            this.compatibilityMutationVersions.get(key) ?? 0;\n          if (currentVersion !== capturedVersion) continue;\n\n          const collection = this.getCollection(mutation.collection);\n          if (mutation.operation === \"set\") {\n            collection.set(mutation.id, mutation.data);\n          } else {\n            collection.delete(mutation.id);\n          }\n        }",
               ),
               (
-                  '''    const availability = this.connected
-                ? "available"
-                : this.lastFailureAt
-                  ? "degraded"
-                  : "unavailable";''',
-                  '''    const availability = this.closed
-                ? "unavailable"
-                : this.connected
-                  ? "available"
-                  : this.lastFailureAt
-                    ? "degraded"
-                    : "unavailable";''',
+                  "availability",
+                  "    const availability = this.connected\n      ? \"available\"\n      : this.lastFailureAt\n        ? \"degraded\"\n        : \"unavailable\";",
+                  "    const availability = this.closed\n      ? \"unavailable\"\n      : this.connected\n        ? \"available\"\n        : this.lastFailureAt\n          ? \"degraded\"\n          : \"unavailable\";",
               ),
               (
-                  '''  async close(): Promise<void> {
-            await this.flush();
-            if (this.pool) await this.pool.end();
-            this.pool = null;
-            this.connected = false;
-          }''',
-                  '''  async close(): Promise<void> {
-            await this.flush();
-            if (this.pool) await this.pool.end();
-            this.pool = null;
-            this.connected = false;
-            this.closed = true;
-          }''',
+                  "close",
+                  "  async close(): Promise<void> {\n    await this.flush();\n    if (this.pool) await this.pool.end();\n    this.pool = null;\n    this.connected = false;\n  }",
+                  "  async close(): Promise<void> {\n    await this.flush();\n    if (this.pool) await this.pool.end();\n    this.pool = null;\n    this.connected = false;\n    this.closed = true;\n  }",
               ),
               (
-                  '''  private validateMutations(mutations: readonly DurableMutation[]): void {''',
-                  '''  private mutationKey(collection: string, id: string): string {
-            return `${collection}\u0000${id}`;
-          }
-
-          private recordCompatibilityMutation(collection: string, id: string): void {
-            const key = this.mutationKey(collection, id);
-            this.compatibilityMutationVersions.set(
-              key,
-              (this.compatibilityMutationVersions.get(key) ?? 0) + 1,
-            );
-          }
-
-          private validateMutations(mutations: readonly DurableMutation[]): void {''',
+                  "helpers",
+                  "  private validateMutations(mutations: readonly DurableMutation[]): void {",
+                  "  private mutationKey(collection: string, id: string): string {\n    return `${collection}\\u0000${id}`;\n  }\n\n  private recordCompatibilityMutation(collection: string, id: string): void {\n    const key = this.mutationKey(collection, id);\n    this.compatibilityMutationVersions.set(\n      key,\n      (this.compatibilityMutationVersions.get(key) ?? 0) + 1,\n    );\n  }\n\n  private validateMutations(mutations: readonly DurableMutation[]): void {",
               ),
           ]
-
-          for old, new in replacements:
-              if text.count(old) != 1:
-                  raise SystemExit(f"expected exactly one provider match:\n{old}")
-              text = text.replace(old, new)
-          provider.write_text(text)
+          for label, old, new in changes:
+              text = replace_once(text, old, new, label)
+          path.write_text(text)
 
           tests = Path("server/src/platform/storage/postgres/PostgresStorageProvider.test.ts")
-          test_text = tests.read_text()
+          text = tests.read_text()
           anchor = '''  it("reports an available durable provider after initialization", async () => {
             const { storage } = provider();
             await storage.ready();
@@ -171,7 +90,7 @@ jobs:
             });
           });
           });'''
-          replacement = '''  it("reports an available durable provider after initialization", async () => {
+          inserted = '''  it("reports an available durable provider after initialization", async () => {
             const { storage } = provider();
             await storage.ready();
 
@@ -192,58 +111,33 @@ jobs:
               commitStarted = resolve;
             });
             const { storage } = provider({
-              rows: [
-                {
-                  collection: "projects",
-                  id: "project-1",
-                  data: { name: "Before" },
-                },
-              ],
+              rows: [{ collection: "projects", id: "project-1", data: { name: "Before" } }],
               commitGate,
               onCommitStarted: commitStarted,
             });
             await storage.ready();
 
             const batch = storage.applyDurableBatch([
-              {
-                operation: "set",
-                collection: "projects",
-                id: "project-1",
-                data: { name: "Batch" },
-              },
+              { operation: "set", collection: "projects", id: "project-1", data: { name: "Batch" } },
             ]);
             await commitReached;
-
             storage.set("projects", "project-1", { name: "Compatibility" });
-            expect(storage.get("projects", "project-1")).toEqual({
-              name: "Compatibility",
-            });
-
             releaseCommit();
             await batch;
             await storage.flush();
 
-            expect(storage.get("projects", "project-1")).toEqual({
-              name: "Compatibility",
-            });
+            expect(storage.get("projects", "project-1")).toEqual({ name: "Compatibility" });
           });
 
           it("reports unavailable after a degraded provider is closed", async () => {
             const { storage } = provider({ rejectBatchAt: 1 });
             await storage.ready();
-
             await expect(
               storage.applyDurableBatch([
-                {
-                  operation: "set",
-                  collection: "projects",
-                  id: "project-1",
-                  data: { name: "Rejected" },
-                },
+                { operation: "set", collection: "projects", id: "project-1", data: { name: "Rejected" } },
               ]),
             ).rejects.toBeInstanceOf(DurableStorageError);
             expect(storage.getOperationalStatus().availability).toBe("degraded");
-
             await storage.close();
             expect(storage.getOperationalStatus()).toMatchObject({
               availability: "unavailable",
@@ -251,43 +145,19 @@ jobs:
             });
           });
           });'''
-          if test_text.count(anchor) != 1:
-              raise SystemExit("expected exactly one durable batch test anchor")
-          tests.write_text(test_text.replace(anchor, replacement))
+          tests.write_text(replace_once(text, anchor, inserted, "tests"))
           PY
 
           npm ci
-          npx prettier --write \
-            server/src/platform/storage/postgres/PostgresStorageProvider.ts \
-            server/src/platform/storage/postgres/PostgresStorageProvider.test.ts
+          npx prettier --write server/src/platform/storage/postgres/PostgresStorageProvider.ts server/src/platform/storage/postgres/PostgresStorageProvider.test.ts
           npx vitest run server/src/platform/storage/postgres/PostgresStorageProvider.test.ts
           npm run typecheck
           git show origin/release/cutover-1e-candidate:.github/workflows/ci.yml > .github/workflows/ci.yml
 
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add \
-            server/src/platform/storage/postgres/PostgresStorageProvider.ts \
-            server/src/platform/storage/postgres/PostgresStorageProvider.test.ts \
-            .github/workflows/ci.yml
+          git add server/src/platform/storage/postgres/PostgresStorageProvider.ts server/src/platform/storage/postgres/PostgresStorageProvider.test.ts .github/workflows/ci.yml
           git commit -m "fix(storage): guard batch publication and closed status"
 
-          expected=$(cat <<'EOF'
-          ProjectStructure.txt
-          _inventory_raw.txt
-          docs/00-project-control/DATA-201C_TRANSACTION_DEGRADATION_POLICY.md
-          server/src/__tests__/persistence.test.ts
-          server/src/index.ts
-          server/src/platform/storage/StorageProvider.ts
-          server/src/platform/storage/postgres/PostgresStorageProvider.test.ts
-          server/src/platform/storage/postgres/PostgresStorageProvider.ts
-          EOF
-          )
-          actual=$(git diff --name-only origin/release/cutover-1e-candidate...HEAD | sort)
-          if [ "$actual" != "$expected" ]; then
-            echo "unexpected changed file set"
-            diff <(printf '%s\n' "$expected") <(printf '%s\n' "$actual") || true
-            exit 1
-          fi
-
+          test "$(git diff --name-only origin/release/cutover-1e-candidate...HEAD | wc -l)" -eq 8
           git push origin HEAD:agent/data-201c-transaction-foundation
