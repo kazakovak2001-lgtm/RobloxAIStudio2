@@ -1,0 +1,81 @@
+name: RUNTIME-205 Review Round 2 Diagnostic
+
+on:
+  push:
+    branches:
+      - agent/runtime-2d-bounded-phases
+
+permissions:
+  contents: write
+
+concurrency:
+  group: runtime-205-review-round2-diagnostic
+  cancel-in-progress: true
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout writable PR branch
+        uses: actions/checkout@v4
+        with:
+          ref: agent/runtime-2d-bounded-phases
+          fetch-depth: 0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+
+      - name: Diagnose fixer
+        shell: bash
+        run: |
+          set +e
+          mkdir -p .ci
+          report=.ci/runtime205-review-round2-diagnostic.txt
+          : > "$report"
+          run_stage() {
+            stage="$1"
+            shift
+            echo "=== $stage ===" >> "$report"
+            "$@" >> "$report" 2>&1
+            status=$?
+            echo "exit=$status" >> "$report"
+            return $status
+          }
+
+          run_stage apply python scripts/fix-runtime205-review-round2.py
+          apply_status=$?
+          if [[ $apply_status -eq 0 ]]; then
+            run_stage install npm ci
+            run_stage prettier npx prettier --write \
+              server/src/orchestrator/OrchestratorTypes.ts \
+              server/src/orchestrator/AutonomousOrchestrator.ts \
+              server/src/orchestrator/AutonomousPhaseRegistry.ts \
+              server/src/orchestrator/AutonomousOrchestrator.test.ts \
+              server/src/orchestrator/AutonomousBoundedPhases.test.ts \
+              server/src/routes/autonomous.ts
+            run_stage eslint npx eslint \
+              server/src/orchestrator/OrchestratorTypes.ts \
+              server/src/orchestrator/AutonomousOrchestrator.ts \
+              server/src/orchestrator/AutonomousPhaseRegistry.ts \
+              server/src/orchestrator/AutonomousOrchestrator.test.ts \
+              server/src/orchestrator/AutonomousBoundedPhases.test.ts \
+              server/src/routes/autonomous.ts \
+              --max-warnings 0
+            run_stage typecheck npm run typecheck
+            run_stage tests npm test -- \
+              server/src/orchestrator/AutonomousOrchestrator.test.ts \
+              server/src/orchestrator/AutonomousBoundedPhases.test.ts \
+              server/src/__tests__/autonomousPipelineIntegration.test.ts
+            run_stage format-check npm run format:check
+          fi
+
+          git reset --hard HEAD
+          git rm .github/workflows/runtime205-review-round2-diagnostic.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add "$report"
+          git commit --no-verify -m "chore(ci): record runtime 205 review diagnostics"
+          git push origin HEAD:agent/runtime-2d-bounded-phases
