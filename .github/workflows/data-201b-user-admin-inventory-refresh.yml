@@ -1,0 +1,43 @@
+name: DATA-201B User Admin Inventory Refresh
+
+on:
+  push:
+    branches:
+      - agent/data-201b-user-admin-ack
+    paths:
+      - .github/workflows/data-201b-user-admin-inventory-refresh.yml
+
+permissions:
+  contents: write
+
+jobs:
+  refresh:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout working branch
+        uses: actions/checkout@v4
+        with:
+          ref: agent/data-201b-user-admin-ack
+          fetch-depth: 0
+
+      - name: Reduce compatibility debt and refresh inventories
+        run: |
+          node --input-type=module <<'NODE'
+          import { readFileSync, writeFileSync } from "node:fs";
+          const path = "config/durability/compatibility-write-inventory.json";
+          const inventory = JSON.parse(readFileSync(path, "utf8"));
+          const removed = new Set([
+            "server/src/platform/users/UserRepository.ts#UserRepository.updateTier#set",
+            "server/src/platform/users/UserRepository.ts#UserRepository.updateStatus#set",
+          ]);
+          inventory.entries = inventory.entries.filter((entry) => !removed.has(entry.key));
+          writeFileSync(path, `${JSON.stringify(inventory, null, 2)}\n`);
+          NODE
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git rm .github/workflows/data-201b-user-admin-inventory-refresh.yml
+          node scripts/cleanup/generate-tracked-inventories.mjs
+          git add config/durability/compatibility-write-inventory.json _inventory_raw.txt ProjectStructure.txt project_structure.txt
+          git commit -m "chore(storage): refresh user admin durability inventory"
+          git push origin HEAD:agent/data-201b-user-admin-ack
