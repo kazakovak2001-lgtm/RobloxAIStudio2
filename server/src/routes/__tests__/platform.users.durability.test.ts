@@ -28,6 +28,18 @@ class ControlledMutationStorage extends InMemoryStorageProvider {
     }
     return super.applyDurableBatch(mutations);
   }
+
+  override async setDurable<T>(
+    collection: string,
+    id: string,
+    data: T,
+  ): Promise<void> {
+    this.durableMutationCalls += 1;
+    if (this.rejectMutations) {
+      throw new DurableStorageError("injected mutation rejection", "set");
+    }
+    return super.setDurable(collection, id, data);
+  }
 }
 
 function access(userId: string): ProjectAccessControl {
