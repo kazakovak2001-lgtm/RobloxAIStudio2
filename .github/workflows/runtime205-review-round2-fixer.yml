@@ -31,68 +31,11 @@ jobs:
       - name: Apply review fixes
         run: python scripts/fix-runtime205-review-round2.py
 
-      - name: Normalize adapter assertion
-        shell: bash
-        run: |
-          python - <<'PY'
-          from pathlib import Path
-          path = Path("server/src/orchestrator/AutonomousBoundedPhases.test.ts")
-          text = path.read_text()
-          old = '''    expect(adapter).toBeDefined();
-              await expect(
-                adapter?.execute(
-                  createAutonomousPhaseContext("abort-project", "Build an RPG"),
-                  controller.signal,
-                ),
-              ).rejects.toMatchObject({'''
-          if old not in text:
-              old = '''    expect(adapter).toBeDefined();
-              await expect(
-                adapter?.execute(
-                  createAutonomousPhaseContext("abort-project", "Build an RPG"),
-                  controller.signal,
-                ),
-              ).rejects.toMatchObject({'''
-          normalized = '''    if (!adapter) throw new Error("Lua adapter is missing");
-              await expect(
-                adapter.execute(
-                  createAutonomousPhaseContext("abort-project", "Build an RPG"),
-                  controller.signal,
-                ),
-              ).rejects.toMatchObject({'''
-          if old not in text:
-              # Prettier has not run yet; handle the exact source emitted by the fixer.
-              old = '''    expect(adapter).toBeDefined();
-              await expect(
-                adapter?.execute(
-                  createAutonomousPhaseContext("abort-project", "Build an RPG"),
-                  controller.signal,
-                ),
-              ).rejects.toMatchObject({'''
-          if old not in text:
-              old = '''    expect(adapter).toBeDefined();
-    await expect(
-      adapter?.execute(
-        createAutonomousPhaseContext("abort-project", "Build an RPG"),
-        controller.signal,
-      ),
-    ).rejects.toMatchObject({'''
-              normalized = '''    if (!adapter) throw new Error("Lua adapter is missing");
-    await expect(
-      adapter.execute(
-        createAutonomousPhaseContext("abort-project", "Build an RPG"),
-        controller.signal,
-      ),
-    ).rejects.toMatchObject({'''
-          if old not in text:
-              raise SystemExit("Expected adapter assertion marker")
-          path.write_text(text.replace(old, normalized, 1))
-          PY
-
-      - name: Remove one-shot helpers
+      - name: Remove one-shot helpers and diagnostics
         run: |
           git rm .github/workflows/runtime205-review-round2-fixer.yml
           git rm scripts/fix-runtime205-review-round2.py
+          git rm -f .ci/runtime205-review-round2-diagnostic.txt
 
       - name: Install dependencies
         run: npm ci
