@@ -93,7 +93,7 @@ describe("chat persistence durable transaction boundary", () => {
         status: 503,
         body: {
           success: false,
-          error: "Durable storage is temporarily unavailable",
+          error: "Chat persistence temporarily unavailable",
         },
       });
       expect(service.getHistory("project-1")).toEqual([]);
