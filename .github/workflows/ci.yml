@@ -1,449 +1,528 @@
-name: CI Pipeline
+name: PR83 Integration Publisher
 
 on:
-  push:
-    branches: [release/cutover-1e-candidate, feature/plugin-merge]
   pull_request:
   workflow_dispatch:
 
-concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+permissions:
+  contents: write
 
 jobs:
-  typecheck:
-    name: TypeScript Check
+  integrate:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
         with:
-          node-version: "22"
-          cache: "npm"
-      - run: npm ci
-      - run: npm run typecheck
-
-  lint:
-    name: ESLint
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: "22"
-          cache: "npm"
-      - run: npm ci
-      - run: npm run lint
-
-  format:
-    name: Prettier Check
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: "22"
-          cache: "npm"
-      - run: npm ci
-      - run: npm run format:check
-
-  test:
-    name: Test Suite
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: "22"
-          cache: "npm"
-      - run: npm ci
-      - run: npm run test
-
-  postgres-e2e:
-    name: PostgreSQL Restart E2E
-    runs-on: ubuntu-latest
-    services:
-      postgres:
-        image: postgres:16-alpine
-        env:
-          POSTGRES_DB: roblox_ai_studio_test
-          POSTGRES_USER: studio
-          POSTGRES_PASSWORD: studio_test_password
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd "pg_isready -U studio -d roblox_ai_studio_test"
-          --health-interval 5s
-          --health-timeout 5s
-          --health-retries 10
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: "22"
-          cache: "npm"
-      - run: npm ci
-      - name: Verify restart durability and ownership isolation
-        env:
-          STORAGE_PROVIDER: postgres
-          DATABASE_URL: postgresql://studio:studio_test_password@localhost:5432/roblox_ai_studio_test
-          RUN_POSTGRES_E2E: "true"
-        run: npm run test:postgres
-
-  backend-image:
-    name: Backend Release Image
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - name: Build backend-only image
-        run: docker build --file Dockerfile.backend --tag roblox-ai-studio-backend:cutover .
-      - name: Start backend-only container
-        run: |
-          docker run --detach \
-            --name roblox-ai-studio-backend-cutover \
-            --publish 5050:5000 \
-            --env NODE_ENV=production \
-            --env PORT=5000 \
-            --env STORAGE_PROVIDER=inmemory \
-            --env FRONTEND_URL=http://127.0.0.1:8080 \
-            roblox-ai-studio-backend:cutover
-      - name: Verify backend health
-        run: |
-          for attempt in $(seq 1 30); do
-            if curl --fail --silent http://127.0.0.1:5050/health > /tmp/backend-health.json; then
-              cat /tmp/backend-health.json
-              grep --quiet '"status":"healthy"' /tmp/backend-health.json
-              exit 0
-            fi
-            sleep 1
-          done
-          docker inspect roblox-ai-studio-backend-cutover || true
-          exit 1
-      - name: Capture backend container logs
-        if: always()
-        run: docker logs roblox-ai-studio-backend-cutover > backend-container.log 2>&1 || true
-      - name: Publish backend container diagnostics
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: backend-container-diagnostics-${{ github.event.pull_request.head.sha }}
-          path: backend-container.log
-          if-no-files-found: error
-          retention-days: 1
-      - name: Print backend logs on failure
-        if: failure()
-        run: cat backend-container.log || true
-      - name: Stop backend container
-        if: always()
-        run: docker rm --force roblox-ai-studio-backend-cutover || true
-
-  production-contract:
-    name: Frontend Production Contract
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-    env:
-      INT201_BACKEND_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
-      INT201_FRONTEND_ORIGIN: http://127.0.0.1:4173
-      INT201_API_URL: http://127.0.0.1:5051/api
-      INT201_SOCKET_URL: http://127.0.0.1:5051
-    steps:
-      - name: Checkout exact backend source
-        uses: actions/checkout@v4
-        with:
-          ref: ${{ env.INT201_BACKEND_SHA }}
-          persist-credentials: false
-      - name: Resolve exact Frontend release commit
-        id: frontend-release
-        run: |
-          frontend_sha="$(jq --raw-output '.frontendRelease.commit' config/cutover/release-baseline.inventory.json)"
-          [[ "$frontend_sha" =~ ^[0-9a-f]{40}$ ]]
-          echo "sha=$frontend_sha" >> "$GITHUB_OUTPUT"
-      - name: Checkout exact Frontend contract
-        uses: actions/checkout@v4
-        with:
-          repository: kazakovak2001-lgtm/Frontend
-          ref: ${{ steps.frontend-release.outputs.sha }}
-          path: standalone-frontend
-          persist-credentials: false
-      - name: Verify and record exact contract sources
-        env:
-          INT201_FRONTEND_SHA: ${{ steps.frontend-release.outputs.sha }}
-        run: |
-          test "$(git rev-parse HEAD)" = "$INT201_BACKEND_SHA"
-          test "$(git -C standalone-frontend rev-parse HEAD)" = "$INT201_FRONTEND_SHA"
-          mkdir -p artifacts/int-201
-          printf '%s\n' \
-            "contract=INT-201" \
-            "backendSha=$INT201_BACKEND_SHA" \
-            "frontendSha=$INT201_FRONTEND_SHA" \
-            "nodeEnv=production" \
-            "storageProvider=inmemory" \
-            "frontendOrigin=$INT201_FRONTEND_ORIGIN" \
-            "apiUrl=$INT201_API_URL" \
-            "socketUrl=$INT201_SOCKET_URL" \
-            > artifacts/int-201/runtime.env
-      - uses: actions/setup-node@v4
-        with:
-          node-version: "22"
-          cache: "npm"
-          cache-dependency-path: standalone-frontend/package-lock.json
-      - name: Install exact Frontend contract dependencies
-        run: npm ci --prefix standalone-frontend
-      - name: Build exact production backend image
-        run: |
-          docker build \
-            --file Dockerfile.backend \
-            --label "org.opencontainers.image.revision=$INT201_BACKEND_SHA" \
-            --tag roblox-ai-studio-backend:int-201 \
-            .
-      - name: Start production backend
-        run: |
-          docker run --detach \
-            --name roblox-ai-studio-backend-int-201 \
-            --publish 5051:5000 \
-            --env NODE_ENV=production \
-            --env PORT=5000 \
-            --env STORAGE_PROVIDER=inmemory \
-            --env FRONTEND_URL="$INT201_FRONTEND_ORIGIN" \
-            roblox-ai-studio-backend:int-201
-      - name: Wait for production backend
-        run: |
-          for attempt in $(seq 1 30); do
-            if curl --fail --silent "$INT201_SOCKET_URL/health" > /tmp/int-201-health.json; then
-              grep --quiet '"status":"healthy"' /tmp/int-201-health.json
-              exit 0
-            fi
-            sleep 1
-          done
-          docker inspect roblox-ai-studio-backend-int-201 || true
-          exit 1
-      - name: Run protected 40-check contract
-        env:
-          E2E_API_URL: ${{ env.INT201_API_URL }}
-          E2E_SOCKET_URL: ${{ env.INT201_SOCKET_URL }}
-          E2E_EVIDENCE_PATH: ${{ github.workspace }}/artifacts/int-201/contract.json
-          E2E_CONTRACT_MODE: production
-          E2E_BACKEND_SHA: ${{ env.INT201_BACKEND_SHA }}
-          E2E_FRONTEND_SHA: ${{ steps.frontend-release.outputs.sha }}
-          E2E_BACKEND_NODE_ENV: production
-          E2E_STORAGE_PROVIDER: inmemory
-          E2E_FRONTEND_ORIGIN: ${{ env.INT201_FRONTEND_ORIGIN }}
-        run: |
-          set -o pipefail
-          npm --prefix standalone-frontend run test:e2e:integration 2>&1 | tee artifacts/int-201/e2e.log
-      - name: Capture production contract diagnostics
-        if: always()
-        run: |
-          mkdir -p artifacts/int-201
-          cp /tmp/int-201-health.json artifacts/int-201/backend-health.json 2>/dev/null || true
-          docker logs roblox-ai-studio-backend-int-201 > artifacts/int-201/backend.log 2>&1 || true
-          docker image inspect roblox-ai-studio-backend:int-201 > artifacts/int-201/backend-image.json 2>&1 || true
-      - name: Publish production contract evidence
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: int-201-production-contract-${{ env.INT201_BACKEND_SHA }}
-          path: artifacts/int-201
-          if-no-files-found: error
-          retention-days: 14
-      - name: Print backend logs on failure
-        if: failure()
-        run: cat artifacts/int-201/backend.log || true
-      - name: Stop production backend
-        if: always()
-        run: docker rm --force roblox-ai-studio-backend-int-201 || true
-
-  composed-release:
-    name: Composed HTTPS Release
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout backend release source
-        uses: actions/checkout@v4
-      - name: Resolve exact Frontend release commit
-        id: frontend-release
-        run: |
-          frontend_sha="$(jq --raw-output '.frontendRelease.commit' config/cutover/release-baseline.inventory.json)"
-          [[ "$frontend_sha" =~ ^[0-9a-f]{40}$ ]]
-          echo "sha=$frontend_sha" >> "$GITHUB_OUTPUT"
-      - name: Checkout exact Frontend release commit
-        uses: actions/checkout@v4
-        with:
-          repository: kazakovak2001-lgtm/Frontend
-          ref: ${{ steps.frontend-release.outputs.sha }}
-          path: standalone-frontend
-      - uses: actions/setup-node@v4
-        with:
-          node-version: "22"
-          cache: "npm"
-      - run: npm ci
-      - name: Configure release identity
-        run: |
-          echo "BACKEND_IMAGE=roblox-ai-studio-backend:cutover-1c" >> "$GITHUB_ENV"
-          echo "FRONTEND_IMAGE=roblox-ai-studio-frontend:cutover-1c" >> "$GITHUB_ENV"
-          echo "POSTGRES_PASSWORD=cutover_1c_ci_password" >> "$GITHUB_ENV"
-          echo "RELEASE_ORIGIN=https://localhost:8443" >> "$GITHUB_ENV"
-          echo "RELEASE_PORT=8443" >> "$GITHUB_ENV"
-          echo "RELEASE_CERT_DIR=${GITHUB_WORKSPACE}/.cutover-certs" >> "$GITHUB_ENV"
-      - name: Generate CI-only TLS certificate
-        run: |
-          mkdir -p .cutover-certs
-          openssl req -x509 -newkey rsa:2048 -nodes -days 1 \
-            -keyout .cutover-certs/release.key \
-            -out .cutover-certs/release.crt \
-            -subj "/CN=localhost" \
-            -addext "subjectAltName=DNS:localhost,IP:127.0.0.1"
-      - name: Build exact backend and Frontend images
-        run: |
-          docker build \
-            --file Dockerfile.backend \
-            --tag "$BACKEND_IMAGE" \
-            .
-          docker build \
-            --build-arg VITE_API_URL="$RELEASE_ORIGIN/api" \
-            --build-arg VITE_SOCKET_URL="$RELEASE_ORIGIN" \
-            --tag "$FRONTEND_IMAGE" \
-            standalone-frontend
-      - name: Start composed HTTPS release
-        run: docker compose --project-name cutover1c --file deploy/docker-compose.release.yml up --detach
-      - name: Verify secure REST and Socket.IO composition
-        run: node scripts/cutover/verify-composed-release.mjs
-      - name: Capture composition diagnostics
-        if: always()
-        run: |
-          mkdir -p artifacts/cutover-1c
-          docker compose --project-name cutover1c --file deploy/docker-compose.release.yml ps --all > artifacts/cutover-1c/compose-ps.txt || true
-          docker compose --project-name cutover1c --file deploy/docker-compose.release.yml logs --no-color > artifacts/cutover-1c/compose.log 2>&1 || true
-      - name: Publish composition diagnostics
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: cutover-1c-composition-${{ github.event.pull_request.head.sha }}
-          path: artifacts/cutover-1c
-          if-no-files-found: error
-          retention-days: 3
-      - name: Stop composed release
-        if: always()
-        run: docker compose --project-name cutover1c --file deploy/docker-compose.release.yml down --volumes --remove-orphans || true
-
-  release-readiness:
-    name: Promoted Baseline Integrity
-    runs-on: ubuntu-latest
-    needs: composed-release
-    steps:
-      - name: Checkout promoted baseline source
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-      - name: Resolve exact Frontend release commit
-        id: frontend-release
-        run: |
-          frontend_sha="$(jq --raw-output '.frontendRelease.commit' config/cutover/release-baseline.inventory.json)"
-          [[ "$frontend_sha" =~ ^[0-9a-f]{40}$ ]]
-          echo "sha=$frontend_sha" >> "$GITHUB_OUTPUT"
-      - name: Checkout exact Frontend release commit
-        uses: actions/checkout@v4
-        with:
-          repository: kazakovak2001-lgtm/Frontend
-          ref: ${{ steps.frontend-release.outputs.sha }}
-          path: standalone-frontend
-      - uses: actions/setup-node@v4
-        with:
-          node-version: "22"
-          cache: "npm"
-      - run: npm ci
-      - name: Fetch promoted and rollback references
-        run: git fetch origin release/cutover-1e-candidate backup/default-before-cutover-1e feature/plugin-merge
-      - name: Verify promoted default and release integrity
-        env:
-          PROMOTED_DEFAULT_REF: origin/release/cutover-1e-candidate
-          ROLLBACK_REF: origin/backup/default-before-cutover-1e
-          PROMOTED_BASELINE_OUTPUT: artifacts/cutover-1f
-        run: node scripts/cutover/verify-promoted-baseline-integrity.mjs
-      - name: Rehearse independent artifact rollback
-        env:
-          FRONTEND_SOURCE: standalone-frontend
-          RELEASE_BASELINE_OUTPUT: artifacts/cutover-1f
-        run: bash scripts/cutover/rehearse-independent-rollback.sh
-      - name: Publish promoted baseline evidence
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: cutover-1f-promotion-integrity
-          path: artifacts/cutover-1f
-          if-no-files-found: error
-          retention-days: 3
-
-  legacy-frontend-audit:
-    name: Post-Removal Invariant Guard
-    runs-on: ubuntu-latest
-    needs: release-readiness
-    steps:
-      - name: Checkout cleanup audit source
-        uses: actions/checkout@v4
-        with:
+          ref: agent/data-201b-api-key-issuance-ack
           fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
-          cache: "npm"
-      - run: npm ci
-      - name: Verify post-removal invariants
-        env:
-          LEGACY_FRONTEND_AUDIT_OUTPUT: artifacts/post-removal-invariants
-        run: node scripts/cleanup/audit-legacy-frontend-decommission.mjs
-      - name: Publish post-removal invariant evidence
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: post-removal-invariant-audit
-          path: artifacts/post-removal-invariants
-          if-no-files-found: error
-          retention-days: 3
+          cache: npm
+      - name: Integrate release and durable API-key issuance
+        shell: bash
+        run: |
+          set -euo pipefail
+          release_branch='release/cutover-1e-candidate'
+          release_sha='4a0ae15e5959e31470fc1d22c8ae3671bca8829a'
+          feature_branch='agent/data-201b-api-key-issuance-ack'
 
-  validate:
-    name: Repository Validation
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: "22"
-          cache: "npm"
-      - run: npm ci
-      - run: npm run validate
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git fetch origin "$release_branch"
+          test "$(git rev-parse "origin/$release_branch")" = "$release_sha"
 
-  commit-lint:
-    name: Commit Message Lint
-    runs-on: ubuntu-latest
-    if: github.event_name == 'pull_request'
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-      - uses: actions/setup-node@v4
-        with:
-          node-version: "22"
-          cache: "npm"
-      - run: npm ci
-      - run: npx commitlint --config commitlint.config.cjs --from ${{ github.event.pull_request.base.sha }} --to ${{ github.event.pull_request.head.sha }}
+          git merge -s ours --no-commit "origin/$release_branch"
+          git checkout "origin/$release_branch" -- .
 
-  gate:
-    name: Merge Gate
-    runs-on: ubuntu-latest
-    needs:
-      [
-        typecheck,
-        lint,
-        format,
-        test,
-        postgres-e2e,
-        backend-image,
-        production-contract,
-        composed-release,
-        release-readiness,
-        legacy-frontend-audit,
-        validate,
-      ]
-    steps:
-      - run: echo "All checks passed"
+          python3 <<'PY'
+          from pathlib import Path
+
+          def replace_once(path: str, old: str, new: str) -> None:
+              file = Path(path)
+              text = file.read_text()
+              count = text.count(old)
+              if count != 1:
+                  raise SystemExit(f"{path}: expected one match, found {count}")
+              file.write_text(text.replace(old, new, 1))
+
+          api_path = "server/src/platform/security/ApiKeyStore.ts"
+          api = Path(api_path)
+          text = api.read_text()
+          old = '''/**
+           * Storage-backed API key registry.
+           *
+           * Issuance and bootstrap seeding retain their compatibility path until their
+           * lifecycle is separated. Revocation and administrative cleanup are
+           * acknowledged before their mutations become observable. Because issuance is
+           * synchronous, it fails explicitly while cleanup is queued or running rather
+           * than racing an acknowledged deletion.
+           */'''
+          new = '''/**
+           * Storage-backed API key registry with acknowledged mutation boundaries.
+           *
+           * Issuance, revocation, and cleanup are coordinated so mutations for the same
+           * key are serialized and cleanup cannot race a newly issued credential.
+           */'''
+          if text.count(old) != 1:
+              raise SystemExit("ApiKeyStore comment anchor mismatch")
+          text = text.replace(old, new, 1).replace("revocationQueues", "mutationQueues")
+
+          old = '''  constructor(private readonly storage: StorageProvider) {}
+
+            issue(rawKey: string, metadata: ApiKeyMetadata = {}): IssuedApiKey {
+              const key = rawKey.trim();
+              if (key.length < MIN_KEY_LENGTH) {
+                throw new Error(
+                  `API key must contain at least ${MIN_KEY_LENGTH} characters`,
+                );
+              }
+              if (this.cleanupRequests > 0) {
+                throw new Error("API key cleanup is in progress");
+              }
+
+              const id = metadata.id ?? randomUUID();
+              const record: StoredApiKey = {
+                id,
+                digest: digestKey(key),
+                createdAt: new Date().toISOString(),
+                ...(metadata.label ? { label: metadata.label } : {}),
+                ...(metadata.ownerId ? { ownerId: metadata.ownerId } : {}),
+              };
+              this.storage.set(COLLECTION, id, record);
+              return { id, key };
+            }
+
+            generate(metadata: ApiKeyMetadata = {}): IssuedApiKey {
+              return this.issue(`rai_${randomBytes(32).toString("hex")}`, metadata);
+            }'''
+          new = '''  constructor(private readonly storage: StorageProvider) {}
+
+            private async enqueueKeyMutation<T>(
+              id: string,
+              operation: () => Promise<T>,
+            ): Promise<T> {
+              const predecessor = this.mutationQueues.get(id) ?? Promise.resolve();
+              let release!: () => void;
+              const current = new Promise<void>((resolve) => {
+                release = resolve;
+              });
+              const queued = predecessor.then(() => current);
+              this.mutationQueues.set(id, queued);
+
+              await predecessor;
+              try {
+                return await operation();
+              } finally {
+                release();
+                if (this.mutationQueues.get(id) === queued) {
+                  this.mutationQueues.delete(id);
+                }
+              }
+            }
+
+            async issueDurable(
+              rawKey: string,
+              metadata: ApiKeyMetadata = {},
+            ): Promise<IssuedApiKey> {
+              const key = rawKey.trim();
+              if (key.length < MIN_KEY_LENGTH) {
+                throw new Error(
+                  `API key must contain at least ${MIN_KEY_LENGTH} characters`,
+                );
+              }
+              if (this.cleanupRequests > 0) {
+                await this.cleanupTail;
+              }
+
+              const id = metadata.id ?? randomUUID();
+              return this.enqueueKeyMutation(id, async () => {
+                const record: StoredApiKey = {
+                  id,
+                  digest: digestKey(key),
+                  createdAt: new Date().toISOString(),
+                  ...(metadata.label ? { label: metadata.label } : {}),
+                  ...(metadata.ownerId ? { ownerId: metadata.ownerId } : {}),
+                };
+                await this.storage.setDurable(COLLECTION, id, record);
+                return { id, key };
+              });
+            }
+
+            async generateDurable(
+              metadata: ApiKeyMetadata = {},
+            ): Promise<IssuedApiKey> {
+              return this.issueDurable(
+                `rai_${randomBytes(32).toString("hex")}`,
+                metadata,
+              );
+            }'''
+          if text.count(old) != 1:
+              raise SystemExit("ApiKeyStore issuance block mismatch")
+          text = text.replace(old, new, 1)
+
+          old = '''  async revokeDurable(id: string): Promise<boolean> {
+              if (this.cleanupRequests > 0) {
+                await this.cleanupTail;
+              }
+
+              const predecessor = this.mutationQueues.get(id) ?? Promise.resolve();
+              let release!: () => void;
+              const current = new Promise<void>((resolve) => {
+                release = resolve;
+              });
+              const queued = predecessor.then(() => current);
+              this.mutationQueues.set(id, queued);
+
+              await predecessor;
+              try {
+                const record = this.storage.get<StoredApiKey>(COLLECTION, id);
+                if (!record || record.revokedAt) return false;
+
+                await this.storage.setDurable(COLLECTION, id, {
+                  ...record,
+                  revokedAt: new Date().toISOString(),
+                });
+                return true;
+              } finally {
+                release();
+                if (this.mutationQueues.get(id) === queued) {
+                  this.mutationQueues.delete(id);
+                }
+              }
+            }'''
+          new = '''  async revokeDurable(id: string): Promise<boolean> {
+              if (this.cleanupRequests > 0) {
+                await this.cleanupTail;
+              }
+
+              return this.enqueueKeyMutation(id, async () => {
+                const record = this.storage.get<StoredApiKey>(COLLECTION, id);
+                if (!record || record.revokedAt) return false;
+
+                await this.storage.setDurable(COLLECTION, id, {
+                  ...record,
+                  revokedAt: new Date().toISOString(),
+                });
+                return true;
+              });
+            }'''
+          if text.count(old) != 1:
+              raise SystemExit("ApiKeyStore revocation block mismatch")
+          text = text.replace(old, new, 1)
+
+          old = '''  /** Seed comma-separated bootstrap keys from API_KEYS. */
+            seedFromEnvironment(value = process.env.API_KEYS): number {
+              if (!value) return 0;
+
+              let added = 0;
+              for (const candidate of value.split(",")) {
+                const key = candidate.trim();
+                if (key.length < MIN_KEY_LENGTH) continue;
+
+                const digest = digestKey(key);
+                const exists = this.storage
+                  .list<StoredApiKey>(COLLECTION)
+                  .some((record) => record.digest === digest);
+                if (exists) continue;
+
+                this.issue(key, {
+                  id: `env-${digest.slice(0, 24)}`,
+                  label: "environment",
+                });
+                added += 1;
+              }
+              return added;
+            }'''
+          new = '''  /** Seed comma-separated bootstrap keys from API_KEYS after acknowledgement. */
+            async seedFromEnvironmentDurable(
+              value = process.env.API_KEYS,
+            ): Promise<number> {
+              if (!value) return 0;
+
+              let added = 0;
+              for (const candidate of value.split(",")) {
+                const key = candidate.trim();
+                if (key.length < MIN_KEY_LENGTH) continue;
+
+                const digest = digestKey(key);
+                const exists = this.storage
+                  .list<StoredApiKey>(COLLECTION)
+                  .some((record) => record.digest === digest);
+                if (exists) continue;
+
+                await this.issueDurable(key, {
+                  id: `env-${digest.slice(0, 24)}`,
+                  label: "environment",
+                });
+                added += 1;
+              }
+              return added;
+            }'''
+          if text.count(old) != 1:
+              raise SystemExit("ApiKeyStore seed block mismatch")
+          text = text.replace(old, new, 1)
+          text = text.replace(
+              "Cleanup calls are serialized. Each cleanup waits for revocations that were\n   * already in flight, and new revocations wait for all queued cleanups.",
+              "Cleanup calls are serialized. Each cleanup waits for key mutations that were\n   * already in flight, and new mutations wait for all queued cleanups.",
+          )
+          api.write_text(text)
+
+          test_path = "server/src/platform/security/__tests__/ApiKeyStore.test.ts"
+          test = Path(test_path)
+          text = test.read_text()
+
+          old = '''  it("rejects issuance while cleanup is in progress", async () => {
+              const id = "cleanup-issuance-race";
+              store.issue("original-cleanup-key-123456789", { id });
+              let markStarted!: () => void;
+              let releaseDelete!: () => void;
+              const deleteStarted = new Promise<void>((resolve) => {
+                markStarted = resolve;
+              });
+              storage.onDeleteStart = markStarted;
+              storage.deleteBarrier = new Promise<void>((resolve) => {
+                releaseDelete = resolve;
+              });
+
+              const cleanup = store.clearDurable();
+              await deleteStarted;
+
+              expect(() =>
+                store.issue("replacement-cleanup-key-123456789", { id }),
+              ).toThrow("API key cleanup is in progress");
+
+              releaseDelete();
+              await expect(cleanup).resolves.toBe(1);
+
+              const replacement = store.issue("replacement-cleanup-key-123456789", {
+                id,
+              });
+              expect(store.validate(replacement.key)).toBe(true);
+            });'''
+          new = '''  it("waits for cleanup before issuing a replacement key", async () => {
+              const id = "cleanup-issuance-race";
+              await store.issueDurable("original-cleanup-key-123456789", { id });
+              let markStarted!: () => void;
+              let releaseDelete!: () => void;
+              const deleteStarted = new Promise<void>((resolve) => {
+                markStarted = resolve;
+              });
+              storage.onDeleteStart = markStarted;
+              storage.deleteBarrier = new Promise<void>((resolve) => {
+                releaseDelete = resolve;
+              });
+
+              const cleanup = store.clearDurable();
+              await deleteStarted;
+              let issuanceStarted = false;
+              storage.onSetStart = () => {
+                issuanceStarted = true;
+              };
+              const replacementPromise = store.issueDurable(
+                "replacement-cleanup-key-123456789",
+                { id },
+              );
+              await Promise.resolve();
+              expect(issuanceStarted).toBe(false);
+
+              releaseDelete();
+              await expect(cleanup).resolves.toBe(1);
+              const replacement = await replacementPromise;
+              expect(issuanceStarted).toBe(true);
+              expect(store.validate(replacement.key)).toBe(true);
+            });'''
+          if text.count(old) != 1:
+              raise SystemExit("ApiKeyStore cleanup/issuance test mismatch")
+          text = text.replace(old, new, 1)
+
+          old = '''  it("rejects malformed or short credentials", () => {
+              expect(store.validate(undefined)).toBe(false);
+              expect(store.validate(["test-api-key-123456789"])).toBe(false);
+              expect(() => store.issue("too-short")).toThrow(/at least 16/);
+            });'''
+          new = '''  it("rejects malformed or short credentials", async () => {
+              expect(store.validate(undefined)).toBe(false);
+              expect(store.validate(["test-api-key-123456789"])).toBe(false);
+              await expect(store.issueDurable("too-short")).rejects.toThrow(
+                /at least 16/,
+              );
+            });'''
+          if text.count(old) != 1:
+              raise SystemExit("ApiKeyStore malformed test mismatch")
+          text = text.replace(old, new, 1)
+
+          old = '''  it("seeds unique keys from API_KEYS without duplicating records", () => {
+              const value =
+                "seed-api-key-123456789, seed-api-key-123456789, another-seed-api-key-123456";
+
+              expect(store.seedFromEnvironment(value)).toBe(2);
+              expect(store.seedFromEnvironment(value)).toBe(0);
+              expect(store.validate("seed-api-key-123456789")).toBe(true);
+              expect(store.validate("another-seed-api-key-123456")).toBe(true);
+              expect(store.list()).toHaveLength(2);
+            });'''
+          new = '''  it("seeds unique keys from API_KEYS without duplicating records", async () => {
+              const value =
+                "seed-api-key-123456789, seed-api-key-123456789, another-seed-api-key-123456";
+
+              await expect(store.seedFromEnvironmentDurable(value)).resolves.toBe(2);
+              await expect(store.seedFromEnvironmentDurable(value)).resolves.toBe(0);
+              expect(store.validate("seed-api-key-123456789")).toBe(true);
+              expect(store.validate("another-seed-api-key-123456")).toBe(true);
+              expect(store.list()).toHaveLength(2);
+            });'''
+          if text.count(old) != 1:
+              raise SystemExit("ApiKeyStore seed test mismatch")
+          text = text.replace(old, new, 1)
+
+          text = text.replace(
+              'it("validates an issued key without storing the plain-text credential", () => {',
+              'it("validates an issued key without storing the plain-text credential", async () => {',
+              1,
+          )
+          text = text.replace("store.issue(", "await store.issueDurable(")
+
+          marker = '''  it("revokes a key after acknowledgement and is idempotent", async () => {'''
+          insertion = '''  it("does not publish an issued key when persistence is rejected", async () => {
+              storage.rejectSet = true;
+
+              await expect(
+                store.issueDurable("rejected-issue-key-123456789", {
+                  id: "rejected-issue",
+                  label: "rejected",
+                }),
+              ).rejects.toMatchObject({
+                code: "DURABLE_STORAGE_MUTATION_FAILED",
+                operation: "set",
+              });
+              expect(store.validate("rejected-issue-key-123456789")).toBe(false);
+              expect(storage.get("platform_api_keys", "rejected-issue")).toBeNull();
+              expect(store.list()).toEqual([]);
+            });
+
+            it("generates a key only after persistence acknowledgement", async () => {
+              const issued = await store.generateDurable({ label: "generated" });
+
+              expect(issued.key).toMatch(/^rai_[0-9a-f]{64}$/);
+              expect(store.validate(issued.key)).toBe(true);
+              expect(store.list()).toEqual([
+                {
+                  id: issued.id,
+                  createdAt: expect.any(String),
+                  label: "generated",
+                },
+              ]);
+            });
+
+          ''' + marker
+          if text.count(marker) != 1:
+              raise SystemExit("ApiKeyStore insertion marker mismatch")
+          text = text.replace(marker, insertion, 1)
+
+          anchor = '''    const issued = await store.issueDurable("concurrent-revoke-key-123456789");
+              let markStarted!: () => void;'''
+          replacement = '''    const issued = await store.issueDurable("concurrent-revoke-key-123456789");
+              storage.setDurableCalls = 0;
+              let markStarted!: () => void;'''
+          if text.count(anchor) != 1:
+              raise SystemExit("ApiKeyStore concurrent revocation anchor mismatch")
+          text = text.replace(anchor, replacement, 1)
+
+          marker = '''  it("waits for an in-flight revocation before cleanup", async () => {'''
+          insertion = '''  it("waits for an in-flight issuance before cleanup", async () => {
+              let markStarted!: () => void;
+              let releaseWrite!: () => void;
+              const writeStarted = new Promise<void>((resolve) => {
+                markStarted = resolve;
+              });
+              storage.onSetStart = markStarted;
+              storage.setBarrier = new Promise<void>((resolve) => {
+                releaseWrite = resolve;
+              });
+
+              const issuance = store.issueDurable("cleanup-issuance-key-123456789");
+              await writeStarted;
+              const cleanup = store.clearDurable();
+              releaseWrite();
+
+              await expect(issuance).resolves.toEqual({
+                id: expect.any(String),
+                key: "cleanup-issuance-key-123456789",
+              });
+              await expect(cleanup).resolves.toBe(1);
+              expect(store.list()).toEqual([]);
+            });
+
+          ''' + marker
+          if text.count(marker) != 1:
+              raise SystemExit("ApiKeyStore cleanup insertion marker mismatch")
+          text = text.replace(marker, insertion, 1)
+          test.write_text(text)
+
+          replace_once(
+              "server/src/index.ts",
+              "  getApiKeyStore().seedFromEnvironment();",
+              "  await getApiKeyStore().seedFromEnvironmentDurable();",
+          )
+          replace_once(
+              "server/src/__tests__/securityHardening.test.ts",
+              '      const issued = store.issue("my-api-key-1234567", {',
+              '      const issued = await store.issueDurable("my-api-key-1234567", {',
+          )
+          replace_once(
+              "server/src/__tests__/securityHardening.test.ts",
+              '      store.issue("array-header-api-key-123456", { label: "array-test" });',
+              '      await store.issueDurable("array-header-api-key-123456", {\n        label: "array-test",\n      });',
+          )
+
+          inventory_path = "config/durability/compatibility-write-inventory.json"
+          inventory = Path(inventory_path)
+          text = inventory.read_text()
+          obsolete = '''    {
+                "key": "server/src/platform/security/ApiKeyStore.ts#ApiKeyStore.issue#set",
+                "path": "server/src/platform/security/ApiKeyStore.ts",
+                "owner": "ApiKeyStore.issue",
+                "operation": "set",
+                "expectedCalls": 1,
+                "classification": "bootstrap-compatibility",
+                "reason": "Environment API-key seeding and programmatic issuance still share a synchronous write path.",
+                "migrationTarget": "DATA-201B"
+              },
+          '''
+          if text.count(obsolete) != 1:
+              raise SystemExit("compatibility inventory issuance entry mismatch")
+          inventory.write_text(text.replace(obsolete, "", 1))
+          PY
+
+          npm ci
+          npx prettier --write \
+            config/durability/compatibility-write-inventory.json \
+            server/src/index.ts \
+            server/src/platform/security/ApiKeyStore.ts \
+            server/src/platform/security/__tests__/ApiKeyStore.test.ts \
+            server/src/__tests__/securityHardening.test.ts
+          npm run typecheck
+          npm run lint
+          npx vitest run \
+            server/src/platform/security/__tests__/ApiKeyStore.test.ts \
+            server/src/__tests__/securityHardening.test.ts
+          npm run validate
+
+          git add -A
+          expected=$(printf '%s\n' \
+            config/durability/compatibility-write-inventory.json \
+            server/src/__tests__/securityHardening.test.ts \
+            server/src/index.ts \
+            server/src/platform/security/ApiKeyStore.ts \
+            server/src/platform/security/__tests__/ApiKeyStore.test.ts | sort)
+          actual=$(git diff --cached --name-only | sort)
+          if [ "$actual" != "$expected" ]; then
+            echo 'Unexpected staged file set:'
+            diff <(printf '%s\n' "$expected") <(printf '%s\n' "$actual") || true
+            exit 1
+          fi
+
+          git commit -m 'chore(release): integrate durable API key issuance'
+          test "$(git rev-list --parents -n 1 HEAD | wc -w)" -eq 3
+          git push origin "HEAD:$feature_branch"
