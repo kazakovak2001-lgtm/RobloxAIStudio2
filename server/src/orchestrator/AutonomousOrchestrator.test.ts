@@ -2,6 +2,10 @@ import { describe, expect, it } from "vitest";
 import { PipelineEventEmitter } from "../socket/streaming";
 import type { PipelineEvent } from "../types/pipeline-events";
 import { AutonomousOrchestrator } from "./AutonomousOrchestrator";
+import {
+  AutonomousPhaseRegistry,
+  type AutonomousPhaseAdapter,
+} from "./AutonomousPhaseRegistry";
 import type { OrchestratorSession } from "./OrchestratorTypes";
 
 async function waitForTerminal(
@@ -197,5 +201,69 @@ describe("AutonomousOrchestrator bounded preview truthfulness", () => {
     expect(snapshotCost.perPhase).not.toBe(session.cost.perPhase);
     expect(Object.keys(snapshotCost.perPhase)).toEqual(["genre_detection"]);
     expect(Object.keys(session.cost.perPhase).length).toBeGreaterThan(1);
+  });
+
+  it("rejects malformed checkpoint snapshots without corrupting session cost", async () => {
+    const orchestrator = new AutonomousOrchestrator();
+    const session = orchestrator.run(
+      "Build a checkpoint validation obby",
+      "project-invalid-checkpoint",
+    );
+
+    await waitForTerminal(session);
+    const checkpoint = session.checkpoints[0];
+    const originalCost = session.cost;
+    checkpoint.snapshot = {
+      context: {
+        projectId: session.projectId,
+        prompt: session.prompt,
+        systems: [],
+      },
+      phases: [],
+      qualityScore: null,
+    };
+
+    expect(orchestrator.recover(session.id, checkpoint.id)).toBe(false);
+    expect(session.cost).toBe(originalCost);
+    expect(session.status).toBe("preview_completed");
+  });
+
+  it("converts unexpected execution errors into a failed terminal session", async () => {
+    const events = new PipelineEventEmitter();
+    const published: PipelineEvent[] = [];
+    events.onEvent(async (event) => {
+      published.push(event);
+    });
+
+    const failingAdapter: AutonomousPhaseAdapter = {
+      phase: "genre_detection",
+      capability() {
+        throw new Error("Capability lookup failed");
+      },
+      async execute(context) {
+        return {
+          status: "completed",
+          evidence: "heuristic",
+          service: "FailingAdapter",
+          output: {},
+          context,
+        };
+      },
+    };
+    const orchestrator = new AutonomousOrchestrator(events, {
+      phaseRegistry: new AutonomousPhaseRegistry([failingAdapter]),
+    });
+    const session = orchestrator.run(
+      "Build an error handling obby",
+      "project-top-level-error",
+    );
+
+    await waitForTerminal(session);
+
+    expect(session.status).toBe("failed");
+    expect(session.currentPhase).toBe("failed");
+    expect(published.some((event) => event.type === "pipeline.failed")).toBe(
+      true,
+    );
   });
 });

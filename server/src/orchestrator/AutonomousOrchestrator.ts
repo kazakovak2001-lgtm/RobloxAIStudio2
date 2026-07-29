@@ -64,6 +64,7 @@ export class AutonomousOrchestrator {
   private readonly controllers = new Map<string, AbortController>();
   private readonly activeExecutions = new Set<string>();
   private readonly restartRequests = new Set<string>();
+  private readonly checkpointSequences = new Map<string, number>();
   private readonly events?: PipelineEventEmitter;
   private readonly phaseRegistry: AutonomousPhaseRegistry;
 
@@ -146,7 +147,7 @@ export class AutonomousOrchestrator {
 
   getCapabilities(
     sessionId: string,
-  ): Record<RunnableOrchestratorPhase, PhaseCapability> | null {
+  ): Partial<Record<RunnableOrchestratorPhase, PhaseCapability>> | null {
     const context = this.contexts.get(sessionId);
     return context ? this.phaseRegistry.listCapabilities(context) : null;
   }
@@ -191,20 +192,18 @@ export class AutonomousOrchestrator {
     return true;
   }
 
-  recover(sessionId: string, checkpointTimestamp?: number): boolean {
+  recover(sessionId: string, checkpointId?: string): boolean {
     const session = this.sessions.get(sessionId);
     if (!session || session.status === "running") return false;
 
-    const checkpoint = checkpointTimestamp
-      ? session.checkpoints.find(
-          (candidate) => candidate.timestamp === checkpointTimestamp,
-        )
+    const checkpoint = checkpointId
+      ? session.checkpoints.find((candidate) => candidate.id === checkpointId)
       : session.checkpoints.at(-1);
-    if (!checkpoint) return false;
+    if (!checkpoint || !this.isCheckpointSnapshot(checkpoint.snapshot)) {
+      return false;
+    }
 
-    const snapshot = checkpoint.snapshot as unknown as CheckpointSnapshot;
-    if (!snapshot.context || !Array.isArray(snapshot.phases)) return false;
-
+    const snapshot = checkpoint.snapshot;
     this.contexts.set(sessionId, this.clone(snapshot.context));
     session.phases = this.clone(snapshot.phases);
     session.qualityScore = snapshot.qualityScore;
@@ -372,6 +371,23 @@ export class AutonomousOrchestrator {
       if (session.status === "running" && !this.nextPendingNode(session)) {
         this.finishPreview(session);
       }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      session.status = "failed";
+      session.currentPhase = "failed";
+      session.finishedAt = Date.now();
+      void this.events?.emitPipelineFailed(
+        session.id,
+        message,
+        session.projectId,
+        {
+          executionMode: session.executionMode,
+          resultAuthority: session.resultAuthority,
+          completedSteps: session.phases.filter(
+            (phaseNode) => phaseNode.status === "completed",
+          ).length,
+        },
+      );
     } finally {
       this.activeExecutions.delete(session.id);
       const restartRequested = this.restartRequests.delete(session.id);
@@ -611,12 +627,67 @@ export class AutonomousOrchestrator {
       genre: session.genre,
       cost: this.clone(session.cost),
     };
+    const sequence = (this.checkpointSequences.get(session.id) ?? 0) + 1;
+    this.checkpointSequences.set(session.id, sequence);
     const checkpoint: Checkpoint = {
+      id: `${session.id}:checkpoint:${sequence}`,
       phase,
       timestamp: Date.now(),
       snapshot: snapshot as unknown as Record<string, unknown>,
     };
     session.checkpoints.push(checkpoint);
+  }
+
+  private isCheckpointSnapshot(value: unknown): value is CheckpointSnapshot {
+    if (!value || typeof value !== "object" || Array.isArray(value)) {
+      return false;
+    }
+
+    const snapshot = value as Partial<CheckpointSnapshot>;
+    const context = snapshot.context as
+      Partial<AutonomousPhaseContext> | undefined;
+    if (
+      !context ||
+      typeof context.projectId !== "string" ||
+      typeof context.prompt !== "string" ||
+      !Array.isArray(context.systems) ||
+      !Array.isArray(snapshot.phases) ||
+      !snapshot.phases.every(
+        (node) =>
+          Boolean(node) &&
+          typeof node.id === "string" &&
+          typeof node.phase === "string" &&
+          typeof node.status === "string",
+      ) ||
+      (snapshot.qualityScore !== null &&
+        typeof snapshot.qualityScore !== "number") ||
+      (snapshot.genre !== undefined && typeof snapshot.genre !== "string") ||
+      !this.isCostTracker(snapshot.cost)
+    ) {
+      return false;
+    }
+
+    return true;
+  }
+
+  private isCostTracker(value: unknown): value is CostTracker {
+    if (!value || typeof value !== "object" || Array.isArray(value)) {
+      return false;
+    }
+
+    const cost = value as Partial<CostTracker>;
+    return (
+      typeof cost.totalTokens === "number" &&
+      Number.isFinite(cost.totalTokens) &&
+      typeof cost.totalCost === "number" &&
+      Number.isFinite(cost.totalCost) &&
+      typeof cost.totalTimeMs === "number" &&
+      Number.isFinite(cost.totalTimeMs) &&
+      (cost.source === "synthetic" || cost.source === "measured") &&
+      Boolean(cost.perPhase) &&
+      typeof cost.perPhase === "object" &&
+      !Array.isArray(cost.perPhase)
+    );
   }
 
   private emptyCost(): CostTracker {
