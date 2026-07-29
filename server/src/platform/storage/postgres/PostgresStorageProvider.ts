@@ -8,6 +8,7 @@
  */
 
 import {
+  DurableStorageConflictError,
   DurableStorageError,
   type DurableMutation,
   type StorageProvider,
@@ -136,7 +137,14 @@ export class PostgresStorageProvider implements StorageProvider {
         try {
           await client.query("BEGIN");
           for (const mutation of mutations) {
-            if (mutation.type === "set") {
+            if (mutation.type === "create") {
+              await this.persistCreate(
+                mutation.collection,
+                mutation.id,
+                mutation.data,
+                client,
+              );
+            } else if (mutation.type === "set") {
               await this.persistSet(
                 mutation.collection,
                 mutation.id,
@@ -169,6 +177,7 @@ export class PostgresStorageProvider implements StorageProvider {
         this.publishCacheMutations(mutations);
       });
     } catch (error) {
+      if (error instanceof DurableStorageConflictError) throw error;
       throw new DurableStorageError("Durable mutation batch failed", "batch", {
         cause: error,
       });
@@ -264,10 +273,10 @@ export class PostgresStorageProvider implements StorageProvider {
   private publishCacheMutations(mutations: readonly DurableMutation[]): void {
     for (const mutation of mutations) {
       const collection = this.getCollection(mutation.collection);
-      if (mutation.type === "set") {
-        collection.set(mutation.id, mutation.data);
-      } else {
+      if (mutation.type === "delete") {
         collection.delete(mutation.id);
+      } else {
+        collection.set(mutation.id, mutation.data);
       }
     }
   }
@@ -367,6 +376,23 @@ export class PostgresStorageProvider implements StorageProvider {
         error instanceof Error ? error.message : error,
       );
     });
+  }
+
+  private async persistCreate(
+    collection: string,
+    id: string,
+    data: unknown,
+    executor: QueryExecutor = this.requirePool(),
+  ): Promise<void> {
+    const result = await executor.query(
+      `INSERT INTO ${KV_TABLE} (collection, id, data) VALUES ($1, $2, $3)
+       ON CONFLICT (collection, id) DO NOTHING
+       RETURNING id`,
+      [collection, id, JSON.stringify(data)],
+    );
+    if (result.rows.length === 0) {
+      throw new DurableStorageConflictError(collection, id);
+    }
   }
 
   private async persistSet(
