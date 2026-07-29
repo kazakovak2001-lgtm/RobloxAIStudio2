@@ -219,6 +219,73 @@ describe("PostgresStorageProvider awaited mutations", () => {
     });
   });
 
+  it("does not publish any batch record before COMMIT is acknowledged", async () => {
+    let acknowledgeCommit: (() => void) | undefined;
+    let markCommitStarted: (() => void) | undefined;
+    const commitAcknowledged = new Promise<void>((resolve) => {
+      acknowledgeCommit = resolve;
+    });
+    const commitStarted = new Promise<void>((resolve) => {
+      markCommitStarted = resolve;
+    });
+    const query = async (text: string) => {
+      const type = statementType(text);
+      if (type === "SELECT_DATA") return { rows: [] };
+      if (type === "COMMIT") {
+        markCommitStarted?.();
+        await commitAcknowledged;
+      }
+      return { rows: [] };
+    };
+    const pool: QueryablePool = {
+      query,
+      async connect() {
+        return { query, release() {} };
+      },
+      async end() {},
+    };
+    const storage = new PostgresStorageProvider(
+      {
+        connectionString: "postgresql://test",
+        poolSize: 1,
+        poolTimeout: 1000,
+        strict: true,
+      },
+      { createPool: () => pool },
+    );
+    await storage.ready();
+
+    const mutation = storage.mutateDurably([
+      {
+        type: "set",
+        collection: "chat_conversations",
+        id: "conversation-pending",
+        data: { updatedAt: "pending" },
+      },
+      {
+        type: "set",
+        collection: "chat_messages",
+        id: "message-pending",
+        data: { conversationId: "conversation-pending" },
+      },
+    ]);
+    await commitStarted;
+
+    expect(
+      storage.get("chat_conversations", "conversation-pending"),
+    ).toBeNull();
+    expect(storage.get("chat_messages", "message-pending")).toBeNull();
+
+    acknowledgeCommit?.();
+    await mutation;
+    expect(storage.get("chat_conversations", "conversation-pending")).toEqual({
+      updatedAt: "pending",
+    });
+    expect(storage.get("chat_messages", "message-pending")).toEqual({
+      conversationId: "conversation-pending",
+    });
+  });
+
   it("rolls back the database and preserves all cache values when a batch fails", async () => {
     const statements: string[] = [];
     const previous = { updatedAt: "before" };
