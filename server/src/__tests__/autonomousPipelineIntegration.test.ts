@@ -10,6 +10,7 @@
  */
 
 import { describe, it, expect } from "vitest";
+import { readFileSync } from "node:fs";
 import * as fc from "fast-check";
 
 import { AutonomousOrchestrator } from "../orchestrator/AutonomousOrchestrator";
@@ -461,4 +462,26 @@ describe("Integration - Reconnect Resilience", () => {
       { numRuns: 5 },
     );
   }, 60000);
+});
+
+describe("Integration - Socket.IO preview completion bridge", () => {
+  it("forwards preview terminal metadata without promoting production completion", () => {
+    const source = readFileSync(
+      new URL("../index.ts", import.meta.url),
+      "utf8",
+    );
+    const start = source.indexOf('case "pipeline.preview.completed": {');
+    const end = source.indexOf('case "pipeline.failed": {', start);
+
+    expect(start).toBeGreaterThan(-1);
+    expect(end).toBeGreaterThan(start);
+
+    const previewCase = source.slice(start, end);
+    expect(previewCase).toContain("...evt.data");
+    expect(previewCase).toContain("productionCompleted: false");
+    expect(previewCase).toContain(
+      'emitForProject("pipeline.preview.completed", payload)',
+    );
+    expect(previewCase).not.toContain("projectRepository.update");
+  });
 });
