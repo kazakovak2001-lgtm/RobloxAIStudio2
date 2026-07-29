@@ -94,10 +94,13 @@ export class UserRepository {
     return updated;
   }
 
-  recordGeneration(userId: string, tokens: number): boolean {
+  async recordGenerationDurable(
+    userId: string,
+    tokens: number,
+  ): Promise<boolean> {
     const user = this.getById(userId);
     if (!user) return false;
-    this.storage.set(this.collection, userId, {
+    const updated: User = {
       ...user,
       lastLoginAt: Date.now(),
       usage: {
@@ -107,7 +110,8 @@ export class UserRepository {
         tokensUsedToday: user.usage.tokensUsedToday + tokens,
         tokensUsedTotal: user.usage.tokensUsedTotal + tokens,
       },
-    });
+    };
+    await this.storage.setDurable(this.collection, userId, updated);
     return true;
   }
 
