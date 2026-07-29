@@ -208,9 +208,13 @@ export class PostgresStorageProvider implements StorageProvider {
       return results;
     } catch (error) {
       this.markFailure();
-      throw new DurableStorageError("Durable transaction failed", "transaction", {
-        cause: error,
-      });
+      throw new DurableStorageError(
+        "Durable transaction failed",
+        "transaction",
+        {
+          cause: error,
+        },
+      );
     }
   }
 

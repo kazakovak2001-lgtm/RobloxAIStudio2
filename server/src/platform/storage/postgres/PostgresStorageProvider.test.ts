@@ -74,7 +74,10 @@ function createFakePool(options: FakePoolOptions = {}): FakePoolControl {
       let transaction: Map<string, unknown> | null = null;
       let batchMutationIndex = 0;
       return {
-        async query(text: string, params: unknown[] = []): Promise<QueryResult> {
+        async query(
+          text: string,
+          params: unknown[] = [],
+        ): Promise<QueryResult> {
           statements.push(text.trim().split("\n")[0]);
           if (text === "BEGIN") {
             transaction = new Map(database);
