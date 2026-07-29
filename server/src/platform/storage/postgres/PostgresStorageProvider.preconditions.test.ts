@@ -112,6 +112,7 @@ describe("PostgresStorageProvider durable preconditions", () => {
     ).rejects.toBeInstanceOf(DurableStorageConflictError);
 
     expect(statements).toEqual(["BEGIN", "DELETE", "ROLLBACK"]);
+    expect(storage.isConnected()).toBe(true);
     expect(
       storage.get("auth_refresh_credentials", "old-digest"),
     ).not.toBeNull();
