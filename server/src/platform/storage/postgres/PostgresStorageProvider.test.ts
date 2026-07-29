@@ -5,24 +5,64 @@ import {
   type QueryablePool,
 } from "./PostgresStorageProvider";
 
+interface RecordedQuery {
+  text: string;
+  params?: unknown[];
+  source: "pool" | "client";
+}
+
 interface FakePoolOptions {
   rows?: Array<Record<string, unknown>>;
   reject?: "insert" | "delete";
+  rejectId?: string;
+  queries?: RecordedQuery[];
+  blockCommit?: Promise<void>;
+  onCommit?: () => void;
+  onConnect?: () => void;
+  onRelease?: () => void;
 }
 
 function fakePool(options: FakePoolOptions = {}): QueryablePool {
+  const execute = async (
+    source: RecordedQuery["source"],
+    text: string,
+    params?: unknown[],
+  ) => {
+    options.queries?.push({ text, params, source });
+    if (text.trim() === "COMMIT") {
+      options.onCommit?.();
+      await options.blockCommit;
+    }
+    if (
+      options.reject === "insert" &&
+      text.includes("INSERT INTO") &&
+      (!options.rejectId || params?.[1] === options.rejectId)
+    ) {
+      throw new Error("injected insert rejection");
+    }
+    if (
+      options.reject === "delete" &&
+      text.includes("DELETE FROM") &&
+      (!options.rejectId || params?.[1] === options.rejectId)
+    ) {
+      throw new Error("injected delete rejection");
+    }
+    if (text.includes("SELECT collection, id, data")) {
+      return { rows: options.rows ?? [] };
+    }
+    return { rows: [] };
+  };
+
   return {
-    async query(text: string) {
-      if (options.reject === "insert" && text.includes("INSERT INTO")) {
-        throw new Error("injected insert rejection");
-      }
-      if (options.reject === "delete" && text.includes("DELETE FROM")) {
-        throw new Error("injected delete rejection");
-      }
-      if (text.includes("SELECT collection, id, data")) {
-        return { rows: options.rows ?? [] };
-      }
-      return { rows: [] };
+    query: (text, params) => execute("pool", text, params),
+    async connect() {
+      options.onConnect?.();
+      return {
+        query: (text, params) => execute("client", text, params),
+        release() {
+          options.onRelease?.();
+        },
+      };
     },
     async end() {},
   };
@@ -38,6 +78,12 @@ function provider(options: FakePoolOptions = {}): PostgresStorageProvider {
     },
     { createPool: () => fakePool(options) },
   );
+}
+
+function clientStatements(queries: RecordedQuery[]): string[] {
+  return queries
+    .filter(({ source }) => source === "client")
+    .map(({ text }) => text.trim().split(/\s+/)[0]);
 }
 
 describe("PostgresStorageProvider awaited mutations", () => {
@@ -91,11 +137,15 @@ describe("PostgresStorageProvider awaited mutations", () => {
     const insertAcknowledged = new Promise<void>((resolve) => {
       acknowledgeInsert = resolve;
     });
+    const query = async (text: string) => {
+      if (text.includes("SELECT collection, id, data")) return { rows: [] };
+      if (text.includes("INSERT INTO")) await insertAcknowledged;
+      return { rows: [] };
+    };
     const pool: QueryablePool = {
-      async query(text: string) {
-        if (text.includes("SELECT collection, id, data")) return { rows: [] };
-        if (text.includes("INSERT INTO")) await insertAcknowledged;
-        return { rows: [] };
+      query,
+      async connect() {
+        return { query, release() {} };
       },
       async end() {},
     };
@@ -138,5 +188,161 @@ describe("PostgresStorageProvider awaited mutations", () => {
       true,
     );
     expect(storage.get("projects", "project-1")).toBeNull();
+  });
+
+  it("executes an atomic batch on one checked-out client", async () => {
+    const queries: RecordedQuery[] = [];
+    let connections = 0;
+    let releases = 0;
+    const storage = provider({
+      rows: [
+        {
+          collection: "projects",
+          id: "project-delete",
+          data: { name: "Delete" },
+        },
+      ],
+      queries,
+      onConnect: () => {
+        connections += 1;
+      },
+      onRelease: () => {
+        releases += 1;
+      },
+    });
+    await storage.ready();
+
+    await storage.mutateDurably([
+      {
+        type: "set",
+        collection: "projects",
+        id: "project-create",
+        data: { name: "Create" },
+      },
+      { type: "delete", collection: "projects", id: "project-delete" },
+    ]);
+
+    expect(connections).toBe(1);
+    expect(releases).toBe(1);
+    expect(clientStatements(queries)).toEqual([
+      "BEGIN",
+      "INSERT",
+      "DELETE",
+      "COMMIT",
+    ]);
+    expect(storage.get("projects", "project-create")).toEqual({
+      name: "Create",
+    });
+    expect(storage.get("projects", "project-delete")).toBeNull();
+  });
+
+  it("rolls back the database and preserves the exact cache after rejection", async () => {
+    const previous = { name: "Before", version: 1 };
+    const queries: RecordedQuery[] = [];
+    const storage = provider({
+      rows: [{ collection: "projects", id: "project-1", data: previous }],
+      reject: "insert",
+      rejectId: "project-2",
+      queries,
+    });
+    await storage.ready();
+
+    await expect(
+      storage.mutateDurably([
+        {
+          type: "set",
+          collection: "projects",
+          id: "project-1",
+          data: { name: "After", version: 2 },
+        },
+        {
+          type: "set",
+          collection: "projects",
+          id: "project-2",
+          data: { name: "Rejected" },
+        },
+      ]),
+    ).rejects.toMatchObject({ operation: "batch" });
+
+    expect(clientStatements(queries)).toEqual([
+      "BEGIN",
+      "INSERT",
+      "INSERT",
+      "ROLLBACK",
+    ]);
+    expect(storage.get("projects", "project-1")).toEqual(previous);
+    expect(storage.get("projects", "project-2")).toBeNull();
+  });
+
+  it("publishes no partial batch state before COMMIT acknowledgement", async () => {
+    let acknowledgeCommit: (() => void) | undefined;
+    let reportCommitStarted: (() => void) | undefined;
+    const commitAcknowledged = new Promise<void>((resolve) => {
+      acknowledgeCommit = resolve;
+    });
+    const commitStarted = new Promise<void>((resolve) => {
+      reportCommitStarted = resolve;
+    });
+    const previous = { name: "Before" };
+    const storage = provider({
+      rows: [{ collection: "projects", id: "project-1", data: previous }],
+      blockCommit: commitAcknowledged,
+      onCommit: () => reportCommitStarted?.(),
+    });
+    await storage.ready();
+
+    const batch = storage.mutateDurably([
+      {
+        type: "set",
+        collection: "projects",
+        id: "project-1",
+        data: { name: "After" },
+      },
+      {
+        type: "set",
+        collection: "projects",
+        id: "project-2",
+        data: { name: "Created" },
+      },
+    ]);
+    await commitStarted;
+
+    expect(storage.get("projects", "project-1")).toEqual(previous);
+    expect(storage.get("projects", "project-2")).toBeNull();
+
+    acknowledgeCommit?.();
+    await batch;
+    expect(storage.get("projects", "project-1")).toEqual({ name: "After" });
+    expect(storage.get("projects", "project-2")).toEqual({ name: "Created" });
+  });
+
+  it("does not poison later queued mutations after a rolled-back batch", async () => {
+    const options: FakePoolOptions = {
+      reject: "insert",
+      rejectId: "project-rejected",
+    };
+    const storage = provider(options);
+    await storage.ready();
+
+    await expect(
+      storage.mutateDurably([
+        {
+          type: "set",
+          collection: "projects",
+          id: "project-rejected",
+          data: { name: "Rejected" },
+        },
+      ]),
+    ).rejects.toMatchObject({ operation: "batch" });
+
+    options.reject = undefined;
+    options.rejectId = undefined;
+    await storage.setDurable("projects", "project-recovered", {
+      name: "Recovered",
+    });
+
+    expect(storage.get("projects", "project-recovered")).toEqual({
+      name: "Recovered",
+    });
   });
 });
