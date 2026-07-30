@@ -8,56 +8,5 @@
     "bootstrap-compatibility",
     "multi-record-deferred"
   ],
-  "entries": [
-    {
-      "key": "server/src/platform/auth/AuthService.ts#AuthService.createSession#set",
-      "path": "server/src/platform/auth/AuthService.ts",
-      "owner": "AuthService.createSession",
-      "operation": "set",
-      "expectedCalls": 2,
-      "classification": "request-level-debt",
-      "reason": "Login and refresh responses can expose a session before both session records are acknowledged.",
-      "migrationTarget": "DATA-201B"
-    },
-    {
-      "key": "server/src/platform/auth/AuthService.ts#AuthService.deleteSession#delete",
-      "path": "server/src/platform/auth/AuthService.ts",
-      "owner": "AuthService.deleteSession",
-      "operation": "delete",
-      "expectedCalls": 2,
-      "classification": "request-level-debt",
-      "reason": "Logout and expiry cleanup still use unacknowledged session and refresh-index deletion.",
-      "migrationTarget": "DATA-201B"
-    },
-    {
-      "key": "server/src/platform/auth/AuthService.ts#AuthService.migrateLegacyRefreshCredentials#set",
-      "path": "server/src/platform/auth/AuthService.ts",
-      "owner": "AuthService.migrateLegacyRefreshCredentials",
-      "operation": "set",
-      "expectedCalls": 2,
-      "classification": "bootstrap-compatibility",
-      "reason": "Startup refresh-credential migration predates the awaitable mutation contract.",
-      "migrationTarget": "DATA-201B"
-    },
-    {
-      "key": "server/src/platform/auth/AuthService.ts#AuthService.refreshSession#delete",
-      "path": "server/src/platform/auth/AuthService.ts",
-      "owner": "AuthService.refreshSession",
-      "operation": "delete",
-      "expectedCalls": 3,
-      "classification": "request-level-debt",
-      "reason": "Refresh-token rotation consumes old session records before durable deletion is acknowledged.",
-      "migrationTarget": "DATA-201B"
-    },
-    {
-      "key": "server/src/platform/auth/AuthService.ts#AuthService.register#set",
-      "path": "server/src/platform/auth/AuthService.ts",
-      "owner": "AuthService.register",
-      "operation": "set",
-      "expectedCalls": 2,
-      "classification": "request-level-debt",
-      "reason": "Credential and role records are written during registration without acknowledgement.",
-      "migrationTarget": "DATA-201B"
-    }
-  ]
+  "entries": []
 }
