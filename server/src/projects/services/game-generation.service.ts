@@ -168,7 +168,7 @@ export class GameGenerationService {
 
             // Persist the real canonical node outputs under the same durable
             // execution ID consumed by the Studio v2 snapshot/transfer path.
-            this.artifactRecorder.record(
+            await this.artifactRecorder.record(
               execution.id,
               result.graph.getAllNodes(),
             );

@@ -900,7 +900,8 @@ server/src/platform/auth/TokenProvider.ts
 server/src/platform/auth/authServiceInstance.ts
 server/src/platform/auth/index.ts
 server/src/platform/index.ts
-server/src/platform/projects/SaaSProjectRepository.durability.test.ts
+server/src/platform/projects/ProjectLifecycleCoordinator.test.ts
+server/src/platform/projects/ProjectLifecycleCoordinator.ts
 server/src/platform/projects/SaaSProjectRepository.ts
 server/src/platform/projects/index.ts
 server/src/platform/queue/GenerationQueue.ts
@@ -947,7 +948,6 @@ server/src/projects/dto/createProject.dto.ts
 server/src/projects/dto/index.ts
 server/src/projects/dto/project.dto.ts
 server/src/projects/repository/blueprint.repository.ts
-server/src/projects/repository/generationHistory.repository.durability.test.ts
 server/src/projects/repository/generationHistory.repository.ts
 server/src/projects/repository/inMemoryProject.repository.ts
 server/src/projects/repository/project.repository.ts
@@ -1030,7 +1030,6 @@ server/src/runtime/failures/FailureModeRegistry.ts
 server/src/runtime/index.ts
 server/src/runtime/simulation/E2EGenerationSimulator.ts
 server/src/runtime/telemetry/PipelineTelemetry.ts
-server/src/services/ChatPersistenceService.delete.durability.test.ts
 server/src/services/ChatPersistenceService.durability.test.ts
 server/src/services/ChatPersistenceService.ts
 server/src/simulation/agents/PlaytestAgent.ts

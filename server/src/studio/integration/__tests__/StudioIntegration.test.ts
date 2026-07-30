@@ -126,7 +126,7 @@ describe("StudioImportValidator", () => {
 
   it("detects duplicate paths", () => {
     const pkg = createMockPackage();
-    pkg.scripts.push({ ...pkg.scripts[0], id: "s2" }); // same path
+    pkg.scripts.push({ ...pkg.scripts[0], id: "s2" });
     const result = validator.validate(pkg);
     expect(result.valid).toBe(false);
     expect(result.errors.some((e) => e.includes("duplicate"))).toBe(true);
@@ -176,22 +176,22 @@ describe("StudioIntegrationManager", () => {
     expect(manager.getConnectionCount()).toBe(0);
   });
 
-  it("synchronizes a valid package", () => {
+  it("synchronizes a valid package", async () => {
     manager.connect("studio-1", "proj-1");
-    const result = manager.synchronize("studio-1", createMockPackage());
+    const result = await manager.synchronize("studio-1", createMockPackage());
     expect(result.success).toBe(true);
     expect(result.itemsSynced).toBeGreaterThan(0);
   });
 
-  it("fails sync for disconnected studio", () => {
-    const result = manager.synchronize("unknown", createMockPackage());
+  it("fails sync for disconnected studio", async () => {
+    const result = await manager.synchronize("unknown", createMockPackage());
     expect(result.success).toBe(false);
     expect(result.error).toContain("not connected");
   });
 
-  it("fails sync for invalid package", () => {
+  it("fails sync for invalid package", async () => {
     manager.connect("studio-1", "proj-1");
-    const result = manager.synchronize(
+    const result = await manager.synchronize(
       "studio-1",
       createMockPackage({
         packageId: "",
@@ -203,32 +203,31 @@ describe("StudioIntegrationManager", () => {
     expect(result.success).toBe(false);
   });
 
-  it("emits events during sync", () => {
+  it("emits events during sync", async () => {
     const events: StudioEvent[] = [];
     manager.on((e) => events.push(e));
     manager.connect("studio-1", "proj-1");
-    manager.synchronize("studio-1", createMockPackage());
+    await manager.synchronize("studio-1", createMockPackage());
     expect(events.some((e) => e.type === "StudioConnected")).toBe(true);
     expect(events.some((e) => e.type === "SyncStarted")).toBe(true);
     expect(events.some((e) => e.type === "SyncCompleted")).toBe(true);
   });
 
-  it("tracks metrics", () => {
+  it("tracks metrics", async () => {
     manager.connect("studio-1", "proj-1");
-    manager.synchronize("studio-1", createMockPackage());
-    manager.synchronize("studio-1", createMockPackage());
+    await manager.synchronize("studio-1", createMockPackage());
+    await manager.synchronize("studio-1", createMockPackage());
     const metrics = manager.getMetrics();
     expect(metrics.totalSyncs).toBe(2);
     expect(metrics.successRate).toBe(1);
   });
 
-  it("supports repeated synchronization (incremental)", () => {
+  it("supports repeated synchronization (incremental)", async () => {
     manager.connect("studio-1", "proj-1");
-    manager.synchronize("studio-1", createMockPackage());
-    // Second sync with same content → should detect no changes
-    const result = manager.synchronize("studio-1", createMockPackage());
+    await manager.synchronize("studio-1", createMockPackage());
+    const result = await manager.synchronize("studio-1", createMockPackage());
     expect(result.success).toBe(true);
-    expect(result.itemsSynced).toBe(0); // no changes
+    expect(result.itemsSynced).toBe(0);
   });
 });
 

@@ -1108,7 +1108,8 @@
 │   │   │   ├── index.ts
 │   │   │   ├── projects
 │   │   │   │   ├── index.ts
-│   │   │   │   ├── SaaSProjectRepository.durability.test.ts
+│   │   │   │   ├── ProjectLifecycleCoordinator.test.ts
+│   │   │   │   ├── ProjectLifecycleCoordinator.ts
 │   │   │   │   └── SaaSProjectRepository.ts
 │   │   │   ├── queue
 │   │   │   │   ├── GenerationQueue.ts
@@ -1171,7 +1172,6 @@
 │   │   │   │   └── project.dto.ts
 │   │   │   ├── repository
 │   │   │   │   ├── blueprint.repository.ts
-│   │   │   │   ├── generationHistory.repository.durability.test.ts
 │   │   │   │   ├── generationHistory.repository.ts
 │   │   │   │   ├── inMemoryProject.repository.ts
 │   │   │   │   ├── project.repository.ts
@@ -1273,7 +1273,6 @@
 │   │   │   └── telemetry
 │   │   │       └── PipelineTelemetry.ts
 │   │   ├── services
-│   │   │   ├── ChatPersistenceService.delete.durability.test.ts
 │   │   │   ├── ChatPersistenceService.durability.test.ts
 │   │   │   └── ChatPersistenceService.ts
 │   │   ├── simulation

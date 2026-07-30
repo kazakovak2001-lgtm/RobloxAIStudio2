@@ -148,6 +148,41 @@ describe("StorageBlueprintRepository durable deletion", () => {
     expect(storage.get(BLUEPRINTS, records.blueprint.id)).toBeNull();
   });
 
+  it("serializes child writes with deletion and prevents orphan recreation", async () => {
+    const storage = new DeferredBatchStorage();
+    const records = seedAggregate(storage);
+    const repository = new StorageBlueprintRepository(storage);
+
+    const deletion = repository.deleteBlueprint(records.blueprint.id);
+    await Promise.resolve();
+    await Promise.resolve();
+
+    let versionWriteSettled = false;
+    const versionWrite = repository
+      .saveVersion(records.blueprint.id, "user-1", "concurrent write")
+      .finally(() => {
+        versionWriteSettled = true;
+      });
+
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(versionWriteSettled).toBe(false);
+
+    storage.release();
+    await expect(deletion).resolves.toBe(true);
+    await expect(versionWrite).rejects.toThrow(
+      `Blueprint ${records.blueprint.id} not found`,
+    );
+
+    expect(
+      storage.list(
+        VERSIONS,
+        (candidate: { blueprint_id?: string }) =>
+          candidate.blueprint_id === records.blueprint.id,
+      ),
+    ).toEqual([]);
+  });
+
   it("preserves the exact aggregate when the durable batch rejects", async () => {
     const storage = new RejectingBatchStorage();
     const records = seedAggregate(storage);

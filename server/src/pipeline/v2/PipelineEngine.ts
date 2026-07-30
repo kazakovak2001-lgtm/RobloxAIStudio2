@@ -34,12 +34,17 @@ export interface PipelineEngineOptions {
   metrics?: PipelineMetricsCollector;
 }
 
+export type PipelineStartReservation = (
+  state: Readonly<PipelineState>,
+) => Promise<void>;
+
 export class PipelineEngine {
   private executor: PipelineExecutor;
   private events: PipelineEventEmitterV2;
   private store: PipelineStore;
   private artifactStore: ArtifactStore;
   private activeExecutions: Set<string> = new Set();
+  private readonly pendingStarts = new Map<string, Promise<string>>();
   private eventBus: PipelineEventBus;
   private auditStore: PipelineAuditStore;
   private metrics: PipelineMetricsCollector;
@@ -123,15 +128,48 @@ export class PipelineEngine {
     return result;
   }
 
-  startAsync(
+  async startAsync(
     projectId: string,
     blueprint: Record<string, unknown>,
     agentExecutor: AgentExecutorFn,
-  ): string {
+    reserve?: PipelineStartReservation,
+  ): Promise<string> {
+    const pending = this.pendingStarts.get(projectId);
+    if (pending) {
+      return pending;
+    }
+
+    const operation = this.startReservedPipeline(
+      projectId,
+      blueprint,
+      agentExecutor,
+      reserve,
+    );
+    this.pendingStarts.set(projectId, operation);
+
+    try {
+      return await operation;
+    } finally {
+      if (this.pendingStarts.get(projectId) === operation) {
+        this.pendingStarts.delete(projectId);
+      }
+    }
+  }
+
+  private async startReservedPipeline(
+    projectId: string,
+    blueprint: Record<string, unknown>,
+    agentExecutor: AgentExecutorFn,
+    reserve?: PipelineStartReservation,
+  ): Promise<string> {
     if (this.activeExecutions.has(projectId)) {
       const existing = this.store
         .getAll()
-        .find((p) => p.projectId === projectId && p.status === "running");
+        .find(
+          (pipeline) =>
+            pipeline.projectId === projectId &&
+            (pipeline.status === "pending" || pipeline.status === "running"),
+        );
       if (existing) {
         console.log(
           `[JOB_DUPLICATE] projectId=${projectId} existingPipeline=${existing.pipelineId}`,
@@ -141,6 +179,10 @@ export class PipelineEngine {
     }
 
     const state = createPipelineState(projectId);
+    if (reserve) {
+      await reserve(state);
+    }
+
     this.store.save(state);
     this.activeExecutions.add(projectId);
     this.metrics.start(state.pipelineId, state.stages.length);

@@ -58,9 +58,41 @@ function isEqualDigest(left: string, right: string): boolean {
   );
 }
 
-/** Storage-backed API key registry with acknowledged mutation boundaries. */
+/**
+ * Storage-backed API key registry with acknowledged mutation boundaries.
+ *
+ * Issuance, revocation, and cleanup are coordinated so mutations for the same
+ * key are serialized and cleanup cannot race a newly issued credential.
+ */
 export class ApiKeyStore {
+  private readonly mutationQueues = new Map<string, Promise<void>>();
+  private cleanupTail: Promise<void> = Promise.resolve();
+  private cleanupRequests = 0;
+
   constructor(private readonly storage: StorageProvider) {}
+
+  private async enqueueKeyMutation<T>(
+    id: string,
+    operation: () => Promise<T>,
+  ): Promise<T> {
+    const predecessor = this.mutationQueues.get(id) ?? Promise.resolve();
+    let release!: () => void;
+    const current = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const queued = predecessor.then(() => current);
+    this.mutationQueues.set(id, queued);
+
+    await predecessor;
+    try {
+      return await operation();
+    } finally {
+      release();
+      if (this.mutationQueues.get(id) === queued) {
+        this.mutationQueues.delete(id);
+      }
+    }
+  }
 
   async issueDurable(
     rawKey: string,
@@ -72,17 +104,22 @@ export class ApiKeyStore {
         `API key must contain at least ${MIN_KEY_LENGTH} characters`,
       );
     }
+    if (this.cleanupRequests > 0) {
+      await this.cleanupTail;
+    }
 
     const id = metadata.id ?? randomUUID();
-    const record: StoredApiKey = {
-      id,
-      digest: digestKey(key),
-      createdAt: new Date().toISOString(),
-      ...(metadata.label ? { label: metadata.label } : {}),
-      ...(metadata.ownerId ? { ownerId: metadata.ownerId } : {}),
-    };
-    await this.storage.setDurable(COLLECTION, id, record);
-    return { id, key };
+    return this.enqueueKeyMutation(id, async () => {
+      const record: StoredApiKey = {
+        id,
+        digest: digestKey(key),
+        createdAt: new Date().toISOString(),
+        ...(metadata.label ? { label: metadata.label } : {}),
+        ...(metadata.ownerId ? { ownerId: metadata.ownerId } : {}),
+      };
+      await this.storage.setDurable(COLLECTION, id, record);
+      return { id, key };
+    });
   }
 
   async generateDurable(metadata: ApiKeyMetadata = {}): Promise<IssuedApiKey> {
@@ -107,14 +144,20 @@ export class ApiKeyStore {
   }
 
   async revokeDurable(id: string): Promise<boolean> {
-    const record = this.storage.get<StoredApiKey>(COLLECTION, id);
-    if (!record || record.revokedAt) return false;
+    if (this.cleanupRequests > 0) {
+      await this.cleanupTail;
+    }
 
-    await this.storage.setDurable(COLLECTION, id, {
-      ...record,
-      revokedAt: new Date().toISOString(),
+    return this.enqueueKeyMutation(id, async () => {
+      const record = this.storage.get<StoredApiKey>(COLLECTION, id);
+      if (!record || record.revokedAt) return false;
+
+      await this.storage.setDurable(COLLECTION, id, {
+        ...record,
+        revokedAt: new Date().toISOString(),
+      });
+      return true;
     });
-    return true;
   }
 
   list(): RedactedApiKey[] {
@@ -156,17 +199,35 @@ export class ApiKeyStore {
   /**
    * Test and administrative cleanup; never returns a credential.
    *
+   * Cleanup calls are serialized. Each cleanup waits for key mutations that were
+   * already in flight, and new mutations wait for all queued cleanups.
    * Deletions are acknowledged individually. A rejection is propagated to the
    * caller and the rejected record remains visible. This is not an atomic
    * all-or-nothing batch across multiple keys.
    */
   async clearDurable(): Promise<number> {
-    let deleted = 0;
-    for (const record of this.storage.list<StoredApiKey>(COLLECTION)) {
-      if (await this.storage.deleteDurable(COLLECTION, record.id)) {
-        deleted += 1;
+    this.cleanupRequests += 1;
+    const predecessor = this.cleanupTail;
+    let release!: () => void;
+    const current = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    this.cleanupTail = predecessor.then(() => current);
+
+    await predecessor;
+    try {
+      await Promise.all([...this.mutationQueues.values()]);
+
+      let deleted = 0;
+      for (const record of this.storage.list<StoredApiKey>(COLLECTION)) {
+        if (await this.storage.deleteDurable(COLLECTION, record.id)) {
+          deleted += 1;
+        }
       }
+      return deleted;
+    } finally {
+      this.cleanupRequests -= 1;
+      release();
     }
-    return deleted;
   }
 }

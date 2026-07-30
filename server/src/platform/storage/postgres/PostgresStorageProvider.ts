@@ -65,7 +65,9 @@ export class PostgresStorageProvider implements StorageProvider {
   private initialization: Promise<void> | null = null;
   private pendingWrites = new Set<Promise<void>>();
   private writeTail: Promise<void> = Promise.resolve();
+  private compatibilityMutationVersions = new Map<string, number>();
   private lastFailureAt?: string;
+  private closed = false;
 
   constructor(
     config?: Partial<PostgresConfig>,
@@ -82,13 +84,17 @@ export class PostgresStorageProvider implements StorageProvider {
   }
 
   set<T>(collection: string, id: string, data: T): void {
+    this.recordCompatibilityMutation(collection, id);
     this.getCollection(collection).set(id, data);
     this.scheduleWrite(() => this.persistSet(collection, id, data));
   }
 
   delete(collection: string, id: string): boolean {
     const deleted = this.getCollection(collection).delete(id);
-    if (deleted) this.scheduleWrite(() => this.persistDelete(collection, id));
+    if (deleted) {
+      this.recordCompatibilityMutation(collection, id);
+      this.scheduleWrite(() => this.persistDelete(collection, id));
+    }
     return deleted;
   }
 
@@ -99,7 +105,7 @@ export class PostgresStorageProvider implements StorageProvider {
         this.getCollection(collection).set(id, data);
       });
     } catch (error) {
-      this.markFailure();
+      await this.refreshOperationalStateAfterMutationFailure();
       throw new DurableStorageError(
         `Durable set failed for ${collection}/${id}`,
         "set",
@@ -119,7 +125,7 @@ export class PostgresStorageProvider implements StorageProvider {
       });
       return true;
     } catch (error) {
-      this.markFailure();
+      await this.refreshOperationalStateAfterMutationFailure();
       throw new DurableStorageError(
         `Durable delete failed for ${collection}/${id}`,
         "delete",
@@ -137,6 +143,15 @@ export class PostgresStorageProvider implements StorageProvider {
     try {
       let results: readonly DurableMutationResult[] = [];
       await this.enqueueWrite(async () => {
+        const compatibilityVersions = new Map<string, number>();
+        for (const mutation of mutations) {
+          const key = this.mutationKey(mutation.collection, mutation.id);
+          compatibilityVersions.set(
+            key,
+            this.compatibilityMutationVersions.get(key) ?? 0,
+          );
+        }
+
         const pool = this.pool;
         if (!pool || !this.connected) {
           throw new Error("PostgreSQL connection is unavailable");
@@ -196,6 +211,12 @@ export class PostgresStorageProvider implements StorageProvider {
 
         // No cache mutation is published before the database COMMIT above.
         for (const mutation of mutations) {
+          const key = this.mutationKey(mutation.collection, mutation.id);
+          const capturedVersion = compatibilityVersions.get(key) ?? 0;
+          const currentVersion =
+            this.compatibilityMutationVersions.get(key) ?? 0;
+          if (currentVersion !== capturedVersion) continue;
+
           const collection = this.getCollection(mutation.collection);
           if (mutation.operation === "set") {
             collection.set(mutation.id, mutation.data);
@@ -207,7 +228,7 @@ export class PostgresStorageProvider implements StorageProvider {
       });
       return results;
     } catch (error) {
-      this.markFailure();
+      await this.refreshOperationalStateAfterMutationFailure();
       throw new DurableStorageError(
         "Durable transaction failed",
         "transaction",
@@ -219,11 +240,13 @@ export class PostgresStorageProvider implements StorageProvider {
   }
 
   getOperationalStatus(): StorageOperationalStatus {
-    const availability = this.connected
-      ? "available"
-      : this.lastFailureAt
-        ? "degraded"
-        : "unavailable";
+    const availability = this.closed
+      ? "unavailable"
+      : this.connected
+        ? "available"
+        : this.lastFailureAt
+          ? "degraded"
+          : "unavailable";
     return {
       availability,
       durability: "durable",
@@ -258,6 +281,7 @@ export class PostgresStorageProvider implements StorageProvider {
     if (this.pool) await this.pool.end();
     this.pool = null;
     this.connected = false;
+    this.closed = true;
   }
 
   isConnected(): boolean {
@@ -277,7 +301,7 @@ export class PostgresStorageProvider implements StorageProvider {
       // A strict provider reports the unavailable state here; bootstrap is the
       // boundary that turns the same failure into a rejected application start.
     }
-    if (!this.pool || !this.connected) {
+    if (!this.pool || this.closed) {
       return {
         connected: false,
         latencyMs: 0,
@@ -289,6 +313,7 @@ export class PostgresStorageProvider implements StorageProvider {
     const start = Date.now();
     try {
       await this.pool.query("SELECT 1");
+      this.connected = true;
       return {
         connected: true,
         latencyMs: Date.now() - start,
@@ -297,7 +322,7 @@ export class PostgresStorageProvider implements StorageProvider {
         mode: "cache-with-write-through",
       };
     } catch {
-      this.markFailure();
+      this.markConnectionFailure();
       return {
         connected: false,
         latencyMs: Date.now() - start,
@@ -343,13 +368,14 @@ export class PostgresStorageProvider implements StorageProvider {
 
       this.pool = candidatePool;
       this.connected = true;
+      this.closed = false;
 
       console.log(
         `[PostgresStorage] Connected — loaded ${rows.length} records into cache (pool=${this.config.poolSize})`,
       );
     } catch (err) {
       if (candidatePool) await candidatePool.end().catch(() => undefined);
-      this.markFailure();
+      this.markConnectionFailure();
       this.pool = null;
       const message = (err as Error).message;
       if (this.config.strict) {
@@ -399,13 +425,25 @@ export class PostgresStorageProvider implements StorageProvider {
     // Compatibility writes intentionally retain historical non-awaited behavior.
     if (!this.initialization && !this.connected) return;
 
-    void this.enqueueWrite(write).catch((error: unknown) => {
-      this.markFailure();
+    void this.enqueueWrite(write).catch(async (error: unknown) => {
+      await this.refreshOperationalStateAfterMutationFailure();
       console.error(
         "[PostgresStorage] Compatibility write failed:",
         error instanceof Error ? error.message : error,
       );
     });
+  }
+
+  private mutationKey(collection: string, id: string): string {
+    return `${collection}\u0000${id}`;
+  }
+
+  private recordCompatibilityMutation(collection: string, id: string): void {
+    const key = this.mutationKey(collection, id);
+    this.compatibilityMutationVersions.set(
+      key,
+      (this.compatibilityMutationVersions.get(key) ?? 0) + 1,
+    );
   }
 
   private validateMutations(mutations: readonly DurableMutation[]): void {
@@ -419,9 +457,24 @@ export class PostgresStorageProvider implements StorageProvider {
     }
   }
 
-  private markFailure(): void {
+  private markConnectionFailure(): void {
     this.connected = false;
     this.lastFailureAt = new Date().toISOString();
+  }
+
+  private async refreshOperationalStateAfterMutationFailure(): Promise<void> {
+    this.lastFailureAt = new Date().toISOString();
+    if (!this.pool || this.closed) {
+      this.connected = false;
+      return;
+    }
+
+    try {
+      await this.pool.query("SELECT 1");
+      this.connected = true;
+    } catch {
+      this.connected = false;
+    }
   }
 
   private async persistSet(

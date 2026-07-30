@@ -18,6 +18,8 @@ Foundation policy for multi-record durable mutations. This document defines the 
 
 Individual `setDurable` and `deleteDurable` calls remain single-record acknowledgement boundaries. Calling several of them sequentially does not create a transaction.
 
+Compatibility writes that target the same key while a durable batch is awaiting commit are newer visible mutations. Post-commit batch publication must not overwrite that newer cache state; the queued compatibility write remains responsible for bringing PostgreSQL to the same final value.
+
 ## Delete semantics
 
 A batch delete makes the record absent after a successful commit. Its result includes `deleted` to indicate whether the database contained a matching record at deletion time. Replaying a delete is therefore safe and may return `deleted: false`.
