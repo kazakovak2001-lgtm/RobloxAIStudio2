@@ -1,0 +1,33 @@
+name: ARCH-206 Finalization Commit
+
+on:
+  pull_request:
+
+permissions:
+  contents: write
+
+jobs:
+  finalize:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/arch-206-layer-debt-evidence
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+      - run: npm ci
+      - run: node scripts/arch-206-finalize.mjs
+      - run: node node_modules/prettier/bin/prettier.cjs --write architecture.manifest.json architecture.layer-debt.json package.json scripts/architecture/layer-debt-evidence.ts scripts/validate-layer-debt-evidence.ts server/src/__tests__/architecture.layer-debt-evidence.test.ts docs/02-audits/technical-v2/ARCH-205_IMPLEMENTATION_NOTES.md
+      - name: Commit final ARCH-206 state
+        run: |
+          git rm .github/workflows/arch-206-finalize.yml scripts/arch-206-finalize.mjs
+          node scripts/cleanup/generate-tracked-inventories.mjs
+          git add architecture.manifest.json architecture.layer-debt.json package.json scripts/architecture/layer-debt-evidence.ts scripts/validate-layer-debt-evidence.ts server/src/__tests__/architecture.layer-debt-evidence.test.ts docs/02-audits/technical-v2/ARCH-205_IMPLEMENTATION_NOTES.md _inventory_raw.txt ProjectStructure.txt
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "chore(architecture): finalize layer debt evidence"
+          git push origin HEAD:agent/arch-206-layer-debt-evidence
