@@ -1,0 +1,208 @@
+name: DATA-203 guarded migration
+
+on:
+  push:
+    branches:
+      - agent/data-203-await-session-activity
+    paths:
+      - .github/workflows/data-203-apply.yml
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/data-203-await-session-activity
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Apply bounded DATA-203 transformation
+        shell: python
+        run: |
+          from pathlib import Path
+
+          def replace_exact(path: str, old: str, new: str) -> None:
+              file = Path(path)
+              text = file.read_text()
+              count = text.count(old)
+              if count != 1:
+                  raise SystemExit(f"Expected exactly one match in {path}, found {count}")
+              file.write_text(text.replace(old, new))
+
+          replace_exact(
+              "server/src/platform/auth/AuthService.ts",
+              '''  validateToken(token: string): AuthSession | null {
+              const session = this.storage.get<StoredAuthSession>(
+                SESSIONS_COLLECTION,
+                token,
+              );
+              if (!session) return null;
+              if (Date.now() > session.expiresAt) {
+                this.deleteSession(session);
+                return null;
+              }
+              const updated = { ...session, lastActivity: Date.now() };
+              this.storage.set(SESSIONS_COLLECTION, token, updated);
+              return this.toPublicSession(updated);
+            }''',
+              '''  async validateToken(token: string): Promise<AuthSession | null> {
+              const session = this.storage.get<StoredAuthSession>(
+                SESSIONS_COLLECTION,
+                token,
+              );
+              if (!session) return null;
+              if (Date.now() > session.expiresAt) {
+                this.deleteSession(session);
+                return null;
+              }
+              const updated = { ...session, lastActivity: Date.now() };
+              await this.storage.setDurable(SESSIONS_COLLECTION, token, updated);
+              return this.toPublicSession(updated);
+            }''',
+          )
+
+          replace_exact(
+              "server/src/common/middleware/security.ts",
+              '''export function authMiddleware(
+            req: Request,
+            res: Response,
+            next: NextFunction,
+          ): void {''',
+              '''export async function authMiddleware(
+            req: Request,
+            res: Response,
+            next: NextFunction,
+          ): Promise<void> {''',
+          )
+
+          replace_exact(
+              "server/src/common/middleware/security.ts",
+              '''    const session = authService.validateToken(token);
+            if (session) {''',
+              '''    let session;
+            try {
+              session = await authService.validateToken(token);
+            } catch {
+              res.status(503).json({
+                success: false,
+                error: "Authentication persistence unavailable",
+              });
+              return;
+            }
+            if (session) {''',
+          )
+
+          replace_exact(
+              "server/src/common/middleware/security.ts",
+              '''    const session = authService.validateToken(cookieToken);
+            if (session) {''',
+              '''    let session;
+            try {
+              session = await authService.validateToken(cookieToken);
+            } catch {
+              res.status(503).json({
+                success: false,
+                error: "Authentication persistence unavailable",
+              });
+              return;
+            }
+            if (session) {''',
+          )
+
+          replace_exact(
+              "server/src/index.ts",
+              '''io.use((socket, next) => {
+            // In development, allow all connections (preserve dev bypass)
+            if (process.env.NODE_ENV !== "production") {
+              next();
+              return;
+            }
+
+            // Browser clients authenticate with the same httpOnly cookie as HTTP.
+            // Explicit auth/query tokens remain supported for CLI and Studio clients.
+            const token =
+              socket.handshake.auth?.token ??
+              socket.handshake.query?.token ??
+              readSocketCookie(socket.handshake.headers.cookie, "roblox_ai_token");
+
+            if (!token) {
+              next(new Error("Authentication required"));
+              return;
+            }
+
+            // Validate token using AuthService (same validation as HTTP middleware)
+            const session = authService.validateToken(token as string);
+            if (!session) {
+              next(new Error("Invalid or expired token"));
+              return;
+            }
+
+            // Attach authenticated user/session to socket.data
+            (socket as any).data = { ...((socket as any).data || {}), user: session };
+            next();
+          });''',
+              '''io.use(async (socket, next) => {
+            // In development, allow all connections (preserve dev bypass)
+            if (process.env.NODE_ENV !== "production") {
+              next();
+              return;
+            }
+
+            // Browser clients authenticate with the same httpOnly cookie as HTTP.
+            // Explicit auth/query tokens remain supported for CLI and Studio clients.
+            const token =
+              socket.handshake.auth?.token ??
+              socket.handshake.query?.token ??
+              readSocketCookie(socket.handshake.headers.cookie, "roblox_ai_token");
+
+            if (!token) {
+              next(new Error("Authentication required"));
+              return;
+            }
+
+            try {
+              const session = await authService.validateToken(token as string);
+              if (!session) {
+                next(new Error("Invalid or expired token"));
+                return;
+              }
+
+              // Attach authenticated user/session only after durable acknowledgement.
+              (socket as any).data = {
+                ...((socket as any).data || {}),
+                user: session,
+              };
+              next();
+            } catch {
+              next(new Error("Authentication persistence unavailable"));
+            }
+          });''',
+          )
+
+      - name: Format bounded files
+        run: npx prettier --write server/src/platform/auth/AuthService.ts server/src/common/middleware/security.ts server/src/index.ts
+
+      - name: Validate TypeScript
+        run: npm run typecheck
+
+      - name: Remove temporary workflow
+        run: rm .github/workflows/data-203-apply.yml
+
+      - name: Commit product diff
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add server/src/platform/auth/AuthService.ts server/src/common/middleware/security.ts server/src/index.ts .github/workflows/data-203-apply.yml
+          git commit -m "refactor(auth): await session activity persistence"
+          git push origin HEAD:agent/data-203-await-session-activity
