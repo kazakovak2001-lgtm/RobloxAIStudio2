@@ -1,0 +1,40 @@
+name: DATA-205 Inventory Sync
+
+on:
+  pull_request:
+    branches:
+      - release/cutover-1e-candidate
+    types: [synchronize, reopened]
+
+permissions:
+  contents: write
+
+jobs:
+  sync-inventory:
+    if: github.head_ref == 'agent/data-205-registration-parity-tests'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout source branch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref }}
+          fetch-depth: 0
+
+      - name: Regenerate canonical inventory
+        run: |
+          git ls-files | LC_ALL=C sort > _inventory_raw.txt
+          rm .github/workflows/data-205-inventory-sync.yml
+
+      - name: Verify post-removal invariants
+        run: node scripts/cleanup/audit-legacy-frontend-decommission.mjs
+        env:
+          LEGACY_FRONTEND_AUDIT_OUTPUT: artifacts/post-removal-invariants
+
+      - name: Commit canonical inventory
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add _inventory_raw.txt .github/workflows/data-205-inventory-sync.yml
+          git diff --cached --quiet && exit 0
+          git commit -m "chore(data-205): refresh canonical inventory"
+          git push origin HEAD:${{ github.head_ref }}
