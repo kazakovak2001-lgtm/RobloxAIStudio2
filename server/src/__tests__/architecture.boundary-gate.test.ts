@@ -106,6 +106,20 @@ describe("architecture boundary gate core", () => {
     expect(errors).toContain(duplicateEdge);
   });
 
+  it("reports a missing layer exception reason without throwing", () => {
+    const manifest = createManifest();
+    manifest.allowedLayerEdges = [
+      { from: "domains", to: "api" } as unknown as NonNullable<
+        ArchitectureManifest["allowedLayerEdges"]
+      >[number],
+    ];
+
+    expect(() => validateManifestModel(manifest, REAL_SUBSYSTEMS)).not.toThrow();
+    expect(validateManifestModel(manifest, REAL_SUBSYSTEMS)).toContain(
+      "Allowed layer edge 'domains → api' requires a reason.",
+    );
+  });
+
   it("detects forbidden layer edges", () => {
     const manifest = createManifest();
     const edges: ImportEdge[] = [
