@@ -1,0 +1,272 @@
+name: DATA-203 Apply
+
+on:
+  push:
+    branches:
+      - agent/data-203-session-activity-ack
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/data-203-session-activity-ack
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - run: npm ci
+
+      - name: Apply bounded DATA-203 changes
+        run: |
+          python <<'PY'
+          from pathlib import Path
+          import json
+
+          auth_path = Path('server/src/platform/auth/AuthService.ts')
+          auth = auth_path.read_text()
+          old = '''  validateToken(token: string): AuthSession | null {
+            const session = this.storage.get<StoredAuthSession>(
+              SESSIONS_COLLECTION,
+              token,
+            );
+            if (!session) return null;
+            if (Date.now() > session.expiresAt) {
+              this.deleteSession(session);
+              return null;
+            }
+            const updated = { ...session, lastActivity: Date.now() };
+            this.storage.set(SESSIONS_COLLECTION, token, updated);
+            return this.toPublicSession(updated);
+          }
+          '''
+          new = '''  async validateToken(token: string): Promise<AuthSession | null> {
+            const session = this.storage.get<StoredAuthSession>(
+              SESSIONS_COLLECTION,
+              token,
+            );
+            if (!session) return null;
+            if (Date.now() > session.expiresAt) {
+              this.deleteSession(session);
+              return null;
+            }
+            const updated = { ...session, lastActivity: Date.now() };
+            await this.storage.setDurable(SESSIONS_COLLECTION, token, updated);
+            return this.toPublicSession(updated);
+          }
+          '''
+          if old not in auth:
+              raise SystemExit('AuthService.validateToken source did not match expected baseline')
+          auth_path.write_text(auth.replace(old, new))
+
+          middleware_path = Path('server/src/common/middleware/security.ts')
+          middleware = middleware_path.read_text()
+          middleware = middleware.replace(
+          '''export function authMiddleware(
+            req: Request,
+            res: Response,
+            next: NextFunction,
+          ): void {''',
+          '''export async function authMiddleware(
+            req: Request,
+            res: Response,
+            next: NextFunction,
+          ): Promise<void> {''')
+          middleware = middleware.replace(
+          '''    const session = authService.validateToken(token);
+              if (session) {''',
+          '''    let session;
+              try {
+                session = await authService.validateToken(token);
+              } catch {
+                res.status(503).json({
+                  success: false,
+                  error: "Authentication persistence unavailable",
+                });
+                return;
+              }
+              if (session) {''')
+          middleware = middleware.replace(
+          '''    const session = authService.validateToken(cookieToken);
+              if (session) {''',
+          '''    let session;
+              try {
+                session = await authService.validateToken(cookieToken);
+              } catch {
+                res.status(503).json({
+                  success: false,
+                  error: "Authentication persistence unavailable",
+                });
+                return;
+              }
+              if (session) {''')
+          middleware_path.write_text(middleware)
+
+          test_path = Path('server/src/__tests__/securityHardening.test.ts')
+          test = test_path.read_text()
+          test = test.replace('import { describe, it, expect } from "vitest";', 'import { describe, it, expect, vi } from "vitest";')
+          marker = '  describe("Auth middleware logic", () => {'
+          durable_tests = '''  describe("Durable session activity", () => {
+            it("publishes session activity only after durable acknowledgement", async () => {
+              const now = vi.spyOn(Date, "now").mockReturnValue(1_000);
+              const storage = new InMemoryStorageProvider();
+              const auth = new AuthService(storage);
+              auth.register("activity@test.com", "password123", "activity-user");
+              const login = auth.login(
+                "activity@test.com",
+                "password123",
+                "activity-user",
+              );
+              const token = login.token!;
+              const before = storage.get<{ lastActivity: number }>(
+                "auth_sessions",
+                token,
+              )!;
+              let releaseMutation: (() => void) | undefined;
+              const originalSetDurable = storage.setDurable.bind(storage);
+              storage.setDurable = async (collection, id, data) => {
+                await new Promise<void>((resolve) => {
+                  releaseMutation = resolve;
+                });
+                await originalSetDurable(collection, id, data);
+              };
+              now.mockReturnValue(2_000);
+
+              let settled = false;
+              const pending = auth.validateToken(token).finally(() => {
+                settled = true;
+              });
+              await Promise.resolve();
+
+              expect(settled).toBe(false);
+              expect(
+                storage.get<{ lastActivity: number }>("auth_sessions", token)
+                  ?.lastActivity,
+              ).toBe(before.lastActivity);
+              if (!releaseMutation) {
+                throw new Error("Durable activity mutation was not blocked");
+              }
+
+              releaseMutation();
+              await expect(pending).resolves.toMatchObject({ lastActivity: 2_000 });
+              expect(
+                storage.get<{ lastActivity: number }>("auth_sessions", token)
+                  ?.lastActivity,
+              ).toBe(2_000);
+              now.mockRestore();
+            });
+
+            it("preserves acknowledged activity when persistence rejects", async () => {
+              const now = vi.spyOn(Date, "now").mockReturnValue(1_000);
+              const storage = new InMemoryStorageProvider();
+              const auth = new AuthService(storage);
+              auth.register("reject@test.com", "password123", "reject-user");
+              const login = auth.login(
+                "reject@test.com",
+                "password123",
+                "reject-user",
+              );
+              const token = login.token!;
+              const before = storage.get<{ lastActivity: number }>(
+                "auth_sessions",
+                token,
+              )!;
+              storage.setDurable = async () => {
+                throw new Error("rejected activity write");
+              };
+              now.mockReturnValue(2_000);
+
+              await expect(auth.validateToken(token)).rejects.toThrow(
+                "rejected activity write",
+              );
+              expect(
+                storage.get<{ lastActivity: number }>("auth_sessions", token)
+                  ?.lastActivity,
+              ).toBe(before.lastActivity);
+              now.mockRestore();
+            });
+          });
+
+'''
+          if marker not in test:
+              raise SystemExit('securityHardening marker missing')
+          test = test.replace(marker, durable_tests + marker)
+          for name in [
+              'skips auth in non-production (NODE_ENV !== production)',
+              'rejects unauthenticated request in production',
+              'allows Bearer token in production',
+              'allows public health endpoint without auth',
+          ]:
+              test = test.replace(f'it("{name}", () => {{', f'it("{name}", async () => {{')
+          test = test.replace('authMiddleware(req, res, next);', 'await authMiddleware(req, res, next);')
+          test = test.replace('authMiddleware(req, res, () => undefined);', 'await authMiddleware(req, res, () => undefined);')
+
+          middleware_test = '''
+            it("does not continue authentication when activity persistence rejects", async () => {
+              const originalEnv = process.env.NODE_ENV;
+              process.env.NODE_ENV = "production";
+              const originalValidateToken = authService.validateToken.bind(authService);
+              authService.validateToken = async () => {
+                throw new Error("storage unavailable");
+              };
+              let nextCalled = false;
+              let statusCode = 0;
+              const req = {
+                path: "/api/projects",
+                method: "GET",
+                headers: { authorization: "Bearer rejected-token" },
+              } as never;
+              const res = {
+                status: (code: number) => {
+                  statusCode = code;
+                  return { json: () => undefined };
+                },
+              } as never;
+
+              await authMiddleware(req, res, () => {
+                nextCalled = true;
+              });
+
+              expect(nextCalled).toBe(false);
+              expect(statusCode).toBe(503);
+              authService.validateToken = originalValidateToken;
+              process.env.NODE_ENV = originalEnv;
+            });
+          '''
+          insertion = '    it("allows a registered API key in production", async () => {'
+          if insertion not in test:
+              raise SystemExit('middleware test insertion point missing')
+          test = test.replace(insertion, middleware_test + '\n' + insertion)
+          test_path.write_text(test)
+
+          inventory_path = Path('config/durability/compatibility-write-inventory.json')
+          inventory = json.loads(inventory_path.read_text())
+          entries = inventory['entries']
+          filtered = [entry for entry in entries if entry['key'] != 'server/src/platform/auth/AuthService.ts#AuthService.validateToken#set']
+          if len(filtered) != len(entries) - 1:
+              raise SystemExit('validateToken inventory entry missing or duplicated')
+          inventory['entries'] = filtered
+          inventory_path.write_text(json.dumps(inventory, indent=2) + '\n')
+          PY
+
+      - run: npx prettier --write server/src/platform/auth/AuthService.ts server/src/common/middleware/security.ts server/src/__tests__/securityHardening.test.ts config/durability/compatibility-write-inventory.json
+      - run: npm run typecheck
+      - run: npm test -- --run server/src/__tests__/securityHardening.test.ts
+      - run: npm run validate:repository
+
+      - name: Commit bounded result and remove trigger
+        run: |
+          rm .github/workflows/data-203-apply.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add server/src/platform/auth/AuthService.ts server/src/common/middleware/security.ts server/src/__tests__/securityHardening.test.ts config/durability/compatibility-write-inventory.json .github/workflows/data-203-apply.yml
+          git commit -m "DATA-203 await session activity mutation"
+          git push origin HEAD:agent/data-203-session-activity-ack
