@@ -219,7 +219,7 @@ jobs:
             server/src/__tests__/bugConditionExploration.test.ts \
             server/src/routes/__tests__/projects.runtime.test.ts \
             server/src/__tests__/productLayer.test.ts
-          npm run validate:repository
+          npm run validate
 
       - name: Commit migration and remove workflow
         run: |
