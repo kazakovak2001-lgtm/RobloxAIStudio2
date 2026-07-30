@@ -45,42 +45,40 @@ jobs:
               raise SystemExit(f"Expected exactly one synchronous AuthService.login block, found {count}")
           auth_path.write_text(auth)
 
-          security_path = Path("server/src/__tests__/securityHardening.test.ts")
-          security = security_path.read_text()
-          call_pattern = re.compile(
-              r"const loginResult = authService\.login\(\s*"
-              r'"sec-test@test\.com",\s*'
-              r'"password123",\s*'
-              r'"user-sec-1",\s*'
-              r"\);",
-              re.MULTILINE,
-          )
-          replacement = '''const loginResult = await authService.loginDurable(
-            "sec-test@test.com",
-            "password123",
-            "user-sec-1",
-          );'''
-          security, count = call_pattern.subn(replacement, security, count=1)
-          if count != 1:
-              raise SystemExit(f"Expected exactly one securityHardening synchronous login caller, found {count}")
-          security_path.write_text(security)
+          target_tests = [
+              Path("server/src/__tests__/securityHardening.test.ts"),
+              Path("server/src/__tests__/preservationProperty.test.ts"),
+              Path("server/src/__tests__/harden2a.auth-contract.test.ts"),
+              Path("server/src/__tests__/persistence.test.ts"),
+              Path("server/src/__tests__/bugConditionExploration.test.ts"),
+              Path("server/src/routes/__tests__/projects.runtime.test.ts"),
+          ]
+          total_callers = 0
+          for test_path in target_tests:
+              test = test_path.read_text()
+              test, auth_count = re.subn(
+                  r"\bauth\.login\(",
+                  "await auth.loginDurable(",
+                  test,
+              )
+              test, service_count = re.subn(
+                  r"\bauthService\.login\(",
+                  "await authService.loginDurable(",
+                  test,
+              )
+              test, shared_count = re.subn(
+                  r"\bsharedAuthService\.login\(",
+                  "await sharedAuthService.loginDurable(",
+                  test,
+              )
+              total_callers += auth_count + service_count + shared_count
+              test_path.write_text(test)
+
+          if total_callers < 10:
+              raise SystemExit(f"Unexpectedly small synchronous caller inventory: {total_callers}")
 
           preservation_path = Path("server/src/__tests__/preservationProperty.test.ts")
           preservation = preservation_path.read_text()
-          preservation, auth_count = re.subn(
-              r"\bauth\.login\(",
-              "await auth.loginDurable(",
-              preservation,
-          )
-          preservation, shared_count = re.subn(
-              r"\bsharedAuthService\.login\(",
-              "await sharedAuthService.loginDurable(",
-              preservation,
-          )
-          if auth_count < 1 or shared_count != 1:
-              raise SystemExit(
-                  f"Unexpected preservation caller inventory: auth={auth_count}, shared={shared_count}"
-              )
           property_header = 'it("property: login result tokens follow consistent format", async () => {'
           property_start = preservation.find(property_header)
           if property_start < 0:
@@ -89,9 +87,8 @@ jobs:
           if property_end < 0:
               raise SystemExit("Login token format property test end was not found")
           property_block = preservation[property_start:property_end]
-          property_block, property_count = property_block.replace(
-              "fc.property(", "fc.asyncProperty(", 1
-          ), property_block.count("fc.property(")
+          property_count = property_block.count("fc.property(")
+          property_block = property_block.replace("fc.property(", "fc.asyncProperty(", 1)
           property_block, callback_count = re.subn(
               r"\(email, password\) => \{",
               "async (email, password) => {",
@@ -123,8 +120,8 @@ jobs:
 
       - name: Verify removal guards
         run: |
-          if grep -R -F 'AuthService.login#set' server/src config; then
-            echo "Legacy AuthService.login inventory reference remains"
+          if grep -R -F 'AuthService.ts#AuthService.login#set' config; then
+            echo "Legacy AuthService.login inventory entry remains"
             exit 1
           fi
           if grep -R -F 'login(email: string, password: string, userId: string): LoginResult' server/src; then
@@ -142,12 +139,20 @@ jobs:
             server/src/platform/auth/AuthService.ts \
             server/src/__tests__/securityHardening.test.ts \
             server/src/__tests__/preservationProperty.test.ts \
+            server/src/__tests__/harden2a.auth-contract.test.ts \
+            server/src/__tests__/persistence.test.ts \
+            server/src/__tests__/bugConditionExploration.test.ts \
+            server/src/routes/__tests__/projects.runtime.test.ts \
             config/durability/compatibility-write-inventory.json
           npm run typecheck
           npm run lint
           npm test -- --run \
             server/src/__tests__/securityHardening.test.ts \
-            server/src/__tests__/preservationProperty.test.ts
+            server/src/__tests__/preservationProperty.test.ts \
+            server/src/__tests__/harden2a.auth-contract.test.ts \
+            server/src/__tests__/persistence.test.ts \
+            server/src/__tests__/bugConditionExploration.test.ts \
+            server/src/routes/__tests__/projects.runtime.test.ts
           npm run validate:repository
 
       - name: Commit migration and remove workflow
@@ -158,6 +163,10 @@ jobs:
           git add server/src/platform/auth/AuthService.ts \
             server/src/__tests__/securityHardening.test.ts \
             server/src/__tests__/preservationProperty.test.ts \
+            server/src/__tests__/harden2a.auth-contract.test.ts \
+            server/src/__tests__/persistence.test.ts \
+            server/src/__tests__/bugConditionExploration.test.ts \
+            server/src/routes/__tests__/projects.runtime.test.ts \
             config/durability/compatibility-write-inventory.json
           git commit -m "refactor(auth): remove synchronous legacy login compatibility"
           git push origin HEAD:${{ github.head_ref }}
