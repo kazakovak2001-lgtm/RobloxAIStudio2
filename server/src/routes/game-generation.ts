@@ -237,13 +237,7 @@ export function createGameGenerationRouter(
   // Get generation status
   router.get("/:projectId/generation/:executionId/status", async (req, res) => {
     try {
-      if (
-        !(await access.requireProjectAccess(
-          req,
-          res,
-          req.params.projectId,
-        ))
-      )
+      if (!(await access.requireProjectAccess(req, res, req.params.projectId)))
         return;
       const execution = await gameService.getExecution(req.params.executionId);
       if (!execution) {
