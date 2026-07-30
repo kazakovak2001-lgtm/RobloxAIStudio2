@@ -29,12 +29,6 @@ export class UserRepository {
     private readonly storage: StorageProvider = new InMemoryStorageProvider(),
   ) {}
 
-  create(input: CreateUserInput): User {
-    const user = this.buildUser(input);
-    this.storage.set(this.collection, user.id, user);
-    return user;
-  }
-
   async createDurable(input: CreateUserInput): Promise<User> {
     const prepared = this.prepareCreate(input);
     await this.storage.applyDurableBatch([prepared.mutation]);

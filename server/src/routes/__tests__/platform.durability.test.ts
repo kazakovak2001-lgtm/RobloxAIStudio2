@@ -127,7 +127,7 @@ describe("platform user durable HTTP acknowledgement", () => {
   it("returns 503 and retains the exact previous user after update rejection", async () => {
     const storage = new ControlledMutationStorage();
     const users = new UserRepository(storage);
-    const user = users.create({
+    const user = await users.createDurable({
       email: "before@example.com",
       displayName: "Before",
     });

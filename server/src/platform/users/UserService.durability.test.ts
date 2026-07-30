@@ -34,7 +34,7 @@ describe("user durable acknowledgement", () => {
     const storage = new ControlledMutationStorage();
     const repository = new UserRepository(storage);
     const service = new UserService(storage);
-    const user = repository.create({
+    const user = await repository.createDurable({
       email: "tier-before@example.com",
       displayName: "Tier Before",
     });
@@ -53,7 +53,7 @@ describe("user durable acknowledgement", () => {
     const storage = new ControlledMutationStorage();
     const repository = new UserRepository(storage);
     const service = new UserService(storage);
-    const user = repository.create({
+    const user = await repository.createDurable({
       email: "status-before@example.com",
       displayName: "Status Before",
     });
@@ -70,7 +70,7 @@ describe("user durable acknowledgement", () => {
     const storage = new ControlledMutationStorage();
     const repository = new UserRepository(storage);
     const service = new UserService(storage);
-    const user = repository.create({
+    const user = await repository.createDurable({
       email: "admin-committed@example.com",
       displayName: "Admin Committed",
     });
@@ -92,7 +92,7 @@ describe("user durable acknowledgement", () => {
   it("retains the exact previous user after rejected usage accounting", async () => {
     const storage = new ControlledMutationStorage();
     const repository = new UserRepository(storage);
-    const user = repository.create({
+    const user = await repository.createDurable({
       email: "usage-before@example.com",
       displayName: "Usage Before",
     });
@@ -110,7 +110,7 @@ describe("user durable acknowledgement", () => {
   it("publishes acknowledged generation usage", async () => {
     const storage = new ControlledMutationStorage();
     const repository = new UserRepository(storage);
-    const user = repository.create({
+    const user = await repository.createDurable({
       email: "usage-committed@example.com",
       displayName: "Usage Committed",
     });
@@ -132,7 +132,7 @@ describe("user durable acknowledgement", () => {
   it("serializes concurrent generation usage for the same user", async () => {
     const storage = new ControlledMutationStorage();
     const repository = new UserRepository(storage);
-    const user = repository.create({
+    const user = await repository.createDurable({
       email: "usage-concurrent@example.com",
       displayName: "Usage Concurrent",
     });
