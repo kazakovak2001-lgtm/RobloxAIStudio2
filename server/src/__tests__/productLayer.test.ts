@@ -16,7 +16,11 @@ describe("Product Layer", async () => {
 
     it("registers and logs in a user", async () => {
       auth.register("test@test.com", "pass123", "user-1");
-      const result = auth.login("test@test.com", "pass123", "user-1");
+      const result = await auth.loginDurable(
+        "test@test.com",
+        "pass123",
+        "user-1",
+      );
       expect(result.success).toBe(true);
       expect(result.token).toBeTruthy();
       expect(result.refreshToken).toBeTruthy();
@@ -25,7 +29,7 @@ describe("Product Layer", async () => {
 
     it("rejects invalid credentials", async () => {
       auth.register("a@b.com", "correct", "u-1");
-      const result = auth.login("a@b.com", "wrong", "u-1");
+      const result = await auth.loginDurable("a@b.com", "wrong", "u-1");
       expect(result.success).toBe(false);
       expect(result.error).toContain("Invalid");
     });
@@ -38,7 +42,7 @@ describe("Product Layer", async () => {
 
     it("validates token and returns session", async () => {
       auth.register("x@y.com", "pw", "u-1");
-      const login = auth.login("x@y.com", "pw", "u-1");
+      const login = await auth.loginDurable("x@y.com", "pw", "u-1");
       const session = await auth.validateToken(login.token!);
       expect(session).not.toBeNull();
       expect(session!.userId).toBe("u-1");
@@ -50,7 +54,7 @@ describe("Product Layer", async () => {
 
     it("refreshes session", async () => {
       auth.register("r@t.com", "pw", "u-1");
-      const login = auth.login("r@t.com", "pw", "u-1");
+      const login = await auth.loginDurable("r@t.com", "pw", "u-1");
       const refreshed = auth.refreshSession(login.refreshToken!);
       expect(refreshed.success).toBe(true);
       expect(refreshed.token).not.toBe(login.token);
@@ -65,7 +69,7 @@ describe("Product Layer", async () => {
 
     it("logout invalidates token", async () => {
       auth.register("l@t.com", "pw", "u-1");
-      const login = auth.login("l@t.com", "pw", "u-1");
+      const login = await auth.loginDurable("l@t.com", "pw", "u-1");
       auth.logout(login.token!);
       expect(await auth.validateToken(login.token!)).toBeNull();
     });

@@ -135,71 +135,81 @@ describe("Bug Condition Exploration - Release Hardening Security Defects", () =>
    * so same password registered for two different users produces different stored hashes.
    */
   describe("Weak Password Hashing (Requirement 1.2)", () => {
-    it("property: same password hashed twice SHALL produce different hashes (bcrypt salting)", () => {
+    it("property: same password hashed twice SHALL produce different hashes (bcrypt salting)", async () => {
       fc.assert(
-        fc.property(fc.string({ minLength: 8, maxLength: 64 }), (password) => {
-          const authService1 = new AuthService();
-          const authService2 = new AuthService();
+        fc.asyncProperty(
+          fc.string({ minLength: 8, maxLength: 64 }),
+          async (password) => {
+            const authService1 = new AuthService();
+            const authService2 = new AuthService();
 
-          // Register with same password in two separate instances
-          authService1.register("user1@test.com", password, "user-1");
-          authService2.register("user2@test.com", password, "user-2");
+            // Register with same password in two separate instances
+            authService1.register("user1@test.com", password, "user-1");
+            authService2.register("user2@test.com", password, "user-2");
 
-          // Both registrations succeed and login works — proving the hash is valid
-          const login1 = authService1.login(
-            "user1@test.com",
-            password,
-            "user-1",
-          );
-          const login2 = authService2.login(
-            "user2@test.com",
-            password,
-            "user-2",
-          );
-          expect(login1.success).toBe(true);
-          expect(login2.success).toBe(true);
+            // Both registrations succeed and login works — proving the hash is valid
+            const login1 = await authService1.loginDurable(
+              "user1@test.com",
+              password,
+              "user-1",
+            );
+            const login2 = await authService2.loginDurable(
+              "user2@test.com",
+              password,
+              "user-2",
+            );
+            expect(login1.success).toBe(true);
+            expect(login2.success).toBe(true);
 
-          // Cross-login should fail — user1's password hash != user2's password hash
-          // even though passwords are the same (bcrypt unique salt per hash)
-          // We verify this indirectly: user2 email doesn't exist in authService1
-          const crossLogin = authService1.login(
-            "user2@test.com",
-            password,
-            "user-2",
-          );
-          expect(crossLogin.success).toBe(false);
-        }),
+            // Cross-login should fail — user1's password hash != user2's password hash
+            // even though passwords are the same (bcrypt unique salt per hash)
+            // We verify this indirectly: user2 email doesn't exist in authService1
+            const crossLogin = await authService1.loginDurable(
+              "user2@test.com",
+              password,
+              "user-2",
+            );
+            expect(crossLogin.success).toBe(false);
+          },
+        ),
         { numRuns: 5 },
       );
     }, 60000);
 
-    it("property: password hashes SHALL use bcrypt format ($2a$12$ or $2b$12$)", () => {
+    it("property: password hashes SHALL use bcrypt format ($2a$12$ or $2b$12$)", async () => {
       fc.assert(
-        fc.property(fc.string({ minLength: 8, maxLength: 64 }), (password) => {
-          // Test by registering a user and verifying that bcrypt.compareSync works
-          // (which confirms bcrypt format is used internally)
-          const bcrypt = require("bcryptjs");
-          const authService = new AuthService();
-          authService.register("test@test.com", password, "user-1");
+        fc.asyncProperty(
+          fc.string({ minLength: 8, maxLength: 64 }),
+          async (password) => {
+            // Test by registering a user and verifying that bcrypt.compareSync works
+            // (which confirms bcrypt format is used internally)
+            const bcrypt = require("bcryptjs");
+            const authService = new AuthService();
+            authService.register("test@test.com", password, "user-1");
 
-          // Login succeeds — proves hashing and comparison work correctly
-          const result = authService.login("test@test.com", password, "user-1");
-          expect(result.success).toBe(true);
+            // Login succeeds — proves hashing and comparison work correctly
+            const result = await authService.loginDurable(
+              "test@test.com",
+              password,
+              "user-1",
+            );
+            expect(result.success).toBe(true);
 
-          // Wrong password fails — proves hash validation is real
-          const wrongResult = authService.login(
-            "test@test.com",
-            password + "x",
-            "user-1",
-          );
-          expect(wrongResult.success).toBe(false);
+            // Wrong password fails — proves hash validation is real
+            const wrongResult = await authService.loginDurable(
+              "test@test.com",
+              password + "x",
+              "user-1",
+            );
+            expect(wrongResult.success).toBe(false);
 
-          // Verify bcrypt is actually used by checking the hash format
-          // Access internals via registration of a second user with known password
-          // and verifying bcrypt.compareSync matches
-          const testHash = bcrypt.hashSync(password, 12);
-          expect(testHash).toMatch(/^\$2[aby]\$12\$/);
-        }),
+            // Verify bcrypt is actually used by checking the hash format
+            // Access internals via registration of a second user with known password
+            // and verifying bcrypt.compareSync matches
+            const testHash = bcrypt.hashSync(password, 12);
+            expect(testHash).toMatch(/^\$2[aby]\$12\$/);
+          },
+        ),
         { numRuns: 5 },
       );
     }, 60000);

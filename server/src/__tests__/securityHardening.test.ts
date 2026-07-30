@@ -140,7 +140,7 @@ describe("Security Hardening", async () => {
       process.env.NODE_ENV = "production";
 
       authService.register("sec-test@test.com", "password123", "user-sec-1");
-      const loginResult = authService.login(
+      const loginResult = await authService.loginDurable(
         "sec-test@test.com",
         "password123",
         "user-sec-1",
