@@ -20,8 +20,8 @@ describe("project runtime access control", async () => {
   it("requires an authenticated owner for project access", async () => {
     const storage = new InMemoryStorageProvider();
     const auth = new AuthService(storage);
-    auth.register("owner@example.com", "password123", "owner");
-    auth.register("other@example.com", "password123", "other");
+    await auth.registerDurable("owner@example.com", "password123", "owner");
+    await auth.registerDurable("other@example.com", "password123", "other");
     const ownerToken = (
       await auth.loginDurable("owner@example.com", "password123", "owner")
     ).token!;
