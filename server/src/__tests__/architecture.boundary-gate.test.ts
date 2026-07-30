@@ -96,9 +96,18 @@ describe("architecture boundary gate core", () => {
     const manifest = createManifest();
     const edges: ImportEdge[] = [
       edge({ importPath: "../routes/static" }),
-      edge({ file: "server/src/game/reexport.ts", importPath: "../routes/reexport" }),
-      edge({ file: "server/src/game/dynamic.ts", importPath: "../routes/dynamic" }),
-      edge({ file: "server/src/game/commonjs.ts", importPath: "../routes/commonjs" }),
+      edge({
+        file: "server/src/game/reexport.ts",
+        importPath: "../routes/reexport",
+      }),
+      edge({
+        file: "server/src/game/dynamic.ts",
+        importPath: "../routes/dynamic",
+      }),
+      edge({
+        file: "server/src/game/commonjs.ts",
+        importPath: "../routes/commonjs",
+      }),
     ];
 
     const violations = collectLayerViolations(manifest, edges);
@@ -185,18 +194,21 @@ describe("architecture boundary gate core", () => {
     ["manifest", { manifestErrors: ["broken"] }],
     ["critical-boundary", { criticalViolationCount: 1 }],
     ["unresolved-import", { unresolvedInternalImportCount: 1 }],
-  ] as const)("derives report status and exit code from %s failure", (reason, patch) => {
-    const decision = evaluateBoundaryGate({
-      manifestErrors: [],
-      criticalViolationCount: 0,
-      cycles: [],
-      unresolvedInternalImportCount: 0,
-      layerViolations: [],
-      ...patch,
-    });
+  ] as const)(
+    "derives report status and exit code from %s failure",
+    (reason, patch) => {
+      const decision = evaluateBoundaryGate({
+        manifestErrors: [],
+        criticalViolationCount: 0,
+        cycles: [],
+        unresolvedInternalImportCount: 0,
+        layerViolations: [],
+        ...patch,
+      });
 
-    expect(decision.status).toBe("FAIL");
-    expect(decision.exitCode).toBe(1);
-    expect(decision.reasons).toContain(reason);
-  });
+      expect(decision.status).toBe("FAIL");
+      expect(decision.exitCode).toBe(1);
+      expect(decision.reasons).toContain(reason);
+    },
+  );
 });
