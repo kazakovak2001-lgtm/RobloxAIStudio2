@@ -9,6 +9,9 @@ import {
 } from "../../../scripts/architecture/boundary-gate-core";
 
 const REAL_SUBSYSTEMS = ["core", "game", "transport", "routes"];
+type AllowedLayerEdge = NonNullable<
+  ArchitectureManifest["allowedLayerEdges"]
+>[number];
 
 function createManifest(): ArchitectureManifest {
   return {
@@ -108,11 +111,11 @@ describe("architecture boundary gate core", () => {
 
   it("reports a missing layer exception reason without throwing", () => {
     const manifest = createManifest();
-    manifest.allowedLayerEdges = [
-      { from: "domains", to: "api" } as unknown as NonNullable<
-        ArchitectureManifest["allowedLayerEdges"]
-      >[number],
-    ];
+    const invalidEdge = {
+      from: "domains",
+      to: "api",
+    } as unknown as AllowedLayerEdge;
+    manifest.allowedLayerEdges = [invalidEdge];
 
     expect(() => validateManifestModel(manifest, REAL_SUBSYSTEMS)).not.toThrow();
     expect(validateManifestModel(manifest, REAL_SUBSYSTEMS)).toContain(
