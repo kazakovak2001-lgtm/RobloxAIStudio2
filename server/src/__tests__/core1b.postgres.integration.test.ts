@@ -165,12 +165,12 @@ describePostgres("CORE-1b PostgreSQL restart acceptance", () => {
     );
 
     const chatBeforeRestart = new ChatPersistenceService(firstProvider);
-    const firstMessage = chatBeforeRestart.createMessage({
+    const firstMessage = await chatBeforeRestart.createMessage({
       projectId: project.id,
       role: "user",
       content: "Keep this conversation after PostgreSQL reconnects.",
     });
-    chatBeforeRestart.createMessage({
+    await chatBeforeRestart.createMessage({
       conversationId: firstMessage.conversationId,
       role: "assistant",
       content: "Persistence checkpoint recorded.",

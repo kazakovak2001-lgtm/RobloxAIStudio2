@@ -1030,6 +1030,7 @@ server/src/runtime/failures/FailureModeRegistry.ts
 server/src/runtime/index.ts
 server/src/runtime/simulation/E2EGenerationSimulator.ts
 server/src/runtime/telemetry/PipelineTelemetry.ts
+server/src/services/ChatPersistenceService.durability.test.ts
 server/src/services/ChatPersistenceService.ts
 server/src/simulation/agents/PlaytestAgent.ts
 server/src/simulation/bridge/GenerationRefinementBridge.ts

@@ -1,4 +1,5 @@
 import { Router, type Response } from "express";
+import { DurableStorageError } from "../platform/storage/StorageProvider";
 import {
   ChatPersistenceService,
   ChatValidationError,
@@ -8,9 +9,9 @@ import type { ProjectAccessControl } from "./projects";
 
 export function createChatPersistenceRouter(
   access: ProjectAccessControl,
+  chatPersistence: ChatPersistenceService = new ChatPersistenceService(),
 ): Router {
   const router = Router();
-  const chatPersistence = new ChatPersistenceService();
 
   router.get("/:projectId/history", (req, res) => {
     try {
@@ -45,7 +46,7 @@ export function createChatPersistenceRouter(
     }
   });
 
-  router.post("/message", (req, res) => {
+  router.post("/message", async (req, res) => {
     try {
       const { conversationId, projectId, role, content, metadata } = req.body;
       if (conversationId) {
@@ -61,7 +62,7 @@ export function createChatPersistenceRouter(
       } else if (!access.requireProjectAccess(req, res, projectId)) {
         return;
       }
-      const message = chatPersistence.createMessage({
+      const message = await chatPersistence.createMessage({
         conversationId,
         projectId,
         role: role as ConversationRole,
@@ -98,6 +99,13 @@ export function createChatPersistenceRouter(
 function handleChatError(error: unknown, res: Response): void {
   if (error instanceof ChatValidationError) {
     res.status(400).json({ success: false, error: error.message });
+    return;
+  }
+  if (error instanceof DurableStorageError) {
+    res.status(503).json({
+      success: false,
+      error: "Chat persistence temporarily unavailable",
+    });
     return;
   }
   console.error("[chat-persistence]", error);

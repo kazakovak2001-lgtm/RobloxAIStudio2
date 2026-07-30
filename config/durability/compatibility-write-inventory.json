@@ -120,19 +120,9 @@
       "migrationTarget": "DATA-201B"
     },
     {
-      "key": "server/src/services/ChatPersistenceService.ts#ChatPersistenceService.createMessage#set",
+      "key": "server/src/services/ChatPersistenceService.ts#ChatPersistenceService.deleteConversationImmediately#delete",
       "path": "server/src/services/ChatPersistenceService.ts",
-      "owner": "ChatPersistenceService.createMessage",
-      "operation": "set",
-      "expectedCalls": 3,
-      "classification": "multi-record-deferred",
-      "reason": "Creating a message may create a conversation, insert a message and update conversation metadata as one logical mutation.",
-      "migrationTarget": "DATA-201C"
-    },
-    {
-      "key": "server/src/services/ChatPersistenceService.ts#ChatPersistenceService.deleteConversation#delete",
-      "path": "server/src/services/ChatPersistenceService.ts",
-      "owner": "ChatPersistenceService.deleteConversation",
+      "owner": "ChatPersistenceService.deleteConversationImmediately",
       "operation": "delete",
       "expectedCalls": 2,
       "classification": "multi-record-deferred",
