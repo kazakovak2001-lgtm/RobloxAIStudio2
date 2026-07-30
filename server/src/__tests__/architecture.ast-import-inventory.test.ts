@@ -73,9 +73,10 @@ describe("AST import inventory fixtures", () => {
 
   it("reports an unresolved internal target as fail-closed evidence", () => {
     const root = createFixture();
+    mkdirSync(join(root, "server", "src", "unresolved"), { recursive: true });
     writeFileSync(
       join(root, "server", "src", "game", "unknown.ts"),
-      'export * from "../../missing/module";',
+      'export * from "../unresolved/target";',
     );
 
     const inventory = buildAstImportInventory(root, {
@@ -88,7 +89,7 @@ describe("AST import inventory fixtures", () => {
 
     expect(inventory.unresolvedInternalImports).toContainEqual({
       file: "server/src/game/unknown.ts",
-      importPath: "../../missing/module",
+      importPath: "../unresolved/target",
     });
   });
 });
