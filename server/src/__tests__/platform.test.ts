@@ -15,29 +15,38 @@ describe("Platform Layer", () => {
       repo = new UserRepository();
     });
 
-    it("creates a user with default free tier", () => {
-      const user = repo.create({ email: "test@test.com", displayName: "Test" });
+    it("creates a user with default free tier", async () => {
+      const user = await repo.createDurable({
+        email: "test@test.com",
+        displayName: "Test",
+      });
       expect(user.tier).toBe("free");
       expect(user.limits.maxProjects).toBe(3);
       expect(user.status).toBe("active");
     });
 
-    it("finds user by email", () => {
-      repo.create({ email: "a@b.com", displayName: "A" });
+    it("finds user by email", async () => {
+      await repo.createDurable({ email: "a@b.com", displayName: "A" });
       const found = repo.getByEmail("a@b.com");
       expect(found).not.toBeNull();
       expect(found!.displayName).toBe("A");
     });
 
     it("upgrades tier and updates limits", async () => {
-      const user = repo.create({ email: "x@y.com", displayName: "X" });
+      const user = await repo.createDurable({
+        email: "x@y.com",
+        displayName: "X",
+      });
       const updated = await repo.updateTierDurable(user.id, "pro");
       expect(updated!.tier).toBe("pro");
       expect(updated!.limits.maxProjects).toBe(50);
     });
 
     it("tracks generation usage", async () => {
-      const user = repo.create({ email: "u@v.com", displayName: "U" });
+      const user = await repo.createDurable({
+        email: "u@v.com",
+        displayName: "U",
+      });
       await repo.recordGenerationDurable(user.id, 1000);
       await repo.recordGenerationDurable(user.id, 2000);
       const fetched = repo.getById(user.id);
@@ -46,7 +55,7 @@ describe("Platform Layer", () => {
     });
 
     it("enforces daily generation limit", async () => {
-      const user = repo.create({
+      const user = await repo.createDurable({
         email: "limit@test.com",
         displayName: "Limit",
       });
