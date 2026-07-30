@@ -1,0 +1,110 @@
+name: DATA-204 migration
+
+on:
+  push:
+    branches:
+      - agent/data-204-legacy-password-upgrade
+
+permissions:
+  contents: write
+
+jobs:
+  migrate:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Apply bounded DATA-204 changes
+        shell: python
+        run: |
+          from pathlib import Path
+          import json
+          import re
+
+          auth_path = Path("server/src/platform/auth/AuthService.ts")
+          auth = auth_path.read_text()
+          pattern = re.compile(
+              r"\n  login\(email: string, password: string, userId: string\): LoginResult \{.*?\n  \}\n\n  async loginDurable\(",
+              re.DOTALL,
+          )
+          auth, count = pattern.subn("\n  async loginDurable(", auth, count=1)
+          if count != 1:
+              raise SystemExit(f"Expected exactly one synchronous AuthService.login block, found {count}")
+          auth_path.write_text(auth)
+
+          test_path = Path("server/src/__tests__/securityHardening.test.ts")
+          test = test_path.read_text()
+          old_call = '''const loginResult = authService.login(
+              "sec-test@test.com",
+              "password123",
+              "user-sec-1",
+            );'''
+          new_call = '''const loginResult = await authService.loginDurable(
+              "sec-test@test.com",
+              "password123",
+              "user-sec-1",
+            );'''
+          if old_call not in test:
+              raise SystemExit("Expected securityHardening synchronous login caller was not found")
+          test = test.replace(old_call, new_call, 1)
+          test_name = 'it("allows Bearer token in production", () => {'
+          if test_name not in test:
+              raise SystemExit("Expected securityHardening test declaration was not found")
+          test = test.replace(
+              test_name,
+              'it("allows Bearer token in production", async () => {',
+              1,
+          )
+          test_path.write_text(test)
+
+          inventory_path = Path("config/durability/compatibility-write-inventory.json")
+          inventory = json.loads(inventory_path.read_text())
+          if not isinstance(inventory, list):
+              raise SystemExit("Compatibility inventory must be a JSON array")
+          key = "server/src/platform/auth/AuthService.ts#AuthService.login#set"
+          matches = [entry for entry in inventory if entry.get("key") == key]
+          if len(matches) != 1:
+              raise SystemExit(f"Expected exactly one DATA-204 inventory entry, found {len(matches)}")
+          inventory = [entry for entry in inventory if entry.get("key") != key]
+          inventory_path.write_text(json.dumps(inventory, indent=2) + "\n")
+
+      - name: Verify removal guards
+        run: |
+          if rg 'AuthService\.login|AuthService\.login#set' server/src config; then
+            echo "Legacy AuthService.login reference remains"
+            exit 1
+          fi
+          if rg 'authService\.login\(' server/src; then
+            echo "Synchronous authService.login caller remains"
+            exit 1
+          fi
+
+      - name: Format and validate focused change
+        run: |
+          npx prettier --write \
+            server/src/platform/auth/AuthService.ts \
+            server/src/__tests__/securityHardening.test.ts \
+            config/durability/compatibility-write-inventory.json
+          npm run typecheck
+          npm run lint
+          npm test -- --run server/src/__tests__/securityHardening.test.ts
+          npm run validate:repository
+
+      - name: Commit migration and remove workflow
+        run: |
+          git rm .github/workflows/data-204-migration.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add server/src/platform/auth/AuthService.ts \
+            server/src/__tests__/securityHardening.test.ts \
+            config/durability/compatibility-write-inventory.json
+          git commit -m "refactor(auth): remove synchronous legacy login compatibility"
+          git push
