@@ -491,53 +491,65 @@ export function createConceptRouter(
       return;
     }
 
-    console.log(`[GENERATION_REQUEST] projectId=${projectId}`);
+    try {
+      console.log(`[GENERATION_REQUEST] projectId=${projectId}`);
 
-    const blueprint: Record<string, unknown> = {
-      projectId,
-      name: `Project ${projectId}`,
-      description: "Direct pipeline execution",
-      createdAt: Date.now(),
-    };
+      const blueprint: Record<string, unknown> = {
+        projectId,
+        name: `Project ${projectId}`,
+        description: "Direct pipeline execution",
+        createdAt: Date.now(),
+      };
 
-    // Start pipeline asynchronously — return pipelineId immediately
-    // so the frontend can begin polling without waiting for completion.
-    const pipelineId = pipelineEngine.startAsync(
-      projectId,
-      blueprint,
-      (agentType, input) => agentRegistry.executeAgent(agentType, input),
-    );
+      // Reserve durable history before the background executor is launched.
+      const pipelineId = await pipelineEngine.startAsync(
+        projectId,
+        blueprint,
+        (agentType, input) => agentRegistry.executeAgent(agentType, input),
+        async (state) => {
+          await generationHistory.record({
+            id: `gen-${randomUUID().slice(0, 8)}`,
+            projectId,
+            pipelineId: state.pipelineId,
+            status: "running",
+            startedAt: state.startedAt,
+            stagesCompleted: 0,
+            stagesTotal: state.stages.length,
+            failures: 0,
+            tokenUsage: 0,
+            aiCost: 0,
+          });
+        },
+      );
 
-    console.log(
-      `[PIPELINE_CREATED] pipelineId=${pipelineId} projectId=${projectId}`,
-    );
+      console.log(
+        `[PIPELINE_CREATED] pipelineId=${pipelineId} projectId=${projectId}`,
+      );
+      console.log(`[JOB_ENQUEUED] pipelineId=${pipelineId}`);
 
-    // Record generation in project history
-    generationHistory.record({
-      id: `gen-${randomUUID().slice(0, 8)}`,
-      projectId,
-      pipelineId,
-      status: "running",
-      startedAt: Date.now(),
-      stagesCompleted: 0,
-      stagesTotal: 11,
-      failures: 0,
-      tokenUsage: 0,
-      aiCost: 0,
-    });
-
-    console.log(`[JOB_ENQUEUED] pipelineId=${pipelineId}`);
-
-    res.json({
-      success: true,
-      data: {
-        pipelineId,
-        status: "running",
-        completedStages: [],
-        failedStages: [],
-        stageCount: 11,
-      },
-    });
+      res.json({
+        success: true,
+        data: {
+          pipelineId,
+          status: "running",
+          completedStages: [],
+          failedStages: [],
+          stageCount: 11,
+        },
+      });
+    } catch (error) {
+      if (error instanceof DurableStorageError) {
+        res.status(503).json({
+          success: false,
+          error: "Generation history temporarily unavailable",
+        });
+        return;
+      }
+      const message =
+        error instanceof Error ? error.message : "Direct generation failed";
+      console.error("[generate-direct] Error:", message);
+      res.status(500).json({ success: false, error: message });
+    }
   });
 
   // GET /api/concept/experience/:pipelineId/metrics

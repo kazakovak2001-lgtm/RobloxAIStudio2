@@ -18,7 +18,7 @@ export class ProjectGenerationStartCoordinator {
   async start<T>(
     projectId: string,
     schedule: () => Promise<T>,
-    recordHistory: (result: T) => void,
+    recordHistory: (result: T) => Promise<void>,
   ): Promise<T> {
     const previous = this.queues.get(projectId) ?? Promise.resolve();
     const operation = previous
@@ -35,7 +35,7 @@ export class ProjectGenerationStartCoordinator {
         });
 
         const result = await schedule();
-        recordHistory(result);
+        await recordHistory(result);
         return result;
       });
     const tracked = operation.then(

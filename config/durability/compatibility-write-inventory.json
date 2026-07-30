@@ -108,16 +108,6 @@
       "classification": "request-level-debt",
       "reason": "Coordinated auth registration and compatibility UserService creation still expose a user before persistence acknowledgement.",
       "migrationTarget": "DATA-201B"
-    },
-    {
-      "key": "server/src/projects/repository/generationHistory.repository.ts#StorageGenerationHistoryRepository.record#set",
-      "path": "server/src/projects/repository/generationHistory.repository.ts",
-      "owner": "StorageGenerationHistoryRepository.record",
-      "operation": "set",
-      "expectedCalls": 1,
-      "classification": "internal-lifecycle-debt",
-      "reason": "Generation lifecycle history is written by event handling without persistence acknowledgement.",
-      "migrationTarget": "DATA-201B"
     }
   ]
 }

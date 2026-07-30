@@ -21,7 +21,7 @@ export interface GenerationRecord {
 }
 
 export interface GenerationHistoryRepository {
-  record(entry: GenerationRecord): void;
+  record(entry: GenerationRecord): Promise<void>;
   getByProject(projectId: string): GenerationRecord[];
   getByPipeline(pipelineId: string): GenerationRecord | null;
   getAll(): GenerationRecord[];
@@ -33,8 +33,8 @@ const COLLECTION = "generation_history";
 export class StorageGenerationHistoryRepository implements GenerationHistoryRepository {
   constructor(private readonly storage: StorageProvider) {}
 
-  record(entry: GenerationRecord): void {
-    this.storage.set(COLLECTION, entry.pipelineId, entry);
+  async record(entry: GenerationRecord): Promise<void> {
+    await this.storage.setDurable(COLLECTION, entry.pipelineId, entry);
   }
 
   getByProject(projectId: string): GenerationRecord[] {
@@ -60,10 +60,10 @@ export class StorageGenerationHistoryRepository implements GenerationHistoryRepo
 export class InMemoryGenerationHistoryRepository implements GenerationHistoryRepository {
   private entries: GenerationRecord[] = [];
 
-  record(entry: GenerationRecord): void {
+  async record(entry: GenerationRecord): Promise<void> {
     // Update existing or add new
     const idx = this.entries.findIndex(
-      (e) => e.pipelineId === entry.pipelineId,
+      (candidate) => candidate.pipelineId === entry.pipelineId,
     );
     if (idx >= 0) {
       this.entries[idx] = entry;
@@ -74,15 +74,19 @@ export class InMemoryGenerationHistoryRepository implements GenerationHistoryRep
 
   getByProject(projectId: string): GenerationRecord[] {
     return this.entries
-      .filter((e) => e.projectId === projectId)
-      .sort((a, b) => b.startedAt - a.startedAt);
+      .filter((entry) => entry.projectId === projectId)
+      .sort((left, right) => right.startedAt - left.startedAt);
   }
 
   getByPipeline(pipelineId: string): GenerationRecord | null {
-    return this.entries.find((e) => e.pipelineId === pipelineId) ?? null;
+    return (
+      this.entries.find((entry) => entry.pipelineId === pipelineId) ?? null
+    );
   }
 
   getAll(): GenerationRecord[] {
-    return [...this.entries].sort((a, b) => b.startedAt - a.startedAt);
+    return [...this.entries].sort(
+      (left, right) => right.startedAt - left.startedAt,
+    );
   }
 }

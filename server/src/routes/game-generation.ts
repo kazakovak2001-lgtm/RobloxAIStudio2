@@ -149,8 +149,8 @@ export function createGameGenerationRouter(
       const result = await generationStartCoordinator.start(
         projectId,
         () => gameService.startGeneration(blueprintId || projectId, userId),
-        (execution) => {
-          generationHistory.record({
+        async (execution) => {
+          await generationHistory.record({
             id: execution.id,
             projectId,
             pipelineId: execution.id,
@@ -251,7 +251,7 @@ export function createGameGenerationRouter(
       const failedSteps = execution.pipeline_steps.filter(
         (step) => step.status === "failed",
       ).length;
-      generationHistory.record({
+      await generationHistory.record({
         id: execution.id,
         projectId: execution.project_id,
         pipelineId: execution.id,
