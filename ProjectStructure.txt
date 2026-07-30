@@ -110,6 +110,7 @@
 │   │   ├── CUTOVER-1C_COMPOSED_RELEASE.md
 │   │   ├── CUTOVER-1D_RELEASE_BASELINE_READINESS.md
 │   │   ├── DATA-201C_TRANSACTION_DEGRADATION_POLICY.md
+│   │   ├── DATA-202_ROLE_MUTATION_SLICE.md
 │   │   ├── DECISION_LOG.md
 │   │   ├── decisions
 │   │   │   └── 2026-07-24-core-1b-durable-runtime.md

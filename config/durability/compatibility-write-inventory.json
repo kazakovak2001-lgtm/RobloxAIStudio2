@@ -70,16 +70,6 @@
       "migrationTarget": "DATA-201B"
     },
     {
-      "key": "server/src/platform/auth/AuthService.ts#AuthService.setRole#set",
-      "path": "server/src/platform/auth/AuthService.ts",
-      "owner": "AuthService.setRole",
-      "operation": "set",
-      "expectedCalls": 1,
-      "classification": "request-level-debt",
-      "reason": "Role mutation remains a synchronous administrative write.",
-      "migrationTarget": "DATA-201B"
-    },
-    {
       "key": "server/src/platform/auth/AuthService.ts#AuthService.validateToken#set",
       "path": "server/src/platform/auth/AuthService.ts",
       "owner": "AuthService.validateToken",
