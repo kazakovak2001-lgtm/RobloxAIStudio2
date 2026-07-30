@@ -20,10 +20,19 @@ jobs:
           ref: ${{ github.head_ref }}
           fetch-depth: 0
 
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
       - name: Regenerate canonical inventory
         run: |
+          git rm .github/workflows/data-205-inventory-sync.yml
           git ls-files | LC_ALL=C sort > _inventory_raw.txt
-          rm .github/workflows/data-205-inventory-sync.yml
 
       - name: Verify post-removal invariants
         run: node scripts/cleanup/audit-legacy-frontend-decommission.mjs
@@ -34,7 +43,7 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add _inventory_raw.txt .github/workflows/data-205-inventory-sync.yml
+          git add _inventory_raw.txt
           git diff --cached --quiet && exit 0
           git commit -m "chore(data-205): refresh canonical inventory"
           git push origin HEAD:${{ github.head_ref }}
