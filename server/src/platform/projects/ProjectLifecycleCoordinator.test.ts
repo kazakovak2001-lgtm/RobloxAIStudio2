@@ -62,7 +62,9 @@ describe("ProjectGenerationStartCoordinator", () => {
         order.push("schedule-one");
         return "one";
       },
-      (result) => order.push(`record-${result}`),
+      async (result) => {
+        order.push(`record-${result}`);
+      },
     );
     await projects.firstUpdateStarted.promise;
 
@@ -72,7 +74,9 @@ describe("ProjectGenerationStartCoordinator", () => {
         order.push("schedule-two");
         return "two";
       },
-      (result) => order.push(`record-${result}`),
+      async (result) => {
+        order.push(`record-${result}`);
+      },
     );
     await Promise.resolve();
 
@@ -92,6 +96,52 @@ describe("ProjectGenerationStartCoordinator", () => {
     ]);
   });
 
+  it("does not resolve before generation history is acknowledged", async () => {
+    const projects = new ControlledProjectRepository();
+    const coordinator = new ProjectGenerationStartCoordinator(projects);
+    const historyAcknowledged = deferred();
+    let settled = false;
+
+    const operation = coordinator.start(
+      "project",
+      async () => "execution",
+      async () => {
+        await historyAcknowledged.promise;
+      },
+    );
+    void operation.then(
+      () => {
+        settled = true;
+      },
+      () => {
+        settled = true;
+      },
+    );
+
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(settled).toBe(false);
+
+    historyAcknowledged.resolve();
+    await expect(operation).resolves.toBe("execution");
+    expect(settled).toBe(true);
+  });
+
+  it("propagates generation history persistence rejection", async () => {
+    const projects = new ControlledProjectRepository();
+    const coordinator = new ProjectGenerationStartCoordinator(projects);
+
+    await expect(
+      coordinator.start(
+        "project",
+        async () => "execution",
+        async () => {
+          throw new Error("injected history write rejection");
+        },
+      ),
+    ).rejects.toThrow("injected history write rejection");
+  });
+
   it("does not schedule generation after rejected bookkeeping", async () => {
     const projects = new ControlledProjectRepository();
     projects.rejectNext = true;
@@ -105,7 +155,7 @@ describe("ProjectGenerationStartCoordinator", () => {
           scheduled = true;
           return "execution";
         },
-        () => undefined,
+        async () => undefined,
       ),
     ).rejects.toThrow("injected project write rejection");
 

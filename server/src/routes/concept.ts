@@ -491,53 +491,67 @@ export function createConceptRouter(
       return;
     }
 
-    console.log(`[GENERATION_REQUEST] projectId=${projectId}`);
+    try {
+      console.log(`[GENERATION_REQUEST] projectId=${projectId}`);
 
-    const blueprint: Record<string, unknown> = {
-      projectId,
-      name: `Project ${projectId}`,
-      description: "Direct pipeline execution",
-      createdAt: Date.now(),
-    };
+      const blueprint: Record<string, unknown> = {
+        projectId,
+        name: `Project ${projectId}`,
+        description: "Direct pipeline execution",
+        createdAt: Date.now(),
+      };
 
-    // Start pipeline asynchronously — return pipelineId immediately
-    // so the frontend can begin polling without waiting for completion.
-    const pipelineId = pipelineEngine.startAsync(
-      projectId,
-      blueprint,
-      (agentType, input) => agentRegistry.executeAgent(agentType, input),
-    );
+      // Start pipeline asynchronously — return pipelineId immediately
+      // so the frontend can begin polling without waiting for completion.
+      const pipelineId = pipelineEngine.startAsync(
+        projectId,
+        blueprint,
+        (agentType, input) => agentRegistry.executeAgent(agentType, input),
+      );
 
-    console.log(
-      `[PIPELINE_CREATED] pipelineId=${pipelineId} projectId=${projectId}`,
-    );
+      console.log(
+        `[PIPELINE_CREATED] pipelineId=${pipelineId} projectId=${projectId}`,
+      );
 
-    // Record generation in project history
-    generationHistory.record({
-      id: `gen-${randomUUID().slice(0, 8)}`,
-      projectId,
-      pipelineId,
-      status: "running",
-      startedAt: Date.now(),
-      stagesCompleted: 0,
-      stagesTotal: 11,
-      failures: 0,
-      tokenUsage: 0,
-      aiCost: 0,
-    });
-
-    console.log(`[JOB_ENQUEUED] pipelineId=${pipelineId}`);
-
-    res.json({
-      success: true,
-      data: {
+      // Record generation in project history
+      await generationHistory.record({
+        id: `gen-${randomUUID().slice(0, 8)}`,
+        projectId,
         pipelineId,
         status: "running",
-        completedStages: [],
-        failedStages: [],
-        stageCount: 11,
-      },
-    });
+        startedAt: Date.now(),
+        stagesCompleted: 0,
+        stagesTotal: 11,
+        failures: 0,
+        tokenUsage: 0,
+        aiCost: 0,
+      });
+
+      console.log(`[JOB_ENQUEUED] pipelineId=${pipelineId}`);
+
+      res.json({
+        success: true,
+        data: {
+          pipelineId,
+          status: "running",
+          completedStages: [],
+          failedStages: [],
+          stageCount: 11,
+        },
+      });
+    } catch (error) {
+      if (error instanceof DurableStorageError) {
+        res.status(503).json({
+          success: false,
+          error: "Generation history temporarily unavailable",
+        });
+        return;
+      }
+      const message =
+        error instanceof Error ? error.message : "Direct generation failed";
+      console.error("[generate-direct] Error:", message);
+      res.status(500).json({ success: false, error: message });
+    }
   });
 
   // GET /api/concept/experience/:pipelineId/metrics
@@ -557,50 +571,4 @@ export function createConceptRouter(
   });
 
   return router;
-}
-
-function asyncArtifactMutation(
-  handler: (req: Request, res: Response) => Promise<void>,
-): RequestHandler {
-  return (req, res) => {
-    void handler(req, res).catch((error: unknown) => {
-      handleArtifactMutationError(error, res);
-    });
-  };
-}
-
-function handleArtifactMutationError(error: unknown, res: Response): void {
-  if (error instanceof DurableStorageError) {
-    console.error("[concept] artifact mutation rejected", error);
-    res.status(503).json({
-      success: false,
-      error: "Durable storage is temporarily unavailable",
-    });
-    return;
-  }
-
-  console.error("[concept] artifact mutation failed", error);
-  res.status(500).json({ success: false, error: "Artifact mutation failed" });
-}
-
-function extractTitle(description: string): string {
-  const words = description.trim().split(/\s+/).slice(0, 4);
-  return words
-    .map((w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
-    .join(" ");
-}
-
-function generateFeatures(genre: string): string[] {
-  const base = ["Multiplayer support", "Save system", "Leaderboards"];
-  const genreFeatures: Record<string, string[]> = {
-    obby: ["Checkpoint system", "Stage progression", "Speed run timer"],
-    rpg: ["Inventory system", "Quest system", "NPC interactions"],
-    tycoon: ["Resource management", "Upgrades", "Automation"],
-    simulator: ["Skill progression", "Collection mechanics", "Rebirth system"],
-    adventure: ["Exploration", "Puzzle solving", "Story progression"],
-  };
-  return [
-    ...base,
-    ...(genreFeatures[genre.toLowerCase()] ?? genreFeatures.adventure),
-  ];
 }
