@@ -29,21 +29,21 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Regenerate canonical inventory
+      - name: Regenerate canonical inventories
         run: |
           git rm .github/workflows/data-205-inventory-sync.yml
-          git ls-files | LC_ALL=C sort > _inventory_raw.txt
+          node scripts/cleanup/generate-tracked-inventories.mjs
 
       - name: Verify post-removal invariants
         run: node scripts/cleanup/audit-legacy-frontend-decommission.mjs
         env:
           LEGACY_FRONTEND_AUDIT_OUTPUT: artifacts/post-removal-invariants
 
-      - name: Commit canonical inventory
+      - name: Commit canonical inventories
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add _inventory_raw.txt
+          git add _inventory_raw.txt ProjectStructure.txt project_structure.txt .github/workflows/data-205-inventory-sync.yml
           git diff --cached --quiet && exit 0
-          git commit -m "chore(data-205): refresh canonical inventory"
+          git commit -m "chore(data-205): refresh canonical inventories"
           git push origin HEAD:${{ github.head_ref }}
