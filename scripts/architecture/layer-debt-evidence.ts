@@ -69,22 +69,20 @@ function canonicalRows(
   rows: readonly LayerDebtEvidenceRow[],
 ): LayerDebtEvidenceRow[] {
   const seen = new Set<string>();
-  return [...rows]
-    .sort(compareRows)
-    .filter((row) => {
-      const key = [
-        row.sourceLayer,
-        row.targetLayer,
-        row.sourceDomain,
-        row.targetDomain,
-        row.file,
-        row.importPath,
-        row.milestone,
-      ].join("|");
-      if (seen.has(key)) return false;
-      seen.add(key);
-      return true;
-    });
+  return [...rows].sort(compareRows).filter((row) => {
+    const key = [
+      row.sourceLayer,
+      row.targetLayer,
+      row.sourceDomain,
+      row.targetDomain,
+      row.file,
+      row.importPath,
+      row.milestone,
+    ].join("|");
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
 }
 
 export function buildLayerDebtEvidence(
