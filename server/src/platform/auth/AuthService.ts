@@ -21,8 +21,8 @@ import type {
 } from "./AuthTypes";
 import { ROLE_PERMISSIONS } from "./AuthTypes";
 
-const TOKEN_EXPIRY_MS = 24 * 60 * 60 * 1000; // 24h
-const REFRESH_EXPIRY_MS = 7 * 24 * 60 * 60 * 1000; // 7d
+const TOKEN_EXPIRY_MS = 24 * 60 * 60 * 1000;
+const REFRESH_EXPIRY_MS = 7 * 24 * 60 * 60 * 1000;
 const BCRYPT_COST_FACTOR = 12;
 const CREDENTIALS_COLLECTION = "auth_credentials";
 const SESSIONS_COLLECTION = "auth_sessions";
@@ -35,7 +35,6 @@ interface StoredCredentials extends AuthCredentials {
 
 interface StoredAuthSession extends AuthSession {
   refreshTokenDigest?: string;
-  /** Pre-HARDEN-2A compatibility field, removed during startup migration. */
   refreshToken?: string;
 }
 
@@ -67,39 +66,22 @@ export interface PreparedAuthRegistration {
 export class AuthService {
   constructor(
     private readonly storage: StorageProvider = new InMemoryStorageProvider(),
-  ) {
-    // In-memory and already-hydrated providers migrate immediately. PostgreSQL
-    // is migrated a second time after its cache is hydrated during bootstrap.
-    this.migrateLegacyRefreshCredentials();
-  }
+  ) {}
 
-  register(
+  async registerDurable(
     email: string,
     password: string,
     userId: string,
     role: UserRole = "creator",
-  ): boolean {
-    const normalizedEmail = this.normalizeEmail(email);
-    if (
-      this.storage.get<StoredCredentials>(
-        CREDENTIALS_COLLECTION,
-        normalizedEmail,
-      )
-    ) {
-      return false;
+  ): Promise<boolean> {
+    const prepared = this.prepareRegistration(email, password, userId, role);
+    try {
+      await this.storage.applyDurableBatch(prepared.mutations);
+      return true;
+    } catch (error) {
+      if (error instanceof DurableStorageConflictError) return false;
+      throw error;
     }
-    const passwordHash = bcrypt.hashSync(password, BCRYPT_COST_FACTOR);
-    this.storage.set<StoredCredentials>(
-      CREDENTIALS_COLLECTION,
-      normalizedEmail,
-      {
-        email: normalizedEmail,
-        passwordHash,
-        userId,
-      },
-    );
-    this.storage.set<UserRole>(ROLES_COLLECTION, userId, role);
-    return true;
   }
 
   prepareRegistration(
@@ -186,15 +168,6 @@ export class AuthService {
     return this.toLoginResult(prepared.issued, userId, role);
   }
 
-  logout(token: string): boolean {
-    const session = this.storage.get<StoredAuthSession>(
-      SESSIONS_COLLECTION,
-      token,
-    );
-    if (!session) return false;
-    return this.deleteSession(session);
-  }
-
   async logoutDurable(token: string): Promise<boolean> {
     const session = this.storage.get<StoredAuthSession>(
       SESSIONS_COLLECTION,
@@ -226,55 +199,12 @@ export class AuthService {
     );
     if (!session) return null;
     if (Date.now() > session.expiresAt) {
-      this.deleteSession(session);
+      await this.logoutDurable(session.token);
       return null;
     }
     const updated = { ...session, lastActivity: Date.now() };
     await this.storage.setDurable(SESSIONS_COLLECTION, token, updated);
     return this.toPublicSession(updated);
-  }
-
-  refreshSession(refreshToken: string): LoginResult {
-    const now = Date.now();
-    const refreshTokenDigest = this.digestRefreshToken(refreshToken);
-    const credential = this.storage.get<RefreshCredentialRecord>(
-      REFRESH_CREDENTIALS_COLLECTION,
-      refreshTokenDigest,
-    );
-    if (!credential) {
-      return { success: false, error: "Invalid refresh token" };
-    }
-
-    const session = this.storage.get<StoredAuthSession>(
-      SESSIONS_COLLECTION,
-      credential.sessionToken,
-    );
-    if (
-      !session ||
-      !this.matchesRefreshCredential(
-        session.refreshTokenDigest,
-        refreshToken,
-      ) ||
-      now >= credential.expiresAt
-    ) {
-      this.storage.delete(REFRESH_CREDENTIALS_COLLECTION, refreshTokenDigest);
-      if (session && now >= credential.expiresAt) {
-        this.deleteSession(session);
-      }
-      return { success: false, error: "Invalid refresh token" };
-    }
-
-    if (
-      !this.storage.delete(
-        REFRESH_CREDENTIALS_COLLECTION,
-        refreshTokenDigest,
-      ) ||
-      !this.storage.delete(SESSIONS_COLLECTION, session.token)
-    ) {
-      return { success: false, error: "Invalid refresh token" };
-    }
-    const issued = this.createSession(session.userId, session.role);
-    return this.toLoginResult(issued, session.userId, session.role);
   }
 
   async refreshSessionDurable(refreshToken: string): Promise<LoginResult> {
@@ -330,7 +260,7 @@ export class AuthService {
     return this.toLoginResult(prepared.issued, session.userId, session.role);
   }
 
-  migrateLegacyRefreshCredentials(): number {
+  async migrateLegacyRefreshCredentialsDurable(): Promise<number> {
     let migrated = 0;
     for (const session of this.storage.list<StoredAuthSession>(
       SESSIONS_COLLECTION,
@@ -360,32 +290,40 @@ export class AuthService {
         ...this.toPublicSession(session),
         ...(digest ? { refreshTokenDigest: digest } : {}),
       };
+      const mutations: DurableMutation[] = [];
       if (sessionChanged) {
-        this.storage.set(
-          SESSIONS_COLLECTION,
-          migratedSession.token,
-          migratedSession,
-        );
+        mutations.push({
+          operation: "set",
+          collection: SESSIONS_COLLECTION,
+          id: migratedSession.token,
+          data: migratedSession,
+        });
       }
 
       let indexChanged = false;
-      if (digest && refreshExpiresAt) {
-        if (
-          existingIndex?.sessionToken !== migratedSession.token ||
-          existingIndex.expiresAt !== refreshExpiresAt
-        ) {
-          this.storage.set<RefreshCredentialRecord>(
-            REFRESH_CREDENTIALS_COLLECTION,
-            digest,
-            {
-              sessionToken: migratedSession.token,
-              expiresAt: refreshExpiresAt,
-            },
-          );
-          indexChanged = true;
-        }
+      if (
+        digest &&
+        refreshExpiresAt &&
+        (existingIndex?.sessionToken !== migratedSession.token ||
+          existingIndex.expiresAt !== refreshExpiresAt)
+      ) {
+        mutations.push({
+          operation: "set",
+          collection: REFRESH_CREDENTIALS_COLLECTION,
+          id: digest,
+          data: {
+            sessionToken: migratedSession.token,
+            expiresAt: refreshExpiresAt,
+          } satisfies RefreshCredentialRecord,
+        });
+        indexChanged = true;
       }
-      if (sessionChanged || indexChanged) migrated += 1;
+      if (mutations.length > 0) {
+        await this.storage.applyDurableBatch(mutations);
+        migrated += 1;
+      } else if (sessionChanged || indexChanged) {
+        migrated += 1;
+      }
     }
     return migrated;
   }
@@ -398,21 +336,6 @@ export class AuthService {
 
   async setRole(userId: string, role: UserRole): Promise<void> {
     await this.storage.setDurable<UserRole>(ROLES_COLLECTION, userId, role);
-  }
-
-  private createSession(userId: string, role: UserRole): IssuedSession {
-    const prepared = this.prepareSession(userId, role);
-    this.storage.set<StoredAuthSession>(
-      SESSIONS_COLLECTION,
-      prepared.storedSession.token,
-      prepared.storedSession,
-    );
-    this.storage.set<RefreshCredentialRecord>(
-      REFRESH_CREDENTIALS_COLLECTION,
-      prepared.refreshTokenDigest,
-      prepared.refreshCredential,
-    );
-    return prepared.issued;
   }
 
   private prepareSession(userId: string, role: UserRole): PreparedSession {
@@ -515,15 +438,5 @@ export class AuthService {
       expiresAt: session.expiresAt,
       lastActivity: session.lastActivity,
     };
-  }
-
-  private deleteSession(session: StoredAuthSession): boolean {
-    if (this.isRefreshDigest(session.refreshTokenDigest)) {
-      this.storage.delete(
-        REFRESH_CREDENTIALS_COLLECTION,
-        session.refreshTokenDigest,
-      );
-    }
-    return this.storage.delete(SESSIONS_COLLECTION, session.token);
   }
 }
