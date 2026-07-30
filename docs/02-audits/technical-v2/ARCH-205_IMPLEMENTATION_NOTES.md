@@ -16,6 +16,7 @@ Tracks issue #108 and completes the remaining protected evidence work for ARCH-2
 - Replaced duplicated decision logic in `scripts/validate-boundaries.ts` with the pure core.
 - Added focused Vitest fixtures for manifest completeness, stale subsystem declarations, unknown layers, duplicate and stale exceptions, forbidden layer edges, allowlisted debt, cycle normalization, non-allowlisted cycles, critical violations and unresolved imports.
 - Added filesystem-backed AST fixtures proving static import, re-export, dynamic import and CommonJS discovery.
+- Added review-driven regression coverage for malformed exception reasons and unresolved internal targets.
 - Regenerated canonical tracked-file inventories and protected the result in CI.
 
 ## Remaining work
