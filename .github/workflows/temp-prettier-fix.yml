@@ -1,0 +1,30 @@
+name: Temporary Prettier Fix
+
+on:
+  pull_request:
+
+permissions:
+  contents: write
+
+jobs:
+  format-and-commit:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/arch-205-boundary-fixtures
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+      - run: npm ci
+      - name: Format boundary regression fixture
+        run: node node_modules/prettier/bin/prettier.cjs --write server/src/__tests__/architecture.boundary-gate.test.ts
+      - name: Commit formatter output
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add server/src/__tests__/architecture.boundary-gate.test.ts
+          git commit -m "style(architecture): format boundary regression fixture"
+          git push origin HEAD:agent/arch-205-boundary-fixtures
