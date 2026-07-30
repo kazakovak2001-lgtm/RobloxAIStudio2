@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  canonicalCycle,
   collectLayerViolations,
   evaluateBoundaryGate,
   validateManifestModel,
@@ -72,6 +73,18 @@ describe("architecture boundary gate core", () => {
 
     expect(errors).toContain("Unmodeled server/src subsystem: 'new-domain'.");
     expect(errors).toContain("Manifest models non-subsystem path: 'routes'.");
+  });
+
+  it("normalizes manifest paths before subsystem modeling", () => {
+    const manifest = createManifest();
+    manifest.domains.core.path = "server/src/core/../routes";
+
+    const errors = validateManifestModel(manifest, REAL_SUBSYSTEMS);
+
+    expect(errors).toContain("Unmodeled server/src subsystem: 'core'.");
+    expect(errors).toContain(
+      "Subsystem 'routes' is modeled by both 'core' and 'routes'.",
+    );
   });
 
   it("rejects invalid layer exceptions", () => {
@@ -158,11 +171,29 @@ describe("architecture boundary gate core", () => {
     });
   });
 
-  it("normalizes and rejects cycles", () => {
+  it("normalizes cycle rotation without reversing edge direction", () => {
+    const forward = ["planning", "socket", "execution", "planning"];
+    const rotated = ["socket", "execution", "planning", "socket"];
+    const reversed = ["planning", "execution", "socket", "planning"];
+
+    expect(canonicalCycle(forward)).toBe(canonicalCycle(rotated));
+    expect(canonicalCycle(forward)).not.toBe(canonicalCycle(reversed));
+
+    const rejected = evaluateBoundaryGate({
+      ...baseGateInput(),
+      cycles: [reversed],
+      allowedCycles: [forward],
+    });
+
+    expect(rejected.status).toBe("FAIL");
+    expect(rejected.reasons).toContain("cycle");
+  });
+
+  it("acknowledges only explicitly allowlisted directed cycles", () => {
     const acknowledged = evaluateBoundaryGate({
       ...baseGateInput(),
       cycles: [["planning", "socket", "execution", "planning"]],
-      allowedCycles: [["execution", "socket", "planning"]],
+      allowedCycles: [["execution", "planning", "socket"]],
     });
 
     expect(acknowledged.status).toBe("PASS");
