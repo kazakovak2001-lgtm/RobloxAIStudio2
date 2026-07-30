@@ -13,19 +13,19 @@
 
 ## Executive gaps
 
-| Expected | Actual | Impact | Required action |
-|---|---|---|---|
-| Exhaustive domain manifest | Real subsystem count exceeds modeled domains; stale and unknown paths remain | Imports can bypass policy | Complete `ARCH-2B` |
-| Manifest validation fails closed | `RuntimeBoundaryGuard.validate()` can treat a missing or parse-invalid manifest as skipped/passed | Enforcement can report healthy while disabled | Missing or invalid manifests must produce a failing result and non-zero exit |
-| Report and CI agree | Report can be `FAIL` while CLI exits successfully | Green CI can certify a failed graph | Align report, console and exit semantics |
-| Layer rules enforced | Declared `canImportFrom` rules are not fully executable | Architecture claims are documentary | Enforce with positive/negative tests |
-| Complete dependency graph | Current extraction misses re-exports and selected import forms | Hidden edges and cycles | Use TypeScript AST traversal |
-| Unknown domains rejected | Unknown internal modules can be skipped | Unmodeled dependencies escape controls | Fail manifest validation |
-| One execution ownership model | PlanExecutor, Pipeline v2, autonomous and integration runtime overlap | Different semantics by endpoint | Publish and enforce ownership matrix |
-| Autonomous means real engines | Mounted orchestrator simulates phases | Product claims exceed behavior | Connect engines or relabel preview |
-| HTTP success means durable write | Major project, blueprint, chat and generation-history flows are acknowledged; auth/storage convergence and residual consumers remain | Partial phantom-success risk remains | Finish `DURABILITY-2E` and land PR #107 |
-| Production RBAC exists | Roles/middleware exist but are not mounted | Authorization claims exceed enforcement | Mount or retire claims |
-| Native Studio content | Lua is native; other content is metadata | Asset/GUI/place claims remain partial | Keep separate `STUDIO-2F` scope |
+| Expected                         | Actual                                                                                                                               | Impact                                        | Required action                                                              |
+| -------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ | --------------------------------------------- | ---------------------------------------------------------------------------- |
+| Exhaustive domain manifest       | Real subsystem count exceeds modeled domains; stale and unknown paths remain                                                         | Imports can bypass policy                     | Complete `ARCH-2B`                                                           |
+| Manifest validation fails closed | `RuntimeBoundaryGuard.validate()` can treat a missing or parse-invalid manifest as skipped/passed                                    | Enforcement can report healthy while disabled | Missing or invalid manifests must produce a failing result and non-zero exit |
+| Report and CI agree              | Report can be `FAIL` while CLI exits successfully                                                                                    | Green CI can certify a failed graph           | Align report, console and exit semantics                                     |
+| Layer rules enforced             | Declared `canImportFrom` rules are not fully executable                                                                              | Architecture claims are documentary           | Enforce with positive/negative tests                                         |
+| Complete dependency graph        | Current extraction misses re-exports and selected import forms                                                                       | Hidden edges and cycles                       | Use TypeScript AST traversal                                                 |
+| Unknown domains rejected         | Unknown internal modules can be skipped                                                                                              | Unmodeled dependencies escape controls        | Fail manifest validation                                                     |
+| One execution ownership model    | PlanExecutor, Pipeline v2, autonomous and integration runtime overlap                                                                | Different semantics by endpoint               | Publish and enforce ownership matrix                                         |
+| Autonomous means real engines    | Mounted orchestrator simulates phases                                                                                                | Product claims exceed behavior                | Connect engines or relabel preview                                           |
+| HTTP success means durable write | Major project, blueprint, chat and generation-history flows are acknowledged; auth/storage convergence and residual consumers remain | Partial phantom-success risk remains          | Finish `DURABILITY-2E` and land PR #107                                      |
+| Production RBAC exists           | Roles/middleware exist but are not mounted                                                                                           | Authorization claims exceed enforcement       | Mount or retire claims                                                       |
+| Native Studio content            | Lua is native; other content is metadata                                                                                             | Asset/GUI/place claims remain partial         | Keep separate `STUDIO-2F` scope                                              |
 
 ## Closed or materially reduced gaps since original TECH-AUDIT-2
 
@@ -54,15 +54,15 @@ These items should remain in historical evidence but are not current blockers. T
 
 ## Runtime ownership gaps
 
-| Concern | Canonical path | Competing paths | Disposition |
-|---|---|---|---|
-| Generation | `PlanExecutor` via `GameGenerationService` | Pipeline v2, autonomous orchestrator, runtime controller | Keep one core; bound adapters |
-| Agent registry | `agents/core/AgentRegistry` | Alternate registries/orchestrators | Prevent new composition roots |
-| Providers | `ai/providerFactory.ts` and top-level adapters | `providers/ai` | Consolidate useful behavior or retire |
-| Prompts | Versioned PromptEngine | Legacy fallback | Time-box fallback |
-| Memory | MemoryEngine + AgentMemoryBridge | ai memory, knowledge memory, local Maps | Define one durable contract |
-| Collaboration | mounted agents/collaboration | top-level collaboration and alternate stacks | Defer product expansion |
-| Studio | studio/v2 shared runtime and canonical plugin | older/import direction classes | Preserve verified outbound path |
+| Concern        | Canonical path                                 | Competing paths                                          | Disposition                           |
+| -------------- | ---------------------------------------------- | -------------------------------------------------------- | ------------------------------------- |
+| Generation     | `PlanExecutor` via `GameGenerationService`     | Pipeline v2, autonomous orchestrator, runtime controller | Keep one core; bound adapters         |
+| Agent registry | `agents/core/AgentRegistry`                    | Alternate registries/orchestrators                       | Prevent new composition roots         |
+| Providers      | `ai/providerFactory.ts` and top-level adapters | `providers/ai`                                           | Consolidate useful behavior or retire |
+| Prompts        | Versioned PromptEngine                         | Legacy fallback                                          | Time-box fallback                     |
+| Memory         | MemoryEngine + AgentMemoryBridge               | ai memory, knowledge memory, local Maps                  | Define one durable contract           |
+| Collaboration  | mounted agents/collaboration                   | top-level collaboration and alternate stacks             | Defer product expansion               |
+| Studio         | studio/v2 shared runtime and canonical plugin  | older/import direction classes                           | Preserve verified outbound path       |
 
 ## Data and durability gaps
 

@@ -25,17 +25,17 @@ In progress:
 
 ## Required delivery sequence
 
-| Order | Milestone | Priority | Status | Exit gate |
-|---:|---|---|---|---|
-| 1 | `ARCH-2B` | Critical | Next | Exhaustive fail-closed architecture gate; no false-success report |
-| 2 | `FRONTEND-2C` | High | Planned | Zero-error lint/format, protected gates and bundle budgets |
-| 3 | `RUNTIME-2D` | High | Planned | One authoritative runtime/provider/memory/orchestration ownership map |
-| 4 | `DURABILITY-2E` | High | In progress | Land convergence, finish consumer migration and classify process-local state |
-| 5 | `SECURITY-2G` | High | Planned | Protected dependency/SAST/secret/image/SBOM policy and RBAC decision |
-| 6 | `DOC-202` | Medium | Planned | One current authority chain; stale audits bannered; generated inventories |
-| 7 | `STUDIO-2F` | Medium | Deferred | Native assets/GUI/runtime/place delivery with desktop evidence |
-| 8 | `AUTONOMY-3A` | High | Deferred | Real engine-backed autonomous phases and restart recovery |
-| 9 | `COLLAB-3B` | Medium | Deferred | Re-evaluated only after preceding gates |
+| Order | Milestone       | Priority | Status      | Exit gate                                                                    |
+| ----: | --------------- | -------- | ----------- | ---------------------------------------------------------------------------- |
+|     1 | `ARCH-2B`       | Critical | Next        | Exhaustive fail-closed architecture gate; no false-success report            |
+|     2 | `FRONTEND-2C`   | High     | Planned     | Zero-error lint/format, protected gates and bundle budgets                   |
+|     3 | `RUNTIME-2D`    | High     | Planned     | One authoritative runtime/provider/memory/orchestration ownership map        |
+|     4 | `DURABILITY-2E` | High     | In progress | Land convergence, finish consumer migration and classify process-local state |
+|     5 | `SECURITY-2G`   | High     | Planned     | Protected dependency/SAST/secret/image/SBOM policy and RBAC decision         |
+|     6 | `DOC-202`       | Medium   | Planned     | One current authority chain; stale audits bannered; generated inventories    |
+|     7 | `STUDIO-2F`     | Medium   | Deferred    | Native assets/GUI/runtime/place delivery with desktop evidence               |
+|     8 | `AUTONOMY-3A`   | High     | Deferred    | Real engine-backed autonomous phases and restart recovery                    |
+|     9 | `COLLAB-3B`     | Medium   | Deferred    | Re-evaluated only after preceding gates                                      |
 
 `DOC-202` follows the core architecture/runtime/durability/security control decisions and precedes optional product-scope expansion in `STUDIO-2F`. It is not a dependency for implementing native Studio code, but it is a governance gate for claiming that capability as current product truth.
 

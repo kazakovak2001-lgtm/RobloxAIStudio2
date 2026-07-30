@@ -13,24 +13,24 @@
 
 ## Register
 
-| ID | Priority | Area | Status | Debt / action |
-|---|---|---|---|---|
-| TAV2-001 | P0 | Authentication | Closed | Cookie-only browser response contract implemented and tested |
-| TAV2-002 | P0 | Frontend/Studio | Closed | Real Studio verification parsed and rendered |
-| TAV2-003 | P0 | Architecture | Open | Manifest/parser/unknown-domain/layer/cycle/exit semantics incomplete; missing/invalid manifests do not fail closed |
-| TAV2-004 | P1 | Autonomous runtime | Open | Mounted autonomous phases simulate work |
-| TAV2-005 | P1 | Frontend quality | Open | Establish zero-error lint/format and protected gates |
-| TAV2-006 | P1 | Durability | Partial | Major project/blueprint/chat/history paths acknowledge persistence; auth/storage convergence and residual consumers remain |
-| TAV2-007 | P1 | Cross-repo contract | Closed | Exact 40-check production contract protected in both repos |
-| TAV2-008 | P1 | Runtime ownership | Open | Multiple execution/provider/memory/orchestration stacks overlap |
-| TAV2-009 | P1 | Security automation | Open | Dependency, SAST, secret, image and SBOM policy incomplete |
-| TAV2-010 | P1 | Authorization | Open | RBAC definitions exist but are not mounted on routes |
-| TAV2-011 | P2 | Execution | Open | Public parallel option is not implemented |
-| TAV2-012 | P2 | Frontend performance | Open | Bundle hotspot and no budgets |
-| TAV2-013 | P2 | State ownership | Open | Process-local state lacks cache/telemetry/preview/durable classification |
-| TAV2-014 | P2 | Documentation | Partial | Active terminology and current baselines corrected; broader authority consolidation remains |
-| TAV2-015 | P3 | Studio scope | Open | Native assets/GUI/place/runtime validation incomplete |
-| TAV2-016 | P3 | Dependency/runtime | Open | Package and compiled ESM hygiene remain |
+| ID       | Priority | Area                 | Status  | Debt / action                                                                                                              |
+| -------- | -------- | -------------------- | ------- | -------------------------------------------------------------------------------------------------------------------------- |
+| TAV2-001 | P0       | Authentication       | Closed  | Cookie-only browser response contract implemented and tested                                                               |
+| TAV2-002 | P0       | Frontend/Studio      | Closed  | Real Studio verification parsed and rendered                                                                               |
+| TAV2-003 | P0       | Architecture         | Open    | Manifest/parser/unknown-domain/layer/cycle/exit semantics incomplete; missing/invalid manifests do not fail closed         |
+| TAV2-004 | P1       | Autonomous runtime   | Open    | Mounted autonomous phases simulate work                                                                                    |
+| TAV2-005 | P1       | Frontend quality     | Open    | Establish zero-error lint/format and protected gates                                                                       |
+| TAV2-006 | P1       | Durability           | Partial | Major project/blueprint/chat/history paths acknowledge persistence; auth/storage convergence and residual consumers remain |
+| TAV2-007 | P1       | Cross-repo contract  | Closed  | Exact 40-check production contract protected in both repos                                                                 |
+| TAV2-008 | P1       | Runtime ownership    | Open    | Multiple execution/provider/memory/orchestration stacks overlap                                                            |
+| TAV2-009 | P1       | Security automation  | Open    | Dependency, SAST, secret, image and SBOM policy incomplete                                                                 |
+| TAV2-010 | P1       | Authorization        | Open    | RBAC definitions exist but are not mounted on routes                                                                       |
+| TAV2-011 | P2       | Execution            | Open    | Public parallel option is not implemented                                                                                  |
+| TAV2-012 | P2       | Frontend performance | Open    | Bundle hotspot and no budgets                                                                                              |
+| TAV2-013 | P2       | State ownership      | Open    | Process-local state lacks cache/telemetry/preview/durable classification                                                   |
+| TAV2-014 | P2       | Documentation        | Partial | Active terminology and current baselines corrected; broader authority consolidation remains                                |
+| TAV2-015 | P3       | Studio scope         | Open    | Native assets/GUI/place/runtime validation incomplete                                                                      |
+| TAV2-016 | P3       | Dependency/runtime   | Open    | Package and compiled ESM hygiene remain                                                                                    |
 
 ## Definitions of done
 

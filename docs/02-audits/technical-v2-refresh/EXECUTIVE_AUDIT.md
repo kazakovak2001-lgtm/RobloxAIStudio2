@@ -33,25 +33,25 @@ Still open or partial:
 
 ## Evidence dashboard
 
-| Area | Result | Completion | Decision |
-|---|---:|---:|---|
-| Backend repository and CI | Strong | 94% | Production-capable baseline |
-| Frontend build and release | Strong | 86% | Operational; quality debt remains |
-| Authentication | Strong | 92% | Browser credential leak closed; atomic convergence pending |
-| Authorization | Prototype | 30% | Ownership works; RBAC not mounted |
-| Architecture enforcement | Partial | 52% | P0 gate; complete ARCH-2B next |
-| AI providers and agents | Operational | 76% | Canonical path exists; overlap remains |
-| Prompt and context | Operational | 80% | Real and tested |
-| Memory and learning | Partial | 58% | Fragmented and mainly process-local |
-| Planning and execution | Partial | 74% | PlanExecutor canonical; recovery/parallel gaps |
-| Autonomous pipeline | Prototype | 35% | Lifecycle exists; engines simulated |
-| Validation and artifacts | Operational | 84% | Real generation-to-Studio path |
-| Studio bridge verification | Complete core | 95% | Desktop verified |
-| Studio native assets/GUI/place | Prototype | 45% | Metadata only outside Lua core |
-| Durable storage | Operational/partial | 86% | Major flows acknowledged; convergence and state inventory remain |
-| Testing | Strong backend / mixed frontend | 84% | Shared contract and durability regressions protected |
-| Security automation | Prototype | 42% | No full dependency/SAST/SBOM policy |
-| Documentation governance | Partial | 60% | Current refresh exists; authority cleanup remains |
+| Area                           |                          Result | Completion | Decision                                                         |
+| ------------------------------ | ------------------------------: | ---------: | ---------------------------------------------------------------- |
+| Backend repository and CI      |                          Strong |        94% | Production-capable baseline                                      |
+| Frontend build and release     |                          Strong |        86% | Operational; quality debt remains                                |
+| Authentication                 |                          Strong |        92% | Browser credential leak closed; atomic convergence pending       |
+| Authorization                  |                       Prototype |        30% | Ownership works; RBAC not mounted                                |
+| Architecture enforcement       |                         Partial |        52% | P0 gate; complete ARCH-2B next                                   |
+| AI providers and agents        |                     Operational |        76% | Canonical path exists; overlap remains                           |
+| Prompt and context             |                     Operational |        80% | Real and tested                                                  |
+| Memory and learning            |                         Partial |        58% | Fragmented and mainly process-local                              |
+| Planning and execution         |                         Partial |        74% | PlanExecutor canonical; recovery/parallel gaps                   |
+| Autonomous pipeline            |                       Prototype |        35% | Lifecycle exists; engines simulated                              |
+| Validation and artifacts       |                     Operational |        84% | Real generation-to-Studio path                                   |
+| Studio bridge verification     |                   Complete core |        95% | Desktop verified                                                 |
+| Studio native assets/GUI/place |                       Prototype |        45% | Metadata only outside Lua core                                   |
+| Durable storage                |             Operational/partial |        86% | Major flows acknowledged; convergence and state inventory remain |
+| Testing                        | Strong backend / mixed frontend |        84% | Shared contract and durability regressions protected             |
+| Security automation            |                       Prototype |        42% | No full dependency/SAST/SBOM policy                              |
+| Documentation governance       |                         Partial |        60% | Current refresh exists; authority cleanup remains                |
 
 No aggregate production-readiness percentage is promoted as executable truth. The area values are planning estimates; release decisions must use the named exit gates and exact CI evidence.
 
