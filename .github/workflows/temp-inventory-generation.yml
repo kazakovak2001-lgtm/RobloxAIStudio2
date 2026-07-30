@@ -4,6 +4,9 @@ on:
   push:
     branches:
       - agent/arch-205-boundary-fixtures
+  pull_request:
+    branches:
+      - release/cutover-1e-candidate
 
 permissions:
   contents: read
