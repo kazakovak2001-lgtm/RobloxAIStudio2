@@ -157,10 +157,10 @@ describe("Persistence Infrastructure", () => {
     expect(provider.get("tx_test", "2")).toEqual({ data: "txn-2" });
   });
 
-  it("keeps identity, session, and user records across service recreation", () => {
+  it("keeps identity, session, and user records across service recreation", async () => {
     const storage = new InMemoryStorageProvider();
     const users = new UserRepository(storage);
-    const user = users.create({
+    const user = await users.createDurable({
       email: "creator@example.com",
       displayName: "Creator",
     });
