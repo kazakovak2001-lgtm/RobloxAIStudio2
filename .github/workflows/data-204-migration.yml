@@ -52,6 +52,7 @@ jobs:
               Path("server/src/__tests__/persistence.test.ts"),
               Path("server/src/__tests__/bugConditionExploration.test.ts"),
               Path("server/src/routes/__tests__/projects.runtime.test.ts"),
+              Path("server/src/__tests__/productLayer.test.ts"),
           ]
           total_callers = 0
           for test_path in target_tests:
@@ -74,7 +75,7 @@ jobs:
               total_callers += auth_count + service_count + shared_count
               test_path.write_text(test)
 
-          if total_callers < 10:
+          if total_callers < 15:
               raise SystemExit(f"Unexpectedly small synchronous caller inventory: {total_callers}")
 
           preservation_path = Path("server/src/__tests__/preservationProperty.test.ts")
@@ -143,6 +144,7 @@ jobs:
             server/src/__tests__/persistence.test.ts \
             server/src/__tests__/bugConditionExploration.test.ts \
             server/src/routes/__tests__/projects.runtime.test.ts \
+            server/src/__tests__/productLayer.test.ts \
             config/durability/compatibility-write-inventory.json
           npm run typecheck
           npm run lint
@@ -152,7 +154,8 @@ jobs:
             server/src/__tests__/harden2a.auth-contract.test.ts \
             server/src/__tests__/persistence.test.ts \
             server/src/__tests__/bugConditionExploration.test.ts \
-            server/src/routes/__tests__/projects.runtime.test.ts
+            server/src/routes/__tests__/projects.runtime.test.ts \
+            server/src/__tests__/productLayer.test.ts
           npm run validate:repository
 
       - name: Commit migration and remove workflow
@@ -167,6 +170,7 @@ jobs:
             server/src/__tests__/persistence.test.ts \
             server/src/__tests__/bugConditionExploration.test.ts \
             server/src/routes/__tests__/projects.runtime.test.ts \
+            server/src/__tests__/productLayer.test.ts \
             config/durability/compatibility-write-inventory.json
           git commit -m "refactor(auth): remove synchronous legacy login compatibility"
           git push origin HEAD:${{ github.head_ref }}
