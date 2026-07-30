@@ -1,0 +1,1 @@
+Final temporary synchronize trigger for PR #118. The workflow removes this marker after successful transformation.
