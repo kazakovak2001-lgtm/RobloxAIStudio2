@@ -52,11 +52,7 @@ describe("Phase 10: Identity & Access Management", () => {
     });
 
     it("deactivates user", async () => {
-      const { user } = await service.createUser(
-        "x@y.com",
-        "TestX",
-        "pass123",
-      );
+      const { user } = await service.createUser("x@y.com", "TestX", "pass123");
       await service.deactivateUser(user!.id);
       const access = service.validateAccess(user!.id);
       expect(access.allowed).toBe(false);
