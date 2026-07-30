@@ -1,245 +1,141 @@
-# Technical Audit v2.0 — Roadmap Update
+# Technical Audit v2.0 Refresh — Roadmap Update
 
-**Effective date:** July 28, 2026  
-**Supersedes:** “TECH-AUDIT-2 next” and the assumption that every historical F-1–F-11 completion label equals current production completeness.
+**Backend release baseline:** `a22d060b7fa44607c97a30d60b633e5545f8cfdb`  
+**Frontend contract baseline:** `95824451a92a9cdfe331dbc678bbe98467b53021`  
+**Pending, excluded from baseline:** backend PR #107 at `83d6b08ac15f67ac6e836bffb38506e3b32c45ab`
 
-## Roadmap decision
+## Current state
 
-The cutover and cleanup sequence remains complete. The next work is not a new feature wave. It is a correctness and consolidation sequence derived from executable evidence.
+Completed:
 
-```text
-TECH-AUDIT-2
-    ↓
-HARDEN-2A
-    ↓
-ARCH-2B
-    ↓
-FRONTEND-2C
-    ↓
-RUNTIME-2D
-    ↓
-DURABILITY-2E
-    ↓
-STUDIO-2F
-    ↓
-F-12 re-evaluation
-```
+- independent backend/frontend release topology;
+- durable project/blueprint/history core;
+- standalone Workspace;
+- desktop-verified Studio artifact delivery;
+- legacy embedded frontend removal and invariant guard;
+- TECH-AUDIT-2 baseline;
+- HARDEN-2A browser auth, Studio-state and cross-repository contract corrections;
+- acknowledged project creation/duplication, blueprint deletion, chat creation/deletion, and generation-history/pipeline reservation;
+- protected rollback, restart and post-removal invariant evidence for the landed durability slices.
 
-No phase may create a second web client, Studio protocol, production composition root, or canonical generation engine.
+In progress:
 
-## Ordered delivery plan
+- auth/storage durability convergence is ready in PR #107 but is not part of this release baseline;
+- process-local state ownership and lifecycle classification remain incomplete.
 
-| Order | Phase         | Objective                                                                           | Entry dependency             | Exit gate                                                                                                             |
-| ----: | ------------- | ----------------------------------------------------------------------------------- | ---------------------------- | --------------------------------------------------------------------------------------------------------------------- |
-|     0 | TECH-AUDIT-2  | Establish the first evidence-based two-repository architecture baseline             | CUTOVER-1 + CLEANUP complete | Seven audit deliverables reviewed; project-control docs point to them                                                 |
-|     1 | HARDEN-2A     | Close immediate credential and cross-repository correctness gaps                    | TECH-AUDIT-2                 | No credentials in browser JSON; Frontend shows real Studio verification; protected 40-check production contract suite |
-|     2 | ARCH-2B       | Make architecture enforcement exhaustive and truthful                               | HARDEN-2A                    | All 46 subsystems classified; AST gate; unknown domains rejected; report/exit/cycle policy agree                      |
-|     3 | FRONTEND-2C   | Establish a clean quality and performance baseline                                  | HARDEN-2A                    | Zero lint warnings/errors, format gate, bundle budget, existing SSR/responsive/E2E gates green                        |
-|     4 | RUNTIME-2D    | Consolidate execution, provider, orchestration, collaboration, and memory ownership | ARCH-2B                      | Every overlapping stack has a disposition; autonomous API is real or explicitly preview; no new deprecated consumers  |
-|     5 | DURABILITY-2E | Align product-state claims with request-level persistence and restart recovery      | RUNTIME-2D                   | Awaited durable mutations; failure semantics; classified/migrated operational stores; restart tests                   |
-|     6 | STUDIO-2F     | Extend the verified Studio path to native assets/GUI/place scope, if still desired  | DURABILITY-2E                | Native-instance contract, exact receipts, runtime validation, and real desktop evidence                               |
-|     7 | F-12 decision | Decide whether collaborative development is still the highest-value expansion       | All prior gates              | Architecture/durability review and an explicit ADR                                                                    |
+## Required delivery sequence
 
-## Phase 0 — TECH-AUDIT-2
+| Order | Milestone       | Priority | Status      | Exit gate                                                                    |
+| ----: | --------------- | -------- | ----------- | ---------------------------------------------------------------------------- |
+|     1 | `ARCH-2B`       | Critical | Next        | Exhaustive fail-closed architecture gate; no false-success report            |
+|     2 | `FRONTEND-2C`   | High     | Planned     | Zero-error lint/format, protected gates and bundle budgets                   |
+|     3 | `RUNTIME-2D`    | High     | Planned     | One authoritative runtime/provider/memory/orchestration ownership map        |
+|     4 | `DURABILITY-2E` | High     | In progress | Land convergence, finish consumer migration and classify process-local state |
+|     5 | `SECURITY-2G`   | High     | Planned     | Protected dependency/SAST/secret/image/SBOM policy and RBAC decision         |
+|     6 | `DOC-202`       | Medium   | Planned     | One current authority chain; stale audits bannered; generated inventories    |
+|     7 | `STUDIO-2F`     | Medium   | Deferred    | Native assets/GUI/runtime/place delivery with desktop evidence               |
+|     8 | `AUTONOMY-3A`   | High     | Deferred    | Real engine-backed autonomous phases and restart recovery                    |
+|     9 | `COLLAB-3B`     | Medium   | Deferred    | Re-evaluated only after preceding gates                                      |
 
-### Delivered
+`DOC-202` follows the core architecture/runtime/durability/security control decisions and precedes optional product-scope expansion in `STUDIO-2F`. It is not a dependency for implementing native Studio code, but it is a governance gate for claiming that capability as current product truth.
 
-- repository and module registry across backend, Frontend, and Studio plugin;
-- implementation feature matrix;
-- architecture/specification gap report;
-- prioritized technical debt register;
-- updated delivery sequence;
-- implementable sprint backlog;
-- corrected project-control baseline.
+## ARCH-2B
 
-### Baseline
+Deliver:
 
-- Backend: `a2f596dcb03d92791f96d1b217bf33a534eeddcb`
-- Frontend: `1036c3ef9705d145cb9700cd14268a33d2abdd58`
-- Backend tests: 672 pass, one skip
-- Frontend native tests: seven pass
-- Cross-repository production integration: 40 checks pass
+- exhaustive subsystem manifest;
+- fail-closed handling for missing or parse-invalid manifests;
+- AST dependency extraction including re-exports;
+- unknown-domain failures;
+- executable layer rules;
+- explicit cycle policy;
+- identical report/console/exit semantics;
+- protected negative-control tests.
 
-## Phase 1 — HARDEN-2A
+Stop condition: no runtime expansion before this gate is truthful.
 
-**Progress:** Complete. SEC-201 merged through backend PR #46, FE-201 through
-Frontend PR #14, and reciprocal INT-201 protection through Frontend PR #16 plus
-backend PR #48. DOC-201 issue #49 synchronizes the active auth/release guides,
-marks conflicting historical decisions as superseded, and protects the
-terminology through the native auth-contract test. ARCH-2B is next.
+## FRONTEND-2C
 
-### Scope
+Deliver:
 
-1. **SEC-2A-1 — Cookie-only browser auth responses**
-   - Remove access/refresh tokens from register/login/refresh JSON.
-   - Preserve httpOnly cookie, CLI/API-key, logout, and Socket behavior.
-   - Protect refresh-token storage/rotation.
+- mechanical Prettier baseline in isolated change;
+- zero-error, zero-warning ESLint baseline;
+- protected lint and format checks;
+- direct icon imports;
+- client/SSR bundle budgets;
+- expanded service/read-model/auth/realtime recovery tests.
 
-2. **CONTRACT-2A-1 — Studio verification in the canonical Frontend**
-   - Parse `artifactVerified` and `verificationStatus`.
-   - Render pending/verified/failed states.
-   - Remove the permanent false blocker.
+## RUNTIME-2D
 
-3. **CONTRACT-2A-2 — Protected production-mode integration**
-   - Run the existing 40-check suite with `NODE_ENV=production`.
-   - Record exact backend and Frontend SHAs.
-   - Gate release promotion on the result.
+Deliver:
 
-4. **AUTH-2A-2 — Accurate auth contract**
-   - Replace JWT language with opaque session-token language.
-   - Decide and test the SameSite policy actually used.
-   - State that RBAC is not active until ARCH/RUNTIME work mounts it.
+- canonical ownership map;
+- bounded responsibility for PlanExecutor and Pipeline v2;
+- autonomous path either preview-labeled or engine-backed;
+- alternate provider/agent/memory/integration stacks adopted or retired;
+- import bans for deprecated stacks;
+- removal plan for dead composition roots.
 
-### Non-goals
+## DURABILITY-2E
 
-- no OAuth rewrite;
-- no new token format solely to match old JWT wording;
-- no new Frontend transport;
-- no Studio protocol v2.
+Landed:
 
-### Exit evidence
+- canonical awaitable durable mutation and batch boundaries;
+- acknowledged project creation/duplication;
+- acknowledged blueprint deletion cascades;
+- serialized chat creation/deletion;
+- acknowledged generation-history writes and pre-start pipeline reservation;
+- rejection, rollback, restart and invariant evidence.
 
-- backend and Frontend unit/contract tests;
-- production auth and cross-user isolation;
-- verified Studio status visible in Frontend;
-- response bodies proven credential-free;
-- both repository SHAs captured in CI artifact.
+Remaining:
 
-## Phase 2 — ARCH-2B
+- land auth/storage convergence PR #107;
+- finish the direct-consumer inventory and remove or classify compatibility paths;
+- define uniform retry, reconciliation and conflict semantics;
+- classify route/service Maps as cache, telemetry, preview or durable state;
+- add cache bounds and telemetry retention policy.
 
-### Scope
+## SECURITY-2G
 
-1. Replace regex import parsing with TypeScript AST traversal.
-2. Model all 46 backend subsystem directories.
-3. Remove stale manifest entries and require path existence.
-4. Enforce declared layer directions.
-5. Fail on internal unknown domains.
-6. Reconcile the four current cycles through:
-   - dependency inversion;
-   - an explicit temporary allowlist with owner and expiry; or
-   - a documented non-failing policy reflected consistently in JSON/CLI/CI.
-7. Add manifest drift and negative boundary tests.
+Deliver:
 
-### Exit evidence
+- dependency severity policy and exception register;
+- PR and scheduled audits;
+- SAST/secret/image scanning and SBOM;
+- route-level RBAC implementation or explicit removal of unsupported claims;
+- security evidence attached to protected Merge Gate.
 
-- zero unclassified internal source/target domains;
-- re-export fixtures caught;
-- every layer has positive and negative fixtures;
-- report status and exit code agree;
-- baseline cycle disposition recorded;
-- protected Merge Gate consumes the corrected result.
+## DOC-202
 
-## Phase 3 — FRONTEND-2C
+Deliver:
 
-### Scope
+- banner superseded audits and obsolete architecture maps;
+- replace manual inventory counts with generated evidence;
+- remove unsupported aggregate health claims;
+- link current project-control documents to this refresh;
+- preserve historical evidence without presenting it as current truth.
 
-1. Format the 70-file baseline in a mechanical commit.
-2. Resolve the 12 non-format ESLint warnings intentionally.
-3. Protect lint and `format:check`.
-4. Replace wildcard Lucide import with a typed direct-import map.
-5. Add client/SSR bundle budgets.
-6. Remove `vite-tsconfig-paths` only after clean TypeScript/build evidence.
-7. Expand service/read-model tests for auth and Studio response parsing.
+## STUDIO-2F
 
-### Exit evidence
+Only after core gates remain green:
 
-- zero lint warnings/errors;
-- zero format differences;
-- no client chunk above the agreed budget without an explicit exception;
-- TypeScript, seven existing logic tests, new contract tests, build, SSR image, responsive QA, and production integration all pass.
+- native model/mesh/audio/image insertion;
+- generated ScreenGui/control construction;
+- runtime semantic validator in canonical package;
+- explicit `.rbxl`/place publication decision;
+- real desktop acceptance for each retained capability.
 
-## Phase 4 — RUNTIME-2D
+## Release interpretation
 
-### Ownership decisions
+A green backend CI proves a strong release baseline and the exact shared production contract. It does not prove:
 
-| Concern               | Required result                                                                                                                           |
-| --------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
-| Execution             | `PlanExecutor` stays core; Pipeline v2 receives a bounded artifact/review role or is folded in; runtime-controller disposition documented |
-| Autonomous            | Real canonical service calls and durable checkpoints, or explicit preview naming                                                          |
-| Providers             | One production provider interface/factory; useful retry/health abstractions reused behind it                                              |
-| Agents                | One production registry; alternate metadata/orchestration registries become adapters or are retired                                       |
-| Memory                | One durable memory contract plus clearly ephemeral prompt/session context                                                                 |
-| Collaboration         | Mounted `agents/collaboration` ownership documented; isolated stacks retired or adopted                                                   |
-| Deprecated integrator | Preserved constants/types migrated, then file removed                                                                                     |
+- architecture boundaries are exhaustive or fail-closed;
+- autonomous phases run real engines;
+- every user-visible mutation is durably acknowledged;
+- all process-local state has a defined lifecycle;
+- RBAC is enforced;
+- native Roblox assets/GUI/place publication exist.
 
-### Parallel execution decision
+## Product expansion rule
 
-Implement bounded deterministic DAG parallelism only if performance evidence justifies it. Otherwise remove the unused `parallel` option and claims.
-
-### Exit evidence
-
-- one ownership diagram/table checked by architecture tests;
-- no production import of deprecated/isolated stacks;
-- autonomous lifecycle evidence matches actual engines;
-- retry, failure, cancellation, event, memory, and artifact semantics are consistent across retained entrypoints.
-
-## Phase 5 — DURABILITY-2E
-
-### Scope
-
-1. Add awaitable storage mutation/transaction semantics.
-2. Return HTTP success only after required persistence succeeds.
-3. Specify cache/database reconciliation after write failure.
-4. Classify each active Map/store:
-   - bounded cache;
-   - ephemeral telemetry;
-   - preview-only state;
-   - durable product state.
-5. Persist selected concepts/plans/autonomous sessions/operational state only where product behavior requires it.
-6. Add restart, abrupt-failure, and partial-write tests.
-
-### Exit evidence
-
-- request-level durability tests;
-- no undocumented durable product state in process-only maps;
-- bounded telemetry/cache growth;
-- production health exposes degraded persistence accurately;
-- project ownership and existing restart evidence remain green.
-
-## Phase 6 — STUDIO-2F
-
-This phase is optional product expansion, not closure work for STUDIO-1.
-
-### Candidate scope
-
-- native Model/MeshPart/Decal/Image/Sound/Animation insertion;
-- generated ScreenGui/control materialization;
-- runtime validation after import;
-- optional `.rbxl`/place publish boundary;
-- content permission, ownership, and rollback behavior.
-
-### Mandatory constraints
-
-- reuse the existing project-scoped command ledger;
-- extend the exact artifact receipt schema instead of adding another protocol;
-- distinguish metadata receipt from native instance creation;
-- package only explicitly active Lua sources;
-- require a new real Roblox Studio desktop acceptance run.
-
-## F-12 re-evaluation gate
-
-Collaborative development remains deferred. Before starting it, confirm:
-
-- corrected architecture gate is green;
-- runtime ownership is consolidated;
-- product state durability is explicit;
-- authorization is mounted for team operations;
-- collaboration requirements exceed what project history/realtime already provide;
-- an ADR defines tenant isolation, roles, conflict resolution, presence, and durable event history.
-
-## Roadmap metrics
-
-Roadmap status must use executable gates instead of manual health scores:
-
-| Metric              | Source                                          |
-| ------------------- | ----------------------------------------------- |
-| Build/type safety   | Repository CI                                   |
-| Test result         | Test runner JSON/console                        |
-| Architecture status | Corrected boundary report                       |
-| Contract status     | Exact-SHA production integration artifact       |
-| Frontend quality    | Protected lint/format/bundle gates              |
-| Dependency risk     | Policy-based audit/SAST/image reports           |
-| Durability          | Restart and write-failure E2E                   |
-| Studio acceptance   | Package SHA + exact receipts + desktop evidence |
-
-The corresponding work items are ready in [SPRINT_BACKLOG.md](./SPRINT_BACKLOG.md).
+Marketplace, enterprise collaboration, plugin ecosystem expansion and additional runtime frameworks remain deferred until `ARCH-2B`, `FRONTEND-2C`, `RUNTIME-2D`, the remaining `DURABILITY-2E` work and `SECURITY-2G` satisfy their definitions of done. Documentation authority cleanup in `DOC-202` must precede new product-scope claims.
