@@ -45,20 +45,25 @@ describe("Security Hardening", () => {
 
   describe("Durable role mutations", () => {
     it("publishes a role only after durable acknowledgement", async () => {
-      let resolveMutation;
+      let resolveMutation: (() => void) | undefined;
       const storage = new InMemoryStorageProvider();
+      const auth = new AuthService(storage);
+      await auth.setRole("role-user", "creator");
       const originalSetDurable = storage.setDurable.bind(storage);
       storage.setDurable = async (collection, id, data) => {
-        await new Promise((resolve) => {
+        await new Promise<void>((resolve) => {
           resolveMutation = resolve;
         });
         await originalSetDurable(collection, id, data);
       };
-      const auth = new AuthService(storage);
 
       const pending = auth.setRole("role-user", "administrator");
+      expect(auth.hasPermission("role-user", "create_project")).toBe(true);
       expect(auth.hasPermission("role-user", "admin")).toBe(false);
 
+      if (!resolveMutation) {
+        throw new Error("Durable mutation was not blocked");
+      }
       resolveMutation();
       await pending;
       expect(auth.hasPermission("role-user", "admin")).toBe(true);
@@ -75,6 +80,7 @@ describe("Security Hardening", () => {
       await expect(auth.setRole("role-user", "administrator")).rejects.toThrow(
         "rejected role write",
       );
+      expect(auth.hasPermission("role-user", "create_project")).toBe(true);
       expect(auth.hasPermission("role-user", "admin")).toBe(false);
     });
   });
@@ -133,7 +139,6 @@ describe("Security Hardening", () => {
       const originalEnv = process.env.NODE_ENV;
       process.env.NODE_ENV = "production";
 
-      // Register and login to get a valid token from the shared authService
       authService.register("sec-test@test.com", "password123", "user-sec-1");
       const loginResult = authService.login(
         "sec-test@test.com",
@@ -155,7 +160,6 @@ describe("Security Hardening", () => {
       authMiddleware(req, res, next);
       expect(nextCalled).toBe(true);
 
-      // Cleanup
       authService.logout(loginResult.token!);
       process.env.NODE_ENV = originalEnv;
     });
