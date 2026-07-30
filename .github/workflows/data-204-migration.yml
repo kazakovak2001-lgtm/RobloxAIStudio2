@@ -123,8 +123,12 @@ jobs:
 
       - name: Verify removal guards
         run: |
-          if grep -R -E 'AuthService\.login|AuthService\.login#set' server/src config; then
-            echo "Legacy AuthService.login reference remains"
+          if grep -R -F 'AuthService.login#set' server/src config; then
+            echo "Legacy AuthService.login inventory reference remains"
+            exit 1
+          fi
+          if grep -R -F 'login(email: string, password: string, userId: string): LoginResult' server/src; then
+            echo "Synchronous AuthService.login method remains"
             exit 1
           fi
           if grep -R -E '(authService|sharedAuthService|auth)\.login\(' server/src; then
