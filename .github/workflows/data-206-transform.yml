@@ -1,0 +1,202 @@
+name: DATA-206 Transform
+
+on:
+  pull_request:
+    branches:
+      - release/cutover-1e-candidate
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: write
+
+jobs:
+  transform:
+    if: github.head_ref == 'agent/data-206-auth-compatibility-writes'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout source branch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref }}
+          fetch-depth: 0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Apply bounded DATA-206 migration
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+
+          auth = Path('server/src/platform/auth/AuthService.ts')
+          text = auth.read_text()
+
+          text = text.replace(
+          '''  ) {
+            // In-memory and already-hydrated providers migrate immediately. PostgreSQL
+            // is migrated a second time after its cache is hydrated during bootstrap.
+            this.migrateLegacyRefreshCredentials();
+          }
+
+          register(
+            email: string,
+            password: string,
+            userId: string,
+            role: UserRole = "creator",
+          ): boolean {
+            const normalizedEmail = this.normalizeEmail(email);
+            if (
+              this.storage.get<StoredCredentials>(
+                CREDENTIALS_COLLECTION,
+                normalizedEmail,
+              )
+            ) {
+              return false;
+            }
+            const passwordHash = bcrypt.hashSync(password, BCRYPT_COST_FACTOR);
+            this.storage.set<StoredCredentials>(
+              CREDENTIALS_COLLECTION,
+              normalizedEmail,
+              {
+                email: normalizedEmail,
+                passwordHash,
+                userId,
+              },
+            );
+            this.storage.set<UserRole>(ROLES_COLLECTION, userId, role);
+            return true;
+          }
+''',
+          '''  ) {}
+
+          async registerDurable(
+            email: string,
+            password: string,
+            userId: string,
+            role: UserRole = "creator",
+          ): Promise<boolean> {
+            const prepared = this.prepareRegistration(email, password, userId, role);
+            try {
+              await this.storage.applyDurableBatch(prepared.mutations);
+              return true;
+            } catch (error) {
+              if (error instanceof DurableStorageConflictError) return false;
+              throw error;
+            }
+          }
+''')
+
+          text = re.sub(r'''\n  logout\(token: string\): boolean \{.*?\n  \}\n\n  async logoutDurable''', '\n  async logoutDurable', text, flags=re.S)
+          text = text.replace('      this.deleteSession(session);\n      return null;', '      await this.logoutDurable(session.token);\n      return null;')
+          text = re.sub(r'''\n  refreshSession\(refreshToken: string\): LoginResult \{.*?\n  \}\n\n  async refreshSessionDurable''', '\n  async refreshSessionDurable', text, flags=re.S)
+          text = text.replace('  migrateLegacyRefreshCredentials(): number {', '  async migrateLegacyRefreshCredentialsDurable(): Promise<number> {')
+          text = text.replace(
+          '''      if (sessionChanged) {
+                this.storage.set(
+                  SESSIONS_COLLECTION,
+                  migratedSession.token,
+                  migratedSession,
+                );
+              }
+
+              let indexChanged = false;
+              if (digest && refreshExpiresAt) {
+                if (
+                  existingIndex?.sessionToken !== migratedSession.token ||
+                  existingIndex.expiresAt !== refreshExpiresAt
+                ) {
+                  this.storage.set<RefreshCredentialRecord>(
+                    REFRESH_CREDENTIALS_COLLECTION,
+                    digest,
+                    {
+                      sessionToken: migratedSession.token,
+                      expiresAt: refreshExpiresAt,
+                    },
+                  );
+                  indexChanged = true;
+                }
+              }
+              if (sessionChanged || indexChanged) migrated += 1;''',
+          '''      const mutations: DurableMutation[] = [];
+              if (sessionChanged) {
+                mutations.push({
+                  operation: "set",
+                  collection: SESSIONS_COLLECTION,
+                  id: migratedSession.token,
+                  data: migratedSession,
+                });
+              }
+
+              let indexChanged = false;
+              if (
+                digest &&
+                refreshExpiresAt &&
+                (existingIndex?.sessionToken !== migratedSession.token ||
+                  existingIndex.expiresAt !== refreshExpiresAt)
+              ) {
+                mutations.push({
+                  operation: "set",
+                  collection: REFRESH_CREDENTIALS_COLLECTION,
+                  id: digest,
+                  data: {
+                    sessionToken: migratedSession.token,
+                    expiresAt: refreshExpiresAt,
+                  } satisfies RefreshCredentialRecord,
+                });
+                indexChanged = true;
+              }
+              if (mutations.length > 0) {
+                await this.storage.applyDurableBatch(mutations);
+                migrated += 1;
+              }''')
+          text = re.sub(r'''\n  private createSession\(userId: string, role: UserRole\): IssuedSession \{.*?\n  \}\n\n  private prepareSession''', '\n  private prepareSession', text, flags=re.S)
+          text = re.sub(r'''\n  private deleteSession\(session: StoredAuthSession\): boolean \{.*?\n  \}\n''', '\n', text, flags=re.S)
+          auth.write_text(text)
+
+          for path in Path('server/src').rglob('*.ts'):
+            if path == auth or '/_quarantine/' in str(path):
+              continue
+            source = path.read_text()
+            source = re.sub(r'(?<!await )([A-Za-z0-9_$.]+)\.register\(', r'await \1.registerDurable(', source)
+            source = re.sub(r'(?<!await )([A-Za-z0-9_$.]+)\.refreshSession\(', r'await \1.refreshSessionDurable(', source)
+            source = re.sub(r'(?<!await )([A-Za-z0-9_$.]+)\.logout\(', r'await \1.logoutDurable(', source)
+            source = re.sub(r'(?<!await )([A-Za-z0-9_$.]+)\.migrateLegacyRefreshCredentials\(\)', r'await \1.migrateLegacyRefreshCredentialsDurable()', source)
+            path.write_text(source)
+
+          registry = Path('config/durability/compatibility-write-inventory.json')
+          data = registry.read_text()
+          import json
+          parsed = json.loads(data)
+          parsed['entries'] = [entry for entry in parsed['entries'] if entry['path'] != 'server/src/platform/auth/AuthService.ts']
+          registry.write_text(json.dumps(parsed, indent=2) + '\n')
+          PY
+
+      - name: Remove temporary workflow and refresh inventories
+        run: |
+          git rm .github/workflows/data-206-transform.yml
+          node scripts/cleanup/generate-tracked-inventories.mjs
+
+      - name: Format and validate bounded change
+        run: |
+          npx prettier --write server/src config/durability/compatibility-write-inventory.json
+          npm run typecheck
+          npm run lint
+          npm run validate
+          npm run test -- --runInBand
+
+      - name: Commit DATA-206 implementation
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -u
+          git add server/src config/durability/compatibility-write-inventory.json _inventory_raw.txt ProjectStructure.txt project_structure.txt
+          git diff --cached --quiet && exit 0
+          git commit -m "refactor(data-206): remove auth compatibility writes"
+          git push origin HEAD:${{ github.head_ref }}
