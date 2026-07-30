@@ -46,7 +46,7 @@ function edge(overrides: Partial<ImportEdge> = {}): ImportEdge {
 }
 
 describe("architecture boundary gate core", () => {
-  it("accepts a complete and internally consistent manifest", () => {
+  it("accepts a consistent manifest", () => {
     const manifest = createManifest();
 
     expect(
@@ -68,7 +68,7 @@ describe("architecture boundary gate core", () => {
     expect(errors).toContain("Manifest models non-subsystem path: 'routes'.");
   });
 
-  it("rejects unknown layers, duplicate exceptions and stale allowlist entries", () => {
+  it("rejects invalid layer exceptions", () => {
     const manifest = createManifest();
     manifest.domains.game.layer = "missing";
     manifest.allowedLayerEdges = [
@@ -92,7 +92,7 @@ describe("architecture boundary gate core", () => {
     );
   });
 
-  it("detects a forbidden layer edge regardless of import syntax provenance", () => {
+  it("detects forbidden layer edges", () => {
     const manifest = createManifest();
     const edges: ImportEdge[] = [
       edge({ importPath: "../routes/static" }),
@@ -119,7 +119,7 @@ describe("architecture boundary gate core", () => {
     expect(violations.every((item) => item.targetLayer === "api")).toBe(true);
   });
 
-  it("acknowledges an explicit temporary layer edge without passing hidden debt as clean", () => {
+  it("reports explicit temporary layer debt", () => {
     const manifest = createManifest();
     const violations = collectLayerViolations(manifest, [edge()]);
 
@@ -144,7 +144,7 @@ describe("architecture boundary gate core", () => {
     expect(decision.unexpectedLayerViolations).toEqual([]);
   });
 
-  it("fails a forbidden non-allowlisted layer edge", () => {
+  it("fails a forbidden layer edge", () => {
     const manifest = createManifest();
     const violations = collectLayerViolations(manifest, [edge()]);
 
@@ -163,7 +163,7 @@ describe("architecture boundary gate core", () => {
     });
   });
 
-  it("normalizes cycle rotation and direction while rejecting non-allowlisted cycles", () => {
+  it("normalizes and rejects cycles", () => {
     const acknowledged = evaluateBoundaryGate({
       manifestErrors: [],
       criticalViolationCount: 0,
@@ -195,7 +195,7 @@ describe("architecture boundary gate core", () => {
     ["critical-boundary", { criticalViolationCount: 1 }],
     ["unresolved-import", { unresolvedInternalImportCount: 1 }],
   ] as const)(
-    "derives report status and exit code from %s failure",
+    "derives status and exit code from %s failure",
     (reason, patch) => {
       const decision = evaluateBoundaryGate({
         manifestErrors: [],
