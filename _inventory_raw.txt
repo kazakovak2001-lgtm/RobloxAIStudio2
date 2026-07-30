@@ -117,6 +117,7 @@ docs/02-audits/integration/KNOWLEDGE_BASE_IMPLEMENTATION_PLAN.md
 docs/02-audits/integration/PLAYTESTING_PRE_IMPLEMENTATION_REPORT.md
 docs/02-audits/project/PHASE_1_GATE_REVIEW.md
 docs/02-audits/project/POST_INTEGRATION_REALITY_AUDIT.md
+docs/02-audits/technical-v2/ARCH-205_IMPLEMENTATION_NOTES.md
 docs/02-audits/technical-v2/ARCHITECTURE_GAP_REPORT.md
 docs/02-audits/technical-v2/EXECUTIVE_AUDIT.md
 docs/02-audits/technical-v2/FEATURE_MATRIX.md
@@ -453,6 +454,7 @@ reports/v2.9_memory_system_report.md
 reports/v3.0_beta_release_report.md
 repository_manifest.json
 scripts/architecture/ast-import-inventory.ts
+scripts/architecture/boundary-gate-core.ts
 scripts/backup-database.sh
 scripts/cleanup/audit-legacy-frontend-decommission.mjs
 scripts/cleanup/generate-tracked-inventories.mjs
@@ -477,6 +479,8 @@ scripts/validate-runtime-ownership.ts
 scripts/validate.ts
 server/prisma/schema.prisma
 server/src/__tests__/agentDecisionEngine.routing.test.ts
+server/src/__tests__/architecture.ast-import-inventory.test.ts
+server/src/__tests__/architecture.boundary-gate.test.ts
 server/src/__tests__/autonomousPipelineExploration.test.ts
 server/src/__tests__/autonomousPipelineIntegration.test.ts
 server/src/__tests__/autonomousPipelinePreservation.test.ts
