@@ -1,0 +1,26 @@
+{
+  "version": "1.0.0",
+  "owners": [
+    {
+      "sourceLayer": "domains",
+      "targetLayer": "api",
+      "milestone": "STUDIO-2F"
+    },
+    {
+      "sourceLayer": "domains",
+      "targetLayer": "infrastructure",
+      "milestone": "RUNTIME-2D"
+    },
+    {
+      "sourceLayer": "infrastructure",
+      "targetLayer": "api",
+      "milestone": "DURABILITY-2E"
+    },
+    {
+      "sourceLayer": "shared",
+      "targetLayer": "api",
+      "milestone": "DURABILITY-2E"
+    }
+  ],
+  "rows": []
+}
