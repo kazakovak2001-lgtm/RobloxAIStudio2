@@ -1,0 +1,52 @@
+name: Temporary DATA-203 apply
+
+on:
+  pull_request:
+    branches:
+      - agent/tmp-pr81-lifecycle-migration-base
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    if: github.head_ref == 'agent/data-203-session-activity-durable'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/data-203-session-activity-durable
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Apply bounded DATA-203 patch
+        run: git apply --check data-203.patch && git apply data-203.patch
+
+      - name: Format changed files
+        run: npx prettier --write server/src/platform/auth/AuthService.ts server/src/common/middleware/security.ts server/src/__tests__/securityHardening.test.ts config/durability/compatibility-write-inventory.json
+
+      - name: Validate focused slice
+        run: |
+          npm run typecheck
+          npm run lint
+          npm test -- --run server/src/__tests__/securityHardening.test.ts
+          npm run validate:repository
+
+      - name: Remove temporary handoff artifacts
+        run: rm -f data-203.patch docs/00-project-control/DATA-203_IMPLEMENTATION_HANDOFF.md
+
+      - name: Commit product diff
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add -A
+          git commit -m "DATA-203 await session activity mutation"
+          git push origin HEAD:agent/data-203-session-activity-durable
