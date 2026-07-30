@@ -9,10 +9,7 @@ import type { ProjectRuntime } from "./projects";
 import { ProjectGenerationStartCoordinator } from "../platform/projects/ProjectLifecycleCoordinator";
 
 type StudioConnectionStatus =
-  | "connected"
-  | "disconnected"
-  | "syncing"
-  | "error";
+  "connected" | "disconnected" | "syncing" | "error";
 
 interface StudioConnectionInfo {
   status: StudioConnectionStatus;
