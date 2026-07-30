@@ -57,21 +57,9 @@ jobs:
           total_callers = 0
           for test_path in target_tests:
               test = test_path.read_text()
-              test, auth_count = re.subn(
-                  r"\bauth\.login\(",
-                  "await auth.loginDurable(",
-                  test,
-              )
-              test, service_count = re.subn(
-                  r"\bauthService\.login\(",
-                  "await authService.loginDurable(",
-                  test,
-              )
-              test, shared_count = re.subn(
-                  r"\bsharedAuthService\.login\(",
-                  "await sharedAuthService.loginDurable(",
-                  test,
-              )
+              test, auth_count = re.subn(r"\bauth\.login\(", "await auth.loginDurable(", test)
+              test, service_count = re.subn(r"\bauthService\.login\(", "await authService.loginDurable(", test)
+              test, shared_count = re.subn(r"\bsharedAuthService\.login\(", "await sharedAuthService.loginDurable(", test)
               total_callers += auth_count + service_count + shared_count
               test_path.write_text(test)
 
@@ -82,11 +70,9 @@ jobs:
           preservation = preservation_path.read_text()
           property_header = 'it("property: login result tokens follow consistent format", async () => {'
           property_start = preservation.find(property_header)
-          if property_start < 0:
-              raise SystemExit("Login token format property test was not found")
           property_end = preservation.find("    }, 60000);", property_start)
-          if property_end < 0:
-              raise SystemExit("Login token format property test end was not found")
+          if property_start < 0 or property_end < 0:
+              raise SystemExit("Login token format property test was not found")
           property_block = preservation[property_start:property_end]
           property_count = property_block.count("fc.property(")
           property_block = property_block.replace("fc.property(", "fc.asyncProperty(", 1)
@@ -100,12 +86,47 @@ jobs:
               raise SystemExit(
                   f"Unexpected login token property shape: property={property_count}, callback={callback_count}"
               )
-          preservation = (
-              preservation[:property_start]
-              + property_block
-              + preservation[property_end:]
-          )
+          preservation = preservation[:property_start] + property_block + preservation[property_end:]
           preservation_path.write_text(preservation)
+
+          bug_path = Path("server/src/__tests__/bugConditionExploration.test.ts")
+          bug = bug_path.read_text()
+          bug_header = 'it("property: password hashes SHALL use bcrypt format ($2a$12$ or $2b$12$)", () => {'
+          if bug_header not in bug:
+              raise SystemExit("Password hash property test header was not found")
+          bug = bug.replace(
+              bug_header,
+              'it("property: password hashes SHALL use bcrypt format ($2a$12$ or $2b$12$)", async () => {',
+              1,
+          )
+          bug = bug.replace(
+              "fc.property(fc.string({ minLength: 8, maxLength: 64 }), (password) => {",
+              "fc.asyncProperty(fc.string({ minLength: 8, maxLength: 64 }), async (password) => {",
+              1,
+          )
+          bug_path.write_text(bug)
+
+          projects_path = Path("server/src/routes/__tests__/projects.runtime.test.ts")
+          projects = projects_path.read_text()
+          projects, owner_count = re.subn(
+              r"const ownerToken = await auth\.loginDurable\((.*?)\n    \)\.token!;",
+              r"const ownerToken = (await auth.loginDurable(\1\n    )).token!;",
+              projects,
+              count=1,
+              flags=re.DOTALL,
+          )
+          projects, other_count = re.subn(
+              r"const otherToken = await auth\.loginDurable\((.*?)\n    \)\.token!;",
+              r"const otherToken = (await auth.loginDurable(\1\n    )).token!;",
+              projects,
+              count=1,
+              flags=re.DOTALL,
+          )
+          if owner_count != 1 or other_count != 1:
+              raise SystemExit(
+                  f"Unexpected project token extraction shape: owner={owner_count}, other={other_count}"
+              )
+          projects_path.write_text(projects)
 
           inventory_path = Path("config/durability/compatibility-write-inventory.json")
           inventory = json.loads(inventory_path.read_text())
