@@ -1,9 +1,10 @@
 name: DATA-204 migration
 
 on:
-  push:
+  pull_request:
+    types: [opened, synchronize, reopened]
     branches:
-      - agent/data-204-legacy-password-upgrade
+      - release/cutover-1e-candidate
 
 permissions:
   contents: write
@@ -15,6 +16,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
+          ref: ${{ github.head_ref }}
           fetch-depth: 0
 
       - uses: actions/setup-node@v4
@@ -107,4 +109,4 @@ jobs:
             server/src/__tests__/securityHardening.test.ts \
             config/durability/compatibility-write-inventory.json
           git commit -m "refactor(auth): remove synchronous legacy login compatibility"
-          git push
+          git push origin HEAD:${{ github.head_ref }}
