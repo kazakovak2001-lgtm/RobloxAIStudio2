@@ -4,31 +4,32 @@ on:
   push:
     branches:
       - agent/arch-205-boundary-fixtures
-  pull_request:
-    branches:
-      - release/cutover-1e-candidate
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
-  generate:
+  generate-and-clean:
+    if: github.actor != 'github-actions[bot]'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:
+          ref: agent/arch-205-boundary-fixtures
           fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
           node-version: 24
           cache: npm
       - run: npm ci
-      - run: node scripts/cleanup/generate-tracked-inventories.mjs
-      - uses: actions/upload-artifact@v4
-        with:
-          name: arch-205-generated-inventories
-          path: |
-            _inventory_raw.txt
-            ProjectStructure.txt
-          if-no-files-found: error
-          retention-days: 1
+      - name: Remove temporary workflow and regenerate inventories
+        run: |
+          git rm .github/workflows/temp-inventory-generation.yml
+          node scripts/cleanup/generate-tracked-inventories.mjs
+      - name: Commit canonical inventories
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add _inventory_raw.txt ProjectStructure.txt .github/workflows/temp-inventory-generation.yml
+          git commit -m "chore(architecture): regenerate tracked inventories"
+          git push origin HEAD:agent/arch-205-boundary-fixtures
