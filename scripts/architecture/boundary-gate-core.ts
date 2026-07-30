@@ -51,22 +51,32 @@ export interface BoundaryGateDecision {
   reasons: string[];
 }
 
+function normalizeRepositoryPath(value: string): string {
+  const segments: string[] = [];
+
+  for (const segment of value.replaceAll("\\", "/").split("/")) {
+    if (!segment || segment === ".") continue;
+    if (segment === "..") {
+      if (segments.length > 0 && segments.at(-1) !== "..") {
+        segments.pop();
+      } else {
+        segments.push(segment);
+      }
+      continue;
+    }
+    segments.push(segment);
+  }
+
+  return segments.join("/");
+}
+
 export function canonicalCycle(cycle: readonly string[]): string {
   const closesCycle = cycle.length > 1 && cycle[0] === cycle.at(-1);
   const clean = closesCycle ? cycle.slice(0, -1) : [...cycle];
   if (clean.length === 0) return "";
 
-  const rotations = clean.map((_, index) => [
-    ...clean.slice(index),
-    ...clean.slice(0, index),
-  ]);
-  const reversed = [...clean].reverse();
-  const reverseRotations = reversed.map((_, index) => [
-    ...reversed.slice(index),
-    ...reversed.slice(0, index),
-  ]);
-
-  return [...rotations, ...reverseRotations]
+  return clean
+    .map((_, index) => [...clean.slice(index), ...clean.slice(0, index)])
     .map((entry) => entry.join("→"))
     .sort()[0];
 }
@@ -84,7 +94,7 @@ export function validateManifestModel(
   const real = new Set(realSubsystems);
 
   for (const [domain, definition] of Object.entries(manifest.domains)) {
-    const normalizedPath = definition.path.replaceAll("\\", "/");
+    const normalizedPath = normalizeRepositoryPath(definition.path);
     const prefix = "server/src/";
     if (!normalizedPath.startsWith(prefix)) {
       errors.push(
