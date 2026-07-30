@@ -14,12 +14,12 @@ export class UserService {
     this.repo = new UserRepository(storage);
   }
 
-  createUser(
+  async createUser(
     email: string,
     displayName: string,
     password: string,
     tier: AccountTier = "free",
-  ): { success: boolean; user?: User; error?: string } {
+  ): Promise<{ success: boolean; user?: User; error?: string }> {
     if (!email || !email.includes("@"))
       return { success: false, error: "Invalid email" };
     if (!displayName || displayName.length < 2)
@@ -31,7 +31,7 @@ export class UserService {
     const existing = this.repo.getByEmail(email);
     if (existing) return { success: false, error: "Email already registered" };
 
-    const user = this.repo.create({ email, displayName, tier });
+    const user = await this.repo.createDurable({ email, displayName, tier });
     return { success: true, user };
   }
 
