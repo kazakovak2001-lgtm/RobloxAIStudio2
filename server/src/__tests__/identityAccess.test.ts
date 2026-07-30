@@ -18,8 +18,8 @@ describe("Phase 10: Identity & Access Management", () => {
       service = new UserService();
     });
 
-    it("creates a user successfully", () => {
-      const result = service.createUser(
+    it("creates a user successfully", async () => {
+      const result = await service.createUser(
         "test@example.com",
         "TestUser",
         "password123",
@@ -28,34 +28,42 @@ describe("Phase 10: Identity & Access Management", () => {
       expect(result.user!.email).toBe("test@example.com");
     });
 
-    it("rejects invalid email", () => {
-      const result = service.createUser("invalid", "User", "pass123");
+    it("rejects invalid email", async () => {
+      const result = await service.createUser("invalid", "User", "pass123");
       expect(result.success).toBe(false);
       expect(result.error).toContain("email");
     });
 
-    it("rejects short password", () => {
-      const result = service.createUser("a@b.com", "User", "12345");
+    it("rejects short password", async () => {
+      const result = await service.createUser("a@b.com", "User", "12345");
       expect(result.success).toBe(false);
       expect(result.error).toContain("Password");
     });
 
-    it("prevents duplicate email", () => {
-      service.createUser("dup@test.com", "User1", "pass123");
-      const result = service.createUser("dup@test.com", "User2", "pass456");
+    it("prevents duplicate email", async () => {
+      await service.createUser("dup@test.com", "User1", "pass123");
+      const result = await service.createUser(
+        "dup@test.com",
+        "User2",
+        "pass456",
+      );
       expect(result.success).toBe(false);
       expect(result.error).toContain("already registered");
     });
 
-    it("deactivates user", () => {
-      const { user } = service.createUser("x@y.com", "TestX", "pass123");
-      service.deactivateUser(user!.id);
+    it("deactivates user", async () => {
+      const { user } = await service.createUser(
+        "x@y.com",
+        "TestX",
+        "pass123",
+      );
+      await service.deactivateUser(user!.id);
       const access = service.validateAccess(user!.id);
       expect(access.allowed).toBe(false);
     });
 
-    it("validates active user access", () => {
-      const { user } = service.createUser(
+    it("validates active user access", async () => {
+      const { user } = await service.createUser(
         "active@test.com",
         "Active",
         "pass123",
