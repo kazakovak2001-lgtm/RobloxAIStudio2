@@ -341,14 +341,16 @@ export function createPlatformRouter({
 
   // ─── Versions ─────────────────────────────────────────────
 
-  router.get("/versions/:projectId", (req, res) => {
-    if (!access.requireProjectAccess(req, res, req.params.projectId)) return;
+  router.get("/versions/:projectId", async (req, res) => {
+    if (!(await access.requireProjectAccess(req, res, req.params.projectId)))
+      return;
     const history = versions.getHistory(req.params.projectId);
     res.json({ success: true, data: history });
   });
 
-  router.post("/versions/:projectId", (req, res) => {
-    if (!access.requireProjectAccess(req, res, req.params.projectId)) return;
+  router.post("/versions/:projectId", async (req, res) => {
+    if (!(await access.requireProjectAccess(req, res, req.params.projectId)))
+      return;
     const {
       label,
       pipelineId,
