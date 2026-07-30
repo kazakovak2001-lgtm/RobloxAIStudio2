@@ -45,6 +45,16 @@ function edge(overrides: Partial<ImportEdge> = {}): ImportEdge {
   };
 }
 
+function baseGateInput() {
+  return {
+    manifestErrors: [],
+    criticalViolationCount: 0,
+    cycles: [],
+    unresolvedInternalImportCount: 0,
+    layerViolations: [],
+  };
+}
+
 describe("architecture boundary gate core", () => {
   it("accepts a consistent manifest", () => {
     const manifest = createManifest();
@@ -124,10 +134,7 @@ describe("architecture boundary gate core", () => {
     const violations = collectLayerViolations(manifest, [edge()]);
 
     const decision = evaluateBoundaryGate({
-      manifestErrors: [],
-      criticalViolationCount: 0,
-      cycles: [],
-      unresolvedInternalImportCount: 0,
+      ...baseGateInput(),
       layerViolations: violations,
       allowedLayerEdges: [
         {
@@ -149,10 +156,7 @@ describe("architecture boundary gate core", () => {
     const violations = collectLayerViolations(manifest, [edge()]);
 
     const decision = evaluateBoundaryGate({
-      manifestErrors: [],
-      criticalViolationCount: 0,
-      cycles: [],
-      unresolvedInternalImportCount: 0,
+      ...baseGateInput(),
       layerViolations: violations,
     });
 
@@ -165,11 +169,8 @@ describe("architecture boundary gate core", () => {
 
   it("normalizes and rejects cycles", () => {
     const acknowledged = evaluateBoundaryGate({
-      manifestErrors: [],
-      criticalViolationCount: 0,
+      ...baseGateInput(),
       cycles: [["planning", "socket", "execution", "planning"]],
-      unresolvedInternalImportCount: 0,
-      layerViolations: [],
       allowedCycles: [["execution", "socket", "planning"]],
     });
 
@@ -177,12 +178,8 @@ describe("architecture boundary gate core", () => {
     expect(acknowledged.acknowledgedCycles).toHaveLength(1);
 
     const rejected = evaluateBoundaryGate({
-      manifestErrors: [],
-      criticalViolationCount: 0,
+      ...baseGateInput(),
       cycles: [["game", "transport", "game"]],
-      unresolvedInternalImportCount: 0,
-      layerViolations: [],
-      allowedCycles: [],
     });
 
     expect(rejected.status).toBe("FAIL");
@@ -190,25 +187,36 @@ describe("architecture boundary gate core", () => {
     expect(rejected.reasons).toContain("cycle");
   });
 
-  it.each([
-    ["manifest", { manifestErrors: ["broken"] }],
-    ["critical-boundary", { criticalViolationCount: 1 }],
-    ["unresolved-import", { unresolvedInternalImportCount: 1 }],
-  ] as const)(
-    "derives status and exit code from %s failure",
-    (reason, patch) => {
-      const decision = evaluateBoundaryGate({
-        manifestErrors: [],
-        criticalViolationCount: 0,
-        cycles: [],
-        unresolvedInternalImportCount: 0,
-        layerViolations: [],
-        ...patch,
-      });
+  it("fails on manifest errors", () => {
+    const decision = evaluateBoundaryGate({
+      ...baseGateInput(),
+      manifestErrors: ["broken"],
+    });
 
-      expect(decision.status).toBe("FAIL");
-      expect(decision.exitCode).toBe(1);
-      expect(decision.reasons).toContain(reason);
-    },
-  );
+    expect(decision.status).toBe("FAIL");
+    expect(decision.exitCode).toBe(1);
+    expect(decision.reasons).toContain("manifest");
+  });
+
+  it("fails on critical boundary violations", () => {
+    const decision = evaluateBoundaryGate({
+      ...baseGateInput(),
+      criticalViolationCount: 1,
+    });
+
+    expect(decision.status).toBe("FAIL");
+    expect(decision.exitCode).toBe(1);
+    expect(decision.reasons).toContain("critical-boundary");
+  });
+
+  it("fails on unresolved internal imports", () => {
+    const decision = evaluateBoundaryGate({
+      ...baseGateInput(),
+      unresolvedInternalImportCount: 1,
+    });
+
+    expect(decision.status).toBe("FAIL");
+    expect(decision.exitCode).toBe(1);
+    expect(decision.reasons).toContain("unresolved-import");
+  });
 });
