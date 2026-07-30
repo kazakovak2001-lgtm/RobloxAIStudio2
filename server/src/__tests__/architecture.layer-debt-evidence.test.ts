@@ -92,9 +92,7 @@ describe("layer debt evidence", () => {
       validateLayerDebtEvidence(documented, allowedLayerEdges, [
         fixtureViolation(),
       ]),
-    ).toEqual([
-      expect.stringContaining("Layer debt evidence drift detected."),
-    ]);
+    ).toEqual([expect.stringContaining("Layer debt evidence drift detected.")]);
   });
 
   it("matches the tracked evidence against the real repository AST", () => {
