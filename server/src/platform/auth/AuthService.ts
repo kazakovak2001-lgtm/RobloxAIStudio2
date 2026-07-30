@@ -140,50 +140,6 @@ export class AuthService {
     };
   }
 
-  login(email: string, password: string, userId: string): LoginResult {
-    const normalizedEmail = this.normalizeEmail(email);
-    const creds = this.storage.get<StoredCredentials>(
-      CREDENTIALS_COLLECTION,
-      normalizedEmail,
-    );
-    if (!creds) {
-      return { success: false, error: "Invalid credentials" };
-    }
-    if (creds.userId !== userId) {
-      return { success: false, error: "Invalid credentials" };
-    }
-
-    // Migration path: if stored hash is legacy SHA-256 (64 hex chars, no bcrypt prefix)
-    const isLegacySha256 = this.isLegacyHash(creds.passwordHash);
-
-    let passwordValid = false;
-    if (isLegacySha256) {
-      const sha256Hash = createHash("sha256").update(password).digest("hex");
-      passwordValid = sha256Hash === creds.passwordHash;
-      if (passwordValid) {
-        this.storage.set<StoredCredentials>(
-          CREDENTIALS_COLLECTION,
-          normalizedEmail,
-          {
-            ...creds,
-            passwordHash: bcrypt.hashSync(password, BCRYPT_COST_FACTOR),
-          },
-        );
-      }
-    } else {
-      passwordValid = bcrypt.compareSync(password, creds.passwordHash);
-    }
-
-    if (!passwordValid) {
-      return { success: false, error: "Invalid credentials" };
-    }
-
-    const role =
-      this.storage.get<UserRole>(ROLES_COLLECTION, userId) ?? "creator";
-    const issued = this.createSession(userId, role);
-    return this.toLoginResult(issued, userId, role);
-  }
-
   async loginDurable(
     email: string,
     password: string,

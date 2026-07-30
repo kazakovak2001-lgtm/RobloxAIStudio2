@@ -22,15 +22,11 @@ describe("project runtime access control", async () => {
     const auth = new AuthService(storage);
     auth.register("owner@example.com", "password123", "owner");
     auth.register("other@example.com", "password123", "other");
-    const ownerToken = auth.login(
-      "owner@example.com",
-      "password123",
-      "owner",
+    const ownerToken = (
+      await auth.loginDurable("owner@example.com", "password123", "owner")
     ).token!;
-    const otherToken = auth.login(
-      "other@example.com",
-      "password123",
-      "other",
+    const otherToken = (
+      await auth.loginDurable("other@example.com", "password123", "other")
     ).token!;
     const runtime = createProjectRuntime(storage, auth);
     const project = await runtime.projectRepository.createDurable(

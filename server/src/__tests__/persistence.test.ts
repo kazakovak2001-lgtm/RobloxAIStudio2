@@ -166,7 +166,7 @@ describe("Persistence Infrastructure", async () => {
     });
     const auth = new AuthService(storage);
     expect(auth.register(user.email, "password123", user.id)).toBe(true);
-    const login = auth.login(user.email, "password123", user.id);
+    const login = await auth.loginDurable(user.email, "password123", user.id);
 
     expect(login.success).toBe(true);
     expect(new UserRepository(storage).getByEmail(user.email)?.id).toBe(

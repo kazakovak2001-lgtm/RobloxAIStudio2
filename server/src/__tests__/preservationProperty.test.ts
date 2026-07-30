@@ -349,7 +349,11 @@ describe("Preservation Property Tests - Baseline Behavior Guards", async () => {
           async (route, password) => {
             const auth = new AuthService();
             auth.register("analytics@test.com", password, "user-a");
-            const login = auth.login("analytics@test.com", password, "user-a");
+            const login = await auth.loginDurable(
+              "analytics@test.com",
+              password,
+              "user-a",
+            );
             if (!login.success || !login.token) return;
 
             const result = await simulateAuthMiddleware(
@@ -452,7 +456,11 @@ describe("Preservation Property Tests - Baseline Behavior Guards", async () => {
           async (route, method, password) => {
             const auth = new AuthService();
             auth.register("plugin@test.com", password, "user-p");
-            const login = auth.login("plugin@test.com", password, "user-p");
+            const login = await auth.loginDurable(
+              "plugin@test.com",
+              password,
+              "user-p",
+            );
             if (!login.success || !login.token) return;
 
             const result = await simulateAuthMiddleware(
@@ -480,7 +488,11 @@ describe("Preservation Property Tests - Baseline Behavior Guards", async () => {
     it("unit: AuthService refreshSession produces new valid tokens", async () => {
       const auth = new AuthService();
       auth.register("user@test.com", "password123", "user-1");
-      const loginResult = auth.login("user@test.com", "password123", "user-1");
+      const loginResult = await auth.loginDurable(
+        "user@test.com",
+        "password123",
+        "user-1",
+      );
 
       expect(loginResult.success).toBe(true);
       expect(loginResult.refreshToken).toBeDefined();
@@ -507,7 +519,11 @@ describe("Preservation Property Tests - Baseline Behavior Guards", async () => {
           async (password) => {
             const auth = new AuthService();
             auth.register("test@e.com", password, "u-1");
-            const login = auth.login("test@e.com", password, "u-1");
+            const login = await auth.loginDurable(
+              "test@e.com",
+              password,
+              "u-1",
+            );
             if (!login.success || !login.refreshToken) return;
 
             const refreshed = auth.refreshSession(login.refreshToken);
@@ -532,7 +548,11 @@ describe("Preservation Property Tests - Baseline Behavior Guards", async () => {
     it("unit: logout invalidates the session token", async () => {
       const auth = new AuthService();
       auth.register("user@test.com", "pass123", "user-1");
-      const login = auth.login("user@test.com", "pass123", "user-1");
+      const login = await auth.loginDurable(
+        "user@test.com",
+        "pass123",
+        "user-1",
+      );
 
       expect(login.success).toBe(true);
       expect(await auth.validateToken(login.token!)).not.toBeNull();
@@ -548,7 +568,7 @@ describe("Preservation Property Tests - Baseline Behavior Guards", async () => {
           async (password) => {
             const auth = new AuthService();
             auth.register("t@t.com", password, "u-1");
-            const login = auth.login("t@t.com", password, "u-1");
+            const login = await auth.loginDurable("t@t.com", password, "u-1");
             if (!login.success || !login.token) return;
 
             // Token valid before logout
@@ -589,7 +609,11 @@ describe("Preservation Property Tests - Baseline Behavior Guards", async () => {
           async (route, password) => {
             const auth = new AuthService();
             auth.register("user@test.com", password, "user-1");
-            const login = auth.login("user@test.com", password, "user-1");
+            const login = await auth.loginDurable(
+              "user@test.com",
+              password,
+              "user-1",
+            );
             if (!login.success || !login.token) return;
 
             const result = await simulateAuthMiddleware(
@@ -618,7 +642,7 @@ describe("Preservation Property Tests - Baseline Behavior Guards", async () => {
         "testpass123",
         "user-mid-1",
       );
-      const loginResult = sharedAuthService.login(
+      const loginResult = await sharedAuthService.loginDurable(
         "middleware-test@test.com",
         "testpass123",
         "user-mid-1",
@@ -718,7 +742,11 @@ describe("Preservation Property Tests - Baseline Behavior Guards", async () => {
     it("unit: AuthService login returns expected LoginResult shape", async () => {
       const auth = new AuthService();
       auth.register("test@t.com", "password", "user-1");
-      const result = auth.login("test@t.com", "password", "user-1");
+      const result = await auth.loginDurable(
+        "test@t.com",
+        "password",
+        "user-1",
+      );
 
       expect(result).toHaveProperty("success", true);
       expect(result).toHaveProperty("token");
@@ -731,15 +759,15 @@ describe("Preservation Property Tests - Baseline Behavior Guards", async () => {
 
     it("property: login result tokens follow consistent format", async () => {
       await fc.assert(
-        fc.property(
+        fc.asyncProperty(
           fc.emailAddress(),
           fc.string({ minLength: 6, maxLength: 30 }),
-          (email, password) => {
+          async (email, password) => {
             const auth = new AuthService();
             const registered = auth.register(email, password, "u-1");
             if (!registered) return; // skip duplicates
 
-            const result = auth.login(email, password, "u-1");
+            const result = await auth.loginDurable(email, password, "u-1");
             expect(result.success).toBe(true);
             expect(result.token).toMatch(/^tok_[a-f0-9]+$/);
             expect(result.refreshToken).toMatch(/^ref_[a-f0-9]+$/);
@@ -752,7 +780,11 @@ describe("Preservation Property Tests - Baseline Behavior Guards", async () => {
     it("unit: failed login returns {success: false, error: string}", async () => {
       const auth = new AuthService();
       auth.register("test@t.com", "correct_pass", "user-1");
-      const result = auth.login("test@t.com", "wrong_pass", "user-1");
+      const result = await auth.loginDurable(
+        "test@t.com",
+        "wrong_pass",
+        "user-1",
+      );
 
       expect(result.success).toBe(false);
       expect(result.error).toBeDefined();
@@ -794,7 +826,11 @@ describe("Preservation Property Tests - Baseline Behavior Guards", async () => {
           async (password) => {
             const auth = new AuthService();
             auth.register("socket@test.com", password, "user-s");
-            const login = auth.login("socket@test.com", password, "user-s");
+            const login = await auth.loginDurable(
+              "socket@test.com",
+              password,
+              "user-s",
+            );
             if (!login.success || !login.token) return;
 
             const result = await simulateSocketAuth(
@@ -890,7 +926,7 @@ describe("Preservation Property Tests - Baseline Behavior Guards", async () => {
       const registered = auth.register("no-db@test.com", "pass", "u-1");
       expect(registered).toBe(true);
 
-      const login = auth.login("no-db@test.com", "pass", "u-1");
+      const login = await auth.loginDurable("no-db@test.com", "pass", "u-1");
       expect(login.success).toBe(true);
       expect(login.token).toBeDefined();
     });

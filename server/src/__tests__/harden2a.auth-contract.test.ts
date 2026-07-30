@@ -160,7 +160,11 @@ describe("HARDEN-2A auth contract", async () => {
     const storage = new InMemoryStorageProvider();
     const auth = new AuthService(storage);
     auth.register("digest@example.test", "password", "user-digest");
-    const login = auth.login("digest@example.test", "password", "user-digest");
+    const login = await auth.loginDurable(
+      "digest@example.test",
+      "password",
+      "user-digest",
+    );
 
     expect(login.success).toBe(true);
     expect(login.refreshToken).toMatch(/^ref_[a-f0-9]{64}$/);

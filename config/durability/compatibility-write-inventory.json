@@ -30,16 +30,6 @@
       "migrationTarget": "DATA-201B"
     },
     {
-      "key": "server/src/platform/auth/AuthService.ts#AuthService.login#set",
-      "path": "server/src/platform/auth/AuthService.ts",
-      "owner": "AuthService.login",
-      "operation": "set",
-      "expectedCalls": 1,
-      "classification": "request-level-debt",
-      "reason": "Legacy password-hash upgrade is persisted during a login request without acknowledgement.",
-      "migrationTarget": "DATA-201B"
-    },
-    {
       "key": "server/src/platform/auth/AuthService.ts#AuthService.migrateLegacyRefreshCredentials#set",
       "path": "server/src/platform/auth/AuthService.ts",
       "owner": "AuthService.migrateLegacyRefreshCredentials",
