@@ -172,7 +172,8 @@ export class ChatPersistenceService {
   }
 
   private endMessageCreation(conversationId: string): void {
-    const remaining = (this.activeMessageCreations.get(conversationId) ?? 1) - 1;
+    const remaining =
+      (this.activeMessageCreations.get(conversationId) ?? 1) - 1;
     if (remaining > 0) {
       this.activeMessageCreations.set(conversationId, remaining);
       return;
