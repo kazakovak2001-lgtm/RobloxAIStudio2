@@ -1,6 +1,6 @@
 import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
-import { join } from "node:path";
 import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { buildAstImportInventory } from "../../../scripts/architecture/ast-import-inventory";
 
@@ -16,10 +16,10 @@ function createFixture(): string {
   writeFileSync(
     join(root, "server", "src", "game", "fixture.ts"),
     [
-      'import "../../routes/static";',
-      'export * from "../../routes/reexport";',
-      'void import("../../routes/dynamic");',
-      'require("../../routes/commonjs");',
+      'import "../routes/static";',
+      'export * from "../routes/reexport";',
+      'void import("../routes/dynamic");',
+      'require("../routes/commonjs");',
     ].join("\n"),
   );
 
