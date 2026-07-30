@@ -241,6 +241,53 @@ describe("PostgresStorageProvider awaited mutations", () => {
     });
   });
 
+  it("does not overwrite a later compatibility write after durable acknowledgement", async () => {
+    let releaseInsert!: () => void;
+    let markInsertStarted!: () => void;
+    const insertGate = new Promise<void>((resolve) => {
+      releaseInsert = resolve;
+    });
+    const insertStarted = new Promise<void>((resolve) => {
+      markInsertStarted = resolve;
+    });
+    let insertCount = 0;
+    const pool: QueryablePool = {
+      async query(text: string) {
+        if (text.includes("SELECT collection, id, data")) return { rows: [] };
+        if (text.includes("INSERT INTO")) {
+          insertCount += 1;
+          if (insertCount === 1) {
+            markInsertStarted();
+            await insertGate;
+          }
+        }
+        return { rows: [] };
+      },
+      async end() {},
+    };
+    const storage = new PostgresStorageProvider(
+      {
+        connectionString: "postgresql://test",
+        poolSize: 1,
+        poolTimeout: 1000,
+        strict: true,
+      },
+      { createPool: () => pool },
+    );
+    await storage.ready();
+
+    const durable = storage.setDurable("auth_roles", "role-user", "creator");
+    await insertStarted;
+    storage.set("auth_roles", "role-user", "administrator");
+    expect(storage.get("auth_roles", "role-user")).toBe("administrator");
+
+    releaseInsert();
+    await durable;
+    expect(storage.get("auth_roles", "role-user")).toBe("administrator");
+    await storage.flush();
+    expect(storage.get("auth_roles", "role-user")).toBe("administrator");
+  });
+
   it("publishes successful mutations only after acknowledgement", async () => {
     const { storage } = provider();
     await storage.ready();

@@ -100,10 +100,16 @@ export class PostgresStorageProvider implements StorageProvider {
   }
 
   async setDurable<T>(collection: string, id: string, data: T): Promise<void> {
+    const key = this.mutationKey(collection, id);
+    const compatibilityVersion =
+      this.compatibilityMutationVersions.get(key) ?? 0;
     try {
       await this.enqueueWrite(async () => {
         await this.persistSet(collection, id, data);
-        this.getCollection(collection).set(id, data);
+        const currentVersion = this.compatibilityMutationVersions.get(key) ?? 0;
+        if (currentVersion === compatibilityVersion) {
+          this.getCollection(collection).set(id, data);
+        }
       });
     } catch (error) {
       await this.refreshOperationalStateAfterMutationFailure();
