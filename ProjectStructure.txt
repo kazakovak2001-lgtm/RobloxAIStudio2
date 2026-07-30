@@ -154,6 +154,7 @@
 │   │   │   └── POST_INTEGRATION_REALITY_AUDIT.md
 │   │   ├── SECURITY_RELEASE_AUDIT.md
 │   │   ├── technical-v2
+│   │   │   ├── ARCH-205_IMPLEMENTATION_NOTES.md
 │   │   │   ├── ARCHITECTURE_GAP_REPORT.md
 │   │   │   ├── EXECUTIVE_AUDIT.md
 │   │   │   ├── FEATURE_MATRIX.md
@@ -534,7 +535,8 @@
 ├── repository_manifest.json
 ├── scripts
 │   ├── architecture
-│   │   └── ast-import-inventory.ts
+│   │   ├── ast-import-inventory.ts
+│   │   └── boundary-gate-core.ts
 │   ├── backup-database.sh
 │   ├── cleanup
 │   │   ├── audit-legacy-frontend-decommission.mjs
@@ -565,6 +567,8 @@
 │   ├── src
 │   │   ├── __tests__
 │   │   │   ├── agentDecisionEngine.routing.test.ts
+│   │   │   ├── architecture.ast-import-inventory.test.ts
+│   │   │   ├── architecture.boundary-gate.test.ts
 │   │   │   ├── autonomousPipelineExploration.test.ts
 │   │   │   ├── autonomousPipelineIntegration.test.ts
 │   │   │   ├── autonomousPipelinePreservation.test.ts
