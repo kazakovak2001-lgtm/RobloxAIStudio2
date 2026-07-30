@@ -95,7 +95,9 @@ export function validateManifestModel(
 
     const topLevel = normalizedPath.slice(prefix.length).split("/")[0];
     if (!topLevel) {
-      errors.push(`Domain '${domain}' has an invalid path '${definition.path}'.`);
+      errors.push(
+        `Domain '${domain}' has an invalid path '${definition.path}'.`,
+      );
       continue;
     }
 
@@ -157,7 +159,9 @@ export function validateManifestModel(
   for (const exception of manifest.allowedLayerEdges ?? []) {
     const key = layerEdgeKey(exception.from, exception.to);
     if (seenExceptions.has(key)) {
-      errors.push(`Allowed layer edge '${exception.from} → ${exception.to}' is duplicated.`);
+      errors.push(
+        `Allowed layer edge '${exception.from} → ${exception.to}' is duplicated.`,
+      );
     }
     seenExceptions.add(key);
 
@@ -250,7 +254,9 @@ export function evaluateBoundaryGate(
   if (input.manifestErrors.length > 0) reasons.push("manifest");
   if (input.criticalViolationCount > 0) reasons.push("critical-boundary");
   if (unexpectedCycles.length > 0) reasons.push("cycle");
-  if (input.unresolvedInternalImportCount > 0) reasons.push("unresolved-import");
+  if (input.unresolvedInternalImportCount > 0) {
+    reasons.push("unresolved-import");
+  }
   if (unexpectedLayerViolations.length > 0) reasons.push("layer-edge");
 
   const failed = reasons.length > 0;
