@@ -120,16 +120,6 @@
       "migrationTarget": "DATA-201B"
     },
     {
-      "key": "server/src/projects/repository/storageBlueprint.repository.ts#StorageBlueprintRepository.deleteBlueprint#delete",
-      "path": "server/src/projects/repository/storageBlueprint.repository.ts",
-      "owner": "StorageBlueprintRepository.deleteBlueprint",
-      "operation": "delete",
-      "expectedCalls": 3,
-      "classification": "multi-record-deferred",
-      "reason": "Blueprint deletion cascades across blueprint, version and execution collections and needs transaction or compensation semantics.",
-      "migrationTarget": "DATA-201C"
-    },
-    {
       "key": "server/src/services/ChatPersistenceService.ts#ChatPersistenceService.createMessage#set",
       "path": "server/src/services/ChatPersistenceService.ts",
       "owner": "ChatPersistenceService.createMessage",
