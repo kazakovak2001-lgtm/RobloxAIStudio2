@@ -1,7 +1,9 @@
 name: DATA-202 Final Review Test Fixes
 
 on:
-  pull_request:
+  push:
+    branches:
+      - agent/data-202-role-mutation-ack
 
 permissions:
   contents: write
