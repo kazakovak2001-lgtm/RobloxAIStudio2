@@ -16,7 +16,7 @@ function response() {
   return { response: { status, json } as unknown as Response, status, json };
 }
 
-describe("project runtime access control", () => {
+describe("project runtime access control", async () => {
   it("requires an authenticated owner for project access", async () => {
     const storage = new InMemoryStorageProvider();
     const auth = new AuthService(storage);
@@ -41,7 +41,7 @@ describe("project runtime access control", () => {
 
     const unauthenticated = response();
     expect(
-      runtime.access.requireProjectAccess(
+      await runtime.access.requireProjectAccess(
         request(),
         unauthenticated.response,
         project.id,
@@ -51,7 +51,7 @@ describe("project runtime access control", () => {
 
     const foreign = response();
     expect(
-      runtime.access.requireProjectAccess(
+      await runtime.access.requireProjectAccess(
         request(otherToken),
         foreign.response,
         project.id,
@@ -61,7 +61,7 @@ describe("project runtime access control", () => {
 
     const owner = response();
     expect(
-      runtime.access.requireProjectAccess(
+      await runtime.access.requireProjectAccess(
         request(ownerToken),
         owner.response,
         project.id,

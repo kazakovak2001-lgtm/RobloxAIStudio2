@@ -48,8 +48,12 @@ export function createPlatformRouter({
   const versions = new VersionHistoryRepository();
   const registry = new AgentRegistryService();
   const preferences = new Map<string, UserPreferences>();
-  const requireSelf = (req: Request, res: Response, userId: string) => {
-    const requestUserId = access.requireAuthenticatedUser(req, res);
+  const requireSelf = async (
+    req: Request,
+    res: Response,
+    userId: string,
+  ): Promise<boolean> => {
+    const requestUserId = await access.requireAuthenticatedUser(req, res);
     if (!requestUserId) return false;
     if (requestUserId && requestUserId !== userId) {
       res.status(403).json({ success: false, error: "Access denied" });
@@ -205,7 +209,7 @@ export function createPlatformRouter({
     });
   });
 
-  router.get("/auth/me", (req, res) => {
+  router.get("/auth/me", async (req, res) => {
     const token =
       req.headers.authorization?.replace("Bearer ", "") ??
       getTokenFromCookies(req);
@@ -213,7 +217,7 @@ export function createPlatformRouter({
       res.status(401).json({ success: false, error: "No token provided" });
       return;
     }
-    const session = auth.validateToken(token);
+    const session = await auth.validateToken(token);
     if (!session) {
       res
         .status(401)
@@ -250,8 +254,8 @@ export function createPlatformRouter({
     }
   });
 
-  router.get("/users/:id", (req, res) => {
-    if (!requireSelf(req, res, req.params.id)) return;
+  router.get("/users/:id", async (req, res) => {
+    if (!(await requireSelf(req, res, req.params.id))) return;
     const user = users.getById(req.params.id);
     if (!user) {
       res.status(404).json({ success: false, error: "User not found" });
@@ -261,7 +265,7 @@ export function createPlatformRouter({
   });
 
   router.patch("/users/:id", async (req, res) => {
-    if (!requireSelf(req, res, req.params.id)) return;
+    if (!(await requireSelf(req, res, req.params.id))) return;
     const { email, displayName } = req.body;
     const existing = typeof email === "string" ? users.getByEmail(email) : null;
     if (existing && existing.id !== req.params.id) {
@@ -286,8 +290,8 @@ export function createPlatformRouter({
     }
   });
 
-  router.get("/users/:id/preferences", (req, res) => {
-    if (!requireSelf(req, res, req.params.id)) return;
+  router.get("/users/:id/preferences", async (req, res) => {
+    if (!(await requireSelf(req, res, req.params.id))) return;
     res.json({
       success: true,
       data:
@@ -303,8 +307,8 @@ export function createPlatformRouter({
     });
   });
 
-  router.put("/users/:id/preferences", (req, res) => {
-    if (!requireSelf(req, res, req.params.id)) return;
+  router.put("/users/:id/preferences", async (req, res) => {
+    if (!(await requireSelf(req, res, req.params.id))) return;
     const current =
       preferences.get(req.params.id) ??
       ({
@@ -329,22 +333,24 @@ export function createPlatformRouter({
     res.json({ success: true, data: next });
   });
 
-  router.get("/users/:id/limits", (req, res) => {
-    if (!requireSelf(req, res, req.params.id)) return;
+  router.get("/users/:id/limits", async (req, res) => {
+    if (!(await requireSelf(req, res, req.params.id))) return;
     const check = users.checkLimits(req.params.id);
     res.json({ success: true, data: check });
   });
 
   // ─── Versions ─────────────────────────────────────────────
 
-  router.get("/versions/:projectId", (req, res) => {
-    if (!access.requireProjectAccess(req, res, req.params.projectId)) return;
+  router.get("/versions/:projectId", async (req, res) => {
+    if (!(await access.requireProjectAccess(req, res, req.params.projectId)))
+      return;
     const history = versions.getHistory(req.params.projectId);
     res.json({ success: true, data: history });
   });
 
-  router.post("/versions/:projectId", (req, res) => {
-    if (!access.requireProjectAccess(req, res, req.params.projectId)) return;
+  router.post("/versions/:projectId", async (req, res) => {
+    if (!(await access.requireProjectAccess(req, res, req.params.projectId)))
+      return;
     const {
       label,
       pipelineId,

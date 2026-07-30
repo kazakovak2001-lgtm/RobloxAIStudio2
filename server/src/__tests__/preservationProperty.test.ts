@@ -30,14 +30,14 @@ import { SaaSProjectRepository } from "../platform/projects";
  * Mirrors the actual implementation in security.ts (storage-backed opaque
  * session validation).
  */
-function simulateAuthMiddleware(
+async function simulateAuthMiddleware(
   path: string,
   method: string,
   env: string,
   authHeader?: string,
   apiKey?: string,
   authService?: AuthService,
-): { allowed: boolean; statusCode: number } {
+): Promise<{ allowed: boolean; statusCode: number }> {
   const PUBLIC_PATHS = [
     "/health",
     "/api/system/status",
@@ -65,7 +65,7 @@ function simulateAuthMiddleware(
   if (authHeader?.startsWith("Bearer ")) {
     const token = authHeader.slice(7);
     if (authService) {
-      const session = authService.validateToken(token);
+      const session = await authService.validateToken(token);
       if (session) return { allowed: true, statusCode: 200 };
       return { allowed: false, statusCode: 401 };
     }
@@ -85,11 +85,11 @@ function simulateAuthMiddleware(
 /**
  * Simulates Socket.IO auth middleware
  */
-function simulateSocketAuth(
+async function simulateSocketAuth(
   token: string | undefined | null,
   env: string,
   authService?: AuthService,
-): { accepted: boolean; error?: string } {
+): Promise<{ accepted: boolean; error?: string }> {
   if (env !== "production") {
     return { accepted: true };
   }
@@ -98,7 +98,7 @@ function simulateSocketAuth(
   }
   // FIXED: Validate token using AuthService
   if (authService) {
-    const session = authService.validateToken(token);
+    const session = await authService.validateToken(token);
     if (session) {
       return { accepted: true };
     }
@@ -110,7 +110,7 @@ function simulateSocketAuth(
 
 // ─── Test Suite ─────────────────────────────────────────────────────────────
 
-describe("Preservation Property Tests - Baseline Behavior Guards", () => {
+describe("Preservation Property Tests - Baseline Behavior Guards", async () => {
   let originalEnv: string | undefined;
 
   beforeEach(() => {
@@ -126,8 +126,8 @@ describe("Preservation Property Tests - Baseline Behavior Guards", () => {
   // Validates: Requirement 3.1
   // ═══════════════════════════════════════════════════════════════════════════
 
-  describe("Authentication Flow - Dev Mode Bypass (Requirement 3.1)", () => {
-    it("property: ALL routes accessible without tokens in development mode", () => {
+  describe("Authentication Flow - Dev Mode Bypass (Requirement 3.1)", async () => {
+    it("property: ALL routes accessible without tokens in development mode", async () => {
       const routes = [
         "/api/projects",
         "/api/concept/generate",
@@ -143,12 +143,16 @@ describe("Preservation Property Tests - Baseline Behavior Guards", () => {
 
       const methods = ["GET", "POST", "PUT", "DELETE"];
 
-      fc.assert(
-        fc.property(
+      await fc.assert(
+        fc.asyncProperty(
           fc.constantFrom(...routes),
           fc.constantFrom(...methods),
-          (route, method) => {
-            const result = simulateAuthMiddleware(route, method, "development");
+          async (route, method) => {
+            const result = await simulateAuthMiddleware(
+              route,
+              method,
+              "development",
+            );
             expect(result.allowed).toBe(true);
             expect(result.statusCode).toBe(200);
           },
@@ -157,15 +161,19 @@ describe("Preservation Property Tests - Baseline Behavior Guards", () => {
       );
     });
 
-    it("property: random paths accessible in dev mode without auth", () => {
-      fc.assert(
-        fc.property(
+    it("property: random paths accessible in dev mode without auth", async () => {
+      await fc.assert(
+        fc.asyncProperty(
           fc
             .string({ minLength: 1, maxLength: 50 })
             .map((s) => "/api/" + s.replace(/[^a-z0-9/]/gi, "")),
           fc.constantFrom("GET", "POST", "PUT", "DELETE"),
-          (path, method) => {
-            const result = simulateAuthMiddleware(path, method, "development");
+          async (path, method) => {
+            const result = await simulateAuthMiddleware(
+              path,
+              method,
+              "development",
+            );
             expect(result.allowed).toBe(true);
           },
         ),
@@ -173,7 +181,7 @@ describe("Preservation Property Tests - Baseline Behavior Guards", () => {
       );
     });
 
-    it("unit: authMiddleware calls next() in development mode", () => {
+    it("unit: authMiddleware calls next() in development mode", async () => {
       process.env.NODE_ENV = "development";
       let nextCalled = false;
       const req = {
@@ -186,11 +194,11 @@ describe("Preservation Property Tests - Baseline Behavior Guards", () => {
         nextCalled = true;
       };
 
-      authMiddleware(req, res, next);
+      await authMiddleware(req, res, next);
       expect(nextCalled).toBe(true);
     });
 
-    it("unit: authMiddleware calls next() for /api/analytics in dev mode", () => {
+    it("unit: authMiddleware calls next() for /api/analytics in dev mode", async () => {
       process.env.NODE_ENV = "development";
       let nextCalled = false;
       const req = {
@@ -203,7 +211,7 @@ describe("Preservation Property Tests - Baseline Behavior Guards", () => {
         nextCalled = true;
       };
 
-      authMiddleware(req, res, next);
+      await authMiddleware(req, res, next);
       expect(nextCalled).toBe(true);
     });
   });
@@ -213,7 +221,7 @@ describe("Preservation Property Tests - Baseline Behavior Guards", () => {
   // Validates: Requirement 3.3
   // ═══════════════════════════════════════════════════════════════════════════
 
-  describe("Project CRUD - API Response Structure (Requirement 3.3)", () => {
+  describe("Project CRUD - API Response Structure (Requirement 3.3)", async () => {
     it("unit: SaaSProjectRepository create returns correct structure", async () => {
       const storage = new InMemoryStorageProvider();
       const projects = new SaaSProjectRepository(storage);
@@ -283,17 +291,20 @@ describe("Preservation Property Tests - Baseline Behavior Guards", () => {
   // Validates: Requirement 3.3
   // ═══════════════════════════════════════════════════════════════════════════
 
-  describe("AI Studio Generation - Concept Endpoint (Requirement 3.3)", () => {
-    it("property: concept generation endpoint accessible in dev mode", () => {
-      fc.assert(
-        fc.property(fc.constantFrom("development", "test", ""), (env) => {
-          const result = simulateAuthMiddleware(
-            "/api/concept/generate",
-            "POST",
-            env,
-          );
-          expect(result.allowed).toBe(true);
-        }),
+  describe("AI Studio Generation - Concept Endpoint (Requirement 3.3)", async () => {
+    it("property: concept generation endpoint accessible in dev mode", async () => {
+      await fc.assert(
+        fc.asyncProperty(
+          fc.constantFrom("development", "test", ""),
+          async (env) => {
+            const result = await simulateAuthMiddleware(
+              "/api/concept/generate",
+              "POST",
+              env,
+            );
+            expect(result.allowed).toBe(true);
+          },
+        ),
         { numRuns: 5 },
       );
     });
@@ -304,7 +315,7 @@ describe("Preservation Property Tests - Baseline Behavior Guards", () => {
   // Validates: Requirement 3.3
   // ═══════════════════════════════════════════════════════════════════════════
 
-  describe("Analytics API - Endpoint Access (Requirement 3.3)", () => {
+  describe("Analytics API - Endpoint Access (Requirement 3.3)", async () => {
     const analyticsRoutes = [
       "/api/analytics/system",
       "/api/analytics/agents",
@@ -315,10 +326,14 @@ describe("Preservation Property Tests - Baseline Behavior Guards", () => {
       "/api/analytics/lowest-scores",
     ];
 
-    it("property: all analytics routes accessible in development mode", () => {
-      fc.assert(
-        fc.property(fc.constantFrom(...analyticsRoutes), (route) => {
-          const result = simulateAuthMiddleware(route, "GET", "development");
+    it("property: all analytics routes accessible in development mode", async () => {
+      await fc.assert(
+        fc.asyncProperty(fc.constantFrom(...analyticsRoutes), async (route) => {
+          const result = await simulateAuthMiddleware(
+            route,
+            "GET",
+            "development",
+          );
           expect(result.allowed).toBe(true);
           expect(result.statusCode).toBe(200);
         }),
@@ -326,18 +341,18 @@ describe("Preservation Property Tests - Baseline Behavior Guards", () => {
       );
     });
 
-    it("property: analytics routes accessible with valid Bearer token in production", () => {
-      fc.assert(
-        fc.property(
+    it("property: analytics routes accessible with valid Bearer token in production", async () => {
+      await fc.assert(
+        fc.asyncProperty(
           fc.constantFrom(...analyticsRoutes),
           fc.string({ minLength: 8, maxLength: 30 }),
-          (route, password) => {
+          async (route, password) => {
             const auth = new AuthService();
             auth.register("analytics@test.com", password, "user-a");
             const login = auth.login("analytics@test.com", password, "user-a");
             if (!login.success || !login.token) return;
 
-            const result = simulateAuthMiddleware(
+            const result = await simulateAuthMiddleware(
               route,
               "GET",
               "production",
@@ -359,8 +374,8 @@ describe("Preservation Property Tests - Baseline Behavior Guards", () => {
   // Validates: Requirement 3.5
   // ═══════════════════════════════════════════════════════════════════════════
 
-  describe("Workspace Loading - In-Memory Storage (Requirement 3.5)", () => {
-    it("unit: InMemoryStorageProvider functions without PostgreSQL", () => {
+  describe("Workspace Loading - In-Memory Storage (Requirement 3.5)", async () => {
+    it("unit: InMemoryStorageProvider functions without PostgreSQL", async () => {
       const storage = new InMemoryStorageProvider();
 
       // Basic CRUD operations work
@@ -375,8 +390,8 @@ describe("Preservation Property Tests - Baseline Behavior Guards", () => {
       expect(storage.get("test-collection", "item-1")).toBeNull();
     });
 
-    it("property: in-memory storage preserves data integrity for any key-value pair", () => {
-      fc.assert(
+    it("property: in-memory storage preserves data integrity for any key-value pair", async () => {
+      await fc.assert(
         fc.property(
           fc
             .string({ minLength: 1, maxLength: 50 })
@@ -405,38 +420,42 @@ describe("Preservation Property Tests - Baseline Behavior Guards", () => {
   // Validates: Requirement 3.2
   // ═══════════════════════════════════════════════════════════════════════════
 
-  describe("Plugin Manager - API Endpoints (Requirement 3.2)", () => {
-    it("property: studio/plugin routes accessible in dev mode", () => {
+  describe("Plugin Manager - API Endpoints (Requirement 3.2)", async () => {
+    it("property: studio/plugin routes accessible in dev mode", async () => {
       const pluginRoutes = [
         "/api/studio/status",
         "/api/studio/connect",
         "/api/studio/sync",
       ];
 
-      fc.assert(
-        fc.property(fc.constantFrom(...pluginRoutes), (route) => {
-          const result = simulateAuthMiddleware(route, "GET", "development");
+      await fc.assert(
+        fc.asyncProperty(fc.constantFrom(...pluginRoutes), async (route) => {
+          const result = await simulateAuthMiddleware(
+            route,
+            "GET",
+            "development",
+          );
           expect(result.allowed).toBe(true);
         }),
         { numRuns: 5 },
       );
     });
 
-    it("property: plugin routes accessible with valid Bearer token in prod", () => {
+    it("property: plugin routes accessible with valid Bearer token in prod", async () => {
       const pluginRoutes = ["/api/studio/status", "/api/studio/connect"];
 
-      fc.assert(
-        fc.property(
+      await fc.assert(
+        fc.asyncProperty(
           fc.constantFrom(...pluginRoutes),
           fc.constantFrom("GET", "POST"),
           fc.string({ minLength: 8, maxLength: 30 }),
-          (route, method, password) => {
+          async (route, method, password) => {
             const auth = new AuthService();
             auth.register("plugin@test.com", password, "user-p");
             const login = auth.login("plugin@test.com", password, "user-p");
             if (!login.success || !login.token) return;
 
-            const result = simulateAuthMiddleware(
+            const result = await simulateAuthMiddleware(
               route,
               method,
               "production",
@@ -457,8 +476,8 @@ describe("Preservation Property Tests - Baseline Behavior Guards", () => {
   // Validates: Requirement 3.2
   // ═══════════════════════════════════════════════════════════════════════════
 
-  describe("Token Refresh Flow (Requirement 3.2)", () => {
-    it("unit: AuthService refreshSession produces new valid tokens", () => {
+  describe("Token Refresh Flow (Requirement 3.2)", async () => {
+    it("unit: AuthService refreshSession produces new valid tokens", async () => {
       const auth = new AuthService();
       auth.register("user@test.com", "password123", "user-1");
       const loginResult = auth.login("user@test.com", "password123", "user-1");
@@ -474,28 +493,31 @@ describe("Preservation Property Tests - Baseline Behavior Guards", () => {
       expect(refreshResult.token).not.toBe(loginResult.token);
     });
 
-    it("unit: invalid refresh token returns error", () => {
+    it("unit: invalid refresh token returns error", async () => {
       const auth = new AuthService();
       const result = auth.refreshSession("invalid_refresh_token");
       expect(result.success).toBe(false);
       expect(result.error).toBeDefined();
     });
 
-    it("property: refreshed token grants access via validateToken", () => {
-      fc.assert(
-        fc.property(fc.string({ minLength: 8, maxLength: 30 }), (password) => {
-          const auth = new AuthService();
-          auth.register("test@e.com", password, "u-1");
-          const login = auth.login("test@e.com", password, "u-1");
-          if (!login.success || !login.refreshToken) return;
+    it("property: refreshed token grants access via validateToken", async () => {
+      await fc.assert(
+        fc.asyncProperty(
+          fc.string({ minLength: 8, maxLength: 30 }),
+          async (password) => {
+            const auth = new AuthService();
+            auth.register("test@e.com", password, "u-1");
+            const login = auth.login("test@e.com", password, "u-1");
+            if (!login.success || !login.refreshToken) return;
 
-          const refreshed = auth.refreshSession(login.refreshToken);
-          if (!refreshed.success || !refreshed.token) return;
+            const refreshed = auth.refreshSession(login.refreshToken);
+            if (!refreshed.success || !refreshed.token) return;
 
-          const session = auth.validateToken(refreshed.token);
-          expect(session).not.toBeNull();
-          expect(session!.userId).toBe("u-1");
-        }),
+            const session = await auth.validateToken(refreshed.token);
+            expect(session).not.toBeNull();
+            expect(session!.userId).toBe("u-1");
+          },
+        ),
         { numRuns: 5 },
       );
     }, 60000);
@@ -506,35 +528,38 @@ describe("Preservation Property Tests - Baseline Behavior Guards", () => {
   // Validates: Requirement 3.2
   // ═══════════════════════════════════════════════════════════════════════════
 
-  describe("Logout Behavior (Requirement 3.2)", () => {
-    it("unit: logout invalidates the session token", () => {
+  describe("Logout Behavior (Requirement 3.2)", async () => {
+    it("unit: logout invalidates the session token", async () => {
       const auth = new AuthService();
       auth.register("user@test.com", "pass123", "user-1");
       const login = auth.login("user@test.com", "pass123", "user-1");
 
       expect(login.success).toBe(true);
-      expect(auth.validateToken(login.token!)).not.toBeNull();
+      expect(await auth.validateToken(login.token!)).not.toBeNull();
 
       auth.logout(login.token!);
-      expect(auth.validateToken(login.token!)).toBeNull();
+      expect(await auth.validateToken(login.token!)).toBeNull();
     });
 
-    it("property: logout always invalidates any issued token", () => {
-      fc.assert(
-        fc.property(fc.string({ minLength: 6, maxLength: 30 }), (password) => {
-          const auth = new AuthService();
-          auth.register("t@t.com", password, "u-1");
-          const login = auth.login("t@t.com", password, "u-1");
-          if (!login.success || !login.token) return;
+    it("property: logout always invalidates any issued token", async () => {
+      await fc.assert(
+        fc.asyncProperty(
+          fc.string({ minLength: 6, maxLength: 30 }),
+          async (password) => {
+            const auth = new AuthService();
+            auth.register("t@t.com", password, "u-1");
+            const login = auth.login("t@t.com", password, "u-1");
+            if (!login.success || !login.token) return;
 
-          // Token valid before logout
-          expect(auth.validateToken(login.token)).not.toBeNull();
-          // Logout
-          const loggedOut = auth.logout(login.token);
-          expect(loggedOut).toBe(true);
-          // Token invalid after logout
-          expect(auth.validateToken(login.token)).toBeNull();
-        }),
+            // Token valid before logout
+            expect(await auth.validateToken(login.token)).not.toBeNull();
+            // Logout
+            const loggedOut = auth.logout(login.token);
+            expect(loggedOut).toBe(true);
+            // Token invalid after logout
+            expect(await auth.validateToken(login.token)).toBeNull();
+          },
+        ),
         { numRuns: 5 },
       );
     }, 60000);
@@ -546,8 +571,8 @@ describe("Preservation Property Tests - Baseline Behavior Guards", () => {
   // Current behavior: any Bearer string works (this IS the preservation target)
   // ═══════════════════════════════════════════════════════════════════════════
 
-  describe("Protected Routes - Bearer Token Access (Requirement 3.2)", () => {
-    it("property: valid Bearer token passes authMiddleware in production", () => {
+  describe("Protected Routes - Bearer Token Access (Requirement 3.2)", async () => {
+    it("property: valid Bearer token passes authMiddleware in production", async () => {
       const protectedRoutes = [
         "/api/projects",
         "/api/concept/generate",
@@ -557,17 +582,17 @@ describe("Preservation Property Tests - Baseline Behavior Guards", () => {
         "/api/studio/status",
       ];
 
-      fc.assert(
-        fc.property(
+      await fc.assert(
+        fc.asyncProperty(
           fc.constantFrom(...protectedRoutes),
           fc.string({ minLength: 8, maxLength: 30 }),
-          (route, password) => {
+          async (route, password) => {
             const auth = new AuthService();
             auth.register("user@test.com", password, "user-1");
             const login = auth.login("user@test.com", password, "user-1");
             if (!login.success || !login.token) return;
 
-            const result = simulateAuthMiddleware(
+            const result = await simulateAuthMiddleware(
               route,
               "GET",
               "production",
@@ -584,7 +609,7 @@ describe("Preservation Property Tests - Baseline Behavior Guards", () => {
       );
     }, 60000);
 
-    it("unit: actual authMiddleware passes valid Bearer token in production", () => {
+    it("unit: actual authMiddleware passes valid Bearer token in production", async () => {
       process.env.NODE_ENV = "production";
 
       // Use the shared authService that the middleware uses internally
@@ -610,14 +635,14 @@ describe("Preservation Property Tests - Baseline Behavior Guards", () => {
         nextCalled = true;
       };
 
-      authMiddleware(req, res, next);
+      await authMiddleware(req, res, next);
       expect(nextCalled).toBe(true);
 
       // Cleanup: logout
       sharedAuthService.logout(loginResult.token!);
     });
 
-    it("unit: actual authMiddleware rejects invalid Bearer token in production", () => {
+    it("unit: actual authMiddleware rejects invalid Bearer token in production", async () => {
       process.env.NODE_ENV = "production";
       let nextCalled = false;
       let responseStatus: number | null = null;
@@ -641,12 +666,12 @@ describe("Preservation Property Tests - Baseline Behavior Guards", () => {
         nextCalled = true;
       };
 
-      authMiddleware(req, res, next);
+      await authMiddleware(req, res, next);
       expect(nextCalled).toBe(false);
       expect(responseStatus).toBe(401);
     });
 
-    it("unit: unregistered API key is rejected by authMiddleware", () => {
+    it("unit: unregistered API key is rejected by authMiddleware", async () => {
       process.env.NODE_ENV = "production";
       let nextCalled = false;
       let responseStatus = 0;
@@ -665,7 +690,7 @@ describe("Preservation Property Tests - Baseline Behavior Guards", () => {
         nextCalled = true;
       };
 
-      authMiddleware(req, res, next);
+      await authMiddleware(req, res, next);
       expect(nextCalled).toBe(false);
       expect(responseStatus).toBe(401);
     });
@@ -676,7 +701,7 @@ describe("Preservation Property Tests - Baseline Behavior Guards", () => {
   // Validates: Requirement 3.3
   // ═══════════════════════════════════════════════════════════════════════════
 
-  describe("Existing API Contracts - Response Format (Requirement 3.3)", () => {
+  describe("Existing API Contracts - Response Format (Requirement 3.3)", async () => {
     it("unit: project API returns {success: true, data: [...]} format", async () => {
       const storage = new InMemoryStorageProvider();
       const projects = new SaaSProjectRepository(storage);
@@ -690,7 +715,7 @@ describe("Preservation Property Tests - Baseline Behavior Guards", () => {
       expect(Array.isArray(response.data)).toBe(true);
     });
 
-    it("unit: AuthService login returns expected LoginResult shape", () => {
+    it("unit: AuthService login returns expected LoginResult shape", async () => {
       const auth = new AuthService();
       auth.register("test@t.com", "password", "user-1");
       const result = auth.login("test@t.com", "password", "user-1");
@@ -704,8 +729,8 @@ describe("Preservation Property Tests - Baseline Behavior Guards", () => {
       expect(result.refreshToken!.startsWith("ref_")).toBe(true);
     });
 
-    it("property: login result tokens follow consistent format", () => {
-      fc.assert(
+    it("property: login result tokens follow consistent format", async () => {
+      await fc.assert(
         fc.property(
           fc.emailAddress(),
           fc.string({ minLength: 6, maxLength: 30 }),
@@ -724,7 +749,7 @@ describe("Preservation Property Tests - Baseline Behavior Guards", () => {
       );
     }, 60000);
 
-    it("unit: failed login returns {success: false, error: string}", () => {
+    it("unit: failed login returns {success: false, error: string}", async () => {
       const auth = new AuthService();
       auth.register("test@t.com", "correct_pass", "user-1");
       const result = auth.login("test@t.com", "wrong_pass", "user-1");
@@ -741,10 +766,10 @@ describe("Preservation Property Tests - Baseline Behavior Guards", () => {
   // Validates: Requirement 3.4
   // ═══════════════════════════════════════════════════════════════════════════
 
-  describe("Socket.IO Development Mode (Requirement 3.4)", () => {
-    it("property: Socket.IO connections always succeed in development mode regardless of token", () => {
-      fc.assert(
-        fc.property(
+  describe("Socket.IO Development Mode (Requirement 3.4)", async () => {
+    it("property: Socket.IO connections always succeed in development mode regardless of token", async () => {
+      await fc.assert(
+        fc.asyncProperty(
           fc.oneof(
             fc.constant(undefined),
             fc.constant(null),
@@ -752,8 +777,8 @@ describe("Preservation Property Tests - Baseline Behavior Guards", () => {
             fc.string({ minLength: 1, maxLength: 100 }),
           ),
           fc.constantFrom("development", "test", ""),
-          (token, env) => {
-            const result = simulateSocketAuth(token, env);
+          async (token, env) => {
+            const result = await simulateSocketAuth(token, env);
             expect(result.accepted).toBe(true);
             expect(result.error).toBeUndefined();
           },
@@ -762,29 +787,36 @@ describe("Preservation Property Tests - Baseline Behavior Guards", () => {
       );
     });
 
-    it("property: Socket.IO with VALID token succeeds in production", () => {
-      fc.assert(
-        fc.property(fc.string({ minLength: 8, maxLength: 30 }), (password) => {
-          const auth = new AuthService();
-          auth.register("socket@test.com", password, "user-s");
-          const login = auth.login("socket@test.com", password, "user-s");
-          if (!login.success || !login.token) return;
+    it("property: Socket.IO with VALID token succeeds in production", async () => {
+      await fc.assert(
+        fc.asyncProperty(
+          fc.string({ minLength: 8, maxLength: 30 }),
+          async (password) => {
+            const auth = new AuthService();
+            auth.register("socket@test.com", password, "user-s");
+            const login = auth.login("socket@test.com", password, "user-s");
+            if (!login.success || !login.token) return;
 
-          const result = simulateSocketAuth(login.token, "production", auth);
-          // Valid token should be accepted
-          expect(result.accepted).toBe(true);
-          expect(result.error).toBeUndefined();
-        }),
+            const result = await simulateSocketAuth(
+              login.token,
+              "production",
+              auth,
+            );
+            // Valid token should be accepted
+            expect(result.accepted).toBe(true);
+            expect(result.error).toBeUndefined();
+          },
+        ),
         { numRuns: 5 },
       );
     }, 60000);
 
-    it("unit: Socket.IO rejects null/undefined token in production", () => {
-      const result1 = simulateSocketAuth(undefined, "production");
+    it("unit: Socket.IO rejects null/undefined token in production", async () => {
+      const result1 = await simulateSocketAuth(undefined, "production");
       expect(result1.accepted).toBe(false);
       expect(result1.error).toBe("Authentication required");
 
-      const result2 = simulateSocketAuth(null, "production");
+      const result2 = await simulateSocketAuth(null, "production");
       expect(result2.accepted).toBe(false);
       expect(result2.error).toBe("Authentication required");
     });
@@ -795,9 +827,9 @@ describe("Preservation Property Tests - Baseline Behavior Guards", () => {
   // Validates: Requirement 3.5
   // ═══════════════════════════════════════════════════════════════════════════
 
-  describe("In-Memory Storage - No PostgreSQL Required (Requirement 3.5)", () => {
-    it("property: storage operations work for any collection/key combo", () => {
-      fc.assert(
+  describe("In-Memory Storage - No PostgreSQL Required (Requirement 3.5)", async () => {
+    it("property: storage operations work for any collection/key combo", async () => {
+      await fc.assert(
         fc.property(
           fc
             .string({ minLength: 1, maxLength: 30 })
@@ -853,7 +885,7 @@ describe("Preservation Property Tests - Baseline Behavior Guards", () => {
       expect(projects.get(p.id)).toBeNull();
     });
 
-    it("unit: AuthService works without database", () => {
+    it("unit: AuthService works without database", async () => {
       const auth = new AuthService();
       const registered = auth.register("no-db@test.com", "pass", "u-1");
       expect(registered).toBe(true);
@@ -869,20 +901,20 @@ describe("Preservation Property Tests - Baseline Behavior Guards", () => {
   // Validates: Requirement 3.8
   // ═══════════════════════════════════════════════════════════════════════════
 
-  describe("Security Middleware - Rate Limit, Helmet, CORS (Requirement 3.8)", () => {
-    it("unit: rateLimiter middleware exists and is a function", () => {
+  describe("Security Middleware - Rate Limit, Helmet, CORS (Requirement 3.8)", async () => {
+    it("unit: rateLimiter middleware exists and is a function", async () => {
       expect(typeof rateLimiter).toBe("function");
     });
 
-    it("unit: securityHeaders (helmet) middleware exists and is a function", () => {
+    it("unit: securityHeaders (helmet) middleware exists and is a function", async () => {
       expect(typeof securityHeaders).toBe("function");
     });
 
-    it("unit: corsMiddleware exists and is a function", () => {
+    it("unit: corsMiddleware exists and is a function", async () => {
       expect(typeof corsMiddleware).toBe("function");
     });
 
-    it("unit: corsMiddleware allows development origin", () => {
+    it("unit: corsMiddleware allows development origin", async () => {
       process.env.NODE_ENV = "development";
 
       let nextCalled = false;
@@ -908,7 +940,7 @@ describe("Preservation Property Tests - Baseline Behavior Guards", () => {
       );
     });
 
-    it("unit: corsMiddleware sets correct headers for OPTIONS preflight", () => {
+    it("unit: corsMiddleware sets correct headers for OPTIONS preflight", async () => {
       process.env.NODE_ENV = "development";
 
       const headers: Record<string, string> = {};
@@ -937,7 +969,7 @@ describe("Preservation Property Tests - Baseline Behavior Guards", () => {
       expect(headers["Access-Control-Allow-Credentials"]).toBe("true");
     });
 
-    it("property: CORS allows all known development origins", () => {
+    it("property: CORS allows all known development origins", async () => {
       const devOrigins = [
         "http://localhost:5173",
         "http://localhost:5174",
@@ -945,7 +977,7 @@ describe("Preservation Property Tests - Baseline Behavior Guards", () => {
         "http://127.0.0.1:5173",
       ];
 
-      fc.assert(
+      await fc.assert(
         fc.property(fc.constantFrom(...devOrigins), (origin) => {
           process.env.NODE_ENV = "development";
           const headers: Record<string, string> = {};
@@ -976,8 +1008,8 @@ describe("Preservation Property Tests - Baseline Behavior Guards", () => {
   // (Testing that route paths are recognized by authMiddleware in dev mode)
   // ═══════════════════════════════════════════════════════════════════════════
 
-  describe("Frontend Routing - Existing Routes (Requirement 3.7)", () => {
-    it("property: frontend page routes are not blocked by middleware in dev mode", () => {
+  describe("Frontend Routing - Existing Routes (Requirement 3.7)", async () => {
+    it("property: frontend page routes are not blocked by middleware in dev mode", async () => {
       const frontendRoutes = [
         "/ai-studio",
         "/analytics",
@@ -986,24 +1018,32 @@ describe("Preservation Property Tests - Baseline Behavior Guards", () => {
         "/",
       ];
 
-      fc.assert(
-        fc.property(fc.constantFrom(...frontendRoutes), (route) => {
+      await fc.assert(
+        fc.asyncProperty(fc.constantFrom(...frontendRoutes), async (route) => {
           // In development mode, all routes pass middleware
-          const result = simulateAuthMiddleware(route, "GET", "development");
+          const result = await simulateAuthMiddleware(
+            route,
+            "GET",
+            "development",
+          );
           expect(result.allowed).toBe(true);
         }),
         { numRuns: 5 },
       );
     });
 
-    it("unit: root path is always public even in production", () => {
-      const result = simulateAuthMiddleware("/", "GET", "production");
+    it("unit: root path is always public even in production", async () => {
+      const result = await simulateAuthMiddleware("/", "GET", "production");
       expect(result.allowed).toBe(true);
       expect(result.statusCode).toBe(200);
     });
 
-    it("unit: /health is always public even in production", () => {
-      const result = simulateAuthMiddleware("/health", "GET", "production");
+    it("unit: /health is always public even in production", async () => {
+      const result = await simulateAuthMiddleware(
+        "/health",
+        "GET",
+        "production",
+      );
       expect(result.allowed).toBe(true);
     });
   });

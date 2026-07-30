@@ -13,9 +13,10 @@ export function createChatPersistenceRouter(
 ): Router {
   const router = Router();
 
-  router.get("/:projectId/history", (req, res) => {
+  router.get("/:projectId/history", async (req, res) => {
     try {
-      if (!access.requireProjectAccess(req, res, req.params.projectId)) return;
+      if (!(await access.requireProjectAccess(req, res, req.params.projectId)))
+        return;
       const limit =
         typeof req.query.limit === "string"
           ? Number.parseInt(req.query.limit, 10)
@@ -29,7 +30,7 @@ export function createChatPersistenceRouter(
     }
   });
 
-  router.get("/conversation/:id", (req, res) => {
+  router.get("/conversation/:id", async (req, res) => {
     try {
       const conversation = chatPersistence.getConversation(req.params.id);
       if (!conversation) {
@@ -38,7 +39,9 @@ export function createChatPersistenceRouter(
           .json({ success: false, error: "Conversation not found" });
         return;
       }
-      if (!access.requireProjectAccess(req, res, conversation.projectId))
+      if (
+        !(await access.requireProjectAccess(req, res, conversation.projectId))
+      )
         return;
       res.json({ success: true, data: conversation });
     } catch (error) {
@@ -57,9 +60,11 @@ export function createChatPersistenceRouter(
             .json({ success: false, error: "Conversation not found" });
           return;
         }
-        if (!access.requireProjectAccess(req, res, conversation.projectId))
+        if (
+          !(await access.requireProjectAccess(req, res, conversation.projectId))
+        )
           return;
-      } else if (!access.requireProjectAccess(req, res, projectId)) {
+      } else if (!(await access.requireProjectAccess(req, res, projectId))) {
         return;
       }
       const message = await chatPersistence.createMessage({
@@ -84,7 +89,9 @@ export function createChatPersistenceRouter(
           .json({ success: false, error: "Conversation not found" });
         return;
       }
-      if (!access.requireProjectAccess(req, res, conversation.projectId))
+      if (
+        !(await access.requireProjectAccess(req, res, conversation.projectId))
+      )
         return;
       const deleted = await chatPersistence.deleteConversation(req.params.id);
       res.json({ success: true, data: { deleted } });

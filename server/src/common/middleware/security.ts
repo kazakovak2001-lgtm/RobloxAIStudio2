@@ -134,11 +134,11 @@ const PUBLIC_PREFIXES = [
   "/api/platform/auth", // Auth routes (login, register, refresh, logout) must be public
 ];
 
-export function authMiddleware(
+export async function authMiddleware(
   req: Request,
   res: Response,
   next: NextFunction,
-): void {
+): Promise<void> {
   // Skip auth in development mode
   if (process.env.NODE_ENV !== "production") {
     next();
@@ -166,7 +166,16 @@ export function authMiddleware(
 
   if (authHeader?.startsWith("Bearer ")) {
     const token = authHeader.slice(7); // Remove "Bearer " prefix
-    const session = authService.validateToken(token);
+    let session;
+    try {
+      session = await authService.validateToken(token);
+    } catch {
+      res.status(503).json({
+        success: false,
+        error: "Authentication persistence unavailable",
+      });
+      return;
+    }
     if (session) {
       // Attach session/user info to request for downstream handlers
       (req as any).user = session;
@@ -182,7 +191,16 @@ export function authMiddleware(
   const cookieToken = (req as unknown as { cookies?: Record<string, string> })
     .cookies?.roblox_ai_token;
   if (cookieToken) {
-    const session = authService.validateToken(cookieToken);
+    let session;
+    try {
+      session = await authService.validateToken(cookieToken);
+    } catch {
+      res.status(503).json({
+        success: false,
+        error: "Authentication persistence unavailable",
+      });
+      return;
+    }
     if (session) {
       (req as any).user = session;
       // Attach token to Authorization header internally so downstream handlers can use it

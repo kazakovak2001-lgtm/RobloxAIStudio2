@@ -78,7 +78,7 @@ function readSocketCookie(cookieHeader: string | undefined, name: string) {
 }
 
 // Socket.IO authentication middleware
-io.use((socket, next) => {
+io.use(async (socket, next) => {
   // In development, allow all connections (preserve dev bypass)
   if (process.env.NODE_ENV !== "production") {
     next();
@@ -97,16 +97,22 @@ io.use((socket, next) => {
     return;
   }
 
-  // Validate token using AuthService (same validation as HTTP middleware)
-  const session = authService.validateToken(token as string);
-  if (!session) {
-    next(new Error("Invalid or expired token"));
-    return;
-  }
+  try {
+    const session = await authService.validateToken(token as string);
+    if (!session) {
+      next(new Error("Invalid or expired token"));
+      return;
+    }
 
-  // Attach authenticated user/session to socket.data
-  (socket as any).data = { ...((socket as any).data || {}), user: session };
-  next();
+    // Attach authenticated user/session only after durable acknowledgement.
+    (socket as any).data = {
+      ...((socket as any).data || {}),
+      user: session,
+    };
+    next();
+  } catch {
+    next(new Error("Authentication persistence unavailable"));
+  }
 });
 
 // Middleware

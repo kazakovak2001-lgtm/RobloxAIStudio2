@@ -17,9 +17,13 @@ import {
 import { getTokenFromCookies } from "../common/middleware/cookies";
 
 export interface ProjectAccessControl {
-  getRequestUserId(req: Request): string | null;
-  requireAuthenticatedUser(req: Request, res: Response): string | null;
-  requireProjectAccess(req: Request, res: Response, projectId: string): boolean;
+  getRequestUserId(req: Request): Promise<string | null>;
+  requireAuthenticatedUser(req: Request, res: Response): Promise<string | null>;
+  requireProjectAccess(
+    req: Request,
+    res: Response,
+    projectId: string,
+  ): Promise<boolean>;
 }
 
 export interface ProjectRuntime {
@@ -37,7 +41,7 @@ export function createProjectRuntime(
   const projectRepository = new SaaSProjectRepository(storage);
   const generationHistory = new StorageGenerationHistoryRepository(storage);
 
-  const getRequestUserId = (req: Request): string | null => {
+  const getRequestUserId = async (req: Request): Promise<string | null> => {
     const attachedUserId = (req as RequestWithSession).user?.userId;
     if (attachedUserId) return attachedUserId;
 
@@ -45,25 +49,25 @@ export function createProjectRuntime(
       req.headers.authorization?.replace("Bearer ", "") ??
       getTokenFromCookies(req);
     if (!token) return null;
-    return auth.validateToken(token)?.userId ?? null;
+    return (await auth.validateToken(token))?.userId ?? null;
   };
 
-  const requireAuthenticatedUser = (
+  const requireAuthenticatedUser = async (
     req: Request,
     res: Response,
-  ): string | null => {
-    const userId = getRequestUserId(req);
+  ): Promise<string | null> => {
+    const userId = await getRequestUserId(req);
     if (userId) return userId;
     res.status(401).json({ success: false, error: "Authentication required" });
     return null;
   };
 
-  const requireProjectAccess = (
+  const requireProjectAccess = async (
     req: Request,
     res: Response,
     projectId: string,
-  ): boolean => {
-    const userId = requireAuthenticatedUser(req, res);
+  ): Promise<boolean> => {
+    const userId = await requireAuthenticatedUser(req, res);
     if (!userId) return false;
 
     const project = projectRepository.get(projectId);
@@ -98,8 +102,8 @@ export function createProjectsRouter(runtime: ProjectRuntime): Router {
   const router = Router();
   const { projectRepository: projects, generationHistory, access } = runtime;
 
-  router.get("/", (req, res) => {
-    const userId = access.requireAuthenticatedUser(req, res);
+  router.get("/", async (req, res) => {
+    const userId = await access.requireAuthenticatedUser(req, res);
     if (!userId) return;
     res.json({
       success: true,
@@ -107,8 +111,8 @@ export function createProjectsRouter(runtime: ProjectRuntime): Router {
     });
   });
 
-  router.get("/:id", (req, res) => {
-    if (!access.requireProjectAccess(req, res, req.params.id)) return;
+  router.get("/:id", async (req, res) => {
+    if (!(await access.requireProjectAccess(req, res, req.params.id))) return;
     const project = projects.get(req.params.id);
     res.json({
       success: true,
@@ -116,8 +120,8 @@ export function createProjectsRouter(runtime: ProjectRuntime): Router {
     });
   });
 
-  router.get("/:id/history", (req, res) => {
-    if (!access.requireProjectAccess(req, res, req.params.id)) return;
+  router.get("/:id/history", async (req, res) => {
+    if (!(await access.requireProjectAccess(req, res, req.params.id))) return;
     res.json({
       success: true,
       data: generationHistory.getByProject(req.params.id),
@@ -125,7 +129,7 @@ export function createProjectsRouter(runtime: ProjectRuntime): Router {
   });
 
   router.post("/", async (req, res) => {
-    const userId = access.requireAuthenticatedUser(req, res);
+    const userId = await access.requireAuthenticatedUser(req, res);
     if (!userId) return;
 
     try {
@@ -144,7 +148,7 @@ export function createProjectsRouter(runtime: ProjectRuntime): Router {
   });
 
   router.put("/:id", async (req, res) => {
-    if (!access.requireProjectAccess(req, res, req.params.id)) return;
+    if (!(await access.requireProjectAccess(req, res, req.params.id))) return;
 
     try {
       const patch = readProjectPatch(req.body);
@@ -165,7 +169,7 @@ export function createProjectsRouter(runtime: ProjectRuntime): Router {
   });
 
   router.delete("/:id", async (req, res) => {
-    if (!access.requireProjectAccess(req, res, req.params.id)) return;
+    if (!(await access.requireProjectAccess(req, res, req.params.id))) return;
 
     try {
       const deleted = await projects.deleteDurable(req.params.id);
