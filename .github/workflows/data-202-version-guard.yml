@@ -1,0 +1,58 @@
+name: DATA-202 Role Mutation Version Guard
+
+on:
+  pull_request:
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/data-202-role-mutation-ack
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+      - run: npm ci
+      - name: Apply compatibility-version guard
+        run: |
+          node <<'NODE'
+          const fs = require('fs');
+
+          function replaceExactly(path, before, after) {
+            const source = fs.readFileSync(path, 'utf8');
+            const count = source.split(before).length - 1;
+            if (count !== 1) throw new Error(`${path}: expected one match, found ${count}`);
+            fs.writeFileSync(path, source.replace(before, after));
+          }
+
+          replaceExactly(
+            'server/src/platform/storage/postgres/PostgresStorageProvider.ts',
+            `  async setDurable<T>(collection: string, id: string, data: T): Promise<void> {\n    try {\n      await this.enqueueWrite(async () => {\n        await this.persistSet(collection, id, data);\n        this.getCollection(collection).set(id, data);\n      });`,
+            `  async setDurable<T>(collection: string, id: string, data: T): Promise<void> {\n    const key = this.mutationKey(collection, id);\n    const compatibilityVersion =\n      this.compatibilityMutationVersions.get(key) ?? 0;\n    try {\n      await this.enqueueWrite(async () => {\n        await this.persistSet(collection, id, data);\n        const currentVersion =\n          this.compatibilityMutationVersions.get(key) ?? 0;\n        if (currentVersion === compatibilityVersion) {\n          this.getCollection(collection).set(id, data);\n        }\n      });`,
+          );
+
+          replaceExactly(
+            'server/src/platform/storage/postgres/PostgresStorageProvider.test.ts',
+            `  it("publishes successful mutations only after acknowledgement", async () => {`,
+            `  it("does not overwrite a later compatibility write after durable acknowledgement", async () => {\n    let releaseInsert!: () => void;\n    let markInsertStarted!: () => void;\n    const insertGate = new Promise<void>((resolve) => {\n      releaseInsert = resolve;\n    });\n    const insertStarted = new Promise<void>((resolve) => {\n      markInsertStarted = resolve;\n    });\n    let insertCount = 0;\n    const pool: QueryablePool = {\n      async query(text: string) {\n        if (text.includes("SELECT collection, id, data")) return { rows: [] };\n        if (text.includes("INSERT INTO")) {\n          insertCount += 1;\n          if (insertCount === 1) {\n            markInsertStarted();\n            await insertGate;\n          }\n        }\n        return { rows: [] };\n      },\n      async end() {},\n    };\n    const storage = new PostgresStorageProvider(\n      {\n        connectionString: "postgresql://test",\n        poolSize: 1,\n        poolTimeout: 1000,\n        strict: true,\n      },\n      { createPool: () => pool },\n    );\n    await storage.ready();\n\n    const durable = storage.setDurable("auth_roles", "role-user", "creator");\n    await insertStarted;\n    storage.set("auth_roles", "role-user", "administrator");\n    expect(storage.get("auth_roles", "role-user")).toBe("administrator");\n\n    releaseInsert();\n    await durable;\n    expect(storage.get("auth_roles", "role-user")).toBe("administrator");\n    await storage.flush();\n    expect(storage.get("auth_roles", "role-user")).toBe("administrator");\n  });\n\n  it("publishes successful mutations only after acknowledgement", async () => {`,
+          );
+          NODE
+      - run: npx prettier --write server/src/platform/storage/postgres/PostgresStorageProvider.ts server/src/platform/storage/postgres/PostgresStorageProvider.test.ts
+      - run: npm run typecheck
+      - run: npm run test -- --run server/src/platform/storage/postgres/PostgresStorageProvider.test.ts server/src/__tests__/securityHardening.test.ts
+      - name: Finalize tracked state
+        run: |
+          git rm .github/workflows/data-202-version-guard.yml
+          node scripts/cleanup/generate-tracked-inventories.mjs
+          git add server/src/platform/storage/postgres/PostgresStorageProvider.ts server/src/platform/storage/postgres/PostgresStorageProvider.test.ts _inventory_raw.txt ProjectStructure.txt
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "fix(data): preserve later compatibility role writes"
+          git push origin HEAD:agent/data-202-role-mutation-ack
