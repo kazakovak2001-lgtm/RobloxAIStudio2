@@ -1,7 +1,8 @@
 # Technical Audit v2.0 Refresh — Module Registry
 
-**Backend baseline:** `2ecb3997eb6fab5074c438f10dedcc1715381e11`  
-**Frontend baseline:** `739b43cbc5f991c1852e80b30fe38c0e7c02d681`
+**Backend release baseline:** `a22d060b7fa44607c97a30d60b633e5545f8cfdb`  
+**Frontend contract baseline:** `95824451a92a9cdfe331dbc678bbe98467b53021`  
+**Pending, excluded from baseline:** backend PR #107 at `83d6b08ac15f67ac6e836bffb38506e3b32c45ab`
 
 ## Status vocabulary
 
@@ -16,14 +17,14 @@
 
 | Surface | Verified inventory / disposition |
 |---|---|
-| Backend repository | Independent Node.js/TypeScript backend; protected default `release/cutover-1e-candidate` |
+| Backend repository | Independent Node.js/TypeScript backend; protected `release/cutover-1e-candidate` |
 | Frontend repository | Independent React 19/TanStack/Vite application; protected production contract |
 | Backend runtime | Express, Socket.IO, PostgreSQL provider, generation, Studio runtime, validation, analytics and domain APIs |
 | Frontend runtime | SSR application, authenticated Workspace, REST and realtime adapters |
 | Studio plugin | Deterministic `.rbxmx` package with allowlisted active Lua sources |
-| API surface | Approximately 30 mounted `/api` prefixes plus root and health endpoints |
-| Backend verification | 61 passing test files and 672 passing tests at original audit baseline; protected release and contract gates remain active |
-| Frontend verification | Native Workspace tests, production build/SSR/responsive gates, exact 40-check backend contract |
+| API surface | Mounted versioned and domain routers plus root and health endpoints |
+| Backend verification | Protected typecheck, lint, format, tests, PostgreSQL restart, release composition, rollback, invariants and Merge Gate; exact test counts are not hardcoded |
+| Frontend verification | Native Workspace tests, production build/SSR/responsive gates and exact 40-check backend contract |
 
 ## Backend subsystem registry
 
@@ -48,7 +49,7 @@
 | `eventsource` | Isolated support | Supports isolated collaboration stack | Retire or bound with collaboration decision |
 | `execution` | Operational + deprecated member | Guards/runners; deprecated integrator | Remove deprecated path after migrations |
 | `export` | Operational | Packaging and project output | Keep; distinguish package export from Place publication |
-| `generation` | Operational | Main generation, Lua, validation and artifacts | Canonical product generation surface |
+| `generation` | Operational | Main generation, Lua, validation, durable history and artifacts | Canonical product generation surface |
 | `governance` | Operational | Policy and quality controls | Keep; resolve assembly cycle |
 | `integration` | Isolated composition root | Builds alternate platform stack | Must not remain silently disconnected |
 | `jobs` | Isolated cluster | Scheduler/executor path | Adopt through one composition root or retire |
@@ -57,17 +58,17 @@
 | `lua` | Isolated cluster | Alternate Lua parser/generator/validator | Consolidate with active generation/agent Lua paths |
 | `memory` | Partial/fragmented | MemoryEngine and AgentMemoryBridge | Select one durable canonical memory model |
 | `orchestrator` | Prototype | Mounted autonomous lifecycle | Timed/simulated phase work remains |
-| `pipeline` | Partial | Pipeline v2 concept/review/artifact semantics | Bound responsibility against PlanExecutor |
+| `pipeline` | Partial | Pipeline v2 concept/review/artifact semantics and pre-start reservation | Bound responsibility against PlanExecutor |
 | `planning` | Operational | Planner, DAG and canonical PlanExecutor | Parallel option and recovery remain gaps |
-| `platform` | Operational/partial | Auth, storage, projects, users, queues, teams, usage | RBAC and several secondary stores remain incomplete |
+| `platform` | Operational/partial | Auth, storage, projects, users, queues, teams, usage | Major durable flows landed; PR #107 and RBAC remain |
 | `playtest` | Prototype | Playtest API and repair input | Not a real Roblox runtime harness |
 | `plugins` | Isolated | Backend extension framework | Not production plugin SDK |
-| `projects` | Complete core | Projects, blueprints, generation history and ownership | Preserve as tenant boundary |
+| `projects` | Complete core | Projects, blueprints, generation history and ownership | Preserve tenant boundary and durable acknowledgement |
 | `providers` | Partial/fragmented | Active provider adapters plus alternate registry | Consolidate behind one provider interface |
 | `repair` | Prototype | Repair API and playtest integration | Mutation/re-playtest behavior simulated |
-| `routes` | Operational | Main HTTP adapters | Remove or classify route-local Maps |
+| `routes` | Operational | Main HTTP adapters with acknowledged major mutations | Remove or classify remaining route-local Maps |
 | `runtime` | Isolated cluster | Alternate runtime controller | Adopt intentionally or retire |
-| `services` | Supporting | Shared diagnosis service | Keep |
+| `services` | Supporting | Shared diagnosis and persistence services | Keep; maintain single-owner boundaries |
 | `simulation` | Partial | Simulation and feedback | Process-local results |
 | `socket` | Complete core | Project rooms and pipeline events | Preserve authenticated contract |
 | `studio` | Complete core / partial scope | Artifact bridge, command ledger, ACK/result verification | Core complete; native asset/GUI/place scope separate |
@@ -87,6 +88,17 @@
 | Memory | `memory/core` + bridge | `ai/memory`, knowledge memory, local Maps | Define durable canonical model |
 | Collaboration | `agents/collaboration` | top-level collaboration and alternate orchestrators | Defer expansion; disposition stacks |
 | Studio delivery | `studio/v2` shared runtime and canonical plugin | older/import-direction abstractions | Preserve verified outbound path |
+
+## Durability ownership snapshot
+
+| Concern | Current release owner | Status |
+|---|---|---|
+| Project creation/duplication | `SaaSProjectRepository` durable contract | Acknowledged |
+| Blueprint deletion cascade | Blueprint mutation queue + durable batch | Acknowledged |
+| Chat create/delete | `ChatPersistenceService` per-conversation queue | Acknowledged |
+| Generation history/start | Generation history service + pre-start pipeline reservation | Acknowledged |
+| Auth/storage convergence | PR #107 | Ready but not included in baseline |
+| Process-local state | DATA-204/DATA-205 inventory | Incomplete |
 
 ## Frontend registry
 

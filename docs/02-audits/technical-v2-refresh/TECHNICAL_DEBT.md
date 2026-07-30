@@ -1,7 +1,8 @@
 # Technical Audit v2.0 Refresh — Technical Debt Register
 
-**Backend baseline:** `2ecb3997eb6fab5074c438f10dedcc1715381e11`  
-**Frontend baseline:** `739b43cbc5f991c1852e80b30fe38c0e7c02d681`
+**Backend release baseline:** `a22d060b7fa44607c97a30d60b633e5545f8cfdb`  
+**Frontend contract baseline:** `95824451a92a9cdfe331dbc678bbe98467b53021`  
+**Pending, excluded from baseline:** backend PR #107 at `83d6b08ac15f67ac6e836bffb38506e3b32c45ab`
 
 ## Priority model
 
@@ -16,10 +17,10 @@
 |---|---|---|---|---|
 | TAV2-001 | P0 | Authentication | Closed | Cookie-only browser response contract implemented and tested |
 | TAV2-002 | P0 | Frontend/Studio | Closed | Real Studio verification parsed and rendered |
-| TAV2-003 | P0 | Architecture | Open | Manifest/parser/unknown-domain/layer/cycle/exit semantics incomplete |
+| TAV2-003 | P0 | Architecture | Open | Manifest/parser/unknown-domain/layer/cycle/exit semantics incomplete; missing/invalid manifests do not fail closed |
 | TAV2-004 | P1 | Autonomous runtime | Open | Mounted autonomous phases simulate work |
 | TAV2-005 | P1 | Frontend quality | Open | Establish zero-error lint/format and protected gates |
-| TAV2-006 | P1 | Durability | Open | HTTP success may precede confirmed PostgreSQL write |
+| TAV2-006 | P1 | Durability | Partial | Major project/blueprint/chat/history paths acknowledge persistence; auth/storage convergence and residual consumers remain |
 | TAV2-007 | P1 | Cross-repo contract | Closed | Exact 40-check production contract protected in both repos |
 | TAV2-008 | P1 | Runtime ownership | Open | Multiple execution/provider/memory/orchestration stacks overlap |
 | TAV2-009 | P1 | Security automation | Open | Dependency, SAST, secret, image and SBOM policy incomplete |
@@ -27,7 +28,7 @@
 | TAV2-011 | P2 | Execution | Open | Public parallel option is not implemented |
 | TAV2-012 | P2 | Frontend performance | Open | Bundle hotspot and no budgets |
 | TAV2-013 | P2 | State ownership | Open | Process-local state lacks cache/telemetry/preview/durable classification |
-| TAV2-014 | P2 | Documentation | Partial | Active auth/release terminology corrected; broader consolidation remains |
+| TAV2-014 | P2 | Documentation | Partial | Active terminology and current baselines corrected; broader authority consolidation remains |
 | TAV2-015 | P3 | Studio scope | Open | Native assets/GUI/place/runtime validation incomplete |
 | TAV2-016 | P3 | Dependency/runtime | Open | Package and compiled ESM hygiene remain |
 
@@ -36,6 +37,7 @@
 ### TAV2-003 — Architecture gate
 
 - Exhaustive manifest.
+- Missing or parse-invalid manifests fail `RuntimeBoundaryGuard.validate()`.
 - AST import/re-export inventory.
 - Unknown internal domains fail.
 - Layer rules enforced.
@@ -62,10 +64,19 @@ No new orchestration engine is allowed.
 
 ### TAV2-006 — Durability acknowledgement
 
-- Durable repository mutations are awaitable.
-- HTTP success follows successful persistence.
-- Cache/database failure and reconciliation semantics documented.
-- Write rejection and restart tests prove no partial ownership state.
+Landed evidence:
+
+- durable repository mutations and atomic batches are awaitable;
+- project creation/duplication, blueprint deletion, chat creation/deletion and generation-history/pipeline reservation wait for acknowledgement;
+- rollback, rejection and restart tests prove no partial state for those paths.
+
+Remaining definition of done:
+
+- production success follows an acknowledged COMMIT;
+- in-memory providers are test/preview-only durability evidence;
+- auth/storage convergence PR #107 is landed or superseded by equivalent verified behavior;
+- every remaining direct durable consumer is migrated or classified;
+- cache/database failure, retry and reconciliation semantics are documented.
 
 ### TAV2-008 — Runtime ownership
 
@@ -115,7 +126,8 @@ Bound/evict caches, persist durable state and restart-test it.
 - Current audit and project-control docs remain authoritative.
 - Historical authority-looking reports get superseded banners.
 - Generated inventories replace manual counts.
-- Manual health percentages require a documented executable formula.
+- Aggregate health percentages are removed or use a documented executable formula.
+- Roadmap and sprint backlog define one delivery order.
 
 ### TAV2-015 — Studio product scope
 

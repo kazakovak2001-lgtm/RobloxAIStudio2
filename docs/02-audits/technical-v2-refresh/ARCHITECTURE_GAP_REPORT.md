@@ -1,7 +1,8 @@
 # Technical Audit v2.0 Refresh — Architecture Gap Report
 
-**Backend baseline:** `2ecb3997eb6fab5074c438f10dedcc1715381e11`  
-**Frontend baseline:** `739b43cbc5f991c1852e80b30fe38c0e7c02d681`
+**Backend release baseline:** `a22d060b7fa44607c97a30d60b633e5545f8cfdb`  
+**Frontend contract baseline:** `95824451a92a9cdfe331dbc678bbe98467b53021`  
+**Pending, excluded from baseline:** backend PR #107 at `83d6b08ac15f67ac6e836bffb38506e3b32c45ab`
 
 ## Authority model
 
@@ -15,24 +16,27 @@
 | Expected | Actual | Impact | Required action |
 |---|---|---|---|
 | Exhaustive domain manifest | Real subsystem count exceeds modeled domains; stale and unknown paths remain | Imports can bypass policy | Complete `ARCH-2B` |
+| Manifest validation fails closed | `RuntimeBoundaryGuard.validate()` can treat a missing or parse-invalid manifest as skipped/passed | Enforcement can report healthy while disabled | Missing or invalid manifests must produce a failing result and non-zero exit |
 | Report and CI agree | Report can be `FAIL` while CLI exits successfully | Green CI can certify a failed graph | Align report, console and exit semantics |
 | Layer rules enforced | Declared `canImportFrom` rules are not fully executable | Architecture claims are documentary | Enforce with positive/negative tests |
 | Complete dependency graph | Current extraction misses re-exports and selected import forms | Hidden edges and cycles | Use TypeScript AST traversal |
 | Unknown domains rejected | Unknown internal modules can be skipped | Unmodeled dependencies escape controls | Fail manifest validation |
 | One execution ownership model | PlanExecutor, Pipeline v2, autonomous and integration runtime overlap | Different semantics by endpoint | Publish and enforce ownership matrix |
 | Autonomous means real engines | Mounted orchestrator simulates phases | Product claims exceed behavior | Connect engines or relabel preview |
-| HTTP success means durable write | Cache mutation can precede PostgreSQL confirmation | A successful response may not be durable | Await persistence for durable mutations |
+| HTTP success means durable write | Major project, blueprint, chat and generation-history flows are acknowledged; auth/storage convergence and residual consumers remain | Partial phantom-success risk remains | Finish `DURABILITY-2E` and land PR #107 |
 | Production RBAC exists | Roles/middleware exist but are not mounted | Authorization claims exceed enforcement | Mount or retire claims |
 | Native Studio content | Lua is native; other content is metadata | Asset/GUI/place claims remain partial | Keep separate `STUDIO-2F` scope |
 
-## Closed gaps since original TECH-AUDIT-2
+## Closed or materially reduced gaps since original TECH-AUDIT-2
 
 - Browser auth JSON no longer exposes reusable access/refresh credentials.
 - Frontend no longer hardcodes Studio verification to false.
 - Cross-repository 40-check production contract is protected in both repositories.
 - Active release/auth terminology was corrected.
+- Project creation/duplication, blueprint deletion cascades, chat creation/deletion, and generation-history/pipeline reservation now wait for durable acknowledgement.
+- CI contains rejection, rollback, restart, release-composition and post-removal invariant evidence for the landed durability slices.
 
-These items should remain in historical evidence but are not current blockers.
+These items should remain in historical evidence but are not current blockers. The remaining auth/storage convergence in PR #107 is not counted as landed evidence.
 
 ## Boundary firewall target
 
@@ -40,6 +44,7 @@ These items should remain in historical evidence but are not current blockers.
 
 - every real backend subsystem is modeled or explicitly excluded;
 - stale/nonexistent paths fail manifest validation;
+- missing or parse-invalid manifests make `RuntimeBoundaryGuard.validate()` fail, produce a failing console/report status, and terminate CI with a non-zero process exit;
 - imports, side-effect imports, dynamic imports, `require`, and re-exports are parsed by AST;
 - unknown internal domains fail;
 - layer rules are enforced;
@@ -63,18 +68,27 @@ These items should remain in historical evidence but are not current blockers.
 
 Confirmed durable core includes users, sessions, projects, blueprints, versions, generation executions/history, API keys, artifacts and conversations under PostgreSQL configuration.
 
-Remaining contract gap:
+Landed acknowledgement evidence now covers:
 
-1. mutation updates cache;
-2. PostgreSQL write is scheduled;
-3. repository/route may return before write confirmation;
-4. late failure is logged but cannot change the completed HTTP response.
+1. project creation and duplication;
+2. blueprint deletion cascades;
+3. chat message creation and conversation deletion;
+4. generation-history writes and pre-start pipeline reservation;
+5. rollback/rejection and restart behavior for those paths.
+
+Remaining contract gaps:
+
+- auth registration/session storage convergence is prepared in PR #107 but excluded from this baseline;
+- remaining direct durable consumers must be inventoried and migrated or explicitly classified;
+- retry/reconciliation semantics are not uniform;
+- process-local Maps still require cache, telemetry, preview or durable-state ownership;
+- multi-instance cache invalidation is not claimed.
 
 Required design:
 
-- awaitable repository mutations or explicit transaction boundary;
-- success only after required durable write;
-- defined retry/reconciliation semantics;
+- production success only after a committed durable write is acknowledged;
+- in-memory implementations treated as test/preview compatibility, not production durability evidence;
+- defined retry/reconciliation and conflict semantics;
 - failure tests proving no partial ownership or phantom success;
 - explicit classification of every process-local Map as cache, telemetry, preview or durable product state.
 
@@ -97,7 +111,7 @@ Remaining:
 
 ## Security architecture gaps
 
-- Browser session transport is now cookie-only and storage-backed.
+- Browser session transport is cookie-only and storage-backed.
 - Project ownership is a real tenant boundary.
 - RBAC remains unmounted.
 - Dependency/SAST/secret/image/SBOM policy is incomplete.
