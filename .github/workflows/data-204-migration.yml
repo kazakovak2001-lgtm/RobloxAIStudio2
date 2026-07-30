@@ -64,13 +64,14 @@ jobs:
 
           inventory_path = Path("config/durability/compatibility-write-inventory.json")
           inventory = json.loads(inventory_path.read_text())
-          if not isinstance(inventory, list):
-              raise SystemExit("Compatibility inventory must be a JSON array")
+          entries = inventory.get("entries")
+          if not isinstance(entries, list):
+              raise SystemExit("Compatibility inventory entries must be a JSON array")
           key = "server/src/platform/auth/AuthService.ts#AuthService.login#set"
-          matches = [entry for entry in inventory if entry.get("key") == key]
+          matches = [entry for entry in entries if entry.get("key") == key]
           if len(matches) != 1:
               raise SystemExit(f"Expected exactly one DATA-204 inventory entry, found {len(matches)}")
-          inventory = [entry for entry in inventory if entry.get("key") != key]
+          inventory["entries"] = [entry for entry in entries if entry.get("key") != key]
           inventory_path.write_text(json.dumps(inventory, indent=2) + "\n")
 
       - name: Verify removal guards
