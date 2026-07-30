@@ -309,22 +309,22 @@
     {
       "from": "domains",
       "to": "infrastructure",
-      "reason": "Legacy domain orchestration emits realtime events and writes pipeline artifacts directly; replace with runtime ports during RUNTIME-2D."
+      "reason": "RUNTIME-2D owns the exact domain-to-runtime edges recorded in architecture.layer-debt.json from AssemblyBuilder.ts, CompilerAPI.ts, CompilerContextManager.ts, CompilerOrchestrator.ts, GenerationPipeline.ts, CIControlPipeline.ts, AutonomousOrchestrator.ts, GenerationArtifactRecorder.ts, StudioRuntime.ts, ArtifactTransferManager.ts and ProjectSyncManager.ts; replace direct socket and pipeline imports with runtime ports."
     },
     {
       "from": "shared",
       "to": "api",
-      "reason": "Legacy shared middleware and persistence services depend on platform auth/storage adapters; invert these dependencies during RUNTIME-2D and DURABILITY-2E."
+      "reason": "DURABILITY-2E owns the exact shared-to-platform edges recorded in architecture.layer-debt.json from common/middleware/security.ts and services/ChatPersistenceService.ts; invert auth, security and storage dependencies behind shared ports."
     },
     {
       "from": "infrastructure",
       "to": "api",
-      "reason": "Pipeline artifact storage currently uses the platform storage factory; move the storage contract below the API layer during DURABILITY-2E."
+      "reason": "DURABILITY-2E owns the exact pipeline-to-platform edge recorded in architecture.layer-debt.json from pipeline/v2/ArtifactStore.ts importing platform/storage/StorageFactory; move the storage contract below the API layer."
     },
     {
       "from": "domains",
       "to": "api",
-      "reason": "Studio runtime currently imports the platform storage contract; extract a neutral storage port during DURABILITY-2E and STUDIO-2F."
+      "reason": "STUDIO-2F owns the exact studio-to-platform edge recorded in architecture.layer-debt.json from studio/v2/StudioRuntime.ts importing platform/storage/StorageProvider; extract a neutral Studio storage port."
     }
   ]
 }

@@ -75,6 +75,7 @@
 ├── .vscode
 │   └── settings.json
 ├── AI_DEVELOPMENT_GOVERNANCE.md
+├── architecture.layer-debt.json
 ├── architecture.manifest.json
 ├── artifacts
 │   └── runtime
@@ -536,7 +537,8 @@
 ├── scripts
 │   ├── architecture
 │   │   ├── ast-import-inventory.ts
-│   │   └── boundary-gate-core.ts
+│   │   ├── boundary-gate-core.ts
+│   │   └── layer-debt-evidence.ts
 │   ├── backup-database.sh
 │   ├── cleanup
 │   │   ├── audit-legacy-frontend-decommission.mjs
@@ -558,6 +560,7 @@
 │   ├── validate-boundaries.ts
 │   ├── validate-controller.ts
 │   ├── validate-durable-writes.ts
+│   ├── validate-layer-debt-evidence.ts
 │   ├── validate-memory-ownership.ts
 │   ├── validate-runtime-ownership.ts
 │   └── validate.ts
@@ -569,6 +572,7 @@
 │   │   │   ├── agentDecisionEngine.routing.test.ts
 │   │   │   ├── architecture.ast-import-inventory.test.ts
 │   │   │   ├── architecture.boundary-gate.test.ts
+│   │   │   ├── architecture.layer-debt-evidence.test.ts
 │   │   │   ├── autonomousPipelineExploration.test.ts
 │   │   │   ├── autonomousPipelineIntegration.test.ts
 │   │   │   ├── autonomousPipelinePreservation.test.ts

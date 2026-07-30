@@ -1,0 +1,189 @@
+{
+  "version": "1.0.0",
+  "owners": [
+    {
+      "sourceLayer": "domains",
+      "targetLayer": "api",
+      "milestone": "STUDIO-2F"
+    },
+    {
+      "sourceLayer": "domains",
+      "targetLayer": "infrastructure",
+      "milestone": "RUNTIME-2D"
+    },
+    {
+      "sourceLayer": "infrastructure",
+      "targetLayer": "api",
+      "milestone": "DURABILITY-2E"
+    },
+    {
+      "sourceLayer": "shared",
+      "targetLayer": "api",
+      "milestone": "DURABILITY-2E"
+    }
+  ],
+  "rows": [
+    {
+      "sourceLayer": "domains",
+      "targetLayer": "api",
+      "sourceDomain": "studio",
+      "targetDomain": "platform",
+      "file": "server/src/studio/v2/StudioRuntime.ts",
+      "importPath": "../../platform/storage/StorageProvider",
+      "milestone": "STUDIO-2F"
+    },
+    {
+      "sourceLayer": "domains",
+      "targetLayer": "infrastructure",
+      "sourceDomain": "assembly",
+      "targetDomain": "socket",
+      "file": "server/src/assembly/AssemblyBuilder.ts",
+      "importPath": "../socket/streaming",
+      "milestone": "RUNTIME-2D"
+    },
+    {
+      "sourceLayer": "domains",
+      "targetLayer": "infrastructure",
+      "sourceDomain": "compiler",
+      "targetDomain": "socket",
+      "file": "server/src/compiler/CompilerAPI.ts",
+      "importPath": "../socket/streaming",
+      "milestone": "RUNTIME-2D"
+    },
+    {
+      "sourceLayer": "domains",
+      "targetLayer": "infrastructure",
+      "sourceDomain": "compiler",
+      "targetDomain": "socket",
+      "file": "server/src/compiler/CompilerContextManager.ts",
+      "importPath": "../socket/streaming",
+      "milestone": "RUNTIME-2D"
+    },
+    {
+      "sourceLayer": "domains",
+      "targetLayer": "infrastructure",
+      "sourceDomain": "compiler",
+      "targetDomain": "socket",
+      "file": "server/src/compiler/CompilerOrchestrator.ts",
+      "importPath": "../socket/streaming",
+      "milestone": "RUNTIME-2D"
+    },
+    {
+      "sourceLayer": "domains",
+      "targetLayer": "infrastructure",
+      "sourceDomain": "generation",
+      "targetDomain": "socket",
+      "file": "server/src/generation/GenerationPipeline.ts",
+      "importPath": "../socket/streaming",
+      "milestone": "RUNTIME-2D"
+    },
+    {
+      "sourceLayer": "domains",
+      "targetLayer": "infrastructure",
+      "sourceDomain": "governance",
+      "targetDomain": "socket",
+      "file": "server/src/governance/CIControlPipeline.ts",
+      "importPath": "../socket/streaming",
+      "milestone": "RUNTIME-2D"
+    },
+    {
+      "sourceLayer": "domains",
+      "targetLayer": "infrastructure",
+      "sourceDomain": "orchestrator",
+      "targetDomain": "socket",
+      "file": "server/src/orchestrator/AutonomousOrchestrator.ts",
+      "importPath": "../socket/streaming",
+      "milestone": "RUNTIME-2D"
+    },
+    {
+      "sourceLayer": "domains",
+      "targetLayer": "infrastructure",
+      "sourceDomain": "studio",
+      "targetDomain": "pipeline",
+      "file": "server/src/studio/artifacts/GenerationArtifactRecorder.ts",
+      "importPath": "../../pipeline/v2",
+      "milestone": "RUNTIME-2D"
+    },
+    {
+      "sourceLayer": "domains",
+      "targetLayer": "infrastructure",
+      "sourceDomain": "studio",
+      "targetDomain": "pipeline",
+      "file": "server/src/studio/v2/StudioRuntime.ts",
+      "importPath": "../../pipeline/v2/ArtifactStore",
+      "milestone": "RUNTIME-2D"
+    },
+    {
+      "sourceLayer": "domains",
+      "targetLayer": "infrastructure",
+      "sourceDomain": "studio",
+      "targetDomain": "pipeline",
+      "file": "server/src/studio/v2/sync/ArtifactTransferManager.ts",
+      "importPath": "../../../pipeline/v2/ArtifactStore",
+      "milestone": "RUNTIME-2D"
+    },
+    {
+      "sourceLayer": "domains",
+      "targetLayer": "infrastructure",
+      "sourceDomain": "studio",
+      "targetDomain": "pipeline",
+      "file": "server/src/studio/v2/sync/ProjectSyncManager.ts",
+      "importPath": "../../../pipeline/v2/ArtifactStore",
+      "milestone": "RUNTIME-2D"
+    },
+    {
+      "sourceLayer": "infrastructure",
+      "targetLayer": "api",
+      "sourceDomain": "pipeline",
+      "targetDomain": "platform",
+      "file": "server/src/pipeline/v2/ArtifactStore.ts",
+      "importPath": "../../platform/storage/StorageFactory",
+      "milestone": "DURABILITY-2E"
+    },
+    {
+      "sourceLayer": "shared",
+      "targetLayer": "api",
+      "sourceDomain": "common",
+      "targetDomain": "platform",
+      "file": "server/src/common/middleware/security.ts",
+      "importPath": "../../platform/auth/authServiceInstance",
+      "milestone": "DURABILITY-2E"
+    },
+    {
+      "sourceLayer": "shared",
+      "targetLayer": "api",
+      "sourceDomain": "common",
+      "targetDomain": "platform",
+      "file": "server/src/common/middleware/security.ts",
+      "importPath": "../../platform/security/ApiKeyStore",
+      "milestone": "DURABILITY-2E"
+    },
+    {
+      "sourceLayer": "shared",
+      "targetLayer": "api",
+      "sourceDomain": "common",
+      "targetDomain": "platform",
+      "file": "server/src/common/middleware/security.ts",
+      "importPath": "../../platform/storage/StorageProvider",
+      "milestone": "DURABILITY-2E"
+    },
+    {
+      "sourceLayer": "shared",
+      "targetLayer": "api",
+      "sourceDomain": "services",
+      "targetDomain": "platform",
+      "file": "server/src/services/ChatPersistenceService.ts",
+      "importPath": "../platform/storage/StorageFactory",
+      "milestone": "DURABILITY-2E"
+    },
+    {
+      "sourceLayer": "shared",
+      "targetLayer": "api",
+      "sourceDomain": "services",
+      "targetDomain": "platform",
+      "file": "server/src/services/ChatPersistenceService.ts",
+      "importPath": "../platform/storage/StorageProvider",
+      "milestone": "DURABILITY-2E"
+    }
+  ]
+}
