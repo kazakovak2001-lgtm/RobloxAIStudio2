@@ -27,6 +27,14 @@ const failingExecutor = async (
   return { [`${agentId}_result`]: "ok" };
 };
 
+function deferred() {
+  let resolve!: () => void;
+  const promise = new Promise<void>((done) => {
+    resolve = done;
+  });
+  return { promise, resolve };
+}
+
 describe("PipelineEngine", () => {
   it("runs complete pipeline successfully", async () => {
     const engine = new PipelineEngine();
@@ -84,6 +92,93 @@ describe("PipelineEngine", () => {
     expect(events.filter((e) => e.type === "stage.completed").length).toBe(
       STAGE_ORDER.length,
     );
+  });
+
+  it("does not publish or execute before start reservation acknowledgement", async () => {
+    const engine = new PipelineEngine();
+    const reservation = deferred();
+    let executed = false;
+
+    const start = engine.startAsync(
+      "reserved-project",
+      { name: "Reserved" },
+      async () => {
+        executed = true;
+        return { generated: true };
+      },
+      async () => reservation.promise,
+    );
+    await Promise.resolve();
+    await Promise.resolve();
+
+    expect(engine.runCount).toBe(0);
+    expect(executed).toBe(false);
+
+    reservation.resolve();
+    const pipelineId = await start;
+    await Promise.resolve();
+
+    expect(pipelineId).toMatch(/^pipeline-/);
+    expect(engine.runCount).toBe(1);
+    expect(executed).toBe(true);
+  });
+
+  it("does not launch a pipeline when start reservation rejects", async () => {
+    const engine = new PipelineEngine();
+    let executed = false;
+
+    await expect(
+      engine.startAsync(
+        "rejected-project",
+        { name: "Rejected" },
+        async () => {
+          executed = true;
+          return { generated: true };
+        },
+        async () => {
+          throw new Error("injected reservation rejection");
+        },
+      ),
+    ).rejects.toThrow("injected reservation rejection");
+
+    expect(engine.runCount).toBe(0);
+    expect(executed).toBe(false);
+  });
+
+  it("shares one reservation across concurrent starts for a project", async () => {
+    const engine = new PipelineEngine();
+    const reservation = deferred();
+    let reservationCalls = 0;
+
+    const reserve = async () => {
+      reservationCalls += 1;
+      await reservation.promise;
+    };
+    const first = engine.startAsync(
+      "concurrent-project",
+      { name: "Concurrent" },
+      mockExecutor,
+      reserve,
+    );
+    const second = engine.startAsync(
+      "concurrent-project",
+      { name: "Concurrent" },
+      mockExecutor,
+      reserve,
+    );
+    await Promise.resolve();
+
+    expect(reservationCalls).toBe(1);
+    expect(engine.runCount).toBe(0);
+
+    reservation.resolve();
+    const [firstPipelineId, secondPipelineId] = await Promise.all([
+      first,
+      second,
+    ]);
+
+    expect(secondPipelineId).toBe(firstPipelineId);
+    expect(engine.runCount).toBe(1);
   });
 });
 

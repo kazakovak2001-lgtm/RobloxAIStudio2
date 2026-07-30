@@ -13,10 +13,58 @@ import type { ProjectAccessControl } from "../routes/projects";
 import {
   ChatPersistenceService,
   type Conversation,
+  type ConversationMessage,
 } from "./ChatPersistenceService";
 
 const CONVERSATIONS = "chat_conversations";
 const MESSAGES = "chat_messages";
+
+interface SeededConversation {
+  conversation: Conversation;
+  firstMessage: ConversationMessage;
+  secondMessage: ConversationMessage;
+  unrelatedMessage: ConversationMessage;
+}
+
+function seedConversation(
+  storage: InMemoryStorageProvider,
+): SeededConversation {
+  const conversation: Conversation = {
+    id: "conversation-delete",
+    projectId: "project-1",
+    title: "Delete me",
+    createdAt: "2026-01-01T00:00:00.000Z",
+    updatedAt: "2026-01-01T00:00:02.000Z",
+  };
+  const firstMessage: ConversationMessage = {
+    id: "message-delete-1",
+    conversationId: conversation.id,
+    role: "user",
+    content: "First",
+    createdAt: "2026-01-01T00:00:01.000Z",
+  };
+  const secondMessage: ConversationMessage = {
+    id: "message-delete-2",
+    conversationId: conversation.id,
+    role: "assistant",
+    content: "Second",
+    createdAt: "2026-01-01T00:00:02.000Z",
+  };
+  const unrelatedMessage: ConversationMessage = {
+    id: "message-other",
+    conversationId: "conversation-other",
+    role: "user",
+    content: "Keep",
+    createdAt: "2026-01-01T00:00:03.000Z",
+  };
+
+  storage.set(CONVERSATIONS, conversation.id, conversation);
+  storage.set(MESSAGES, firstMessage.id, firstMessage);
+  storage.set(MESSAGES, secondMessage.id, secondMessage);
+  storage.set(MESSAGES, unrelatedMessage.id, unrelatedMessage);
+
+  return { conversation, firstMessage, secondMessage, unrelatedMessage };
+}
 
 class CapturingBatchStorage extends InMemoryStorageProvider {
   batchCalls = 0;
@@ -56,7 +104,7 @@ class RejectingBatchStorage extends InMemoryStorageProvider {
     _mutations: readonly DurableMutation[],
   ): Promise<readonly DurableMutationResult[]> {
     throw new DurableStorageError(
-      "Injected chat message transaction rejection",
+      "Injected chat transaction rejection",
       "transaction",
     );
   }
@@ -137,6 +185,40 @@ describe("ChatPersistenceService durable message creation", () => {
     ]);
   });
 
+  it("serializes deletion after an in-flight message batch", async () => {
+    const storage = new DeferredBatchStorage();
+    const conversation: Conversation = {
+      id: "conversation-1",
+      projectId: "project-1",
+      title: "Existing",
+      createdAt: "2026-01-01T00:00:00.000Z",
+      updatedAt: "2026-01-01T00:00:00.000Z",
+    };
+    storage.set(CONVERSATIONS, conversation.id, conversation);
+    const service = new ChatPersistenceService(storage);
+
+    const creation = service.createMessage({
+      conversationId: conversation.id,
+      role: "assistant",
+      content: "Concurrent response",
+    });
+    await Promise.resolve();
+    await Promise.resolve();
+
+    const deletion = service.deleteConversation(conversation.id);
+    await Promise.resolve();
+    expect(service.getConversation(conversation.id)).toEqual(
+      expect.objectContaining({ id: conversation.id, messages: [] }),
+    );
+
+    storage.release();
+    const [message, deleted] = await Promise.all([creation, deletion]);
+
+    expect(deleted).toBe(true);
+    expect(service.getConversation(conversation.id)).toBeNull();
+    expect(storage.get(MESSAGES, message.id)).toBeNull();
+  });
+
   it("preserves the exact conversation when the batch rejects", async () => {
     const storage = new RejectingBatchStorage();
     const previous: Conversation = {
@@ -186,5 +268,98 @@ describe("ChatPersistenceService durable message creation", () => {
       });
       expect(body.error).not.toContain("Injected");
     });
+  });
+});
+
+describe("ChatPersistenceService durable conversation deletion", () => {
+  it("deletes messages and the conversation in one root-last batch", async () => {
+    const storage = new CapturingBatchStorage();
+    const records = seedConversation(storage);
+    const service = new ChatPersistenceService(storage);
+
+    await expect(
+      service.deleteConversation(records.conversation.id),
+    ).resolves.toBe(true);
+
+    expect(storage.batchCalls).toBe(1);
+    expect(
+      storage.received.map((mutation) => [mutation.collection, mutation.id]),
+    ).toEqual([
+      [MESSAGES, records.firstMessage.id],
+      [MESSAGES, records.secondMessage.id],
+      [CONVERSATIONS, records.conversation.id],
+    ]);
+    expect(storage.get(CONVERSATIONS, records.conversation.id)).toBeNull();
+    expect(storage.get(MESSAGES, records.firstMessage.id)).toBeNull();
+    expect(storage.get(MESSAGES, records.secondMessage.id)).toBeNull();
+    expect(storage.get(MESSAGES, records.unrelatedMessage.id)).toBe(
+      records.unrelatedMessage,
+    );
+  });
+
+  it("does not open a batch for a missing conversation", async () => {
+    const storage = new CapturingBatchStorage();
+    const service = new ChatPersistenceService(storage);
+
+    await expect(service.deleteConversation("missing")).resolves.toBe(false);
+    expect(storage.batchCalls).toBe(0);
+  });
+
+  it("keeps the complete conversation visible until acknowledgement", async () => {
+    const storage = new DeferredBatchStorage();
+    const records = seedConversation(storage);
+    const service = new ChatPersistenceService(storage);
+
+    const deletion = service.deleteConversation(records.conversation.id);
+    await Promise.resolve();
+    await Promise.resolve();
+
+    expect(storage.get(CONVERSATIONS, records.conversation.id)).toBe(
+      records.conversation,
+    );
+    expect(storage.get(MESSAGES, records.firstMessage.id)).toBe(
+      records.firstMessage,
+    );
+    expect(storage.get(MESSAGES, records.secondMessage.id)).toBe(
+      records.secondMessage,
+    );
+
+    storage.release();
+    await expect(deletion).resolves.toBe(true);
+    expect(storage.get(CONVERSATIONS, records.conversation.id)).toBeNull();
+  });
+
+  it("preserves exact records and returns HTTP 503 when deletion rejects", async () => {
+    const storage = new RejectingBatchStorage();
+    const records = seedConversation(storage);
+    const service = new ChatPersistenceService(storage);
+
+    await withServer(service, async (baseUrl) => {
+      const response = await fetch(
+        `${baseUrl}/conversation/${records.conversation.id}`,
+        { method: "DELETE" },
+      );
+      const body = (await response.json()) as {
+        success: boolean;
+        error: string;
+      };
+
+      expect(response.status).toBe(503);
+      expect(body).toEqual({
+        success: false,
+        error: "Chat persistence temporarily unavailable",
+      });
+      expect(body.error).not.toContain("Injected");
+    });
+
+    expect(storage.get(CONVERSATIONS, records.conversation.id)).toBe(
+      records.conversation,
+    );
+    expect(storage.get(MESSAGES, records.firstMessage.id)).toBe(
+      records.firstMessage,
+    );
+    expect(storage.get(MESSAGES, records.secondMessage.id)).toBe(
+      records.secondMessage,
+    );
   });
 });

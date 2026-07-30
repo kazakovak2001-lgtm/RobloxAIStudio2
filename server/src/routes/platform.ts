@@ -5,12 +5,9 @@
 import { Router, type Request, type Response } from "express";
 import { UserRepository } from "../platform/users";
 import type { AuthService } from "../platform/auth/AuthService";
-import {
-  AccountRegistrationConflictError,
-  AccountRegistrationService,
-} from "../platform/auth/AccountRegistrationService";
 import { authService } from "../platform/auth/authServiceInstance";
 import {
+  DurableStorageConflictError,
   DurableStorageError,
   type StorageProvider,
 } from "../platform/storage/StorageProvider";
@@ -38,21 +35,16 @@ export interface PlatformRouterDependencies {
   storage: StorageProvider;
   access: ProjectAccessControl;
   auth?: AuthService;
-  accountRegistration?: AccountRegistrationService;
 }
 
 export function createPlatformRouter({
   storage,
   access,
   auth: providedAuth,
-  accountRegistration: providedAccountRegistration,
 }: PlatformRouterDependencies): Router {
   const router = Router();
   const users = new UserRepository(storage);
   const auth = providedAuth ?? authService;
-  const accountRegistration =
-    providedAccountRegistration ??
-    new AccountRegistrationService(storage, users, auth);
   const versions = new VersionHistoryRepository();
   const registry = new AgentRegistryService();
   const preferences = new Map<string, UserPreferences>();
@@ -78,25 +70,41 @@ export function createPlatformRouter({
       return;
     }
 
+    const preparedUser = users.prepareCreate({ email, displayName });
+    const preparedAuth = auth.prepareRegistration(
+      preparedUser.user.email,
+      password,
+      preparedUser.user.id,
+    );
+    if (users.getByEmail(preparedAuth.normalizedEmail)) {
+      res
+        .status(409)
+        .json({ success: false, error: "Email already registered" });
+      return;
+    }
+
     try {
-      const registered = await accountRegistration.register({
-        email,
-        password,
-        displayName,
-      });
+      await storage.applyDurableBatch([
+        preparedUser.mutation,
+        ...preparedAuth.mutations,
+      ]);
       setAuthCookies(
         res,
-        registered.loginResult.token!,
-        registered.loginResult.refreshToken!,
+        preparedAuth.loginResult.token!,
+        preparedAuth.loginResult.refreshToken!,
       );
       res.json({
         success: true,
         data: {
-          user: registered.user,
+          user: preparedUser.user,
         },
       });
     } catch (error) {
-      if (error instanceof AccountRegistrationConflictError) {
+      if (
+        error instanceof DurableStorageConflictError &&
+        error.collection === "auth_credentials" &&
+        error.id === preparedAuth.normalizedEmail
+      ) {
         res
           .status(409)
           .json({ success: false, error: "Email already registered" });

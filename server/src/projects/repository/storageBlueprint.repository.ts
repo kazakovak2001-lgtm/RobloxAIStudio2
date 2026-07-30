@@ -24,6 +24,8 @@ const EXECUTIONS = "generation_executions";
  * preserve the existing repository contract across provider restarts.
  */
 export class StorageBlueprintRepository implements IBlueprintRepository {
+  private readonly blueprintMutationTails = new Map<string, Promise<void>>();
+
   constructor(private readonly storage: StorageProvider) {}
 
   async createBlueprint(
@@ -71,53 +73,57 @@ export class StorageBlueprintRepository implements IBlueprintRepository {
     id: string,
     input: UpdateBlueprintInput,
   ): Promise<GameBlueprint | null> {
-    const existing = await this.getBlueprint(id);
-    if (!existing) return null;
+    return this.withBlueprintMutationLock(id, async () => {
+      const existing = await this.getBlueprint(id);
+      if (!existing) return null;
 
-    const updated = this.hydrateBlueprint({
-      ...existing,
-      ...(input as Partial<GameBlueprint>),
-      id: existing.id,
-      user_id: existing.user_id,
-      project_id: existing.project_id,
-      created_at: existing.created_at,
-      updated_at: new Date(),
+      const updated = this.hydrateBlueprint({
+        ...existing,
+        ...(input as Partial<GameBlueprint>),
+        id: existing.id,
+        user_id: existing.user_id,
+        project_id: existing.project_id,
+        created_at: existing.created_at,
+        updated_at: new Date(),
+      });
+      await this.storage.setDurable(BLUEPRINTS, id, updated);
+      return updated;
     });
-    await this.storage.setDurable(BLUEPRINTS, id, updated);
-    return updated;
   }
 
   async deleteBlueprint(id: string): Promise<boolean> {
-    if (!this.storage.get<GameBlueprint>(BLUEPRINTS, id)) return false;
+    return this.withBlueprintMutationLock(id, async () => {
+      if (!this.storage.get<GameBlueprint>(BLUEPRINTS, id)) return false;
 
-    const versions = this.storage.list<BlueprintVersion>(
-      VERSIONS,
-      (candidate) => candidate.blueprint_id === id,
-    );
-    const executions = this.storage.list<GenerationExecution>(
-      EXECUTIONS,
-      (candidate) => candidate.blueprint_id === id,
-    );
-    const mutations: DurableMutation[] = [
-      ...versions.map((version) => ({
-        operation: "delete" as const,
-        collection: VERSIONS,
-        id: version.id,
-      })),
-      ...executions.map((execution) => ({
-        operation: "delete" as const,
-        collection: EXECUTIONS,
-        id: execution.id,
-      })),
-      { operation: "delete", collection: BLUEPRINTS, id },
-    ];
+      const versions = this.storage.list<BlueprintVersion>(
+        VERSIONS,
+        (candidate) => candidate.blueprint_id === id,
+      );
+      const executions = this.storage.list<GenerationExecution>(
+        EXECUTIONS,
+        (candidate) => candidate.blueprint_id === id,
+      );
+      const mutations: DurableMutation[] = [
+        ...versions.map((version) => ({
+          operation: "delete" as const,
+          collection: VERSIONS,
+          id: version.id,
+        })),
+        ...executions.map((execution) => ({
+          operation: "delete" as const,
+          collection: EXECUTIONS,
+          id: execution.id,
+        })),
+        { operation: "delete", collection: BLUEPRINTS, id },
+      ];
 
-    const results = await this.storage.applyDurableBatch(mutations);
-    const blueprintResult = results[results.length - 1];
-    return (
-      blueprintResult?.operation === "delete" &&
-      blueprintResult.deleted === true
-    );
+      const results = await this.storage.applyDurableBatch(mutations);
+      const blueprintResult = results[results.length - 1];
+      return (
+        blueprintResult?.operation === "delete" &&
+        blueprintResult.deleted === true
+      );
+    });
   }
 
   async listBlueprints(
@@ -164,21 +170,23 @@ export class StorageBlueprintRepository implements IBlueprintRepository {
     userId: string,
     description?: string,
   ): Promise<BlueprintVersion> {
-    const blueprint = await this.getBlueprint(blueprintId);
-    if (!blueprint) throw new Error(`Blueprint ${blueprintId} not found`);
+    return this.withBlueprintMutationLock(blueprintId, async () => {
+      const blueprint = await this.getBlueprint(blueprintId);
+      if (!blueprint) throw new Error(`Blueprint ${blueprintId} not found`);
 
-    const version: BlueprintVersion = {
-      id: `blueprint-version-${randomUUID()}`,
-      blueprint_id: blueprintId,
-      version_number: blueprint.version,
-      created_at: new Date(),
-      created_by: userId,
-      snapshot: { ...blueprint },
-      change_description: description,
-      is_active: true,
-    };
-    await this.storage.setDurable(VERSIONS, version.id, version);
-    return this.hydrateVersion(version);
+      const version: BlueprintVersion = {
+        id: `blueprint-version-${randomUUID()}`,
+        blueprint_id: blueprintId,
+        version_number: blueprint.version,
+        created_at: new Date(),
+        created_by: userId,
+        snapshot: { ...blueprint },
+        change_description: description,
+        is_active: true,
+      };
+      await this.storage.setDurable(VERSIONS, version.id, version);
+      return this.hydrateVersion(version);
+    });
   }
 
   async getVersion(
@@ -214,30 +222,40 @@ export class StorageBlueprintRepository implements IBlueprintRepository {
     blueprintId: string,
     versionNumber: number,
   ): Promise<GameBlueprint | null> {
-    const blueprint = await this.getBlueprint(blueprintId);
-    const version = await this.getVersion(blueprintId, versionNumber);
-    if (!blueprint || !version) return null;
+    return this.withBlueprintMutationLock(blueprintId, async () => {
+      const blueprint = await this.getBlueprint(blueprintId);
+      const version = await this.getVersion(blueprintId, versionNumber);
+      if (!blueprint || !version) return null;
 
-    const restored = this.hydrateBlueprint({
-      ...blueprint,
-      ...version.snapshot,
-      id: blueprint.id,
-      project_id: blueprint.project_id,
-      user_id: blueprint.user_id,
-      created_at: blueprint.created_at,
-      updated_at: new Date(),
-      version: Math.max(blueprint.version, versionNumber) + 1,
-    } as GameBlueprint);
-    await this.storage.setDurable(BLUEPRINTS, blueprintId, restored);
-    return restored;
+      const restored = this.hydrateBlueprint({
+        ...blueprint,
+        ...version.snapshot,
+        id: blueprint.id,
+        project_id: blueprint.project_id,
+        user_id: blueprint.user_id,
+        created_at: blueprint.created_at,
+        updated_at: new Date(),
+        version: Math.max(blueprint.version, versionNumber) + 1,
+      } as GameBlueprint);
+      await this.storage.setDurable(BLUEPRINTS, blueprintId, restored);
+      return restored;
+    });
   }
 
   async recordExecution(
     execution: GenerationExecution,
   ): Promise<GenerationExecution> {
-    const hydrated = this.hydrateExecution(execution);
-    await this.storage.setDurable(EXECUTIONS, execution.id, hydrated);
-    return hydrated;
+    return this.withBlueprintMutationLock(execution.blueprint_id, async () => {
+      if (
+        !this.storage.get<GameBlueprint>(BLUEPRINTS, execution.blueprint_id)
+      ) {
+        throw new Error(`Blueprint ${execution.blueprint_id} not found`);
+      }
+
+      const hydrated = this.hydrateExecution(execution);
+      await this.storage.setDurable(EXECUTIONS, execution.id, hydrated);
+      return hydrated;
+    });
   }
 
   async getExecution(id: string): Promise<GenerationExecution | null> {
@@ -261,20 +279,55 @@ export class StorageBlueprintRepository implements IBlueprintRepository {
     id: string,
     updates: Partial<GenerationExecution>,
   ): Promise<GenerationExecution | null> {
-    const existing = await this.getExecution(id);
-    if (!existing) return null;
+    const initial = await this.getExecution(id);
+    if (!initial) return null;
 
-    const updated = this.hydrateExecution({
-      ...existing,
-      ...updates,
-      id: existing.id,
-      blueprint_id: existing.blueprint_id,
-      project_id: existing.project_id,
-      user_id: existing.user_id,
-      started_at: existing.started_at,
+    return this.withBlueprintMutationLock(initial.blueprint_id, async () => {
+      const existing = await this.getExecution(id);
+      if (!existing) return null;
+      if (!this.storage.get<GameBlueprint>(BLUEPRINTS, existing.blueprint_id)) {
+        return null;
+      }
+
+      const updated = this.hydrateExecution({
+        ...existing,
+        ...updates,
+        id: existing.id,
+        blueprint_id: existing.blueprint_id,
+        project_id: existing.project_id,
+        user_id: existing.user_id,
+        started_at: existing.started_at,
+      });
+      await this.storage.setDurable(EXECUTIONS, id, updated);
+      return updated;
     });
-    await this.storage.setDurable(EXECUTIONS, id, updated);
-    return updated;
+  }
+
+  private async withBlueprintMutationLock<T>(
+    blueprintId: string,
+    operation: () => Promise<T>,
+  ): Promise<T> {
+    const previous = this.blueprintMutationTails.get(blueprintId);
+    let release!: () => void;
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const tail = (previous ?? Promise.resolve()).then(
+      () => gate,
+      () => gate,
+    );
+    this.blueprintMutationTails.set(blueprintId, tail);
+
+    if (previous) await previous.catch(() => undefined);
+
+    try {
+      return await operation();
+    } finally {
+      release();
+      if (this.blueprintMutationTails.get(blueprintId) === tail) {
+        this.blueprintMutationTails.delete(blueprintId);
+      }
+    }
   }
 
   private hydrateBlueprint(blueprint: GameBlueprint): GameBlueprint {
