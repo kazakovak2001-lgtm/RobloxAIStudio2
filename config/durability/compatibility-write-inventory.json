@@ -78,16 +78,6 @@
       "classification": "request-level-debt",
       "reason": "Request authentication updates session activity through an unacknowledged write.",
       "migrationTarget": "DATA-201B"
-    },
-    {
-      "key": "server/src/platform/users/UserRepository.ts#UserRepository.create#set",
-      "path": "server/src/platform/users/UserRepository.ts",
-      "owner": "UserRepository.create",
-      "operation": "set",
-      "expectedCalls": 1,
-      "classification": "request-level-debt",
-      "reason": "Coordinated auth registration and compatibility UserService creation still expose a user before persistence acknowledgement.",
-      "migrationTarget": "DATA-201B"
     }
   ]
 }
