@@ -440,8 +440,8 @@ export class AuthService {
     return ROLE_PERMISSIONS[role].includes(permission);
   }
 
-  setRole(userId: string, role: UserRole): void {
-    this.storage.set<UserRole>(ROLES_COLLECTION, userId, role);
+  async setRole(userId: string, role: UserRole): Promise<void> {
+    await this.storage.setDurable<UserRole>(ROLES_COLLECTION, userId, role);
   }
 
   private createSession(userId: string, role: UserRole): IssuedSession {
