@@ -4,8 +4,10 @@
 
 import { Router, type Request, type Response } from "express";
 import { UserRepository } from "../platform/users";
+import type { AuthService } from "../platform/auth/AuthService";
 import { authService } from "../platform/auth/authServiceInstance";
 import {
+  DurableStorageConflictError,
   DurableStorageError,
   type StorageProvider,
 } from "../platform/storage/StorageProvider";
@@ -32,15 +34,17 @@ interface UserPreferences {
 export interface PlatformRouterDependencies {
   storage: StorageProvider;
   access: ProjectAccessControl;
+  auth?: AuthService;
 }
 
 export function createPlatformRouter({
   storage,
   access,
+  auth: providedAuth,
 }: PlatformRouterDependencies): Router {
   const router = Router();
   const users = new UserRepository(storage);
-  const auth = authService;
+  const auth = providedAuth ?? authService;
   const versions = new VersionHistoryRepository();
   const registry = new AgentRegistryService();
   const preferences = new Map<string, UserPreferences>();
@@ -56,7 +60,7 @@ export function createPlatformRouter({
 
   // ─── Auth ─────────────────────────────────────────────────
 
-  router.post("/auth/register", (req, res) => {
+  router.post("/auth/register", async (req, res) => {
     const { email, password, displayName } = req.body;
     if (!email || !password || !displayName) {
       res.status(400).json({
@@ -65,32 +69,52 @@ export function createPlatformRouter({
       });
       return;
     }
-    const existing = users.getByEmail(email);
-    if (existing) {
+
+    const preparedUser = users.prepareCreate({ email, displayName });
+    const preparedAuth = auth.prepareRegistration(
+      preparedUser.user.email,
+      password,
+      preparedUser.user.id,
+    );
+    if (users.getByEmail(preparedAuth.normalizedEmail)) {
       res
         .status(409)
         .json({ success: false, error: "Email already registered" });
       return;
     }
-    const user = users.create({ email, displayName });
-    const registered = auth.register(email, password, user.id);
-    if (!registered) {
-      res
-        .status(409)
-        .json({ success: false, error: "Email already registered" });
-      return;
+
+    try {
+      await storage.applyDurableBatch([
+        preparedUser.mutation,
+        ...preparedAuth.mutations,
+      ]);
+      setAuthCookies(
+        res,
+        preparedAuth.loginResult.token!,
+        preparedAuth.loginResult.refreshToken!,
+      );
+      res.json({
+        success: true,
+        data: {
+          user: preparedUser.user,
+        },
+      });
+    } catch (error) {
+      if (
+        error instanceof DurableStorageConflictError &&
+        error.collection === "auth_credentials" &&
+        error.id === preparedAuth.normalizedEmail
+      ) {
+        res
+          .status(409)
+          .json({ success: false, error: "Email already registered" });
+        return;
+      }
+      handlePlatformMutationError(error, res);
     }
-    const loginResult = auth.login(email, password, user.id);
-    setAuthCookies(res, loginResult.token!, loginResult.refreshToken!);
-    res.json({
-      success: true,
-      data: {
-        user,
-      },
-    });
   });
 
-  router.post("/auth/login", loginRateLimiter, (req, res) => {
+  router.post("/auth/login", loginRateLimiter, async (req, res) => {
     const { email, password } = req.body;
     if (!email || !password) {
       res
@@ -103,31 +127,41 @@ export function createPlatformRouter({
       res.status(401).json({ success: false, error: "Invalid credentials" });
       return;
     }
-    const result = auth.login(email, password, user.id);
-    if (!result.success) {
-      res.status(401).json({ success: false, error: result.error });
-      return;
+
+    try {
+      const result = await auth.loginDurable(email, password, user.id);
+      if (!result.success) {
+        res.status(401).json({ success: false, error: result.error });
+        return;
+      }
+      setAuthCookies(res, result.token!, result.refreshToken!);
+      res.json({
+        success: true,
+        data: {
+          user,
+          role: result.role,
+        },
+      });
+    } catch (error) {
+      handlePlatformMutationError(error, res);
     }
-    setAuthCookies(res, result.token!, result.refreshToken!);
-    res.json({
-      success: true,
-      data: {
-        user,
-        role: result.role,
-      },
-    });
   });
 
-  router.post("/auth/logout", (req, res) => {
+  router.post("/auth/logout", async (req, res) => {
     const token =
       req.headers.authorization?.replace("Bearer ", "") ??
       getTokenFromCookies(req);
-    if (token) auth.logout(token);
-    clearAuthCookies(res);
-    res.json({ success: true });
+
+    try {
+      if (token) await auth.logoutDurable(token);
+      clearAuthCookies(res);
+      res.json({ success: true });
+    } catch (error) {
+      handlePlatformMutationError(error, res);
+    }
   });
 
-  router.post("/auth/refresh", (req, res) => {
+  router.post("/auth/refresh", async (req, res) => {
     const refreshToken =
       getRefreshTokenFromCookies(req) ??
       (typeof req.body?.refreshToken === "string"
@@ -139,16 +173,21 @@ export function createPlatformRouter({
         .json({ success: false, error: "Refresh credential required" });
       return;
     }
-    const result = auth.refreshSession(refreshToken);
-    if (!result.success) {
-      res.status(401).json({ success: false, error: result.error });
-      return;
+
+    try {
+      const result = await auth.refreshSessionDurable(refreshToken);
+      if (!result.success) {
+        res.status(401).json({ success: false, error: result.error });
+        return;
+      }
+      setAuthCookies(res, result.token!, result.refreshToken!);
+      res.json({
+        success: true,
+        data: { refreshed: true },
+      });
+    } catch (error) {
+      handlePlatformMutationError(error, res);
     }
-    setAuthCookies(res, result.token!, result.refreshToken!);
-    res.json({
-      success: true,
-      data: { refreshed: true },
-    });
   });
 
   router.post("/auth/forgot-password", (req, res) => {
@@ -157,8 +196,6 @@ export function createPlatformRouter({
       res.status(400).json({ success: false, error: "email required" });
       return;
     }
-    // Do not reveal whether an account exists. A mail provider can consume this
-    // accepted request when configured without changing the public contract.
     res.status(202).json({
       success: true,
       data: {
@@ -204,6 +241,7 @@ export function createPlatformRouter({
         .json({ success: false, error: "Email already registered" });
       return;
     }
+
     try {
       const user = await users.createDurable({ email, displayName, tier });
       res.json({ success: true, data: user });
@@ -232,6 +270,7 @@ export function createPlatformRouter({
         .json({ success: false, error: "Email already registered" });
       return;
     }
+
     try {
       const updated = await users.updateProfileDurable(req.params.id, {
         email: typeof email === "string" ? email : undefined,
@@ -352,6 +391,7 @@ function handlePlatformMutationError(error: unknown, res: Response): void {
     });
     return;
   }
+
   console.error("[platform]", error);
-  res.status(500).json({ success: false, error: "Platform mutation failed" });
+  res.status(500).json({ success: false, error: "Platform request failed" });
 }

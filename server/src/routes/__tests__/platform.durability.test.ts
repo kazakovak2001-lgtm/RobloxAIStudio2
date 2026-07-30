@@ -6,12 +6,23 @@ import { UserRepository } from "../../platform/users";
 import {
   DurableStorageError,
   InMemoryStorageProvider,
+  type DurableMutation,
+  type DurableMutationResult,
 } from "../../platform/storage/StorageProvider";
 import type { ProjectAccessControl } from "../projects";
 import { createPlatformRouter } from "../platform";
 
 class ControlledMutationStorage extends InMemoryStorageProvider {
   rejectSet = false;
+
+  override async applyDurableBatch(
+    mutations: readonly DurableMutation[],
+  ): Promise<readonly DurableMutationResult[]> {
+    if (this.rejectSet) {
+      throw new DurableStorageError("injected set rejection", "transaction");
+    }
+    return super.applyDurableBatch(mutations);
+  }
 
   override async setDurable<T>(
     collection: string,
@@ -21,7 +32,7 @@ class ControlledMutationStorage extends InMemoryStorageProvider {
     if (this.rejectSet) {
       throw new DurableStorageError("injected set rejection", "set");
     }
-    await super.setDurable(collection, id, data);
+    return super.setDurable(collection, id, data);
   }
 }
 

@@ -8,8 +8,11 @@
 
 export type DurableStorageOperation = "set" | "delete" | "transaction";
 
+export type DurableStorageErrorCode =
+  "DURABLE_STORAGE_MUTATION_FAILED" | "DURABLE_STORAGE_CONFLICT";
+
 export class DurableStorageError extends Error {
-  readonly code = "DURABLE_STORAGE_MUTATION_FAILED";
+  readonly code: DurableStorageErrorCode = "DURABLE_STORAGE_MUTATION_FAILED";
   readonly cause?: unknown;
 
   constructor(
@@ -23,17 +26,34 @@ export class DurableStorageError extends Error {
   }
 }
 
+export class DurableStorageConflictError extends DurableStorageError {
+  override readonly code: DurableStorageErrorCode = "DURABLE_STORAGE_CONFLICT";
+
+  constructor(
+    message: string,
+    readonly collection: string,
+    readonly id: string,
+  ) {
+    super(message, "transaction");
+    this.name = "DurableStorageConflictError";
+  }
+}
+
 export type DurableMutation =
   | {
       operation: "set";
       collection: string;
       id: string;
       data: unknown;
+      /** Fail the complete batch when the durable record already exists. */
+      requireAbsent?: boolean;
     }
   | {
       operation: "delete";
       collection: string;
       id: string;
+      /** Fail the complete batch when the durable record is unavailable. */
+      requireExisting?: boolean;
     };
 
 export interface DurableMutationResult {
@@ -128,6 +148,13 @@ export class InMemoryStorageProvider implements StorageProvider {
 
         const collection = getStagedCollection(mutation.collection);
         if (mutation.operation === "set") {
+          if (mutation.requireAbsent && collection.has(mutation.id)) {
+            throw new DurableStorageConflictError(
+              `Required durable record already exists: ${mutation.collection}/${mutation.id}`,
+              mutation.collection,
+              mutation.id,
+            );
+          }
           collection.set(mutation.id, mutation.data);
           return {
             operation: mutation.operation,
@@ -136,6 +163,13 @@ export class InMemoryStorageProvider implements StorageProvider {
           };
         }
 
+        if (mutation.requireExisting && !collection.has(mutation.id)) {
+          throw new DurableStorageConflictError(
+            `Required durable record is unavailable: ${mutation.collection}/${mutation.id}`,
+            mutation.collection,
+            mutation.id,
+          );
+        }
         const deleted = collection.delete(mutation.id);
         return {
           operation: mutation.operation,
@@ -150,6 +184,7 @@ export class InMemoryStorageProvider implements StorageProvider {
       }
       return results;
     } catch (error) {
+      if (error instanceof DurableStorageConflictError) throw error;
       throw new DurableStorageError(
         "In-memory durable transaction failed",
         "transaction",
