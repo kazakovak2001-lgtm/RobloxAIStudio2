@@ -46,6 +46,9 @@ const MESSAGES = "chat_messages";
  * unit-test construction; production bootstrap resolves the configured provider.
  */
 export class ChatPersistenceService {
+  private readonly activeMessageCreations = new Map<string, number>();
+  private readonly pendingConversationDeletions = new Set<string>();
+
   constructor(
     private readonly storage: StorageProvider = getConfiguredStorageProvider() ??
       new InMemoryStorageProvider(),
@@ -85,6 +88,7 @@ export class ChatPersistenceService {
 
     const now = new Date().toISOString();
     let conversation: Conversation;
+    const usesExistingConversation = Boolean(input.conversationId);
     if (input.conversationId) {
       const existing = this.storage.get<Conversation>(
         CONVERSATIONS,
@@ -132,19 +136,62 @@ export class ChatPersistenceService {
       },
     ];
 
-    await this.storage.applyDurableBatch(mutations);
-    return message;
+    if (usesExistingConversation) {
+      this.beginMessageCreation(conversation.id);
+    }
+
+    try {
+      await this.storage.applyDurableBatch(mutations);
+      return message;
+    } finally {
+      if (usesExistingConversation) {
+        this.endMessageCreation(conversation.id);
+      }
+    }
   }
 
   deleteConversation(id: string): boolean {
-    this.requireText(id, "id");
+    const conversationId = this.requireText(id, "id");
+    if (!this.storage.get<Conversation>(CONVERSATIONS, conversationId)) {
+      return false;
+    }
+
+    if ((this.activeMessageCreations.get(conversationId) ?? 0) > 0) {
+      this.pendingConversationDeletions.add(conversationId);
+      return true;
+    }
+
+    return this.deleteConversationImmediately(conversationId);
+  }
+
+  private beginMessageCreation(conversationId: string): void {
+    this.activeMessageCreations.set(
+      conversationId,
+      (this.activeMessageCreations.get(conversationId) ?? 0) + 1,
+    );
+  }
+
+  private endMessageCreation(conversationId: string): void {
+    const remaining = (this.activeMessageCreations.get(conversationId) ?? 1) - 1;
+    if (remaining > 0) {
+      this.activeMessageCreations.set(conversationId, remaining);
+      return;
+    }
+
+    this.activeMessageCreations.delete(conversationId);
+    if (this.pendingConversationDeletions.delete(conversationId)) {
+      this.deleteConversationImmediately(conversationId);
+    }
+  }
+
+  private deleteConversationImmediately(conversationId: string): boolean {
     for (const message of this.storage.list<ConversationMessage>(
       MESSAGES,
-      (candidate) => candidate.conversationId === id,
+      (candidate) => candidate.conversationId === conversationId,
     )) {
       this.storage.delete(MESSAGES, message.id);
     }
-    return this.storage.delete(CONVERSATIONS, id);
+    return this.storage.delete(CONVERSATIONS, conversationId);
   }
 
   private requireText(value: unknown, field: string): string {
