@@ -92,18 +92,29 @@ jobs:
           bug_path = Path("server/src/__tests__/bugConditionExploration.test.ts")
           bug = bug_path.read_text()
           bug_header = 'it("property: password hashes SHALL use bcrypt format ($2a$12$ or $2b$12$)", () => {'
-          if bug_header not in bug:
-              raise SystemExit("Password hash property test header was not found")
-          bug = bug.replace(
+          bug_start = bug.find(bug_header)
+          bug_end = bug.find("    }, 60000);", bug_start)
+          if bug_start < 0 or bug_end < 0:
+              raise SystemExit("Password hash property test was not found")
+          bug_block = bug[bug_start:bug_end]
+          bug_block = bug_block.replace(
               bug_header,
               'it("property: password hashes SHALL use bcrypt format ($2a$12$ or $2b$12$)", async () => {',
               1,
           )
-          bug = bug.replace(
-              "fc.property(fc.string({ minLength: 8, maxLength: 64 }), (password) => {",
-              "fc.asyncProperty(fc.string({ minLength: 8, maxLength: 64 }), async (password) => {",
-              1,
+          bug_property_count = bug_block.count("fc.property(")
+          bug_block = bug_block.replace("fc.property(", "fc.asyncProperty(", 1)
+          bug_block, bug_callback_count = re.subn(
+              r"\(password\) => \{",
+              "async (password) => {",
+              bug_block,
+              count=1,
           )
+          if bug_property_count != 1 or bug_callback_count != 1:
+              raise SystemExit(
+                  f"Unexpected password hash property shape: property={bug_property_count}, callback={bug_callback_count}"
+              )
+          bug = bug[:bug_start] + bug_block + bug[bug_end:]
           bug_path.write_text(bug)
 
           projects_path = Path("server/src/routes/__tests__/projects.runtime.test.ts")
