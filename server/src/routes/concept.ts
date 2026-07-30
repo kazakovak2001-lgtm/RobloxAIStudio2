@@ -501,32 +501,30 @@ export function createConceptRouter(
         createdAt: Date.now(),
       };
 
-      // Start pipeline asynchronously — return pipelineId immediately
-      // so the frontend can begin polling without waiting for completion.
-      const pipelineId = pipelineEngine.startAsync(
+      // Reserve durable history before the background executor is launched.
+      const pipelineId = await pipelineEngine.startAsync(
         projectId,
         blueprint,
         (agentType, input) => agentRegistry.executeAgent(agentType, input),
+        async (state) => {
+          await generationHistory.record({
+            id: `gen-${randomUUID().slice(0, 8)}`,
+            projectId,
+            pipelineId: state.pipelineId,
+            status: "running",
+            startedAt: state.startedAt,
+            stagesCompleted: 0,
+            stagesTotal: state.stages.length,
+            failures: 0,
+            tokenUsage: 0,
+            aiCost: 0,
+          });
+        },
       );
 
       console.log(
         `[PIPELINE_CREATED] pipelineId=${pipelineId} projectId=${projectId}`,
       );
-
-      // Record generation in project history
-      await generationHistory.record({
-        id: `gen-${randomUUID().slice(0, 8)}`,
-        projectId,
-        pipelineId,
-        status: "running",
-        startedAt: Date.now(),
-        stagesCompleted: 0,
-        stagesTotal: 11,
-        failures: 0,
-        tokenUsage: 0,
-        aiCost: 0,
-      });
-
       console.log(`[JOB_ENQUEUED] pipelineId=${pipelineId}`);
 
       res.json({
