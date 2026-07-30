@@ -118,16 +118,6 @@
       "classification": "internal-lifecycle-debt",
       "reason": "Generation lifecycle history is written by event handling without persistence acknowledgement.",
       "migrationTarget": "DATA-201B"
-    },
-    {
-      "key": "server/src/services/ChatPersistenceService.ts#ChatPersistenceService.deleteConversationImmediately#delete",
-      "path": "server/src/services/ChatPersistenceService.ts",
-      "owner": "ChatPersistenceService.deleteConversationImmediately",
-      "operation": "delete",
-      "expectedCalls": 2,
-      "classification": "multi-record-deferred",
-      "reason": "Conversation deletion cascades over messages and the conversation record and needs transaction or compensation semantics.",
-      "migrationTarget": "DATA-201C"
     }
   ]
 }
