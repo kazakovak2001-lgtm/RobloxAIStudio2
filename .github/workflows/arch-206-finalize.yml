@@ -23,7 +23,7 @@ jobs:
       - run: node node_modules/prettier/bin/prettier.cjs --write architecture.manifest.json architecture.layer-debt.json package.json scripts/architecture/layer-debt-evidence.ts scripts/validate-layer-debt-evidence.ts server/src/__tests__/architecture.layer-debt-evidence.test.ts docs/02-audits/technical-v2/ARCH-205_IMPLEMENTATION_NOTES.md
       - run: |
           git rm --cached .github/workflows/arch-206-finalize.yml scripts/arch-206-finalize.mjs
-          node scripts/generate-tracked-inventories.mjs
+          node scripts/cleanup/generate-tracked-inventories.mjs
       - uses: actions/upload-artifact@v4
         with:
           name: arch-206-finalized-files
