@@ -137,6 +137,38 @@ describe("ChatPersistenceService durable message creation", () => {
     ]);
   });
 
+  it("defers deletion until an in-flight message batch settles", async () => {
+    const storage = new DeferredBatchStorage();
+    const conversation: Conversation = {
+      id: "conversation-1",
+      projectId: "project-1",
+      title: "Existing",
+      createdAt: "2026-01-01T00:00:00.000Z",
+      updatedAt: "2026-01-01T00:00:00.000Z",
+    };
+    storage.set(CONVERSATIONS, conversation.id, conversation);
+    const service = new ChatPersistenceService(storage);
+
+    const creation = service.createMessage({
+      conversationId: conversation.id,
+      role: "assistant",
+      content: "Concurrent response",
+    });
+    await Promise.resolve();
+    await Promise.resolve();
+
+    expect(service.deleteConversation(conversation.id)).toBe(true);
+    expect(service.getConversation(conversation.id)).toEqual(
+      expect.objectContaining({ id: conversation.id, messages: [] }),
+    );
+
+    storage.release();
+    const message = await creation;
+
+    expect(service.getConversation(conversation.id)).toBeNull();
+    expect(storage.get(MESSAGES, message.id)).toBeNull();
+  });
+
   it("preserves the exact conversation when the batch rejects", async () => {
     const storage = new RejectingBatchStorage();
     const previous: Conversation = {
