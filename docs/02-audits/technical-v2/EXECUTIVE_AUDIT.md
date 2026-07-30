@@ -1,111 +1,79 @@
-# Technical Audit v2.0 — Executive Audit
+# Roblox AI Studio — Technical Audit v2.0 Refresh
 
-**Audit date:** July 28, 2026  
-**Tracking issue:** [#38](https://github.com/kazakovak2001-lgtm/RobloxAIStudio2/issues/38)  
-**Backend baseline:** `kazakovak2001-lgtm/RobloxAIStudio2@a2f596dcb03d92791f96d1b217bf33a534eeddcb`  
-**Frontend baseline:** `kazakovak2001-lgtm/Frontend@1036c3ef9705d145cb9700cd14268a33d2abdd58`
+**Audit date:** 2026-07-30  
+**Backend release baseline:** `kazakovak2001-lgtm/RobloxAIStudio2@a22d060b7fa44607c97a30d60b633e5545f8cfdb`  
+**Frontend contract baseline:** `kazakovak2001-lgtm/Frontend@95824451a92a9cdfe331dbc678bbe98467b53021`  
+**Pending, excluded from baseline:** backend PR #107 at `83d6b08ac15f67ac6e836bffb38506e3b32c45ab`  
+**Previous baseline:** `docs/02-audits/technical-v2/`
 
 ## Executive decision
 
-The project has a strong release foundation: both repositories install and build cleanly, the backend protected pipeline is comprehensive, PostgreSQL restart and ownership tests pass, the standalone Frontend SSR image is verified, and the real Roblox Studio import acknowledgement/result flow has desktop evidence.
+The project is a **controlled beta in production-hardening**, not a prototype. The independent backend/frontend release topology, protected production contract, cookie-only browser authentication, PostgreSQL-backed core records, durable mutation acknowledgements across major product flows, and verified Roblox Studio artifact delivery are demonstrably operational.
 
-The implementation is not yet accurately described as feature-complete or fully production-hardened. The recommended decision is:
+The project is not yet ready to be described as a fully autonomous Roblox development platform. The largest remaining risks are architecture-gate truthfulness, frontend lint/format debt, runtime-stack overlap, the unlanded auth/storage convergence slice, incomplete process-local state classification, incomplete RBAC enforcement and security automation, and native Roblox asset/GUI/place delivery.
 
-> Continue controlled beta and hardening work, but do not expand into F-12 collaborative development or additional parallel runtime frameworks until the release-correctness, architecture-firewall, and cross-repository contract gates in this audit are complete.
+## Changes since the original TECH-AUDIT-2 baseline
 
-The first implementation wave after this audit is `HARDEN-2A`, starting with removal of reusable credentials from auth JSON responses and wiring the already-returned Studio verification state into the standalone Frontend.
+Completed after the original baseline:
+
+- `TAV2-001`: reusable credentials removed from browser auth JSON; browser sessions use secure httpOnly cookies.
+- `TAV2-002`: canonical Frontend renders real Studio verification evidence.
+- `TAV2-007`: exact 40-check production backend/frontend contract is protected in both repositories.
+- Active authentication and release terminology was corrected through `DOC-201`.
+- Major `TAV2-006` durability consumers now acknowledge persistence before success: project creation/duplication, blueprint deletion cascades, chat message creation, conversation deletion, and generation-history/pipeline reservation paths.
+- Transaction rejection, rollback, restart and post-removal invariant evidence is protected in CI for the landed durability slices.
+
+Still open or partial:
+
+- `TAV2-003`: architecture manifest and validator are not yet exhaustive or fail-closed.
+- `TAV2-004`: autonomous pipeline phases are still simulated.
+- `TAV2-005`: frontend lint/format baseline and protected quality gates remain.
+- `TAV2-006`: substantially mitigated, but auth/storage convergence PR #107 is not included in the release baseline and not every durable consumer is classified.
+- `TAV2-008` through `TAV2-016`: runtime consolidation, security automation, RBAC, bundle budget, state classification, documentation consolidation, Studio native delivery, and runtime hygiene remain.
 
 ## Evidence dashboard
 
-| Area                     |                         Audit result | Evidence                                                                                                                                                                                                                                                                                                                |
-| ------------------------ | -----------------------------------: | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Repository and builds    |                               Strong | Backend has 1,088 tracked files; Frontend has 133. Clean installs, TypeScript, and production builds pass.                                                                                                                                                                                                              |
-| Backend verification     |                               Strong | 61 passing test files, 672 passing tests, one skipped test; protected CI also covers lint, format, PostgreSQL restart, release images, HTTPS composition, rollback, and cleanup invariants.                                                                                                                             |
-| Frontend verification    |                                Mixed | TypeScript, build, responsive QA, seven native workspace tests, and the 40-check production-mode backend integration suite pass. Lint currently reports 640 errors and 12 warnings, while 70 files fail the format check; neither gate runs in Frontend CI.                                                             |
-| Architecture enforcement |                     Needs correction | 46 real backend subsystems exist, but only 32 are modeled. The generated boundary report is `FAIL` with four cycles while the CLI exits successfully. Layer rules and re-export edges are not enforced.                                                                                                                 |
-| AI runtime               |                                Mixed | Prompt, context, provider, agent, memory, evaluation, retry, and canonical `PlanExecutor` paths exist and are tested. The active autonomous API still simulates its phases, and several alternative orchestration/provider/memory stacks are isolated or only integration-test connected.                               |
-| Security                 |                     Needs correction | bcrypt, secure cookies, origin checks, rate limiting, storage-backed opaque sessions, API-key digests, and ownership checks exist. Login/register/refresh responses still return reusable access and refresh tokens to JavaScript, RBAC enforcement is not mounted, and dependency/security scanning is absent from CI. |
-| Roblox Studio            | Strong core, partial product surface | Exact execution/artifact/hash verification and real desktop import are complete. Lua scripts and metadata are materialized; actual model/mesh/audio asset insertion, generated in-game GUI materialization, place publishing, and the deferred runtime validator are not complete.                                      |
-| Documentation            |                  Needs consolidation | 335 tracked Markdown files exist, including 282 under `docs/`. Current control documents contained stale counts, unsupported health scores, JWT terminology for opaque sessions, and an obsolete 2026-07-13 master audit.                                                                                               |
+| Area                           |                          Result | Completion | Decision                                                         |
+| ------------------------------ | ------------------------------: | ---------: | ---------------------------------------------------------------- |
+| Backend repository and CI      |                          Strong |        94% | Production-capable baseline                                      |
+| Frontend build and release     |                          Strong |        86% | Operational; quality debt remains                                |
+| Authentication                 |                          Strong |        92% | Browser credential leak closed; atomic convergence pending       |
+| Authorization                  |                       Prototype |        30% | Ownership works; RBAC not mounted                                |
+| Architecture enforcement       |                         Partial |        52% | P0 gate; complete ARCH-2B next                                   |
+| AI providers and agents        |                     Operational |        76% | Canonical path exists; overlap remains                           |
+| Prompt and context             |                     Operational |        80% | Real and tested                                                  |
+| Memory and learning            |                         Partial |        58% | Fragmented and mainly process-local                              |
+| Planning and execution         |                         Partial |        74% | PlanExecutor canonical; recovery/parallel gaps                   |
+| Autonomous pipeline            |                       Prototype |        35% | Lifecycle exists; engines simulated                              |
+| Validation and artifacts       |                     Operational |        84% | Real generation-to-Studio path                                   |
+| Studio bridge verification     |                   Complete core |        95% | Desktop verified                                                 |
+| Studio native assets/GUI/place |                       Prototype |        45% | Metadata only outside Lua core                                   |
+| Durable storage                |             Operational/partial |        86% | Major flows acknowledged; convergence and state inventory remain |
+| Testing                        | Strong backend / mixed frontend |        84% | Shared contract and durability regressions protected             |
+| Security automation            |                       Prototype |        42% | No full dependency/SAST/SBOM policy                              |
+| Documentation governance       |                         Partial |        60% | Current refresh exists; authority cleanup remains                |
+
+No aggregate production-readiness percentage is promoted as executable truth. The area values are planning estimates; release decisions must use the named exit gates and exact CI evidence.
 
 ## Highest-priority findings
 
-| ID       | Severity | Finding                                                                                                                                                                | Immediate outcome                                                                                |
-| -------- | -------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------ |
-| TAV2-001 | High     | Auth endpoints set httpOnly cookies but also return access and refresh tokens in JSON.                                                                                 | Remove tokens from browser-facing response bodies and add regression tests.                      |
-| TAV2-002 | High     | `workspaceReadModel.ts` declares and assigns `studioArtifactVerified: false` even though the backend status response contains `artifactVerified`.                      | Parse the real field and cover verified/failed/pending states.                                   |
-| TAV2-003 | High     | The architecture firewall omits 15 real subsystems, ignores declared layer rules, misses re-exports, skips unknown domains, and does not fail on four reported cycles. | Repair the manifest and validator before using “zero violations” as an architecture claim.       |
-| TAV2-004 | High     | The mounted `AutonomousOrchestrator` waits and returns simulated outputs instead of invoking the named engines.                                                        | Relabel as preview or connect phases to canonical services behind an integration test.           |
-| TAV2-005 | High     | Frontend CI omits lint, format, and the available production-mode integration suite.                                                                                   | Establish a green baseline and make those checks protected.                                      |
-| TAV2-006 | High     | The synchronous storage interface acknowledges mutations before asynchronous PostgreSQL persistence is confirmed.                                                      | Define an explicit durability acknowledgement contract and test database-write failure behavior. |
+1. **ARCH-2B / TAV2-003 — P0:** make the architecture manifest exhaustive, switch to AST dependency extraction, fail closed on missing or invalid manifests, enforce layers and unknown-domain failures, and align JSON status with process exit code.
+2. **FRONTEND-2C / TAV2-005 — P1:** establish zero-error lint/format baseline, protect those gates, and add bundle budgets.
+3. **RUNTIME-2D / TAV2-004 + TAV2-008 — P1:** define one authoritative execution/provider/memory/orchestration map and replace or relabel simulated autonomous phases.
+4. **DURABILITY-2E / TAV2-006 + TAV2-013 — P1:** land the remaining auth/storage convergence, finish durable-consumer migration, and classify every process-local store.
+5. **SECURITY-2G / TAV2-009 + TAV2-010 — P1:** introduce security automation and either mount or retire RBAC claims.
+6. **DOC-202 / TAV2-014 — P2:** establish one documentation authority chain and remove unsupported manual health claims.
+7. **STUDIO-2F / TAV2-015 — P2/P3:** separate verified artifact transfer from native models, meshes, audio, GUI and place publication.
 
-## What is demonstrably complete
+## Release recommendation
 
-- The embedded frontend was physically removed and a permanent schema-v5 invariant guard preserves the decommission boundary.
-- The standalone Frontend is the only web client and has a production SSR image, health endpoint, and responsive workspace gate.
-- Project ownership, production REST authentication, production Socket.IO authentication, PostgreSQL restart behavior, and cross-user isolation have executable evidence.
-- `PlanExecutor` is the canonical generation execution entrypoint used by the primary generation service.
-- Generation outputs are recorded as Studio artifacts and transferred through one command ledger.
-- The canonical plugin package is deterministic and contains only nine allowlisted active Lua sources.
-- Roblox Studio acknowledgement and result processing verify the exact execution ID, artifact IDs, and SHA-256 hashes.
-- The backend package, typecheck, lint, format, tests, Docker image, composed release, rollback, and cleanup invariant gates pass on the audited baseline.
+Continue controlled beta and hardening. Do not start collaborative development, marketplace expansion, or another runtime framework before `ARCH-2B`, `FRONTEND-2C`, `RUNTIME-2D`, the remaining `DURABILITY-2E` convergence, and `SECURITY-2G` satisfy their exit gates.
 
-## What is not complete
+## Audit outputs
 
-- A trustworthy architecture boundary gate.
-- Browser-visible Studio verification in the canonical Frontend.
-- A real engine-backed autonomous pipeline.
-- Protected Frontend lint/format and cross-repository integration checks.
-- Durable acknowledgement for every currently in-memory or asynchronous operational store.
-- Production RBAC enforcement despite role and permission definitions.
-- Actual Studio insertion of generated non-Lua assets and generated in-game GUI structures.
-- Runtime execution parallelism promised by `ExecutionOptions.parallel`.
-- Dependency/SAST automation and closure of current dependency advisories.
-- A single authoritative module/runtime map with old reports clearly superseded.
-
-## Baseline metrics
-
-| Metric                              |                           Backend |                          Frontend |
-| ----------------------------------- | --------------------------------: | --------------------------------: |
-| Tracked files                       |                             1,088 |                               133 |
-| Tracked TypeScript/TSX              |                               627 |                                99 |
-| Production files under `server/src` |                               547 |                                 — |
-| Backend test files                  |                                62 |                                 — |
-| Frontend source TypeScript/TSX      |                                 — |                                97 |
-| Frontend TSX components             |                                 — |                                80 |
-| Native test files / cases           |                  62 / 672 passing |                     1 / 7 passing |
-| Production integration checks       | Protected backend/composed suites | 40 passing locally; not protected |
-| Markdown files                      |                               335 |                                11 |
-| Lua sources                         |            14 tracked; 9 packaged |                                 — |
-
-## Recommended order
-
-1. `HARDEN-2A`: credential response hardening, Frontend Studio verification, and protected production-mode contract E2E.
-2. `ARCH-2B`: make the manifest exhaustive and make the boundary gate truthful.
-3. `FRONTEND-2C`: establish a green lint/format baseline, add gates, and remove the Lucide bundle hotspot.
-4. `RUNTIME-2D`: choose and consolidate canonical orchestration/provider/memory paths; replace simulated autonomous phases.
-5. `DURABILITY-2E`: make operational state and write acknowledgement match production claims.
-6. `STUDIO-2F`: implement real non-Lua asset/GUI/place delivery only after the core contracts remain green.
-7. Re-evaluate F-12 collaborative development after all preceding exit gates pass.
-
-The detailed dependencies and exit gates are in [ROADMAP_v2_UPDATE.md](./ROADMAP_v2_UPDATE.md) and the ready-to-implement work items are in [SPRINT_BACKLOG.md](./SPRINT_BACKLOG.md).
-
-## Audit index
-
-- [MODULE_REGISTRY.md](./MODULE_REGISTRY.md) — repository and runtime inventory
-- [FEATURE_MATRIX.md](./FEATURE_MATRIX.md) — evidence-based implementation status
-- [ARCHITECTURE_GAP_REPORT.md](./ARCHITECTURE_GAP_REPORT.md) — specification-to-code gaps
-- [TECHNICAL_DEBT.md](./TECHNICAL_DEBT.md) — prioritized debt register
-- [ROADMAP_v2_UPDATE.md](./ROADMAP_v2_UPDATE.md) — recommended delivery sequence
-- [SPRINT_BACKLOG.md](./SPRINT_BACKLOG.md) — implementable sprint backlog
-
-## Validation performed
-
-- Backend: `npm run ci`, `npm run build`, architecture and cleanup invariant reports.
-- Frontend: clean `npm ci`, `npx tsc --noEmit`, `npm run test:workspace`, `npm run build`, `npm run lint`, and a separate Prettier check.
-- Cross-repository: all 40 checks in `scripts/e2e-backend.mjs` with the backend in production mode.
-- Security/dependencies: production and full-development `npm audit` for both repositories.
-- Static architecture: TypeScript-AST import/re-export inventory compared with `ImportBoundaryValidator`.
-- Roblox: canonical package allowlist, plugin contract tests, backend Studio runtime, and existing desktop acceptance evidence.
-
-No production code or repository history was rewritten by this audit.
+- `MODULE_REGISTRY.md`
+- `FEATURE_MATRIX.md`
+- `ARCHITECTURE_GAP_REPORT.md`
+- `TECHNICAL_DEBT.md`
+- `ROADMAP_v2_UPDATE.md`
+- `SPRINT_BACKLOG.md`
