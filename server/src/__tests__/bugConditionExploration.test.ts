@@ -161,13 +161,14 @@ describe("Bug Condition Exploration - Release Hardening Security Defects", () =>
               "auth_credentials",
               "user2@test.com",
             );
-            expect(credentials1).toBeDefined();
-            expect(credentials2).toBeDefined();
-            expect(credentials1!.passwordHash).not.toBe(
-              credentials2!.passwordHash,
+            if (!credentials1 || !credentials2) {
+              throw new Error("Registration did not persist both credentials");
+            }
+            expect(credentials1.passwordHash).not.toBe(
+              credentials2.passwordHash,
             );
-            expect(credentials1!.passwordHash).toMatch(/^\$2[aby]\$12\$/);
-            expect(credentials2!.passwordHash).toMatch(/^\$2[aby]\$12\$/);
+            expect(credentials1.passwordHash).toMatch(/^\$2[aby]\$12\$/);
+            expect(credentials2.passwordHash).toMatch(/^\$2[aby]\$12\$/);
 
             expect(
               (
@@ -208,8 +209,10 @@ describe("Bug Condition Exploration - Release Hardening Security Defects", () =>
               "auth_credentials",
               "test@test.com",
             );
-            expect(credentials).toBeDefined();
-            expect(credentials!.passwordHash).toMatch(/^\$2[aby]\$12\$/);
+            if (!credentials) {
+              throw new Error("Registration did not persist credentials");
+            }
+            expect(credentials.passwordHash).toMatch(/^\$2[aby]\$12\$/);
             expect(
               (
                 await authService.loginDurable(

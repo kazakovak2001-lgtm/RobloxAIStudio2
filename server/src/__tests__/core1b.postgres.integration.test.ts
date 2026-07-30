@@ -94,20 +94,25 @@ describePostgres("CORE-1b PostgreSQL restart acceptance", () => {
         otherId,
       ),
     ).toBe(true);
-    const ownerToken = (
-      await authBeforeRestart.loginDurable(
-        `owner-${suffix}@example.com`,
-        "password123",
-        ownerId,
-      )
-    ).token!;
-    const otherToken = (
-      await authBeforeRestart.loginDurable(
-        `other-${suffix}@example.com`,
-        "password123",
-        otherId,
-      )
-    ).token!;
+    const ownerLogin = await authBeforeRestart.loginDurable(
+      `owner-${suffix}@example.com`,
+      "password123",
+      ownerId,
+    );
+    if (!ownerLogin.token) {
+      throw new Error("Owner login did not return an access token");
+    }
+    const ownerToken = ownerLogin.token;
+
+    const otherLogin = await authBeforeRestart.loginDurable(
+      `other-${suffix}@example.com`,
+      "password123",
+      otherId,
+    );
+    if (!otherLogin.token) {
+      throw new Error("Other-user login did not return an access token");
+    }
+    const otherToken = otherLogin.token;
 
     const runtimeBeforeRestart = createProjectRuntime(
       firstProvider,
