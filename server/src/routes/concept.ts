@@ -572,3 +572,49 @@ export function createConceptRouter(
 
   return router;
 }
+
+function asyncArtifactMutation(
+  handler: (req: Request, res: Response) => Promise<void>,
+): RequestHandler {
+  return (req, res) => {
+    void handler(req, res).catch((error: unknown) => {
+      handleArtifactMutationError(error, res);
+    });
+  };
+}
+
+function handleArtifactMutationError(error: unknown, res: Response): void {
+  if (error instanceof DurableStorageError) {
+    console.error("[concept] artifact mutation rejected", error);
+    res.status(503).json({
+      success: false,
+      error: "Durable storage is temporarily unavailable",
+    });
+    return;
+  }
+
+  console.error("[concept] artifact mutation failed", error);
+  res.status(500).json({ success: false, error: "Artifact mutation failed" });
+}
+
+function extractTitle(description: string): string {
+  const words = description.trim().split(/\s+/).slice(0, 4);
+  return words
+    .map((w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
+    .join(" ");
+}
+
+function generateFeatures(genre: string): string[] {
+  const base = ["Multiplayer support", "Save system", "Leaderboards"];
+  const genreFeatures: Record<string, string[]> = {
+    obby: ["Checkpoint system", "Stage progression", "Speed run timer"],
+    rpg: ["Inventory system", "Quest system", "NPC interactions"],
+    tycoon: ["Resource management", "Upgrades", "Automation"],
+    simulator: ["Skill progression", "Collection mechanics", "Rebirth system"],
+    adventure: ["Exploration", "Puzzle solving", "Story progression"],
+  };
+  return [
+    ...base,
+    ...(genreFeatures[genre.toLowerCase()] ?? genreFeatures.adventure),
+  ];
+}
