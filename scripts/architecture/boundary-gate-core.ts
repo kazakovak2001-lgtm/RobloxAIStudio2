@@ -187,7 +187,7 @@ export function validateManifestModel(
       );
     }
 
-    if (!exception.reason.trim()) {
+    if (typeof exception.reason !== "string" || !exception.reason.trim()) {
       errors.push(
         `Allowed layer edge '${exception.from} → ${exception.to}' requires a reason.`,
       );
