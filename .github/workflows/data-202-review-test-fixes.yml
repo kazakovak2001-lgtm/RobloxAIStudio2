@@ -1,0 +1,110 @@
+name: DATA-202 Final Review Test Fixes
+
+on:
+  pull_request:
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/data-202-role-mutation-ack
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - run: npm ci
+      - name: Apply exact review fixes
+        run: |
+          node <<'NODE'
+          const fs = require('fs');
+          function replaceExactly(path, before, after) {
+            const source = fs.readFileSync(path, 'utf8');
+            const count = source.split(before).length - 1;
+            if (count !== 1) throw new Error(`${path}: expected one match, found ${count}`);
+            fs.writeFileSync(path, source.replace(before, after));
+          }
+
+          replaceExactly(
+            'server/src/__tests__/securityHardening.test.ts',
+            `    it("publishes a role only after durable acknowledgement", async () => {
+      let resolveMutation;
+      const storage = new InMemoryStorageProvider();
+      const originalSetDurable = storage.setDurable.bind(storage);
+      storage.setDurable = async (collection, id, data) => {
+        await new Promise((resolve) => {
+          resolveMutation = resolve;
+        });
+        await originalSetDurable(collection, id, data);
+      };
+      const auth = new AuthService(storage);
+
+      const pending = auth.setRole("role-user", "administrator");
+      expect(auth.hasPermission("role-user", "admin")).toBe(false);
+
+      resolveMutation();
+      await pending;
+      expect(auth.hasPermission("role-user", "admin")).toBe(true);
+    });`,
+            `    it("publishes a role only after durable acknowledgement", async () => {
+      let resolveMutation: (() => void) | undefined;
+      const storage = new InMemoryStorageProvider();
+      const auth = new AuthService(storage);
+      await auth.setRole("role-user", "creator");
+      const originalSetDurable = storage.setDurable.bind(storage);
+      storage.setDurable = async (collection, id, data) => {
+        await new Promise<void>((resolve) => {
+          resolveMutation = resolve;
+        });
+        await originalSetDurable(collection, id, data);
+      };
+
+      const pending = auth.setRole("role-user", "administrator");
+      expect(auth.hasPermission("role-user", "create_project")).toBe(true);
+      expect(auth.hasPermission("role-user", "admin")).toBe(false);
+
+      if (!resolveMutation) throw new Error("Durable mutation was not blocked");
+      resolveMutation();
+      await pending;
+      expect(auth.hasPermission("role-user", "admin")).toBe(true);
+    });`
+          );
+
+          replaceExactly(
+            'server/src/__tests__/securityHardening.test.ts',
+            `      expect(auth.hasPermission("role-user", "admin")).toBe(false);
+    });
+  });`,
+            `      expect(auth.hasPermission("role-user", "create_project")).toBe(true);
+      expect(auth.hasPermission("role-user", "admin")).toBe(false);
+    });
+  });`
+          );
+
+          replaceExactly(
+            'server/src/__tests__/productLayer.test.ts',
+            `    it("checks permissions by role", () => {
+      auth.register("p@t.com", "pw", "u-1");
+      auth.setRole("u-1", "premium");`,
+            `    it("checks permissions by role", async () => {
+      auth.register("p@t.com", "pw", "u-1");
+      await auth.setRole("u-1", "premium");`
+          );
+          NODE
+      - run: npx prettier --write server/src/__tests__/securityHardening.test.ts server/src/__tests__/productLayer.test.ts
+      - run: npm run typecheck
+      - run: npm run test -- --run server/src/__tests__/securityHardening.test.ts server/src/__tests__/productLayer.test.ts
+      - name: Finalize tracked state
+        run: |
+          rm .github/workflows/data-202-review-test-fixes.yml
+          npm run inventory:generate
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add server/src/__tests__/securityHardening.test.ts server/src/__tests__/productLayer.test.ts ProjectStructure.txt _inventory_raw.txt .github/workflows/data-202-review-test-fixes.yml
+          git commit -m "test(data-202): preserve prior role and await mutation"
+          git push origin HEAD:agent/data-202-role-mutation-ack
