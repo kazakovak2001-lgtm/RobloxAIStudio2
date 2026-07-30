@@ -27,7 +27,10 @@ Tracks issues #108, #110 and completes the protected evidence work for ARCH-2B.
 - Added deterministic evidence construction and validation under `scripts/architecture/layer-debt-evidence.ts`.
 - Added a real repository AST test and protected validation command that fail on evidence drift, stale owners or missing allowed-edge ownership.
 - Replaced broad manifest reasons with concrete source-file summaries and remediation milestones; exact import specifiers remain canonical in `architecture.layer-debt.json`.
-- Final protected validation is required on the exact non-bot head before merge.
+
+## Closure gate
+
+Issues #108, #53 and #110 remain open until protected CI passes on the exact merge-candidate head and PR #111 is merged. The issues may then be closed with the merge commit and final evidence counts recorded.
 
 ## Remaining work
 
