@@ -1,594 +1,208 @@
-# Technical Audit v2.0 — Sprint Backlog
+# Technical Audit v2.0 Refresh — Sprint Backlog
 
-**Prepared:** July 28, 2026  
-**Source:** [Technical Audit issue #38](https://github.com/kazakovak2001-lgtm/RobloxAIStudio2/issues/38)
+**Backend release baseline:** `a22d060b7fa44607c97a30d60b633e5545f8cfdb`  
+**Frontend contract baseline:** `95824451a92a9cdfe331dbc678bbe98467b53021`  
+**Pending, excluded from baseline:** backend PR #107 at `83d6b08ac15f67ac6e836bffb38506e3b32c45ab`
 
-## Backlog rules
+## Sprint 1 — ARCH-2B: Truthful architecture firewall
 
-- Preserve the standalone Frontend as the only web client.
-- Preserve `PlanExecutor` as the canonical generation core unless an ADR explicitly replaces it.
-- Preserve the shared Studio command ledger and exact receipt verification.
-- Do not combine mechanical formatting, architecture rewrites, and product behavior in one pull request.
-- Every cross-repository item records exact backend and Frontend SHAs.
-- Sizes are relative: `S` focused, `M` multi-file, `L` architectural, `XL` multi-sprint.
+### ARCH-201 — Reconcile subsystem manifest
 
-## Sprint 2A — Release correctness
+- Inventory every real `server/src` subsystem.
+- Add every subsystem to the manifest or an explicit exclusion list.
+- Remove stale paths and obsolete quarantine references.
+- Add a test that fails when a new top-level subsystem is unclassified.
 
-These items are ready and should run in this order.
+### ARCH-202 — Replace regex dependency extraction
 
-### SEC-201 — Cookie-only browser auth contract
+- Parse TypeScript with AST.
+- Capture imports, side-effect imports, dynamic imports, `require`, `export ... from`, and `export * from`.
+- Generate deterministic dependency inventory.
 
-| Field      | Value                   |
-| ---------- | ----------------------- |
-| Priority   | P0                      |
-| Repository | RobloxAIStudio2         |
-| Size       | M                       |
-| Depends on | TECH-AUDIT-2            |
-| Status     | Implemented — issue #45 |
+### ARCH-203 — Enforce layers and unknown domains
 
-**Scope**
+- Evaluate `layers.*.canImportFrom`.
+- Fail unknown internal source/target domains.
+- Add allowed and forbidden edge tests for each layer.
 
-- Remove `token` and `refreshToken` from register/login/refresh JSON.
-- Keep httpOnly cookie auth, logout, Socket.IO cookie auth, and API-key clients.
-- Store refresh credentials as digests and rotate them atomically.
-- Correct JWT terminology in active docs/types/comments without rewriting historical evidence.
+### ARCH-204 — Fail closed and align process status
 
-**Acceptance**
+- Treat missing or parse-invalid `architecture.manifest.json` as a production-critical failure.
+- Make `RuntimeBoundaryGuard.validate()` return a failing result when enforcement cannot run.
+- Define cycle policy and temporary exceptions.
+- Make JSON report, console summary and process exit code identical.
+- Add negative CI controls.
 
-- Production login/register/refresh tests assert body credentials are absent.
-- Frontend auth flow and `/auth/me` pass.
-- Production REST and Socket.IO auth pass.
-- Stolen/old refresh token fails after rotation.
-- `npm run ci` and composed release pass.
+**Exit gate:** architecture report is `PASS`, CI is green, and missing/invalid manifests plus a deliberately forbidden edge both fail with a non-zero exit.
 
-### FE-201 — Real Studio verification in Workspace
-
-| Field      | Value                              |
-| ---------- | ---------------------------------- |
-| Priority   | P0                                 |
-| Repository | Frontend                           |
-| Size       | S                                  |
-| Depends on | TECH-AUDIT-2                       |
-| Status     | Implemented — issue #13 and PR #14 |
-
-**Scope**
-
-- Extend Studio response types with `artifactVerified`, `verificationStatus`, verified execution/count, and error.
-- Derive `studioArtifactVerified` from parsed data instead of literal false.
-- Render pending/verified/failed readiness accurately.
-
-**Acceptance**
-
-- Native tests cover verified, pending, failed, malformed, and disconnected responses.
-- A backend-verified session no longer produces the “pending STUDIO-1 verification” blocker.
-- TypeScript, workspace tests, build, responsive QA, and integration checks pass.
-
-### INT-201 — Protected 40-check production contract
-
-| Field      | Value                                                   |
-| ---------- | ------------------------------------------------------- |
-| Priority   | P0                                                      |
-| Repository | Both                                                    |
-| Size       | M                                                       |
-| Depends on | SEC-201, FE-201                                         |
-| Status     | Implemented — Frontend PR #16; backend issue #47/PR #48 |
-
-**Scope**
-
-- Run Frontend `scripts/e2e-backend.mjs` against a production-mode backend in protected CI.
-- Record exact backend/Frontend SHAs and the 40 check results.
-- Document that development mode intentionally bypasses auth and is not valid isolation evidence.
-
-**Acceptance**
-
-- Auth, cross-user REST, cross-user realtime, generation, modules, and guarded Studio sync pass.
-- Failed contract check blocks merge/release.
-- Artifact identifies both commits and runtime configuration.
-- Existing backend and Frontend Merge Gates remain green.
-
-### DOC-201 — Correct active auth and release terminology
-
-| Field      | Value                   |
-| ---------- | ----------------------- |
-| Priority   | P1                      |
-| Repository | RobloxAIStudio2         |
-| Size       | S                       |
-| Depends on | SEC-201                 |
-| Status     | Implemented — issue #49 |
-
-**Scope**
-
-- Replace active “JWT validation” claims with “storage-backed opaque session validation.”
-- Record actual SameSite policy.
-- Link current security claims to executable tests.
-- Leave historical decision text intact or annotate it as superseded.
-
-**Acceptance**
-
-- No current-state document claims signed JWT behavior.
-- Search-based doc check prevents reintroduction in authoritative files.
-
-## Sprint 2B — Architecture firewall
-
-### ARCH-201 — TypeScript AST import graph
-
-| Field      | Value           |
-| ---------- | --------------- |
-| Priority   | P0              |
-| Repository | RobloxAIStudio2 |
-| Size       | L               |
-| Depends on | INT-201         |
-
-**Scope**
-
-- Replace regex extraction with TypeScript AST traversal.
-- Cover static/type/side-effect imports, re-exports, dynamic imports, and `require`.
-- Preserve production/test/quarantine scope rules.
-
-**Acceptance**
-
-- Fixtures prove every syntax form is detected.
-- Current scan reports all 1,446 baseline import-like specifications or a reviewed explained delta.
-- Re-export boundary violation fails CI.
-
-### ARCH-202 — Exhaustive manifest and layer enforcement
-
-| Field      | Value           |
-| ---------- | --------------- |
-| Priority   | P0              |
-| Repository | RobloxAIStudio2 |
-| Size       | M               |
-| Depends on | ARCH-201        |
-
-**Scope**
-
-- Model all 46 real subsystems.
-- Remove stale `engine` and obsolete quarantine declarations.
-- Validate manifest paths.
-- Enforce `canImportFrom`.
-- Fail internal unknown domains.
-
-**Acceptance**
-
-- Zero unmodeled subsystem directories.
-- Missing/stale manifest path test fails.
-- Every layer has allowed and forbidden fixtures.
-- No internal edge is silently skipped as unknown.
-
-### ARCH-203 — Cycle policy and truthful exit semantics
-
-| Field      | Value           |
-| ---------- | --------------- |
-| Priority   | P0              |
-| Repository | RobloxAIStudio2 |
-| Size       | M/L             |
-| Depends on | ARCH-202        |
-
-**Scope**
-
-- Analyze the four baseline cycles.
-- Break them through interfaces where practical.
-- If a temporary allowlist is necessary, assign owner, reason, and expiry.
-- Make JSON status, console result, and process exit agree.
-
-**Acceptance**
-
-- A non-allowlisted cycle fails CI.
-- Allowed cycles appear as explicit debt, not `PASS`.
-- Script header/comments match behavior.
-- Merge Gate consumes the result.
-
-### ARCH-204 — Runtime ownership ADR
-
-| Field      | Value           |
-| ---------- | --------------- |
-| Priority   | P1              |
-| Repository | RobloxAIStudio2 |
-| Size       | S               |
-| Depends on | ARCH-202        |
-
-**Scope**
-
-Classify each execution, provider, agent registry, memory, collaboration, analytics, and Studio stack as:
-
-- canonical;
-- bounded adapter;
-- preview;
-- deprecated;
-- removal candidate.
-
-**Acceptance**
-
-- ADR names construction roots and permitted consumers.
-- Boundary rules prevent new imports into deprecated/isolated stacks.
-- `PlatformIntegrationManager` receives an explicit adopt/retire decision.
-
-## Sprint 2C — Frontend quality and performance
+## Sprint 2 — FRONTEND-2C: Protected quality baseline
 
 ### FE-202 — Mechanical format baseline
 
-| Field      | Value    |
-| ---------- | -------- |
-| Priority   | P1       |
-| Repository | Frontend |
-| Size       | M        |
-| Depends on | FE-201   |
+- Apply Prettier in an isolated reviewable PR.
+- Confirm no behavioral changes.
 
-**Scope**
+### FE-203 — Resolve ESLint findings
 
-- Apply Prettier to the 70 failing files in a behavior-free commit.
+- Fix all non-format errors and warnings intentionally.
+- Set zero-warning policy.
+
+### FE-204 — Protect lint and format
+
 - Add `format:check`.
+- Add protected lint and format jobs.
+- Keep typecheck, build, SSR, responsive QA, native tests and 40-check contract green.
 
-**Acceptance**
+### FE-205 — Bundle budget
 
-- Zero format differences.
-- Diff is mechanical and separate from warning fixes.
-- TypeScript, tests, and build unchanged.
+- Replace wildcard Lucide imports with direct typed imports.
+- Add client and SSR size budgets.
+- Upload bundle evidence.
 
-### FE-203 — Resolve ESLint warnings and protect lint
+### FE-206 — Expand frontend behavior tests
 
-| Field      | Value    |
-| ---------- | -------- |
-| Priority   | P1       |
-| Repository | Frontend |
-| Size       | M        |
-| Depends on | FE-202   |
+- REST parsing and error states.
+- Auth mutation/logout/refresh behavior.
+- Workspace route rendering.
+- Socket reconnect and stale event handling.
+- Studio verification pending/verified/failed states.
 
-**Scope**
+**Exit gate:** zero lint errors/warnings, zero format drift, bundle within budget, all existing gates green.
 
-- Resolve all remaining hooks and fast-refresh warnings intentionally.
-- Run ESLint with zero warnings in CI.
+## Sprint 3 — RUNTIME-2D: Runtime ownership consolidation
 
-**Acceptance**
+### RT-201 — Publish runtime ownership matrix
 
-- `npm run lint` exits zero with no warning allowance.
-- CI has required lint and format jobs.
-- No rule is globally disabled solely to make the baseline green.
+Classify execution, providers, prompts, context, memory, collaboration and Studio stacks as canonical, bounded adapter, preview, deprecated or removed.
 
-### FE-204 — Bundle budget and Lucide import fix
+### RT-202 — Bound PlanExecutor and Pipeline v2
 
-| Field      | Value    |
-| ---------- | -------- |
-| Priority   | P2       |
-| Repository | Frontend |
-| Size       | S        |
-| Depends on | FE-202   |
+- Define non-overlapping responsibilities.
+- Align event, retry, artifact and persistence contracts.
+- Prevent new direct consumers outside approved boundaries.
 
-**Scope**
+### RT-203 — Autonomous disposition
 
-- Replace `import * as Icons` with direct imports or a typed allowlist.
-- Add client and SSR bundle thresholds.
-- Evaluate removal of `vite-tsconfig-paths`.
+Choose one:
 
-**Acceptance**
+- relabel `/api/autonomous` and UI as preview simulation; or
+- connect every retained phase to canonical services and real artifacts.
 
-- `AgentCard` no longer includes the full Lucide namespace.
-- The 593.85 kB warning source is removed.
-- Budget regression fails CI with an actionable message.
+### RT-204 — Retire disconnected composition roots
 
-### FE-205 — Expand native adapter/read-model tests
+- Decide `PlatformIntegrationManager`, alternate provider registry, runtime controller, top-level collaboration, `ui-gen`, `lua`, and isolated validator.
+- Add deprecation import bans and migration notes.
 
-| Field      | Value          |
-| ---------- | -------------- |
-| Priority   | P2             |
-| Repository | Frontend       |
-| Size       | M              |
-| Depends on | FE-201, FE-203 |
+### RT-205 — Resolve parallel contract
 
-**Scope**
+- Implement deterministic bounded DAG parallelism; or
+- remove `ExecutionOptions.parallel` and parallel claims.
 
-- Test auth refresh behavior, response normalization, Studio parsing, degraded sources, and realtime reconnection decisions.
+**Exit gate:** one documented execution path for each product use case; no silently disconnected production-looking stack.
 
-**Acceptance**
+## Sprint 4 — DURABILITY-2E: Durable acknowledgement
 
-- Tests exercise service/read-model code, not only pure workspace decisions.
-- Malformed backend data fails safely and visibly.
+### DATA-201 — Canonical durable mutation boundary — substantially implemented
 
-## Sprint 2D — Runtime consolidation
+- Production storage success must acknowledge a committed durable write, not merely completion of an awaited method.
+- Keep in-memory storage only as a test/preview compatibility provider for this gate.
+- Preserve one canonical single-record and atomic-batch API.
+- Keep PostgreSQL statements transaction-affine and publish cache changes only after COMMIT.
 
-### RUN-201 — Autonomous API truthfulness
+### DATA-202 — Route/repository migration — in progress
 
-| Field      | Value           |
-| ---------- | --------------- |
-| Priority   | P1              |
-| Repository | RobloxAIStudio2 |
-| Size       | L               |
-| Depends on | ARCH-204        |
+Landed in the current release baseline:
 
-**Scope**
+- project creation and duplication;
+- blueprint deletion cascades;
+- chat message creation and conversation deletion;
+- generation-history writes and pre-start pipeline reservation.
 
-Choose:
+Remaining:
 
-- preview relabeling with deterministic simulation; or
-- real phase adapters to canonical generation, playtest, repair, and Studio services.
+- land auth/storage convergence PR #107;
+- inventory every remaining direct durable consumer;
+- remove, migrate or explicitly classify compatibility paths;
+- define uniform retry and conflict behavior.
 
-**Acceptance for real mode**
+### DATA-203 — Failure evidence — implemented for landed slices
 
-- No random quality score or fixed-delay placeholder output.
-- Every completed event maps to a real output/artifact.
-- Failed/resumed execution has deterministic state.
-- Production E2E inspects artifacts, not only statuses.
+- PostgreSQL write rejection tests.
+- No phantom success.
+- No partial ownership state.
+- Rollback and queue-recovery tests.
+- Restart verification.
+- Post-removal invariant evidence.
 
-### RUN-202 — Provider stack consolidation
+### DATA-204 — Operational state inventory — open
 
-| Field      | Value           |
-| ---------- | --------------- |
-| Priority   | P1              |
-| Repository | RobloxAIStudio2 |
-| Size       | L               |
-| Depends on | ARCH-204        |
+Classify concepts, plans, simulations, autonomous sessions, traces, metrics, preferences, versions, queues and Studio maps as cache, telemetry, preview or durable product state.
 
-**Scope**
+### DATA-205 — Migrate and bound — open
 
-- Keep one production provider interface/factory.
-- Reuse health/retry/normalization utilities where valuable.
-- Remove or quarantine stub integration adapters.
+- Persist durable product state.
+- Add TTL/size limits for cache and telemetry.
+- Document preview state loss semantics.
+- Define reconciliation behavior for failed or conflicting writes.
 
-**Acceptance**
+**Exit gate:** every production API success implies an acknowledged committed durable write; in-memory storage is not accepted as production durability evidence; every process-local store has an owner and lifecycle.
 
-- One environment variable contract.
-- No alternate provider registry constructed outside tests.
-- Provider fallback/retry tests cover the canonical path.
+## Sprint 5 — SECURITY-2G: Enforcement and automation
 
-### RUN-203 — Agent/collaboration stack disposition
+### SEC-202 — Security policy
 
-| Field      | Value           |
-| ---------- | --------------- |
-| Priority   | P2              |
-| Repository | RobloxAIStudio2 |
-| Size       | L               |
-| Depends on | ARCH-204        |
+- Define production/dev dependency thresholds.
+- Add expiring exception register.
 
-**Scope**
+### SEC-203 — Automated scanning
 
-- Keep one production AgentRegistry.
-- Decide ownership for `agents/orchestrator`, `agents/collaboration`, and top-level `collaboration`.
-- Remove “LLM consensus” claims while reasoning is deterministic/stubbed.
+- PR production dependency audit.
+- Scheduled full dependency audit.
+- SAST/CodeQL-equivalent.
+- Secret scanning.
+- Container image scan.
+- SBOM artifact.
 
-**Acceptance**
+### SEC-204 — RBAC decision
 
-- Mounted routes use documented canonical packages.
-- Isolated stacks have no production imports.
-- F-12 remains blocked until route-level RBAC and durability exist.
+- Identify privileged operations.
+- Mount permission middleware and negative tests, or remove unsupported production RBAC claims.
+- Preserve ownership checks.
 
-### RUN-204 — Memory ownership and durability
+### SEC-205 — Security evidence
 
-| Field      | Value              |
-| ---------- | ------------------ |
-| Priority   | P2                 |
-| Repository | RobloxAIStudio2    |
-| Size       | L                  |
-| Depends on | ARCH-204, DATA-201 |
+Attach exact tool versions, findings and exceptions to protected Merge Gate artifacts.
 
-**Scope**
+**Exit gate:** security regressions are automatically detected and authorization claims match mounted behavior.
 
-- Define durable project/agent memory versus ephemeral prompt context.
-- Consolidate `ai/memory`, `memory/core`, and `memory/knowledge`.
+## Sprint 6 — DOC-202: Documentation authority
 
-**Acceptance**
+This sprint follows the core architecture/runtime/durability/security decisions and precedes optional Studio product-scope expansion.
 
-- One API/storage contract for durable memory.
-- Tenant/project isolation and restart tests.
-- Bounded context and retention behavior.
+- Banner superseded audits and obsolete architecture maps.
+- Remove unsupported manual health scores.
+- Generate inventories from scripts.
+- Link current project-control documents to this refresh.
+- Preserve historical evidence without presenting it as current truth.
 
-### RUN-205 — Parallel execution decision
+**Exit gate:** one linked authority chain identifies the current roadmap, audit, backlog and executable evidence.
 
-| Field      | Value           |
-| ---------- | --------------- |
-| Priority   | P2              |
-| Repository | RobloxAIStudio2 |
-| Size       | M/L             |
-| Depends on | ARCH-204        |
+## Sprint 7 — STUDIO-2F: Optional native Roblox delivery
 
-**Scope**
+Start only after the preceding control and documentation gates remain green.
 
-- Benchmark real DAG workloads.
-- Implement bounded deterministic parallelism or remove the unused option.
+- Native model/mesh/audio/image materialization.
+- Generated ScreenGui/control construction.
+- Canonical runtime validator.
+- `.rbxl`/place publication decision.
+- Desktop acceptance and exact evidence for every retained capability.
 
-**Acceptance**
+## Deferred backlog
 
-- Public types/docs match behavior.
-- If implemented: event, retry, cancellation, memory, and artifact ordering tests pass.
+- Collaborative development/F-12.
+- Marketplace and extension ecosystem expansion.
+- Cloud distributed execution beyond bounded operational needs.
+- Additional orchestration engines.
+- Enterprise SSO/team features.
 
-## Sprint 2E — Durability and operations
-
-### DATA-201 — Awaitable durable mutations
-
-| Field      | Value           |
-| ---------- | --------------- |
-| Priority   | P1              |
-| Repository | RobloxAIStudio2 |
-| Size       | L               |
-| Depends on | ARCH-204        |
-
-**Scope**
-
-- Add an awaited mutation/transaction boundary to storage and repositories.
-- Propagate persistence failure to HTTP responses.
-
-**Acceptance**
-
-- Database rejection cannot produce a successful durable mutation response.
-- Cache remains consistent after failure.
-- Restart and ownership tests remain green.
-
-### DATA-202 — Operational state classification
-
-| Field      | Value           |
-| ---------- | --------------- |
-| Priority   | P2              |
-| Repository | RobloxAIStudio2 |
-| Size       | M               |
-| Depends on | ARCH-204        |
-
-**Scope**
-
-Inventory concepts, plans, simulations, autonomous sessions, traces, metrics, preferences, versions, queues, Studio maps, and caches.
-
-**Acceptance**
-
-- Every store is labeled cache, telemetry, preview, or durable.
-- Cache/telemetry have bounds/retention.
-- Durable candidates have follow-up migration items.
-
-### DATA-203 — Persist selected product state
-
-| Field      | Value              |
-| ---------- | ------------------ |
-| Priority   | P2                 |
-| Repository | RobloxAIStudio2    |
-| Size       | XL                 |
-| Depends on | DATA-201, DATA-202 |
-
-**Acceptance**
-
-- Selected product workflows resume after restart.
-- No partial tenant crossover.
-- Health status reports persistence degradation.
-
-## Cross-cutting security and dependency backlog
-
-### SEC-202 — Route-level RBAC
-
-| Field      | Value             |
-| ---------- | ----------------- |
-| Priority   | P1                |
-| Repository | RobloxAIStudio2   |
-| Size       | M                 |
-| Depends on | SEC-201, ARCH-204 |
-
-**Acceptance**
-
-- Privileged route matrix exists.
-- Lower roles receive 403 in production tests.
-- Project ownership remains mandatory.
-
-### SEC-203 — Dependency, source, and image policy
-
-| Field      | Value   |
-| ---------- | ------- |
-| Priority   | P1      |
-| Repository | Both    |
-| Size       | M       |
-| Depends on | INT-201 |
-
-**Acceptance**
-
-- Production dependency policy blocks unapproved high/critical advisories.
-- Development exceptions have owner and expiry.
-- SAST, SBOM, and image scan artifacts are generated.
-- Current advisories are triaged without blind major upgrades.
-
-### DEPS-201 — Low-risk dependency hygiene
-
-| Field      | Value  |
-| ---------- | ------ |
-| Priority   | P3     |
-| Repository | Both   |
-| Size       | S      |
-| Depends on | FE-203 |
-
-**Scope**
-
-- Remove obsolete `@types/socket.io-client` if clean.
-- Remove redundant `vite-tsconfig-paths` if clean.
-- Plan, do not opportunistically force, Recharts migration.
-
-**Acceptance**
-
-- Clean install, TypeScript, tests, build, and relevant bundle checks pass.
-
-### DEPS-202 — Plain Node compiled backend
-
-| Field      | Value           |
-| ---------- | --------------- |
-| Priority   | P3              |
-| Repository | RobloxAIStudio2 |
-| Size       | L               |
-| Depends on | ARCH-2B         |
-
-**Acceptance**
-
-- Compiled ESM starts with `node dist/server/index.js`.
-- Production image removes `tsx`.
-- Existing release health and composed tests pass.
-
-## Studio expansion backlog
-
-### STUDIO-201 — Explicit excluded-source inventory
-
-| Field      | Value           |
-| ---------- | --------------- |
-| Priority   | P3              |
-| Repository | RobloxAIStudio2 |
-| Size       | S               |
-| Depends on | ARCH-204        |
-
-**Acceptance**
-
-- All five excluded Lua sources are clearly migration inventory or deferred experiments.
-- README and package allowlist agree.
-- Package SHA determinism and contract tests pass.
-
-### STUDIO-202 — Native artifact contract design
-
-| Field      | Value             |
-| ---------- | ----------------- |
-| Priority   | P3                |
-| Repository | RobloxAIStudio2   |
-| Size       | M                 |
-| Depends on | DATA-201, RUN-204 |
-
-**Scope**
-
-Define schemas, ownership, permissions, rollback, and receipts for models, meshes, textures, audio, animations, and GUI.
-
-**Acceptance**
-
-- ADR extends the existing command ledger.
-- Metadata receipt and native materialization are distinct states.
-- Threat/content-permission review is complete.
-
-### STUDIO-203 — Native assets/GUI/place implementation
-
-| Field      | Value           |
-| ---------- | --------------- |
-| Priority   | P3              |
-| Repository | RobloxAIStudio2 |
-| Size       | XL              |
-| Depends on | STUDIO-202      |
-
-**Acceptance**
-
-- Native instances are created/updated idempotently.
-- Runtime validation is active and reports exact evidence.
-- Failure rolls back or marks partial state explicitly.
-- A new real Studio desktop run verifies package SHA, Explorer hierarchy, receipts, and backend state.
-
-## Documentation backlog
-
-### DOC-202 — Historical authority banners and generated metrics
-
-| Field      | Value           |
-| ---------- | --------------- |
-| Priority   | P2              |
-| Repository | RobloxAIStudio2 |
-| Size       | M               |
-| Depends on | ARCH-202        |
-
-**Acceptance**
-
-- Authority-sounding stale audits are marked superseded.
-- Current file/module/test counts come from a repeatable script/report.
-- Manual architecture/debt health scores are removed.
-- Broken links and current-state references pass validation.
-
-## Deferred
-
-| Item                                  | Reason                                                                                       |
-| ------------------------------------- | -------------------------------------------------------------------------------------------- |
-| F-12 collaborative development        | Requires route-level RBAC, durable shared state, and consolidated collaboration architecture |
-| OAuth/JWT migration                   | Not required to fix the current opaque-session response leak                                 |
-| New Frontend framework/design rewrite | Current standalone Frontend ownership and SSR release are established                        |
-| Studio protocol rewrite               | Existing command/receipt contract is verified and extensible                                 |
-| New execution engine                  | Consolidation must reduce, not add, runtime paths                                            |
+These remain deferred because they multiply runtime, authorization, durability and governance complexity before the current contracts are closed.
