@@ -59,11 +59,16 @@ jobs:
               test = test_path.read_text()
               test, auth_count = re.subn(r"\bauth\.login\(", "await auth.loginDurable(", test)
               test, service_count = re.subn(r"\bauthService\.login\(", "await authService.loginDurable(", test)
+              test, numbered_service_count = re.subn(
+                  r"\b(authService\d+)\.login\(",
+                  r"await \1.loginDurable(",
+                  test,
+              )
               test, shared_count = re.subn(r"\bsharedAuthService\.login\(", "await sharedAuthService.loginDurable(", test)
-              total_callers += auth_count + service_count + shared_count
+              total_callers += auth_count + service_count + numbered_service_count + shared_count
               test_path.write_text(test)
 
-          if total_callers < 15:
+          if total_callers < 18:
               raise SystemExit(f"Unexpectedly small synchronous caller inventory: {total_callers}")
 
           preservation_path = Path("server/src/__tests__/preservationProperty.test.ts")
@@ -91,6 +96,32 @@ jobs:
 
           bug_path = Path("server/src/__tests__/bugConditionExploration.test.ts")
           bug = bug_path.read_text()
+
+          salting_header = 'it("property: same password hashed twice SHALL produce different hashes (bcrypt salting)", () => {'
+          salting_start = bug.find(salting_header)
+          salting_end = bug.find("    }, 60000);", salting_start)
+          if salting_start < 0 or salting_end < 0:
+              raise SystemExit("Password salting property test was not found")
+          salting_block = bug[salting_start:salting_end]
+          salting_block = salting_block.replace(
+              salting_header,
+              'it("property: same password hashed twice SHALL produce different hashes (bcrypt salting)", async () => {',
+              1,
+          )
+          salting_property_count = salting_block.count("fc.property(")
+          salting_block = salting_block.replace("fc.property(", "fc.asyncProperty(", 1)
+          salting_block, salting_callback_count = re.subn(
+              r"\(password\) => \{",
+              "async (password) => {",
+              salting_block,
+              count=1,
+          )
+          if salting_property_count != 1 or salting_callback_count != 1:
+              raise SystemExit(
+                  f"Unexpected password salting property shape: property={salting_property_count}, callback={salting_callback_count}"
+              )
+          bug = bug[:salting_start] + salting_block + bug[salting_end:]
+
           bug_header = 'it("property: password hashes SHALL use bcrypt format ($2a$12$ or $2b$12$)", () => {'
           bug_start = bug.find(bug_header)
           bug_end = bug.find("    }, 60000);", bug_start)
@@ -161,7 +192,7 @@ jobs:
             echo "Synchronous AuthService.login method remains"
             exit 1
           fi
-          if grep -R -E '(authService|sharedAuthService|auth)\.login\(' server/src; then
+          if grep -R -E '(auth|authService[[:alnum:]_]*|sharedAuthService)\.login\(' server/src; then
             echo "Synchronous AuthService login caller remains"
             exit 1
           fi
