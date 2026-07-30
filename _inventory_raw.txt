@@ -1000,6 +1000,7 @@ server/src/repair/RepairPlanner.ts
 server/src/repair/RepairTypes.ts
 server/src/repair/index.ts
 server/src/routes/__tests__/platform.durability.test.ts
+server/src/routes/__tests__/platform.registration.durability.test.ts
 server/src/routes/__tests__/projects.durability.test.ts
 server/src/routes/__tests__/projects.runtime.test.ts
 server/src/routes/__tests__/studioProtocol.smoke.test.ts
