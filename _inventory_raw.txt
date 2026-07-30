@@ -61,6 +61,7 @@ README.md
 RELEASE_HARDENING_REPORT.md
 V1_RELEASE_NOTES.md
 _inventory_raw.txt
+architecture.layer-debt.json
 architecture.manifest.json
 artifacts/runtime/runtime-ownership-report.json
 commitlint.config.cjs
@@ -455,6 +456,7 @@ reports/v3.0_beta_release_report.md
 repository_manifest.json
 scripts/architecture/ast-import-inventory.ts
 scripts/architecture/boundary-gate-core.ts
+scripts/architecture/layer-debt-evidence.ts
 scripts/backup-database.sh
 scripts/cleanup/audit-legacy-frontend-decommission.mjs
 scripts/cleanup/generate-tracked-inventories.mjs
@@ -474,6 +476,7 @@ scripts/validate-architecture.ts
 scripts/validate-boundaries.ts
 scripts/validate-controller.ts
 scripts/validate-durable-writes.ts
+scripts/validate-layer-debt-evidence.ts
 scripts/validate-memory-ownership.ts
 scripts/validate-runtime-ownership.ts
 scripts/validate.ts
@@ -481,6 +484,7 @@ server/prisma/schema.prisma
 server/src/__tests__/agentDecisionEngine.routing.test.ts
 server/src/__tests__/architecture.ast-import-inventory.test.ts
 server/src/__tests__/architecture.boundary-gate.test.ts
+server/src/__tests__/architecture.layer-debt-evidence.test.ts
 server/src/__tests__/autonomousPipelineExploration.test.ts
 server/src/__tests__/autonomousPipelineIntegration.test.ts
 server/src/__tests__/autonomousPipelinePreservation.test.ts
