@@ -11,5 +11,7 @@ export {
   flushStorageProvider,
   getStorageType,
   initializeStorageProvider,
+  registerStoragePostInitializeHook,
+  type StoragePostInitializeHook,
   type StorageProviderType,
 } from "./StorageFactory";
