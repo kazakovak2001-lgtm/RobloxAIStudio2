@@ -246,7 +246,9 @@ export class StorageBlueprintRepository implements IBlueprintRepository {
     execution: GenerationExecution,
   ): Promise<GenerationExecution> {
     return this.withBlueprintMutationLock(execution.blueprint_id, async () => {
-      if (!this.storage.get<GameBlueprint>(BLUEPRINTS, execution.blueprint_id)) {
+      if (
+        !this.storage.get<GameBlueprint>(BLUEPRINTS, execution.blueprint_id)
+      ) {
         throw new Error(`Blueprint ${execution.blueprint_id} not found`);
       }
 
