@@ -7,6 +7,8 @@ import {
   type ImportEdge,
 } from "../../../scripts/architecture/boundary-gate-core";
 
+const REAL_SUBSYSTEMS = ["core", "game", "transport", "routes"];
+
 function createManifest(): ArchitectureManifest {
   return {
     layers: {
@@ -47,9 +49,9 @@ function edge(overrides: Partial<ImportEdge> = {}): ImportEdge {
 
 function baseGateInput() {
   return {
-    manifestErrors: [],
+    manifestErrors: [] as string[],
     criticalViolationCount: 0,
-    cycles: [],
+    cycles: [] as string[][],
     unresolvedInternalImportCount: 0,
     layerViolations: [],
   };
@@ -58,21 +60,15 @@ function baseGateInput() {
 describe("architecture boundary gate core", () => {
   it("accepts a consistent manifest", () => {
     const manifest = createManifest();
+    const errors = validateManifestModel(manifest, REAL_SUBSYSTEMS);
 
-    expect(
-      validateManifestModel(manifest, ["core", "game", "transport", "routes"]),
-    ).toEqual([]);
+    expect(errors).toEqual([]);
   });
 
   it("rejects unmodeled and stale subsystems", () => {
     const manifest = createManifest();
-
-    const errors = validateManifestModel(manifest, [
-      "core",
-      "game",
-      "transport",
-      "new-domain",
-    ]);
+    const subsystems = ["core", "game", "transport", "new-domain"];
+    const errors = validateManifestModel(manifest, subsystems);
 
     expect(errors).toContain("Unmodeled server/src subsystem: 'new-domain'.");
     expect(errors).toContain("Manifest models non-subsystem path: 'routes'.");
@@ -86,20 +82,16 @@ describe("architecture boundary gate core", () => {
       { from: "api", to: "domains", reason: "duplicate" },
     ];
 
-    const errors = validateManifestModel(manifest, [
-      "core",
-      "game",
-      "transport",
-      "routes",
-    ]);
+    const errors = validateManifestModel(manifest, REAL_SUBSYSTEMS);
+    const unknownLayer = "Domain 'game' references unknown layer 'missing'.";
+    const staleEdge =
+      "Allowed layer edge 'api → domains' is stale because the edge is already permitted.";
+    const duplicateEdge =
+      "Allowed layer edge 'api → domains' is duplicated.";
 
-    expect(errors).toContain("Domain 'game' references unknown layer 'missing'.");
-    expect(errors).toContain(
-      "Allowed layer edge 'api → domains' is stale because the edge is already permitted.",
-    );
-    expect(errors).toContain(
-      "Allowed layer edge 'api → domains' is duplicated.",
-    );
+    expect(errors).toContain(unknownLayer);
+    expect(errors).toContain(staleEdge);
+    expect(errors).toContain(duplicateEdge);
   });
 
   it("detects forbidden layer edges", () => {
@@ -121,28 +113,29 @@ describe("architecture boundary gate core", () => {
     ];
 
     const violations = collectLayerViolations(manifest, edges);
+    const sourceLayers = violations.map((item) => item.sourceLayer);
+    const targetLayers = violations.map((item) => item.targetLayer);
 
     expect(violations).toHaveLength(4);
-    expect(violations.every((item) => item.sourceLayer === "domains")).toBe(
-      true,
-    );
-    expect(violations.every((item) => item.targetLayer === "api")).toBe(true);
+    expect(new Set(sourceLayers)).toEqual(new Set(["domains"]));
+    expect(new Set(targetLayers)).toEqual(new Set(["api"]));
   });
 
   it("reports explicit temporary layer debt", () => {
     const manifest = createManifest();
     const violations = collectLayerViolations(manifest, [edge()]);
+    const allowedLayerEdges = [
+      {
+        from: "domains",
+        to: "api",
+        reason: "Tracked migration debt owned by ARCH-205",
+      },
+    ];
 
     const decision = evaluateBoundaryGate({
       ...baseGateInput(),
       layerViolations: violations,
-      allowedLayerEdges: [
-        {
-          from: "domains",
-          to: "api",
-          reason: "Tracked migration debt owned by ARCH-205",
-        },
-      ],
+      allowedLayerEdges,
     });
 
     expect(decision.status).toBe("PASS");
@@ -154,7 +147,6 @@ describe("architecture boundary gate core", () => {
   it("fails a forbidden layer edge", () => {
     const manifest = createManifest();
     const violations = collectLayerViolations(manifest, [edge()]);
-
     const decision = evaluateBoundaryGate({
       ...baseGateInput(),
       layerViolations: violations,
@@ -180,6 +172,7 @@ describe("architecture boundary gate core", () => {
     const rejected = evaluateBoundaryGate({
       ...baseGateInput(),
       cycles: [["game", "transport", "game"]],
+      allowedCycles: [],
     });
 
     expect(rejected.status).toBe("FAIL");
@@ -187,7 +180,7 @@ describe("architecture boundary gate core", () => {
     expect(rejected.reasons).toContain("cycle");
   });
 
-  it("fails on manifest errors", () => {
+  it("fails for manifest errors", () => {
     const decision = evaluateBoundaryGate({
       ...baseGateInput(),
       manifestErrors: ["broken"],
@@ -198,7 +191,7 @@ describe("architecture boundary gate core", () => {
     expect(decision.reasons).toContain("manifest");
   });
 
-  it("fails on critical boundary violations", () => {
+  it("fails for critical boundary violations", () => {
     const decision = evaluateBoundaryGate({
       ...baseGateInput(),
       criticalViolationCount: 1,
@@ -209,7 +202,7 @@ describe("architecture boundary gate core", () => {
     expect(decision.reasons).toContain("critical-boundary");
   });
 
-  it("fails on unresolved internal imports", () => {
+  it("fails for unresolved internal imports", () => {
     const decision = evaluateBoundaryGate({
       ...baseGateInput(),
       unresolvedInternalImportCount: 1,
