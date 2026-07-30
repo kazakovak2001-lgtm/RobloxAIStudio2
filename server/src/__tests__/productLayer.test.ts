@@ -15,7 +15,7 @@ describe("Product Layer", async () => {
     });
 
     it("registers and logs in a user", async () => {
-      auth.register("test@test.com", "pass123", "user-1");
+      await auth.registerDurable("test@test.com", "pass123", "user-1");
       const result = await auth.loginDurable(
         "test@test.com",
         "pass123",
@@ -28,20 +28,20 @@ describe("Product Layer", async () => {
     });
 
     it("rejects invalid credentials", async () => {
-      auth.register("a@b.com", "correct", "u-1");
+      await auth.registerDurable("a@b.com", "correct", "u-1");
       const result = await auth.loginDurable("a@b.com", "wrong", "u-1");
       expect(result.success).toBe(false);
       expect(result.error).toContain("Invalid");
     });
 
     it("prevents duplicate registration", async () => {
-      auth.register("dup@test.com", "pass", "u-1");
-      const ok = auth.register("dup@test.com", "pass2", "u-2");
+      await auth.registerDurable("dup@test.com", "pass", "u-1");
+      const ok = await auth.registerDurable("dup@test.com", "pass2", "u-2");
       expect(ok).toBe(false);
     });
 
     it("validates token and returns session", async () => {
-      auth.register("x@y.com", "pw", "u-1");
+      await auth.registerDurable("x@y.com", "pw", "u-1");
       const login = await auth.loginDurable("x@y.com", "pw", "u-1");
       const session = await auth.validateToken(login.token!);
       expect(session).not.toBeNull();
@@ -53,24 +53,24 @@ describe("Product Layer", async () => {
     });
 
     it("refreshes session", async () => {
-      auth.register("r@t.com", "pw", "u-1");
+      await auth.registerDurable("r@t.com", "pw", "u-1");
       const login = await auth.loginDurable("r@t.com", "pw", "u-1");
-      const refreshed = auth.refreshSession(login.refreshToken!);
+      const refreshed = await auth.refreshSessionDurable(login.refreshToken!);
       expect(refreshed.success).toBe(true);
       expect(refreshed.token).not.toBe(login.token);
     });
 
     it("checks permissions by role", async () => {
-      auth.register("p@t.com", "pw", "u-1");
+      await auth.registerDurable("p@t.com", "pw", "u-1");
       await auth.setRole("u-1", "premium");
       expect(auth.hasPermission("u-1", "publish")).toBe(true);
       expect(auth.hasPermission("u-1", "admin")).toBe(false);
     });
 
     it("logout invalidates token", async () => {
-      auth.register("l@t.com", "pw", "u-1");
+      await auth.registerDurable("l@t.com", "pw", "u-1");
       const login = await auth.loginDurable("l@t.com", "pw", "u-1");
-      auth.logout(login.token!);
+      await auth.logoutDurable(login.token!);
       expect(await auth.validateToken(login.token!)).toBeNull();
     });
   });
