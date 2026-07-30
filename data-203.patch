@@ -1,0 +1,258 @@
+diff --git a/server/src/platform/auth/AuthService.ts b/server/src/platform/auth/AuthService.ts
+--- a/server/src/platform/auth/AuthService.ts
++++ b/server/src/platform/auth/AuthService.ts
+@@ -265,17 +265,17 @@ export class AuthService {
+-  validateToken(token: string): AuthSession | null {
++  async validateToken(token: string): Promise<AuthSession | null> {
+     const session = this.storage.get<StoredAuthSession>(
+       SESSIONS_COLLECTION,
+       token,
+     );
+     if (!session) return null;
+     if (Date.now() > session.expiresAt) {
+       this.deleteSession(session);
+       return null;
+     }
+     const updated = { ...session, lastActivity: Date.now() };
+-    this.storage.set(SESSIONS_COLLECTION, token, updated);
++    await this.storage.setDurable(SESSIONS_COLLECTION, token, updated);
+     return this.toPublicSession(updated);
+   }
+
+diff --git a/server/src/common/middleware/security.ts b/server/src/common/middleware/security.ts
+--- a/server/src/common/middleware/security.ts
++++ b/server/src/common/middleware/security.ts
+@@ -136,11 +136,11 @@ const PUBLIC_PREFIXES = [
+   "/api/platform/auth", // Auth routes (login, register, refresh, logout) must be public
+ ];
+ 
+-export function authMiddleware(
++export async function authMiddleware(
+   req: Request,
+   res: Response,
+   next: NextFunction,
+-): void {
++): Promise<void> {
+@@ -168,7 +168,16 @@ export function authMiddleware(
+ 
+   if (authHeader?.startsWith("Bearer ")) {
+     const token = authHeader.slice(7); // Remove "Bearer " prefix
+-    const session = authService.validateToken(token);
++    let session;
++    try {
++      session = await authService.validateToken(token);
++    } catch {
++      res.status(503).json({
++        success: false,
++        error: "Authentication persistence unavailable",
++      });
++      return;
++    }
+     if (session) {
+       // Attach session/user info to request for downstream handlers
+       (req as any).user = session;
+@@ -184,7 +193,16 @@ export function authMiddleware(
+   const cookieToken = (req as unknown as { cookies?: Record<string, string> })
+     .cookies?.roblox_ai_token;
+   if (cookieToken) {
+-    const session = authService.validateToken(cookieToken);
++    let session;
++    try {
++      session = await authService.validateToken(cookieToken);
++    } catch {
++      res.status(503).json({
++        success: false,
++        error: "Authentication persistence unavailable",
++      });
++      return;
++    }
+     if (session) {
+       (req as any).user = session;
+       // Attach token to Authorization header internally so downstream handlers can use it
+
+diff --git a/server/src/__tests__/securityHardening.test.ts b/server/src/__tests__/securityHardening.test.ts
+--- a/server/src/__tests__/securityHardening.test.ts
++++ b/server/src/__tests__/securityHardening.test.ts
+@@ -4,7 +4,7 @@
+  * Security Hardening Tests — Verify middleware behavior.
+  */
+ 
+-import { describe, it, expect } from "vitest";
++import { describe, it, expect, vi } from "vitest";
+@@ -87,6 +87,85 @@ describe("Security Hardening", () => {
+     });
+   });
+ 
++  describe("Durable session activity", () => {
++    it("publishes session activity only after durable acknowledgement", async () => {
++      const now = vi.spyOn(Date, "now").mockReturnValue(1_000);
++      const storage = new InMemoryStorageProvider();
++      const auth = new AuthService(storage);
++      auth.register("activity@test.com", "password123", "activity-user");
++      const login = auth.login(
++        "activity@test.com",
++        "password123",
++        "activity-user",
++      );
++      const token = login.token!;
++      const before = storage.get<{ lastActivity: number }>(
++        "auth_sessions",
++        token,
++      )!;
++      let releaseMutation: (() => void) | undefined;
++      const originalSetDurable = storage.setDurable.bind(storage);
++      storage.setDurable = async (collection, id, data) => {
++        await new Promise<void>((resolve) => {
++          releaseMutation = resolve;
++        });
++        await originalSetDurable(collection, id, data);
++      };
++      now.mockReturnValue(2_000);
++
++      let settled = false;
++      const pending = auth.validateToken(token).finally(() => {
++        settled = true;
++      });
++      await Promise.resolve();
++
++      expect(settled).toBe(false);
++      expect(
++        storage.get<{ lastActivity: number }>("auth_sessions", token)
++          ?.lastActivity,
++      ).toBe(before.lastActivity);
++      if (!releaseMutation) {
++        throw new Error("Durable activity mutation was not blocked");
++      }
++
++      releaseMutation();
++      await expect(pending).resolves.toMatchObject({ lastActivity: 2_000 });
++      expect(
++        storage.get<{ lastActivity: number }>("auth_sessions", token)
++          ?.lastActivity,
++      ).toBe(2_000);
++      now.mockRestore();
++    });
++
++    it("preserves acknowledged activity when persistence rejects", async () => {
++      const now = vi.spyOn(Date, "now").mockReturnValue(1_000);
++      const storage = new InMemoryStorageProvider();
++      const auth = new AuthService(storage);
++      auth.register("reject@test.com", "password123", "reject-user");
++      const login = auth.login(
++        "reject@test.com",
++        "password123",
++        "reject-user",
++      );
++      const token = login.token!;
++      const before = storage.get<{ lastActivity: number }>(
++        "auth_sessions",
++        token,
++      )!;
++      storage.setDurable = async () => {
++        throw new Error("rejected activity write");
++      };
++      now.mockReturnValue(2_000);
++
++      await expect(auth.validateToken(token)).rejects.toThrow(
++        "rejected activity write",
++      );
++      expect(
++        storage.get<{ lastActivity: number }>("auth_sessions", token)
++          ?.lastActivity,
++      ).toBe(before.lastActivity);
++      now.mockRestore();
++    });
++  });
++
+   describe("Auth middleware logic", () => {
+-    it("skips auth in non-production (NODE_ENV !== production)", () => {
++    it("skips auth in non-production (NODE_ENV !== production)", async () => {
+@@ -99,10 +178,10 @@ describe("Security Hardening", () => {
+         nextCalled = true;
+       };
+ 
+-      authMiddleware(req, res, next);
++      await authMiddleware(req, res, next);
+       expect(nextCalled).toBe(true);
+@@ -108,7 +187,7 @@ describe("Security Hardening", () => {
+-    it("rejects unauthenticated request in production", () => {
++    it("rejects unauthenticated request in production", async () => {
+@@ -128,7 +207,7 @@ describe("Security Hardening", () => {
+       } as never;
+       const next = () => {};
+ 
+-      authMiddleware(req, res, next);
++      await authMiddleware(req, res, next);
+@@ -140,7 +219,7 @@ describe("Security Hardening", () => {
+-    it("allows Bearer token in production", () => {
++    it("allows Bearer token in production", async () => {
+@@ -159,7 +238,7 @@ describe("Security Hardening", () => {
+         nextCalled = true;
+       };
+ 
+-      authMiddleware(req, res, next);
++      await authMiddleware(req, res, next);
+       expect(nextCalled).toBe(true);
+@@ -167,6 +246,40 @@ describe("Security Hardening", () => {
+       process.env.NODE_ENV = originalEnv;
+     });
+ 
++    it("does not continue authentication when activity persistence rejects", async () => {
++      const originalEnv = process.env.NODE_ENV;
++      process.env.NODE_ENV = "production";
++      const originalValidateToken = authService.validateToken.bind(authService);
++      authService.validateToken = async () => {
++        throw new Error("storage unavailable");
++      };
++      let nextCalled = false;
++      let statusCode = 0;
++      const req = {
++        path: "/api/projects",
++        method: "GET",
++        headers: { authorization: "Bearer rejected-token" },
++      } as never;
++      const res = {
++        status: (code: number) => {
++          statusCode = code;
++          return { json: () => undefined };
++        },
++      } as never;
++
++      await authMiddleware(req, res, () => {
++        nextCalled = true;
++      });
++
++      expect(nextCalled).toBe(false);
++      expect(statusCode).toBe(503);
++      authService.validateToken = originalValidateToken;
++      process.env.NODE_ENV = originalEnv;
++    });
++
+@@ -211,7 +324,7 @@ describe("Security Hardening", () => {
+-      authMiddleware(req, res, () => undefined);
++      await authMiddleware(req, res, () => undefined);
+@@ -240,7 +353,7 @@ describe("Security Hardening", () => {
+-      authMiddleware(req, res, () => undefined);
++      await authMiddleware(req, res, () => undefined);
+@@ -247,7 +360,7 @@ describe("Security Hardening", () => {
+-    it("allows public health endpoint without auth", () => {
++    it("allows public health endpoint without auth", async () => {
+@@ -257,7 +370,7 @@ describe("Security Hardening", () => {
+-      authMiddleware(req, res, next);
++      await authMiddleware(req, res, next);
+       expect(nextCalled).toBe(true);
+
+diff --git a/config/durability/compatibility-write-inventory.json b/config/durability/compatibility-write-inventory.json
+--- a/config/durability/compatibility-write-inventory.json
++++ b/config/durability/compatibility-write-inventory.json
+@@ -69,16 +69,6 @@
+-    {
+-      "key": "server/src/platform/auth/AuthService.ts#AuthService.validateToken#set",
+-      "path": "server/src/platform/auth/AuthService.ts",
+-      "owner": "AuthService.validateToken",
+-      "operation": "set",
+-      "expectedCalls": 1,
+-      "classification": "request-level-debt",
+-      "reason": "Session activity is updated during token validation without acknowledgement.",
+-      "migrationTarget": "DATA-201B"
+-    },
