@@ -9,6 +9,10 @@ Tracks #112 and #63.
 - Preserve the prior role when persistence rejects.
 - Remove exactly one protected compatibility-write group.
 
+## Compatibility ordering guard
+
+`PostgresStorageProvider.setDurable` captures the compatibility-mutation version before persistence and publishes the acknowledged value to cache only when no later compatibility write has occurred for the same record.
+
 ## Expected inventory
 
 The compatibility inventory decreases from 15 calls in 9 groups to 14 calls in 8 groups.
