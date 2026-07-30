@@ -1,0 +1,74 @@
+name: DATA-202 Role Mutation Migration
+
+on:
+  pull_request:
+
+permissions:
+  contents: write
+
+jobs:
+  migrate:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/data-202-role-mutation-ack
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+      - run: npm ci
+      - name: Apply bounded role mutation migration
+        run: |
+          node <<'NODE'
+          const fs = require('fs');
+
+          function replaceExactly(path, before, after) {
+            const source = fs.readFileSync(path, 'utf8');
+            const count = source.split(before).length - 1;
+            if (count !== 1) throw new Error(`${path}: expected one match, found ${count}`);
+            fs.writeFileSync(path, source.replace(before, after));
+          }
+
+          replaceExactly(
+            'server/src/platform/auth/AuthService.ts',
+            `  setRole(userId: string, role: UserRole): void {\n    this.storage.set<UserRole>(ROLES_COLLECTION, userId, role);\n  }`,
+            `  async setRole(userId: string, role: UserRole): Promise<void> {\n    await this.storage.setDurable<UserRole>(ROLES_COLLECTION, userId, role);\n  }`,
+          );
+
+          const inventoryPath = 'config/durability/compatibility-write-inventory.json';
+          const inventory = JSON.parse(fs.readFileSync(inventoryPath, 'utf8'));
+          const key = 'server/src/platform/auth/AuthService.ts#AuthService.setRole#set';
+          const beforeLength = inventory.entries.length;
+          inventory.entries = inventory.entries.filter((entry) => entry.key !== key);
+          if (inventory.entries.length !== beforeLength - 1) {
+            throw new Error('Expected exactly one setRole inventory entry');
+          }
+          fs.writeFileSync(inventoryPath, `${JSON.stringify(inventory, null, 2)}\n`);
+
+          replaceExactly(
+            'server/src/__tests__/securityHardening.test.ts',
+            `import { authService } from "../platform/auth/authServiceInstance";`,
+            `import { AuthService } from "../platform/auth/AuthService";\nimport { authService } from "../platform/auth/authServiceInstance";\nimport { InMemoryStorageProvider } from "../platform/storage/StorageProvider";`,
+          );
+
+          replaceExactly(
+            'server/src/__tests__/securityHardening.test.ts',
+            `  describe("Auth middleware logic", () => {`,
+            `  describe("Durable role mutations", () => {\n    it("publishes a role only after durable acknowledgement", async () => {\n      let resolveMutation;\n      const storage = new InMemoryStorageProvider();\n      const originalSetDurable = storage.setDurable.bind(storage);\n      storage.setDurable = async (collection, id, data) => {\n        await new Promise((resolve) => {\n          resolveMutation = resolve;\n        });\n        await originalSetDurable(collection, id, data);\n      };\n      const auth = new AuthService(storage);\n\n      const pending = auth.setRole("role-user", "admin");\n      expect(auth.hasPermission("role-user", "admin:users")).toBe(false);\n\n      resolveMutation();\n      await pending;\n      expect(auth.hasPermission("role-user", "admin:users")).toBe(true);\n    });\n\n    it("preserves the previous role when durable persistence rejects", async () => {\n      const storage = new InMemoryStorageProvider();\n      const auth = new AuthService(storage);\n      await auth.setRole("role-user", "creator");\n      storage.setDurable = async () => {\n        throw new Error("rejected role write");\n      };\n\n      await expect(auth.setRole("role-user", "admin")).rejects.toThrow(\n        "rejected role write",\n      );\n      expect(auth.hasPermission("role-user", "admin:users")).toBe(false);\n    });\n  });\n\n  describe("Auth middleware logic", () => {`,
+          );
+          NODE
+      - run: npx prettier --write server/src/platform/auth/AuthService.ts server/src/__tests__/securityHardening.test.ts config/durability/compatibility-write-inventory.json
+      - run: npm run typecheck
+      - run: npm run test -- --run server/src/__tests__/securityHardening.test.ts
+      - name: Finalize tracked state
+        run: |
+          git rm .github/workflows/data-202-role-mutation.yml
+          node scripts/cleanup/generate-tracked-inventories.mjs
+          git add server/src/platform/auth/AuthService.ts server/src/__tests__/securityHardening.test.ts config/durability/compatibility-write-inventory.json _inventory_raw.txt ProjectStructure.txt
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "feat(data): await administrative role mutations"
+          git push origin HEAD:agent/data-202-role-mutation-ack
