@@ -1,4 +1,10 @@
-import { existsSync, readFileSync, readdirSync, statSync, writeFileSync } from "node:fs";
+import {
+  existsSync,
+  readFileSync,
+  readdirSync,
+  statSync,
+  writeFileSync,
+} from "node:fs";
 import { join } from "node:path";
 import { ImportBoundaryValidator } from "../server/src/core/architecture/ImportBoundaryValidator";
 import { buildAstImportInventory } from "./architecture/ast-import-inventory";
