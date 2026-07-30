@@ -154,7 +154,7 @@ describe("CORE-1b durable runtime repositories", () => {
       role: "user",
       content: "Delete this conversation.",
     });
-    expect(chat.deleteConversation(message.conversationId)).toBe(true);
+    expect(await chat.deleteConversation(message.conversationId)).toBe(true);
     expect(chat.getConversation(message.conversationId)).toBeNull();
     expect(storage.count("chat_messages")).toBe(0);
   });

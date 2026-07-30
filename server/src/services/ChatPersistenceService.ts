@@ -46,8 +46,7 @@ const MESSAGES = "chat_messages";
  * unit-test construction; production bootstrap resolves the configured provider.
  */
 export class ChatPersistenceService {
-  private readonly activeMessageCreations = new Map<string, number>();
-  private readonly pendingConversationDeletions = new Set<string>();
+  private readonly conversationMutations = new Map<string, Promise<void>>();
 
   constructor(
     private readonly storage: StorageProvider = getConfiguredStorageProvider() ??
@@ -86,113 +85,121 @@ export class ChatPersistenceService {
       throw new ChatValidationError("role must be user, assistant, or system");
     }
 
-    const now = new Date().toISOString();
-    let conversation: Conversation;
-    const usesExistingConversation = Boolean(input.conversationId);
-    if (input.conversationId) {
-      const existing = this.storage.get<Conversation>(
-        CONVERSATIONS,
-        input.conversationId,
-      );
-      if (!existing) {
-        throw new ChatValidationError("conversationId does not exist");
+    const conversationId = input.conversationId
+      ? this.requireText(input.conversationId, "conversationId")
+      : `conversation-${randomUUID()}`;
+
+    return this.withConversationMutation(conversationId, async () => {
+      const now = new Date().toISOString();
+      let conversation: Conversation;
+      if (input.conversationId) {
+        const existing = this.storage.get<Conversation>(
+          CONVERSATIONS,
+          conversationId,
+        );
+        if (!existing) {
+          throw new ChatValidationError("conversationId does not exist");
+        }
+        conversation = existing;
+      } else {
+        const projectId = this.requireText(input.projectId, "projectId");
+        conversation = {
+          id: conversationId,
+          projectId,
+          title: content.slice(0, 80),
+          createdAt: now,
+          updatedAt: now,
+        };
       }
-      conversation = existing;
-    } else {
-      const projectId = this.requireText(input.projectId, "projectId");
-      conversation = {
-        id: `conversation-${randomUUID()}`,
-        projectId,
-        title: content.slice(0, 80),
+
+      const message: ConversationMessage = {
+        id: `message-${randomUUID()}`,
+        conversationId: conversation.id,
+        role: input.role,
+        content,
+        metadata: input.metadata,
         createdAt: now,
-        updatedAt: now,
       };
-    }
+      const updatedConversation: Conversation = {
+        ...conversation,
+        updatedAt: message.createdAt,
+      };
+      const mutations: DurableMutation[] = [
+        {
+          operation: "set",
+          collection: MESSAGES,
+          id: message.id,
+          data: message,
+        },
+        {
+          operation: "set",
+          collection: CONVERSATIONS,
+          id: conversation.id,
+          data: updatedConversation,
+        },
+      ];
 
-    const message: ConversationMessage = {
-      id: `message-${randomUUID()}`,
-      conversationId: conversation.id,
-      role: input.role,
-      content,
-      metadata: input.metadata,
-      createdAt: now,
-    };
-    const updatedConversation: Conversation = {
-      ...conversation,
-      updatedAt: message.createdAt,
-    };
-    const mutations: DurableMutation[] = [
-      {
-        operation: "set",
-        collection: MESSAGES,
-        id: message.id,
-        data: message,
-      },
-      {
-        operation: "set",
-        collection: CONVERSATIONS,
-        id: conversation.id,
-        data: updatedConversation,
-      },
-    ];
-
-    if (usesExistingConversation) {
-      this.beginMessageCreation(conversation.id);
-    }
-
-    try {
       await this.storage.applyDurableBatch(mutations);
       return message;
+    });
+  }
+
+  async deleteConversation(id: string): Promise<boolean> {
+    const conversationId = this.requireText(id, "id");
+
+    return this.withConversationMutation(conversationId, async () => {
+      if (!this.storage.get<Conversation>(CONVERSATIONS, conversationId)) {
+        return false;
+      }
+
+      const messages = this.storage.list<ConversationMessage>(
+        MESSAGES,
+        (candidate) => candidate.conversationId === conversationId,
+      );
+      const mutations: DurableMutation[] = [
+        ...messages.map((message) => ({
+          operation: "delete" as const,
+          collection: MESSAGES,
+          id: message.id,
+        })),
+        {
+          operation: "delete",
+          collection: CONVERSATIONS,
+          id: conversationId,
+        },
+      ];
+
+      const results = await this.storage.applyDurableBatch(mutations);
+      const conversationResult = results[results.length - 1];
+      return (
+        conversationResult?.operation === "delete" &&
+        conversationResult.deleted === true
+      );
+    });
+  }
+
+  private async withConversationMutation<T>(
+    conversationId: string,
+    mutation: () => Promise<T>,
+  ): Promise<T> {
+    const previous =
+      this.conversationMutations.get(conversationId) ?? Promise.resolve();
+    let release!: () => void;
+    const current = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const tail = previous.then(() => current);
+    this.conversationMutations.set(conversationId, tail);
+
+    await previous;
+    try {
+      return await mutation();
     } finally {
-      if (usesExistingConversation) {
-        this.endMessageCreation(conversation.id);
+      release();
+      if (this.conversationMutations.get(conversationId) === tail) {
+        this.conversationMutations.delete(conversationId);
       }
     }
-  }
-
-  deleteConversation(id: string): boolean {
-    const conversationId = this.requireText(id, "id");
-    if (!this.storage.get<Conversation>(CONVERSATIONS, conversationId)) {
-      return false;
-    }
-
-    if ((this.activeMessageCreations.get(conversationId) ?? 0) > 0) {
-      this.pendingConversationDeletions.add(conversationId);
-      return true;
-    }
-
-    return this.deleteConversationImmediately(conversationId);
-  }
-
-  private beginMessageCreation(conversationId: string): void {
-    this.activeMessageCreations.set(
-      conversationId,
-      (this.activeMessageCreations.get(conversationId) ?? 0) + 1,
-    );
-  }
-
-  private endMessageCreation(conversationId: string): void {
-    const remaining =
-      (this.activeMessageCreations.get(conversationId) ?? 1) - 1;
-    if (remaining > 0) {
-      this.activeMessageCreations.set(conversationId, remaining);
-      return;
-    }
-
-    this.activeMessageCreations.delete(conversationId);
-    if (this.pendingConversationDeletions.delete(conversationId)) {
-      this.deleteConversationImmediately(conversationId);
-    }
-  }
-
-  private deleteConversationImmediately(conversationId: string): boolean {
-    for (const message of this.storage.list<ConversationMessage>(
-      MESSAGES,
-      (candidate) => candidate.conversationId === conversationId,
-    )) {
-      this.storage.delete(MESSAGES, message.id);
-    }
-    return this.storage.delete(CONVERSATIONS, conversationId);
   }
 
   private requireText(value: unknown, field: string): string {
