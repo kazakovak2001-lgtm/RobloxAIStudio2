@@ -44,27 +44,22 @@ jobs:
 
           test_path = Path("server/src/__tests__/securityHardening.test.ts")
           test = test_path.read_text()
-          old_call = '''const loginResult = authService.login(
-              "sec-test@test.com",
-              "password123",
-              "user-sec-1",
-            );'''
-          new_call = '''const loginResult = await authService.loginDurable(
-              "sec-test@test.com",
-              "password123",
-              "user-sec-1",
-            );'''
-          if old_call not in test:
-              raise SystemExit("Expected securityHardening synchronous login caller was not found")
-          test = test.replace(old_call, new_call, 1)
-          test_name = 'it("allows Bearer token in production", () => {'
-          if test_name not in test:
-              raise SystemExit("Expected securityHardening test declaration was not found")
-          test = test.replace(
-              test_name,
-              'it("allows Bearer token in production", async () => {',
-              1,
+          call_pattern = re.compile(
+              r"const loginResult = authService\.login\(\s*"
+              r'"sec-test@test\.com",\s*'
+              r'"password123",\s*'
+              r'"user-sec-1",\s*'
+              r"\);",
+              re.MULTILINE,
           )
+          replacement = '''const loginResult = await authService.loginDurable(
+            "sec-test@test.com",
+            "password123",
+            "user-sec-1",
+          );'''
+          test, count = call_pattern.subn(replacement, test, count=1)
+          if count != 1:
+              raise SystemExit(f"Expected exactly one securityHardening synchronous login caller, found {count}")
           test_path.write_text(test)
 
           inventory_path = Path("config/durability/compatibility-write-inventory.json")
