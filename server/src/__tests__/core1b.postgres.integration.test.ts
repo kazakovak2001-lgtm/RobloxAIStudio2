@@ -94,15 +94,19 @@ describePostgres("CORE-1b PostgreSQL restart acceptance", () => {
         otherId,
       ),
     ).toBe(true);
-    const ownerToken = authBeforeRestart.login(
-      `owner-${suffix}@example.com`,
-      "password123",
-      ownerId,
+    const ownerToken = (
+      await authBeforeRestart.loginDurable(
+        `owner-${suffix}@example.com`,
+        "password123",
+        ownerId,
+      )
     ).token!;
-    const otherToken = authBeforeRestart.login(
-      `other-${suffix}@example.com`,
-      "password123",
-      otherId,
+    const otherToken = (
+      await authBeforeRestart.loginDurable(
+        `other-${suffix}@example.com`,
+        "password123",
+        otherId,
+      )
     ).token!;
 
     const runtimeBeforeRestart = createProjectRuntime(

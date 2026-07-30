@@ -13,6 +13,7 @@ import * as fc from "fast-check";
 
 // ─── Direct imports of units under test ─────────────────────────────────────
 import { AuthService } from "../platform/auth/AuthService";
+import { InMemoryStorageProvider } from "../platform/storage/StorageProvider";
 
 /**
  * Simulates the authMiddleware logic from security.ts for testing
@@ -136,40 +137,56 @@ describe("Bug Condition Exploration - Release Hardening Security Defects", () =>
    */
   describe("Weak Password Hashing (Requirement 1.2)", () => {
     it("property: same password hashed twice SHALL produce different hashes (bcrypt salting)", async () => {
-      fc.assert(
+      await fc.assert(
         fc.asyncProperty(
           fc.string({ minLength: 8, maxLength: 64 }),
           async (password) => {
-            const authService1 = new AuthService();
-            const authService2 = new AuthService();
+            const storage1 = new InMemoryStorageProvider();
+            const storage2 = new InMemoryStorageProvider();
+            const authService1 = new AuthService(storage1);
+            const authService2 = new AuthService(storage2);
 
-            // Register with same password in two separate instances
-            authService1.register("user1@test.com", password, "user-1");
-            authService2.register("user2@test.com", password, "user-2");
+            expect(
+              authService1.register("user1@test.com", password, "user-1"),
+            ).toBe(true);
+            expect(
+              authService2.register("user2@test.com", password, "user-2"),
+            ).toBe(true);
 
-            // Both registrations succeed and login works — proving the hash is valid
-            const login1 = await authService1.loginDurable(
+            const credentials1 = storage1.get<{ passwordHash: string }>(
+              "auth_credentials",
               "user1@test.com",
-              password,
-              "user-1",
             );
-            const login2 = await authService2.loginDurable(
+            const credentials2 = storage2.get<{ passwordHash: string }>(
+              "auth_credentials",
               "user2@test.com",
-              password,
-              "user-2",
             );
-            expect(login1.success).toBe(true);
-            expect(login2.success).toBe(true);
+            expect(credentials1).toBeDefined();
+            expect(credentials2).toBeDefined();
+            expect(credentials1!.passwordHash).not.toBe(
+              credentials2!.passwordHash,
+            );
+            expect(credentials1!.passwordHash).toMatch(/^\$2[aby]\$12\$/);
+            expect(credentials2!.passwordHash).toMatch(/^\$2[aby]\$12\$/);
 
-            // Cross-login should fail — user1's password hash != user2's password hash
-            // even though passwords are the same (bcrypt unique salt per hash)
-            // We verify this indirectly: user2 email doesn't exist in authService1
-            const crossLogin = await authService1.loginDurable(
-              "user2@test.com",
-              password,
-              "user-2",
-            );
-            expect(crossLogin.success).toBe(false);
+            expect(
+              (
+                await authService1.loginDurable(
+                  "user1@test.com",
+                  password,
+                  "user-1",
+                )
+              ).success,
+            ).toBe(true);
+            expect(
+              (
+                await authService2.loginDurable(
+                  "user2@test.com",
+                  password,
+                  "user-2",
+                )
+              ).success,
+            ).toBe(true);
           },
         ),
         { numRuns: 5 },
@@ -177,37 +194,40 @@ describe("Bug Condition Exploration - Release Hardening Security Defects", () =>
     }, 60000);
 
     it("property: password hashes SHALL use bcrypt format ($2a$12$ or $2b$12$)", async () => {
-      fc.assert(
+      await fc.assert(
         fc.asyncProperty(
           fc.string({ minLength: 8, maxLength: 64 }),
           async (password) => {
-            // Test by registering a user and verifying that bcrypt.compareSync works
-            // (which confirms bcrypt format is used internally)
-            const bcrypt = require("bcryptjs");
-            const authService = new AuthService();
-            authService.register("test@test.com", password, "user-1");
+            const storage = new InMemoryStorageProvider();
+            const authService = new AuthService(storage);
+            expect(
+              authService.register("test@test.com", password, "user-1"),
+            ).toBe(true);
 
-            // Login succeeds — proves hashing and comparison work correctly
-            const result = await authService.loginDurable(
+            const credentials = storage.get<{ passwordHash: string }>(
+              "auth_credentials",
               "test@test.com",
-              password,
-              "user-1",
             );
-            expect(result.success).toBe(true);
-
-            // Wrong password fails — proves hash validation is real
-            const wrongResult = await authService.loginDurable(
-              "test@test.com",
-              password + "x",
-              "user-1",
-            );
-            expect(wrongResult.success).toBe(false);
-
-            // Verify bcrypt is actually used by checking the hash format
-            // Access internals via registration of a second user with known password
-            // and verifying bcrypt.compareSync matches
-            const testHash = bcrypt.hashSync(password, 12);
-            expect(testHash).toMatch(/^\$2[aby]\$12\$/);
+            expect(credentials).toBeDefined();
+            expect(credentials!.passwordHash).toMatch(/^\$2[aby]\$12\$/);
+            expect(
+              (
+                await authService.loginDurable(
+                  "test@test.com",
+                  password,
+                  "user-1",
+                )
+              ).success,
+            ).toBe(true);
+            expect(
+              (
+                await authService.loginDurable(
+                  "test@test.com",
+                  password + "x",
+                  "user-1",
+                )
+              ).success,
+            ).toBe(false);
           },
         ),
         { numRuns: 5 },
