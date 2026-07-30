@@ -86,8 +86,7 @@ describe("architecture boundary gate core", () => {
     const unknownLayer = "Domain 'game' references unknown layer 'missing'.";
     const staleEdge =
       "Allowed layer edge 'api → domains' is stale because the edge is already permitted.";
-    const duplicateEdge =
-      "Allowed layer edge 'api → domains' is duplicated.";
+    const duplicateEdge = "Allowed layer edge 'api → domains' is duplicated.";
 
     expect(errors).toContain(unknownLayer);
     expect(errors).toContain(staleEdge);
