@@ -114,8 +114,8 @@ describe("platform atomic registration durability", () => {
       expect(JSON.stringify(result.body)).not.toMatch(
         /(?:tok|ref)_[a-f0-9]{16,}/,
       );
-      expect(result.setCookie).toContain("access_token=");
-      expect(result.setCookie).toContain("refresh_token=");
+      expect(result.setCookie).toContain("roblox_ai_token=");
+      expect(result.setCookie).toContain("roblox_ai_refresh=");
       expectRegistrationCounts(storage, 1);
       expect(storage.batchCalls).toBe(1);
     });
