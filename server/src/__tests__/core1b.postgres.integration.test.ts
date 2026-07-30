@@ -198,7 +198,9 @@ describePostgres("CORE-1b PostgreSQL restart acceptance", () => {
     const artifactsAfterRestart = new ArtifactStore(secondProvider);
     const chatAfterRestart = new ChatPersistenceService(secondProvider);
 
-    expect(authAfterRestart.validateToken(ownerToken)?.userId).toBe(ownerId);
+    expect((await authAfterRestart.validateToken(ownerToken))?.userId).toBe(
+      ownerId,
+    );
     expect(runtimeAfterRestart.projectRepository.get(project.id)?.ownerId).toBe(
       ownerId,
     );
@@ -225,7 +227,7 @@ describePostgres("CORE-1b PostgreSQL restart acceptance", () => {
 
     const ownerResponse = response();
     expect(
-      runtimeAfterRestart.access.requireProjectAccess(
+      await runtimeAfterRestart.access.requireProjectAccess(
         request(ownerToken),
         ownerResponse.response,
         project.id,
@@ -234,7 +236,7 @@ describePostgres("CORE-1b PostgreSQL restart acceptance", () => {
 
     const foreignResponse = response();
     expect(
-      runtimeAfterRestart.access.requireProjectAccess(
+      await runtimeAfterRestart.access.requireProjectAccess(
         request(otherToken),
         foreignResponse.response,
         project.id,
