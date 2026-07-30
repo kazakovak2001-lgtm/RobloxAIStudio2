@@ -1,0 +1,1 @@
+Second temporary trigger marker to ensure the pull-request event observes the current head. Remove after workflow completion.
