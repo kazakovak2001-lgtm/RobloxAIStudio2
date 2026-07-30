@@ -3,9 +3,47 @@
  */
 
 import { describe, it, expect, beforeEach } from "vitest";
-import { InMemoryStorageProvider } from "../platform/storage";
+import {
+  DurableStorageError,
+  InMemoryStorageProvider,
+} from "../platform/storage";
 import { SaaSProjectRepository } from "../platform/projects/SaaSProjectRepository";
 import { GenerationQueue } from "../platform/queue/GenerationQueue";
+
+class DeferredProjectSetStorage extends InMemoryStorageProvider {
+  calls = 0;
+  private acknowledge!: () => void;
+  private readonly acknowledged = new Promise<void>((resolve) => {
+    this.acknowledge = resolve;
+  });
+
+  release(): void {
+    this.acknowledge();
+  }
+
+  override async setDurable<T>(
+    collection: string,
+    id: string,
+    data: T,
+  ): Promise<void> {
+    this.calls += 1;
+    await this.acknowledged;
+    await super.setDurable(collection, id, data);
+  }
+}
+
+class RejectingProjectSetStorage extends InMemoryStorageProvider {
+  override async setDurable<T>(
+    _collection: string,
+    _id: string,
+    _data: T,
+  ): Promise<void> {
+    throw new DurableStorageError(
+      "Injected project duplication rejection",
+      "set",
+    );
+  }
+}
 
 describe("SaaS Foundation", () => {
   describe("StorageProvider", () => {
@@ -38,38 +76,125 @@ describe("SaaS Foundation", () => {
       repo = new SaaSProjectRepository(new InMemoryStorageProvider());
     });
 
-    it("creates project with ownership", () => {
-      const proj = repo.create("user-1", "My Game", "rpg");
+    it("creates project with ownership", async () => {
+      const proj = await repo.createDurable("user-1", "My Game", "rpg");
       expect(proj.ownerId).toBe("user-1");
       expect(proj.status).toBe("draft");
     });
 
-    it("isolates projects by owner", () => {
-      repo.create("user-1", "Game A", "rpg");
-      repo.create("user-2", "Game B", "obby");
-      repo.create("user-1", "Game C", "tycoon");
+    it("isolates projects by owner", async () => {
+      await repo.createDurable("user-1", "Game A", "rpg");
+      await repo.createDurable("user-2", "Game B", "obby");
+      await repo.createDurable("user-1", "Game C", "tycoon");
 
       expect(repo.getByOwner("user-1")).toHaveLength(2);
       expect(repo.getByOwner("user-2")).toHaveLength(1);
     });
 
-    it("verifies ownership", () => {
-      const proj = repo.create("user-1", "Game", "rpg");
+    it("verifies ownership", async () => {
+      const proj = await repo.createDurable("user-1", "Game", "rpg");
       expect(repo.verifyOwnership(proj.id, "user-1")).toBe(true);
       expect(repo.verifyOwnership(proj.id, "user-2")).toBe(false);
     });
 
-    it("duplicates project", () => {
-      const orig = repo.create("user-1", "Original", "rpg");
-      const copy = repo.duplicate(orig.id);
+    it("duplicates project", async () => {
+      const orig = await repo.createDurable("user-1", "Original", "rpg");
+      const copy = await repo.duplicate(orig.id);
       expect(copy).not.toBeNull();
       expect(copy!.name).toContain("copy");
       expect(copy!.ownerId).toBe("user-1");
       expect(copy!.id).not.toBe(orig.id);
     });
 
+    it("returns null without writing when the duplicate source is missing", async () => {
+      const storage = new DeferredProjectSetStorage();
+      const repository = new SaaSProjectRepository(storage);
+
+      await expect(repository.duplicate("missing")).resolves.toBeNull();
+      expect(storage.calls).toBe(0);
+    });
+
+    it("does not publish a duplicate before acknowledgement", async () => {
+      const storage = new DeferredProjectSetStorage();
+      const repository = new SaaSProjectRepository(storage);
+      storage.set("projects", "source", {
+        id: "source",
+        ownerId: "owner-1",
+        name: "Original",
+        description: "Description",
+        genre: "adventure",
+        status: "draft",
+        qualityScore: 0,
+        generationCount: 0,
+        scriptCount: 0,
+        assetCount: 0,
+        createdAt: 1,
+        updatedAt: 1,
+      });
+
+      const duplication = repository.duplicate("source", "owner-2");
+      await Promise.resolve();
+      await Promise.resolve();
+
+      expect(repository.getByOwner("owner-2")).toEqual([]);
+
+      storage.release();
+      const copy = await duplication;
+      expect(copy).not.toBeNull();
+      expect(repository.get(copy!.id)).toBe(copy);
+    });
+
+    it("preserves only the source when duplicate persistence rejects", async () => {
+      const storage = new RejectingProjectSetStorage();
+      const repository = new SaaSProjectRepository(storage);
+      const source = {
+        id: "source",
+        ownerId: "owner-1",
+        name: "Original",
+        description: "Description",
+        genre: "adventure",
+        status: "draft" as const,
+        qualityScore: 0,
+        generationCount: 0,
+        scriptCount: 0,
+        assetCount: 0,
+        createdAt: 1,
+        updatedAt: 1,
+      };
+      storage.set("projects", source.id, source);
+
+      await expect(repository.duplicate(source.id)).rejects.toBeInstanceOf(
+        DurableStorageError,
+      );
+      expect(repository.get(source.id)).toBe(source);
+      expect(repository.getByOwner(source.ownerId)).toEqual([source]);
+    });
+
+    it("publishes an acknowledged duplicate with the requested owner", async () => {
+      const storage = new InMemoryStorageProvider();
+      const repository = new SaaSProjectRepository(storage);
+      const source = await repository.createDurable(
+        "owner-1",
+        "Original",
+        "adventure",
+        "Description",
+      );
+
+      const copy = await repository.duplicate(source.id, "owner-2");
+
+      expect(copy).toEqual(
+        expect.objectContaining({
+          ownerId: "owner-2",
+          name: "Original (copy)",
+          genre: "adventure",
+          description: "Description",
+        }),
+      );
+      expect(repository.get(copy!.id)).toBe(copy);
+    });
+
     it("updates project", async () => {
-      const proj = repo.create("user-1", "Game", "rpg");
+      const proj = await repo.createDurable("user-1", "Game", "rpg");
       const updated = await repo.updateDurable(proj.id, {
         status: "generating",
         qualityScore: 75,
@@ -79,7 +204,7 @@ describe("SaaS Foundation", () => {
     });
 
     it("deletes project", async () => {
-      const proj = repo.create("user-1", "ToDelete", "obby");
+      const proj = await repo.createDurable("user-1", "ToDelete", "obby");
       await expect(repo.deleteDurable(proj.id)).resolves.toBe(true);
       expect(repo.get(proj.id)).toBeNull();
     });
@@ -112,14 +237,12 @@ describe("SaaS Foundation", () => {
       const job = queue.enqueue("proj-1", "user-1");
       queue.dequeue();
       queue.fail(job.id, "LLM timeout");
-      // Should be re-queued (retry count < max)
       expect(queue.getJob(job.id)!.status).toBe("queued");
       expect(queue.getJob(job.id)!.retryCount).toBe(1);
     });
 
     it("fails permanently after max retries", () => {
       const job = queue.enqueue("proj-1", "user-1");
-      // Exhaust all retries (maxRetries=3)
       for (let i = 0; i < 4; i++) {
         queue.dequeue();
         queue.fail(job.id, `error ${i + 1}`);
@@ -160,24 +283,21 @@ describe("SaaS Foundation", () => {
   });
 
   describe("Multi-User Isolation Security", () => {
-    it("user cannot access another user's project", () => {
+    it("user cannot access another user's project", async () => {
       const repo = new SaaSProjectRepository(new InMemoryStorageProvider());
-      const projA = repo.create("alice", "Alice Game", "rpg");
-      const projB = repo.create("bob", "Bob Game", "obby");
+      const projA = await repo.createDurable("alice", "Alice Game", "rpg");
+      const projB = await repo.createDurable("bob", "Bob Game", "obby");
 
-      // Alice can access her project
       expect(repo.verifyOwnership(projA.id, "alice")).toBe(true);
-      // Alice cannot access Bob's project
       expect(repo.verifyOwnership(projB.id, "alice")).toBe(false);
-      // Bob cannot access Alice's project
       expect(repo.verifyOwnership(projA.id, "bob")).toBe(false);
     });
 
-    it("user only sees own projects in list", () => {
+    it("user only sees own projects in list", async () => {
       const repo = new SaaSProjectRepository(new InMemoryStorageProvider());
-      repo.create("alice", "A1", "rpg");
-      repo.create("alice", "A2", "obby");
-      repo.create("bob", "B1", "tycoon");
+      await repo.createDurable("alice", "A1", "rpg");
+      await repo.createDurable("alice", "A2", "obby");
+      await repo.createDurable("bob", "B1", "tycoon");
 
       const aliceProjects = repo.getByOwner("alice");
       const bobProjects = repo.getByOwner("bob");

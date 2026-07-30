@@ -90,16 +90,6 @@
       "migrationTarget": "DATA-201B"
     },
     {
-      "key": "server/src/platform/projects/SaaSProjectRepository.ts#SaaSProjectRepository.create#set",
-      "path": "server/src/platform/projects/SaaSProjectRepository.ts",
-      "owner": "SaaSProjectRepository.create",
-      "operation": "set",
-      "expectedCalls": 1,
-      "classification": "internal-lifecycle-debt",
-      "reason": "Compatibility creation remains available for bounded internal and legacy callers after request routes moved to createDurable.",
-      "migrationTarget": "DATA-201B"
-    },
-    {
       "key": "server/src/platform/users/UserRepository.ts#UserRepository.create#set",
       "path": "server/src/platform/users/UserRepository.ts",
       "owner": "UserRepository.create",

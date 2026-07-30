@@ -173,9 +173,9 @@ describe("Phase 10: Identity & Access Management", () => {
       );
     });
 
-    it("validates project ownership", () => {
+    it("validates project ownership", async () => {
       const repo = new SaaSProjectRepository(storage);
-      const proj = repo.create("user-1", "Game", "rpg");
+      const proj = await repo.createDurable("user-1", "Game", "rpg");
       // Need to create a new PermissionMiddleware that uses same storage
       expect(perms.checkOwnership(proj.id, "user-1").allowed).toBe(true);
       expect(perms.checkOwnership(proj.id, "user-2").allowed).toBe(false);

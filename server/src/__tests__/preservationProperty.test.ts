@@ -214,11 +214,11 @@ describe("Preservation Property Tests - Baseline Behavior Guards", () => {
   // ═══════════════════════════════════════════════════════════════════════════
 
   describe("Project CRUD - API Response Structure (Requirement 3.3)", () => {
-    it("unit: SaaSProjectRepository create returns correct structure", () => {
+    it("unit: SaaSProjectRepository create returns correct structure", async () => {
       const storage = new InMemoryStorageProvider();
       const projects = new SaaSProjectRepository(storage);
 
-      const project = projects.create(
+      const project = await projects.createDurable(
         "user-1",
         "Test Project",
         "adventure",
@@ -235,18 +235,23 @@ describe("Preservation Property Tests - Baseline Behavior Guards", () => {
       expect(project).toHaveProperty("ownerId", "user-1");
     });
 
-    it("property: project creation preserves input data for any valid name and genre", () => {
-      fc.assert(
-        fc.property(
+    it("property: project creation preserves input data for any valid name and genre", async () => {
+      await fc.assert(
+        fc.asyncProperty(
           fc
             .string({ minLength: 1, maxLength: 100 })
             .filter((s) => s.trim().length > 0),
           fc.constantFrom("adventure", "rpg", "simulation", "racing", "puzzle"),
           fc.string({ minLength: 0, maxLength: 200 }),
-          (name, genre, description) => {
+          async (name, genre, description) => {
             const storage = new InMemoryStorageProvider();
             const projects = new SaaSProjectRepository(storage);
-            const project = projects.create("user-1", name, genre, description);
+            const project = await projects.createDurable(
+              "user-1",
+              name,
+              genre,
+              description,
+            );
 
             expect(project.name).toBe(name);
             expect(project.genre).toBe(genre);
@@ -260,10 +265,10 @@ describe("Preservation Property Tests - Baseline Behavior Guards", () => {
       );
     });
 
-    it("unit: projects list returns {success, data} format", () => {
+    it("unit: projects list returns {success, data} format", async () => {
       const storage = new InMemoryStorageProvider();
       const projects = new SaaSProjectRepository(storage);
-      projects.create("user-1", "P1", "adventure", "");
+      await projects.createDurable("user-1", "P1", "adventure", "");
 
       const byOwner = projects.getByOwner("user-1");
       expect(Array.isArray(byOwner)).toBe(true);
@@ -672,10 +677,10 @@ describe("Preservation Property Tests - Baseline Behavior Guards", () => {
   // ═══════════════════════════════════════════════════════════════════════════
 
   describe("Existing API Contracts - Response Format (Requirement 3.3)", () => {
-    it("unit: project API returns {success: true, data: [...]} format", () => {
+    it("unit: project API returns {success: true, data: [...]} format", async () => {
       const storage = new InMemoryStorageProvider();
       const projects = new SaaSProjectRepository(storage);
-      projects.create("user-1", "Project A", "rpg", "Test");
+      await projects.createDurable("user-1", "Project A", "rpg", "Test");
 
       const all = storage.list("projects");
       // The API wraps this: { success: true, data: all }
@@ -822,7 +827,12 @@ describe("Preservation Property Tests - Baseline Behavior Guards", () => {
       const projects = new SaaSProjectRepository(storage);
 
       // Create
-      const p = projects.create("u-1", "Game", "adventure", "desc");
+      const p = await projects.createDurable(
+        "u-1",
+        "Game",
+        "adventure",
+        "desc",
+      );
       expect(p).toBeDefined();
 
       // Read

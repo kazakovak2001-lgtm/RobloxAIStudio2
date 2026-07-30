@@ -158,7 +158,7 @@ describe("projects durable HTTP acknowledgement", () => {
   it("returns 503 and retains the previous project after update rejection", async () => {
     const storage = new ControlledMutationStorage();
     const projectRuntime = runtime(storage);
-    const project = projectRuntime.projectRepository.create(
+    const project = await projectRuntime.projectRepository.createDurable(
       "owner",
       "Before",
       "obby",
@@ -180,7 +180,7 @@ describe("projects durable HTTP acknowledgement", () => {
   it("returns 503 and retains the project after delete rejection", async () => {
     const storage = new ControlledMutationStorage();
     const projectRuntime = runtime(storage);
-    const project = projectRuntime.projectRepository.create(
+    const project = await projectRuntime.projectRepository.createDurable(
       "owner",
       "Keep",
       "simulator",

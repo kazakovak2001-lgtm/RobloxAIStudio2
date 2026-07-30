@@ -17,7 +17,7 @@ function response() {
 }
 
 describe("project runtime access control", () => {
-  it("requires an authenticated owner for project access", () => {
+  it("requires an authenticated owner for project access", async () => {
     const storage = new InMemoryStorageProvider();
     const auth = new AuthService(storage);
     auth.register("owner@example.com", "password123", "owner");
@@ -33,7 +33,7 @@ describe("project runtime access control", () => {
       "other",
     ).token!;
     const runtime = createProjectRuntime(storage, auth);
-    const project = runtime.projectRepository.create(
+    const project = await runtime.projectRepository.createDurable(
       "owner",
       "Game",
       "adventure",

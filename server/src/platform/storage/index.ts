@@ -1,4 +1,5 @@
 export {
+  DurableStorageError,
   InMemoryStorageProvider,
   type StorageProvider,
 } from "./StorageProvider";
