@@ -1235,6 +1235,7 @@
 │   │   ├── routes
 │   │   │   ├── __tests__
 │   │   │   │   ├── platform.durability.test.ts
+│   │   │   │   ├── platform.registration.durability.test.ts
 │   │   │   │   ├── projects.durability.test.ts
 │   │   │   │   ├── projects.runtime.test.ts
 │   │   │   │   └── studioProtocol.smoke.test.ts
