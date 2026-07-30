@@ -1,0 +1,191 @@
+name: DATA-204 review fixes
+
+on:
+  pull_request:
+    types: [synchronize, reopened]
+    branches:
+      - release/cutover-1e-candidate
+
+permissions:
+  contents: write
+
+jobs:
+  fix-and-validate:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: roblox_ai_studio_test
+          POSTGRES_USER: studio
+          POSTGRES_PASSWORD: studio_test_password
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U studio -d roblox_ai_studio_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref }}
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - name: Apply review fixes
+        shell: python
+        run: |
+          from pathlib import Path
+          import re
+
+          bug_path = Path("server/src/__tests__/bugConditionExploration.test.ts")
+          bug = bug_path.read_text()
+
+          auth_import = 'import { AuthService } from "../platform/auth/AuthService";'
+          storage_import = 'import { InMemoryStorageProvider } from "../platform/storage/StorageProvider";'
+          if storage_import not in bug:
+              bug = bug.replace(auth_import, auth_import + "\n" + storage_import, 1)
+
+          salting_start = bug.index('    it("property: same password hashed twice SHALL produce different hashes (bcrypt salting)", async () => {')
+          salting_end = bug.index('    }, 60000);', salting_start) + len('    }, 60000);')
+          salting_replacement = '''    it("property: same password hashed twice SHALL produce different hashes (bcrypt salting)", async () => {
+      await fc.assert(
+        fc.asyncProperty(
+          fc.string({ minLength: 8, maxLength: 64 }),
+          async (password) => {
+            const storage1 = new InMemoryStorageProvider();
+            const storage2 = new InMemoryStorageProvider();
+            const authService1 = new AuthService(storage1);
+            const authService2 = new AuthService(storage2);
+
+            expect(authService1.register("user1@test.com", password, "user-1")).toBe(true);
+            expect(authService2.register("user2@test.com", password, "user-2")).toBe(true);
+
+            const credentials1 = storage1.get<{ passwordHash: string }>(
+              "auth_credentials",
+              "user1@test.com",
+            );
+            const credentials2 = storage2.get<{ passwordHash: string }>(
+              "auth_credentials",
+              "user2@test.com",
+            );
+
+            expect(credentials1).toBeDefined();
+            expect(credentials2).toBeDefined();
+            expect(credentials1!.passwordHash).not.toBe(credentials2!.passwordHash);
+            expect(credentials1!.passwordHash).toMatch(/^\\$2[aby]\\$12\\$/);
+            expect(credentials2!.passwordHash).toMatch(/^\\$2[aby]\\$12\\$/);
+
+            expect(
+              (await authService1.loginDurable("user1@test.com", password, "user-1"))
+                .success,
+            ).toBe(true);
+            expect(
+              (await authService2.loginDurable("user2@test.com", password, "user-2"))
+                .success,
+            ).toBe(true);
+          },
+        ),
+        { numRuns: 5 },
+      );
+    }, 60000);'''
+          bug = bug[:salting_start] + salting_replacement + bug[salting_end:]
+
+          format_start = bug.index('    it("property: password hashes SHALL use bcrypt format ($2a$12$ or $2b$12$)", async () => {')
+          format_end = bug.index('    }, 60000);', format_start) + len('    }, 60000);')
+          format_replacement = '''    it("property: password hashes SHALL use bcrypt format ($2a$12$ or $2b$12$)", async () => {
+      await fc.assert(
+        fc.asyncProperty(
+          fc.string({ minLength: 8, maxLength: 64 }),
+          async (password) => {
+            const storage = new InMemoryStorageProvider();
+            const authService = new AuthService(storage);
+            expect(authService.register("test@test.com", password, "user-1")).toBe(true);
+
+            const credentials = storage.get<{ passwordHash: string }>(
+              "auth_credentials",
+              "test@test.com",
+            );
+            expect(credentials).toBeDefined();
+            expect(credentials!.passwordHash).toMatch(/^\\$2[aby]\\$12\\$/);
+
+            expect(
+              (await authService.loginDurable("test@test.com", password, "user-1"))
+                .success,
+            ).toBe(true);
+            expect(
+              (
+                await authService.loginDurable(
+                  "test@test.com",
+                  password + "x",
+                  "user-1",
+                )
+              ).success,
+            ).toBe(false);
+          },
+        ),
+        { numRuns: 5 },
+      );
+    }, 60000);'''
+          bug = bug[:format_start] + format_replacement + bug[format_end:]
+          bug_path.write_text(bug)
+
+          postgres_path = Path("server/src/__tests__/core1b.postgres.integration.test.ts")
+          postgres = postgres_path.read_text()
+          postgres, owner_count = re.subn(
+              r'const ownerToken = authBeforeRestart\.login\((.*?)\n    \)\.token!;',
+              r'const ownerToken = (await authBeforeRestart.loginDurable(\1\n    )).token!;',
+              postgres,
+              count=1,
+              flags=re.DOTALL,
+          )
+          postgres, other_count = re.subn(
+              r'const otherToken = authBeforeRestart\.login\((.*?)\n    \)\.token!;',
+              r'const otherToken = (await authBeforeRestart.loginDurable(\1\n    )).token!;',
+              postgres,
+              count=1,
+              flags=re.DOTALL,
+          )
+          if owner_count != 1 or other_count != 1:
+              raise SystemExit(f"Unexpected PostgreSQL login caller shape: owner={owner_count}, other={other_count}")
+          postgres_path.write_text(postgres)
+
+      - name: Validate complete DATA-204 boundary
+        env:
+          STORAGE_PROVIDER: postgres
+          DATABASE_URL: postgresql://studio:studio_test_password@localhost:5432/roblox_ai_studio_test
+          RUN_POSTGRES_E2E: "true"
+        run: |
+          npx prettier --write \
+            server/src/__tests__/bugConditionExploration.test.ts \
+            server/src/__tests__/core1b.postgres.integration.test.ts
+          npm run typecheck
+          npm run lint
+          npm test -- --run \
+            server/src/__tests__/bugConditionExploration.test.ts \
+            server/src/__tests__/preservationProperty.test.ts
+          npm run test:postgres
+          npm run validate
+          if grep -R -E '(auth|authService[[:alnum:]_]*|sharedAuthService)\.login\(' server/src; then
+            echo "Synchronous AuthService login caller remains"
+            exit 1
+          fi
+
+      - name: Commit fixes and remove workflow
+        run: |
+          git rm .github/workflows/data-204-review-fixes.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add \
+            server/src/__tests__/bugConditionExploration.test.ts \
+            server/src/__tests__/core1b.postgres.integration.test.ts
+          git commit -m "test(auth): complete durable login migration coverage"
+          git push origin HEAD:${{ github.head_ref }}
