@@ -117,7 +117,9 @@ describe("architecture boundary gate core", () => {
     } as unknown as AllowedLayerEdge;
     manifest.allowedLayerEdges = [invalidEdge];
 
-    expect(() => validateManifestModel(manifest, REAL_SUBSYSTEMS)).not.toThrow();
+    expect(() =>
+      validateManifestModel(manifest, REAL_SUBSYSTEMS),
+    ).not.toThrow();
     expect(validateManifestModel(manifest, REAL_SUBSYSTEMS)).toContain(
       "Allowed layer edge 'domains → api' requires a reason.",
     );
