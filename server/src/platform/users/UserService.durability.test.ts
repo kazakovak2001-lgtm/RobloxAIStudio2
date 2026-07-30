@@ -150,11 +150,11 @@ describe("user durable acknowledgement", () => {
     await writeStarted;
     const second = repository.recordGenerationDurable(user.id, 250);
 
-    expect(storage.setDurableCalls).toBe(2);
+    expect(storage.setDurableCalls).toBe(1);
     releaseWrite();
 
     await expect(Promise.all([first, second])).resolves.toEqual([true, true]);
-    expect(storage.setDurableCalls).toBe(3);
+    expect(storage.setDurableCalls).toBe(2);
     expect(repository.getById(user.id)).toMatchObject({
       id: user.id,
       usage: {
