@@ -56,9 +56,9 @@ describe("Product Layer", () => {
       expect(refreshed.token).not.toBe(login.token);
     });
 
-    it("checks permissions by role", () => {
+    it("checks permissions by role", async () => {
       auth.register("p@t.com", "pw", "u-1");
-      auth.setRole("u-1", "premium");
+      await auth.setRole("u-1", "premium");
       expect(auth.hasPermission("u-1", "publish")).toBe(true);
       expect(auth.hasPermission("u-1", "admin")).toBe(false);
     });
