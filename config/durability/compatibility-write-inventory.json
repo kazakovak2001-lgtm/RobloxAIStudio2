@@ -68,16 +68,6 @@
       "classification": "request-level-debt",
       "reason": "Credential and role records are written during registration without acknowledgement.",
       "migrationTarget": "DATA-201B"
-    },
-    {
-      "key": "server/src/platform/auth/AuthService.ts#AuthService.validateToken#set",
-      "path": "server/src/platform/auth/AuthService.ts",
-      "owner": "AuthService.validateToken",
-      "operation": "set",
-      "expectedCalls": 1,
-      "classification": "request-level-debt",
-      "reason": "Request authentication updates session activity through an unacknowledged write.",
-      "migrationTarget": "DATA-201B"
     }
   ]
 }
