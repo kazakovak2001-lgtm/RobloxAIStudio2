@@ -127,7 +127,7 @@ export function createGameGenerationRouter(
     try {
       const { projectId } = req.params;
       if (!access.requireProjectAccess(req, res, projectId)) return;
-      const userId = access.getRequestUserId(req);
+      const userId = await access.getRequestUserId(req);
       if (!userId) return;
       const { blueprintId } = req.body;
 
@@ -182,7 +182,7 @@ export function createGameGenerationRouter(
     try {
       const { projectId } = req.params;
       if (!access.requireProjectAccess(req, res, projectId)) return;
-      const userId = access.getRequestUserId(req);
+      const userId = await access.getRequestUserId(req);
       if (!userId) return;
       const input = { ...(req.body as Record<string, unknown>) };
       delete input.userId;

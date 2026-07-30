@@ -263,7 +263,7 @@ export class AuthService {
     return true;
   }
 
-  validateToken(token: string): AuthSession | null {
+  async validateToken(token: string): Promise<AuthSession | null> {
     const session = this.storage.get<StoredAuthSession>(
       SESSIONS_COLLECTION,
       token,
@@ -274,7 +274,7 @@ export class AuthService {
       return null;
     }
     const updated = { ...session, lastActivity: Date.now() };
-    this.storage.set(SESSIONS_COLLECTION, token, updated);
+    await this.storage.setDurable(SESSIONS_COLLECTION, token, updated);
     return this.toPublicSession(updated);
   }
 

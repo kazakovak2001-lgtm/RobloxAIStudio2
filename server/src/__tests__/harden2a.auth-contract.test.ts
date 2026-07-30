@@ -23,7 +23,7 @@ interface RequestOptions {
   cookie?: string;
 }
 
-describe("HARDEN-2A auth contract", () => {
+describe("HARDEN-2A auth contract", async () => {
   let server: Server;
   let baseUrl: string;
   let previousNodeEnv: string | undefined;
@@ -156,7 +156,7 @@ describe("HARDEN-2A auth contract", () => {
     );
   });
 
-  it("stores only refresh digests and consumes the old credential", () => {
+  it("stores only refresh digests and consumes the old credential", async () => {
     const storage = new InMemoryStorageProvider();
     const auth = new AuthService(storage);
     auth.register("digest@example.test", "password", "user-digest");
@@ -177,13 +177,13 @@ describe("HARDEN-2A auth contract", () => {
 
     const rotated = auth.refreshSession(login.refreshToken!);
     expect(rotated.success).toBe(true);
-    expect(auth.validateToken(login.token!)).toBeNull();
+    expect(await auth.validateToken(login.token!)).toBeNull();
     expect(auth.refreshSession(login.refreshToken!).success).toBe(false);
-    expect(auth.validateToken(rotated.token!)).not.toBeNull();
+    expect(await auth.validateToken(rotated.token!)).not.toBeNull();
     expect(storage.count("auth_refresh_credentials")).toBe(1);
   });
 
-  it("migrates persisted plaintext refresh credentials without invalidating them", () => {
+  it("migrates persisted plaintext refresh credentials without invalidating them", async () => {
     const storage = new InMemoryStorageProvider();
     const legacyRefreshToken = "ref_legacy_high_entropy_credential";
     storage.set("auth_sessions", "tok_legacy", {
@@ -216,7 +216,7 @@ describe("HARDEN-2A auth contract", () => {
     expect(auth.refreshSession(legacyRefreshToken).success).toBe(false);
   });
 
-  it("keeps authoritative auth guidance on opaque-session terminology", () => {
+  it("keeps authoritative auth guidance on opaque-session terminology", async () => {
     const authoritativeFiles = [
       ".env.example",
       "server/src/platform/auth/AuthService.ts",

@@ -16,34 +16,34 @@ import { AuthService } from "../platform/auth/AuthService";
 import { authService } from "../platform/auth/authServiceInstance";
 import { InMemoryStorageProvider } from "../platform/storage/StorageProvider";
 
-describe("Security Hardening", () => {
-  describe("Middleware exports", () => {
-    it("rateLimiter is a function", () => {
+describe("Security Hardening", async () => {
+  describe("Middleware exports", async () => {
+    it("rateLimiter is a function", async () => {
       expect(typeof rateLimiter).toBe("function");
     });
 
-    it("loginRateLimiter is a function", () => {
+    it("loginRateLimiter is a function", async () => {
       expect(typeof loginRateLimiter).toBe("function");
     });
 
-    it("securityHeaders (helmet) is a function", () => {
+    it("securityHeaders (helmet) is a function", async () => {
       expect(typeof securityHeaders).toBe("function");
     });
 
-    it("corsMiddleware is a function", () => {
+    it("corsMiddleware is a function", async () => {
       expect(typeof corsMiddleware).toBe("function");
     });
 
-    it("authMiddleware is a function", () => {
+    it("authMiddleware is a function", async () => {
       expect(typeof authMiddleware).toBe("function");
     });
 
-    it("requestLogger is a function", () => {
+    it("requestLogger is a function", async () => {
       expect(typeof requestLogger).toBe("function");
     });
   });
 
-  describe("Durable role mutations", () => {
+  describe("Durable role mutations", async () => {
     it("publishes a role only after durable acknowledgement", async () => {
       let resolveMutation: (() => void) | undefined;
       const storage = new InMemoryStorageProvider();
@@ -85,8 +85,8 @@ describe("Security Hardening", () => {
     });
   });
 
-  describe("Auth middleware logic", () => {
-    it("skips auth in non-production (NODE_ENV !== production)", () => {
+  describe("Auth middleware logic", async () => {
+    it("skips auth in non-production (NODE_ENV !== production)", async () => {
       const originalEnv = process.env.NODE_ENV;
       process.env.NODE_ENV = "development";
 
@@ -97,13 +97,13 @@ describe("Security Hardening", () => {
         nextCalled = true;
       };
 
-      authMiddleware(req, res, next);
+      await authMiddleware(req, res, next);
       expect(nextCalled).toBe(true);
 
       process.env.NODE_ENV = originalEnv;
     });
 
-    it("rejects unauthenticated request in production", () => {
+    it("rejects unauthenticated request in production", async () => {
       const originalEnv = process.env.NODE_ENV;
       process.env.NODE_ENV = "production";
 
@@ -126,7 +126,7 @@ describe("Security Hardening", () => {
       } as never;
       const next = () => {};
 
-      authMiddleware(req, res, next);
+      await authMiddleware(req, res, next);
       expect(statusCode).toBe(401);
       expect((responseBody as { error: string }).error).toContain(
         "Authentication",
@@ -135,7 +135,7 @@ describe("Security Hardening", () => {
       process.env.NODE_ENV = originalEnv;
     });
 
-    it("allows Bearer token in production", () => {
+    it("allows Bearer token in production", async () => {
       const originalEnv = process.env.NODE_ENV;
       process.env.NODE_ENV = "production";
 
@@ -157,7 +157,7 @@ describe("Security Hardening", () => {
         nextCalled = true;
       };
 
-      authMiddleware(req, res, next);
+      await authMiddleware(req, res, next);
       expect(nextCalled).toBe(true);
 
       authService.logout(loginResult.token!);
@@ -184,7 +184,7 @@ describe("Security Hardening", () => {
         nextCalled = true;
       };
 
-      authMiddleware(req, res, next);
+      await authMiddleware(req, res, next);
       expect(nextCalled).toBe(true);
 
       await store.clearDurable();
@@ -244,7 +244,7 @@ describe("Security Hardening", () => {
       process.env.NODE_ENV = originalEnv;
     });
 
-    it("allows public health endpoint without auth", () => {
+    it("allows public health endpoint without auth", async () => {
       const originalEnv = process.env.NODE_ENV;
       process.env.NODE_ENV = "production";
 
@@ -255,7 +255,7 @@ describe("Security Hardening", () => {
         nextCalled = true;
       };
 
-      authMiddleware(req, res, next);
+      await authMiddleware(req, res, next);
       expect(nextCalled).toBe(true);
 
       process.env.NODE_ENV = originalEnv;

@@ -14,37 +14,37 @@ import { UserRepository } from "../platform/users/UserRepository";
 import { StorageGenerationHistoryRepository } from "../projects/repository/generationHistory.repository";
 
 function runProviderSuite(name: string, createProvider: () => StorageProvider) {
-  describe(`StorageProvider: ${name}`, () => {
+  describe(`StorageProvider: ${name}`, async () => {
     let provider: StorageProvider;
     beforeEach(() => {
       provider = createProvider();
     });
 
-    it("stores and retrieves data", () => {
+    it("stores and retrieves data", async () => {
       provider.set("users", "u1", { name: "Alice", email: "alice@test.com" });
       const user = provider.get<{ name: string }>("users", "u1");
       expect(user).not.toBeNull();
       expect(user!.name).toBe("Alice");
     });
 
-    it("returns null for missing items", () => {
+    it("returns null for missing items", async () => {
       expect(provider.get("users", "nonexistent")).toBeNull();
     });
 
-    it("deletes items", () => {
+    it("deletes items", async () => {
       provider.set("items", "i1", { val: 1 });
       expect(provider.delete("items", "i1")).toBe(true);
       expect(provider.get("items", "i1")).toBeNull();
     });
 
-    it("lists all items in collection", () => {
+    it("lists all items in collection", async () => {
       provider.set("projects", "p1", { name: "A" });
       provider.set("projects", "p2", { name: "B" });
       provider.set("projects", "p3", { name: "C" });
       expect(provider.list("projects")).toHaveLength(3);
     });
 
-    it("lists with filter", () => {
+    it("lists with filter", async () => {
       provider.set("jobs", "j1", { status: "running" });
       provider.set("jobs", "j2", { status: "completed" });
       provider.set("jobs", "j3", { status: "running" });
@@ -55,19 +55,19 @@ function runProviderSuite(name: string, createProvider: () => StorageProvider) {
       expect(running).toHaveLength(2);
     });
 
-    it("counts items", () => {
+    it("counts items", async () => {
       provider.set("col", "a", {});
       provider.set("col", "b", {});
       expect(provider.count("col")).toBe(2);
     });
 
-    it("overwrites existing item", () => {
+    it("overwrites existing item", async () => {
       provider.set("data", "d1", { version: 1 });
       provider.set("data", "d1", { version: 2 });
       expect(provider.get<{ version: number }>("data", "d1")!.version).toBe(2);
     });
 
-    it("handles multiple collections independently", () => {
+    it("handles multiple collections independently", async () => {
       provider.set("col_a", "id1", { a: true });
       provider.set("col_b", "id1", { b: true });
       expect(provider.get<{ a: boolean }>("col_a", "id1")!.a).toBe(true);
@@ -76,7 +76,7 @@ function runProviderSuite(name: string, createProvider: () => StorageProvider) {
       expect(provider.count("col_b")).toBe(1);
     });
 
-    it("concurrent writes don't corrupt data", () => {
+    it("concurrent writes don't corrupt data", async () => {
       for (let i = 0; i < 100; i++) {
         provider.set("concurrent", `item-${i}`, { index: i });
       }
@@ -100,8 +100,8 @@ runProviderSuite(
     }),
 );
 
-describe("Persistence Infrastructure", () => {
-  it("factory creates InMemory by default", () => {
+describe("Persistence Infrastructure", async () => {
+  it("factory creates InMemory by default", async () => {
     const provider = createStorageProvider();
     expect(provider).toBeTruthy();
     // Default is InMemory since STORAGE_PROVIDER env is not set to 'postgres'
@@ -109,7 +109,7 @@ describe("Persistence Infrastructure", () => {
     expect(provider.get("test", "1")).toEqual({ ok: true });
   });
 
-  it("migrations define durable core storage tables", () => {
+  it("migrations define durable core storage tables", async () => {
     expect(MIGRATIONS).toHaveLength(7);
     expect(MIGRATIONS[0].name).toBe("create_users");
     expect(MIGRATIONS[1].name).toBe("create_projects");
@@ -172,12 +172,12 @@ describe("Persistence Infrastructure", () => {
     expect(new UserRepository(storage).getByEmail(user.email)?.id).toBe(
       user.id,
     );
-    expect(new AuthService(storage).validateToken(login.token!)?.userId).toBe(
-      user.id,
-    );
+    expect(
+      (await new AuthService(storage).validateToken(login.token!))?.userId,
+    ).toBe(user.id);
   });
 
-  it("keeps generation history across repository recreation", () => {
+  it("keeps generation history across repository recreation", async () => {
     const storage = new InMemoryStorageProvider();
     const history = new StorageGenerationHistoryRepository(storage);
     history.record({
