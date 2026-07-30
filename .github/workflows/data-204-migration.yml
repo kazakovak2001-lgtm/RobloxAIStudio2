@@ -45,8 +45,8 @@ jobs:
               raise SystemExit(f"Expected exactly one synchronous AuthService.login block, found {count}")
           auth_path.write_text(auth)
 
-          test_path = Path("server/src/__tests__/securityHardening.test.ts")
-          test = test_path.read_text()
+          security_path = Path("server/src/__tests__/securityHardening.test.ts")
+          security = security_path.read_text()
           call_pattern = re.compile(
               r"const loginResult = authService\.login\(\s*"
               r'"sec-test@test\.com",\s*'
@@ -60,10 +60,54 @@ jobs:
             "password123",
             "user-sec-1",
           );'''
-          test, count = call_pattern.subn(replacement, test, count=1)
+          security, count = call_pattern.subn(replacement, security, count=1)
           if count != 1:
               raise SystemExit(f"Expected exactly one securityHardening synchronous login caller, found {count}")
-          test_path.write_text(test)
+          security_path.write_text(security)
+
+          preservation_path = Path("server/src/__tests__/preservationProperty.test.ts")
+          preservation = preservation_path.read_text()
+          preservation, auth_count = re.subn(
+              r"\bauth\.login\(",
+              "await auth.loginDurable(",
+              preservation,
+          )
+          preservation, shared_count = re.subn(
+              r"\bsharedAuthService\.login\(",
+              "await sharedAuthService.loginDurable(",
+              preservation,
+          )
+          if auth_count < 1 or shared_count != 1:
+              raise SystemExit(
+                  f"Unexpected preservation caller inventory: auth={auth_count}, shared={shared_count}"
+              )
+          property_header = 'it("property: login result tokens follow consistent format", async () => {'
+          property_start = preservation.find(property_header)
+          if property_start < 0:
+              raise SystemExit("Login token format property test was not found")
+          property_end = preservation.find("    }, 60000);", property_start)
+          if property_end < 0:
+              raise SystemExit("Login token format property test end was not found")
+          property_block = preservation[property_start:property_end]
+          property_block, property_count = property_block.replace(
+              "fc.property(", "fc.asyncProperty(", 1
+          ), property_block.count("fc.property(")
+          property_block, callback_count = re.subn(
+              r"\(email, password\) => \{",
+              "async (email, password) => {",
+              property_block,
+              count=1,
+          )
+          if property_count != 1 or callback_count != 1:
+              raise SystemExit(
+                  f"Unexpected login token property shape: property={property_count}, callback={callback_count}"
+              )
+          preservation = (
+              preservation[:property_start]
+              + property_block
+              + preservation[property_end:]
+          )
+          preservation_path.write_text(preservation)
 
           inventory_path = Path("config/durability/compatibility-write-inventory.json")
           inventory = json.loads(inventory_path.read_text())
@@ -83,8 +127,8 @@ jobs:
             echo "Legacy AuthService.login reference remains"
             exit 1
           fi
-          if grep -R -E 'authService\.login\(' server/src; then
-            echo "Synchronous authService.login caller remains"
+          if grep -R -E '(authService|sharedAuthService|auth)\.login\(' server/src; then
+            echo "Synchronous AuthService login caller remains"
             exit 1
           fi
 
@@ -93,10 +137,13 @@ jobs:
           npx prettier --write \
             server/src/platform/auth/AuthService.ts \
             server/src/__tests__/securityHardening.test.ts \
+            server/src/__tests__/preservationProperty.test.ts \
             config/durability/compatibility-write-inventory.json
           npm run typecheck
           npm run lint
-          npm test -- --run server/src/__tests__/securityHardening.test.ts
+          npm test -- --run \
+            server/src/__tests__/securityHardening.test.ts \
+            server/src/__tests__/preservationProperty.test.ts
           npm run validate:repository
 
       - name: Commit migration and remove workflow
@@ -106,6 +153,7 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add server/src/platform/auth/AuthService.ts \
             server/src/__tests__/securityHardening.test.ts \
+            server/src/__tests__/preservationProperty.test.ts \
             config/durability/compatibility-write-inventory.json
           git commit -m "refactor(auth): remove synchronous legacy login compatibility"
           git push origin HEAD:${{ github.head_ref }}
