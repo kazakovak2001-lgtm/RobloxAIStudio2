@@ -13,12 +13,12 @@ Tracks issue #108 and completes the remaining protected evidence work for ARCH-2
 ## First implementation slice
 
 - Added `scripts/architecture/boundary-gate-core.ts`.
+- Replaced duplicated decision logic in `scripts/validate-boundaries.ts` with the pure core.
 - Added focused Vitest fixtures for manifest completeness, stale subsystem declarations, unknown layers, duplicate and stale exceptions, forbidden layer edges, allowlisted debt, cycle normalization, non-allowlisted cycles, critical violations and unresolved imports.
+- Added filesystem-backed AST fixtures proving static import, re-export, dynamic import and CommonJS discovery.
+- Regenerated canonical tracked-file inventories and protected the result in CI.
 
 ## Remaining work
 
-1. Replace duplicated decision logic in `scripts/validate-boundaries.ts` with the pure core.
-2. Add filesystem-backed AST fixtures proving static import, re-export, dynamic import and CommonJS discovery.
-3. Record exact real edges supporting each remaining `allowedLayerEdges` entry.
-4. Remove stale exceptions and assign any retained debt to a concrete milestone and source path.
-5. Regenerate canonical inventories and complete protected CI evidence.
+1. Record exact real edges supporting each remaining `allowedLayerEdges` entry.
+2. Remove stale exceptions and assign any retained debt to a concrete milestone and source path.
