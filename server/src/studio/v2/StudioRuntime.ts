@@ -88,7 +88,7 @@ export class StudioRuntime {
   private timeoutMonitor?: ReturnType<typeof setInterval>;
   private readonly latestExecutionByProject = new Map<string, string>();
   private readonly exportSignatureByClient = new Map<string, string>();
-  private readonly readiness: Promise<void>;
+  private readiness?: Promise<void>;
 
   constructor(options: StudioRuntimeOptions = {}) {
     this.artifacts = options.artifacts ?? new ArtifactStore(options.storage);
@@ -96,10 +96,10 @@ export class StudioRuntime {
     this.sessions = options.sessions ?? new StudioSessionManager();
     this.evidence = options.evidence ?? createConfiguredStudioEvidenceStore();
     this.sync = new ProjectSyncManager(this.artifacts);
-    this.readiness = this.evidence.ready();
   }
 
   async ready(): Promise<void> {
+    this.readiness ??= this.evidence.ready();
     await this.readiness;
   }
 

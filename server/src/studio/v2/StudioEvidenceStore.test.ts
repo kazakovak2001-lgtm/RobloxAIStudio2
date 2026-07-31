@@ -6,7 +6,10 @@ import {
   type DurableMutation,
   type DurableMutationResult,
 } from "../../platform/storage/StorageProvider";
-import type { StudioOperationalEvidence } from "./StudioEvidenceStore";
+import type {
+  StudioEvidenceStore,
+  StudioOperationalEvidence,
+} from "./StudioEvidenceStore";
 import { StudioRuntime } from "./StudioRuntime";
 
 function evidence(commandId: string, version = 1): StudioOperationalEvidence {
@@ -42,6 +45,25 @@ class RejectingStorage extends InMemoryStorageProvider {
 }
 
 describe("Studio operational evidence store", () => {
+  it("defers provider readiness until the runtime readiness boundary", async () => {
+    let readyCalls = 0;
+    const store: StudioEvidenceStore = {
+      ready: async () => {
+        readyCalls += 1;
+      },
+      refresh: async () => {},
+      getCommand: () => null,
+      getLatestByProject: () => null,
+      saveTransition: async () => true,
+    };
+
+    const runtime = new StudioRuntime({ evidence: store });
+    expect(readyCalls).toBe(0);
+
+    await Promise.all([runtime.ready(), runtime.ready()]);
+    expect(readyCalls).toBe(1);
+  });
+
   it("recreates command and project evidence without reference leakage", async () => {
     const storage = new InMemoryStorageProvider();
     const first = new StorageStudioEvidenceStore(storage);
