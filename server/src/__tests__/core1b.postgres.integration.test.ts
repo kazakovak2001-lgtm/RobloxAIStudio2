@@ -81,14 +81,14 @@ describePostgres("CORE-1b PostgreSQL restart acceptance", () => {
     const otherId = `other-${suffix}`;
     const authBeforeRestart = new AuthService(firstProvider);
     expect(
-      authBeforeRestart.register(
+      await authBeforeRestart.registerDurable(
         `owner-${suffix}@example.com`,
         "password123",
         ownerId,
       ),
     ).toBe(true);
     expect(
-      authBeforeRestart.register(
+      await authBeforeRestart.registerDurable(
         `other-${suffix}@example.com`,
         "password123",
         otherId,

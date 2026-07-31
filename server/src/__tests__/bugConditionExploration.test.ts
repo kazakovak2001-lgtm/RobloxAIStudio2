@@ -147,10 +147,18 @@ describe("Bug Condition Exploration - Release Hardening Security Defects", () =>
             const authService2 = new AuthService(storage2);
 
             expect(
-              authService1.register("user1@test.com", password, "user-1"),
+              await authService1.registerDurable(
+                "user1@test.com",
+                password,
+                "user-1",
+              ),
             ).toBe(true);
             expect(
-              authService2.register("user2@test.com", password, "user-2"),
+              await authService2.registerDurable(
+                "user2@test.com",
+                password,
+                "user-2",
+              ),
             ).toBe(true);
 
             const credentials1 = storage1.get<{ passwordHash: string }>(
@@ -202,7 +210,11 @@ describe("Bug Condition Exploration - Release Hardening Security Defects", () =>
             const storage = new InMemoryStorageProvider();
             const authService = new AuthService(storage);
             expect(
-              authService.register("test@test.com", password, "user-1"),
+              await authService.registerDurable(
+                "test@test.com",
+                password,
+                "user-1",
+              ),
             ).toBe(true);
 
             const credentials = storage.get<{ passwordHash: string }>(

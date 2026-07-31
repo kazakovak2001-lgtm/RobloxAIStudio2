@@ -11,11 +11,18 @@ import {
   InMemoryStorageProvider,
   type StorageProvider,
 } from "../storage/StorageProvider";
+import { registerStoragePostInitializeHook } from "../storage/StorageFactory";
 
 export let authService = new AuthService(new InMemoryStorageProvider());
 
+let unregisterMigrationHook: (() => void) | undefined;
+
 /** Configure the process-wide authentication boundary with the app storage. */
 export function configureAuthService(storage: StorageProvider): AuthService {
+  unregisterMigrationHook?.();
   authService = new AuthService(storage);
+  unregisterMigrationHook = registerStoragePostInitializeHook(async () => {
+    await authService.migrateLegacyRefreshCredentialsDurable();
+  });
   return authService;
 }

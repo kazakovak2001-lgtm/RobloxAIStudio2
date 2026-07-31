@@ -348,7 +348,11 @@ describe("Preservation Property Tests - Baseline Behavior Guards", async () => {
           fc.string({ minLength: 8, maxLength: 30 }),
           async (route, password) => {
             const auth = new AuthService();
-            auth.register("analytics@test.com", password, "user-a");
+            await auth.registerDurable(
+              "analytics@test.com",
+              password,
+              "user-a",
+            );
             const login = await auth.loginDurable(
               "analytics@test.com",
               password,
@@ -455,7 +459,7 @@ describe("Preservation Property Tests - Baseline Behavior Guards", async () => {
           fc.string({ minLength: 8, maxLength: 30 }),
           async (route, method, password) => {
             const auth = new AuthService();
-            auth.register("plugin@test.com", password, "user-p");
+            await auth.registerDurable("plugin@test.com", password, "user-p");
             const login = await auth.loginDurable(
               "plugin@test.com",
               password,
@@ -487,7 +491,7 @@ describe("Preservation Property Tests - Baseline Behavior Guards", async () => {
   describe("Token Refresh Flow (Requirement 3.2)", async () => {
     it("unit: AuthService refreshSession produces new valid tokens", async () => {
       const auth = new AuthService();
-      auth.register("user@test.com", "password123", "user-1");
+      await auth.registerDurable("user@test.com", "password123", "user-1");
       const loginResult = await auth.loginDurable(
         "user@test.com",
         "password123",
@@ -497,7 +501,9 @@ describe("Preservation Property Tests - Baseline Behavior Guards", async () => {
       expect(loginResult.success).toBe(true);
       expect(loginResult.refreshToken).toBeDefined();
 
-      const refreshResult = auth.refreshSession(loginResult.refreshToken!);
+      const refreshResult = await auth.refreshSessionDurable(
+        loginResult.refreshToken!,
+      );
       expect(refreshResult.success).toBe(true);
       expect(refreshResult.token).toBeDefined();
       expect(refreshResult.refreshToken).toBeDefined();
@@ -507,7 +513,7 @@ describe("Preservation Property Tests - Baseline Behavior Guards", async () => {
 
     it("unit: invalid refresh token returns error", async () => {
       const auth = new AuthService();
-      const result = auth.refreshSession("invalid_refresh_token");
+      const result = await auth.refreshSessionDurable("invalid_refresh_token");
       expect(result.success).toBe(false);
       expect(result.error).toBeDefined();
     });
@@ -518,7 +524,7 @@ describe("Preservation Property Tests - Baseline Behavior Guards", async () => {
           fc.string({ minLength: 8, maxLength: 30 }),
           async (password) => {
             const auth = new AuthService();
-            auth.register("test@e.com", password, "u-1");
+            await auth.registerDurable("test@e.com", password, "u-1");
             const login = await auth.loginDurable(
               "test@e.com",
               password,
@@ -526,7 +532,9 @@ describe("Preservation Property Tests - Baseline Behavior Guards", async () => {
             );
             if (!login.success || !login.refreshToken) return;
 
-            const refreshed = auth.refreshSession(login.refreshToken);
+            const refreshed = await auth.refreshSessionDurable(
+              login.refreshToken,
+            );
             if (!refreshed.success || !refreshed.token) return;
 
             const session = await auth.validateToken(refreshed.token);
@@ -547,7 +555,7 @@ describe("Preservation Property Tests - Baseline Behavior Guards", async () => {
   describe("Logout Behavior (Requirement 3.2)", async () => {
     it("unit: logout invalidates the session token", async () => {
       const auth = new AuthService();
-      auth.register("user@test.com", "pass123", "user-1");
+      await auth.registerDurable("user@test.com", "pass123", "user-1");
       const login = await auth.loginDurable(
         "user@test.com",
         "pass123",
@@ -557,7 +565,7 @@ describe("Preservation Property Tests - Baseline Behavior Guards", async () => {
       expect(login.success).toBe(true);
       expect(await auth.validateToken(login.token!)).not.toBeNull();
 
-      auth.logout(login.token!);
+      await auth.logoutDurable(login.token!);
       expect(await auth.validateToken(login.token!)).toBeNull();
     });
 
@@ -567,14 +575,14 @@ describe("Preservation Property Tests - Baseline Behavior Guards", async () => {
           fc.string({ minLength: 6, maxLength: 30 }),
           async (password) => {
             const auth = new AuthService();
-            auth.register("t@t.com", password, "u-1");
+            await auth.registerDurable("t@t.com", password, "u-1");
             const login = await auth.loginDurable("t@t.com", password, "u-1");
             if (!login.success || !login.token) return;
 
             // Token valid before logout
             expect(await auth.validateToken(login.token)).not.toBeNull();
             // Logout
-            const loggedOut = auth.logout(login.token);
+            const loggedOut = await auth.logoutDurable(login.token);
             expect(loggedOut).toBe(true);
             // Token invalid after logout
             expect(await auth.validateToken(login.token)).toBeNull();
@@ -608,7 +616,7 @@ describe("Preservation Property Tests - Baseline Behavior Guards", async () => {
           fc.string({ minLength: 8, maxLength: 30 }),
           async (route, password) => {
             const auth = new AuthService();
-            auth.register("user@test.com", password, "user-1");
+            await auth.registerDurable("user@test.com", password, "user-1");
             const login = await auth.loginDurable(
               "user@test.com",
               password,
@@ -637,7 +645,7 @@ describe("Preservation Property Tests - Baseline Behavior Guards", async () => {
       process.env.NODE_ENV = "production";
 
       // Use the shared authService that the middleware uses internally
-      sharedAuthService.register(
+      await sharedAuthService.registerDurable(
         "middleware-test@test.com",
         "testpass123",
         "user-mid-1",
@@ -663,7 +671,7 @@ describe("Preservation Property Tests - Baseline Behavior Guards", async () => {
       expect(nextCalled).toBe(true);
 
       // Cleanup: logout
-      sharedAuthService.logout(loginResult.token!);
+      await sharedAuthService.logoutDurable(loginResult.token!);
     });
 
     it("unit: actual authMiddleware rejects invalid Bearer token in production", async () => {
@@ -741,7 +749,7 @@ describe("Preservation Property Tests - Baseline Behavior Guards", async () => {
 
     it("unit: AuthService login returns expected LoginResult shape", async () => {
       const auth = new AuthService();
-      auth.register("test@t.com", "password", "user-1");
+      await auth.registerDurable("test@t.com", "password", "user-1");
       const result = await auth.loginDurable(
         "test@t.com",
         "password",
@@ -764,7 +772,11 @@ describe("Preservation Property Tests - Baseline Behavior Guards", async () => {
           fc.string({ minLength: 6, maxLength: 30 }),
           async (email, password) => {
             const auth = new AuthService();
-            const registered = auth.register(email, password, "u-1");
+            const registered = await auth.registerDurable(
+              email,
+              password,
+              "u-1",
+            );
             if (!registered) return; // skip duplicates
 
             const result = await auth.loginDurable(email, password, "u-1");
@@ -779,7 +791,7 @@ describe("Preservation Property Tests - Baseline Behavior Guards", async () => {
 
     it("unit: failed login returns {success: false, error: string}", async () => {
       const auth = new AuthService();
-      auth.register("test@t.com", "correct_pass", "user-1");
+      await auth.registerDurable("test@t.com", "correct_pass", "user-1");
       const result = await auth.loginDurable(
         "test@t.com",
         "wrong_pass",
@@ -825,7 +837,7 @@ describe("Preservation Property Tests - Baseline Behavior Guards", async () => {
           fc.string({ minLength: 8, maxLength: 30 }),
           async (password) => {
             const auth = new AuthService();
-            auth.register("socket@test.com", password, "user-s");
+            await auth.registerDurable("socket@test.com", password, "user-s");
             const login = await auth.loginDurable(
               "socket@test.com",
               password,
@@ -923,7 +935,11 @@ describe("Preservation Property Tests - Baseline Behavior Guards", async () => {
 
     it("unit: AuthService works without database", async () => {
       const auth = new AuthService();
-      const registered = auth.register("no-db@test.com", "pass", "u-1");
+      const registered = await auth.registerDurable(
+        "no-db@test.com",
+        "pass",
+        "u-1",
+      );
       expect(registered).toBe(true);
 
       const login = await auth.loginDurable("no-db@test.com", "pass", "u-1");

@@ -139,7 +139,11 @@ describe("Security Hardening", async () => {
       const originalEnv = process.env.NODE_ENV;
       process.env.NODE_ENV = "production";
 
-      authService.register("sec-test@test.com", "password123", "user-sec-1");
+      await authService.registerDurable(
+        "sec-test@test.com",
+        "password123",
+        "user-sec-1",
+      );
       const loginResult = await authService.loginDurable(
         "sec-test@test.com",
         "password123",
@@ -160,7 +164,7 @@ describe("Security Hardening", async () => {
       await authMiddleware(req, res, next);
       expect(nextCalled).toBe(true);
 
-      authService.logout(loginResult.token!);
+      await authService.logoutDurable(loginResult.token!);
       process.env.NODE_ENV = originalEnv;
     });
 

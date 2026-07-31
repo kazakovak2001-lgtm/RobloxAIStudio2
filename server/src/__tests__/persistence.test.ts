@@ -88,7 +88,6 @@ function runProviderSuite(name: string, createProvider: () => StorageProvider) {
   });
 }
 
-// Run the same test suite against both providers
 runProviderSuite("InMemory", () => new InMemoryStorageProvider());
 runProviderSuite(
   "Postgres (cache mode)",
@@ -104,7 +103,6 @@ describe("Persistence Infrastructure", async () => {
   it("factory creates InMemory by default", async () => {
     const provider = createStorageProvider();
     expect(provider).toBeTruthy();
-    // Default is InMemory since STORAGE_PROVIDER env is not set to 'postgres'
     provider.set("test", "1", { ok: true });
     expect(provider.get("test", "1")).toEqual({ ok: true });
   });
@@ -125,7 +123,6 @@ describe("Persistence Infrastructure", async () => {
     const health = new DatabaseHealthCheck(provider);
     const status = await health.check();
 
-    // Without a running PostgreSQL, provider runs in cache-only mode
     expect(status.status).toBe("unavailable");
     expect(status.connected).toBe(false);
     expect(status.latencyMs).toBeGreaterThanOrEqual(0);
@@ -165,7 +162,9 @@ describe("Persistence Infrastructure", async () => {
       displayName: "Creator",
     });
     const auth = new AuthService(storage);
-    expect(auth.register(user.email, "password123", user.id)).toBe(true);
+    expect(await auth.registerDurable(user.email, "password123", user.id)).toBe(
+      true,
+    );
     const login = await auth.loginDurable(user.email, "password123", user.id);
 
     expect(login.success).toBe(true);

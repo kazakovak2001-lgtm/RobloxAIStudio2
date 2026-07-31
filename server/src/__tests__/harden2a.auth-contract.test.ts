@@ -159,7 +159,11 @@ describe("HARDEN-2A auth contract", async () => {
   it("stores only refresh digests and consumes the old credential", async () => {
     const storage = new InMemoryStorageProvider();
     const auth = new AuthService(storage);
-    auth.register("digest@example.test", "password", "user-digest");
+    await auth.registerDurable(
+      "digest@example.test",
+      "password",
+      "user-digest",
+    );
     const login = await auth.loginDurable(
       "digest@example.test",
       "password",
@@ -168,7 +172,9 @@ describe("HARDEN-2A auth contract", async () => {
 
     expect(login.success).toBe(true);
     expect(login.refreshToken).toMatch(/^ref_[a-f0-9]{64}$/);
-    const stored = storage.list<Record<string, unknown>>("auth_sessions");
+    const stored = storage
+      .list<Record<string, unknown>>("auth_sessions")
+      .filter((session) => session.token === login.token);
     expect(stored).toHaveLength(1);
     expect(stored[0]).not.toHaveProperty("refreshToken");
     expect(stored[0]).not.toHaveProperty("refreshExpiresAt");
@@ -179,10 +185,12 @@ describe("HARDEN-2A auth contract", async () => {
       JSON.stringify(storage.list("auth_refresh_credentials")),
     ).not.toContain(login.refreshToken);
 
-    const rotated = auth.refreshSession(login.refreshToken!);
+    const rotated = await auth.refreshSessionDurable(login.refreshToken!);
     expect(rotated.success).toBe(true);
     expect(await auth.validateToken(login.token!)).toBeNull();
-    expect(auth.refreshSession(login.refreshToken!).success).toBe(false);
+    expect(
+      (await auth.refreshSessionDurable(login.refreshToken!)).success,
+    ).toBe(false);
     expect(await auth.validateToken(rotated.token!)).not.toBeNull();
     expect(storage.count("auth_refresh_credentials")).toBe(1);
   });
@@ -202,6 +210,7 @@ describe("HARDEN-2A auth contract", async () => {
     });
 
     const auth = new AuthService(storage);
+    await auth.migrateLegacyRefreshCredentialsDurable();
     const migrated = storage.get<Record<string, unknown>>(
       "auth_sessions",
       "tok_legacy",
@@ -215,9 +224,11 @@ describe("HARDEN-2A auth contract", async () => {
     expect(JSON.stringify(migrated)).not.toContain(legacyRefreshToken);
     expect(storage.count("auth_refresh_credentials")).toBe(1);
 
-    const refreshed = auth.refreshSession(legacyRefreshToken);
+    const refreshed = await auth.refreshSessionDurable(legacyRefreshToken);
     expect(refreshed.success).toBe(true);
-    expect(auth.refreshSession(legacyRefreshToken).success).toBe(false);
+    expect((await auth.refreshSessionDurable(legacyRefreshToken)).success).toBe(
+      false,
+    );
   });
 
   it("keeps authoritative auth guidance on opaque-session terminology", async () => {
