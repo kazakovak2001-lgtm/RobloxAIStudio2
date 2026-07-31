@@ -1,5 +1,5 @@
+export { PostgresStorageProvider } from "./OperationalPostgresStorageProvider";
 export {
-  PostgresStorageProvider,
   DEFAULT_POSTGRES_CONFIG,
   type PostgresConfig,
 } from "./PostgresStorageProvider";
