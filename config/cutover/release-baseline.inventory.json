@@ -13,7 +13,7 @@
   },
   "frontendRelease": {
     "repository": "kazakovak2001-lgtm/Frontend",
-    "commit": "efd8756ef46742882db75f42fc35348e84c35895"
+    "commit": "1dddded9c7bd46652b28e7d8e28d85bb01559d94"
   },
   "activeRelease": {
     "files": [
@@ -178,41 +178,3 @@
         "kind": "exact",
         "value": "server/src/types/game-generation-result.ts",
         "classification": "superseded-unpromoted-result-contract"
-      },
-      {
-        "kind": "exact",
-        "value": "server/src/types/gameDesignSeed.ts",
-        "classification": "superseded-unpromoted-seed-contract"
-      },
-      {
-        "kind": "exact",
-        "value": "server/src/types/index.ts",
-        "classification": "superseded-by-current-canonical-type-exports"
-      },
-      {
-        "kind": "exact",
-        "value": "server/tsconfig.json",
-        "classification": "superseded-by-current-server-build-contract"
-      }
-    ]
-  },
-  "promotionPlan": {
-    "operation": "Promote the verified integration tree only after this readiness gate, branch-protection review, and rollback approval; do not merge PR #1 or cherry-pick the default-only commit.",
-    "rollbackPoint": "309e897b6f56633e290c72f099729a603c2fd13e",
-    "rollbackMechanism": "restore independently deployable CUTOVER-1A backend and CUTOVER-1B Frontend artifacts; do not use the archival combined Dockerfile",
-    "priorCombinedStackExecutable": false,
-    "requiredPostPromotionChecks": [
-      "TypeScript Check",
-      "ESLint",
-      "Prettier Check",
-      "Test Suite",
-      "PostgreSQL Restart E2E",
-      "Backend Release Image",
-      "Composed HTTPS Release",
-      "Release Baseline Readiness",
-      "Repository Validation",
-      "Merge Gate"
-    ],
-    "legacyCleanupAuthorized": false
-  }
-}
