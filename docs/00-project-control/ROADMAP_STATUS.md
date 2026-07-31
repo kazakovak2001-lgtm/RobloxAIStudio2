@@ -1,3 +1,5 @@
+<!-- prettier-ignore-start -->
+
 # Roadmap Status
 
 **Last Updated:** August 1, 2026  
@@ -61,3 +63,5 @@ The following documents preserve the dated TECH-AUDIT-2 planning baseline. Their
 - [TECH-AUDIT-2 Executive Audit](../02-audits/technical-v2/EXECUTIVE_AUDIT.md)
 
 When a historical audit conflicts with this file or the DOC-202A reconciliation record, the current project-control documents win.
+
+<!-- prettier-ignore-end -->
