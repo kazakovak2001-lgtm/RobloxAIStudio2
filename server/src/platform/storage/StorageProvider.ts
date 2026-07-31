@@ -66,9 +66,7 @@ export interface DurableMutationResult {
 
 export type StorageAvailability = "available" | "degraded" | "unavailable";
 export type StorageFailureCategory =
-  | "initialization"
-  | "connectivity"
-  | "durable-mutation";
+  "initialization" | "connectivity" | "durable-mutation";
 
 export interface StorageOperationalStatus {
   availability: StorageAvailability;
