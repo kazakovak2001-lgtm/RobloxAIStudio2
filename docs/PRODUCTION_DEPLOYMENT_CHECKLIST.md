@@ -111,9 +111,9 @@ The canonical executable checks are:
 - [`.github/workflows/ci.yml`](../.github/workflows/ci.yml);
 - Frontend `scripts/e2e-backend.mjs` at the exact pinned Frontend commit.
 
-## Current verified DATA-202 release candidate
+## Prior verified DATA-202 release candidate (REL-202)
 
-The current protected release evidence is:
+The prior REL-202 protected release evidence is retained as historical proof:
 
 | Field                        | Value                                                                                              |
 | ---------------------------- | -------------------------------------------------------------------------------------------------- |
@@ -131,8 +131,10 @@ The current protected release evidence is:
 
 The promoted backend merge is one merge-only commit ahead of the validated
 source and has zero file changes. Frontend `main` is likewise one merge-only
-commit ahead of the pinned contents with zero file changes. The active Frontend
-pin remains the JSON inventory field above.
+commit ahead of the pinned contents with zero file changes. The historical
+Frontend pin for this evidence remains the table value above. The active release
+pin is authoritative in `config/cutover/release-baseline.inventory.json` and is
+promoted separately under REL-203.
 
 This is CI release-composition evidence, not evidence of an external production
 deployment. Database backup, image publication, remote TLS/host configuration,
