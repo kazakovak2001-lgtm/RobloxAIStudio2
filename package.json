@@ -23,7 +23,7 @@
     "preview": "npm run start",
     "start": "node --import tsx dist/server/index.js",
     "lint": "node node_modules/eslint/bin/eslint.js server/src scripts config/testing --ext .ts --max-warnings 0",
-    "format:check": "node node_modules/prettier/bin/prettier.cjs --write server/src/platform/storage/StorageProvider.ts server/src/platform/storage/postgres/index.ts && git diff -- server/src/platform/storage/StorageProvider.ts server/src/platform/storage/postgres/index.ts && exit 1",
+    "format:check": "node node_modules/prettier/bin/prettier.cjs --check \"**/*.{ts,tsx,json,md,yml,yaml}\"",
     "format": "node node_modules/prettier/bin/prettier.cjs --write \"**/*.{ts,tsx,json,md,yml,yaml}\"",
     "typecheck": "node node_modules/typescript/bin/tsc --noEmit --project server/tsconfig.json",
     "test": "node node_modules/vitest/vitest.mjs --config config/testing/vitest.backend.config.ts run",
