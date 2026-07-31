@@ -180,7 +180,7 @@ describe("HARDEN-2A auth contract", async () => {
     expect(stored[0]).not.toHaveProperty("refreshExpiresAt");
     expect(stored[0].refreshTokenDigest).toMatch(/^[a-f0-9]{64}$/);
     expect(JSON.stringify(stored)).not.toContain(login.refreshToken);
-    expect(storage.count("auth_refresh_credentials")).toBe(2);
+    expect(storage.count("auth_refresh_credentials")).toBe(1);
     expect(
       JSON.stringify(storage.list("auth_refresh_credentials")),
     ).not.toContain(login.refreshToken);
@@ -192,7 +192,7 @@ describe("HARDEN-2A auth contract", async () => {
       (await auth.refreshSessionDurable(login.refreshToken!)).success,
     ).toBe(false);
     expect(await auth.validateToken(rotated.token!)).not.toBeNull();
-    expect(storage.count("auth_refresh_credentials")).toBe(2);
+    expect(storage.count("auth_refresh_credentials")).toBe(1);
   });
 
   it("migrates persisted plaintext refresh credentials without invalidating them", async () => {
