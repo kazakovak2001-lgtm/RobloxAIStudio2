@@ -71,7 +71,6 @@ describe("PipelineEngine", () => {
     );
     expect(failResult.state.status).toBe("failed");
 
-    // Resume with working executor
     const resumed = await engine.resume(
       failResult.state.pipelineId,
       { name: "Resume" },
@@ -147,6 +146,7 @@ describe("PipelineEngine", () => {
 
   it("shares one reservation across concurrent starts for a project", async () => {
     const engine = new PipelineEngine();
+    await engine.ready();
     const reservation = deferred();
     let reservationCalls = 0;
 
