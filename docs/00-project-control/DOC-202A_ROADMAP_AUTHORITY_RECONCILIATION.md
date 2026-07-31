@@ -1,3 +1,5 @@
+<!-- prettier-ignore-start -->
+
 # DOC-202A — Roadmap Authority Reconciliation
 
 **Recorded:** August 1, 2026  
@@ -50,3 +52,5 @@ The TECH-AUDIT-2 `ROADMAP_v2_UPDATE.md` and `SPRINT_BACKLOG.md` are dated histor
 ## Scope boundary
 
 This reconciliation changes documentation and deterministic documentation validation only. It does not alter runtime behavior, API contracts, persistence, Socket.IO, Frontend source, package dependencies, or release inventory.
+
+<!-- prettier-ignore-end -->
