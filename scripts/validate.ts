@@ -46,14 +46,12 @@ function getAllTrackedFiles(): string[] {
 // prettier-ignore
 function validateDocumentationAuthority(): DocumentationAuthorityError[] {
   const roadmapPath = "docs/00-project-control/ROADMAP_STATUS.md";
-  const reconciliationPath =
-    "docs/00-project-control/DOC-202A_ROADMAP_AUTHORITY_RECONCILIATION.md";
   const readmePath = "docs/README.md";
 
   const documents = new Map<string, string>();
   const errors: DocumentationAuthorityError[] = [];
 
-  for (const path of [roadmapPath, reconciliationPath, readmePath]) {
+  for (const path of [roadmapPath, readmePath]) {
     try {
       documents.set(path, readFileSync(path, "utf-8"));
     } catch {
@@ -62,7 +60,6 @@ function validateDocumentationAuthority(): DocumentationAuthorityError[] {
   }
 
   const roadmap = documents.get(roadmapPath) ?? "";
-  const reconciliation = documents.get(reconciliationPath) ?? "";
   const readme = documents.get(readmePath) ?? "";
 
   const requiredCurrentClaims = [
@@ -106,9 +103,9 @@ function validateDocumentationAuthority(): DocumentationAuthorityError[] {
   ];
 
   for (const evidence of requiredEvidence) {
-    if (!reconciliation.includes(evidence)) {
+    if (!roadmap.includes(evidence)) {
       errors.push({
-        file: reconciliationPath,
+        file: roadmapPath,
         message: `missing exact reconciliation evidence: ${evidence}`,
       });
     }
@@ -133,9 +130,9 @@ function validateDocumentationAuthority(): DocumentationAuthorityError[] {
     });
   }
 
-  if (!reconciliation.includes("remain intentionally process-local")) {
+  if (!roadmap.includes("remain intentionally process-local")) {
     errors.push({
-      file: reconciliationPath,
+      file: roadmapPath,
       message:
         "intentionally ephemeral runtime handles must not be relabelled durable",
     });
