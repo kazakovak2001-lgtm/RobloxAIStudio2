@@ -315,11 +315,6 @@
       "from": "shared",
       "to": "api",
       "reason": "DURABILITY-2E owns the exact shared-to-platform edges recorded in architecture.layer-debt.json from common/middleware/security.ts and services/ChatPersistenceService.ts; invert auth, security and storage dependencies behind shared ports."
-    },
-    {
-      "from": "domains",
-      "to": "api",
-      "reason": "STUDIO-2F owns the exact studio-to-platform edge recorded in architecture.layer-debt.json from studio/v2/StudioRuntime.ts importing platform/storage/StorageProvider; extract a neutral Studio storage port."
     }
   ]
 }

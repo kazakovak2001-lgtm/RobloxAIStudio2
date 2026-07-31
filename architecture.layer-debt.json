@@ -3,11 +3,6 @@
   "owners": [
     {
       "sourceLayer": "domains",
-      "targetLayer": "api",
-      "milestone": "STUDIO-2F"
-    },
-    {
-      "sourceLayer": "domains",
       "targetLayer": "infrastructure",
       "milestone": "RUNTIME-2D"
     },
@@ -18,15 +13,6 @@
     }
   ],
   "rows": [
-    {
-      "sourceLayer": "domains",
-      "targetLayer": "api",
-      "sourceDomain": "studio",
-      "targetDomain": "platform",
-      "file": "server/src/studio/v2/StudioRuntime.ts",
-      "importPath": "../../platform/storage/StorageProvider",
-      "milestone": "STUDIO-2F"
-    },
     {
       "sourceLayer": "domains",
       "targetLayer": "infrastructure",

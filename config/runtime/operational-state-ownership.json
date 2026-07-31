@@ -1,0 +1,373 @@
+{
+  "schemaVersion": 1,
+  "classifications": [
+    "durable",
+    "restart-reconstructible",
+    "intentionally-ephemeral"
+  ],
+  "productionStatuses": [
+    "production-wired",
+    "compatibility-facade",
+    "scaffold"
+  ],
+  "inventoryRules": [
+    {
+      "root": "server/src/studio/v2",
+      "pattern": "(?:StudioBridge|StudioSession|StudioRuntime)\\.ts$"
+    },
+    {
+      "root": "server/src/studio/v2/protocol",
+      "pattern": "ProtocolDispatcher\\.ts$"
+    },
+    {
+      "root": "server/src/studio/v2/sync",
+      "pattern": "ProjectSyncManager\\.ts$"
+    },
+    {
+      "root": "server/src/studio",
+      "pattern": "(?:StudioBridgeServer|StudioRealtimeSyncManager|StudioSyncEngine)\\.ts$"
+    },
+    {
+      "root": "server/src/studio/integration",
+      "pattern": "(?:StudioConnectionRegistry|PackageSynchronizer)\\.ts$"
+    },
+    { "root": "server/src/jobs", "pattern": "(?:JobManager|JobQueue)\\.ts$" },
+    {
+      "root": "server/src/distributed",
+      "pattern": "(?:JobQueueManager|WorkerHealthMonitor|DistributedExecutionCoordinator)\\.ts$"
+    },
+    {
+      "root": "server/src/distributed/execution",
+      "pattern": "(?:ExecutionJobQueue|ExecutionCoordinator)\\.ts$"
+    },
+    {
+      "root": "server/src/providers/ai",
+      "pattern": "ProviderHealthService\\.ts$"
+    },
+    {
+      "root": "server/src/lifecycle/monitor",
+      "pattern": "GameHealthMonitor\\.ts$"
+    },
+    { "root": "server/src/core/observability", "pattern": "TraceStore\\.ts$" },
+    { "root": "server/src/socket", "pattern": "(?:index|streaming)\\.ts$" },
+    { "root": "server/src/common/middleware", "pattern": "security\\.ts$" }
+  ],
+  "entries": [
+    {
+      "path": "server/src/studio/v2/StudioBridge.ts",
+      "owner": "studio",
+      "productionStatus": "production-wired",
+      "states": [
+        {
+          "name": "clients",
+          "classification": "restart-reconstructible",
+          "source": "plugin reconnect"
+        },
+        {
+          "name": "commandQueue",
+          "classification": "intentionally-ephemeral",
+          "source": "durable Studio evidence plus explicit resync"
+        },
+        {
+          "name": "commands",
+          "classification": "restart-reconstructible",
+          "source": "StudioEvidenceStore"
+        }
+      ]
+    },
+    {
+      "path": "server/src/studio/v2/StudioSession.ts",
+      "owner": "studio",
+      "productionStatus": "production-wired",
+      "states": [
+        {
+          "name": "sessions/clientToSession",
+          "classification": "restart-reconstructible",
+          "source": "plugin reconnect plus StudioEvidenceStore"
+        }
+      ]
+    },
+    {
+      "path": "server/src/studio/v2/StudioRuntime.ts",
+      "owner": "studio",
+      "productionStatus": "production-wired",
+      "states": [
+        {
+          "name": "command and verification evidence",
+          "classification": "durable",
+          "source": "StudioEvidenceStore"
+        },
+        {
+          "name": "latestExecutionByProject/exportSignatureByClient",
+          "classification": "restart-reconstructible",
+          "source": "durable artifacts and Studio evidence"
+        },
+        {
+          "name": "timeoutMonitor",
+          "classification": "intentionally-ephemeral",
+          "source": "startup composition"
+        }
+      ]
+    },
+    {
+      "path": "server/src/studio/v2/protocol/ProtocolDispatcher.ts",
+      "owner": "studio",
+      "productionStatus": "production-wired",
+      "states": [
+        {
+          "name": "handlers/messageLog",
+          "classification": "intentionally-ephemeral",
+          "source": "route registration and bounded diagnostics"
+        },
+        {
+          "name": "processedIds",
+          "classification": "intentionally-ephemeral",
+          "source": "request-scope protocol deduplication; durable command transitions use StudioEvidenceStore claims"
+        }
+      ]
+    },
+    {
+      "path": "server/src/studio/v2/sync/ProjectSyncManager.ts",
+      "owner": "studio",
+      "productionStatus": "production-wired",
+      "states": [
+        {
+          "name": "versions",
+          "classification": "restart-reconstructible",
+          "source": "durable artifacts"
+        },
+        {
+          "name": "pendingChanges",
+          "classification": "intentionally-ephemeral",
+          "source": "unacknowledged sync request"
+        },
+        {
+          "name": "conflicts",
+          "classification": "intentionally-ephemeral",
+          "source": "current request response only; a durable follow-up is required before restart-safe conflict claims"
+        }
+      ]
+    },
+    {
+      "path": "server/src/studio/StudioBridgeServer.ts",
+      "owner": "studio-legacy",
+      "productionStatus": "scaffold",
+      "states": [
+        {
+          "name": "sessions/handlers/outboundQueue",
+          "classification": "intentionally-ephemeral",
+          "source": "not production-wired"
+        }
+      ]
+    },
+    {
+      "path": "server/src/studio/StudioRealtimeSyncManager.ts",
+      "owner": "studio-legacy",
+      "productionStatus": "scaffold",
+      "states": [
+        {
+          "name": "activeSessions/recentPushes/conflictHistory",
+          "classification": "intentionally-ephemeral",
+          "source": "not production-wired"
+        }
+      ]
+    },
+    {
+      "path": "server/src/studio/StudioSyncEngine.ts",
+      "owner": "studio-legacy",
+      "productionStatus": "scaffold",
+      "states": [
+        {
+          "name": "studioStates",
+          "classification": "intentionally-ephemeral",
+          "source": "not production-wired"
+        }
+      ]
+    },
+    {
+      "path": "server/src/studio/integration/StudioConnectionRegistry.ts",
+      "owner": "studio-legacy",
+      "productionStatus": "scaffold",
+      "states": [
+        {
+          "name": "connections/heartbeats",
+          "classification": "intentionally-ephemeral",
+          "source": "superseded by Studio v2 runtime"
+        }
+      ]
+    },
+    {
+      "path": "server/src/studio/integration/PackageSynchronizer.ts",
+      "owner": "studio-legacy",
+      "productionStatus": "scaffold",
+      "states": [
+        {
+          "name": "previousStates",
+          "classification": "intentionally-ephemeral",
+          "source": "not production-wired"
+        }
+      ]
+    },
+    {
+      "path": "server/src/jobs/JobManager.ts",
+      "owner": "jobs",
+      "productionStatus": "scaffold",
+      "states": [
+        {
+          "name": "jobs",
+          "classification": "intentionally-ephemeral",
+          "source": "current scaffold is process-local; a durable follow-up is required before restart-safe job claims"
+        }
+      ]
+    },
+    {
+      "path": "server/src/jobs/JobQueue.ts",
+      "owner": "jobs",
+      "productionStatus": "scaffold",
+      "states": [
+        {
+          "name": "queue/active",
+          "classification": "intentionally-ephemeral",
+          "source": "process executor handles"
+        }
+      ]
+    },
+    {
+      "path": "server/src/distributed/JobQueueManager.ts",
+      "owner": "distributed",
+      "productionStatus": "compatibility-facade",
+      "states": [
+        {
+          "name": "queue/active/completed",
+          "classification": "intentionally-ephemeral",
+          "source": "current compatibility queue is process-local; a durable follow-up is required before restart-safe queue claims"
+        }
+      ]
+    },
+    {
+      "path": "server/src/distributed/WorkerHealthMonitor.ts",
+      "owner": "distributed",
+      "productionStatus": "production-wired",
+      "states": [
+        {
+          "name": "workers",
+          "classification": "restart-reconstructible",
+          "source": "worker heartbeat"
+        }
+      ]
+    },
+    {
+      "path": "server/src/distributed/DistributedExecutionCoordinator.ts",
+      "owner": "distributed",
+      "productionStatus": "compatibility-facade",
+      "states": [
+        {
+          "name": "coordinator runtime",
+          "classification": "restart-reconstructible",
+          "source": "worker registration and queues"
+        }
+      ]
+    },
+    {
+      "path": "server/src/distributed/execution/ExecutionJobQueue.ts",
+      "owner": "distributed",
+      "productionStatus": "production-wired",
+      "states": [
+        {
+          "name": "queue/active",
+          "classification": "intentionally-ephemeral",
+          "source": "process execution handles"
+        },
+        {
+          "name": "completed/deadLetter",
+          "classification": "intentionally-ephemeral",
+          "source": "current production-wired registry is restart-volatile; a durable follow-up is required before restart-safe job claims"
+        }
+      ]
+    },
+    {
+      "path": "server/src/distributed/execution/ExecutionCoordinator.ts",
+      "owner": "distributed",
+      "productionStatus": "production-wired",
+      "states": [
+        {
+          "name": "workers/health timer",
+          "classification": "restart-reconstructible",
+          "source": "worker registration and startup composition"
+        }
+      ]
+    },
+    {
+      "path": "server/src/providers/ai/ProviderHealthService.ts",
+      "owner": "providers",
+      "productionStatus": "scaffold",
+      "states": [
+        {
+          "name": "health",
+          "classification": "restart-reconstructible",
+          "source": "provider probes"
+        }
+      ]
+    },
+    {
+      "path": "server/src/lifecycle/monitor/GameHealthMonitor.ts",
+      "owner": "lifecycle",
+      "productionStatus": "scaffold",
+      "states": [
+        {
+          "name": "history",
+          "classification": "intentionally-ephemeral",
+          "source": "bounded runtime telemetry"
+        }
+      ]
+    },
+    {
+      "path": "server/src/core/observability/TraceStore.ts",
+      "owner": "observability",
+      "productionStatus": "production-wired",
+      "states": [
+        {
+          "name": "traces/insertionOrder",
+          "classification": "intentionally-ephemeral",
+          "source": "bounded LRU diagnostics; EventStore owns durable audit"
+        }
+      ]
+    },
+    {
+      "path": "server/src/socket/index.ts",
+      "owner": "realtime",
+      "productionStatus": "production-wired",
+      "states": [
+        {
+          "name": "players/projectRooms",
+          "classification": "restart-reconstructible",
+          "source": "Socket.IO reconnect and REST reconciliation"
+        }
+      ]
+    },
+    {
+      "path": "server/src/socket/streaming.ts",
+      "owner": "realtime",
+      "productionStatus": "production-wired",
+      "states": [
+        {
+          "name": "clients/eventBuffer",
+          "classification": "intentionally-ephemeral",
+          "source": "SSE reconnect; REST remains authoritative"
+        }
+      ]
+    },
+    {
+      "path": "server/src/common/middleware/security.ts",
+      "owner": "security",
+      "productionStatus": "production-wired",
+      "states": [
+        {
+          "name": "rate limiter counters",
+          "classification": "intentionally-ephemeral",
+          "source": "default process-local limiter; not cross-process security evidence"
+        }
+      ]
+    }
+  ]
+}
