@@ -6,6 +6,7 @@
  */
 
 import type { PipelineState } from "../../pipeline/v2/PipelineStage";
+import { configurePipelineStoreFactory } from "../../pipeline/v2/store/PipelineStore";
 import type { DurableMutation, StorageProvider } from "./StorageProvider";
 import { InMemoryStorageProvider } from "./StorageProvider";
 import { PostgresStorageProvider } from "./postgres/PostgresStorageProvider";
@@ -125,7 +126,9 @@ export function createStorageProvider(): StorageProvider {
       break;
   }
 
-  return configuredStorageProvider;
+  const provider = configuredStorageProvider;
+  configurePipelineStoreFactory(() => new StoragePipelineStore(provider));
+  return provider;
 }
 
 /**
