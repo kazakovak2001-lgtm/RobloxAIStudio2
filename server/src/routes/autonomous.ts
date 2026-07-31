@@ -26,9 +26,30 @@ export function createAutonomousRouter(
   ): Promise<boolean> => {
     await orchestrator.refresh();
     const session = orchestrator.getSession(sessionId);
-    return !session || !access
-      ? true
-      : access.requireProjectAccess(req, res, session.projectId);
+    if (!session) {
+      res.status(404).json({ success: false, error: "Session not found" });
+      return false;
+    }
+    if (!access) return true;
+    if (!access.hasProjectAccess) {
+      return access.requireProjectAccess(req, res, session.projectId);
+    }
+    if (await access.hasProjectAccess(req, session.projectId)) return true;
+    res.status(404).json({ success: false, error: "Session not found" });
+    return false;
+  };
+  const hasConcealedSessionAccess = async (
+    req: Request,
+    res: Response,
+    projectId: string,
+  ): Promise<boolean> => {
+    if (!access) return true;
+    if (!access.hasProjectAccess) {
+      return access.requireProjectAccess(req, res, projectId);
+    }
+    if (await access.hasProjectAccess(req, projectId)) return true;
+    res.status(404).json({ success: false, error: "Session not found" });
+    return false;
   };
 
   // POST /api/autonomous/run — start bounded preview execution
@@ -41,18 +62,34 @@ export function createAutonomousRouter(
         .json({ success: false, error: "prompt is required (min 5 chars)" });
       return;
     }
+    if (
+      projectId !== undefined &&
+      (typeof projectId !== "string" || projectId.trim().length === 0)
+    ) {
+      res.status(400).json({
+        success: false,
+        error: "projectId must be a non-empty string",
+      });
+      return;
+    }
+    if (access && projectId === undefined) {
+      res.status(400).json({ success: false, error: "projectId is required" });
+      return;
+    }
+
+    const resolvedProjectId =
+      typeof projectId === "string" ? projectId.trim() : `auto-${Date.now()}`;
 
     try {
       if (
         access &&
-        typeof projectId === "string" &&
-        !(await access.requireProjectAccess(req, res, projectId))
+        !(await access.requireProjectAccess(req, res, resolvedProjectId))
       ) {
         return;
       }
       const session = await orchestrator.run(
         prompt.trim(),
-        projectId ?? `auto-${Date.now()}`,
+        resolvedProjectId,
         goals,
       );
 
@@ -82,10 +119,7 @@ export function createAutonomousRouter(
       res.status(404).json({ success: false, error: "Session not found" });
       return;
     }
-    if (
-      access &&
-      !(await access.requireProjectAccess(req, res, session.projectId))
-    ) {
+    if (!(await hasConcealedSessionAccess(req, res, session.projectId))) {
       return;
     }
     res.json({ success: true, data: session });
@@ -116,8 +150,7 @@ export function createAutonomousRouter(
     const session = orchestrator.getSession(req.params.sessionId);
     if (
       session &&
-      access &&
-      !(await access.requireProjectAccess(req, res, session.projectId))
+      !(await hasConcealedSessionAccess(req, res, session.projectId))
     ) {
       return;
     }

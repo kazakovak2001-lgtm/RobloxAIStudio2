@@ -336,4 +336,55 @@ describePostgres("CORE-1b PostgreSQL restart acceptance", () => {
     ).toBe(false);
     expect(foreignResponse.status).toHaveBeenCalledWith(403);
   });
+
+  it("allows one PostgreSQL winner for autonomous recovery and execution claims", async () => {
+    const databaseUrl = process.env.DATABASE_URL;
+    if (!databaseUrl) {
+      throw new Error("DATABASE_URL is required for the PostgreSQL E2E test");
+    }
+
+    await runMigrations();
+    const firstProvider = new PostgresStorageProvider({
+      connectionString: databaseUrl,
+      strict: true,
+    });
+    const secondProvider = new PostgresStorageProvider({
+      connectionString: databaseUrl,
+      strict: true,
+    });
+
+    try {
+      await Promise.all([firstProvider.ready(), secondProvider.ready()]);
+      const suffix = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+      const projectId = `project-claim-race-${suffix}`;
+      const firstStore = new StorageAutonomousSessionStore(firstProvider);
+      const secondStore = new StorageAutonomousSessionStore(secondProvider);
+
+      const recoveryId = `autonomous-recovery-race-${suffix}`;
+      await firstStore.save(createAutonomousRecord(recoveryId, projectId));
+      await secondStore.refresh();
+      const recoveryResults = await Promise.all([
+        firstStore.markInterrupted(),
+        secondStore.markInterrupted(),
+      ]);
+      expect(recoveryResults.sort()).toEqual([0, 1]);
+      expect(firstStore.get(recoveryId)?.session.status).toBe("paused");
+      expect(secondStore.get(recoveryId)?.session.status).toBe("paused");
+
+      const executionId = `autonomous-execution-race-${suffix}`;
+      const execution = createAutonomousRecord(executionId, projectId);
+      execution.session.executionGeneration = 1;
+      await firstStore.save(execution);
+      await secondStore.refresh();
+      const executionResults = await Promise.all([
+        firstStore.claimExecution(execution),
+        secondStore.claimExecution(execution),
+      ]);
+      expect(executionResults.sort()).toEqual([false, true]);
+      expect(firstStore.get(executionId)?.session.executionGeneration).toBe(1);
+      expect(secondStore.get(executionId)?.session.executionGeneration).toBe(1);
+    } finally {
+      await Promise.all([firstProvider.close(), secondProvider.close()]);
+    }
+  });
 });

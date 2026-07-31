@@ -122,6 +122,22 @@ describe("StorageAutonomousSessionStore", () => {
     expect(recreated.get(record.session.id)?.session.cost.totalCost).toBe(0.25);
   });
 
+  it("normalizes legacy sessions without an execution generation", async () => {
+    const storage = new InMemoryStorageProvider();
+    const record = createRecord("session-legacy-generation", "paused");
+    delete (record.session as Partial<OrchestratorSession>).executionGeneration;
+    storage.set("autonomous_runtime_sessions", record.session.id, record);
+
+    const store = new StorageAutonomousSessionStore(storage);
+    expect(store.get(record.session.id)?.session.executionGeneration).toBe(0);
+
+    const resumed = store.get(record.session.id)!;
+    resumed.session.status = "running";
+    resumed.session.executionGeneration += 1;
+    await expect(store.claimExecution(resumed)).resolves.toBe(true);
+    expect(store.get(record.session.id)?.session.executionGeneration).toBe(1);
+  });
+
   it("classifies running state once and preserves checkpoint sequence and cost", async () => {
     const storage = new InMemoryStorageProvider();
     const writer = new StorageAutonomousSessionStore(storage);

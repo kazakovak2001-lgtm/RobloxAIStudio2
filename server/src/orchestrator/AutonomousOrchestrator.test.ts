@@ -58,6 +58,53 @@ describe("AutonomousOrchestrator bounded preview truthfulness", () => {
     expect(sessionStore.readyCalls).toBe(1);
   });
 
+  it("retries startup recovery after a transient durable failure", async () => {
+    class TransientRecoveryStore extends InMemoryAutonomousSessionStore {
+      readyCalls = 0;
+
+      override async ready(): Promise<void> {
+        this.readyCalls += 1;
+        if (this.readyCalls === 1) throw new Error("temporary outage");
+      }
+    }
+
+    const sessionStore = new TransientRecoveryStore();
+    const orchestrator = new AutonomousOrchestrator(undefined, {
+      sessionStore,
+    });
+
+    await expect(orchestrator.ready()).rejects.toThrow("temporary outage");
+    await expect(orchestrator.ready()).resolves.toBeUndefined();
+    expect(sessionStore.readyCalls).toBe(2);
+  });
+
+  it("settles run when the durable record disappears before execution", async () => {
+    class MissingExecutionRecordStore extends InMemoryAutonomousSessionStore {
+      hideNextRead = false;
+
+      override async save(record: AutonomousSessionRecord): Promise<void> {
+        await super.save(record);
+        this.hideNextRead = true;
+      }
+
+      override get(sessionId: string): AutonomousSessionRecord | null {
+        if (this.hideNextRead) {
+          this.hideNextRead = false;
+          return null;
+        }
+        return super.get(sessionId);
+      }
+    }
+
+    const orchestrator = new AutonomousOrchestrator(undefined, {
+      sessionStore: new MissingExecutionRecordStore(),
+    });
+
+    await expect(
+      orchestrator.run("Build a missing-record obby", "project-missing"),
+    ).resolves.toMatchObject({ status: "running" });
+  });
+
   it("hydrates sessions written by another process on refresh", async () => {
     class RemotelyRefreshableStore extends InMemoryAutonomousSessionStore {
       remoteRecord?: AutonomousSessionRecord;

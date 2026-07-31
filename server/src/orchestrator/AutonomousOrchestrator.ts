@@ -65,6 +65,18 @@ interface CheckpointSnapshot {
   cost: CostTracker;
 }
 
+function isTerminalSessionStatus(
+  status: OrchestratorSession["status"],
+): boolean {
+  return [
+    "completed",
+    "preview_completed",
+    "simulated",
+    "cancelled",
+    "failed",
+  ].includes(status);
+}
+
 export class AutonomousOrchestrator {
   private readonly sessions = new Map<string, OrchestratorSession>();
   private readonly contexts = new Map<string, AutonomousPhaseContext>();
@@ -92,7 +104,10 @@ export class AutonomousOrchestrator {
   }
 
   async ready(): Promise<void> {
-    this.readiness ??= this.recoverPersistedSessions();
+    this.readiness ??= this.recoverPersistedSessions().catch((error) => {
+      this.readiness = null;
+      throw error;
+    });
     await this.readiness;
   }
 
@@ -172,7 +187,11 @@ export class AutonomousOrchestrator {
     });
     this.startExecution(sessionId);
     await executionStarted;
-    return this.sessions.get(sessionId)!;
+    const started = this.sessions.get(sessionId);
+    if (!started) {
+      throw new Error(`Autonomous session ${sessionId} failed to start`);
+    }
+    return started;
   }
 
   getSession(sessionId: string): OrchestratorSession | null {
@@ -322,9 +341,15 @@ export class AutonomousOrchestrator {
   }
 
   private async executePhases(sessionId: string): Promise<void> {
-    if (this.activeExecutions.has(sessionId)) return;
+    if (this.activeExecutions.has(sessionId)) {
+      this.signalExecutionStarted(sessionId);
+      return;
+    }
     const record = this.sessionStore.get(sessionId);
-    if (!record) return;
+    if (!record) {
+      this.signalExecutionStarted(sessionId);
+      return;
+    }
     const session = record.session;
     this.activeExecutions.add(sessionId);
 
@@ -889,6 +914,16 @@ export class AutonomousOrchestrator {
       ) {
         record.session.status = acknowledged.session.status;
         record.session.currentPhase = acknowledged.session.currentPhase;
+        return;
+      } else if (
+        acknowledged &&
+        isTerminalSessionStatus(acknowledged.session.status) &&
+        acknowledged.session.status !== snapshot.session.status &&
+        !allowPausedTransition
+      ) {
+        this.replaceSession(record.session, acknowledged.session);
+        record.context = structuredClone(acknowledged.context);
+        record.checkpointSequence = acknowledged.checkpointSequence;
         return;
       }
 

@@ -40,25 +40,26 @@ export class InMemoryAutonomousSessionStore implements AutonomousSessionStore {
   async refresh(): Promise<void> {}
 
   async save(record: AutonomousSessionRecord): Promise<void> {
-    const snapshot = structuredClone(record);
+    const snapshot = normalizeAutonomousSessionRecord(record);
     this.records.set(snapshot.session.id, snapshot);
   }
 
   async claimExecution(record: AutonomousSessionRecord): Promise<boolean> {
-    const claim = `${record.session.id}:${record.session.executionGeneration}`;
+    const normalized = normalizeAutonomousSessionRecord(record);
+    const claim = `${normalized.session.id}:${normalized.session.executionGeneration}`;
     if (this.executionClaims.has(claim)) return false;
     this.executionClaims.add(claim);
-    await this.save(record);
+    await this.save(normalized);
     return true;
   }
 
   get(sessionId: string): AutonomousSessionRecord | null {
     const record = this.records.get(sessionId);
-    return record ? structuredClone(record) : null;
+    return record ? normalizeAutonomousSessionRecord(record) : null;
   }
 
   getAll(): AutonomousSessionRecord[] {
-    return [...this.records.values()].map((record) => structuredClone(record));
+    return [...this.records.values()].map(normalizeAutonomousSessionRecord);
   }
 
   async markInterrupted(): Promise<number> {
@@ -89,4 +90,17 @@ export class InMemoryAutonomousSessionStore implements AutonomousSessionStore {
       session.startedAt
     );
   }
+}
+
+export function normalizeAutonomousSessionRecord(
+  record: AutonomousSessionRecord,
+): AutonomousSessionRecord {
+  const normalized = structuredClone(record);
+  if (
+    !Number.isSafeInteger(normalized.session.executionGeneration) ||
+    normalized.session.executionGeneration < 0
+  ) {
+    normalized.session.executionGeneration = 0;
+  }
+  return normalized;
 }

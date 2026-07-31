@@ -1,6 +1,7 @@
 import type { OrchestratorSession } from "../../orchestrator/OrchestratorTypes";
 import {
   configureAutonomousSessionStoreFactory,
+  normalizeAutonomousSessionRecord,
   type AutonomousSessionRecord,
   type AutonomousSessionStore,
 } from "../../orchestrator/store/AutonomousSessionStore";
@@ -58,7 +59,7 @@ export class StorageAutonomousSessionStore implements AutonomousSessionStore {
   }
 
   async claimExecution(record: AutonomousSessionRecord): Promise<boolean> {
-    const snapshot = structuredClone(record);
+    const snapshot = normalizeAutonomousSessionRecord(record);
     const claimId = `${snapshot.session.id}:${snapshot.session.executionGeneration}`;
     try {
       await this.storage.applyDurableBatch([
@@ -83,6 +84,7 @@ export class StorageAutonomousSessionStore implements AutonomousSessionStore {
       return true;
     } catch (error) {
       if (!(error instanceof DurableStorageConflictError)) throw error;
+      await this.storage.refresh?.([AUTONOMOUS_SESSIONS]);
       this.recoveredSnapshots.delete(snapshot.session.id);
       return false;
     }
@@ -90,22 +92,25 @@ export class StorageAutonomousSessionStore implements AutonomousSessionStore {
 
   get(sessionId: string): AutonomousSessionRecord | null {
     const recovered = this.recoveredSnapshots.get(sessionId);
-    if (recovered) return structuredClone(recovered);
+    if (recovered) return normalizeAutonomousSessionRecord(recovered);
     const record = this.storage.get<AutonomousSessionRecord>(
       AUTONOMOUS_SESSIONS,
       sessionId,
     );
-    return record ? structuredClone(record) : null;
+    return record ? normalizeAutonomousSessionRecord(record) : null;
   }
 
   getAll(): AutonomousSessionRecord[] {
     const records = new Map(
       this.storage
         .list<AutonomousSessionRecord>(AUTONOMOUS_SESSIONS)
-        .map((record) => [record.session.id, structuredClone(record)]),
+        .map((record) => [
+          record.session.id,
+          normalizeAutonomousSessionRecord(record),
+        ]),
     );
     for (const [sessionId, recovered] of this.recoveredSnapshots) {
-      records.set(sessionId, structuredClone(recovered));
+      records.set(sessionId, normalizeAutonomousSessionRecord(recovered));
     }
     return [...records.values()];
   }
@@ -142,7 +147,8 @@ export class StorageAutonomousSessionStore implements AutonomousSessionStore {
         interrupted += 1;
       } catch (error) {
         if (!(error instanceof DurableStorageConflictError)) throw error;
-        this.recoveredSnapshots.set(recovered.session.id, recovered);
+        await this.storage.refresh?.([AUTONOMOUS_SESSIONS]);
+        this.recoveredSnapshots.delete(recovered.session.id);
       }
     }
     return interrupted;

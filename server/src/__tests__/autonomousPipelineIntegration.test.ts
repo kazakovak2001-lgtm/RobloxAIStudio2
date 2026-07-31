@@ -374,8 +374,10 @@ describe("Integration - Concurrent Pipeline Isolation", () => {
           const orchestrator = new AutonomousOrchestrator(emitter);
 
           // Start two concurrent sessions
-          const session1 = await orchestrator.run(prompt1, "project-1");
-          const session2 = await orchestrator.run(prompt2, "project-2");
+          const [session1, session2] = await Promise.all([
+            orchestrator.run(prompt1, "project-1"),
+            orchestrator.run(prompt2, "project-2"),
+          ]);
 
           // IDs must be different
           expect(session1.id).not.toBe(session2.id);
