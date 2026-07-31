@@ -8,6 +8,7 @@ import {
   createPipelineState,
 } from "../PipelineStage";
 import type { PipelineEventData } from "../PipelineEvents";
+import { InMemoryPipelineStore } from "../store/InMemoryPipelineStore";
 
 const mockExecutor = async (
   agentId: string,
@@ -33,6 +34,17 @@ function deferred() {
     resolve = done;
   });
   return { promise, resolve };
+}
+
+class DeferredRecoveryStore extends InMemoryPipelineStore {
+  readonly recovery = deferred();
+  recoveryCalls = 0;
+
+  override async markInterrupted(): Promise<number> {
+    this.recoveryCalls += 1;
+    await this.recovery.promise;
+    return 0;
+  }
 }
 
 describe("PipelineEngine", () => {
@@ -91,6 +103,35 @@ describe("PipelineEngine", () => {
     expect(events.filter((e) => e.type === "stage.completed").length).toBe(
       STAGE_ORDER.length,
     );
+  });
+
+  it("blocks pipeline mutation until startup recovery completes", async () => {
+    const store = new DeferredRecoveryStore();
+    const engine = new PipelineEngine({ store });
+    let executed = false;
+
+    const start = engine.startAsync(
+      "recovery-blocked-project",
+      { name: "Recovery blocked" },
+      async () => {
+        executed = true;
+        return { generated: true };
+      },
+    );
+    await Promise.resolve();
+    await Promise.resolve();
+
+    expect(store.recoveryCalls).toBe(1);
+    expect(engine.runCount).toBe(0);
+    expect(executed).toBe(false);
+
+    store.recovery.resolve();
+    const pipelineId = await start;
+    await Promise.resolve();
+
+    expect(pipelineId).toMatch(/^pipeline-/);
+    expect(engine.runCount).toBe(1);
+    expect(executed).toBe(true);
   });
 
   it("does not publish or execute before start reservation acknowledgement", async () => {
