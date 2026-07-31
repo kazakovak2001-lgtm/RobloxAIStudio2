@@ -1,12 +1,8 @@
 import type {
   DurableStorageOperation,
+  StorageFailureCategory,
   StorageOperationalStatus,
 } from "./StorageProvider";
-
-export type StorageFailureCategory =
-  | "initialization"
-  | "connectivity"
-  | "durable-mutation";
 
 export interface StorageFailureDetails {
   category: StorageFailureCategory;
