@@ -388,13 +388,17 @@ export class PipelineEngine {
     const state = this.store.get(pipelineId);
     if (!state) return null;
 
-    const stage = state.stages.find((candidate) => candidate.name === stageName);
+    const stage = state.stages.find(
+      (candidate) => candidate.name === stageName,
+    );
     if (!stage || stage.status !== "failed") return null;
 
     stage.status = "pending";
     stage.error = undefined;
     stage.output = undefined;
-    state.failedStages = state.failedStages.filter((name) => name !== stageName);
+    state.failedStages = state.failedStages.filter(
+      (name) => name !== stageName,
+    );
     state.status = "running";
 
     const result = await this.executor.execute(
