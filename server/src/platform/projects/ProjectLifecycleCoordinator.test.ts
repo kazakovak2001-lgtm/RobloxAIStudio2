@@ -1,5 +1,11 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import {
+  DurableStorageError,
+  InMemoryStorageProvider,
+  type DurableMutation,
+} from "../storage/StorageProvider";
+import {
+  GenerationOutcomeCoordinator,
   ProjectGenerationStartCoordinator,
   recordProjectOutcomeBestEffort,
 } from "./ProjectLifecycleCoordinator";
@@ -49,6 +55,201 @@ class ControlledProjectRepository {
     return this.generationCount;
   }
 }
+
+class FailingBatchStorage extends InMemoryStorageProvider {
+  override async applyDurableBatch(mutations: readonly DurableMutation[]) {
+    return super.applyDurableBatch([
+      ...mutations,
+      {
+        operation: "set",
+        collection: "invalid",
+        id: "",
+        data: null,
+      },
+    ]);
+  }
+}
+
+async function createOutcomeFixture(
+  storage: InMemoryStorageProvider = new InMemoryStorageProvider(),
+) {
+  await storage.setDurable("projects", "project", {
+    id: "project",
+    generationCount: 1,
+    status: "generating",
+    qualityScore: 40,
+    updatedAt: 10,
+  });
+  await storage.setDurable("generation_executions", "execution", {
+    id: "execution",
+    project_id: "project",
+    blueprint_id: "blueprint",
+    user_id: "user",
+    status: "running",
+    started_at: new Date(100),
+    retry_count: 0,
+    pipeline_steps: [
+      {
+        agent: "builder",
+        status: "completed",
+        evaluation: {
+          qualityScore: 80,
+          status: "passed",
+          issueCount: 0,
+          durationMs: 10,
+        },
+      },
+      {
+        agent: "validator",
+        status: "failed",
+        evaluation: {
+          qualityScore: 60,
+          status: "failed",
+          issueCount: 1,
+          durationMs: 10,
+        },
+      },
+    ],
+  });
+  return {
+    storage,
+    coordinator: new GenerationOutcomeCoordinator(storage),
+  };
+}
+
+describe("GenerationOutcomeCoordinator", () => {
+  it("publishes execution, history and project state in one durable batch", async () => {
+    const { storage, coordinator } = await createOutcomeFixture();
+    const applyBatch = vi.spyOn(storage, "applyDurableBatch");
+
+    await expect(
+      coordinator.commit("execution", {
+        status: "completed",
+        completed_at: new Date(200),
+        total_duration_ms: 100,
+      }),
+    ).resolves.toMatchObject({ status: "completed" });
+
+    expect(applyBatch).toHaveBeenCalledTimes(1);
+    expect(storage.get("generation_executions", "execution")).toMatchObject({
+      status: "completed",
+      total_duration_ms: 100,
+    });
+    expect(storage.get("generation_history", "execution")).toEqual({
+      id: "execution",
+      projectId: "project",
+      pipelineId: "execution",
+      status: "completed",
+      startedAt: 100,
+      finishedAt: 200,
+      duration: 100,
+      stagesCompleted: 1,
+      stagesTotal: 2,
+      failures: 1,
+      tokenUsage: 0,
+      aiCost: 0,
+    });
+    expect(storage.get("projects", "project")).toMatchObject({
+      status: "ready",
+      qualityScore: 70,
+    });
+  });
+
+  it("preserves all prior linked records when staged batch processing fails", async () => {
+    const storage = new FailingBatchStorage();
+    const { coordinator } = await createOutcomeFixture(storage);
+    const priorProject = structuredClone(storage.get("projects", "project"));
+    const priorExecution = structuredClone(
+      storage.get("generation_executions", "execution"),
+    );
+
+    await expect(
+      coordinator.commit("execution", {
+        status: "failed",
+        completed_at: new Date(200),
+      }),
+    ).rejects.toBeInstanceOf(DurableStorageError);
+
+    expect(storage.get("projects", "project")).toEqual(priorProject);
+    expect(storage.get("generation_executions", "execution")).toEqual(
+      priorExecution,
+    );
+    expect(storage.get("generation_history", "execution")).toBeNull();
+  });
+
+  it("treats repeated identical terminal delivery as idempotent", async () => {
+    const { storage, coordinator } = await createOutcomeFixture();
+    const applyBatch = vi.spyOn(storage, "applyDurableBatch");
+    const update = {
+      status: "completed" as const,
+      completed_at: new Date(200),
+      total_duration_ms: 100,
+    };
+
+    await coordinator.commit("execution", update);
+    await coordinator.commit("execution", update);
+
+    expect(applyBatch).toHaveBeenCalledTimes(1);
+  });
+
+  it("enriches a matching terminal redelivery with newer outcome fields", async () => {
+    const { storage, coordinator } = await createOutcomeFixture();
+
+    await coordinator.commit("execution", {
+      status: "failed",
+      completed_at: new Date(200),
+    });
+    await coordinator.commit("execution", {
+      status: "failed",
+      completed_at: new Date(250),
+      total_duration_ms: 150,
+      error_message: "detailed failure",
+    });
+
+    expect(storage.get("generation_executions", "execution")).toMatchObject({
+      status: "failed",
+      total_duration_ms: 150,
+      error_message: "detailed failure",
+    });
+  });
+
+  it("rejects conflicting terminal redelivery without rewriting linked state", async () => {
+    const { storage, coordinator } = await createOutcomeFixture();
+    await coordinator.commit("execution", {
+      status: "completed",
+      completed_at: new Date(200),
+    });
+    const project = structuredClone(storage.get("projects", "project"));
+    const history = structuredClone(
+      storage.get("generation_history", "execution"),
+    );
+
+    await expect(
+      coordinator.commit("execution", { status: "failed" }),
+    ).rejects.toMatchObject({ code: "DURABLE_STORAGE_CONFLICT" });
+    expect(storage.get("projects", "project")).toEqual(project);
+    expect(storage.get("generation_history", "execution")).toEqual(history);
+  });
+
+  it("hydrates persisted ISO dates before finalizing a recovered execution", async () => {
+    const { storage, coordinator } = await createOutcomeFixture();
+    const execution = storage.get<Record<string, unknown>>(
+      "generation_executions",
+      "execution",
+    );
+    storage.set("generation_executions", "execution", {
+      ...execution,
+      started_at: new Date(100).toISOString(),
+    });
+
+    await expect(
+      coordinator.commit("execution", {
+        status: "completed",
+        completed_at: new Date(200),
+      }),
+    ).resolves.toMatchObject({ started_at: new Date(100) });
+  });
+});
 
 describe("ProjectGenerationStartCoordinator", () => {
   it("serializes project bookkeeping before scheduling generation", async () => {

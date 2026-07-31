@@ -248,36 +248,6 @@ export function createGameGenerationRouter(
         res.status(404).json({ success: false, error: "Execution not found" });
         return;
       }
-      const completedSteps = execution.pipeline_steps.filter(
-        (step) => step.status === "completed",
-      ).length;
-      const failedSteps = execution.pipeline_steps.filter(
-        (step) => step.status === "failed",
-      ).length;
-      await generationHistory.record({
-        id: execution.id,
-        projectId: execution.project_id,
-        pipelineId: execution.id,
-        status: execution.status,
-        startedAt: execution.started_at.getTime(),
-        finishedAt: execution.completed_at?.getTime(),
-        duration: execution.total_duration_ms,
-        stagesCompleted: completedSteps,
-        stagesTotal: execution.pipeline_steps.length,
-        failures: failedSteps,
-        tokenUsage: 0,
-        aiCost: 0,
-      });
-      if (execution.status === "completed") {
-        await projectRepository.updateDurable(execution.project_id, {
-          status: "ready",
-          qualityScore: 100,
-        });
-      } else if (execution.status === "failed") {
-        await projectRepository.updateDurable(execution.project_id, {
-          status: "draft",
-        });
-      }
       res.json({ success: true, data: execution });
     } catch (error) {
       res.status(500).json({ success: false, error: "Failed to fetch status" });
