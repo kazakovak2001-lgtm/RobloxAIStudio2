@@ -204,12 +204,8 @@ export class PipelineEngine {
     );
 
     void this.executor
-      .execute(
-        projectId,
-        blueprint,
-        agentExecutor,
-        state,
-        (checkpoint) => this.store.save(checkpoint),
+      .execute(projectId, blueprint, agentExecutor, state, (checkpoint) =>
+        this.store.save(checkpoint),
       )
       .then(async (result) => {
         await this.storeArtifactsFromState(result.state);
