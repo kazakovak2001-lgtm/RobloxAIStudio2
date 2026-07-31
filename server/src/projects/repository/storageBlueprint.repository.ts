@@ -174,6 +174,11 @@ export class StorageBlueprintRepository implements IBlueprintRepository {
       const blueprint = await this.getBlueprint(blueprintId);
       if (!blueprint) throw new Error(`Blueprint ${blueprintId} not found`);
 
+      const activeVersions = this.storage.list<BlueprintVersion>(
+        VERSIONS,
+        (candidate) =>
+          candidate.blueprint_id === blueprintId && candidate.is_active,
+      );
       const version: BlueprintVersion = {
         id: `blueprint-version-${randomUUID()}`,
         blueprint_id: blueprintId,
@@ -184,7 +189,25 @@ export class StorageBlueprintRepository implements IBlueprintRepository {
         change_description: description,
         is_active: true,
       };
-      await this.storage.setDurable(VERSIONS, version.id, version);
+      const mutations: DurableMutation[] = [
+        ...activeVersions.map((activeVersion) => ({
+          operation: "set" as const,
+          collection: VERSIONS,
+          id: activeVersion.id,
+          data: {
+            ...this.hydrateVersion(activeVersion),
+            is_active: false,
+          },
+        })),
+        {
+          operation: "set",
+          collection: VERSIONS,
+          id: version.id,
+          data: version,
+        },
+      ];
+
+      await this.storage.applyDurableBatch(mutations);
       return this.hydrateVersion(version);
     });
   }
@@ -237,7 +260,33 @@ export class StorageBlueprintRepository implements IBlueprintRepository {
         updated_at: new Date(),
         version: Math.max(blueprint.version, versionNumber) + 1,
       } as GameBlueprint);
-      await this.storage.setDurable(BLUEPRINTS, blueprintId, restored);
+      const versions = this.storage.list<BlueprintVersion>(
+        VERSIONS,
+        (candidate) => candidate.blueprint_id === blueprintId,
+      );
+      const markerMutations: DurableMutation[] = versions
+        .filter(
+          (candidate) => candidate.is_active !== (candidate.id === version.id),
+        )
+        .map((candidate) => ({
+          operation: "set" as const,
+          collection: VERSIONS,
+          id: candidate.id,
+          data: {
+            ...this.hydrateVersion(candidate),
+            is_active: candidate.id === version.id,
+          },
+        }));
+
+      await this.storage.applyDurableBatch([
+        ...markerMutations,
+        {
+          operation: "set",
+          collection: BLUEPRINTS,
+          id: blueprintId,
+          data: restored,
+        },
+      ]);
       return restored;
     });
   }
