@@ -29,7 +29,9 @@ function normalizeDate(value: Date | string): Date {
   return value instanceof Date ? value : new Date(value);
 }
 
-function normalizeExecution(execution: GenerationExecution): GenerationExecution {
+function normalizeExecution(
+  execution: GenerationExecution,
+): GenerationExecution {
   return {
     ...execution,
     started_at: normalizeDate(execution.started_at),
@@ -38,7 +40,9 @@ function normalizeExecution(execution: GenerationExecution): GenerationExecution
       : {}),
     pipeline_steps: execution.pipeline_steps.map((step) => ({
       ...step,
-      ...(step.started_at ? { started_at: normalizeDate(step.started_at) } : {}),
+      ...(step.started_at
+        ? { started_at: normalizeDate(step.started_at) }
+        : {}),
       ...(step.completed_at
         ? { completed_at: normalizeDate(step.completed_at) }
         : {}),
