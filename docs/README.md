@@ -10,11 +10,10 @@ This directory documents the backend, standalone Frontend boundary, Roblox Studi
 
 Read these documents first, in this order:
 
-1. [DOC-202A Roadmap Authority Reconciliation](./00-project-control/DOC-202A_ROADMAP_AUTHORITY_RECONCILIATION.md) — exact completion evidence and the transition to `SECURITY-2G`.
-2. [Current Project State](./00-project-control/CURRENT_STATE.md) — current implementation and release facts.
-3. [Roadmap Status](./00-project-control/ROADMAP_STATUS.md) — ordered current delivery status.
-4. [Decision Log](./00-project-control/DECISION_LOG.md) — significant architecture and product decisions.
-5. [Technical Audit v2.0](./02-audits/technical-v2/EXECUTIVE_AUDIT.md) — dated July 28 two-repository evidence baseline.
+1. [Current Project State](./00-project-control/CURRENT_STATE.md) — current implementation and release facts.
+2. [Roadmap Status](./00-project-control/ROADMAP_STATUS.md) — exact completion evidence, ordered current delivery status, and the transition to `SECURITY-2G`.
+3. [Decision Log](./00-project-control/DECISION_LOG.md) — significant architecture and product decisions.
+4. [Technical Audit v2.0](./02-audits/technical-v2/EXECUTIVE_AUDIT.md) — dated July 28 two-repository evidence baseline.
 
 When an older report conflicts with the current project-control documents, the project-control documents win. The TECH-AUDIT-2 roadmap and sprint backlog are historical planning baselines, not current execution authority.
 
