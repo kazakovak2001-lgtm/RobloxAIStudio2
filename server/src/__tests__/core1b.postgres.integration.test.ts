@@ -1,9 +1,13 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { Request, Response } from "express";
 import { AuthService } from "../platform/auth/AuthService";
+import {
+  StoragePipelineStore,
+} from "../platform/storage/StorageFactory";
 import { PostgresStorageProvider } from "../platform/storage/postgres/PostgresStorageProvider";
 import { runMigrations } from "../platform/storage/postgres/migrationRunner";
 import { ArtifactStore } from "../pipeline/v2/ArtifactStore";
+import { createPipelineState } from "../pipeline/v2/PipelineStage";
 import { StorageBlueprintRepository } from "../projects/repository/storageBlueprint.repository";
 import type {
   CreateBlueprintInput,
@@ -61,7 +65,7 @@ describePostgres("CORE-1b PostgreSQL restart acceptance", () => {
     }
   });
 
-  it("restores owned projects, blueprints, executions, artifacts, chat, and sessions", async () => {
+  it("restores owned projects, blueprints, executions, artifacts, chat, pipelines, and sessions", async () => {
     const databaseUrl = process.env.DATABASE_URL;
     if (!databaseUrl) {
       throw new Error("DATABASE_URL is required for the PostgreSQL E2E test");
@@ -185,6 +189,19 @@ describePostgres("CORE-1b PostgreSQL restart acceptance", () => {
       content: "Persistence checkpoint recorded.",
     });
 
+    const pipelinesBeforeRestart = new StoragePipelineStore(firstProvider);
+    const runningPipeline = createPipelineState(project.id);
+    runningPipeline.status = "running";
+    runningPipeline.currentStage = "GAME_DESIGN";
+    const runningStage = runningPipeline.stages.find(
+      (stage) => stage.name === "GAME_DESIGN",
+    );
+    if (!runningStage) {
+      throw new Error("GAME_DESIGN stage missing from pipeline state");
+    }
+    runningStage.status = "running";
+    await pipelinesBeforeRestart.save(runningPipeline);
+
     await firstProvider.flush();
     await firstProvider.close();
     activeProvider = null;
@@ -206,6 +223,7 @@ describePostgres("CORE-1b PostgreSQL restart acceptance", () => {
     );
     const artifactsAfterRestart = new ArtifactStore(secondProvider);
     const chatAfterRestart = new ChatPersistenceService(secondProvider);
+    const pipelinesAfterRestart = new StoragePipelineStore(secondProvider);
 
     expect((await authAfterRestart.validateToken(ownerToken))?.userId).toBe(
       ownerId,
@@ -233,6 +251,28 @@ describePostgres("CORE-1b PostgreSQL restart acceptance", () => {
     expect(
       chatAfterRestart.getConversation(firstMessage.conversationId)?.messages,
     ).toHaveLength(2);
+
+    expect(pipelinesAfterRestart.get(runningPipeline.pipelineId)?.status).toBe(
+      "running",
+    );
+    await expect(pipelinesAfterRestart.markInterrupted()).resolves.toBe(1);
+    await expect(pipelinesAfterRestart.markInterrupted()).resolves.toBe(0);
+    expect(
+      pipelinesAfterRestart.get(runningPipeline.pipelineId),
+    ).toMatchObject({
+      status: "failed",
+      currentStage: null,
+      failedStages: ["GAME_DESIGN"],
+    });
+    expect(
+      pipelinesAfterRestart
+        .get(runningPipeline.pipelineId)
+        ?.stages.find((stage) => stage.name === "GAME_DESIGN"),
+    ).toMatchObject({
+      status: "failed",
+      error: "Interrupted: server restart",
+      completedAt: expect.any(Number),
+    });
 
     const ownerResponse = response();
     expect(
