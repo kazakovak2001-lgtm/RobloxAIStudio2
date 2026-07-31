@@ -218,3 +218,269 @@
     "archivalDeploymentFiles": [
       "Dockerfile",
       "deploy/docker-compose.yml",
+      "deploy/nginx.conf"
+    ],
+    "separateInfrastructureFiles": [
+      {
+        "path": "docker-compose.yml",
+        "classification": "postgres-development-only-do-not-delete-with-frontend-stack"
+      }
+    ],
+    "trackedInventoryFiles": [
+      "_inventory_raw.txt",
+      "ProjectStructure.txt",
+      "project_structure.txt"
+    ],
+    "knownMissingPaths": [
+      {
+        "path": "public",
+        "referencedBy": "Dockerfile",
+        "classification": "broken-archival-combined-build-input"
+      },
+      {
+        "path": "vite.config.js",
+        "referencedBy": "stale repository inventories",
+        "classification": "historical-generated-residue-already-absent"
+      },
+      {
+        "path": "vite.config.d.ts",
+        "referencedBy": "stale repository inventories",
+        "classification": "historical-generated-residue-already-absent"
+      },
+      {
+        "path": "tsconfig.tsbuildinfo",
+        "referencedBy": "stale repository inventories",
+        "classification": "historical-generated-residue-already-absent"
+      }
+    ]
+  },
+  "historicalImplementationChangePolicy": {
+    "requiredModifiedFiles": [
+      ".github/workflows/ci.yml",
+      ".eslintrc.json",
+      ".gitignore",
+      "ProjectStructure.txt",
+      "_inventory_raw.txt",
+      "config/cleanup/legacy-frontend-decommission.inventory.json",
+      "docs/00-project-control/CURRENT_STATE.md",
+      "docs/00-project-control/DECISION_LOG.md",
+      "docs/00-project-control/FRONTEND_CUTOVER.md",
+      "docs/00-project-control/ROADMAP_STATUS.md",
+      "AI_DEVELOPMENT_GOVERNANCE.md",
+      "eslint.config.js",
+      "project_structure.txt",
+      "repository_manifest.json",
+      "scripts/cleanup/audit-legacy-frontend-decommission.mjs",
+      "scripts/git-boundary-guard.js",
+      "scripts/validate-architecture.ts",
+      "server/src/agents/implementations/CodeReviewControllerAgent.ts",
+      "server/src/core/ai/GenerationSandbox.ts",
+      "server/src/core/architecture/ArchitecturePolicy.ts",
+      "server/src/core/architecture/BoundaryValidator.ts",
+      "server/src/core/architecture/RuntimeBoundaryGuard.ts",
+      "server/src/knowledge/CodebaseKnowledge.ts"
+    ],
+    "requiredAddedFiles": [
+      "docs/project/CLEANUP-1D_POST_REMOVAL_VERIFICATION.md",
+      "scripts/cleanup/generate-tracked-inventories.mjs",
+      "server/src/core/architecture/__tests__/cleanup1d.post-removal.test.ts"
+    ],
+    "requiredDeletedFiles": [],
+    "protectedUnchangedFiles": [
+      "architecture.manifest.json",
+      "config/testing/vitest.backend.config.ts",
+      "docker-compose.yml",
+      "package.json",
+      "package-lock.json",
+      "server/src/integration/ProductionAuditService.ts",
+      "docs/project/CLEANUP-1B_TOOLING_DECOUPLING.md",
+      "docs/project/CLEANUP-1C_PHYSICAL_REMOVAL.md",
+      "scripts/validate-boundaries.ts",
+      "server/src/core/architecture/ImportBoundaryValidator.ts"
+    ]
+  },
+  "toolingContract": {
+    "packageScripts": {
+      "dev": "npm run dev:server",
+      "build": "npm run build:server",
+      "preview": "npm run start",
+      "typecheck": "node node_modules/typescript/bin/tsc --noEmit --project server/tsconfig.json",
+      "test": "node node_modules/vitest/vitest.mjs --config config/testing/vitest.backend.config.ts run",
+      "test:watch": "node node_modules/vitest/vitest.mjs --config config/testing/vitest.backend.config.ts",
+      "test:postgres": "node node_modules/vitest/vitest.mjs --config config/testing/vitest.backend.config.ts run server/src/__tests__/core1b.postgres.integration.test.ts",
+      "lint": "node node_modules/eslint/bin/eslint.js server/src scripts config/testing --ext .ts --max-warnings 0"
+    },
+    "vitestBackendConfig": {
+      "path": "config/testing/vitest.backend.config.ts",
+      "include": ["server/src/**/*.test.ts", "server/src/**/*.spec.ts"],
+      "forbiddenMarkers": [
+        "@vitejs/plugin-react",
+        "vite.config.ts",
+        "\"src/",
+        "'src/"
+      ]
+    },
+    "productionAudit": {
+      "path": "server/src/integration/ProductionAuditService.ts",
+      "requiredMarkers": [
+        "studio-plugin/src",
+        "Canonical Studio plugin source"
+      ],
+      "forbiddenMarkers": ["src/shared", "Shared contracts"]
+    },
+    "architectureValidatorRequiredMarkers": [
+      "Architecture Boundary Validator v5 — Post-Removal Backend + Studio Model",
+      "Canonical web client: kazakovak2001-lgtm/Frontend",
+      "Removed legacy root src/: forbidden to reintroduce",
+      "Removed legacy frontend root reintroduced",
+      "Architecture Model: BACKEND + STANDALONE FRONTEND"
+    ],
+    "architectureValidatorForbiddenMarkers": [
+      "FROZEN INVENTORY",
+      "frozen root src",
+      "Dual-Root Model",
+      "collectTsFiles(join(ROOT, \"src\"))",
+      "Architecture Model: MONOREPO DUAL-ROOT"
+    ],
+    "ciRequiredMarkers": [
+      "- run: npm run typecheck",
+      "run: npm run test:postgres",
+      "name: Post-Removal Invariant Guard",
+      "LEGACY_FRONTEND_AUDIT_OUTPUT: artifacts/post-removal-invariants",
+      "name: post-removal-invariant-audit",
+      "name: Promoted Baseline Integrity"
+    ],
+    "ciForbiddenMarkers": [
+      "- run: npx tsc --noEmit",
+      "npx vitest run server/src/__tests__/core1b.postgres.integration.test.ts",
+      "LEGACY_FRONTEND_AUDIT_OUTPUT: artifacts/cleanup-1a",
+      "LEGACY_FRONTEND_AUDIT_OUTPUT: artifacts/cleanup-1b",
+      "LEGACY_FRONTEND_AUDIT_OUTPUT: artifacts/cleanup-1d",
+      "name: cleanup-1b-tooling-decoupling",
+      "name: cleanup-1c-physical-removal",
+      "name: cleanup-1d-post-removal-verification"
+    ]
+  },
+  "referencePolicy": {
+    "activeAndToolingRoots": [
+      ".github/workflows",
+      "config",
+      "scripts",
+      "server/src",
+      "AI_DEVELOPMENT_GOVERNANCE.md",
+      ".eslintrc.json",
+      ".gitignore",
+      "eslint.config.js",
+      "repository_manifest.json",
+      "package.json"
+    ],
+    "intentionalExactReferenceFiles": [
+      "config/cleanup/legacy-frontend-decommission.inventory.json",
+      "config/cutover/release-baseline.inventory.json"
+    ],
+    "classificationRules": {
+      "historical": [
+        ".kiro/specs/",
+        "FINAL_V1_RELEASE_SIGN_OFF.md",
+        "RELEASE_HARDENING_REPORT.md",
+        "docs/",
+        "reports/",
+        "specs/"
+      ],
+      "negativeGuard": [
+        ".eslintrc.json",
+        ".gitignore",
+        ".github/workflows/",
+        "AI_DEVELOPMENT_GOVERNANCE.md",
+        "Dockerfile.backend",
+        "config/cleanup/",
+        "config/cutover/",
+        "eslint.config.js",
+        "scripts/cleanup/",
+        "scripts/git-boundary-guard.js",
+        "scripts/validate-architecture.ts",
+        "server/src/core/architecture/ArchitecturePolicy.ts",
+        "server/src/core/architecture/__tests__/"
+      ],
+      "studioRelative": [
+        "studio-plugin/",
+        "scripts/package-studio-plugin.ts",
+        "server/src/__tests__/studio1.plugin"
+      ],
+      "robloxArtifactRelative": [
+        "server/src/generation/export/RobloxExportBuilder.ts"
+      ],
+      "backendRelative": ["server/tsconfig.json"],
+      "dependencyPackageRelative": ["package-lock.json"]
+    }
+  },
+  "packageDisposition": {
+    "retainOperational": [
+      {
+        "name": "socket.io-client",
+        "expectedConsumersOutsideLegacyRoot": [
+          "scripts/cutover/verify-composed-release.mjs"
+        ],
+        "reason": "required by composed HTTPS release Socket.IO verification"
+      }
+    ],
+    "removedRuntimeDirectPackages": [
+      "framer-motion",
+      "lucide-react",
+      "react",
+      "react-dom",
+      "react-router-dom"
+    ],
+    "removedDevelopmentDirectPackages": [
+      "@types/react",
+      "@types/react-dom",
+      "@vitejs/plugin-react",
+      "autoprefixer",
+      "postcss",
+      "tailwindcss",
+      "vite"
+    ]
+  },
+  "removalWaves": [
+    {
+      "id": "CLEANUP-1B",
+      "name": "tooling-decoupling",
+      "status": "complete",
+      "deletionAuthorized": false,
+      "actions": [
+        "remove root frontend compilation from protected TypeScript checks",
+        "convert root dev/build/typecheck scripts to backend and repository operations",
+        "replace dual-root architecture reporting with backend plus standalone Frontend topology",
+        "preserve every legacy source, configuration, deployment and dependency file"
+      ]
+    },
+    {
+      "id": "CLEANUP-1C",
+      "name": "physical-removal-and-dependency-pruning",
+      "status": "complete",
+      "deletionAuthorized": true,
+      "prerequisite": "CLEANUP-1B verified and merged",
+      "actions": [
+        "delete root src and legacy entry/config files",
+        "delete archival combined frontend deployment files",
+        "delete generated frontend residue",
+        "prune only packages proven legacy-only and update package-lock.json",
+        "retain or deliberately relocate active operational consumers"
+      ]
+    },
+    {
+      "id": "CLEANUP-1D",
+      "name": "post-removal-verification",
+      "status": "complete",
+      "deletionAuthorized": false,
+      "prerequisite": "CLEANUP-1C verified and merged",
+      "actions": [
+        "prove zero active and tooling references to removed frontend paths",
+        "verify backend, Studio, composed release and rollback gates",
+        "refresh repository inventories and project-control documentation"
+      ]
+    }
+  ],
+  "cleanupSequenceStatus": "complete",
+  "nextStage": "TECH-AUDIT-2"
+}
