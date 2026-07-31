@@ -1,8 +1,8 @@
 # Current Project State
 
-**Last Updated**: July 28, 2026
-**Phase**: HARDEN-2A complete — ARCH-2B is next
-**Build Status**: SEC-201 merged through backend PR #46 as `7e98aba28911a20ff942e04ba5eaa51448c34b0c`. FE-201 merged through Frontend PR #14 as `2aab7c3367bb55520edc2576422ebafec265d7c6`. Frontend PR #16 merged its protected INT-201 gate as `739b43cbc5f991c1852e80b30fe38c0e7c02d681`. Backend PR #48 completed the reciprocal gate as `b30be04ce3c5458902561472d371f753b28f08c5`; post-merge CI run #307 passed 40/40 production checks, the composed HTTPS release, rollback, post-removal invariants, and Merge Gate. Contract artifact `8684538568` has digest `sha256:0babbaf1239615e15479a4adbbcc5f5745965632fb3417c06bc2ee9a70c3c0a9`. DOC-201 issue #49 then synchronized active auth/release authority and added a protected terminology/supersession guard without changing runtime behavior.
+**Last Updated**: July 31, 2026
+**Phase**: DATA-202 complete — REL-202 release-evidence closeout
+**Build Status**: DATA-202A, DATA-202B and DATA-202C are merged into the protected default `release/cutover-1e-candidate` at `a33a8c30588f1e4705d27856e61d839c8efd42ac`. Exact source head `010532f0b162097c8a645b1dc07c89081d25cb99` passed CI Pipeline #1073, including 829 backend tests, PostgreSQL restart, backend image, the 40/40 Frontend production contract, composed HTTPS release, promoted-baseline integrity, post-removal invariants and Merge Gate. The paired Frontend contents remain `9495b696cf22c84cf61375f7df22e5ac5907cc3c`. This proves the release composition; it does not claim an external production deployment.
 
 ---
 
@@ -11,12 +11,12 @@
 ### Backend
 
 - **Server**: Express + Socket.io (Node.js/TypeScript)
-- **Files**: 610 TypeScript files under `server/src`: 547 production files and 63 test files across 46 real top-level subsystems
+- **Files**: 635 TypeScript files under `server/src`: 555 production files and 80 test files across 46 real top-level subsystems
 - **API Routes**: 30 unique mounted `/api` prefixes (`/api/projects` mounts two routers), plus health and root endpoints
 - **AI Providers**: 6 configurable modes (OpenAI, Anthropic, Gemini, Groq, Ollama, OpenRouter), plus no-provider stub behavior and test mocks
 - **Storage**: One configured provider per process; PostgreSQL migrations and cache hydration complete before the server listens. `STORAGE_PROVIDER=postgres` requires `DATABASE_URL`.
-- **Durable records**: identities, sessions, users, projects, generation history, API keys, blueprints, blueprint versions, generation executions, pipeline artifacts, conversations, and conversation messages use the configured storage boundary.
-- **Studio runtime**: project sync, plugin registration, active sessions, artifact snapshots, transfer, the outbound command ledger, acknowledgement/result processing, and exact artifact ID/hash verification use one shared Studio v2 runtime. Project sync selects the newest completed artifact-bearing execution and never creates placeholder Lua/config packages. Queue delivery alone never marks an import verified.
+- **Durable records**: identities, sessions, users, projects, generation history, API keys, blueprints, blueprint versions, generation executions, pipeline artifacts and lifecycle state, autonomous sessions/checkpoints, Studio command/verification evidence, conversations, and conversation messages use the configured storage boundary.
+- **Studio runtime**: project sync, plugin registration, artifact snapshots, transfer, the outbound command lifecycle, acknowledgement/result processing, and exact artifact ID/hash verification use one shared Studio v2 runtime. Serializable command and verification evidence is provider-backed; live clients, sockets, timers and callbacks remain explicitly process-local. Project sync selects the newest completed artifact-bearing execution and never creates placeholder Lua/config packages. Queue delivery alone never marks an import verified.
 - **Generation-to-Studio boundary**: the existing `GenerationArtifactRecorder` preserves canonical `scripts[]` payloads and normalizes current `LuaGeneratorAgent` server/client/shared/module `{ name, code }` groups into validated Studio `{ path, content }` scripts. Empty, malformed, and duplicate-path Lua output is rejected before queueing.
 - **Canonical Studio plugin**: `studio-plugin/` v1.8 reuses the existing connector, lifecycle manager, sync manager, artifact loader, events, and UI. It connects with the exact backend project ID, polls `EXPORT_PROJECT`, acknowledges delivery, materializes structured Lua scripts and non-Lua metadata as Roblox instances, reports one exact ID/hash receipt per pipeline artifact, and shows Verified only after the backend accepts the evidence. Roblox-owned JSON content type is provided through `Enum.HttpContentType.ApplicationJson`; the plugin does not submit a forbidden custom `Content-Type` header.
 - **Studio plugin package**: `npm run studio:package` creates a deterministic installable `.rbxmx`, a source/bundle manifest, and SHA-256 checksums from an explicit active-module allowlist. The dedicated package workflow validates XML structure and checksums before uploading the desktop acceptance artifact.
@@ -29,7 +29,7 @@
 - **Repository**: [kazakovak2001-lgtm/Frontend](https://github.com/kazakovak2001-lgtm/Frontend) on `main`
 - **Acceptance commit**: `a8d005d433d48e18d8e64ac176ee63c9c694b644`, independently matched to the ZIP used during the successful STUDIO-1 session.
 - **Initial SSR release commit**: `1036c3ef9705d145cb9700cd14268a33d2abdd58`, merged through Frontend PR #12 after CI run #65 verified the production image, `/health`, SSR `/`, responsive QA, and Merge Gate.
-- **Active release commit**: `739b43cbc5f991c1852e80b30fe38c0e7c02d681`, merged through Frontend PR #16. It includes FE-201 and the protected Frontend INT-201 job; post-merge CI run #72 passed 12 native tests, the production image, responsive QA, 40/40 production checks, and Merge Gate.
+- **Active release contents**: `9495b696cf22c84cf61375f7df22e5ac5907cc3c`, merged through Frontend PR #25 as `3ae8295c33ed743e54b8dc9e16d2484139e6d264`. The merge commit has zero file differences from the pinned contents. Backend CI #1073 rebuilt this exact Frontend source and passed the 40/40 production contract and composed HTTPS release.
 - **Framework**: React 19 + TypeScript + Vite + Tailwind CSS
 - **Routing and state**: TanStack Router/Query, typed backend adapter, Socket.IO realtime client
 - **Ownership**: All new user-facing web functionality belongs in the standalone repository.
@@ -43,6 +43,11 @@
 - **Guard**: The cleanup audit requires the exact removal diff and the architecture validator fails if root `src/` is reintroduced.
 
 ### TECH-AUDIT-2 Evidence Baseline
+
+The TECH-AUDIT-2 figures below are the dated July 28 audit baseline, not the
+current DATA-202 release counts. Current release evidence is 80 passing backend
+test files / 829 passing tests, one skipped file / two skipped PostgreSQL-gated
+tests locally, plus a green protected PostgreSQL Restart E2E job.
 
 - Backend: 61 passing test files, 672 passing tests, one skipped test file/test; typecheck, lint, format, build, PostgreSQL restart, release image, composed HTTPS, rollback, and cleanup invariant gates pass.
 - Frontend: TypeScript, production build, SSR image, responsive QA, and 12 native Workspace tests pass. The exact 40-check production-mode integration suite is protected by Frontend Merge Gate and records both repository SHAs plus runtime evidence.
@@ -102,6 +107,10 @@ See [Technical Audit v2.0](../02-audits/technical-v2/EXECUTIVE_AUDIT.md) for the
 | FE-201            | Real Studio verification in the canonical Workspace      | July 28, 2026 |
 | INT-201           | Reciprocal protected 40-check production contract        | July 28, 2026 |
 | DOC-201           | Active auth/release authority and terminology guard      | July 28, 2026 |
+| DATA-201          | Durable write cutover and compatibility-write removal    | July 31, 2026 |
+| DATA-202A         | Pipeline lifecycle persistence and restart truthfulness  | July 31, 2026 |
+| DATA-202B         | Autonomous session/checkpoint persistence                | July 31, 2026 |
+| DATA-202C         | Studio evidence persistence and runtime ownership audit  | July 31, 2026 |
 
 ---
 
@@ -217,8 +226,8 @@ This template enforces:
 
 - **Backend release image**: `Dockerfile.backend` builds and starts the compiled backend without root `src/`, `public/`, Vite, or Tailwind inputs; CI verifies `GET /health`.
 - **Backend/PostgreSQL composition**: `deploy/docker-compose.backend.yml` provides the independently verified backend and persistent database boundary.
-- **Standalone Frontend release image**: active Frontend commit `739b43cbc5f991c1852e80b30fe38c0e7c02d681` packages `.output` plus one shared worker-to-Node adapter as a non-root SSR process.
-- **Composed HTTPS release**: backend merge `b30be04ce3c5458902561472d371f753b28f08c5` and exact Frontend commit `739b43cbc5f991c1852e80b30fe38c0e7c02d681` passed post-merge CI run `30350138128` (#307). The release checks proved healthy PostgreSQL/backend/frontend/proxy services, HTTPS SSR and health, allowed/rejected production origins, credential-free auth responses, `Secure`/`HttpOnly`/`SameSite=Lax` host-only cookies with scoped paths, refresh rotation/replay rejection, authenticated REST, unauthenticated Socket.IO rejection, authenticated polling → WebSocket upgrade, and the exact 40-check cross-user contract.
+- **Standalone Frontend release image**: active Frontend contents `9495b696cf22c84cf61375f7df22e5ac5907cc3c` package `.output` plus one shared worker-to-Node adapter as a non-root SSR process.
+- **Composed HTTPS release**: backend source `010532f0b162097c8a645b1dc07c89081d25cb99` and exact Frontend contents `9495b696cf22c84cf61375f7df22e5ac5907cc3c` passed CI Pipeline #1073 (`30667404383`). The promoted backend merge `a33a8c30588f1e4705d27856e61d839c8efd42ac` has the same file tree. The checks proved healthy PostgreSQL/backend/frontend/proxy services, HTTPS SSR and health, production origin enforcement, authenticated transports, the 40/40 cross-repository contract, rollback integrity and post-removal invariants. External deployment remains a separate unchecked operation.
 - **Migration Runner**: `server/src/platform/storage/postgres/migrationRunner.ts` — auto-applies pending migrations on startup (skips when STORAGE_PROVIDER=inmemory).
 - **Rollback inventory**: CUTOVER-1A and CUTOVER-1B remain independently deployable and are unaffected by removal of the non-executable combined stack. The deleted legacy source/configuration/deployment inventory remains recoverable by reverting the focused CLEANUP-1C change from baseline `85a2fa8d512738e6d02ffae42da77af7a27db6fc`. The promoted default and pinned pre-promotion rollback reference remain protected.
 - **Backup Script**: `scripts/backup-database.sh` — timestamped pg_dump with configurable retention
@@ -228,6 +237,8 @@ This template enforces:
 
 ## Last Changes
 
+- July 31, 2026: DATA-202 completed through pipeline persistence (PR #137), autonomous session/checkpoint persistence (PR #139), and Studio operational evidence plus runtime ownership classification (PR #141). The final protected source head `010532f0b162097c8a645b1dc07c89081d25cb99` passed CI Pipeline #1073 and merged as `a33a8c30588f1e4705d27856e61d839c8efd42ac`. Compatibility-write inventory remains zero; 23 operational runtime owners are explicitly classified. The exact Frontend contents remain `9495b696cf22c84cf61375f7df22e5ac5907cc3c`.
+- July 31, 2026: REL-202 records the current DATA-202 release candidate, immutable CI artifact digests, preserved rollback reference and the boundary between verified CI composition and an unperformed external deployment. Issue #142 tracks the documentation-only closeout.
 - July 28, 2026: HARDEN-2A / DOC-201 synchronized the active authentication and two-repository deployment guides, linked their claims to native/composed/protected evidence, annotated the conflicting July 16 decision records as superseded, and expanded the auth-contract test into a search-based authority guard. Issue #49 tracks the focused documentation-only implementation.
 - July 28, 2026: HARDEN-2A / INT-201 completed in both repositories. Frontend PR #16 merged as `739b43cbc5f991c1852e80b30fe38c0e7c02d681`; backend PR #48 merged as `b30be04ce3c5458902561472d371f753b28f08c5` after its CodeRabbit supply-chain finding was fixed with read-only job permissions, non-persisted checkout credentials, and a single inventory-backed Frontend pin. Backend post-merge run #307 passed all protected jobs and 40/40 production checks. Contract artifact `8684538568` has digest `sha256:0babbaf1239615e15479a4adbbcc5f5745965632fb3417c06bc2ee9a70c3c0a9`.
 - July 28, 2026: HARDEN-2A / FE-201 merged through Frontend PR #14 as `2aab7c3367bb55520edc2576422ebafec265d7c6`. The Workspace now parses and renders verified, pending, failed, malformed, and disconnected Studio status instead of hardcoding verification false.

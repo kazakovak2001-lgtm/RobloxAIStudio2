@@ -1,6 +1,6 @@
 # Production Deployment Checklist
 
-**Last updated:** July 28, 2026
+**Last updated:** July 31, 2026
 
 **Status:** Active two-repository release checklist
 
@@ -86,7 +86,8 @@ v1 reports are not current deployment proof.
       credentials, or provider keys.
 - [ ] Shutdown gives the configured provider an opportunity to flush accepted
       writes.
-- [ ] Request-level durability limitations remain tracked under DATA-201.
+- [ ] Compatibility writes remain at zero and the DATA-202 operational-state
+      ownership inventory matches the deployed source.
 
 ## Protected evidence
 
@@ -110,21 +111,33 @@ The canonical executable checks are:
 - [`.github/workflows/ci.yml`](../.github/workflows/ci.yml);
 - Frontend `scripts/e2e-backend.mjs` at the exact pinned Frontend commit.
 
-## Current verified pair
+## Current verified DATA-202 release candidate
 
-The INT-201 post-merge baseline is:
+The current protected release evidence is:
 
-| Field             | Value                                                                                                 |
-| ----------------- | ----------------------------------------------------------------------------------------------------- |
-| Backend           | `b30be04ce3c5458902561472d371f753b28f08c5`                                                            |
-| Frontend          | `739b43cbc5f991c1852e80b30fe38c0e7c02d681`                                                            |
-| Workflow          | [backend CI run #307](https://github.com/kazakovak2001-lgtm/RobloxAIStudio2/actions/runs/30350138128) |
-| Contract artifact | `8684538568`                                                                                          |
-| Contract digest   | `sha256:0babbaf1239615e15479a4adbbcc5f5745965632fb3417c06bc2ee9a70c3c0a9`                             |
-| Result            | 40/40 checks and Merge Gate passed                                                                    |
+| Field                        | Value                                                                                              |
+| ---------------------------- | -------------------------------------------------------------------------------------------------- |
+| Promoted backend merge       | `a33a8c30588f1e4705d27856e61d839c8efd42ac`                                                         |
+| Validated backend source     | `010532f0b162097c8a645b1dc07c89081d25cb99`                                                         |
+| Frontend contents            | `9495b696cf22c84cf61375f7df22e5ac5907cc3c`                                                         |
+| Workflow                     | [backend CI #1073](https://github.com/kazakovak2001-lgtm/RobloxAIStudio2/actions/runs/30667404383) |
+| Contract artifact            | `8807497716`                                                                                       |
+| Contract artifact digest     | `sha256:abb2794feaa4290c9acc1570dc9890888bf8dc26807a11db68ada1196748b3b0`                          |
+| HTTPS composition artifact   | `8807508318`                                                                                       |
+| HTTPS composition digest     | `sha256:447e3b0f46d4299c0c54e1a2c499e1f855d33161ea45b4e88574a1a51563f64e`                          |
+| Promotion integrity artifact | `8807532441`                                                                                       |
+| Promotion integrity digest   | `sha256:c1d5310a7d03f7fbace0af0de6d044c2383068af4b48c4ef40de6f4cc31ad034`                          |
+| Result                       | 40/40 contract checks and every protected backend release gate passed                              |
 
-This table records verified evidence; the active Frontend pin remains the JSON
-inventory field above.
+The promoted backend merge is one merge-only commit ahead of the validated
+source and has zero file changes. Frontend `main` is likewise one merge-only
+commit ahead of the pinned contents with zero file changes. The active Frontend
+pin remains the JSON inventory field above.
+
+This is CI release-composition evidence, not evidence of an external production
+deployment. Database backup, image publication, remote TLS/host configuration,
+and post-deployment smoke checks remain unchecked until they run against the
+real target environment.
 
 ## Release and rollback
 

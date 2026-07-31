@@ -4,6 +4,43 @@ All significant architectural and product decisions are recorded here.
 
 ---
 
+## 2026-07-31 — REL-202 DATA-202 Release Evidence Closeout
+
+**Decision**: Treat the already promoted
+`release/cutover-1e-candidate` branch as the canonical backend release
+reference and record the DATA-202 pair without performing a second branch
+promotion. The current promoted merge is
+`a33a8c30588f1e4705d27856e61d839c8efd42ac`; its file tree matches validated
+source head `010532f0b162097c8a645b1dc07c89081d25cb99`. The canonical Frontend contents
+remain `9495b696cf22c84cf61375f7df22e5ac5907cc3c`.
+
+**Evidence**: CI Pipeline #1073 (`30667404383`) passed the full protected chain,
+including PostgreSQL Restart E2E, backend image, 40/40 Frontend production
+contract, composed HTTPS release, promoted-baseline integrity, rollback
+rehearsal, post-removal invariants and Merge Gate. The contract artifact is
+`8807497716` with digest
+`sha256:abb2794feaa4290c9acc1570dc9890888bf8dc26807a11db68ada1196748b3b0`;
+the composition artifact is `8807508318` with digest
+`sha256:447e3b0f46d4299c0c54e1a2c499e1f855d33161ea45b4e88574a1a51563f64e`;
+the promotion-integrity artifact is `8807532441` with digest
+`sha256:c1d5310a7d03f7fbace0af0de6d044c2383068af4b48c4ef40de6f4cc31ad034`.
+
+**Deployment boundary**: These artifacts prove the exact CI release
+composition. They do not prove external image publication, production database
+backup, remote TLS/host configuration, or post-deployment smoke checks. Those
+production checklist items remain unchecked until executed against the target
+environment.
+
+**Rollback**: Preserve
+`backup/default-before-cutover-1e@91a1626d080a4bc22ce20648c4ff10481ae6e299`
+and the independently deployable backend/Frontend artifacts. Do not use the
+removed historical combined stack.
+
+**Status**: Documentation-only closeout tracked by issue #142. No runtime,
+schema, contract, Frontend pin, branch topology or deployment mutation.
+
+---
+
 ## 2026-07-28 — HARDEN-2A / DOC-201 Active Auth and Release Authority
 
 **Decision**: Keep storage-backed opaque sessions and the independent backend /
