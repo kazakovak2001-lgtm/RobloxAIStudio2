@@ -68,10 +68,7 @@ async function createOutcomeFixture() {
     user_id: "user",
     status: "running",
     started_at: new Date(100),
-    pipeline_steps: [
-      { status: "completed" },
-      { status: "failed" },
-    ],
+    pipeline_steps: [{ status: "completed" }, { status: "failed" }],
   });
   return {
     storage,
@@ -80,70 +77,64 @@ async function createOutcomeFixture() {
 }
 
 describe("GenerationOutcomeCoordinator", () => {
-  it(
-    "publishes execution, history and project state in one durable batch",
-    async () => {
-      const { storage, coordinator } = await createOutcomeFixture();
-      const applyBatch = vi.spyOn(storage, "applyDurableBatch");
+  it("publishes execution, history and project state in one durable batch", async () => {
+    const { storage, coordinator } = await createOutcomeFixture();
+    const applyBatch = vi.spyOn(storage, "applyDurableBatch");
 
-      await expect(
-        coordinator.commit("execution", {
-          status: "completed",
-          completed_at: new Date(200),
-          total_duration_ms: 100,
-        }),
-      ).resolves.toMatchObject({ status: "completed" });
-
-      expect(applyBatch).toHaveBeenCalledTimes(1);
-      expect(storage.get("generation_executions", "execution")).toMatchObject({
+    await expect(
+      coordinator.commit("execution", {
         status: "completed",
+        completed_at: new Date(200),
         total_duration_ms: 100,
-      });
-      expect(storage.get("generation_history", "execution")).toEqual({
-        id: "execution",
-        projectId: "project",
-        pipelineId: "execution",
-        status: "completed",
-        startedAt: 100,
-        finishedAt: 200,
-        duration: 100,
-        stagesCompleted: 1,
-        stagesTotal: 2,
-        failures: 1,
-        tokenUsage: 0,
-        aiCost: 0,
-      });
-      expect(storage.get("projects", "project")).toMatchObject({
-        status: "ready",
-        qualityScore: 100,
-      });
-    },
-  );
+      }),
+    ).resolves.toMatchObject({ status: "completed" });
 
-  it(
-    "preserves all prior linked records when the durable batch rejects",
-    async () => {
-      const { storage, coordinator } = await createOutcomeFixture();
-      const priorProject = storage.get("projects", "project");
-      const priorExecution = storage.get("generation_executions", "execution");
-      vi.spyOn(storage, "applyDurableBatch").mockRejectedValueOnce(
-        new Error("injected batch rejection"),
-      );
+    expect(applyBatch).toHaveBeenCalledTimes(1);
+    expect(storage.get("generation_executions", "execution")).toMatchObject({
+      status: "completed",
+      total_duration_ms: 100,
+    });
+    expect(storage.get("generation_history", "execution")).toEqual({
+      id: "execution",
+      projectId: "project",
+      pipelineId: "execution",
+      status: "completed",
+      startedAt: 100,
+      finishedAt: 200,
+      duration: 100,
+      stagesCompleted: 1,
+      stagesTotal: 2,
+      failures: 1,
+      tokenUsage: 0,
+      aiCost: 0,
+    });
+    expect(storage.get("projects", "project")).toMatchObject({
+      status: "ready",
+      qualityScore: 100,
+    });
+  });
 
-      await expect(
-        coordinator.commit("execution", {
-          status: "failed",
-          completed_at: new Date(200),
-        }),
-      ).rejects.toThrow("injected batch rejection");
+  it("preserves all prior linked records when the durable batch rejects", async () => {
+    const { storage, coordinator } = await createOutcomeFixture();
+    const priorProject = storage.get("projects", "project");
+    const priorExecution = storage.get("generation_executions", "execution");
+    vi.spyOn(storage, "applyDurableBatch").mockRejectedValueOnce(
+      new Error("injected batch rejection"),
+    );
 
-      expect(storage.get("projects", "project")).toEqual(priorProject);
-      expect(storage.get("generation_executions", "execution")).toEqual(
-        priorExecution,
-      );
-      expect(storage.get("generation_history", "execution")).toBeNull();
-    },
-  );
+    await expect(
+      coordinator.commit("execution", {
+        status: "failed",
+        completed_at: new Date(200),
+      }),
+    ).rejects.toThrow("injected batch rejection");
+
+    expect(storage.get("projects", "project")).toEqual(priorProject);
+    expect(storage.get("generation_executions", "execution")).toEqual(
+      priorExecution,
+    );
+    expect(storage.get("generation_history", "execution")).toBeNull();
+  });
 
   it("treats repeated identical terminal delivery as idempotent", async () => {
     const { storage, coordinator } = await createOutcomeFixture();
