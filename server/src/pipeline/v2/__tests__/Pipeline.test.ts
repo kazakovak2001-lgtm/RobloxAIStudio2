@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { PipelineEngine } from "../PipelineEngine";
 import { PipelineExecutor } from "../PipelineExecutor";
 import { PipelineEventEmitterV2 } from "../PipelineEvents";
@@ -127,11 +127,10 @@ describe("PipelineEngine", () => {
 
     store.recovery.resolve();
     const pipelineId = await start;
-    await Promise.resolve();
+    await vi.waitFor(() => expect(executed).toBe(true));
 
     expect(pipelineId).toMatch(/^pipeline-/);
     expect(engine.runCount).toBe(1);
-    expect(executed).toBe(true);
   });
 
   it("does not publish or execute before start reservation acknowledgement", async () => {
@@ -156,11 +155,10 @@ describe("PipelineEngine", () => {
 
     reservation.resolve();
     const pipelineId = await start;
-    await Promise.resolve();
+    await vi.waitFor(() => expect(executed).toBe(true));
 
     expect(pipelineId).toMatch(/^pipeline-/);
     expect(engine.runCount).toBe(1);
-    expect(executed).toBe(true);
   });
 
   it("does not launch a pipeline when start reservation rejects", async () => {
