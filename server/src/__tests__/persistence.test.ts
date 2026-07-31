@@ -162,9 +162,9 @@ describe("Persistence Infrastructure", async () => {
       displayName: "Creator",
     });
     const auth = new AuthService(storage);
-    expect(
-      await auth.registerDurable(user.email, "password123", user.id),
-    ).toBe(true);
+    expect(await auth.registerDurable(user.email, "password123", user.id)).toBe(
+      true,
+    );
     const login = await auth.loginDurable(user.email, "password123", user.id);
 
     expect(login.success).toBe(true);
