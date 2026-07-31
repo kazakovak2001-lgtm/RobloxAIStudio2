@@ -6,7 +6,6 @@ interface GenerationProjectState {
   status?: string;
   qualityScore?: number;
   updatedAt?: number;
-  [key: string]: unknown;
 }
 
 interface GenerationProjectRepository {
@@ -79,7 +78,8 @@ export class GenerationOutcomeCoordinator {
         started_at: existing.started_at,
         pipeline_steps: updates.pipeline_steps ?? existing.pipeline_steps,
       };
-      const terminalStatus = execution.status === "completed" ? "ready" : "draft";
+      const terminalStatus =
+        execution.status === "completed" ? "ready" : "draft";
       const updatedProject: GenerationProjectState = {
         ...project,
         status: terminalStatus,
