@@ -61,17 +61,19 @@ export class FilePipelineStore implements PipelineStore {
 
   async markInterrupted(): Promise<number> {
     let count = 0;
-    for (const state of this.cache.values()) {
-      if (state.status !== "running") continue;
+    for (const current of [...this.cache.values()]) {
+      if (current.status !== "running") continue;
 
+      const state = structuredClone(current);
+      const now = Date.now();
       state.status = "failed";
-      state.finishedAt = Date.now();
+      state.finishedAt = now;
       state.currentStage = null;
       for (const stage of state.stages) {
         if (stage.status !== "running") continue;
         stage.status = "failed";
         stage.error = "Interrupted: server restart";
-        stage.completedAt = Date.now();
+        stage.completedAt = now;
         if (!state.failedStages.includes(stage.name)) {
           state.failedStages.push(stage.name);
         }
