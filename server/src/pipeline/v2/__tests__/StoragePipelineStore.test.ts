@@ -5,8 +5,8 @@ import {
   type DurableMutation,
   type DurableMutationResult,
 } from "../../../platform/storage/StorageProvider";
+import { StoragePipelineStore } from "../../../platform/storage/pipeline/StoragePipelineStore";
 import { createPipelineState } from "../PipelineStage";
-import { StoragePipelineStore } from "../store/StoragePipelineStore";
 
 class RejectingBatchStorage extends InMemoryStorageProvider {
   override async applyDurableBatch(
