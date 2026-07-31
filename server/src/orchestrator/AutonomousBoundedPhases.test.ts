@@ -21,7 +21,7 @@ async function waitForTerminal(
 describe("Autonomous bounded phase contracts", () => {
   it("reports capability truth after bounded execution", async () => {
     const orchestrator = new AutonomousOrchestrator();
-    const session = orchestrator.run(
+    const session = await orchestrator.run(
       "Build an RPG with quests, inventory, and combat",
       "capability-project",
     );
@@ -73,7 +73,7 @@ describe("Autonomous bounded phase contracts", () => {
 
   it("recovers from a process-local checkpoint and completes the preview again", async () => {
     const orchestrator = new AutonomousOrchestrator();
-    const session = orchestrator.run(
+    const session = await orchestrator.run(
       "Create a simulator with currency, upgrades, and rebirth",
       "recovery-project",
     );
@@ -92,7 +92,7 @@ describe("Autonomous bounded phase contracts", () => {
     expect(new Set(checkpointIds).size).toBe(checkpointIds.length);
     expect(checkpoint.phase).toBe("blueprint");
 
-    expect(orchestrator.recover(session.id, checkpoint.id)).toBe(true);
+    expect(await orchestrator.recover(session.id, checkpoint.id)).toBe(true);
     expect(
       session.phases.find((phase) => phase.phase === checkpoint.phase)?.status,
     ).toBe("completed");

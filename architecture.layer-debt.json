@@ -12,11 +12,6 @@
       "milestone": "RUNTIME-2D"
     },
     {
-      "sourceLayer": "infrastructure",
-      "targetLayer": "api",
-      "milestone": "DURABILITY-2E"
-    },
-    {
       "sourceLayer": "shared",
       "targetLayer": "api",
       "milestone": "DURABILITY-2E"
@@ -130,15 +125,6 @@
       "file": "server/src/studio/v2/sync/ProjectSyncManager.ts",
       "importPath": "../../../pipeline/v2/ArtifactStore",
       "milestone": "RUNTIME-2D"
-    },
-    {
-      "sourceLayer": "infrastructure",
-      "targetLayer": "api",
-      "sourceDomain": "pipeline",
-      "targetDomain": "platform",
-      "file": "server/src/pipeline/v2/ArtifactStore.ts",
-      "importPath": "../../platform/storage/StorageFactory",
-      "milestone": "DURABILITY-2E"
     },
     {
       "sourceLayer": "shared",

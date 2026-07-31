@@ -868,6 +868,8 @@ server/src/orchestrator/AutonomousOrchestrator.ts
 server/src/orchestrator/AutonomousPhaseRegistry.ts
 server/src/orchestrator/OrchestratorTypes.ts
 server/src/orchestrator/index.ts
+server/src/orchestrator/store/AutonomousSessionStore.test.ts
+server/src/orchestrator/store/AutonomousSessionStore.ts
 server/src/pipeline/__tests__/observability.test.ts
 server/src/pipeline/audit/InMemoryAuditStore.ts
 server/src/pipeline/audit/PipelineAuditLog.ts
@@ -921,6 +923,7 @@ server/src/platform/security/ApiKeyStore.ts
 server/src/platform/security/PermissionMiddleware.ts
 server/src/platform/security/__tests__/ApiKeyStore.test.ts
 server/src/platform/security/index.ts
+server/src/platform/storage/OperationalStoreComposition.ts
 server/src/platform/storage/StorageFactory.ts
 server/src/platform/storage/StorageProvider.ts
 server/src/platform/storage/index.ts
@@ -1007,6 +1010,7 @@ server/src/routes/__tests__/studioProtocol.smoke.test.ts
 server/src/routes/agentCollaboration.ts
 server/src/routes/aiChat.ts
 server/src/routes/analytics.ts
+server/src/routes/autonomous.test.ts
 server/src/routes/autonomous.ts
 server/src/routes/chatPersistence.ts
 server/src/routes/compile.ts

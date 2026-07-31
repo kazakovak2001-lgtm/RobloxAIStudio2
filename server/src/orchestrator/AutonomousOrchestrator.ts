@@ -15,6 +15,12 @@ import {
   type RunnableOrchestratorPhase,
 } from "./AutonomousPhaseRegistry";
 import type { PipelineEventEmitter } from "../socket/streaming";
+import {
+  createConfiguredAutonomousSessionStore,
+  InMemoryAutonomousSessionStore,
+  type AutonomousSessionRecord,
+  type AutonomousSessionStore,
+} from "./store/AutonomousSessionStore";
 
 const PHASE_AGENT_NAMES: Record<RunnableOrchestratorPhase, string> = {
   genre_detection: "Genre Detector",
@@ -48,6 +54,7 @@ export interface AutonomousOrchestratorOptions {
   /** @deprecated Bounded services do not use artificial simulation delays. */
   simulationDelayMs?: number;
   phaseRegistry?: AutonomousPhaseRegistry;
+  sessionStore?: AutonomousSessionStore;
 }
 
 interface CheckpointSnapshot {
@@ -58,15 +65,31 @@ interface CheckpointSnapshot {
   cost: CostTracker;
 }
 
+function isTerminalSessionStatus(
+  status: OrchestratorSession["status"],
+): boolean {
+  return [
+    "completed",
+    "preview_completed",
+    "simulated",
+    "cancelled",
+    "failed",
+  ].includes(status);
+}
+
 export class AutonomousOrchestrator {
   private readonly sessions = new Map<string, OrchestratorSession>();
   private readonly contexts = new Map<string, AutonomousPhaseContext>();
   private readonly controllers = new Map<string, AbortController>();
   private readonly activeExecutions = new Set<string>();
   private readonly restartRequests = new Set<string>();
+  private readonly executionStartWaiters = new Map<string, () => void>();
+  private readonly mutationTails = new Map<string, Promise<void>>();
   private readonly checkpointSequences = new Map<string, number>();
   private readonly events?: PipelineEventEmitter;
   private readonly phaseRegistry: AutonomousPhaseRegistry;
+  private readonly sessionStore: AutonomousSessionStore;
+  private readiness: Promise<void> | null = null;
 
   constructor(
     events?: PipelineEventEmitter,
@@ -74,16 +97,34 @@ export class AutonomousOrchestrator {
   ) {
     this.events = events;
     this.phaseRegistry = options.phaseRegistry ?? new AutonomousPhaseRegistry();
+    this.sessionStore =
+      options.sessionStore ??
+      createConfiguredAutonomousSessionStore() ??
+      new InMemoryAutonomousSessionStore();
+  }
+
+  async ready(): Promise<void> {
+    this.readiness ??= this.recoverPersistedSessions().catch((error) => {
+      this.readiness = null;
+      throw error;
+    });
+    await this.readiness;
+  }
+
+  async refresh(): Promise<void> {
+    await this.ready();
+    await this.refreshPersistedSessions();
   }
 
   /**
    * Start a bounded-service autonomous preview from a single prompt.
    */
-  run(
+  async run(
     prompt: string,
     projectId: string,
     goals?: Partial<GoalConfig>,
-  ): OrchestratorSession {
+  ): Promise<OrchestratorSession> {
+    await this.ready();
     const config: GoalConfig = { ...DEFAULT_GOALS, ...goals };
     const sessionId = createSessionId();
     const context = createAutonomousPhaseContext(projectId, prompt);
@@ -118,10 +159,14 @@ export class AutonomousOrchestrator {
       startedAt: Date.now(),
       estimatedCost: 0,
       recoveryCount: 0,
+      executionGeneration: 0,
     };
 
-    this.sessions.set(sessionId, session);
-    this.contexts.set(sessionId, context);
+    await this.persistAndPublish({
+      session,
+      context,
+      checkpointSequence: 0,
+    });
     this.controllers.set(sessionId, new AbortController());
 
     void this.events?.emit({
@@ -137,12 +182,28 @@ export class AutonomousOrchestrator {
       timestamp: new Date(),
     });
 
-    this.startExecution(session);
-    return session;
+    const executionStarted = new Promise<void>((resolve) => {
+      this.executionStartWaiters.set(sessionId, resolve);
+    });
+    this.startExecution(sessionId);
+    await executionStarted;
+    const started = this.sessions.get(sessionId);
+    if (!started) {
+      throw new Error(`Autonomous session ${sessionId} failed to start`);
+    }
+    return started;
   }
 
   getSession(sessionId: string): OrchestratorSession | null {
     return this.sessions.get(sessionId) ?? null;
+  }
+
+  getLatestSessionForProject(projectId: string): OrchestratorSession | null {
+    return (
+      [...this.sessions.values()]
+        .filter((session) => session.projectId === projectId)
+        .sort((left, right) => right.startedAt - left.startedAt)[0] ?? null
+    );
   }
 
   getCapabilities(
@@ -152,33 +213,49 @@ export class AutonomousOrchestrator {
     return context ? this.phaseRegistry.listCapabilities(context) : null;
   }
 
-  pause(sessionId: string): boolean {
-    const session = this.sessions.get(sessionId);
+  async pause(sessionId: string): Promise<boolean> {
+    await this.refresh();
+    const record = this.sessionStore.get(sessionId);
+    const session = record?.session;
     if (!session || session.status !== "running") return false;
     session.status = "paused";
     session.currentPhase = "paused";
+    await this.persistAndPublish(record, true);
     this.controllers.get(sessionId)?.abort("paused");
     return true;
   }
 
-  resume(sessionId: string): boolean {
-    const session = this.sessions.get(sessionId);
-    if (!session || session.status !== "paused") return false;
+  async resume(sessionId: string): Promise<boolean> {
+    await this.refresh();
+    const record = this.sessionStore.get(sessionId);
+    const session = record?.session;
+    if (
+      !session ||
+      session.status !== "paused" ||
+      session.recoveryReason === "server_restart"
+    ) {
+      return false;
+    }
     session.status = "running";
     session.finishedAt = undefined;
-    this.controllers.set(sessionId, new AbortController());
+    session.executionGeneration += 1;
     const next = this.nextPendingNode(session);
     if (next) {
       session.currentPhase = next.phase;
-      this.startExecution(session);
+      if (!(await this.claimExecutionAndPublish(record))) return false;
+      this.controllers.set(sessionId, new AbortController());
+      this.startExecution(sessionId);
     } else {
-      this.finishPreview(session);
+      if (!(await this.claimExecutionAndPublish(record))) return false;
+      await this.finishPreview(record);
     }
     return true;
   }
 
-  cancel(sessionId: string): boolean {
-    const session = this.sessions.get(sessionId);
+  async cancel(sessionId: string): Promise<boolean> {
+    await this.refresh();
+    const record = this.sessionStore.get(sessionId);
+    const session = record?.session;
     if (
       !session ||
       (session.status !== "running" && session.status !== "paused")
@@ -188,30 +265,46 @@ export class AutonomousOrchestrator {
     session.status = "cancelled";
     session.currentPhase = "cancelled";
     session.finishedAt = Date.now();
+    await this.persistAndPublish(record, true);
     this.controllers.get(sessionId)?.abort("cancelled");
     return true;
   }
 
-  recover(sessionId: string, checkpointId?: string): boolean {
-    const session = this.sessions.get(sessionId);
+  async recover(sessionId: string, checkpointId?: string): Promise<boolean> {
+    await this.refresh();
+    const record = this.sessionStore.get(sessionId);
+    const session = record?.session;
     if (!session || session.status === "running") return false;
 
     const checkpoint = checkpointId
       ? session.checkpoints.find((candidate) => candidate.id === checkpointId)
       : session.checkpoints.at(-1);
-    if (!checkpoint || !this.isCheckpointSnapshot(checkpoint.snapshot)) {
-      return false;
-    }
+    const snapshot = checkpoint?.snapshot;
+    const recoverableSnapshot = this.isCheckpointSnapshot(snapshot)
+      ? snapshot
+      : !checkpointId && session.recoveryReason === "server_restart"
+        ? {
+            context: this.clone(record.context),
+            phases: this.clone(session.phases),
+            qualityScore: session.qualityScore,
+            genre: session.genre,
+            cost: this.clone(session.cost),
+          }
+        : null;
+    if (!recoverableSnapshot) return false;
 
-    const snapshot = checkpoint.snapshot;
-    this.contexts.set(sessionId, this.clone(snapshot.context));
-    session.phases = this.clone(snapshot.phases);
-    session.qualityScore = snapshot.qualityScore;
-    session.genre = snapshot.genre;
-    session.cost = this.clone(snapshot.cost);
+    record.context = this.clone(recoverableSnapshot.context);
+    session.phases = this.clone(recoverableSnapshot.phases);
+    session.qualityScore = recoverableSnapshot.qualityScore;
+    session.genre = recoverableSnapshot.genre;
+    session.cost = this.clone(recoverableSnapshot.cost);
     session.status = "running";
     session.finishedAt = undefined;
     session.recoveryCount += 1;
+    session.executionGeneration += 1;
+    session.restartInterruptedAt = undefined;
+    session.recoveryReason = undefined;
+    session.terminalEvidenceId = undefined;
 
     const terminal = session.phases.find(
       (node) => node.phase === "preview_completed",
@@ -226,32 +319,42 @@ export class AutonomousOrchestrator {
 
     const next = this.nextPendingNode(session);
     if (!next) {
-      this.finishPreview(session);
+      if (!(await this.claimExecutionAndPublish(record))) return false;
+      await this.finishPreview(record);
       return true;
     }
 
     session.currentPhase = next.phase;
+    if (!(await this.claimExecutionAndPublish(record))) return false;
     this.controllers.set(sessionId, new AbortController());
-    this.startExecution(session);
+    this.startExecution(sessionId);
     return true;
   }
 
-  private startExecution(session: OrchestratorSession): void {
-    if (this.activeExecutions.has(session.id)) {
-      this.restartRequests.add(session.id);
+  private startExecution(sessionId: string): void {
+    if (this.activeExecutions.has(sessionId)) {
+      this.restartRequests.add(sessionId);
       return;
     }
 
-    void this.executePhases(session);
+    void this.executePhases(sessionId);
   }
 
-  private async executePhases(session: OrchestratorSession): Promise<void> {
-    if (this.activeExecutions.has(session.id)) return;
-    this.activeExecutions.add(session.id);
+  private async executePhases(sessionId: string): Promise<void> {
+    if (this.activeExecutions.has(sessionId)) {
+      this.signalExecutionStarted(sessionId);
+      return;
+    }
+    const record = this.sessionStore.get(sessionId);
+    if (!record) {
+      this.signalExecutionStarted(sessionId);
+      return;
+    }
+    const session = record.session;
+    this.activeExecutions.add(sessionId);
 
     try {
-      const context = this.contexts.get(session.id);
-      if (!context) throw new Error("Autonomous phase context is missing");
+      let context = record.context;
 
       for (const node of session.phases) {
         if (node.phase === "preview_completed") continue;
@@ -262,14 +365,14 @@ export class AutonomousOrchestrator {
         }
 
         if (this.isOverBudget(session)) {
-          this.failForBudget(session, node);
+          await this.failForBudget(record, node);
           break;
         }
 
         const phase = node.phase as RunnableOrchestratorPhase;
         const adapter = this.phaseRegistry.get(phase);
         if (!adapter) {
-          this.skipUnavailableNode(session, node, {
+          await this.skipUnavailableNode(record, node, {
             status: "unavailable",
             evidence: "synthetic",
             service: "unregistered",
@@ -286,6 +389,8 @@ export class AutonomousOrchestrator {
         session.currentPhase = phase;
         node.status = "running";
         node.startedAt = Date.now();
+        await this.persistAndPublish(record);
+        this.signalExecutionStarted(session.id);
 
         const agentName = PHASE_AGENT_NAMES[phase];
         const stepId = `auto-${phase}`;
@@ -306,7 +411,7 @@ export class AutonomousOrchestrator {
 
           const result = await adapter.execute(context, controller.signal);
           if (controller.signal.aborted || session.status !== "running") {
-            this.handleInterruptedNode(session, node);
+            await this.settleInterruptedExecution(record, node);
             break;
           }
 
@@ -324,7 +429,8 @@ export class AutonomousOrchestrator {
             session.qualityScore = result.qualityScore;
           }
           session.genre = result.context.genre;
-          this.contexts.set(session.id, result.context);
+          context = result.context;
+          record.context = result.context;
           this.trackCost(session, node);
 
           const eventOutput = {
@@ -337,6 +443,9 @@ export class AutonomousOrchestrator {
             cost: session.cost.perPhase[phase],
             durationMs: node.durationMs,
           };
+
+          await this.checkpoint(record, phase);
+          if (session.status !== "running") break;
 
           if (result.status === "completed") {
             void this.events?.emitStepCompleted(
@@ -356,26 +465,25 @@ export class AutonomousOrchestrator {
               timestamp: new Date(),
             });
           }
-
-          this.checkpoint(session, phase);
         } catch (error) {
           if (this.isAbortError(error) || session.status !== "running") {
-            this.handleInterruptedNode(session, node);
+            await this.settleInterruptedExecution(record, node);
             break;
           }
-          this.failPhase(session, node, stepId, agentName, error);
+          await this.failPhase(record, node, stepId, agentName, error);
           break;
         }
       }
 
       if (session.status === "running" && !this.nextPendingNode(session)) {
-        this.finishPreview(session);
+        await this.finishPreview(record);
       }
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       session.status = "failed";
       session.currentPhase = "failed";
       session.finishedAt = Date.now();
+      await this.persistAndPublish(record);
       void this.events?.emitPipelineFailed(
         session.id,
         message,
@@ -389,21 +497,34 @@ export class AutonomousOrchestrator {
         },
       );
     } finally {
+      this.signalExecutionStarted(session.id);
       this.activeExecutions.delete(session.id);
       const restartRequested = this.restartRequests.delete(session.id);
       if (
         session.status === "running" &&
         (restartRequested || this.nextPendingNode(session))
       ) {
-        this.startExecution(session);
+        this.startExecution(session.id);
       }
     }
   }
 
-  private finishPreview(session: OrchestratorSession): void {
+  private signalExecutionStarted(sessionId: string): void {
+    const resolve = this.executionStartWaiters.get(sessionId);
+    if (!resolve) return;
+    this.executionStartWaiters.delete(sessionId);
+    resolve();
+  }
+
+  private async finishPreview(record: AutonomousSessionRecord): Promise<void> {
+    const session = record.session;
+    if (session.status === "preview_completed" && session.terminalEvidenceId) {
+      return;
+    }
     session.status = "preview_completed";
     session.currentPhase = "preview_completed";
     session.finishedAt = Date.now();
+    session.terminalEvidenceId = `${session.id}:terminal:${session.recoveryCount}`;
 
     const terminalNode = session.phases.find(
       (phase) => phase.phase === "preview_completed",
@@ -430,6 +551,8 @@ export class AutonomousOrchestrator {
     const skippedPhases = session.phases.filter(
       (phase) => phase.status === "skipped",
     );
+
+    await this.persistAndPublish(record);
 
     void this.events?.emit({
       type: "pipeline.preview.completed",
@@ -480,11 +603,12 @@ export class AutonomousOrchestrator {
     node.checkpointable = capability.checkpointable;
   }
 
-  private skipUnavailableNode(
-    session: OrchestratorSession,
+  private async skipUnavailableNode(
+    record: AutonomousSessionRecord,
     node: ExecutionNode,
     capability: PhaseCapability,
-  ): void {
+  ): Promise<void> {
+    const session = record.session;
     this.applyCapability(node, capability);
     node.status = "skipped";
     node.executionMode = "bounded";
@@ -498,7 +622,7 @@ export class AutonomousOrchestrator {
       reason: capability.reason,
     };
     this.trackCost(session, node);
-    this.checkpoint(session, node.phase);
+    await this.checkpoint(record, node.phase);
   }
 
   private handleInterruptedNode(
@@ -520,6 +644,34 @@ export class AutonomousOrchestrator {
     }
   }
 
+  private async settleInterruptedExecution(
+    record: AutonomousSessionRecord,
+    staleNode: ExecutionNode,
+  ): Promise<void> {
+    const staleGeneration = record.session.executionGeneration;
+    await this.sessionStore.refresh?.();
+    const acknowledged = this.sessionStore.get(record.session.id);
+    if (!acknowledged) {
+      this.handleInterruptedNode(record.session, staleNode);
+      await this.persistAndPublish(record);
+      return;
+    }
+
+    if (acknowledged.session.executionGeneration === staleGeneration) {
+      const acknowledgedNode = acknowledged.session.phases.find(
+        (node) => node.id === staleNode.id,
+      );
+      if (acknowledgedNode) {
+        this.handleInterruptedNode(acknowledged.session, acknowledgedNode);
+      }
+      await this.persistAndPublish(acknowledged);
+    }
+
+    this.replaceSession(record.session, acknowledged.session);
+    record.context = structuredClone(acknowledged.context);
+    record.checkpointSequence = acknowledged.checkpointSequence;
+  }
+
   private isOverBudget(session: OrchestratorSession): boolean {
     const elapsed = Date.now() - session.startedAt;
     return (
@@ -528,15 +680,17 @@ export class AutonomousOrchestrator {
     );
   }
 
-  private failForBudget(
-    session: OrchestratorSession,
+  private async failForBudget(
+    record: AutonomousSessionRecord,
     node: ExecutionNode,
-  ): void {
+  ): Promise<void> {
+    const session = record.session;
     session.status = "failed";
     session.currentPhase = "failed";
     session.finishedAt = Date.now();
     node.status = "failed";
     node.error = "Budget or time limit exceeded";
+    await this.persistAndPublish(record);
 
     const phase = node.phase as RunnableOrchestratorPhase;
     const agentName = PHASE_AGENT_NAMES[phase] ?? node.phase;
@@ -564,13 +718,14 @@ export class AutonomousOrchestrator {
     );
   }
 
-  private failPhase(
-    session: OrchestratorSession,
+  private async failPhase(
+    record: AutonomousSessionRecord,
     node: ExecutionNode,
     stepId: string,
     agentName: string,
     error: unknown,
-  ): void {
+  ): Promise<void> {
+    const session = record.session;
     node.status = "failed";
     node.completedAt = Date.now();
     node.durationMs = node.completedAt - (node.startedAt ?? node.completedAt);
@@ -578,6 +733,7 @@ export class AutonomousOrchestrator {
     session.status = "failed";
     session.currentPhase = "failed";
     session.finishedAt = Date.now();
+    await this.persistAndPublish(record);
 
     void this.events?.emitStepFailed(
       session.id,
@@ -613,12 +769,12 @@ export class AutonomousOrchestrator {
     };
   }
 
-  private checkpoint(
-    session: OrchestratorSession,
+  private async checkpoint(
+    record: AutonomousSessionRecord,
     phase: OrchestratorPhase,
-  ): void {
-    const context = this.contexts.get(session.id);
-    if (!context) return;
+  ): Promise<void> {
+    const session = record.session;
+    const context = record.context;
 
     const snapshot: CheckpointSnapshot = {
       context: this.clone(context),
@@ -627,8 +783,8 @@ export class AutonomousOrchestrator {
       genre: session.genre,
       cost: this.clone(session.cost),
     };
-    const sequence = (this.checkpointSequences.get(session.id) ?? 0) + 1;
-    this.checkpointSequences.set(session.id, sequence);
+    const sequence = record.checkpointSequence + 1;
+    record.checkpointSequence = sequence;
     const checkpoint: Checkpoint = {
       id: `${session.id}:checkpoint:${sequence}`,
       phase,
@@ -636,6 +792,7 @@ export class AutonomousOrchestrator {
       snapshot: snapshot as unknown as Record<string, unknown>,
     };
     session.checkpoints.push(checkpoint);
+    await this.persistAndPublish(record);
   }
 
   private isCheckpointSnapshot(value: unknown): value is CheckpointSnapshot {
@@ -688,6 +845,141 @@ export class AutonomousOrchestrator {
       typeof cost.perPhase === "object" &&
       !Array.isArray(cost.perPhase)
     );
+  }
+
+  private async recoverPersistedSessions(): Promise<void> {
+    await this.sessionStore.ready();
+    await this.sessionStore.refresh?.();
+    await this.sessionStore.markInterrupted();
+    await this.sessionStore.refresh?.();
+    this.hydratePersistedSessions();
+  }
+
+  private async refreshPersistedSessions(): Promise<void> {
+    await this.sessionStore.refresh?.();
+    this.hydratePersistedSessions();
+  }
+
+  private hydratePersistedSessions(): void {
+    for (const record of this.sessionStore.getAll()) {
+      this.publish(record);
+    }
+  }
+
+  private async persistAndPublish(
+    record: AutonomousSessionRecord,
+    allowPausedTransition = false,
+  ): Promise<void> {
+    const sessionId = record.session.id;
+    const previous = this.mutationTails.get(sessionId) ?? Promise.resolve();
+    let release!: () => void;
+    const current = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    this.mutationTails.set(sessionId, current);
+
+    await previous;
+    try {
+      await this.sessionStore.refresh?.();
+      let snapshot = structuredClone(record);
+      const acknowledged = this.sessionStore.get(sessionId);
+
+      if (
+        acknowledged &&
+        (snapshot.session.status === "paused" ||
+          snapshot.session.status === "cancelled") &&
+        acknowledged.session.status === "running" &&
+        allowPausedTransition
+      ) {
+        acknowledged.session.status = snapshot.session.status;
+        acknowledged.session.currentPhase = snapshot.session.currentPhase;
+        acknowledged.session.finishedAt = snapshot.session.finishedAt;
+        snapshot = acknowledged;
+      } else if (
+        acknowledged &&
+        acknowledged.session.status === "running" &&
+        (snapshot.session.status === "paused" ||
+          snapshot.session.status === "cancelled") &&
+        !allowPausedTransition
+      ) {
+        record.session.status = acknowledged.session.status;
+        record.session.currentPhase = acknowledged.session.currentPhase;
+        return;
+      } else if (
+        acknowledged &&
+        (acknowledged.session.status === "paused" ||
+          acknowledged.session.status === "cancelled") &&
+        snapshot.session.status !== acknowledged.session.status &&
+        !allowPausedTransition
+      ) {
+        record.session.status = acknowledged.session.status;
+        record.session.currentPhase = acknowledged.session.currentPhase;
+        return;
+      } else if (
+        acknowledged &&
+        isTerminalSessionStatus(acknowledged.session.status) &&
+        acknowledged.session.status !== snapshot.session.status &&
+        !allowPausedTransition
+      ) {
+        this.replaceSession(record.session, acknowledged.session);
+        record.context = structuredClone(acknowledged.context);
+        record.checkpointSequence = acknowledged.checkpointSequence;
+        return;
+      }
+
+      await this.sessionStore.save(snapshot);
+      this.publish(snapshot);
+    } finally {
+      release();
+      if (this.mutationTails.get(sessionId) === current) {
+        this.mutationTails.delete(sessionId);
+      }
+    }
+  }
+
+  private async claimExecutionAndPublish(
+    record: AutonomousSessionRecord,
+  ): Promise<boolean> {
+    const snapshot = structuredClone(record);
+    const claimed = await this.sessionStore.claimExecution(snapshot);
+    if (!claimed) return false;
+    this.publish(snapshot);
+    return true;
+  }
+
+  private publish(record: AutonomousSessionRecord): void {
+    const snapshot = structuredClone(record);
+    const existing = this.sessions.get(snapshot.session.id);
+    if (existing) {
+      if (!this.sessionsEqual(existing, snapshot.session)) {
+        this.replaceSession(existing, snapshot.session);
+      }
+    } else {
+      this.sessions.set(snapshot.session.id, snapshot.session);
+    }
+    this.contexts.set(snapshot.session.id, snapshot.context);
+    this.checkpointSequences.set(
+      snapshot.session.id,
+      snapshot.checkpointSequence,
+    );
+  }
+
+  private replaceSession(
+    target: OrchestratorSession,
+    source: OrchestratorSession,
+  ): void {
+    const mutable = target as unknown as Record<string, unknown>;
+    for (const key of Object.keys(mutable)) {
+      delete mutable[key];
+    }
+    Object.assign(target, structuredClone(source));
+  }
+
+  private sessionsEqual(
+    left: OrchestratorSession,
+    right: OrchestratorSession,
+  ): boolean {
+    return JSON.stringify(left) === JSON.stringify(right);
   }
 
   private emptyCost(): CostTracker {

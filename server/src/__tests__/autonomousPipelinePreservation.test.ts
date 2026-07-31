@@ -50,14 +50,14 @@ function createSpyEmitter(): {
 // ─── 1. Autonomous Pipeline API Behavior ────────────────────────────────────
 
 describe("Preservation - Autonomous Pipeline API Behavior", () => {
-  it("property: AutonomousOrchestrator.run() accepts valid prompts and returns a session with id, status running, currentPhase, and phases[]", () => {
-    fc.assert(
-      fc.property(
+  it("property: AutonomousOrchestrator.run() accepts valid prompts and returns a session with id, status running, currentPhase, and phases[]", async () => {
+    await fc.assert(
+      fc.asyncProperty(
         fc.string({ minLength: 5, maxLength: 100 }),
         fc.string({ minLength: 1, maxLength: 50 }),
-        (prompt, projectId) => {
+        async (prompt, projectId) => {
           const orchestrator = new AutonomousOrchestrator();
-          const session = orchestrator.run(prompt, projectId);
+          const session = await orchestrator.run(prompt, projectId);
 
           expect(session).toBeDefined();
           expect(session.id).toBeDefined();
@@ -72,40 +72,49 @@ describe("Preservation - Autonomous Pipeline API Behavior", () => {
     );
   });
 
-  it("property: AutonomousOrchestrator.getSession() returns the session by ID", () => {
-    fc.assert(
-      fc.property(fc.string({ minLength: 5, maxLength: 100 }), (prompt) => {
-        const orchestrator = new AutonomousOrchestrator();
-        const session = orchestrator.run(prompt, "test-project");
-        const retrieved = orchestrator.getSession(session.id);
+  it("property: AutonomousOrchestrator.getSession() returns the session by ID", async () => {
+    await fc.assert(
+      fc.asyncProperty(
+        fc.string({ minLength: 5, maxLength: 100 }),
+        async (prompt) => {
+          const orchestrator = new AutonomousOrchestrator();
+          const session = await orchestrator.run(prompt, "test-project");
+          const retrieved = orchestrator.getSession(session.id);
 
-        expect(retrieved).not.toBeNull();
-        expect(retrieved!.id).toBe(session.id);
-        expect(retrieved!.prompt).toBe(prompt);
-      }),
+          expect(retrieved).not.toBeNull();
+          expect(retrieved!.id).toBe(session.id);
+          expect(retrieved!.prompt).toBe(prompt);
+        },
+      ),
       { numRuns: 5 },
     );
   });
 
-  it("property: AutonomousOrchestrator.getSession() returns null for unknown session ID", () => {
-    fc.assert(
-      fc.property(fc.string({ minLength: 10, maxLength: 50 }), (unknownId) => {
-        const orchestrator = new AutonomousOrchestrator();
-        const result = orchestrator.getSession(unknownId);
-        expect(result).toBeNull();
-      }),
+  it("property: AutonomousOrchestrator.getSession() returns null for unknown session ID", async () => {
+    await fc.assert(
+      fc.asyncProperty(
+        fc.string({ minLength: 10, maxLength: 50 }),
+        async (unknownId) => {
+          const orchestrator = new AutonomousOrchestrator();
+          const result = orchestrator.getSession(unknownId);
+          expect(result).toBeNull();
+        },
+      ),
       { numRuns: 5 },
     );
   });
 
-  it("property: session phases array contains 12 entries (11 phases + preview terminal node)", () => {
-    fc.assert(
-      fc.property(fc.string({ minLength: 5, maxLength: 100 }), (prompt) => {
-        const orchestrator = new AutonomousOrchestrator();
-        const session = orchestrator.run(prompt, "test-project");
+  it("property: session phases array contains 12 entries (11 phases + preview terminal node)", async () => {
+    await fc.assert(
+      fc.asyncProperty(
+        fc.string({ minLength: 5, maxLength: 100 }),
+        async (prompt) => {
+          const orchestrator = new AutonomousOrchestrator();
+          const session = await orchestrator.run(prompt, "test-project");
 
-        expect(session.phases.length).toBe(12);
-      }),
+          expect(session.phases.length).toBe(12);
+        },
+      ),
       { numRuns: 5 },
     );
   });
@@ -116,7 +125,7 @@ describe("Preservation - Autonomous Pipeline API Behavior", () => {
         fc.string({ minLength: 5, maxLength: 30 }),
         async (prompt) => {
           const orchestrator = new AutonomousOrchestrator();
-          const session = orchestrator.run(prompt, "test-project");
+          const session = await orchestrator.run(prompt, "test-project");
 
           // Wait for completion - phases are 40-200ms each, 11 phases max ~2200ms
           // Give extra buffer
@@ -146,25 +155,28 @@ describe("Preservation - Autonomous Pipeline API Behavior", () => {
 // ─── 2. Status Polling Behavior ─────────────────────────────────────────────
 
 describe("Preservation - Status Polling Behavior", () => {
-  it("property: after run(), getSession(id) returns current status", () => {
-    fc.assert(
-      fc.property(fc.string({ minLength: 5, maxLength: 80 }), (prompt) => {
-        const orchestrator = new AutonomousOrchestrator();
-        const session = orchestrator.run(prompt, "test-project");
-        const polled = orchestrator.getSession(session.id);
+  it("property: after run(), getSession(id) returns current status", async () => {
+    await fc.assert(
+      fc.asyncProperty(
+        fc.string({ minLength: 5, maxLength: 80 }),
+        async (prompt) => {
+          const orchestrator = new AutonomousOrchestrator();
+          const session = await orchestrator.run(prompt, "test-project");
+          const polled = orchestrator.getSession(session.id);
 
-        expect(polled).not.toBeNull();
-        expect(polled!.status).toBeDefined();
-        expect(
-          [
-            "running",
-            "preview_completed",
-            "paused",
-            "cancelled",
-            "failed",
-          ].includes(polled!.status),
-        ).toBe(true);
-      }),
+          expect(polled).not.toBeNull();
+          expect(polled!.status).toBeDefined();
+          expect(
+            [
+              "running",
+              "preview_completed",
+              "paused",
+              "cancelled",
+              "failed",
+            ].includes(polled!.status),
+          ).toBe(true);
+        },
+      ),
       { numRuns: 5 },
     );
   });
@@ -175,7 +187,7 @@ describe("Preservation - Status Polling Behavior", () => {
         fc.string({ minLength: 5, maxLength: 30 }),
         async (prompt) => {
           const orchestrator = new AutonomousOrchestrator();
-          const session = orchestrator.run(prompt, "test-project");
+          const session = await orchestrator.run(prompt, "test-project");
 
           expect(session.status).toBe("running");
 
@@ -201,35 +213,41 @@ describe("Preservation - Status Polling Behavior", () => {
     );
   }, 60000);
 
-  it("property: paused sessions have status paused", () => {
-    fc.assert(
-      fc.property(fc.string({ minLength: 5, maxLength: 80 }), (prompt) => {
-        const orchestrator = new AutonomousOrchestrator();
-        const session = orchestrator.run(prompt, "test-project");
+  it("property: paused sessions have status paused", async () => {
+    await fc.assert(
+      fc.asyncProperty(
+        fc.string({ minLength: 5, maxLength: 80 }),
+        async (prompt) => {
+          const orchestrator = new AutonomousOrchestrator();
+          const session = await orchestrator.run(prompt, "test-project");
 
-        // Pause immediately
-        const paused = orchestrator.pause(session.id);
-        expect(paused).toBe(true);
+          // Pause immediately
+          const paused = await orchestrator.pause(session.id);
+          expect(paused).toBe(true);
 
-        const current = orchestrator.getSession(session.id);
-        expect(current!.status).toBe("paused");
-      }),
+          const current = orchestrator.getSession(session.id);
+          expect(current!.status).toBe("paused");
+        },
+      ),
       { numRuns: 5 },
     );
   });
 
-  it("property: cancelled sessions have status cancelled", () => {
-    fc.assert(
-      fc.property(fc.string({ minLength: 5, maxLength: 80 }), (prompt) => {
-        const orchestrator = new AutonomousOrchestrator();
-        const session = orchestrator.run(prompt, "test-project");
+  it("property: cancelled sessions have status cancelled", async () => {
+    await fc.assert(
+      fc.asyncProperty(
+        fc.string({ minLength: 5, maxLength: 80 }),
+        async (prompt) => {
+          const orchestrator = new AutonomousOrchestrator();
+          const session = await orchestrator.run(prompt, "test-project");
 
-        const cancelled = orchestrator.cancel(session.id);
-        expect(cancelled).toBe(true);
+          const cancelled = await orchestrator.cancel(session.id);
+          expect(cancelled).toBe(true);
 
-        const current = orchestrator.getSession(session.id);
-        expect(current!.status).toBe("cancelled");
-      }),
+          const current = orchestrator.getSession(session.id);
+          expect(current!.status).toBe("cancelled");
+        },
+      ),
       { numRuns: 5 },
     );
   });
@@ -238,9 +256,9 @@ describe("Preservation - Status Polling Behavior", () => {
 // ─── 3. Existing Pipeline Event System (PipelineEventEmitter) ───────────────
 
 describe("Preservation - PipelineEventEmitter System", () => {
-  it("property: PipelineEventEmitter constructor works (instantiable)", () => {
-    fc.assert(
-      fc.property(fc.constant(null), () => {
+  it("property: PipelineEventEmitter constructor works (instantiable)", async () => {
+    await fc.assert(
+      fc.asyncProperty(fc.constant(null), async () => {
         const emitter = new PipelineEventEmitter();
         expect(emitter).toBeDefined();
         expect(emitter).toBeInstanceOf(PipelineEventEmitter);
@@ -394,9 +412,9 @@ describe("Preservation - usePipelineStream Socket.IO Subscriptions", () => {
     "pipeline.failed",
   ];
 
-  it("property: the hook subscribes to the 5 standard pipeline events", () => {
-    fc.assert(
-      fc.property(fc.constant(null), () => {
+  it("property: the hook subscribes to the 5 standard pipeline events", async () => {
+    await fc.assert(
+      fc.asyncProperty(fc.constant(null), async () => {
         // These are the events usePipelineStream currently subscribes to
         expect(SUBSCRIBED_EVENTS).toContain("pipeline.started");
         expect(SUBSCRIBED_EVENTS).toContain("step.started");
@@ -409,12 +427,12 @@ describe("Preservation - usePipelineStream Socket.IO Subscriptions", () => {
     );
   });
 
-  it("property: step.started handler creates or updates an agent in the agents array", () => {
-    fc.assert(
-      fc.property(
+  it("property: step.started handler creates or updates an agent in the agents array", async () => {
+    await fc.assert(
+      fc.asyncProperty(
         fc.string({ minLength: 1, maxLength: 30 }),
         fc.integer({ min: 0, max: 100 }),
-        (agentId, progress) => {
+        async (agentId, progress) => {
           // Simulate the step.started handler logic from usePipelineStream
           type AgentState = {
             id: string;
@@ -468,65 +486,68 @@ describe("Preservation - usePipelineStream Socket.IO Subscriptions", () => {
     );
   });
 
-  it("property: step.completed handler marks agent as completed", () => {
-    fc.assert(
-      fc.property(fc.string({ minLength: 1, maxLength: 30 }), (agentId) => {
-        type AgentState = {
-          id: string;
-          name: string;
-          status: string;
-          progress: number;
-          finishedAt?: Date;
-        };
+  it("property: step.completed handler marks agent as completed", async () => {
+    await fc.assert(
+      fc.asyncProperty(
+        fc.string({ minLength: 1, maxLength: 30 }),
+        async (agentId) => {
+          type AgentState = {
+            id: string;
+            name: string;
+            status: string;
+            progress: number;
+            finishedAt?: Date;
+          };
 
-        // Start with a running agent
-        const agents: AgentState[] = [
-          { id: agentId, name: agentId, status: "running", progress: 50 },
-        ];
-        const payload = {
-          agentId,
-          progress: 100,
-          timestamp: new Date().toISOString(),
-        };
+          // Start with a running agent
+          const agents: AgentState[] = [
+            { id: agentId, name: agentId, status: "running", progress: 50 },
+          ];
+          const payload = {
+            agentId,
+            progress: 100,
+            timestamp: new Date().toISOString(),
+          };
 
-        // Logic from onStepCompleted handler
-        const existingAgent = agents.find(
-          (item) => item.id === payload.agentId,
-        );
+          // Logic from onStepCompleted handler
+          const existingAgent = agents.find(
+            (item) => item.id === payload.agentId,
+          );
 
-        const updatedAgents: AgentState[] = existingAgent
-          ? agents.map((item) =>
-              item.id === payload.agentId
-                ? {
-                    ...item,
-                    status: "completed",
-                    progress: payload.progress ?? 100,
-                    finishedAt: new Date(payload.timestamp),
-                  }
-                : item,
-            )
-          : [
-              ...agents,
-              {
-                id: payload.agentId,
-                name: payload.agentId,
-                status: "completed",
-                progress: payload.progress ?? 100,
-                finishedAt: new Date(payload.timestamp),
-              },
-            ];
+          const updatedAgents: AgentState[] = existingAgent
+            ? agents.map((item) =>
+                item.id === payload.agentId
+                  ? {
+                      ...item,
+                      status: "completed",
+                      progress: payload.progress ?? 100,
+                      finishedAt: new Date(payload.timestamp),
+                    }
+                  : item,
+              )
+            : [
+                ...agents,
+                {
+                  id: payload.agentId,
+                  name: payload.agentId,
+                  status: "completed",
+                  progress: payload.progress ?? 100,
+                  finishedAt: new Date(payload.timestamp),
+                },
+              ];
 
-        expect(updatedAgents.length).toBe(1);
-        expect(updatedAgents[0].status).toBe("completed");
-        expect(updatedAgents[0].progress).toBe(100);
-      }),
+          expect(updatedAgents.length).toBe(1);
+          expect(updatedAgents[0].status).toBe("completed");
+          expect(updatedAgents[0].progress).toBe(100);
+        },
+      ),
       { numRuns: 5 },
     );
   });
 
-  it("property: pipeline.completed handler sets overall status to completed", () => {
-    fc.assert(
-      fc.property(fc.constant(null), () => {
+  it("property: pipeline.completed handler sets overall status to completed", async () => {
+    await fc.assert(
+      fc.asyncProperty(fc.constant(null), async () => {
         // Simulate the onCompleted handler logic
         type PipelineState = {
           status: string;
@@ -559,50 +580,59 @@ describe("Preservation - usePipelineStream Socket.IO Subscriptions", () => {
 // ─── 5. Error Handling ──────────────────────────────────────────────────────
 
 describe("Preservation - Error Handling", () => {
-  it("property: route validates prompt < 5 chars (orchestrator doesn't, route does)", () => {
-    fc.assert(
-      fc.property(fc.string({ minLength: 0, maxLength: 4 }), (shortPrompt) => {
-        // The route handler rejects prompt < 5 chars at the HTTP level.
-        // The orchestrator itself doesn't validate — it assumes the route did.
-        // We verify the route logic inline:
-        const prompt = shortPrompt;
-        const isInvalid =
-          !prompt || typeof prompt !== "string" || prompt.trim().length < 5;
-        expect(isInvalid).toBe(true);
-      }),
+  it("property: route validates prompt < 5 chars (orchestrator doesn't, route does)", async () => {
+    await fc.assert(
+      fc.asyncProperty(
+        fc.string({ minLength: 0, maxLength: 4 }),
+        async (shortPrompt) => {
+          // The route handler rejects prompt < 5 chars at the HTTP level.
+          // The orchestrator itself doesn't validate — it assumes the route did.
+          // We verify the route logic inline:
+          const prompt = shortPrompt;
+          const isInvalid =
+            !prompt || typeof prompt !== "string" || prompt.trim().length < 5;
+          expect(isInvalid).toBe(true);
+        },
+      ),
       { numRuns: 5 },
     );
   });
 
-  it("property: pause() on non-running session returns false", () => {
-    fc.assert(
-      fc.property(fc.string({ minLength: 5, maxLength: 80 }), (prompt) => {
-        const orchestrator = new AutonomousOrchestrator();
-        const session = orchestrator.run(prompt, "test-project");
+  it("property: pause() on non-running session returns false", async () => {
+    await fc.assert(
+      fc.asyncProperty(
+        fc.string({ minLength: 5, maxLength: 80 }),
+        async (prompt) => {
+          const orchestrator = new AutonomousOrchestrator();
+          const session = await orchestrator.run(prompt, "test-project");
 
-        // Cancel the session first so it's not running
-        orchestrator.cancel(session.id);
-        const current = orchestrator.getSession(session.id);
-        expect(current!.status).toBe("cancelled");
+          // Cancel the session first so it's not running
+          await orchestrator.cancel(session.id);
+          const current = orchestrator.getSession(session.id);
+          expect(current!.status).toBe("cancelled");
 
-        // Pause on cancelled session should return false
-        const result = orchestrator.pause(session.id);
-        expect(result).toBe(false);
-      }),
+          // Pause on cancelled session should return false
+          const result = await orchestrator.pause(session.id);
+          expect(result).toBe(false);
+        },
+      ),
       { numRuns: 5 },
     );
   });
 
-  it("property: resume() on non-paused session returns false", () => {
-    fc.assert(
-      fc.property(fc.string({ minLength: 5, maxLength: 80 }), (prompt) => {
-        const orchestrator = new AutonomousOrchestrator();
-        const session = orchestrator.run(prompt, "test-project");
+  it("property: resume() on non-paused session returns false", async () => {
+    await fc.assert(
+      fc.asyncProperty(
+        fc.string({ minLength: 5, maxLength: 80 }),
+        async (prompt) => {
+          const orchestrator = new AutonomousOrchestrator();
+          const session = await orchestrator.run(prompt, "test-project");
 
-        // Session is running, not paused — resume should return false
-        const result = orchestrator.resume(session.id);
-        expect(result).toBe(false);
-      }),
+          // Session is running, not paused — resume should return false
+          const result = await orchestrator.resume(session.id);
+          expect(result).toBe(false);
+        },
+      ),
       { numRuns: 5 },
     );
   });
@@ -613,7 +643,7 @@ describe("Preservation - Error Handling", () => {
         fc.string({ minLength: 5, maxLength: 30 }),
         async (prompt) => {
           const orchestrator = new AutonomousOrchestrator();
-          const session = orchestrator.run(prompt, "test-project");
+          const session = await orchestrator.run(prompt, "test-project");
 
           // Wait for completion
           const maxWait = 15000;
@@ -631,7 +661,7 @@ describe("Preservation - Error Handling", () => {
 
           // If completed, cancel should return false
           if (current && current.status === "simulated") {
-            const result = orchestrator.cancel(session.id);
+            const result = await orchestrator.cancel(session.id);
             expect(result).toBe(false);
           }
         },
@@ -650,7 +680,7 @@ describe("Preservation - Cost and Quality Tracking", () => {
         fc.string({ minLength: 5, maxLength: 30 }),
         async (prompt) => {
           const orchestrator = new AutonomousOrchestrator();
-          const session = orchestrator.run(prompt, "test-project");
+          const session = await orchestrator.run(prompt, "test-project");
 
           // Wait for completion
           const maxWait = 15000;
@@ -682,7 +712,7 @@ describe("Preservation - Cost and Quality Tracking", () => {
         fc.string({ minLength: 5, maxLength: 30 }),
         async (prompt) => {
           const orchestrator = new AutonomousOrchestrator();
-          const session = orchestrator.run(prompt, "test-project");
+          const session = await orchestrator.run(prompt, "test-project");
 
           // Wait for completion
           const maxWait = 15000;
@@ -714,7 +744,7 @@ describe("Preservation - Cost and Quality Tracking", () => {
         fc.string({ minLength: 5, maxLength: 30 }),
         async (prompt) => {
           const orchestrator = new AutonomousOrchestrator();
-          const session = orchestrator.run(prompt, "test-project");
+          const session = await orchestrator.run(prompt, "test-project");
 
           // Wait for completion
           const maxWait = 15000;
@@ -761,7 +791,7 @@ describe("Preservation - Cost and Quality Tracking", () => {
         fc.string({ minLength: 5, maxLength: 30 }),
         async (prompt) => {
           const orchestrator = new AutonomousOrchestrator();
-          const session = orchestrator.run(prompt, "test-project");
+          const session = await orchestrator.run(prompt, "test-project");
 
           // Wait for at least genre_detection to complete (~50ms)
           const maxWait = 15000;

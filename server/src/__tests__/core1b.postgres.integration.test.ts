@@ -12,6 +12,9 @@ import type {
 import { createProjectRuntime } from "../routes/projects";
 import { ChatPersistenceService } from "../services/ChatPersistenceService";
 import { ProjectSyncManager } from "../studio/v2/sync/ProjectSyncManager";
+import { StorageAutonomousSessionStore } from "../platform/storage/OperationalStoreComposition";
+import { createAutonomousPhaseContext } from "../orchestrator/AutonomousPhaseRegistry";
+import type { AutonomousSessionRecord } from "../orchestrator/store/AutonomousSessionStore";
 
 const describePostgres =
   process.env.RUN_POSTGRES_E2E === "true" ? describe : describe.skip;
@@ -51,6 +54,60 @@ function createBlueprintInput(projectId: string): CreateBlueprintInput {
   };
 }
 
+function createAutonomousRecord(
+  sessionId: string,
+  projectId: string,
+): AutonomousSessionRecord {
+  const prompt = "Build a restart-safe autonomous adventure";
+  return {
+    session: {
+      id: sessionId,
+      projectId,
+      prompt,
+      executionMode: "bounded",
+      resultAuthority: "preview-only",
+      status: "running",
+      currentPhase: "blueprint",
+      phases: [
+        {
+          id: "node-blueprint",
+          phase: "blueprint",
+          status: "running",
+          startedAt: 100,
+        },
+      ],
+      goals: {
+        targetScore: 80,
+        budget: 10000,
+        timeLimitMs: 300000,
+        maxCost: 1,
+        maxRepairIterations: 3,
+      },
+      cost: {
+        totalTokens: 12,
+        totalCost: 0.25,
+        totalTimeMs: 42,
+        source: "measured",
+        perPhase: {},
+      },
+      checkpoints: [
+        {
+          id: `${sessionId}:checkpoint:1`,
+          phase: "knowledge_search",
+          timestamp: 90,
+          snapshot: { durable: true },
+        },
+      ],
+      qualityScore: 75,
+      startedAt: 50,
+      recoveryCount: 0,
+      executionGeneration: 0,
+    },
+    context: createAutonomousPhaseContext(projectId, prompt),
+    checkpointSequence: 1,
+  };
+}
+
 describePostgres("CORE-1b PostgreSQL restart acceptance", () => {
   let activeProvider: PostgresStorageProvider | null = null;
 
@@ -61,7 +118,7 @@ describePostgres("CORE-1b PostgreSQL restart acceptance", () => {
     }
   });
 
-  it("restores owned projects, blueprints, executions, artifacts, chat, and sessions", async () => {
+  it("restores projects and operational state, including autonomous interruption", async () => {
     const databaseUrl = process.env.DATABASE_URL;
     if (!databaseUrl) {
       throw new Error("DATABASE_URL is required for the PostgreSQL E2E test");
@@ -185,6 +242,14 @@ describePostgres("CORE-1b PostgreSQL restart acceptance", () => {
       content: "Persistence checkpoint recorded.",
     });
 
+    const autonomousSessionId = `autonomous-${suffix}`;
+    const autonomousBeforeRestart = new StorageAutonomousSessionStore(
+      firstProvider,
+    );
+    await autonomousBeforeRestart.save(
+      createAutonomousRecord(autonomousSessionId, project.id),
+    );
+
     await firstProvider.flush();
     await firstProvider.close();
     activeProvider = null;
@@ -206,6 +271,24 @@ describePostgres("CORE-1b PostgreSQL restart acceptance", () => {
     );
     const artifactsAfterRestart = new ArtifactStore(secondProvider);
     const chatAfterRestart = new ChatPersistenceService(secondProvider);
+    const autonomousAfterRestart = new StorageAutonomousSessionStore(
+      secondProvider,
+    );
+
+    await expect(autonomousAfterRestart.markInterrupted()).resolves.toBe(1);
+    await expect(autonomousAfterRestart.markInterrupted()).resolves.toBe(0);
+    expect(autonomousAfterRestart.get(autonomousSessionId)).toMatchObject({
+      checkpointSequence: 1,
+      session: {
+        projectId: project.id,
+        status: "paused",
+        currentPhase: "paused",
+        restartInterruptedAt: 100,
+        recoveryReason: "server_restart",
+        cost: { totalCost: 0.25 },
+        checkpoints: [{ id: `${autonomousSessionId}:checkpoint:1` }],
+      },
+    });
 
     expect((await authAfterRestart.validateToken(ownerToken))?.userId).toBe(
       ownerId,
@@ -252,5 +335,56 @@ describePostgres("CORE-1b PostgreSQL restart acceptance", () => {
       ),
     ).toBe(false);
     expect(foreignResponse.status).toHaveBeenCalledWith(403);
+  });
+
+  it("allows one PostgreSQL winner for autonomous recovery and execution claims", async () => {
+    const databaseUrl = process.env.DATABASE_URL;
+    if (!databaseUrl) {
+      throw new Error("DATABASE_URL is required for the PostgreSQL E2E test");
+    }
+
+    await runMigrations();
+    const firstProvider = new PostgresStorageProvider({
+      connectionString: databaseUrl,
+      strict: true,
+    });
+    const secondProvider = new PostgresStorageProvider({
+      connectionString: databaseUrl,
+      strict: true,
+    });
+
+    try {
+      await Promise.all([firstProvider.ready(), secondProvider.ready()]);
+      const suffix = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+      const projectId = `project-claim-race-${suffix}`;
+      const firstStore = new StorageAutonomousSessionStore(firstProvider);
+      const secondStore = new StorageAutonomousSessionStore(secondProvider);
+
+      const recoveryId = `autonomous-recovery-race-${suffix}`;
+      await firstStore.save(createAutonomousRecord(recoveryId, projectId));
+      await secondStore.refresh();
+      const recoveryResults = await Promise.all([
+        firstStore.markInterrupted(),
+        secondStore.markInterrupted(),
+      ]);
+      expect(recoveryResults.sort()).toEqual([0, 1]);
+      expect(firstStore.get(recoveryId)?.session.status).toBe("paused");
+      expect(secondStore.get(recoveryId)?.session.status).toBe("paused");
+
+      const executionId = `autonomous-execution-race-${suffix}`;
+      const execution = createAutonomousRecord(executionId, projectId);
+      execution.session.executionGeneration = 1;
+      await firstStore.save(execution);
+      await secondStore.refresh();
+      const executionResults = await Promise.all([
+        firstStore.claimExecution(execution),
+        secondStore.claimExecution(execution),
+      ]);
+      expect(executionResults.sort()).toEqual([false, true]);
+      expect(firstStore.get(executionId)?.session.executionGeneration).toBe(1);
+      expect(secondStore.get(executionId)?.session.executionGeneration).toBe(1);
+    } finally {
+      await Promise.all([firstProvider.close(), secondProvider.close()]);
+    }
   });
 });

@@ -89,19 +89,19 @@ describe("Bug Condition Exploration - Autonomous Pipeline Emits No Events", () =
    * PipelineEventEmitter parameter, and run() never calls emit.
    */
   describe("No pipeline.started emitted (Requirement 1.1, 1.3)", () => {
-    it("property: AutonomousOrchestrator.run() SHALL emit pipeline.started via PipelineEventEmitter", () => {
-      fc.assert(
-        fc.property(
+    it("property: AutonomousOrchestrator.run() SHALL emit pipeline.started via PipelineEventEmitter", async () => {
+      await fc.assert(
+        fc.asyncProperty(
           fc.string({ minLength: 5, maxLength: 100 }),
           fc.string({ minLength: 1, maxLength: 50 }),
-          (prompt, projectId) => {
+          async (prompt, projectId) => {
             const { emitter, events } = createSpyEmitter();
 
             // FIX: Constructor now accepts PipelineEventEmitter (Task 3)
             const orchestrator = new AutonomousOrchestrator(emitter);
 
             // Run with the injected emitter
-            const session = orchestrator.run(prompt, projectId);
+            const session = await orchestrator.run(prompt, projectId);
 
             // EXPECTED: pipeline.started should have been emitted
             const pipelineStarted = events.filter(
@@ -134,7 +134,7 @@ describe("Bug Condition Exploration - Autonomous Pipeline Emits No Events", () =
 
             // FIX: Constructor now accepts PipelineEventEmitter (Task 3)
             const orchestrator = new AutonomousOrchestrator(emitter);
-            const session = orchestrator.run(prompt, "test-project");
+            const session = await orchestrator.run(prompt, "test-project");
 
             // Wait for at least one phase to start executing
             await new Promise((resolve) => setTimeout(resolve, 200));
@@ -170,7 +170,7 @@ describe("Bug Condition Exploration - Autonomous Pipeline Emits No Events", () =
 
             // FIX: Constructor now accepts PipelineEventEmitter (Task 3)
             const orchestrator = new AutonomousOrchestrator(emitter);
-            const session = orchestrator.run(prompt, "test-project");
+            const session = await orchestrator.run(prompt, "test-project");
 
             // Wait for phases to complete (genre_detection is ~50ms)
             await new Promise((resolve) => setTimeout(resolve, 300));
@@ -215,7 +215,7 @@ describe("Bug Condition Exploration - Autonomous Pipeline Emits No Events", () =
             // Run with a very low budget to trigger failure via isOverBudget()
             // FIX: Constructor now accepts PipelineEventEmitter (Task 3)
             const orchestrator = new AutonomousOrchestrator(emitter);
-            const session = orchestrator.run(prompt, "test-project", {
+            const session = await orchestrator.run(prompt, "test-project", {
               maxCost: 0.0000001, // Extremely low — will trigger budget exceeded
               timeLimitMs: 100, // Very short time limit
             });
@@ -259,12 +259,12 @@ describe("Bug Condition Exploration - Autonomous Pipeline Emits No Events", () =
    * pipeline.started, pipeline.completed, pipeline.failed — but NOT step.failed.
    */
   describe("usePipelineStream missing step.failed (Requirement 1.5)", () => {
-    it("property: usePipelineStream SHALL handle step.failed events to update agent state", () => {
-      fc.assert(
-        fc.property(
+    it("property: usePipelineStream SHALL handle step.failed events to update agent state", async () => {
+      await fc.assert(
+        fc.asyncProperty(
           fc.string({ minLength: 1, maxLength: 50 }),
           fc.string({ minLength: 1, maxLength: 100 }),
-          (agentId, errorMessage) => {
+          async (agentId, errorMessage) => {
             // Simulate what usePipelineStream does with step.failed
             const hasStepFailedHandler = simulateUsePipelineStreamStepFailed();
 
@@ -288,16 +288,19 @@ describe("Bug Condition Exploration - Autonomous Pipeline Emits No Events", () =
    * a 404 response silently fails without stopping the interval.
    */
   describe("AutonomousPipelinePanel ignores 404 (Requirement 1.6)", () => {
-    it("property: panel SHALL stop polling when session returns 404", () => {
-      fc.assert(
-        fc.property(fc.string({ minLength: 1, maxLength: 50 }), (sessionId) => {
-          // Simulate what happens when getAutonomousStatus returns 404
-          const pollingStopped = simulatePollingOn404();
+    it("property: panel SHALL stop polling when session returns 404", async () => {
+      await fc.assert(
+        fc.asyncProperty(
+          fc.string({ minLength: 1, maxLength: 50 }),
+          async (sessionId) => {
+            // Simulate what happens when getAutonomousStatus returns 404
+            const pollingStopped = simulatePollingOn404();
 
-          // EXPECTED: Polling SHOULD stop on 404
-          // BUG: Polling continues indefinitely
-          expect(pollingStopped).toBe(true);
-        }),
+            // EXPECTED: Polling SHOULD stop on 404
+            // BUG: Polling continues indefinitely
+            expect(pollingStopped).toBe(true);
+          },
+        ),
         { numRuns: 5 },
       );
     });

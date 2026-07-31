@@ -72,7 +72,7 @@ describe("Integration - Successful Pipeline Run", () => {
         async (prompt) => {
           const { emitter, events } = createSpyEmitter();
           const orchestrator = new AutonomousOrchestrator(emitter);
-          const session = orchestrator.run(prompt, "integration-test");
+          const session = await orchestrator.run(prompt, "integration-test");
 
           // Wait for full pipeline completion
           await waitForSessionEnd(orchestrator, session.id);
@@ -134,7 +134,7 @@ describe("Integration - Phase Failure Propagation", () => {
           const orchestrator = new AutonomousOrchestrator(emitter);
 
           // Use extremely low budget to trigger failure
-          const session = orchestrator.run(prompt, "failure-test", {
+          const session = await orchestrator.run(prompt, "failure-test", {
             maxCost: 0.0000001,
             timeLimitMs: 100,
           });
@@ -189,7 +189,7 @@ describe("Integration - Agent Name Mapping", () => {
         async (prompt) => {
           const { emitter, events } = createSpyEmitter();
           const orchestrator = new AutonomousOrchestrator(emitter);
-          const session = orchestrator.run(prompt, "name-mapping-test");
+          const session = await orchestrator.run(prompt, "name-mapping-test");
 
           // Wait for at least a few phases to complete
           await waitForSessionEnd(orchestrator, session.id);
@@ -230,7 +230,7 @@ describe("Integration - Cost Data Propagation", () => {
         async (prompt) => {
           const { emitter, events } = createSpyEmitter();
           const orchestrator = new AutonomousOrchestrator(emitter);
-          const session = orchestrator.run(prompt, "cost-test");
+          const session = await orchestrator.run(prompt, "cost-test");
 
           // Wait for completion
           await waitForSessionEnd(orchestrator, session.id);
@@ -272,13 +272,13 @@ describe("Integration - Session Lifecycle", () => {
         async (prompt) => {
           const { emitter, events } = createSpyEmitter();
           const orchestrator = new AutonomousOrchestrator(emitter);
-          const session = orchestrator.run(prompt, "lifecycle-test");
+          const session = await orchestrator.run(prompt, "lifecycle-test");
 
           // Verify pipeline.started was emitted
           expect(events.some((e) => e.type === "pipeline.started")).toBe(true);
 
           // Pause the session
-          const paused = orchestrator.pause(session.id);
+          const paused = await orchestrator.pause(session.id);
           expect(paused).toBe(true);
 
           const pausedSession = orchestrator.getSession(session.id);
@@ -296,7 +296,7 @@ describe("Integration - Session Lifecycle", () => {
           expect(newStepStartedDuringPause.length).toBe(0);
 
           // Resume the session
-          const resumed = orchestrator.resume(session.id);
+          const resumed = await orchestrator.resume(session.id);
           expect(resumed).toBe(true);
 
           const resumedSession = orchestrator.getSession(session.id);
@@ -308,7 +308,7 @@ describe("Integration - Session Lifecycle", () => {
           expect(eventsAfterResume).toBeGreaterThan(eventsAtPause);
 
           // Cancel the session
-          const cancelled = orchestrator.cancel(session.id);
+          const cancelled = await orchestrator.cancel(session.id);
           // cancel may return false if session already completed
           if (cancelled) {
             const cancelledSession = orchestrator.getSession(session.id);
@@ -324,11 +324,11 @@ describe("Integration - Session Lifecycle", () => {
 // ─── 6. 404 Session Handling ────────────────────────────────────────────────
 
 describe("Integration - 404 Session Handling", () => {
-  it("property: getSession with non-existent ID returns null", () => {
-    fc.assert(
-      fc.property(
+  it("property: getSession with non-existent ID returns null", async () => {
+    await fc.assert(
+      fc.asyncProperty(
         fc.string({ minLength: 10, maxLength: 50 }),
-        (nonExistentId) => {
+        async (nonExistentId) => {
           const orchestrator = new AutonomousOrchestrator();
           const result = orchestrator.getSession(nonExistentId);
           expect(result).toBeNull();
@@ -338,15 +338,15 @@ describe("Integration - 404 Session Handling", () => {
     );
   });
 
-  it("property: getSession returns null for IDs that were never created (simulating 404 scenario)", () => {
-    fc.assert(
-      fc.property(
+  it("property: getSession returns null for IDs that were never created (simulating 404 scenario)", async () => {
+    await fc.assert(
+      fc.asyncProperty(
         fc.string({ minLength: 5, maxLength: 30 }),
         fc.string({ minLength: 10, maxLength: 50 }),
-        (prompt, fakeId) => {
+        async (prompt, fakeId) => {
           const orchestrator = new AutonomousOrchestrator();
           // Create a real session
-          const session = orchestrator.run(prompt, "test-project");
+          const session = await orchestrator.run(prompt, "test-project");
           // Query with a fake ID - should return null (404 equivalent)
           const result = orchestrator.getSession(fakeId);
           expect(result).toBeNull();
@@ -374,8 +374,10 @@ describe("Integration - Concurrent Pipeline Isolation", () => {
           const orchestrator = new AutonomousOrchestrator(emitter);
 
           // Start two concurrent sessions
-          const session1 = orchestrator.run(prompt1, "project-1");
-          const session2 = orchestrator.run(prompt2, "project-2");
+          const [session1, session2] = await Promise.all([
+            orchestrator.run(prompt1, "project-1"),
+            orchestrator.run(prompt2, "project-2"),
+          ]);
 
           // IDs must be different
           expect(session1.id).not.toBe(session2.id);
@@ -437,7 +439,7 @@ describe("Integration - Reconnect Resilience", () => {
           });
 
           // Now run the pipeline
-          const session = orchestrator.run(prompt, "reconnect-test");
+          const session = await orchestrator.run(prompt, "reconnect-test");
 
           // Wait for completion
           await waitForSessionEnd(orchestrator, session.id);

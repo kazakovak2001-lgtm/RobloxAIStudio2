@@ -106,6 +106,10 @@ export interface OrchestratorSession {
   estimatedTimeMs?: number;
   estimatedCost?: number;
   recoveryCount: number;
+  executionGeneration: number;
+  restartInterruptedAt?: number;
+  recoveryReason?: "server_restart";
+  terminalEvidenceId?: string;
 }
 
 export const DEFAULT_GOALS: GoalConfig = {

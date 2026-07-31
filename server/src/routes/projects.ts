@@ -24,6 +24,7 @@ export interface ProjectAccessControl {
     res: Response,
     projectId: string,
   ): Promise<boolean>;
+  hasProjectAccess?(req: Request, projectId: string): Promise<boolean>;
 }
 
 export interface ProjectRuntime {
@@ -82,6 +83,18 @@ export function createProjectRuntime(
     return true;
   };
 
+  const hasProjectAccess = async (
+    req: Request,
+    projectId: string,
+  ): Promise<boolean> => {
+    const userId = await getRequestUserId(req);
+    return Boolean(
+      userId &&
+      projectRepository.get(projectId) &&
+      projectRepository.verifyOwnership(projectId, userId),
+    );
+  };
+
   return {
     projectRepository,
     generationHistory,
@@ -89,6 +102,7 @@ export function createProjectRuntime(
       getRequestUserId,
       requireAuthenticatedUser,
       requireProjectAccess,
+      hasProjectAccess,
     },
   };
 }

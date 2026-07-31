@@ -1059,7 +1059,10 @@
 │   │   │   ├── AutonomousOrchestrator.ts
 │   │   │   ├── AutonomousPhaseRegistry.ts
 │   │   │   ├── index.ts
-│   │   │   └── OrchestratorTypes.ts
+│   │   │   ├── OrchestratorTypes.ts
+│   │   │   └── store
+│   │   │       ├── AutonomousSessionStore.test.ts
+│   │   │       └── AutonomousSessionStore.ts
 │   │   ├── pipeline
 │   │   │   ├── __tests__
 │   │   │   │   └── observability.test.ts
@@ -1134,6 +1137,7 @@
 │   │   │   │   └── PermissionMiddleware.ts
 │   │   │   ├── storage
 │   │   │   │   ├── index.ts
+│   │   │   │   ├── OperationalStoreComposition.ts
 │   │   │   │   ├── postgres
 │   │   │   │   │   ├── DatabaseHealth.ts
 │   │   │   │   │   ├── index.ts
@@ -1242,6 +1246,7 @@
 │   │   │   ├── agentCollaboration.ts
 │   │   │   ├── aiChat.ts
 │   │   │   ├── analytics.ts
+│   │   │   ├── autonomous.test.ts
 │   │   │   ├── autonomous.ts
 │   │   │   ├── chatPersistence.ts
 │   │   │   ├── compile.ts

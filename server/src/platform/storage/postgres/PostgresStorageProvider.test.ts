@@ -157,6 +157,28 @@ function provider(options: FakePoolOptions = {}): {
 }
 
 describe("PostgresStorageProvider awaited mutations", () => {
+  it("refreshes selected collections after another process changes durable state", async () => {
+    const rows: Array<Record<string, unknown>> = [];
+    const { storage } = provider({ rows });
+    await storage.ready();
+
+    rows.push({
+      collection: "autonomous_runtime_sessions",
+      id: "orch-remote",
+      data: { status: "paused", executionGeneration: 2 },
+    });
+    expect(
+      storage.get("autonomous_runtime_sessions", "orch-remote"),
+    ).toBeNull();
+
+    await storage.refresh(["autonomous_runtime_sessions"]);
+
+    expect(storage.get("autonomous_runtime_sessions", "orch-remote")).toEqual({
+      status: "paused",
+      executionGeneration: 2,
+    });
+  });
+
   it("does not expose a rejected create in the read cache", async () => {
     const { storage } = provider({ rejectDirect: "insert" });
     await storage.ready();

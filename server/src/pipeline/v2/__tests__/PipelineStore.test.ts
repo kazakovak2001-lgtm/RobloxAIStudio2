@@ -5,7 +5,7 @@ import {
   type DurableMutation,
   type DurableMutationResult,
 } from "../../../platform/storage/StorageProvider";
-import { StoragePipelineStore } from "../../../platform/storage/StorageFactory";
+import { StoragePipelineStore } from "../../../platform/storage/OperationalStoreComposition";
 import { createPipelineState } from "../PipelineStage";
 import { InMemoryPipelineStore } from "../store/InMemoryPipelineStore";
 

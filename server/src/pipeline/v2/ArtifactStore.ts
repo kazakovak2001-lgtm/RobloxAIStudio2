@@ -3,11 +3,24 @@
  */
 
 import { randomUUID } from "crypto";
-import {
-  getConfiguredStorageProvider,
-  type StorageProvider,
-} from "../../platform/storage/StorageFactory";
 import type { StageName } from "./PipelineStage";
+
+export interface ArtifactStorageProvider {
+  get<T>(collection: string, id: string): T | null;
+  list<T>(collection: string, filter?: (item: T) => boolean): T[];
+  count(collection: string): number;
+  setDurable<T>(collection: string, id: string, data: T): Promise<void>;
+}
+
+export type ArtifactStorageFactory = () => ArtifactStorageProvider;
+
+let configuredArtifactStorageFactory: ArtifactStorageFactory | null = null;
+
+export function configureArtifactStorageFactory(
+  factory: ArtifactStorageFactory,
+): void {
+  configuredArtifactStorageFactory = factory;
+}
 
 export interface PipelineArtifact {
   id: string;
@@ -61,7 +74,7 @@ export class ArtifactStore {
   private byPipeline: Map<string, string[]> = new Map();
   private readonly mutationQueues = new Map<string, Promise<void>>();
 
-  constructor(private readonly injectedStorage?: StorageProvider) {}
+  constructor(private readonly injectedStorage?: ArtifactStorageProvider) {}
 
   /**
    * Store an artifact produced by a pipeline stage after persistence is
@@ -235,8 +248,8 @@ export class ArtifactStore {
     };
   }
 
-  private get storage(): StorageProvider | undefined {
-    return this.injectedStorage ?? getConfiguredStorageProvider() ?? undefined;
+  private get storage(): ArtifactStorageProvider | undefined {
+    return this.injectedStorage ?? configuredArtifactStorageFactory?.();
   }
 
   private async mutate(
