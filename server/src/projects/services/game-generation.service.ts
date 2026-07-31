@@ -38,7 +38,7 @@ export class GameGenerationService {
     cache: BlueprintCache,
     streaming: StreamingUpdateHandler,
     events: PipelineEventEmitter,
-    _integrator: unknown, // preserved for backward-compatible constructor signature
+    _integrator: unknown,
     agentRegistry?: AgentRegistry,
     artifactStore: ArtifactStore = new ArtifactStore(),
     outcomeCoordinator?: GenerationOutcomeCoordinator,
@@ -50,12 +50,7 @@ export class GameGenerationService {
     this.validator = new BlueprintValidator();
     this.agentRegistry = agentRegistry ?? new AgentRegistry();
     this.artifactRecorder = new GenerationArtifactRecorder(artifactStore);
-    const configuredStorage = getConfiguredStorageProvider();
-    this.outcomeCoordinator =
-      outcomeCoordinator ??
-      (configuredStorage
-        ? new GenerationOutcomeCoordinator(configuredStorage)
-        : undefined);
+    this.outcomeCoordinator = outcomeCoordinator;
   }
 
   async createBlueprint(
@@ -126,9 +121,6 @@ export class GameGenerationService {
 
     await this.repository.recordExecution(execution);
 
-    // Defer execution until the HTTP start response and history record can be
-    // committed. This also guarantees that an already-joined Socket.IO client
-    // can observe pipeline.started instead of racing the request response.
     setImmediate(
       () =>
         void this.executionQueue.add(async () => {
@@ -147,7 +139,6 @@ export class GameGenerationService {
               },
             };
 
-            // === CANONICAL EXECUTION: PlanExecutor (single runtime) ===
             const planner = new PlannerEngine();
             const executor = new PlanExecutor(
               undefined,
@@ -176,14 +167,11 @@ export class GameGenerationService {
               { projectId: enrichedBlueprint.project_id, stopOnFailure: false },
             );
 
-            // Persist the real canonical node outputs under the same durable
-            // execution ID consumed by the Studio v2 snapshot/transfer path.
             await this.artifactRecorder.record(
               execution.id,
               result.graph.getAllNodes(),
             );
 
-            // Build pipeline_steps from TaskGraph
             const pipelineSteps = result.graph.getAllNodes().map((node) => ({
               agent: node.agent,
               status:
@@ -263,12 +251,17 @@ export class GameGenerationService {
     updates: Partial<GenerationExecution>,
   ): Promise<GenerationExecution | null> {
     if (!this.outcomeCoordinator) {
+      const configuredStorage = getConfiguredStorageProvider();
+      if (configuredStorage) {
+        this.outcomeCoordinator = new GenerationOutcomeCoordinator(
+          configuredStorage,
+        );
+      }
+    }
+
+    if (!this.outcomeCoordinator) {
       return this.repository.updateExecution(executionId, updates);
     }
-    const execution = await this.outcomeCoordinator.commit(
-      executionId,
-      updates,
-    );
-    return execution as GenerationExecution | null;
+    return this.outcomeCoordinator.commit(executionId, updates);
   }
 }
