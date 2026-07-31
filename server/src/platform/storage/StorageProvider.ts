@@ -65,12 +65,17 @@ export interface DurableMutationResult {
 }
 
 export type StorageAvailability = "available" | "degraded" | "unavailable";
+export type StorageFailureCategory =
+  "initialization" | "connectivity" | "durable-mutation";
 
 export interface StorageOperationalStatus {
   availability: StorageAvailability;
   durability: "ephemeral" | "durable";
   pendingMutations: number;
   lastFailureAt?: string;
+  lastRecoveryAt?: string;
+  failureCategory?: StorageFailureCategory;
+  failureOperation?: DurableStorageOperation;
 }
 
 export interface StorageProvider {
