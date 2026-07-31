@@ -195,7 +195,7 @@ export class StorageBlueprintRepository implements IBlueprintRepository {
           collection: VERSIONS,
           id: activeVersion.id,
           data: {
-            ...activeVersion,
+            ...this.hydrateVersion(activeVersion),
             is_active: false,
           },
         })),
@@ -273,7 +273,7 @@ export class StorageBlueprintRepository implements IBlueprintRepository {
           collection: VERSIONS,
           id: candidate.id,
           data: {
-            ...candidate,
+            ...this.hydrateVersion(candidate),
             is_active: candidate.id === version.id,
           },
         }));
