@@ -306,7 +306,6 @@ export function createGameGenerationRouter(
           : undefined,
         bridgeVersion: studioManager.protocolVersion,
         pendingChanges,
-        itemsSynced: undefined,
         artifactVerified: session?.artifactVerified ?? false,
         verificationStatus: session?.verificationStatus ?? "idle",
         lastCommandId: session?.lastCommandId,
@@ -314,7 +313,7 @@ export function createGameGenerationRouter(
         verifiedArtifactCount: session?.verifiedArtifactCount,
         verificationError: session?.verificationError,
         message: describeStudioSession(session, pendingChanges),
-      } as StudioConnectionInfo;
+      };
 
       res.json({ success: true, data: response });
     } catch (error) {
