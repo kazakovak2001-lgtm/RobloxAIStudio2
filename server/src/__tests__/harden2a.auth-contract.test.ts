@@ -181,9 +181,9 @@ describe("HARDEN-2A auth contract", async () => {
     expect(stored[0].refreshTokenDigest).toMatch(/^[a-f0-9]{64}$/);
     expect(JSON.stringify(stored)).not.toContain(login.refreshToken);
     expect(storage.count("auth_refresh_credentials")).toBe(2);
-    expect(
-      JSON.stringify(storage.list("auth_refresh_credentials")),
-    ).not.toContain(login.refreshToken);
+    expect(JSON.stringify(storage.list("auth_refresh_credentials"))).not.toContain(
+      login.refreshToken,
+    );
 
     const rotated = await auth.refreshSessionDurable(login.refreshToken!);
     expect(rotated.success).toBe(true);
