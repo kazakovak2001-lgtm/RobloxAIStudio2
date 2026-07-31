@@ -1,9 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { Request, Response } from "express";
 import { AuthService } from "../platform/auth/AuthService";
-import {
-  StoragePipelineStore,
-} from "../platform/storage/StorageFactory";
+import { StoragePipelineStore } from "../platform/storage/StorageFactory";
 import { PostgresStorageProvider } from "../platform/storage/postgres/PostgresStorageProvider";
 import { runMigrations } from "../platform/storage/postgres/migrationRunner";
 import { ArtifactStore } from "../pipeline/v2/ArtifactStore";
@@ -65,232 +63,235 @@ describePostgres("CORE-1b PostgreSQL restart acceptance", () => {
     }
   });
 
-  it("restores owned projects, blueprints, executions, artifacts, chat, pipelines, and sessions", async () => {
-    const databaseUrl = process.env.DATABASE_URL;
-    if (!databaseUrl) {
-      throw new Error("DATABASE_URL is required for the PostgreSQL E2E test");
-    }
+  it(
+    "restores owned projects, blueprints, executions, artifacts, chat, pipelines, and sessions",
+    async () => {
+      const databaseUrl = process.env.DATABASE_URL;
+      if (!databaseUrl) {
+        throw new Error("DATABASE_URL is required for the PostgreSQL E2E test");
+      }
 
-    await runMigrations();
+      await runMigrations();
 
-    const firstProvider = new PostgresStorageProvider({
-      connectionString: databaseUrl,
-      strict: true,
-    });
-    activeProvider = firstProvider;
-    await firstProvider.ready();
+      const firstProvider = new PostgresStorageProvider({
+        connectionString: databaseUrl,
+        strict: true,
+      });
+      activeProvider = firstProvider;
+      await firstProvider.ready();
 
-    const suffix = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-    const ownerId = `owner-${suffix}`;
-    const otherId = `other-${suffix}`;
-    const authBeforeRestart = new AuthService(firstProvider);
-    expect(
-      await authBeforeRestart.registerDurable(
+      const suffix = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+      const ownerId = `owner-${suffix}`;
+      const otherId = `other-${suffix}`;
+      const authBeforeRestart = new AuthService(firstProvider);
+      expect(
+        await authBeforeRestart.registerDurable(
+          `owner-${suffix}@example.com`,
+          "password123",
+          ownerId,
+        ),
+      ).toBe(true);
+      expect(
+        await authBeforeRestart.registerDurable(
+          `other-${suffix}@example.com`,
+          "password123",
+          otherId,
+        ),
+      ).toBe(true);
+      const ownerLogin = await authBeforeRestart.loginDurable(
         `owner-${suffix}@example.com`,
         "password123",
         ownerId,
-      ),
-    ).toBe(true);
-    expect(
-      await authBeforeRestart.registerDurable(
+      );
+      if (!ownerLogin.token) {
+        throw new Error("Owner login did not return an access token");
+      }
+      const ownerToken = ownerLogin.token;
+
+      const otherLogin = await authBeforeRestart.loginDurable(
         `other-${suffix}@example.com`,
         "password123",
         otherId,
-      ),
-    ).toBe(true);
-    const ownerLogin = await authBeforeRestart.loginDurable(
-      `owner-${suffix}@example.com`,
-      "password123",
-      ownerId,
-    );
-    if (!ownerLogin.token) {
-      throw new Error("Owner login did not return an access token");
-    }
-    const ownerToken = ownerLogin.token;
+      );
+      if (!otherLogin.token) {
+        throw new Error("Other-user login did not return an access token");
+      }
+      const otherToken = otherLogin.token;
 
-    const otherLogin = await authBeforeRestart.loginDurable(
-      `other-${suffix}@example.com`,
-      "password123",
-      otherId,
-    );
-    if (!otherLogin.token) {
-      throw new Error("Other-user login did not return an access token");
-    }
-    const otherToken = otherLogin.token;
+      const runtimeBeforeRestart = createProjectRuntime(
+        firstProvider,
+        authBeforeRestart,
+      );
+      const project = await runtimeBeforeRestart.projectRepository.createDurable(
+        ownerId,
+        "Durable Project",
+        "adventure",
+      );
 
-    const runtimeBeforeRestart = createProjectRuntime(
-      firstProvider,
-      authBeforeRestart,
-    );
-    const project = await runtimeBeforeRestart.projectRepository.createDurable(
-      ownerId,
-      "Durable Project",
-      "adventure",
-    );
-
-    const blueprintsBeforeRestart = new StorageBlueprintRepository(
-      firstProvider,
-    );
-    const blueprint = await blueprintsBeforeRestart.createBlueprint(
-      ownerId,
-      createBlueprintInput(project.id),
-    );
-    await blueprintsBeforeRestart.saveVersion(
-      blueprint.id,
-      ownerId,
-      "Restart checkpoint",
-    );
-    const execution: GenerationExecution = {
-      id: `execution-${suffix}`,
-      blueprint_id: blueprint.id,
-      project_id: project.id,
-      user_id: ownerId,
-      started_at: new Date("2026-07-24T14:00:00.000Z"),
-      completed_at: new Date("2026-07-24T14:00:10.000Z"),
-      status: "completed",
-      pipeline_steps: [
-        {
-          agent: "roblox_architect",
-          status: "completed",
-          started_at: new Date("2026-07-24T14:00:00.000Z"),
-          completed_at: new Date("2026-07-24T14:00:10.000Z"),
-          duration_ms: 10000,
-        },
-      ],
-      total_duration_ms: 10000,
-      retry_count: 0,
-    };
-    await blueprintsBeforeRestart.recordExecution(execution);
-
-    const artifactsBeforeRestart = new ArtifactStore(firstProvider);
-    const luaArtifact = artifactsBeforeRestart.store(
-      execution.id,
-      "LUA_GENERATION",
-      "lua_generator",
-      {
-        scripts: [
+      const blueprintsBeforeRestart = new StorageBlueprintRepository(
+        firstProvider,
+      );
+      const blueprint = await blueprintsBeforeRestart.createBlueprint(
+        ownerId,
+        createBlueprintInput(project.id),
+      );
+      await blueprintsBeforeRestart.saveVersion(
+        blueprint.id,
+        ownerId,
+        "Restart checkpoint",
+      );
+      const execution: GenerationExecution = {
+        id: `execution-${suffix}`,
+        blueprint_id: blueprint.id,
+        project_id: project.id,
+        user_id: ownerId,
+        started_at: new Date("2026-07-24T14:00:00.000Z"),
+        completed_at: new Date("2026-07-24T14:00:10.000Z"),
+        status: "completed",
+        pipeline_steps: [
           {
-            path: "ServerScriptService/Main.server.lua",
-            content: "return { durable = true }",
+            agent: "roblox_architect",
+            status: "completed",
+            started_at: new Date("2026-07-24T14:00:00.000Z"),
+            completed_at: new Date("2026-07-24T14:00:10.000Z"),
+            duration_ms: 10000,
           },
         ],
-      },
-    );
+        total_duration_ms: 10000,
+        retry_count: 0,
+      };
+      await blueprintsBeforeRestart.recordExecution(execution);
 
-    const chatBeforeRestart = new ChatPersistenceService(firstProvider);
-    const firstMessage = await chatBeforeRestart.createMessage({
-      projectId: project.id,
-      role: "user",
-      content: "Keep this conversation after PostgreSQL reconnects.",
-    });
-    await chatBeforeRestart.createMessage({
-      conversationId: firstMessage.conversationId,
-      role: "assistant",
-      content: "Persistence checkpoint recorded.",
-    });
-
-    const pipelinesBeforeRestart = new StoragePipelineStore(firstProvider);
-    const runningPipeline = createPipelineState(project.id);
-    runningPipeline.status = "running";
-    runningPipeline.currentStage = "GAME_DESIGN";
-    const runningStage = runningPipeline.stages.find(
-      (stage) => stage.name === "GAME_DESIGN",
-    );
-    if (!runningStage) {
-      throw new Error("GAME_DESIGN stage missing from pipeline state");
-    }
-    runningStage.status = "running";
-    await pipelinesBeforeRestart.save(runningPipeline);
-
-    await firstProvider.flush();
-    await firstProvider.close();
-    activeProvider = null;
-
-    const secondProvider = new PostgresStorageProvider({
-      connectionString: databaseUrl,
-      strict: true,
-    });
-    activeProvider = secondProvider;
-    await secondProvider.ready();
-
-    const authAfterRestart = new AuthService(secondProvider);
-    const runtimeAfterRestart = createProjectRuntime(
-      secondProvider,
-      authAfterRestart,
-    );
-    const blueprintsAfterRestart = new StorageBlueprintRepository(
-      secondProvider,
-    );
-    const artifactsAfterRestart = new ArtifactStore(secondProvider);
-    const chatAfterRestart = new ChatPersistenceService(secondProvider);
-    const pipelinesAfterRestart = new StoragePipelineStore(secondProvider);
-
-    expect((await authAfterRestart.validateToken(ownerToken))?.userId).toBe(
-      ownerId,
-    );
-    expect(runtimeAfterRestart.projectRepository.get(project.id)?.ownerId).toBe(
-      ownerId,
-    );
-    expect(
-      (await blueprintsAfterRestart.getBlueprint(blueprint.id))?.project_id,
-    ).toBe(project.id);
-    expect(
-      await blueprintsAfterRestart.listVersions(blueprint.id),
-    ).toHaveLength(1);
-    expect(
-      (await blueprintsAfterRestart.getExecution(execution.id))?.started_at,
-    ).toBeInstanceOf(Date);
-    expect(artifactsAfterRestart.getById(luaArtifact.id)?.content).toEqual(
-      luaArtifact.content,
-    );
-    expect(
-      new ProjectSyncManager(artifactsAfterRestart).getProjectSnapshot(
+      const artifactsBeforeRestart = new ArtifactStore(firstProvider);
+      const luaArtifact = artifactsBeforeRestart.store(
         execution.id,
-      )?.artifactCount,
-    ).toBe(1);
-    expect(
-      chatAfterRestart.getConversation(firstMessage.conversationId)?.messages,
-    ).toHaveLength(2);
+        "LUA_GENERATION",
+        "lua_generator",
+        {
+          scripts: [
+            {
+              path: "ServerScriptService/Main.server.lua",
+              content: "return { durable = true }",
+            },
+          ],
+        },
+      );
 
-    expect(pipelinesAfterRestart.get(runningPipeline.pipelineId)?.status).toBe(
-      "running",
-    );
-    await expect(pipelinesAfterRestart.markInterrupted()).resolves.toBe(1);
-    await expect(pipelinesAfterRestart.markInterrupted()).resolves.toBe(0);
-    expect(
-      pipelinesAfterRestart.get(runningPipeline.pipelineId),
-    ).toMatchObject({
-      status: "failed",
-      currentStage: null,
-      failedStages: ["GAME_DESIGN"],
-    });
-    expect(
-      pipelinesAfterRestart
-        .get(runningPipeline.pipelineId)
-        ?.stages.find((stage) => stage.name === "GAME_DESIGN"),
-    ).toMatchObject({
-      status: "failed",
-      error: "Interrupted: server restart",
-      completedAt: expect.any(Number),
-    });
+      const chatBeforeRestart = new ChatPersistenceService(firstProvider);
+      const firstMessage = await chatBeforeRestart.createMessage({
+        projectId: project.id,
+        role: "user",
+        content: "Keep this conversation after PostgreSQL reconnects.",
+      });
+      await chatBeforeRestart.createMessage({
+        conversationId: firstMessage.conversationId,
+        role: "assistant",
+        content: "Persistence checkpoint recorded.",
+      });
 
-    const ownerResponse = response();
-    expect(
-      await runtimeAfterRestart.access.requireProjectAccess(
-        request(ownerToken),
-        ownerResponse.response,
-        project.id,
-      ),
-    ).toBe(true);
+      const pipelinesBeforeRestart = new StoragePipelineStore(firstProvider);
+      const runningPipeline = createPipelineState(project.id);
+      runningPipeline.status = "running";
+      runningPipeline.currentStage = "GAME_DESIGN";
+      const runningStage = runningPipeline.stages.find(
+        (stage) => stage.name === "GAME_DESIGN",
+      );
+      if (!runningStage) {
+        throw new Error("GAME_DESIGN stage missing from pipeline state");
+      }
+      runningStage.status = "running";
+      await pipelinesBeforeRestart.save(runningPipeline);
 
-    const foreignResponse = response();
-    expect(
-      await runtimeAfterRestart.access.requireProjectAccess(
-        request(otherToken),
-        foreignResponse.response,
-        project.id,
-      ),
-    ).toBe(false);
-    expect(foreignResponse.status).toHaveBeenCalledWith(403);
-  });
+      await firstProvider.flush();
+      await firstProvider.close();
+      activeProvider = null;
+
+      const secondProvider = new PostgresStorageProvider({
+        connectionString: databaseUrl,
+        strict: true,
+      });
+      activeProvider = secondProvider;
+      await secondProvider.ready();
+
+      const authAfterRestart = new AuthService(secondProvider);
+      const runtimeAfterRestart = createProjectRuntime(
+        secondProvider,
+        authAfterRestart,
+      );
+      const blueprintsAfterRestart = new StorageBlueprintRepository(
+        secondProvider,
+      );
+      const artifactsAfterRestart = new ArtifactStore(secondProvider);
+      const chatAfterRestart = new ChatPersistenceService(secondProvider);
+      const pipelinesAfterRestart = new StoragePipelineStore(secondProvider);
+
+      expect((await authAfterRestart.validateToken(ownerToken))?.userId).toBe(
+        ownerId,
+      );
+      expect(
+        runtimeAfterRestart.projectRepository.get(project.id)?.ownerId,
+      ).toBe(ownerId);
+      expect(
+        (await blueprintsAfterRestart.getBlueprint(blueprint.id))?.project_id,
+      ).toBe(project.id);
+      expect(
+        await blueprintsAfterRestart.listVersions(blueprint.id),
+      ).toHaveLength(1);
+      expect(
+        (await blueprintsAfterRestart.getExecution(execution.id))?.started_at,
+      ).toBeInstanceOf(Date);
+      expect(artifactsAfterRestart.getById(luaArtifact.id)?.content).toEqual(
+        luaArtifact.content,
+      );
+      expect(
+        new ProjectSyncManager(artifactsAfterRestart).getProjectSnapshot(
+          execution.id,
+        )?.artifactCount,
+      ).toBe(1);
+      expect(
+        chatAfterRestart.getConversation(firstMessage.conversationId)?.messages,
+      ).toHaveLength(2);
+
+      expect(
+        pipelinesAfterRestart.get(runningPipeline.pipelineId)?.status,
+      ).toBe("running");
+      await expect(pipelinesAfterRestart.markInterrupted()).resolves.toBe(1);
+      await expect(pipelinesAfterRestart.markInterrupted()).resolves.toBe(0);
+      expect(
+        pipelinesAfterRestart.get(runningPipeline.pipelineId),
+      ).toMatchObject({
+        status: "failed",
+        currentStage: null,
+        failedStages: ["GAME_DESIGN"],
+      });
+      expect(
+        pipelinesAfterRestart
+          .get(runningPipeline.pipelineId)
+          ?.stages.find((stage) => stage.name === "GAME_DESIGN"),
+      ).toMatchObject({
+        status: "failed",
+        error: "Interrupted: server restart",
+        completedAt: expect.any(Number),
+      });
+
+      const ownerResponse = response();
+      expect(
+        await runtimeAfterRestart.access.requireProjectAccess(
+          request(ownerToken),
+          ownerResponse.response,
+          project.id,
+        ),
+      ).toBe(true);
+
+      const foreignResponse = response();
+      expect(
+        await runtimeAfterRestart.access.requireProjectAccess(
+          request(otherToken),
+          foreignResponse.response,
+          project.id,
+        ),
+      ).toBe(false);
+      expect(foreignResponse.status).toHaveBeenCalledWith(403);
+    },
+  );
 });
