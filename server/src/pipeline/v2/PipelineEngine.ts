@@ -48,6 +48,7 @@ export class PipelineEngine {
   private eventBus: PipelineEventBus;
   private auditStore: PipelineAuditStore;
   private metrics: PipelineMetricsCollector;
+  private readonly readiness: Promise<void>;
 
   constructor(options?: PipelineEngineOptions) {
     this.events = new PipelineEventEmitterV2();
@@ -58,7 +59,6 @@ export class PipelineEngine {
     this.auditStore = options?.auditStore ?? new InMemoryAuditStore();
     this.metrics = options?.metrics ?? new PipelineMetricsCollector();
 
-    // Wire v2 events to the observability layer
     this.events.on((evt) => {
       this.eventBus.emit(
         createPipelineEvent(
@@ -76,7 +76,6 @@ export class PipelineEngine {
           evt.stage,
         ),
       );
-      // Update metrics
       if (evt.type === "stage.completed") {
         this.metrics.stageCompleted(evt.pipelineId, evt.durationMs);
       } else if (evt.type === "stage.failed") {
@@ -89,7 +88,15 @@ export class PipelineEngine {
       }
     });
 
-    const interrupted = this.store.markInterrupted();
+    this.readiness = this.recoverInterruptedPipelines();
+  }
+
+  async ready(): Promise<void> {
+    await this.readiness;
+  }
+
+  private async recoverInterruptedPipelines(): Promise<void> {
+    const interrupted = await this.store.markInterrupted();
     if (interrupted > 0) {
       console.log(
         `[PipelineEngine] Recovered ${interrupted} interrupted pipeline(s)`,
@@ -116,13 +123,14 @@ export class PipelineEngine {
     blueprint: Record<string, unknown>,
     agentExecutor: AgentExecutorFn,
   ): Promise<PipelineResult> {
+    await this.readiness;
     const result = await this.executor.execute(
       projectId,
       blueprint,
       agentExecutor,
     );
     this.metrics.start(result.state.pipelineId, result.state.stages.length);
-    this.store.save(result.state);
+    await this.store.save(result.state);
     await this.storeArtifactsFromState(result.state);
     this.metrics.finish(result.state.pipelineId);
     return result;
@@ -134,10 +142,9 @@ export class PipelineEngine {
     agentExecutor: AgentExecutorFn,
     reserve?: PipelineStartReservation,
   ): Promise<string> {
+    await this.readiness;
     const pending = this.pendingStarts.get(projectId);
-    if (pending) {
-      return pending;
-    }
+    if (pending) return pending;
 
     const operation = this.startReservedPipeline(
       projectId,
@@ -179,11 +186,9 @@ export class PipelineEngine {
     }
 
     const state = createPipelineState(projectId);
-    if (reserve) {
-      await reserve(state);
-    }
+    if (reserve) await reserve(state);
 
-    this.store.save(state);
+    await this.store.save(state);
     this.activeExecutions.add(projectId);
     this.metrics.start(state.pipelineId, state.stages.length);
 
@@ -194,19 +199,22 @@ export class PipelineEngine {
     void this.executor
       .execute(projectId, blueprint, agentExecutor, state)
       .then(async (result) => {
-        this.store.save(result.state);
+        await this.store.save(result.state);
         await this.storeArtifactsFromState(result.state);
         this.activeExecutions.delete(projectId);
         console.log(
           `[JOB_COMPLETED] pipelineId=${state.pipelineId} status=${result.state.status} stages=${result.state.completedStages.length}`,
         );
       })
-      .catch((err) => {
+      .catch(async (err) => {
         state.status = "failed";
         state.finishedAt = Date.now();
         state.currentStage = null;
-        this.store.save(state);
-        this.activeExecutions.delete(projectId);
+        try {
+          await this.store.save(state);
+        } finally {
+          this.activeExecutions.delete(projectId);
+        }
         console.error(`[JOB_FAILED] pipelineId=${state.pipelineId}:`, err);
       });
 
@@ -218,10 +226,11 @@ export class PipelineEngine {
     blueprint: Record<string, unknown>,
     agentExecutor: AgentExecutorFn,
   ): Promise<PipelineResult | null> {
+    await this.readiness;
     const state = this.store.get(pipelineId);
     if (!state || state.status !== "failed") return null;
     const result = await this.executor.resume(state, blueprint, agentExecutor);
-    this.store.save(result.state);
+    await this.store.save(result.state);
     await this.storeArtifactsFromState(result.state);
     return result;
   }
@@ -306,11 +315,12 @@ export class PipelineEngine {
     return this.artifactStore.getReviewSummary(pipelineId);
   }
 
-  pause(pipelineId: string): boolean {
+  async pause(pipelineId: string): Promise<boolean> {
+    await this.readiness;
     const state = this.store.get(pipelineId);
     if (!state || state.status !== "running") return false;
     state.status = "paused";
-    this.store.save(state);
+    await this.store.save(state);
     this.events.emit({
       type: "pipeline.paused",
       pipelineId,
@@ -325,16 +335,18 @@ export class PipelineEngine {
     blueprint: Record<string, unknown>,
     agentExecutor: AgentExecutorFn,
   ): Promise<PipelineResult | null> {
+    await this.readiness;
     const state = this.store.get(pipelineId);
     if (!state || state.status !== "paused") return null;
     state.status = "running";
     const result = await this.executor.resume(state, blueprint, agentExecutor);
-    this.store.save(result.state);
+    await this.store.save(result.state);
     await this.storeArtifactsFromState(result.state);
     return result;
   }
 
-  cancel(pipelineId: string): boolean {
+  async cancel(pipelineId: string): Promise<boolean> {
+    await this.readiness;
     const state = this.store.get(pipelineId);
     if (!state || (state.status !== "running" && state.status !== "paused")) {
       return false;
@@ -342,7 +354,7 @@ export class PipelineEngine {
     state.status = "cancelled";
     state.currentStage = null;
     state.finishedAt = Date.now();
-    this.store.save(state);
+    await this.store.save(state);
     this.events.emit({
       type: "pipeline.cancelled",
       pipelineId,
@@ -357,10 +369,11 @@ export class PipelineEngine {
     blueprint: Record<string, unknown>,
     agentExecutor: AgentExecutorFn,
   ): Promise<PipelineResult | null> {
+    await this.readiness;
     const state = this.store.get(pipelineId);
     if (!state || state.status !== "failed") return null;
     const result = await this.executor.resume(state, blueprint, agentExecutor);
-    this.store.save(result.state);
+    await this.store.save(result.state);
     await this.storeArtifactsFromState(result.state);
     return result;
   }
@@ -371,16 +384,17 @@ export class PipelineEngine {
     blueprint: Record<string, unknown>,
     agentExecutor: AgentExecutorFn,
   ): Promise<PipelineResult | null> {
+    await this.readiness;
     const state = this.store.get(pipelineId);
     if (!state) return null;
 
-    const stage = state.stages.find((s) => s.name === stageName);
+    const stage = state.stages.find((candidate) => candidate.name === stageName);
     if (!stage || stage.status !== "failed") return null;
 
     stage.status = "pending";
     stage.error = undefined;
     stage.output = undefined;
-    state.failedStages = state.failedStages.filter((s) => s !== stageName);
+    state.failedStages = state.failedStages.filter((name) => name !== stageName);
     state.status = "running";
 
     const result = await this.executor.execute(
@@ -389,12 +403,10 @@ export class PipelineEngine {
       agentExecutor,
       state,
     );
-    this.store.save(result.state);
+    await this.store.save(result.state);
     await this.storeArtifactsFromState(result.state);
     return result;
   }
-
-  // ─── Observability Accessors ────────────────────────────────────────────
 
   getMetrics(pipelineId: string) {
     return this.metrics.get(pipelineId);
