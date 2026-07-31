@@ -135,7 +135,7 @@ export class PipelineEngine {
       blueprint,
       agentExecutor,
       undefined,
-      (state) => this.store.save(state as PipelineState),
+      (state) => this.store.save(state),
     );
     this.metrics.start(result.state.pipelineId, result.state.stages.length);
     await this.storeArtifactsFromState(result.state);
@@ -209,7 +209,7 @@ export class PipelineEngine {
         blueprint,
         agentExecutor,
         state,
-        (checkpoint) => this.store.save(checkpoint as PipelineState),
+        (checkpoint) => this.store.save(checkpoint),
       )
       .then(async (result) => {
         await this.storeArtifactsFromState(result.state);
@@ -245,7 +245,7 @@ export class PipelineEngine {
       state,
       blueprint,
       agentExecutor,
-      (checkpoint) => this.store.save(checkpoint as PipelineState),
+      (checkpoint) => this.store.save(checkpoint),
     );
     await this.storeArtifactsFromState(result.state);
     return result;
@@ -359,7 +359,7 @@ export class PipelineEngine {
       state,
       blueprint,
       agentExecutor,
-      (checkpoint) => this.store.save(checkpoint as PipelineState),
+      (checkpoint) => this.store.save(checkpoint),
     );
     await this.storeArtifactsFromState(result.state);
     return result;
@@ -396,7 +396,7 @@ export class PipelineEngine {
       state,
       blueprint,
       agentExecutor,
-      (checkpoint) => this.store.save(checkpoint as PipelineState),
+      (checkpoint) => this.store.save(checkpoint),
     );
     await this.storeArtifactsFromState(result.state);
     return result;
@@ -430,7 +430,7 @@ export class PipelineEngine {
       blueprint,
       agentExecutor,
       state,
-      (checkpoint) => this.store.save(checkpoint as PipelineState),
+      (checkpoint) => this.store.save(checkpoint),
     );
     await this.storeArtifactsFromState(result.state);
     return result;
