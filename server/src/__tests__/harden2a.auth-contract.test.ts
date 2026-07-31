@@ -329,7 +329,7 @@ describe("HARDEN-2A auth contract", async () => {
     }
     expect(authenticationGuide).toContain("harden2a.auth-contract.test.ts");
     expect(deploymentGuide).toContain("verify-composed-release.mjs");
-    expect(deploymentChecklist).toContain("30350138128");
+    expect(deploymentChecklist).toContain("30667404383");
     for (const content of [deploymentGuide, deploymentChecklist]) {
       expect(content).toContain("Dockerfile.backend");
       expect(content).toContain("kazakovak2001-lgtm/Frontend");
