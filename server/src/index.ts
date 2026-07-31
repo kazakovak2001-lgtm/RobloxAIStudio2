@@ -44,6 +44,7 @@ import {
   flushStorageProvider,
   getStorageType,
   initializeStorageProvider,
+  registerStoragePostInitializeHook,
 } from "./platform/storage";
 import {
   DatabaseHealthCheck,
@@ -617,7 +618,13 @@ app.use("/api/domain", createDomainRouter());
 
 // Autonomous Orchestrator API
 import { createAutonomousRouter } from "./routes/autonomous";
-app.use("/api/autonomous", createAutonomousRouter(events, access));
+import { AutonomousOrchestrator } from "./orchestrator";
+const autonomousOrchestrator = new AutonomousOrchestrator(events);
+registerStoragePostInitializeHook(() => autonomousOrchestrator.ready());
+app.use(
+  "/api/autonomous",
+  createAutonomousRouter(events, access, autonomousOrchestrator),
+);
 
 // AI Project Controller API
 import { createControllerRouter } from "./routes/controller";

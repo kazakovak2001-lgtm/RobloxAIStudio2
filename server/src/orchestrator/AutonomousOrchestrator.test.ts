@@ -27,6 +27,37 @@ async function waitForTerminal(
 }
 
 describe("AutonomousOrchestrator bounded preview truthfulness", () => {
+  it("defers durable recovery until the startup readiness boundary", async () => {
+    let releaseReady!: () => void;
+    const readyGate = new Promise<void>((resolve) => {
+      releaseReady = resolve;
+    });
+    class StartupOrderedSessionStore extends InMemoryAutonomousSessionStore {
+      readyCalls = 0;
+
+      override async ready(): Promise<void> {
+        this.readyCalls += 1;
+        await readyGate;
+      }
+    }
+
+    const sessionStore = new StartupOrderedSessionStore();
+    const orchestrator = new AutonomousOrchestrator(undefined, {
+      sessionStore,
+    });
+
+    await Promise.resolve();
+    expect(sessionStore.readyCalls).toBe(0);
+
+    const first = orchestrator.ready();
+    const second = orchestrator.ready();
+    expect(sessionStore.readyCalls).toBe(1);
+
+    releaseReady();
+    await Promise.all([first, second]);
+    expect(sessionStore.readyCalls).toBe(1);
+  });
+
   it("executes bounded phase services and emits preview completion", async () => {
     const events = new PipelineEventEmitter();
     const published: PipelineEvent[] = [];

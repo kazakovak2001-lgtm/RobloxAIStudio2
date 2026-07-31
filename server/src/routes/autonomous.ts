@@ -16,9 +16,9 @@ import type { ProjectAccessControl } from "./projects";
 export function createAutonomousRouter(
   events?: PipelineEventEmitter,
   access?: ProjectAccessControl,
+  orchestrator = new AutonomousOrchestrator(events),
 ): Router {
   const router = Router();
-  const orchestrator = new AutonomousOrchestrator(events);
   const hasSessionAccess = async (
     req: Request,
     res: Response,

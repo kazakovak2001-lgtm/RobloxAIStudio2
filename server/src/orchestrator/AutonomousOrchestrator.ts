@@ -77,7 +77,7 @@ export class AutonomousOrchestrator {
   private readonly events?: PipelineEventEmitter;
   private readonly phaseRegistry: AutonomousPhaseRegistry;
   private readonly sessionStore: AutonomousSessionStore;
-  private readonly readiness: Promise<void>;
+  private readiness: Promise<void> | null = null;
 
   constructor(
     events?: PipelineEventEmitter,
@@ -89,10 +89,10 @@ export class AutonomousOrchestrator {
       options.sessionStore ??
       createConfiguredAutonomousSessionStore() ??
       new InMemoryAutonomousSessionStore();
-    this.readiness = this.recoverPersistedSessions();
   }
 
   async ready(): Promise<void> {
+    this.readiness ??= this.recoverPersistedSessions();
     await this.readiness;
   }
 
@@ -104,7 +104,7 @@ export class AutonomousOrchestrator {
     projectId: string,
     goals?: Partial<GoalConfig>,
   ): Promise<OrchestratorSession> {
-    await this.readiness;
+    await this.ready();
     const config: GoalConfig = { ...DEFAULT_GOALS, ...goals };
     const sessionId = createSessionId();
     const context = createAutonomousPhaseContext(projectId, prompt);
@@ -190,7 +190,7 @@ export class AutonomousOrchestrator {
   }
 
   async pause(sessionId: string): Promise<boolean> {
-    await this.readiness;
+    await this.ready();
     const record = this.sessionStore.get(sessionId);
     const session = record?.session;
     if (!session || session.status !== "running") return false;
@@ -202,7 +202,7 @@ export class AutonomousOrchestrator {
   }
 
   async resume(sessionId: string): Promise<boolean> {
-    await this.readiness;
+    await this.ready();
     const record = this.sessionStore.get(sessionId);
     const session = record?.session;
     if (
@@ -229,7 +229,7 @@ export class AutonomousOrchestrator {
   }
 
   async cancel(sessionId: string): Promise<boolean> {
-    await this.readiness;
+    await this.ready();
     const record = this.sessionStore.get(sessionId);
     const session = record?.session;
     if (
@@ -247,7 +247,7 @@ export class AutonomousOrchestrator {
   }
 
   async recover(sessionId: string, checkpointId?: string): Promise<boolean> {
-    await this.readiness;
+    await this.ready();
     const record = this.sessionStore.get(sessionId);
     const session = record?.session;
     if (!session || session.status === "running") return false;
