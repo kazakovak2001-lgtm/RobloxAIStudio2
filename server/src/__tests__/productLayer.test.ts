@@ -28,14 +28,24 @@ describe("Product Layer", async () => {
     });
 
     it("rejects invalid credentials", async () => {
-      await auth.registerDurable("a@b.com", "correct", "u-1");
+      const registered = await auth.registerDurable(
+        "a@b.com",
+        "correct",
+        "u-1",
+      );
+      expect(registered).toBe(true);
       const result = await auth.loginDurable("a@b.com", "wrong", "u-1");
       expect(result.success).toBe(false);
       expect(result.error).toContain("Invalid");
     });
 
     it("prevents duplicate registration", async () => {
-      await auth.registerDurable("dup@test.com", "pass", "u-1");
+      const registered = await auth.registerDurable(
+        "dup@test.com",
+        "pass",
+        "u-1",
+      );
+      expect(registered).toBe(true);
       const ok = await auth.registerDurable("dup@test.com", "pass2", "u-2");
       expect(ok).toBe(false);
     });
@@ -43,6 +53,8 @@ describe("Product Layer", async () => {
     it("validates token and returns session", async () => {
       await auth.registerDurable("x@y.com", "pw", "u-1");
       const login = await auth.loginDurable("x@y.com", "pw", "u-1");
+      expect(login.success).toBe(true);
+      expect(login.token).toBeDefined();
       const session = await auth.validateToken(login.token!);
       expect(session).not.toBeNull();
       expect(session!.userId).toBe("u-1");
@@ -55,6 +67,9 @@ describe("Product Layer", async () => {
     it("refreshes session", async () => {
       await auth.registerDurable("r@t.com", "pw", "u-1");
       const login = await auth.loginDurable("r@t.com", "pw", "u-1");
+      expect(login.success).toBe(true);
+      expect(login.token).toBeDefined();
+      expect(login.refreshToken).toBeDefined();
       const refreshed = await auth.refreshSessionDurable(login.refreshToken!);
       expect(refreshed.success).toBe(true);
       expect(refreshed.token).not.toBe(login.token);
@@ -70,6 +85,8 @@ describe("Product Layer", async () => {
     it("logout invalidates token", async () => {
       await auth.registerDurable("l@t.com", "pw", "u-1");
       const login = await auth.loginDurable("l@t.com", "pw", "u-1");
+      expect(login.success).toBe(true);
+      expect(login.token).toBeDefined();
       await auth.logoutDurable(login.token!);
       expect(await auth.validateToken(login.token!)).toBeNull();
     });
