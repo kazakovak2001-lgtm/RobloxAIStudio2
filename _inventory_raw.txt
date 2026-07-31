@@ -70,6 +70,7 @@ config/cleanup/legacy-frontend-decommission.inventory.json
 config/cutover/promoted-baseline.inventory.json
 config/cutover/release-baseline.inventory.json
 config/durability/compatibility-write-inventory.json
+config/runtime/operational-state-ownership.json
 config/runtime/runtime-ownership.json
 config/testing/vitest.backend.config.ts
 deploy/docker-compose.backend.yml
@@ -479,6 +480,7 @@ scripts/validate-controller.ts
 scripts/validate-durable-writes.ts
 scripts/validate-layer-debt-evidence.ts
 scripts/validate-memory-ownership.ts
+scripts/validate-operational-state-ownership.ts
 scripts/validate-runtime-ownership.ts
 scripts/validate.ts
 server/prisma/schema.prisma
@@ -1006,6 +1008,7 @@ server/src/routes/__tests__/platform.durability.test.ts
 server/src/routes/__tests__/platform.registration.durability.test.ts
 server/src/routes/__tests__/projects.durability.test.ts
 server/src/routes/__tests__/projects.runtime.test.ts
+server/src/routes/__tests__/studioDurability.test.ts
 server/src/routes/__tests__/studioProtocol.smoke.test.ts
 server/src/routes/agentCollaboration.ts
 server/src/routes/aiChat.ts
@@ -1072,6 +1075,8 @@ server/src/studio/integration/index.ts
 server/src/studio/integration/types.ts
 server/src/studio/v2/StudioBridge.ts
 server/src/studio/v2/StudioEvents.ts
+server/src/studio/v2/StudioEvidenceStore.test.ts
+server/src/studio/v2/StudioEvidenceStore.ts
 server/src/studio/v2/StudioRuntime.ts
 server/src/studio/v2/StudioSession.ts
 server/src/studio/v2/StudioTypes.ts

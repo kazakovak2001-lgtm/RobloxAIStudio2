@@ -91,6 +91,7 @@
 │   ├── durability
 │   │   └── compatibility-write-inventory.json
 │   ├── runtime
+│   │   ├── operational-state-ownership.json
 │   │   └── runtime-ownership.json
 │   └── testing
 │       └── vitest.backend.config.ts
@@ -563,6 +564,7 @@
 │   ├── validate-durable-writes.ts
 │   ├── validate-layer-debt-evidence.ts
 │   ├── validate-memory-ownership.ts
+│   ├── validate-operational-state-ownership.ts
 │   ├── validate-runtime-ownership.ts
 │   └── validate.ts
 ├── server
@@ -1242,6 +1244,7 @@
 │   │   │   │   ├── platform.registration.durability.test.ts
 │   │   │   │   ├── projects.durability.test.ts
 │   │   │   │   ├── projects.runtime.test.ts
+│   │   │   │   ├── studioDurability.test.ts
 │   │   │   │   └── studioProtocol.smoke.test.ts
 │   │   │   ├── agentCollaboration.ts
 │   │   │   ├── aiChat.ts
@@ -1340,6 +1343,8 @@
 │   │   │       │   └── StudioProtocol.ts
 │   │   │       ├── StudioBridge.ts
 │   │   │       ├── StudioEvents.ts
+│   │   │       ├── StudioEvidenceStore.test.ts
+│   │   │       ├── StudioEvidenceStore.ts
 │   │   │       ├── StudioRuntime.ts
 │   │   │       ├── StudioSession.ts
 │   │   │       ├── StudioTypes.ts
