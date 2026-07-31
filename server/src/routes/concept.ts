@@ -127,11 +127,8 @@ export function createConceptRouter(
           stageCount: result.state.stages.length,
         },
       });
-    } catch (err) {
-      res.status(500).json({
-        success: false,
-        error: err instanceof Error ? err.message : "Pipeline execution failed",
-      });
+    } catch (error) {
+      handlePipelineMutationError(error, res);
     }
   });
 
@@ -170,7 +167,6 @@ export function createConceptRouter(
       res.status(404).json({ success: false, error: "Pipeline not found" });
       return;
     }
-    // Find the concept to get blueprint
     const concept = concepts.get(state.projectId);
     const blueprint = (concept as Record<string, unknown>) ?? {};
 
@@ -191,11 +187,8 @@ export function createConceptRouter(
         success: true,
         data: { status: result.state.status, pipelineId },
       });
-    } catch (err) {
-      res.status(500).json({
-        success: false,
-        error: err instanceof Error ? err.message : "Resume failed",
-      });
+    } catch (error) {
+      handlePipelineMutationError(error, res);
     }
   });
 
@@ -244,11 +237,8 @@ export function createConceptRouter(
         success: true,
         data: { status: result.state.status, pipelineId },
       });
-    } catch (err) {
-      res.status(500).json({
-        success: false,
-        error: err instanceof Error ? err.message : "Retry failed",
-      });
+    } catch (error) {
+      handlePipelineMutationError(error, res);
     }
   });
 
@@ -283,11 +273,8 @@ export function createConceptRouter(
           success: true,
           data: { status: result.state.status, stage },
         });
-      } catch (err) {
-        res.status(500).json({
-          success: false,
-          error: err instanceof Error ? err.message : "Stage retry failed",
-        });
+      } catch (error) {
+        handlePipelineMutationError(error, res);
       }
     },
   );
@@ -306,7 +293,6 @@ export function createConceptRouter(
     }> = [];
 
     for (const [conceptId] of concepts.entries()) {
-      // Find all pipeline runs associated with this concept
       const pipelineState = pipelineEngine.getState(conceptId);
       if (!pipelineState) continue;
       history.push({
@@ -321,7 +307,6 @@ export function createConceptRouter(
       });
     }
 
-    // Also check all known pipeline runs
     const allRuns = pipelineEngine.getAllStates();
     for (const state of allRuns) {
       if (!history.find((h) => h.pipelineId === state.pipelineId)) {
@@ -338,9 +323,7 @@ export function createConceptRouter(
       }
     }
 
-    // Sort by startedAt descending
     history.sort((a, b) => b.startedAt - a.startedAt);
-
     res.json({ success: true, data: history });
   });
 
@@ -354,7 +337,6 @@ export function createConceptRouter(
     }
 
     const artifacts = pipelineEngine.getArtifacts(pipelineId);
-    // Return without full content for list view (summary only)
     const summaries = artifacts.map((a) => ({
       id: a.id,
       pipelineId: a.pipelineId,
@@ -491,7 +473,6 @@ export function createConceptRouter(
   });
 
   // POST /api/concept/experience/generate-direct
-  // Direct pipeline generation for workspace — no concept required.
   router.post("/experience/generate-direct", async (req, res) => {
     const { projectId } = req.body;
 
@@ -510,7 +491,6 @@ export function createConceptRouter(
         createdAt: Date.now(),
       };
 
-      // Reserve durable history before the background executor is launched.
       const pipelineId = await pipelineEngine.startAsync(
         projectId,
         blueprint,
