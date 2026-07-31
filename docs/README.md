@@ -1,3 +1,5 @@
+<!-- prettier-ignore-start -->
+
 # Roblox AI Studio Documentation
 
 **Last updated:** August 1, 2026
@@ -141,3 +143,5 @@ Many reports are implementation-era evidence. Their date and authority banner de
 - [CUTOVER-1D readiness and rollback](./00-project-control/CUTOVER-1D_RELEASE_BASELINE_READINESS.md)
 
 The backend and Frontend release images remain independently deployable. The composed release pins exact identities and validates production REST and Socket.IO behavior behind HTTPS.
+
+<!-- prettier-ignore-end -->
