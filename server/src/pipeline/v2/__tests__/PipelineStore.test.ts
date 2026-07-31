@@ -28,9 +28,9 @@ describe("PipelineStore", () => {
   });
 
   describe("basic operations", () => {
-    it("saves and retrieves a pipeline state", () => {
+    it("saves and retrieves a pipeline state", async () => {
       const state = createPipelineState("project-1");
-      store.save(state);
+      await store.save(state);
       const retrieved = store.get(state.pipelineId);
       expect(retrieved).not.toBeNull();
       expect(retrieved!.projectId).toBe("project-1");
@@ -40,30 +40,30 @@ describe("PipelineStore", () => {
       expect(store.get("nonexistent")).toBeNull();
     });
 
-    it("counts stored pipelines", () => {
+    it("counts stored pipelines", async () => {
       expect(store.count()).toBe(0);
-      store.save(createPipelineState("p1"));
-      store.save(createPipelineState("p2"));
+      await store.save(createPipelineState("p1"));
+      await store.save(createPipelineState("p2"));
       expect(store.count()).toBe(2);
     });
 
-    it("deletes a pipeline", () => {
+    it("deletes a pipeline", async () => {
       const state = createPipelineState("p1");
-      store.save(state);
-      expect(store.delete(state.pipelineId)).toBe(true);
+      await store.save(state);
+      await expect(store.delete(state.pipelineId)).resolves.toBe(true);
       expect(store.get(state.pipelineId)).toBeNull();
     });
 
-    it("getAll returns all states", () => {
-      store.save(createPipelineState("p1"));
-      store.save(createPipelineState("p2"));
-      store.save(createPipelineState("p3"));
+    it("getAll returns all states", async () => {
+      await store.save(createPipelineState("p1"));
+      await store.save(createPipelineState("p2"));
+      await store.save(createPipelineState("p3"));
       expect(store.getAll()).toHaveLength(3);
     });
   });
 
   describe("server restart recovery", () => {
-    it("marks running pipelines as interrupted", () => {
+    it("marks running pipelines as interrupted", async () => {
       const running = createPipelineState("p1");
       running.status = "running";
       running.currentStage = "GAME_DESIGN";
@@ -72,11 +72,10 @@ describe("PipelineStore", () => {
       const completed = createPipelineState("p2");
       completed.status = "completed";
 
-      store.save(running);
-      store.save(completed);
+      await store.save(running);
+      await store.save(completed);
 
-      const count = store.markInterrupted();
-      expect(count).toBe(1);
+      await expect(store.markInterrupted()).resolves.toBe(1);
 
       const recovered = store.get(running.pipelineId);
       expect(recovered!.status).toBe("failed");
@@ -88,17 +87,16 @@ describe("PipelineStore", () => {
       expect(unchanged!.status).toBe("completed");
     });
 
-    it("does not mark non-running pipelines", () => {
+    it("does not mark non-running pipelines", async () => {
       const failed = createPipelineState("p1");
       failed.status = "failed";
       const paused = createPipelineState("p2");
       paused.status = "paused";
 
-      store.save(failed);
-      store.save(paused);
+      await store.save(failed);
+      await store.save(paused);
 
-      const count = store.markInterrupted();
-      expect(count).toBe(0);
+      await expect(store.markInterrupted()).resolves.toBe(0);
     });
   });
 
@@ -189,14 +187,14 @@ describe("PipelineStore", () => {
   });
 
   describe("failed stage recovery", () => {
-    it("preserves error information in failed stages", () => {
+    it("preserves error information in failed stages", async () => {
       const state = createPipelineState("p1");
       state.status = "failed";
       state.stages[3].status = "failed";
       state.stages[3].error = "LLM timeout after 30s";
       state.failedStages.push("ARCHITECTURE");
 
-      store.save(state);
+      await store.save(state);
 
       const retrieved = store.get(state.pipelineId);
       expect(retrieved!.status).toBe("failed");
@@ -206,23 +204,23 @@ describe("PipelineStore", () => {
   });
 
   describe("duplicate execution prevention", () => {
-    it("getByStatus finds running pipelines for a project", () => {
+    it("getByStatus finds running pipelines for a project", async () => {
       const state1 = createPipelineState("project-x");
       state1.status = "running";
       const state2 = createPipelineState("project-y");
       state2.status = "completed";
 
-      store.save(state1);
-      store.save(state2);
+      await store.save(state1);
+      await store.save(state2);
 
       const running = store.getByStatus("running");
       expect(running).toHaveLength(1);
       expect(running[0].projectId).toBe("project-x");
     });
 
-    it("has() correctly reports existence", () => {
+    it("has() correctly reports existence", async () => {
       const state = createPipelineState("p1");
-      store.save(state);
+      await store.save(state);
       expect(store.has(state.pipelineId)).toBe(true);
       expect(store.has("fake-id")).toBe(false);
     });
