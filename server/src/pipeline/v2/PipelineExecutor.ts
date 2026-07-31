@@ -13,9 +13,7 @@ export type AgentExecutorFn = (
   input: Record<string, unknown>,
 ) => Promise<Record<string, unknown>>;
 
-export type PipelineCheckpointFn = (
-  state: Readonly<PipelineState>,
-) => Promise<void>;
+export type PipelineCheckpointFn = (state: PipelineState) => Promise<void>;
 
 export interface PipelineResult {
   state: PipelineState;
