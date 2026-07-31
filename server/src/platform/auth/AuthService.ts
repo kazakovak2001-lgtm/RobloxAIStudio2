@@ -74,9 +74,29 @@ export class AuthService {
     userId: string,
     role: UserRole = "creator",
   ): Promise<boolean> {
-    const prepared = this.prepareRegistration(email, password, userId, role);
+    const normalizedEmail = this.normalizeEmail(email);
+    const credentials: StoredCredentials = {
+      email: normalizedEmail,
+      passwordHash: bcrypt.hashSync(password, BCRYPT_COST_FACTOR),
+      userId,
+    };
     try {
-      await this.storage.applyDurableBatch(prepared.mutations);
+      await this.storage.applyDurableBatch([
+        {
+          operation: "set",
+          collection: CREDENTIALS_COLLECTION,
+          id: normalizedEmail,
+          data: credentials,
+          requireAbsent: true,
+        },
+        {
+          operation: "set",
+          collection: ROLES_COLLECTION,
+          id: userId,
+          data: role,
+          requireAbsent: true,
+        },
+      ]);
       return true;
     } catch (error) {
       if (error instanceof DurableStorageConflictError) return false;
