@@ -22,3 +22,17 @@ export interface PipelineStore {
   /** Mark running pipelines as interrupted after recovery acknowledgement. */
   markInterrupted(): Promise<number>;
 }
+
+export type PipelineStoreFactory = () => PipelineStore;
+
+let configuredPipelineStoreFactory: PipelineStoreFactory | null = null;
+
+export function configurePipelineStoreFactory(
+  factory: PipelineStoreFactory,
+): void {
+  configuredPipelineStoreFactory = factory;
+}
+
+export function createConfiguredPipelineStore(): PipelineStore | null {
+  return configuredPipelineStoreFactory?.() ?? null;
+}
