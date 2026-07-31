@@ -6,7 +6,9 @@ import {
   type StorageFailureCategory,
   type StorageOperationalStatus,
 } from "../StorageProvider";
-import { PostgresStorageProvider as BasePostgresStorageProvider } from "./PostgresStorageProvider";
+import {
+  PostgresStorageProvider as BasePostgresStorageProvider,
+} from "./PostgresStorageProvider";
 
 class StorageOperationalState {
   private lastFailure?: {
