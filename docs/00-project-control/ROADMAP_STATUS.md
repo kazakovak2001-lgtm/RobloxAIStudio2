@@ -1,201 +1,63 @@
 # Roadmap Status
 
-**Last Updated**: July 31, 2026
+**Last Updated:** August 1, 2026  
+**Current backend release:** `release/cutover-1e-candidate@7ccc4e02ba4175318856cd14b845e4ccd4dc6057`  
+**Current Frontend contents:** `kazakovak2001-lgtm/Frontend@022788ace31982e2b08ea099800de784b4dbe482`
 
----
+This file is the ordered current delivery authority. The dated TECH-AUDIT-2 roadmap and sprint backlog are historical planning baselines and do not override the status below. See [DOC-202A reconciliation](./DOC-202A_ROADMAP_AUTHORITY_RECONCILIATION.md) for exact completion evidence.
 
-## Current Delivery Sequence: Two-Repository Cutover
+## Current delivery sequence
 
-This sequence is authoritative for work after the standalone frontend integration. It replaces the historical plan to further migrate the embedded frontend in this repository.
+| ID | Delivery item | Priority | Status | Dependency |
+| --- | --- | --- | --- | --- |
+| `CUTOVER-0` | Standalone Frontend governance and CI alignment | Critical | ✅ Complete | — |
+| `CI-BASELINE-1` | Portable backend CI and repository hygiene | Critical | ✅ Complete | `CUTOVER-0` |
+| `CORE-1` | Durable project data and API contract stabilization | Critical | ✅ Complete | `CI-BASELINE-1` |
+| `WORKSPACE-1` | Workflow-oriented standalone Frontend Workspace | High | ✅ Complete | `CORE-1` |
+| `STUDIO-1` | Generated artifact to Roblox Studio verification | High | ✅ Complete | `CORE-1`, `WORKSPACE-1` |
+| `CUTOVER-1` | Release promotion and embedded frontend removal | High | ✅ Complete | `WORKSPACE-1`, `STUDIO-1` |
+| `TECH-AUDIT-2` | Two-repository evidence baseline | Critical | ✅ Complete — historical baseline | `CUTOVER-1` |
+| `HARDEN-2A` | Auth, Studio-state, and cross-repository contract correctness | Critical | ✅ Complete | `TECH-AUDIT-2` |
+| `ARCH-2B` | Exhaustive truthful architecture boundary gate | Critical | ✅ Complete | `HARDEN-2A` |
+| `FRONTEND-2C` | Protected Frontend quality and bundle baseline | High | ✅ Complete | `HARDEN-2A` |
+| `RUNTIME-2D` | Runtime/provider/orchestration/memory ownership | High | ✅ Complete | `ARCH-2B` |
+| `DURABILITY-2E` | Durable writes and operational-state truthfulness | High | ✅ Complete | `RUNTIME-2D` |
+| `SECURITY-2G` | Dependency, SAST, secret, image, SBOM, and RBAC control gate | High | **Next** | `DURABILITY-2E` |
+| `DOC-202` | Documentation-authority inventory and deterministic guards | Medium | In progress | `SECURITY-2G` decisions |
+| `STUDIO-2F` | Native assets, GUI, runtime, and place delivery | Medium | Deferred | control gates |
+| `AUTONOMY-3A` | Real engine-backed autonomous phases and broader recovery | High | Deferred | control gates |
+| `COLLAB-3B` | Collaborative development | Medium | Deferred | preceding gates |
 
-| ID            | Delivery item                                                  | Priority | Status                              | Dependency            |
-| ------------- | -------------------------------------------------------------- | -------- | ----------------------------------- | --------------------- |
-| CUTOVER-0     | Standalone frontend governance and CI alignment                | Critical | ✅ Complete                         | —                     |
-| CI-BASELINE-1 | Portable green backend CI and repository hygiene               | Critical | ✅ Complete                         | CUTOVER-0             |
-| CORE-1        | Real project data, persistence, and API contract stabilization | Critical | ✅ Complete                         | CI-BASELINE-1         |
-| WORKSPACE-1   | Workflow-oriented standalone Workspace                         | High     | ✅ Complete                         | CORE-1                |
-| STUDIO-1      | Generated artifact → Roblox Studio end-to-end validation       | High     | ✅ Complete — real desktop verified | CORE-1, WORKSPACE-1   |
-| CUTOVER-1     | Release promotion and legacy frontend removal                  | High     | ✅ Complete                         | WORKSPACE-1, STUDIO-1 |
-| TECH-AUDIT-2  | Evidence-based two-repository technical baseline               | Critical | ✅ Complete                         | CUTOVER-1             |
-| HARDEN-2A     | Auth response, Studio state, and contract-E2E correctness      | Critical | ✅ Complete                         | TECH-AUDIT-2          |
-| ARCH-2B       | Exhaustive and truthful architecture boundary gate             | Critical | Planned                             | HARDEN-2A             |
-| FRONTEND-2C   | Protected Frontend quality and bundle baseline                 | High     | ✅ Complete                         | HARDEN-2A             |
-| RUNTIME-2D    | Runtime/provider/orchestration/memory consolidation            | High     | Planned                             | ARCH-2B               |
-| DURABILITY-2E | Request-level durability and operational-state classification  | High     | Planned                             | RUNTIME-2D            |
-| STUDIO-2F     | Optional native asset, GUI, runtime, and place delivery        | Medium   | Deferred                            | DURABILITY-2E         |
+## Completion evidence
 
-See [FRONTEND_CUTOVER.md](./FRONTEND_CUTOVER.md) for ownership, branch, validation, and legacy-removal rules.
-See [CORE-1A_DURABLE_PROJECTS.md](./CORE-1A_DURABLE_PROJECTS.md) for the completed identity/project boundary.
-See [CORE-1B_DURABLE_RUNTIME.md](./CORE-1B_DURABLE_RUNTIME.md) for the verified blueprint, execution, chat, and PostgreSQL restart boundary.
-See [STUDIO-1A_ARTIFACT_LINEAGE.md](./STUDIO-1A_ARTIFACT_LINEAGE.md) for durable canonical generation artifacts.
-See [STUDIO-1B_RUNTIME_CONSOLIDATION.md](./STUDIO-1B_RUNTIME_CONSOLIDATION.md) for the shared Studio runtime, real artifact queue, and incremental no-op contract.
-See [STUDIO-1C_IMPORT_ACKNOWLEDGEMENT.md](./STUDIO-1C_IMPORT_ACKNOWLEDGEMENT.md) for the verified backend ACK/result contract.
-See [STUDIO-1D_REAL_PLUGIN_ACCEPTANCE.md](./STUDIO-1D_REAL_PLUGIN_ACCEPTANCE.md) for the CI-verified canonical plugin implementation.
-See [STUDIO-1E_DESKTOP_ACCEPTANCE_RUNBOOK.md](./STUDIO-1E_DESKTOP_ACCEPTANCE_RUNBOOK.md) for the deterministic installable package, checksum contract, and manual evidence procedure.
-See [STUDIO-1F_DESKTOP_FINDINGS_AND_RERUN.md](./STUDIO-1F_DESKTOP_FINDINGS_AND_RERUN.md) for the production-only defects found during the first desktop runs.
-See [STUDIO-1G_DESKTOP_ACCEPTANCE_RESULT.md](./STUDIO-1G_DESKTOP_ACCEPTANCE_RESULT.md) for the completed real desktop evidence and canonical acceptance identity.
-See [CUTOVER-1A_BACKEND_RELEASE_ARTIFACT.md](./CUTOVER-1A_BACKEND_RELEASE_ARTIFACT.md) for the completed backend-only release boundary.
-See [`CUTOVER-1B_FRONTEND_SSR_RELEASE.md`](https://github.com/kazakovak2001-lgtm/Frontend/blob/main/docs/CUTOVER-1B_FRONTEND_SSR_RELEASE.md) for the completed standalone Frontend SSR release artifact.
-See [CUTOVER-1C_COMPOSED_RELEASE.md](./CUTOVER-1C_COMPOSED_RELEASE.md) for the verified HTTPS composition, authenticated transport evidence, artifact identity, and rollback boundary.
-See [CUTOVER-1D_RELEASE_BASELINE_READINESS.md](./CUTOVER-1D_RELEASE_BASELINE_READINESS.md) for the verified branch divergence, active-release isolation, default-only semantic disposition, and independent rollback rehearsal.
-See [CUTOVER-1E_DEFAULT_PROMOTION.md](../project/CUTOVER-1E_DEFAULT_PROMOTION.md) for the controlled default-branch promotion and protected rollback reference.
-See [CUTOVER-1F_POST_PROMOTION_CI_ALIGNMENT.md](../project/CUTOVER-1F_POST_PROMOTION_CI_ALIGNMENT.md) for the promoted-baseline CI contract.
-See [CLEANUP-1A_LEGACY_FRONTEND_DECOMMISSION_AUDIT.md](../project/CLEANUP-1A_LEGACY_FRONTEND_DECOMMISSION_AUDIT.md) for the exact legacy inventory and ordered removal waves.
-See [CLEANUP-1B_TOOLING_DECOUPLING.md](../project/CLEANUP-1B_TOOLING_DECOUPLING.md) for the completed backend-tooling decoupling stage.
-See [CLEANUP-1C_PHYSICAL_REMOVAL.md](../project/CLEANUP-1C_PHYSICAL_REMOVAL.md) for the completed physical removal and dependency-pruning stage.
-See [CLEANUP-1D_POST_REMOVAL_VERIFICATION.md](../project/CLEANUP-1D_POST_REMOVAL_VERIFICATION.md) for the implemented final non-deletion verification stage.
-See [TECH-AUDIT-2 Executive Audit](../02-audits/technical-v2/EXECUTIVE_AUDIT.md) for the current technical baseline.
-See [ROADMAP v2 Update](../02-audits/technical-v2/ROADMAP_v2_UPDATE.md) and [Sprint Backlog](../02-audits/technical-v2/SPRINT_BACKLOG.md) for the ordered corrective sequence.
-See the standalone frontend documentation for the completed WORKSPACE-1 slices and production responsive QA:
+- `ARCH-2B`: issue #53 closed as completed; final program merge `56f2e894699231df4219343283e23aaa9c1cab4c`.
+- `FRONTEND-2C`: Frontend PRs #18–#21; canonical `Frontend/main` contents `022788ace31982e2b08ea099800de784b4dbe482`; promoted by REL-203 PR #145.
+- `RUNTIME-2D`: issue #57 closed as completed; runtime ownership is protected by architecture, runtime, and memory validators.
+- `DURABILITY-2E`: DATA-201 issue #63 and DATA-202 issue #135 closed; DATA-202 final slice merge `a33a8c30588f1e4705d27856e61d839c8efd42ac`.
+- Active paired release: backend merge `7ccc4e02ba4175318856cd14b845e4ccd4dc6057` plus Frontend contents `022788ace31982e2b08ea099800de784b4dbe482`.
 
-- [`WORKSPACE-1_WORKFLOW_SHELL.md`](https://github.com/kazakovak2001-lgtm/Frontend/blob/main/docs/WORKSPACE-1_WORKFLOW_SHELL.md)
-- [`WORKSPACE-1_STAGE_TOOLS.md`](https://github.com/kazakovak2001-lgtm/Frontend/blob/main/docs/WORKSPACE-1_STAGE_TOOLS.md)
-- [`WORKSPACE-1_STAGE_COMPOSITION.md`](https://github.com/kazakovak2001-lgtm/Frontend/blob/main/docs/WORKSPACE-1_STAGE_COMPOSITION.md)
-- [`WORKSPACE-1_NATIVE_TESTS.md`](https://github.com/kazakovak2001-lgtm/Frontend/blob/main/docs/WORKSPACE-1_NATIVE_TESTS.md)
-- [`WORKSPACE-1_RESPONSIVE_QA.md`](https://github.com/kazakovak2001-lgtm/Frontend/blob/main/docs/WORKSPACE-1_RESPONSIVE_QA.md)
+## Runtime truthfulness
 
-## Completed STUDIO-1 Acceptance Gate
+Serializable pipeline, autonomous-session/checkpoint, and Studio command/verification evidence is provider-backed. Live sockets, connected clients, timers, callbacks, promises, controllers, and similar execution handles remain intentionally process-local. Completion of `DURABILITY-2E` must not be interpreted as persistence of non-serializable runtime handles.
 
-STUDIO-1 passed on July 27, 2026 through a real Roblox Studio desktop session. The verified identity is:
+## Frontend ownership
 
-- backend commit `d99246d813e12bccff0193a15e73de41b92f175d`;
-- frontend commit `a8d005d433d48e18d8e64ac176ee63c9c694b644`;
-- project `proj-286c6929-5`;
-- client `studio-39fa03bb`;
-- session `session-afec81df-c`;
-- execution `exec-1785180356168`;
-- command `cmd-96bd9df4-e`;
-- expected and verified artifact count `8`;
-- Roblox Studio `0.730.0.7300790` (64-bit), production channel;
-- plugin artifact ID `8657228073`, bundle SHA-256 `a97e6268193f202cb5cc12ef5c174d0a028067c382327dd9432aacbe80f5ced7`.
+The canonical web application is the separate repository [`kazakovak2001-lgtm/Frontend`](https://github.com/kazakovak2001-lgtm/Frontend). The removed root `src/` application is historical and protected from reintroduction. Backend and Frontend form one paired product release through exact commit identities and the protected production contract/composed HTTPS gates.
 
-The authenticated project status returned `artifactVerified=true`, `verificationStatus=verified`, the matching execution ID, eight verified artifacts, and zero pending changes. Explorer evidence confirmed real Script, LocalScript, ModuleScript, and non-Lua metadata instances. Issue #15 is closed as completed.
+## Current references
 
-CUTOVER-1D proved branch alignment evidence, deployment ownership, active-release independence from the embedded frontend, complete default-only semantic classification, and an executable rollback rehearsal. CUTOVER-1E promoted the verified candidate as the protected default, CUTOVER-1F aligned CI with that promoted baseline, CLEANUP-1A classified the exact legacy removal surface, CLEANUP-1B decoupled protected tooling, CLEANUP-1C physically removed the legacy frontend, and CLEANUP-1D completed protected post-removal verification with zero file deletions.
+- [Current Project State](./CURRENT_STATE.md)
+- [DOC-202A Roadmap Authority Reconciliation](./DOC-202A_ROADMAP_AUTHORITY_RECONCILIATION.md)
+- [Frontend Cutover Contract](./FRONTEND_CUTOVER.md)
+- [CUTOVER-1E Default Promotion](../project/CUTOVER-1E_DEFAULT_PROMOTION.md)
+- [CUTOVER-1F Post-Promotion CI Alignment](../project/CUTOVER-1F_POST_PROMOTION_CI_ALIGNMENT.md)
 
-## Completed CUTOVER-1 Evidence
+## Historical planning references
 
-CUTOVER-1A is complete. Backend CI run #195 built `Dockerfile.backend`, started the production container without root `src/`, and received HTTP 200 from `GET /health`.
+The following documents preserve the dated TECH-AUDIT-2 planning baseline. Their former ordering and status labels are historical only:
 
-CUTOVER-1B is complete. Frontend PR #12 merged as `1036c3ef9705d145cb9700cd14268a33d2abdd58`; final CI run #65 built the non-root SSR image, verified independent `/health`, received an HTML document from `/`, and passed desktop/tablet/mobile responsive QA through the same shared Node adapter.
+- [TECH-AUDIT-2 Roadmap v2 Update](../02-audits/technical-v2/ROADMAP_v2_UPDATE.md)
+- [TECH-AUDIT-2 Sprint Backlog](../02-audits/technical-v2/SPRINT_BACKLOG.md)
+- [TECH-AUDIT-2 Executive Audit](../02-audits/technical-v2/EXECUTIVE_AUDIT.md)
 
-CUTOVER-1C is verified on backend head `8bee44a284244033d73637b3e3cc4bddf72af035`. CI run `30312627413` (#219) composed the exact Frontend commit `1036c3ef9705d145cb9700cd14268a33d2abdd58` behind `https://localhost:8443`. Evidence artifact `8670986116` proves healthy PostgreSQL/backend/frontend/proxy services, frontend and backend health, SSR HTML, allowed-origin credentialed preflight, disallowed-origin rejection, secure host-only cookies, authenticated REST, unauthenticated Socket.IO rejection, and authenticated polling → WebSocket upgrade.
-
-CUTOVER-1D is verified on backend readiness head `c716b96aac8e0cd9aa61b7ed119002456e856ff3`. CI run `30315780241` (#251) verified that the active release has zero legacy frontend reference violations, classified the integration/default divergence as 184 commits ahead and one semantically superseded commit behind, and passed an independent rollback rehearsal. Evidence artifact `8672132224` recorded backend health HTTP 200, Frontend health HTTP 200, and a valid Frontend SSR HTML document.
-
-CUTOVER-1E promoted `release/cutover-1e-candidate` as the protected repository default and preserved `backup/default-before-cutover-1e` as the pre-promotion rollback reference. CUTOVER-1F aligned push CI and promoted-baseline integrity checks with that default.
-
-CLEANUP-1A merged as `99b0de4a3b493d1e1fa98173deea8fae59d57842`. It inventories all 168 tracked root `src/` files, legacy configuration/deployment files, package consumers, tooling blockers, and ordered CLEANUP-1B/1C/1D waves. It authorizes no deletion.
-
-CLEANUP-1B is complete under closed issue #34 and merged PR #35. It routes backend development, build, typecheck, Vitest, PostgreSQL acceptance, and architecture reporting away from the frozen React/Vite application. Merge commit `703fe0fbcfcb8706506e9351af1fe7874a1337f0` passed post-merge push CI run `30327587217` (#284), including the CLEANUP-1B evidence job and Merge Gate. Artifact `8676270323` has digest `sha256:5d14de17c49751392d009021dc9a7b14605447ae72d44e24414848d3331169ec`. Every legacy source/configuration/deployment file, dependency declaration, and lockfile remained protected until the separately reviewed CLEANUP-1C stage.
-
-CLEANUP-1C is complete under closed issue #37 and merged PR #39. It deleted the 168-file embedded `src/` tree, five root frontend configuration/entry files, and three archival combined-deployment files; pruned exactly 12 proven legacy-only direct package declarations; retained active `socket.io-client`; and turned root `src/` into a forbidden architecture root. Merge commit `1bc54753783610827750dbb11689c0fb24620923` passed post-merge push CI run `30330505927` (#291), including the CLEANUP-1C audit and Merge Gate. Evidence artifact `8677218198` has digest `sha256:b7693a9fac74b6e6615b5ba277e98ccb8575d21147e381d9ebcb5e400c89f74f`.
-
-CLEANUP-1D is complete under closed issue #41 and merged PR #42. Merge commit `f924079995059d9b86a5caaaf6364cb7b4879881` aligns every internal helper with backend plus Studio ownership, replaces three stale snapshots with deterministic tracked-path inventories, preserves the historical removal/package evidence, classifies intentional `src/**` namespaces, and deletes no file. Pre-merge CI run #295 and post-merge push run #296 passed the full Merge Gate. Post-merge artifact `8679552100` has digest `sha256:a8fa2cea2192b4f69471926521678307a0409e3a053c699f5783fdbfb04aa14c`. The permanent schema-v5 guard preserves these invariants without freezing future reviewed changes.
-
-The removed combined stack was archival only, not an executable rollback path: its root `Dockerfile` referenced the absent `public/` directory. Executable rollback uses the independently verified CUTOVER-1A backend and CUTOVER-1B Frontend artifacts; the focused CLEANUP-1C PR can be reverted to recover historical source/configuration inventory. Historical PR #1 was closed without merge on July 28, 2026.
-
-HARDEN-2A / INT-201 is complete. Frontend PR #16 merged the first protected
-40-check production contract as
-`739b43cbc5f991c1852e80b30fe38c0e7c02d681`. Backend PR #48 merged the
-reciprocal release gate as
-`b30be04ce3c5458902561472d371f753b28f08c5`. Backend post-merge CI run
-`30350138128` (#307) passed all protected jobs, including the composed HTTPS
-release, exact 40/40 contract, promoted-baseline rollback, post-removal
-invariants, and Merge Gate. Contract artifact `8684538568` has digest
-`sha256:0babbaf1239615e15479a4adbbcc5f5745965632fb3417c06bc2ee9a70c3c0a9`.
-
-## Historical Roadmap: UX-4 Feature Development
-
-| ID   | Feature                  | Priority     | Status      | Sprint |
-| ---- | ------------------------ | ------------ | ----------- | ------ |
-| F-1  | Analytics Real Data      | Must Have    | ✅ COMPLETE | 9      |
-| F-2  | AI Studio Chat Backend   | Must Have    | ✅ COMPLETE | 10     |
-| F-3  | Plugin Manager Real Data | Must Have    | ✅ COMPLETE | 11     |
-| F-4  | Game Simulation          | Should Have  | ✅ COMPLETE | 12-13  |
-| F-5  | Economy Designer         | Should Have  | ✅ COMPLETE | 14     |
-| F-6  | Autonomous Pipeline      | Should Have  | ✅ COMPLETE | 15-16  |
-| F-7  | Knowledge Base UI        | Should Have  | ✅ COMPLETE | 17     |
-| F-8  | Playtesting Dashboard    | Should Have  | ✅ COMPLETE | 18-19  |
-| F-9  | Multi-Project Workspace  | Future       | ✅ COMPLETE | —      |
-| F-10 | Real Authentication      | Future       | ✅ COMPLETE | —      |
-| F-11 | Persistent Storage       | Future       | ✅ COMPLETE | —      |
-| F-12 | Collaborative Dev        | Experimental | —           | —      |
-
-These labels preserve delivery history. TECH-AUDIT-2 originally reclassified
-F-6 as a prototype because its mounted phases are simulated, F-10 as partial
-because browser responses exposed credentials, and F-11 as operational because
-request-level durability and secondary stores remain. SEC-201 has since closed
-the F-10 response-body and refresh-storage gap; route-level RBAC remains
-separate SEC-202 scope.
-
-## Active Bugfixes
-
-| ID        | Issue                                               | Status                |
-| --------- | --------------------------------------------------- | --------------------- |
-| UX-4.1    | Responsive Layout Fix                               | ✅ RESOLVED           |
-| STUDIO-1f | Roblox custom `Content-Type` rejection              | ✅ RESOLVED in PR #16 |
-| STUDIO-1f | Lua generator → plugin artifact shape gap           | ✅ RESOLVED in PR #17 |
-| STUDIO-1f | First-run specialist assignment overridden          | ✅ RESOLVED in PR #19 |
-| STUDIO-1g | Real Roblox Studio end-to-end artifact verification | ✅ VERIFIED           |
-
-## Milestones
-
-- ✅ Phase 1 COMPLETE (F-1, F-2, F-3 — all "Must Have" items done)
-- ✅ Phase 2A COMPLETE (F-4, F-5, F-6, F-7, F-8 — all "Should Have" items done)
-- ✅ Phase 2B COMPLETE (F-11 → F-10 → F-9 — Infrastructure done)
-- 🔒 Security Hardening (Pre-Deploy) — ✅ COMPLETE (All 12 tasks done, FINAL_V1_RELEASE_SIGN_OFF.md generated)
-- UX-3D: 8/8 sprints ✅ (See MIGRATION_PROGRESS.md for full history)
-- ✅ STUDIO-1 COMPLETE — real desktop import and backend verification passed
-- ✅ CUTOVER-1A COMPLETE — backend-only production image and health smoke gate passed
-- ✅ CUTOVER-1B COMPLETE — standalone Frontend SSR image, health, SSR document, responsive QA, and Merge Gate passed
-- ✅ CUTOVER-1C COMPLETE — composed HTTPS release, secure cookies, REST, and Socket.IO transport verification passed
-- ✅ CUTOVER-1D COMPLETE — promotion-readiness inventory and independent artifact rollback rehearsal passed
-- ✅ CUTOVER-1E COMPLETE — verified release candidate promoted as protected default
-- ✅ CUTOVER-1F COMPLETE — CI aligned with the promoted baseline
-- ✅ CLEANUP-1A COMPLETE — exact legacy frontend decommission inventory and protected audit
-- ✅ CLEANUP-1B COMPLETE — backend tooling decoupling and protected evidence
-- ✅ CLEANUP-1C COMPLETE — physical removal and protected post-merge verification passed
-- ✅ CLEANUP-1D COMPLETE — protected merge and post-merge verification passed
-- ✅ TECH-AUDIT-2 COMPLETE — first official backend + standalone Frontend technical baseline
-- ✅ HARDEN-2A COMPLETE — SEC-201, FE-201, INT-201, and DOC-201 issue #49 close the release-correctness phase
-
-## Release Hardening Sprint Status
-
-| #    | Task                                             | Priority | Status                           |
-| ---- | ------------------------------------------------ | -------- | -------------------------------- |
-| T-1  | Bug condition exploration tests                  | CRITICAL | ✅ Done                          |
-| T-2  | Preservation property tests                      | CRITICAL | ✅ Done                          |
-| T-3  | Fix auth route blocking (PUBLIC_PREFIXES)        | CRITICAL | ✅ Done                          |
-| T-4  | Replace SHA-256 with bcrypt for passwords        | CRITICAL | ✅ Done                          |
-| T-5  | Move tokens to httpOnly cookies                  | CRITICAL | ✅ Cookie-only browser responses |
-| T-6  | Wire AuthService.validateToken() into middleware | CRITICAL | ✅ Done                          |
-| T-7  | Socket.IO opaque-session validation              | HIGH     | ✅ Done                          |
-| T-8  | Remove dead code and merge studioService         | MEDIUM   | ✅ Done                          |
-| T-9  | Update stale documentation                       | MEDIUM   | ✅ Done                          |
-| T-10 | Add production infrastructure                    | HIGH     | ✅ Done                          |
-| T-11 | Final verification and release report            | HIGH     | ✅ Done                          |
-| T-12 | Checkpoint — ensure all tests pass               | HIGH     | ✅ Done                          |
-
-## Post-Launch Improvements
-
-| #     | Task                                      | Priority    | Effort     |
-| ----- | ----------------------------------------- | ----------- | ---------- |
-| APR-1 | Autonomous Pipeline Real-Time Events      | ✅ COMPLETE | —          |
-| P-1   | Add zod schemas to auth endpoints         | MEDIUM      | 1.5h       |
-| P-2   | External monitoring (uptime, error rates) | MEDIUM      | 2h         |
-| P-3   | Log aggregation (structured → external)   | LOW         | 2h         |
-| P-4   | SSL for remote Postgres connections       | MEDIUM      | 30min      |
-| P-5   | F-12 Collaborative Dev (experimental)     | LOW         | 3+ sprints |
-| P-6   | Login rate limit (10/min)                 | ✅ COMPLETE | —          |
-| P-7   | Validate API keys against stored database | ✅ COMPLETE | —          |
-
-## Release Readiness
-
-- **Historical delivery**: All 11 UX-4 implementation items (F-1 through F-11) were delivered; TECH-AUDIT-2 supersedes “feature-complete” as a production-readiness claim
-- **Security Status**: SEC-201 removes credentials from browser JSON and protects refresh persistence/rotation; route-level RBAC and protected security/dependency automation remain separate backlog items
-- **Historical v1.0 Decision**: ✅ APPROVED for the embedded product baseline
-- **Studio Gate**: ✅ STUDIO-1 complete with real desktop evidence
-- **Current Decision**: ✅ CUTOVER-1, CLEANUP, TECH-AUDIT-2, and HARDEN-2A are complete; ARCH-2B is next
-- **Sign-Off Document**: `FINAL_V1_RELEASE_SIGN_OFF.md`
-- **Post-release**: F-12 (Collaborative Dev) deferred to post-launch
+When a historical audit conflicts with this file or the DOC-202A reconciliation record, the current project-control documents win.
