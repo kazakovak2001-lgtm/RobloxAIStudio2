@@ -1,4 +1,5 @@
 export {
+  DurableStorageConflictError,
   DurableStorageError,
   InMemoryStorageProvider,
   type StorageProvider,
