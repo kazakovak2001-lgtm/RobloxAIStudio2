@@ -27,14 +27,10 @@ export class FilePipelineStore implements PipelineStore {
     this.loadAll();
   }
 
-  save(state: PipelineState): void {
-    this.cache.set(state.pipelineId, state);
+  async save(state: PipelineState): Promise<void> {
     const filepath = this.filepath(state.pipelineId);
-    try {
-      writeFileSync(filepath, JSON.stringify(state, null, 2), "utf8");
-    } catch (err) {
-      console.error(`[PipelineStore] Failed to save ${state.pipelineId}:`, err);
-    }
+    writeFileSync(filepath, JSON.stringify(state, null, 2), "utf8");
+    this.cache.set(state.pipelineId, state);
   }
 
   get(pipelineId: string): PipelineState | null {
@@ -45,15 +41,10 @@ export class FilePipelineStore implements PipelineStore {
     return Array.from(this.cache.values());
   }
 
-  delete(pipelineId: string): boolean {
-    const existed = this.cache.delete(pipelineId);
+  async delete(pipelineId: string): Promise<boolean> {
     const filepath = this.filepath(pipelineId);
-    try {
-      if (existsSync(filepath)) unlinkSync(filepath);
-    } catch {
-      /* best effort */
-    }
-    return existed;
+    if (existsSync(filepath)) unlinkSync(filepath);
+    return this.cache.delete(pipelineId);
   }
 
   has(pipelineId: string): boolean {
@@ -68,30 +59,30 @@ export class FilePipelineStore implements PipelineStore {
     return this.getAll().filter((p) => p.status === status);
   }
 
-  markInterrupted(): number {
+  async markInterrupted(): Promise<number> {
     let count = 0;
     for (const state of this.cache.values()) {
-      if (state.status === "running") {
-        state.status = "failed";
-        state.finishedAt = Date.now();
-        state.currentStage = null;
-        for (const stage of state.stages) {
-          if (stage.status === "running") {
-            stage.status = "failed";
-            stage.error = "Interrupted: server restart";
-            stage.completedAt = Date.now();
-            state.failedStages.push(stage.name);
-          }
+      if (state.status !== "running") continue;
+
+      state.status = "failed";
+      state.finishedAt = Date.now();
+      state.currentStage = null;
+      for (const stage of state.stages) {
+        if (stage.status !== "running") continue;
+        stage.status = "failed";
+        stage.error = "Interrupted: server restart";
+        stage.completedAt = Date.now();
+        if (!state.failedStages.includes(stage.name)) {
+          state.failedStages.push(stage.name);
         }
-        this.save(state);
-        count++;
       }
+      await this.save(state);
+      count++;
     }
     return count;
   }
 
   private filepath(pipelineId: string): string {
-    // Sanitize ID for filesystem
     const safe = pipelineId.replace(/[^a-zA-Z0-9_-]/g, "_");
     return join(this.dir, `${safe}.json`);
   }
