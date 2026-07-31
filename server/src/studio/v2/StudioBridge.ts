@@ -93,6 +93,40 @@ export class StudioBridge {
     return true;
   }
 
+  canSendCommand(clientId: string): boolean {
+    const client = this.clients.get(clientId);
+    return Boolean(
+      client &&
+      client.status === "connected" &&
+      this.commandQueue.has(clientId),
+    );
+  }
+
+  /** Publish an already acknowledged durable snapshot into this live process. */
+  publishCommand(command: StudioCommand, enqueue = false): void {
+    const snapshot = structuredClone(command);
+    this.commands.set(snapshot.id, snapshot);
+    if (enqueue) {
+      const queue = this.commandQueue.get(snapshot.clientId);
+      if (queue && !queue.some((queued) => queued.id === snapshot.id)) {
+        queue.push(snapshot);
+      }
+    }
+  }
+
+  peekCommands(clientId: string): StudioCommand[] {
+    return structuredClone(this.commandQueue.get(clientId) ?? []);
+  }
+
+  removeQueuedCommand(clientId: string, commandId: string): void {
+    const queue = this.commandQueue.get(clientId);
+    if (!queue) return;
+    this.commandQueue.set(
+      clientId,
+      queue.filter((command) => command.id !== commandId),
+    );
+  }
+
   /**
    * Get pending commands for a client (polling).
    */
@@ -107,7 +141,8 @@ export class StudioBridge {
   }
 
   getCommand(commandId: string): StudioCommand | null {
-    return this.commands.get(commandId) ?? null;
+    const command = this.commands.get(commandId);
+    return command ? structuredClone(command) : null;
   }
 
   markCommandDelivered(

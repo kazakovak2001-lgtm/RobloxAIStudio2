@@ -1,6 +1,13 @@
-import type { StorageProvider } from "../../platform/storage/StorageProvider";
-import { ArtifactStore } from "../../pipeline/v2/ArtifactStore";
+import {
+  ArtifactStore,
+  type ArtifactStorageProvider,
+} from "../../pipeline/v2/ArtifactStore";
 import { StudioBridge } from "./StudioBridge";
+import {
+  createConfiguredStudioEvidenceStore,
+  type StudioEvidenceStore,
+  type StudioOperationalEvidence,
+} from "./StudioEvidenceStore";
 import { StudioSessionManager, type BridgeSession } from "./StudioSession";
 import {
   createCommandId,
@@ -58,10 +65,11 @@ export type StudioCommandActionResult =
     };
 
 export interface StudioRuntimeOptions {
-  storage?: StorageProvider;
+  storage?: ArtifactStorageProvider;
   artifacts?: ArtifactStore;
   bridge?: StudioBridge;
   sessions?: StudioSessionManager;
+  evidence?: StudioEvidenceStore;
 }
 
 /**
@@ -74,17 +82,25 @@ export class StudioRuntime {
   readonly bridge: StudioBridge;
   readonly sessions: StudioSessionManager;
   readonly sync: ProjectSyncManager;
+  readonly evidence: StudioEvidenceStore;
   readonly protocolVersion = PROTOCOL_VERSION;
 
   private timeoutMonitor?: ReturnType<typeof setInterval>;
   private readonly latestExecutionByProject = new Map<string, string>();
   private readonly exportSignatureByClient = new Map<string, string>();
+  private readonly readiness: Promise<void>;
 
   constructor(options: StudioRuntimeOptions = {}) {
     this.artifacts = options.artifacts ?? new ArtifactStore(options.storage);
     this.bridge = options.bridge ?? new StudioBridge();
     this.sessions = options.sessions ?? new StudioSessionManager();
+    this.evidence = options.evidence ?? createConfiguredStudioEvidenceStore();
     this.sync = new ProjectSyncManager(this.artifacts);
+    this.readiness = this.evidence.ready();
+  }
+
+  async ready(): Promise<void> {
+    await this.readiness;
   }
 
   startTimeoutMonitor(intervalMs = 30_000): void {
@@ -149,15 +165,34 @@ export class StudioRuntime {
     return this.sync.getSyncStatus(executionId ?? projectOrExecutionId);
   }
 
-  getCommand(commandId: string): StudioCommand | null {
-    return this.bridge.getCommand(commandId);
+  async getCommand(commandId: string): Promise<StudioCommand | null> {
+    await this.ready();
+    await this.evidence.refresh();
+    return this.evidence.getCommand(commandId)?.command ?? null;
   }
 
-  queueProjectExport(
+  async getProjectEvidence(
+    projectId: string,
+  ): Promise<StudioOperationalEvidence | null> {
+    await this.ready();
+    await this.evidence.refresh();
+    return this.evidence.getLatestByProject(projectId);
+  }
+
+  async reconcileClient(clientId: string, projectId?: string): Promise<void> {
+    if (!projectId) return;
+    const evidence = await this.getProjectEvidence(projectId);
+    if (!evidence) return;
+    this.sessions.applyEvidence(clientId, evidence);
+  }
+
+  async queueProjectExport(
     clientId: string,
     projectId: string,
     executionId: string,
-  ): QueueProjectExportResult {
+  ): Promise<QueueProjectExportResult> {
+    await this.ready();
+    await this.evidence.refresh();
     const client = this.bridge.getClient(clientId);
     if (!client || client.status !== "connected") {
       return {
@@ -185,14 +220,37 @@ export class StudioRuntime {
 
     const signature = this.createSnapshotSignature(snapshot);
     const session = this.sessions.getByClient(clientId);
+    const previousEvidence = this.evidence.getLatestByProject(projectId);
     const previousSignature =
-      (session?.syncCount ?? 0) > 0
-        ? this.exportSignatureByClient.get(clientId)
-        : undefined;
+      (session?.syncCount ?? 0) > 0 &&
+      previousEvidence?.command.clientId === clientId &&
+      previousEvidence.verificationStatus !== "failed"
+        ? previousEvidence.snapshotSignature
+        : this.exportSignatureByClient.get(clientId);
     this.latestExecutionByProject.set(projectId, executionId);
 
     if (previousSignature === signature) {
-      this.sessions.recordNoopExport(clientId, executionId);
+      if (!previousEvidence) {
+        return {
+          success: false,
+          reason: "queue_unavailable",
+          message: "Studio evidence is unavailable. Refresh and retry.",
+        };
+      }
+      const noChanges = structuredClone(previousEvidence);
+      noChanges.version += 1;
+      noChanges.syncCount += 1;
+      noChanges.executionId = executionId;
+      noChanges.snapshotSignature = signature;
+      if (!(await this.evidence.saveTransition(noChanges, "no_changes"))) {
+        return {
+          success: false,
+          reason: "queue_unavailable",
+          message:
+            "Studio command state changed concurrently. Refresh and retry.",
+        };
+      }
+      this.sessions.applyEvidence(clientId, noChanges);
       return {
         success: true,
         data: {
@@ -235,7 +293,7 @@ export class StudioRuntime {
       clientId,
     };
 
-    if (!this.bridge.sendCommand(clientId, command)) {
+    if (!this.bridge.canSendCommand(clientId)) {
       return {
         success: false,
         reason: "queue_unavailable",
@@ -243,13 +301,32 @@ export class StudioRuntime {
       };
     }
 
-    this.exportSignatureByClient.set(clientId, signature);
-    this.sessions.recordQueuedExport(
-      clientId,
+    command.status = "sent";
+    const evidence: StudioOperationalEvidence = {
+      command,
+      projectId,
       executionId,
-      transfer.artifacts.length,
-      command.id,
-    );
+      artifactCount: transfer.artifacts.length,
+      snapshotSignature: signature,
+      version: (previousEvidence?.version ?? 0) + 1,
+      syncCount: (previousEvidence?.syncCount ?? 0) + 1,
+      verificationStatus: "queued",
+      lastQueuedAt: Date.now(),
+    };
+    if (
+      !(await this.evidence.saveTransition(evidence, `queued:${command.id}`))
+    ) {
+      return {
+        success: false,
+        reason: "queue_unavailable",
+        message:
+          "Studio command state changed concurrently. Refresh and retry.",
+      };
+    }
+
+    this.bridge.publishCommand(command, true);
+    this.exportSignatureByClient.set(clientId, signature);
+    this.sessions.applyEvidence(clientId, evidence);
 
     return {
       success: true,
@@ -257,30 +334,65 @@ export class StudioRuntime {
     };
   }
 
-  drainCommands(clientId: string): StudioCommand[] {
-    const commands = this.bridge.getCommands(clientId);
+  async drainCommands(clientId: string): Promise<StudioCommand[]> {
+    await this.ready();
+    const commands = this.bridge.peekCommands(clientId);
+    const deliveredCommands: StudioCommand[] = [];
     for (const command of commands) {
-      const delivered = this.bridge.markCommandDelivered(clientId, command.id);
-      if (!delivered.success || command.type !== "EXPORT_PROJECT") continue;
-      const executionId = String(command.payload.executionId ?? "");
-      const artifactCount = Array.isArray(command.payload.artifacts)
-        ? command.payload.artifacts.length
-        : 0;
-      this.sessions.recordDeliveredExport(
-        clientId,
-        executionId,
-        artifactCount,
-        command.id,
-      );
+      await this.evidence.refresh();
+      const current = this.evidence.getCommand(command.id);
+      const latest = current
+        ? this.evidence.getLatestByProject(current.projectId)
+        : null;
+      if (
+        !current ||
+        current.command.clientId !== clientId ||
+        current.command.status !== "sent" ||
+        current.command.deliveredAt ||
+        latest?.command.id !== current.command.id
+      ) {
+        if (current?.command.deliveredAt) {
+          this.bridge.publishCommand(current.command);
+          this.bridge.removeQueuedCommand(clientId, command.id);
+          this.sessions.applyEvidence(clientId, current);
+        }
+        continue;
+      }
+      const delivered = structuredClone(current);
+      delivered.version = (latest?.version ?? 0) + 1;
+      delivered.command.deliveredAt = Date.now();
+      delivered.lastDeliveredAt = delivered.command.deliveredAt;
+      delivered.verificationStatus = "delivered";
+      if (
+        !(await this.evidence.saveTransition(
+          delivered,
+          `delivered:${command.id}`,
+        ))
+      ) {
+        const winner = this.evidence.getCommand(command.id);
+        if (winner?.command.deliveredAt) {
+          this.bridge.publishCommand(winner.command);
+          this.bridge.removeQueuedCommand(clientId, command.id);
+          this.sessions.applyEvidence(clientId, winner);
+        }
+        continue;
+      }
+      this.bridge.publishCommand(delivered.command);
+      this.bridge.removeQueuedCommand(clientId, command.id);
+      this.sessions.applyEvidence(clientId, delivered);
+      deliveredCommands.push(delivered.command);
     }
-    return commands;
+    return deliveredCommands;
   }
 
-  acknowledgeProjectExport(
+  async acknowledgeProjectExport(
     clientId: string,
     commandId: string,
-  ): StudioCommandActionResult {
-    const command = this.bridge.getCommand(commandId);
+  ): Promise<StudioCommandActionResult> {
+    await this.ready();
+    await this.evidence.refresh();
+    const current = this.evidence.getCommand(commandId);
+    const command = current?.command ?? null;
     const valid = this.validateExportCommand(clientId, command);
     if (!valid.success) return valid;
     if (!command?.deliveredAt) {
@@ -292,11 +404,53 @@ export class StudioRuntime {
       };
     }
 
-    const acknowledged = this.bridge.acknowledgeCommand(clientId, commandId);
-    if (!acknowledged.success) return acknowledged;
-    const executionId = String(acknowledged.command.payload.executionId ?? "");
-    const projectId = String(acknowledged.command.payload.projectId ?? "");
-    this.sessions.recordAcknowledgedExport(clientId, commandId, executionId);
+    if (command.status === "acknowledged") {
+      return { success: true, command, verified: false };
+    }
+    if (command.status !== "sent" || !current) {
+      return {
+        success: false,
+        reason: "invalid_status",
+        message: `Cannot mark command acknowledged from status ${command.status}.`,
+        command,
+      };
+    }
+    const latest = this.evidence.getLatestByProject(current.projectId);
+    if (latest?.command.id !== commandId) {
+      return {
+        success: false,
+        reason: "invalid_status",
+        message: "A newer Studio export superseded this command.",
+        command,
+      };
+    }
+    const acknowledged = structuredClone(current);
+    acknowledged.version = latest.version + 1;
+    acknowledged.command.status = "acknowledged";
+    acknowledged.command.acknowledgedAt = Date.now();
+    acknowledged.lastAcknowledgedAt = acknowledged.command.acknowledgedAt;
+    acknowledged.verificationStatus = "acknowledged";
+    if (
+      !(await this.evidence.saveTransition(
+        acknowledged,
+        `acknowledged:${commandId}`,
+      ))
+    ) {
+      const winner = this.evidence.getCommand(commandId)?.command;
+      if (winner?.status === "acknowledged") {
+        return { success: true, command: winner, verified: false };
+      }
+      return {
+        success: false,
+        reason: "invalid_status",
+        message: "Studio command state changed concurrently.",
+        command: winner,
+      };
+    }
+    this.bridge.publishCommand(acknowledged.command);
+    this.sessions.applyEvidence(clientId, acknowledged);
+    const executionId = acknowledged.executionId;
+    const projectId = acknowledged.projectId;
     this.bridge.events.emit({
       type: "export.started",
       clientId,
@@ -307,12 +461,15 @@ export class StudioRuntime {
     return { success: true, command: acknowledged.command, verified: false };
   }
 
-  reportProjectExport(
+  async reportProjectExport(
     clientId: string,
     commandId: string,
     input: StudioImportReportInput,
-  ): StudioCommandActionResult {
-    const command = this.bridge.getCommand(commandId);
+  ): Promise<StudioCommandActionResult> {
+    await this.ready();
+    await this.evidence.refresh();
+    const current = this.evidence.getCommand(commandId);
+    const command = current?.command ?? null;
     const valid = this.validateExportCommand(clientId, command);
     if (!valid.success) return valid;
     if (command?.status !== "acknowledged") {
@@ -325,17 +482,39 @@ export class StudioRuntime {
       };
     }
 
-    const executionId = String(command.payload.executionId ?? "");
-    const projectId = String(command.payload.projectId ?? "");
+    if (!current) {
+      return {
+        success: false,
+        reason: "command_not_found",
+        message: "Studio command was not found.",
+      };
+    }
+    const latest = this.evidence.getLatestByProject(current.projectId);
+    if (latest?.command.id !== commandId) {
+      return {
+        success: false,
+        reason: "invalid_status",
+        message: "A newer Studio export superseded this command.",
+        command,
+      };
+    }
+
+    const executionId = current.executionId;
+    const projectId = current.projectId;
     const reportedArtifacts = input.artifacts ?? [];
 
     if (input.status === "failed") {
       const error = input.error?.trim() || "Roblox Studio import failed.";
       const result = this.createCommandResult(input, reportedArtifacts, error);
-      const failed = this.bridge.failCommand(clientId, commandId, result);
-      if (!failed.success) return failed;
+      const failed = this.createTerminalEvidence(current, result, error);
+      if (
+        !(await this.evidence.saveTransition(failed, `terminal:${commandId}`))
+      ) {
+        return this.concurrentTerminalResult(commandId);
+      }
+      this.bridge.publishCommand(failed.command);
       this.exportSignatureByClient.delete(clientId);
-      this.sessions.recordFailedExport(clientId, commandId, executionId, error);
+      this.sessions.applyEvidence(clientId, failed);
       this.bridge.events.emit({
         type: "export.failed",
         clientId,
@@ -357,15 +536,19 @@ export class StudioRuntime {
         reportedArtifacts,
         verificationError,
       );
-      const failed = this.bridge.failCommand(clientId, commandId, result);
-      if (!failed.success) return failed;
-      this.exportSignatureByClient.delete(clientId);
-      this.sessions.recordFailedExport(
-        clientId,
-        commandId,
-        executionId,
+      const failed = this.createTerminalEvidence(
+        current,
+        result,
         verificationError,
       );
+      if (
+        !(await this.evidence.saveTransition(failed, `terminal:${commandId}`))
+      ) {
+        return this.concurrentTerminalResult(commandId);
+      }
+      this.bridge.publishCommand(failed.command);
+      this.exportSignatureByClient.delete(clientId);
+      this.sessions.applyEvidence(clientId, failed);
       this.bridge.events.emit({
         type: "export.failed",
         clientId,
@@ -382,14 +565,14 @@ export class StudioRuntime {
     }
 
     const result = this.createCommandResult(input, reportedArtifacts);
-    const completed = this.bridge.completeCommand(clientId, commandId, result);
-    if (!completed.success) return completed;
-    this.sessions.recordVerifiedExport(
-      clientId,
-      commandId,
-      executionId,
-      reportedArtifacts.length,
-    );
+    const completed = this.createTerminalEvidence(current, result);
+    if (
+      !(await this.evidence.saveTransition(completed, `terminal:${commandId}`))
+    ) {
+      return this.concurrentTerminalResult(commandId);
+    }
+    this.bridge.publishCommand(completed.command);
+    this.sessions.applyEvidence(clientId, completed);
     this.bridge.events.emit({
       type: "export.completed",
       clientId,
@@ -402,6 +585,49 @@ export class StudioRuntime {
       },
     });
     return { success: true, command: completed.command, verified: true };
+  }
+
+  private createTerminalEvidence(
+    current: StudioOperationalEvidence,
+    result: StudioCommandResult,
+    error?: string,
+  ): StudioOperationalEvidence {
+    const terminal = structuredClone(current);
+    terminal.version += 1;
+    terminal.command.status = error ? "failed" : "completed";
+    terminal.command.completedAt = Date.now();
+    terminal.command.result = result;
+    terminal.command.error = error;
+    if (error) {
+      terminal.verificationStatus = "failed";
+      terminal.verificationError = error;
+      return terminal;
+    }
+    terminal.verificationStatus = "verified";
+    terminal.verificationError = undefined;
+    terminal.lastSyncAt = terminal.command.completedAt;
+    terminal.lastVerifiedAt = terminal.command.completedAt;
+    terminal.verifiedExecutionId = terminal.executionId;
+    terminal.verifiedArtifactCount = result.artifacts.length;
+    return terminal;
+  }
+
+  private concurrentTerminalResult(
+    commandId: string,
+  ): StudioCommandActionResult {
+    const winner = this.evidence.getCommand(commandId)?.command;
+    if (winner?.status === "completed") {
+      return { success: true, command: winner, verified: true };
+    }
+    if (winner?.status === "failed") {
+      return { success: true, command: winner, verified: false };
+    }
+    return {
+      success: false,
+      reason: "invalid_status",
+      message: "Studio command state changed concurrently.",
+      command: winner,
+    };
   }
 
   private createSnapshotSignature(snapshot: ProjectSnapshot): string {

@@ -12,9 +12,13 @@ import type {
 import { createProjectRuntime } from "../routes/projects";
 import { ChatPersistenceService } from "../services/ChatPersistenceService";
 import { ProjectSyncManager } from "../studio/v2/sync/ProjectSyncManager";
-import { StorageAutonomousSessionStore } from "../platform/storage/OperationalStoreComposition";
+import {
+  StorageAutonomousSessionStore,
+  StorageStudioEvidenceStore,
+} from "../platform/storage/OperationalStoreComposition";
 import { createAutonomousPhaseContext } from "../orchestrator/AutonomousPhaseRegistry";
 import type { AutonomousSessionRecord } from "../orchestrator/store/AutonomousSessionStore";
+import type { StudioOperationalEvidence } from "../studio/v2/StudioEvidenceStore";
 
 const describePostgres =
   process.env.RUN_POSTGRES_E2E === "true" ? describe : describe.skip;
@@ -105,6 +109,35 @@ function createAutonomousRecord(
     },
     context: createAutonomousPhaseContext(projectId, prompt),
     checkpointSequence: 1,
+  };
+}
+
+function createStudioEvidence(
+  commandId: string,
+  projectId: string,
+  executionId: string,
+): StudioOperationalEvidence {
+  return {
+    command: {
+      id: commandId,
+      type: "EXPORT_PROJECT",
+      payload: { projectId, executionId },
+      timestamp: 100,
+      status: "acknowledged",
+      clientId: `studio-${commandId}`,
+      deliveredAt: 110,
+      acknowledgedAt: 120,
+    },
+    projectId,
+    executionId,
+    artifactCount: 1,
+    snapshotSignature: `${executionId}:hash`,
+    version: 1,
+    syncCount: 1,
+    verificationStatus: "acknowledged",
+    lastQueuedAt: 100,
+    lastDeliveredAt: 110,
+    lastAcknowledgedAt: 120,
   };
 }
 
@@ -249,6 +282,12 @@ describePostgres("CORE-1b PostgreSQL restart acceptance", () => {
     await autonomousBeforeRestart.save(
       createAutonomousRecord(autonomousSessionId, project.id),
     );
+    const studioCommandId = `studio-command-${suffix}`;
+    const studioBeforeRestart = new StorageStudioEvidenceStore(firstProvider);
+    await studioBeforeRestart.saveTransition(
+      createStudioEvidence(studioCommandId, project.id, execution.id),
+      "acknowledged",
+    );
 
     await firstProvider.flush();
     await firstProvider.close();
@@ -274,6 +313,7 @@ describePostgres("CORE-1b PostgreSQL restart acceptance", () => {
     const autonomousAfterRestart = new StorageAutonomousSessionStore(
       secondProvider,
     );
+    const studioAfterRestart = new StorageStudioEvidenceStore(secondProvider);
 
     await expect(autonomousAfterRestart.markInterrupted()).resolves.toBe(1);
     await expect(autonomousAfterRestart.markInterrupted()).resolves.toBe(0);
@@ -287,6 +327,16 @@ describePostgres("CORE-1b PostgreSQL restart acceptance", () => {
         recoveryReason: "server_restart",
         cost: { totalCost: 0.25 },
         checkpoints: [{ id: `${autonomousSessionId}:checkpoint:1` }],
+      },
+    });
+    expect(studioAfterRestart.getCommand(studioCommandId)).toMatchObject({
+      projectId: project.id,
+      executionId: execution.id,
+      verificationStatus: "acknowledged",
+      command: {
+        status: "acknowledged",
+        deliveredAt: 110,
+        acknowledgedAt: 120,
       },
     });
 
@@ -383,6 +433,39 @@ describePostgres("CORE-1b PostgreSQL restart acceptance", () => {
       expect(executionResults.sort()).toEqual([false, true]);
       expect(firstStore.get(executionId)?.session.executionGeneration).toBe(1);
       expect(secondStore.get(executionId)?.session.executionGeneration).toBe(1);
+
+      const studioProjectId = `studio-project-race-${suffix}`;
+      const firstStudioStore = new StorageStudioEvidenceStore(firstProvider);
+      const secondStudioStore = new StorageStudioEvidenceStore(secondProvider);
+      const studioResults = await Promise.all([
+        firstStudioStore.saveTransition(
+          createStudioEvidence(
+            `studio-first-${suffix}`,
+            studioProjectId,
+            executionId,
+          ),
+          "queued:first",
+        ),
+        secondStudioStore.saveTransition(
+          createStudioEvidence(
+            `studio-second-${suffix}`,
+            studioProjectId,
+            executionId,
+          ),
+          "queued:second",
+        ),
+      ]);
+      expect(studioResults.sort()).toEqual([false, true]);
+      await Promise.all([
+        firstStudioStore.refresh(),
+        secondStudioStore.refresh(),
+      ]);
+      expect(
+        firstStudioStore.getLatestByProject(studioProjectId)?.version,
+      ).toBe(1);
+      expect(
+        secondStudioStore.getLatestByProject(studioProjectId)?.version,
+      ).toBe(1);
     } finally {
       await Promise.all([firstProvider.close(), secondProvider.close()]);
     }

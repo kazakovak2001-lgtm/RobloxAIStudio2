@@ -91,8 +91,21 @@ export class ProtocolDispatcher {
       this.log(message, response.status, startTime);
       return response;
     } catch (err) {
-      const errMsg = err instanceof Error ? err.message : "Handler error";
-      const errorResponse = createResponse(message, "error", {}, errMsg);
+      this.processedIds.delete(message.messageId);
+      if (
+        err instanceof Error &&
+        "code" in err &&
+        (err.code === "DURABLE_STORAGE_MUTATION_FAILED" ||
+          err.code === "DURABLE_STORAGE_CONFLICT")
+      ) {
+        throw err;
+      }
+      const errorResponse = createResponse(
+        message,
+        "error",
+        {},
+        "Handler error",
+      );
       this.log(message, "error", startTime);
       return errorResponse;
     }

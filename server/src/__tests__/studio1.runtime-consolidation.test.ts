@@ -12,7 +12,7 @@ afterEach(() => {
 });
 
 describe("STUDIO-1b shared Studio runtime", () => {
-  it("queues and delivers real execution artifacts through one runtime", () => {
+  it("queues and delivers real execution artifacts through one runtime", async () => {
     const runtime = new StudioRuntime({
       storage: new InMemoryStorageProvider(),
     });
@@ -40,7 +40,7 @@ describe("STUDIO-1b shared Studio runtime", () => {
     const client = runtime.bridge.connect("0.650", projectId);
     runtime.sessions.create(client);
 
-    const queued = runtime.queueProjectExport(
+    const queued = await runtime.queueProjectExport(
       client.clientId,
       projectId,
       executionId,
@@ -62,7 +62,7 @@ describe("STUDIO-1b shared Studio runtime", () => {
       runtime.sessions.getByClient(client.clientId)?.lastSyncAt,
     ).toBeUndefined();
 
-    const repeated = runtime.queueProjectExport(
+    const repeated = await runtime.queueProjectExport(
       client.clientId,
       projectId,
       executionId,
@@ -72,9 +72,14 @@ describe("STUDIO-1b shared Studio runtime", () => {
     expect(repeated.data.noChanges).toBe(true);
     expect(repeated.data.command).toBeNull();
     expect(repeated.data.transfer.artifacts).toEqual([]);
+    expect(await runtime.getProjectEvidence(projectId)).toMatchObject({
+      version: 2,
+      syncCount: 2,
+      verificationStatus: "queued",
+    });
     expect(runtime.bridge.getPendingCommandCount(client.clientId)).toBe(1);
 
-    const commands = runtime.drainCommands(client.clientId);
+    const commands = await runtime.drainCommands(client.clientId);
     expect(commands).toHaveLength(1);
     expect(commands[0]).toMatchObject({
       type: "EXPORT_PROJECT",
@@ -99,7 +104,7 @@ describe("STUDIO-1b shared Studio runtime", () => {
     ).toBeUndefined();
   });
 
-  it("rejects disconnected, mismatched, and artifact-free exports", () => {
+  it("rejects disconnected, mismatched, and artifact-free exports", async () => {
     const runtime = new StudioRuntime({
       storage: new InMemoryStorageProvider(),
     });
@@ -107,19 +112,31 @@ describe("STUDIO-1b shared Studio runtime", () => {
     runtime.sessions.create(client);
 
     expect(
-      runtime.queueProjectExport(client.clientId, "project-b", "exec-missing"),
+      await runtime.queueProjectExport(
+        client.clientId,
+        "project-b",
+        "exec-missing",
+      ),
     ).toMatchObject({ success: false, reason: "project_mismatch" });
     expect(
-      runtime.queueProjectExport(client.clientId, "project-a", "exec-missing"),
+      await runtime.queueProjectExport(
+        client.clientId,
+        "project-a",
+        "exec-missing",
+      ),
     ).toMatchObject({ success: false, reason: "no_artifacts" });
 
     runtime.bridge.disconnect(client.clientId);
     expect(
-      runtime.queueProjectExport(client.clientId, "project-a", "exec-missing"),
+      await runtime.queueProjectExport(
+        client.clientId,
+        "project-a",
+        "exec-missing",
+      ),
     ).toMatchObject({ success: false, reason: "client_not_found" });
   });
 
-  it("exposes the same sessions and artifacts through the compatibility facade", () => {
+  it("exposes the same sessions and artifacts through the compatibility facade", async () => {
     const manager = new StudioIntegrationManager();
     const runtime = getSharedStudioRuntime();
     const projectId = "project-shared-facade";
@@ -135,7 +152,7 @@ describe("STUDIO-1b shared Studio runtime", () => {
       ],
     });
 
-    const result = manager.synchronizeExecution(
+    const result = await manager.synchronizeExecution(
       "studio-shared",
       projectId,
       executionId,
@@ -143,7 +160,9 @@ describe("STUDIO-1b shared Studio runtime", () => {
     expect(result.success).toBe(true);
     expect(manager.getArtifactCount(executionId)).toBe(1);
     expect(manager.getPendingCommandCount("studio-shared")).toBe(1);
-    expect(runtime.drainCommands("studio-shared")[0]?.payload).toMatchObject({
+    expect(
+      (await runtime.drainCommands("studio-shared"))[0]?.payload,
+    ).toMatchObject({
       projectId,
       executionId,
     });
