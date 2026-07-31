@@ -146,15 +146,20 @@ export function createConceptRouter(
   });
 
   // POST /api/concept/experience/:pipelineId/pause
-  router.post("/experience/:pipelineId/pause", (req, res) => {
-    const success = pipelineEngine.pause(req.params.pipelineId);
-    if (!success) {
-      res
-        .status(400)
-        .json({ success: false, error: "Cannot pause pipeline (not running)" });
-      return;
+  router.post("/experience/:pipelineId/pause", async (req, res) => {
+    try {
+      const success = await pipelineEngine.pause(req.params.pipelineId);
+      if (!success) {
+        res.status(400).json({
+          success: false,
+          error: "Cannot pause pipeline (not running)",
+        });
+        return;
+      }
+      res.json({ success: true, data: { status: "paused" } });
+    } catch (error) {
+      handlePipelineMutationError(error, res);
     }
-    res.json({ success: true, data: { status: "paused" } });
   });
 
   // POST /api/concept/experience/:pipelineId/resume
@@ -195,16 +200,20 @@ export function createConceptRouter(
   });
 
   // POST /api/concept/experience/:pipelineId/cancel
-  router.post("/experience/:pipelineId/cancel", (req, res) => {
-    const success = pipelineEngine.cancel(req.params.pipelineId);
-    if (!success) {
-      res.status(400).json({
-        success: false,
-        error: "Cannot cancel pipeline (not running or paused)",
-      });
-      return;
+  router.post("/experience/:pipelineId/cancel", async (req, res) => {
+    try {
+      const success = await pipelineEngine.cancel(req.params.pipelineId);
+      if (!success) {
+        res.status(400).json({
+          success: false,
+          error: "Cannot cancel pipeline (not running or paused)",
+        });
+        return;
+      }
+      res.json({ success: true, data: { status: "cancelled" } });
+    } catch (error) {
+      handlePipelineMutationError(error, res);
     }
-    res.json({ success: true, data: { status: "cancelled" } });
   });
 
   // POST /api/concept/experience/:pipelineId/retry
@@ -579,6 +588,20 @@ function asyncArtifactMutation(
       handleArtifactMutationError(error, res);
     });
   };
+}
+
+function handlePipelineMutationError(error: unknown, res: Response): void {
+  if (error instanceof DurableStorageError) {
+    console.error("[concept] pipeline mutation rejected", error);
+    res.status(503).json({
+      success: false,
+      error: "Durable storage is temporarily unavailable",
+    });
+    return;
+  }
+
+  console.error("[concept] pipeline mutation failed", error);
+  res.status(500).json({ success: false, error: "Pipeline mutation failed" });
 }
 
 function handleArtifactMutationError(error: unknown, res: Response): void {
