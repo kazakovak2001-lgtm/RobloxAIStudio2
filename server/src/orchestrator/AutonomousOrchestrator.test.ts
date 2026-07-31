@@ -58,6 +58,42 @@ describe("AutonomousOrchestrator bounded preview truthfulness", () => {
     expect(sessionStore.readyCalls).toBe(1);
   });
 
+  it("hydrates sessions written by another process on refresh", async () => {
+    class RemotelyRefreshableStore extends InMemoryAutonomousSessionStore {
+      remoteRecord?: AutonomousSessionRecord;
+
+      override async refresh(): Promise<void> {
+        if (this.remoteRecord) await this.save(this.remoteRecord);
+      }
+    }
+
+    const writerStore = new InMemoryAutonomousSessionStore();
+    const writer = new AutonomousOrchestrator(undefined, {
+      sessionStore: writerStore,
+    });
+    const written = await writer.run(
+      "Build a durable cross-process obby",
+      "project-cross-process",
+    );
+    await waitForTerminal(written);
+
+    const readerStore = new RemotelyRefreshableStore();
+    const reader = new AutonomousOrchestrator(undefined, {
+      sessionStore: readerStore,
+    });
+    await reader.ready();
+    expect(reader.getSession(written.id)).toBeNull();
+
+    readerStore.remoteRecord = writerStore.get(written.id)!;
+    await reader.refresh();
+
+    expect(reader.getSession(written.id)).toMatchObject({
+      id: written.id,
+      status: "preview_completed",
+      terminalEvidenceId: written.terminalEvidenceId,
+    });
+  });
+
   it("executes bounded phase services and emits preview completion", async () => {
     const events = new PipelineEventEmitter();
     const published: PipelineEvent[] = [];
@@ -221,6 +257,128 @@ describe("AutonomousOrchestrator bounded preview truthfulness", () => {
     expect(Object.keys(session.cost.perPhase)).toHaveLength(
       phaseTerminalEvents.length,
     );
+  });
+
+  it("does not let an old paused executor overwrite a resumed generation", async () => {
+    let releaseFirst!: () => void;
+    let markFirstStarted!: () => void;
+    const firstGate = new Promise<void>((resolve) => {
+      releaseFirst = resolve;
+    });
+    const firstStarted = new Promise<void>((resolve) => {
+      markFirstStarted = resolve;
+    });
+    let executions = 0;
+    const delayedAdapter: AutonomousPhaseAdapter = {
+      phase: "genre_detection",
+      capability: () => ({
+        status: "available",
+        evidence: "verified",
+        service: "DelayedGenreAdapter",
+        cancellable: true,
+        checkpointable: true,
+      }),
+      async execute(context, signal) {
+        executions += 1;
+        if (executions === 1) {
+          markFirstStarted();
+          await firstGate;
+          if (signal.aborted) {
+            const error = new Error("paused");
+            error.name = "AbortError";
+            throw error;
+          }
+        }
+        return {
+          status: "completed",
+          evidence: "verified",
+          service: "DelayedGenreAdapter",
+          output: {},
+          context,
+        };
+      },
+    };
+    const sessionStore = new InMemoryAutonomousSessionStore();
+    const orchestrator = new AutonomousOrchestrator(undefined, {
+      sessionStore,
+      phaseRegistry: new AutonomousPhaseRegistry([delayedAdapter]),
+    });
+    const session = await orchestrator.run(
+      "Build a resumable delayed obby",
+      "project-generation-fence",
+    );
+    await firstStarted;
+
+    expect(await orchestrator.pause(session.id)).toBe(true);
+    expect(await orchestrator.resume(session.id)).toBe(true);
+    expect(session.executionGeneration).toBe(1);
+    releaseFirst();
+
+    await waitForTerminal(session);
+    expect(session.status).toBe("preview_completed");
+    expect(session.executionGeneration).toBe(1);
+    expect(sessionStore.get(session.id)?.session.executionGeneration).toBe(1);
+  });
+
+  it("preserves cancellation acknowledgement when an aborted phase unwinds", async () => {
+    let releaseExecution!: () => void;
+    let markExecutionStarted!: () => void;
+    const executionGate = new Promise<void>((resolve) => {
+      releaseExecution = resolve;
+    });
+    const executionStarted = new Promise<void>((resolve) => {
+      markExecutionStarted = resolve;
+    });
+    const delayedAdapter: AutonomousPhaseAdapter = {
+      phase: "genre_detection",
+      capability: () => ({
+        status: "available",
+        evidence: "verified",
+        service: "DelayedCancelAdapter",
+        cancellable: true,
+        checkpointable: true,
+      }),
+      async execute(context, signal) {
+        markExecutionStarted();
+        await executionGate;
+        if (signal.aborted) {
+          const error = new Error("cancelled");
+          error.name = "AbortError";
+          throw error;
+        }
+        return {
+          status: "completed",
+          evidence: "verified",
+          service: "DelayedCancelAdapter",
+          output: {},
+          context,
+        };
+      },
+    };
+    const sessionStore = new InMemoryAutonomousSessionStore();
+    const orchestrator = new AutonomousOrchestrator(undefined, {
+      sessionStore,
+      phaseRegistry: new AutonomousPhaseRegistry([delayedAdapter]),
+    });
+    const session = await orchestrator.run(
+      "Build a cancellable delayed obby",
+      "project-cancel-fence",
+    );
+    await executionStarted;
+
+    expect(await orchestrator.cancel(session.id)).toBe(true);
+    const acknowledgedFinishedAt = session.finishedAt;
+    releaseExecution();
+
+    for (let attempt = 0; attempt < 100; attempt += 1) {
+      const durable = sessionStore.get(session.id)?.session;
+      if (durable?.phases[0]?.status === "skipped") break;
+      await new Promise((resolve) => setTimeout(resolve, 1));
+    }
+    const durable = sessionStore.get(session.id)!.session;
+    expect(durable.status).toBe("cancelled");
+    expect(durable.finishedAt).toBe(acknowledgedFinishedAt);
+    expect(durable.phases[0]?.status).toBe("skipped");
   });
 
   it("recovers a restart before the first checkpoint from durable pre-phase state", async () => {

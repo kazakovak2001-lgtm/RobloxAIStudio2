@@ -6,7 +6,7 @@
  * awaited mutation methods so persistence rejection is observable.
  */
 
-export type DurableStorageOperation = "set" | "delete" | "transaction";
+export type DurableStorageOperation = "read" | "set" | "delete" | "transaction";
 
 export type DurableStorageErrorCode =
   "DURABLE_STORAGE_MUTATION_FAILED" | "DURABLE_STORAGE_CONFLICT";
@@ -102,6 +102,8 @@ export interface StorageProvider {
   count(collection: string): number;
   /** Resolve once durable storage has loaded its read cache. */
   ready?(): Promise<void>;
+  /** Refresh selected read-cache collections from the durable source. */
+  refresh?(collections?: readonly string[]): Promise<void>;
   /** Wait for accepted write-through operations before shutdown. */
   flush?(): Promise<void>;
   /** Release storage resources during graceful shutdown. */
@@ -218,6 +220,8 @@ export class InMemoryStorageProvider implements StorageProvider {
   }
 
   async ready(): Promise<void> {}
+
+  async refresh(): Promise<void> {}
 
   async flush(): Promise<void> {}
 

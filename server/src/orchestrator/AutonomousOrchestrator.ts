@@ -96,6 +96,11 @@ export class AutonomousOrchestrator {
     await this.readiness;
   }
 
+  async refresh(): Promise<void> {
+    await this.ready();
+    await this.refreshPersistedSessions();
+  }
+
   /**
    * Start a bounded-service autonomous preview from a single prompt.
    */
@@ -190,7 +195,7 @@ export class AutonomousOrchestrator {
   }
 
   async pause(sessionId: string): Promise<boolean> {
-    await this.ready();
+    await this.refresh();
     const record = this.sessionStore.get(sessionId);
     const session = record?.session;
     if (!session || session.status !== "running") return false;
@@ -202,7 +207,7 @@ export class AutonomousOrchestrator {
   }
 
   async resume(sessionId: string): Promise<boolean> {
-    await this.ready();
+    await this.refresh();
     const record = this.sessionStore.get(sessionId);
     const session = record?.session;
     if (
@@ -229,7 +234,7 @@ export class AutonomousOrchestrator {
   }
 
   async cancel(sessionId: string): Promise<boolean> {
-    await this.ready();
+    await this.refresh();
     const record = this.sessionStore.get(sessionId);
     const session = record?.session;
     if (
@@ -247,7 +252,7 @@ export class AutonomousOrchestrator {
   }
 
   async recover(sessionId: string, checkpointId?: string): Promise<boolean> {
-    await this.ready();
+    await this.refresh();
     const record = this.sessionStore.get(sessionId);
     const session = record?.session;
     if (!session || session.status === "running") return false;
@@ -381,13 +386,7 @@ export class AutonomousOrchestrator {
 
           const result = await adapter.execute(context, controller.signal);
           if (controller.signal.aborted || session.status !== "running") {
-            const acknowledged = this.sessionStore.get(session.id);
-            if (acknowledged) {
-              session.status = acknowledged.session.status;
-              session.currentPhase = acknowledged.session.currentPhase;
-            }
-            this.handleInterruptedNode(session, node);
-            await this.persistAndPublish(record);
+            await this.settleInterruptedExecution(record, node);
             break;
           }
 
@@ -421,6 +420,7 @@ export class AutonomousOrchestrator {
           };
 
           await this.checkpoint(record, phase);
+          if (session.status !== "running") break;
 
           if (result.status === "completed") {
             void this.events?.emitStepCompleted(
@@ -442,13 +442,7 @@ export class AutonomousOrchestrator {
           }
         } catch (error) {
           if (this.isAbortError(error) || session.status !== "running") {
-            const acknowledged = this.sessionStore.get(session.id);
-            if (acknowledged) {
-              session.status = acknowledged.session.status;
-              session.currentPhase = acknowledged.session.currentPhase;
-            }
-            this.handleInterruptedNode(session, node);
-            await this.persistAndPublish(record);
+            await this.settleInterruptedExecution(record, node);
             break;
           }
           await this.failPhase(record, node, stepId, agentName, error);
@@ -623,6 +617,34 @@ export class AutonomousOrchestrator {
       node.durationMs = node.completedAt - (node.startedAt ?? node.completedAt);
       node.skippedReason = "Session cancelled";
     }
+  }
+
+  private async settleInterruptedExecution(
+    record: AutonomousSessionRecord,
+    staleNode: ExecutionNode,
+  ): Promise<void> {
+    const staleGeneration = record.session.executionGeneration;
+    await this.sessionStore.refresh?.();
+    const acknowledged = this.sessionStore.get(record.session.id);
+    if (!acknowledged) {
+      this.handleInterruptedNode(record.session, staleNode);
+      await this.persistAndPublish(record);
+      return;
+    }
+
+    if (acknowledged.session.executionGeneration === staleGeneration) {
+      const acknowledgedNode = acknowledged.session.phases.find(
+        (node) => node.id === staleNode.id,
+      );
+      if (acknowledgedNode) {
+        this.handleInterruptedNode(acknowledged.session, acknowledgedNode);
+      }
+      await this.persistAndPublish(acknowledged);
+    }
+
+    this.replaceSession(record.session, acknowledged.session);
+    record.context = structuredClone(acknowledged.context);
+    record.checkpointSequence = acknowledged.checkpointSequence;
   }
 
   private isOverBudget(session: OrchestratorSession): boolean {
@@ -802,7 +824,18 @@ export class AutonomousOrchestrator {
 
   private async recoverPersistedSessions(): Promise<void> {
     await this.sessionStore.ready();
+    await this.sessionStore.refresh?.();
     await this.sessionStore.markInterrupted();
+    await this.sessionStore.refresh?.();
+    this.hydratePersistedSessions();
+  }
+
+  private async refreshPersistedSessions(): Promise<void> {
+    await this.sessionStore.refresh?.();
+    this.hydratePersistedSessions();
+  }
+
+  private hydratePersistedSessions(): void {
     for (const record of this.sessionStore.getAll()) {
       this.publish(record);
     }
@@ -822,6 +855,7 @@ export class AutonomousOrchestrator {
 
     await previous;
     try {
+      await this.sessionStore.refresh?.();
       let snapshot = structuredClone(record);
       const acknowledged = this.sessionStore.get(sessionId);
 
@@ -882,11 +916,9 @@ export class AutonomousOrchestrator {
     const snapshot = structuredClone(record);
     const existing = this.sessions.get(snapshot.session.id);
     if (existing) {
-      const mutable = existing as unknown as Record<string, unknown>;
-      for (const key of Object.keys(mutable)) {
-        delete mutable[key];
+      if (!this.sessionsEqual(existing, snapshot.session)) {
+        this.replaceSession(existing, snapshot.session);
       }
-      Object.assign(existing, snapshot.session);
     } else {
       this.sessions.set(snapshot.session.id, snapshot.session);
     }
@@ -895,6 +927,24 @@ export class AutonomousOrchestrator {
       snapshot.session.id,
       snapshot.checkpointSequence,
     );
+  }
+
+  private replaceSession(
+    target: OrchestratorSession,
+    source: OrchestratorSession,
+  ): void {
+    const mutable = target as unknown as Record<string, unknown>;
+    for (const key of Object.keys(mutable)) {
+      delete mutable[key];
+    }
+    Object.assign(target, structuredClone(source));
+  }
+
+  private sessionsEqual(
+    left: OrchestratorSession,
+    right: OrchestratorSession,
+  ): boolean {
+    return JSON.stringify(left) === JSON.stringify(right);
   }
 
   private emptyCost(): CostTracker {

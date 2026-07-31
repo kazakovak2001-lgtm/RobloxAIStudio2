@@ -24,7 +24,7 @@ export function createAutonomousRouter(
     res: Response,
     sessionId: string,
   ): Promise<boolean> => {
-    await orchestrator.ready();
+    await orchestrator.refresh();
     const session = orchestrator.getSession(sessionId);
     return !session || !access
       ? true
@@ -76,7 +76,7 @@ export function createAutonomousRouter(
 
   // GET /api/autonomous/status/:sessionId
   router.get("/status/:sessionId", async (req, res) => {
-    await orchestrator.ready();
+    await orchestrator.refresh();
     const session = orchestrator.getSession(req.params.sessionId);
     if (!session) {
       res.status(404).json({ success: false, error: "Session not found" });
@@ -99,7 +99,7 @@ export function createAutonomousRouter(
     ) {
       return;
     }
-    await orchestrator.ready();
+    await orchestrator.refresh();
     const session = orchestrator.getLatestSessionForProject(
       req.params.projectId,
     );
@@ -112,7 +112,7 @@ export function createAutonomousRouter(
 
   // GET /api/autonomous/capabilities/:sessionId
   router.get("/capabilities/:sessionId", async (req, res) => {
-    await orchestrator.ready();
+    await orchestrator.refresh();
     const session = orchestrator.getSession(req.params.sessionId);
     if (
       session &&

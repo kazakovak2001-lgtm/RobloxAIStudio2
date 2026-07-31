@@ -42,6 +42,11 @@ export class StorageAutonomousSessionStore implements AutonomousSessionStore {
     await this.storage.ready?.();
   }
 
+  async refresh(): Promise<void> {
+    await this.storage.refresh?.([AUTONOMOUS_SESSIONS]);
+    this.recoveredSnapshots.clear();
+  }
+
   async save(record: AutonomousSessionRecord): Promise<void> {
     const snapshot = structuredClone(record);
     await this.storage.setDurable(

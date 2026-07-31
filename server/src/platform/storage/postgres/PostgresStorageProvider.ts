@@ -296,6 +296,27 @@ export class PostgresStorageProvider implements StorageProvider {
     return this.initialization;
   }
 
+  async refresh(collections?: readonly string[]): Promise<void> {
+    await this.ready();
+    await this.writeTail;
+    const pool = this.pool;
+    if (!pool || !this.connected) {
+      throw new DurableStorageError(
+        "Durable refresh failed because PostgreSQL is unavailable",
+        "read",
+      );
+    }
+    try {
+      await this.loadCache(pool, collections);
+      this.connected = true;
+    } catch (error) {
+      this.markConnectionFailure();
+      throw new DurableStorageError("Durable refresh failed", "read", {
+        cause: error,
+      });
+    }
+  }
+
   async flush(): Promise<void> {
     if (this.initialization) await this.initialization;
     await Promise.all([...this.pendingWrites]);
@@ -381,22 +402,14 @@ export class PostgresStorageProvider implements StorageProvider {
 
       // kv_store is owned by the migration registry. Loading only happens after
       // bootstrap has successfully applied that registry.
-      const { rows } = await candidatePool.query(
-        `SELECT collection, id, data FROM ${KV_TABLE}`,
-      );
-      for (const row of rows) {
-        const collection = row.collection;
-        const id = row.id;
-        if (typeof collection !== "string" || typeof id !== "string") continue;
-        this.getCollection(collection).set(id, row.data);
-      }
+      const loaded = await this.loadCache(candidatePool);
 
       this.pool = candidatePool;
       this.connected = true;
       this.closed = false;
 
       console.log(
-        `[PostgresStorage] Connected — loaded ${rows.length} records into cache (pool=${this.config.poolSize})`,
+        `[PostgresStorage] Connected — loaded ${loaded} records into cache (pool=${this.config.poolSize})`,
       );
     } catch (err) {
       if (candidatePool) await candidatePool.end().catch(() => undefined);
@@ -426,6 +439,43 @@ export class PostgresStorageProvider implements StorageProvider {
       max: this.config.poolSize,
       idleTimeoutMillis: this.config.poolTimeout,
     }) as QueryablePool;
+  }
+
+  private async loadCache(
+    pool: QueryablePool,
+    collections?: readonly string[],
+  ): Promise<number> {
+    const selected = collections ? [...new Set(collections)] : undefined;
+    if (selected?.length === 0) return 0;
+    const { rows } = await pool.query(
+      selected
+        ? `SELECT collection, id, data FROM ${KV_TABLE} WHERE collection = ANY($1)`
+        : `SELECT collection, id, data FROM ${KV_TABLE}`,
+      selected ? [selected] : undefined,
+    );
+    const hydrated = new Map<string, Map<string, unknown>>();
+    for (const collection of selected ?? []) {
+      hydrated.set(collection, new Map());
+    }
+    for (const row of rows) {
+      const collection = row.collection;
+      const id = row.id;
+      if (typeof collection !== "string" || typeof id !== "string") continue;
+      let records = hydrated.get(collection);
+      if (!records) {
+        records = new Map();
+        hydrated.set(collection, records);
+      }
+      records.set(id, row.data);
+    }
+    if (selected) {
+      for (const collection of selected) {
+        this.cache.set(collection, hydrated.get(collection) ?? new Map());
+      }
+    } else {
+      this.cache = hydrated;
+    }
+    return rows.length;
   }
 
   private enqueueWrite(write: () => Promise<void>): Promise<void> {

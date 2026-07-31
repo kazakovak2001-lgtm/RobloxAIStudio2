@@ -9,6 +9,7 @@ export interface AutonomousSessionRecord {
 
 export interface AutonomousSessionStore {
   ready(): Promise<void>;
+  refresh?(): Promise<void>;
   save(record: AutonomousSessionRecord): Promise<void>;
   claimExecution(record: AutonomousSessionRecord): Promise<boolean>;
   get(sessionId: string): AutonomousSessionRecord | null;
@@ -35,6 +36,8 @@ export class InMemoryAutonomousSessionStore implements AutonomousSessionStore {
   private readonly executionClaims = new Set<string>();
 
   async ready(): Promise<void> {}
+
+  async refresh(): Promise<void> {}
 
   async save(record: AutonomousSessionRecord): Promise<void> {
     const snapshot = structuredClone(record);
