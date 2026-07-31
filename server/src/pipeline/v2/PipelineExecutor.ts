@@ -40,12 +40,17 @@ export class PipelineExecutor {
     resumeFrom?: PipelineState,
     checkpoint?: PipelineCheckpointFn,
   ): Promise<PipelineResult> {
-    const state = resumeFrom ?? createPipelineState(projectId);
+    const state = resumeFrom
+      ? structuredClone(resumeFrom)
+      : createPipelineState(projectId);
     const sessionId = this.context.createSession(projectId, blueprint);
     const startTime = Date.now();
+    const persistCheckpoint = async (): Promise<void> => {
+      await checkpoint?.(structuredClone(state));
+    };
 
     state.status = "running";
-    await checkpoint?.(state);
+    await persistCheckpoint();
     this.events.emit({
       type: "pipeline.started",
       pipelineId: state.pipelineId,
@@ -60,7 +65,7 @@ export class PipelineExecutor {
       state.currentStage = stageName;
       stageRecord.status = "running";
       stageRecord.startedAt = Date.now();
-      await checkpoint?.(state);
+      await persistCheckpoint();
 
       this.events.emit({
         type: "stage.started",
@@ -88,7 +93,7 @@ export class PipelineExecutor {
           stageRecord.agentId ?? stageName,
           output,
         );
-        await checkpoint?.(state);
+        await persistCheckpoint();
         this.events.emit({
           type: "stage.completed",
           pipelineId: state.pipelineId,
@@ -116,7 +121,7 @@ export class PipelineExecutor {
         state.status = "failed";
         state.currentStage = null;
         state.finishedAt = Date.now();
-        await checkpoint?.(state);
+        await persistCheckpoint();
         this.events.emit({
           type: "stage.failed",
           pipelineId: state.pipelineId,
@@ -143,7 +148,7 @@ export class PipelineExecutor {
     state.status = "completed";
     state.currentStage = null;
     state.finishedAt = Date.now();
-    await checkpoint?.(state);
+    await persistCheckpoint();
     this.events.emit({
       type: "pipeline.completed",
       pipelineId: state.pipelineId,
@@ -168,20 +173,21 @@ export class PipelineExecutor {
     agentExecutor: AgentExecutorFn,
     checkpoint?: PipelineCheckpointFn,
   ): Promise<PipelineResult> {
-    failedState.status = "recovering";
-    for (const stage of failedState.stages) {
+    const state = structuredClone(failedState);
+    state.status = "recovering";
+    for (const stage of state.stages) {
       if (stage.status === "failed") {
         stage.status = "pending";
         stage.error = undefined;
       }
     }
-    failedState.failedStages = [];
-    await checkpoint?.(failedState);
+    state.failedStages = [];
+    await checkpoint?.(structuredClone(state));
     return this.execute(
-      failedState.projectId,
+      state.projectId,
       blueprint,
       agentExecutor,
-      failedState,
+      state,
       checkpoint,
     );
   }
