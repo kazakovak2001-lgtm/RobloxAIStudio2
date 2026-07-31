@@ -13,7 +13,10 @@ import {
 } from "./PipelineEvents";
 import { ArtifactStore, type PipelineArtifact } from "./ArtifactStore";
 import { createPipelineState, type PipelineState } from "./PipelineStage";
-import type { PipelineStore } from "./store/PipelineStore";
+import {
+  createConfiguredPipelineStore,
+  type PipelineStore,
+} from "./store/PipelineStore";
 import { InMemoryPipelineStore } from "./store/InMemoryPipelineStore";
 import {
   type PipelineEventBus,
@@ -53,7 +56,10 @@ export class PipelineEngine {
   constructor(options?: PipelineEngineOptions) {
     this.events = new PipelineEventEmitterV2();
     this.executor = new PipelineExecutor(this.events);
-    this.store = options?.store ?? new InMemoryPipelineStore();
+    this.store =
+      options?.store ??
+      createConfiguredPipelineStore() ??
+      new InMemoryPipelineStore();
     this.artifactStore = new ArtifactStore();
     this.eventBus = options?.eventBus ?? new DefaultPipelineEventBus();
     this.auditStore = options?.auditStore ?? new InMemoryAuditStore();
@@ -128,9 +134,10 @@ export class PipelineEngine {
       projectId,
       blueprint,
       agentExecutor,
+      undefined,
+      (state) => this.store.save(state as PipelineState),
     );
     this.metrics.start(result.state.pipelineId, result.state.stages.length);
-    await this.store.save(result.state);
     await this.storeArtifactsFromState(result.state);
     this.metrics.finish(result.state.pipelineId);
     return result;
@@ -197,9 +204,14 @@ export class PipelineEngine {
     );
 
     void this.executor
-      .execute(projectId, blueprint, agentExecutor, state)
+      .execute(
+        projectId,
+        blueprint,
+        agentExecutor,
+        state,
+        (checkpoint) => this.store.save(checkpoint as PipelineState),
+      )
       .then(async (result) => {
-        await this.store.save(result.state);
         await this.storeArtifactsFromState(result.state);
         this.activeExecutions.delete(projectId);
         console.log(
@@ -229,8 +241,12 @@ export class PipelineEngine {
     await this.readiness;
     const state = this.store.get(pipelineId);
     if (!state || state.status !== "failed") return null;
-    const result = await this.executor.resume(state, blueprint, agentExecutor);
-    await this.store.save(result.state);
+    const result = await this.executor.resume(
+      state,
+      blueprint,
+      agentExecutor,
+      (checkpoint) => this.store.save(checkpoint as PipelineState),
+    );
     await this.storeArtifactsFromState(result.state);
     return result;
   }
@@ -339,8 +355,12 @@ export class PipelineEngine {
     const state = this.store.get(pipelineId);
     if (!state || state.status !== "paused") return null;
     state.status = "running";
-    const result = await this.executor.resume(state, blueprint, agentExecutor);
-    await this.store.save(result.state);
+    const result = await this.executor.resume(
+      state,
+      blueprint,
+      agentExecutor,
+      (checkpoint) => this.store.save(checkpoint as PipelineState),
+    );
     await this.storeArtifactsFromState(result.state);
     return result;
   }
@@ -372,8 +392,12 @@ export class PipelineEngine {
     await this.readiness;
     const state = this.store.get(pipelineId);
     if (!state || state.status !== "failed") return null;
-    const result = await this.executor.resume(state, blueprint, agentExecutor);
-    await this.store.save(result.state);
+    const result = await this.executor.resume(
+      state,
+      blueprint,
+      agentExecutor,
+      (checkpoint) => this.store.save(checkpoint as PipelineState),
+    );
     await this.storeArtifactsFromState(result.state);
     return result;
   }
@@ -406,8 +430,8 @@ export class PipelineEngine {
       blueprint,
       agentExecutor,
       state,
+      (checkpoint) => this.store.save(checkpoint as PipelineState),
     );
-    await this.store.save(result.state);
     await this.storeArtifactsFromState(result.state);
     return result;
   }
