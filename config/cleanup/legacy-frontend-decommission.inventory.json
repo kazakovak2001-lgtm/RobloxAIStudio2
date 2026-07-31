@@ -31,7 +31,7 @@
   },
   "canonicalFrontend": {
     "repository": "kazakovak2001-lgtm/Frontend",
-    "commit": "779dd350f91b044886b3ce5bddc2e357719a0cec"
+    "commit": "8e838761230ce2aa68d7db0e97726cb43806407d"
   },
   "sourceReleaseInventory": "config/cutover/release-baseline.inventory.json",
   "legacyFrontend": {
