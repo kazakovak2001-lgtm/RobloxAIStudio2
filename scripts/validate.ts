@@ -43,6 +43,7 @@ function getAllTrackedFiles(): string[] {
   }
 }
 
+// prettier-ignore
 function validateDocumentationAuthority(): DocumentationAuthorityError[] {
   const roadmapPath = "docs/00-project-control/ROADMAP_STATUS.md";
   const reconciliationPath =
