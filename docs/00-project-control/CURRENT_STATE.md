@@ -1,8 +1,8 @@
 # Current Project State
 
 **Last Updated**: July 31, 2026
-**Phase**: DATA-202 complete — REL-202 release-evidence closeout
-**Build Status**: DATA-202A, DATA-202B and DATA-202C are merged into the protected default `release/cutover-1e-candidate` at `a33a8c30588f1e4705d27856e61d839c8efd42ac`. Exact source head `010532f0b162097c8a645b1dc07c89081d25cb99` passed CI Pipeline #1073, including 829 backend tests, PostgreSQL restart, backend image, the 40/40 Frontend production contract, composed HTTPS release, promoted-baseline integrity, post-removal invariants and Merge Gate. The paired Frontend contents remain `9495b696cf22c84cf61375f7df22e5ac5907cc3c`. This proves the release composition; it does not claim an external production deployment.
+**Phase**: FRONTEND-2C complete — REL-203 release-pair promotion
+**Build Status**: The protected backend release branch is `release/cutover-1e-candidate@f5206a1bed8bce643dfdb169ded951395055c5e5`. FRONTEND-2C completed through Frontend PRs #18–#21, and canonical `Frontend/main` is `022788ace31982e2b08ea099800de784b4dbe482`. Frontend CI #140 passed TypeScript, ESLint, Prettier, 22 workspace tests, production build, protected bundle budgets, responsive QA, release image, the 40-check backend contract and Merge Gate. REL-203 issue #144 promotes this exact Frontend commit into the backend release pair; the backend protected PR chain remains the authority for paired release composition. No external production deployment is claimed.
 
 ---
 
@@ -29,7 +29,7 @@
 - **Repository**: [kazakovak2001-lgtm/Frontend](https://github.com/kazakovak2001-lgtm/Frontend) on `main`
 - **Acceptance commit**: `a8d005d433d48e18d8e64ac176ee63c9c694b644`, independently matched to the ZIP used during the successful STUDIO-1 session.
 - **Initial SSR release commit**: `1036c3ef9705d145cb9700cd14268a33d2abdd58`, merged through Frontend PR #12 after CI run #65 verified the production image, `/health`, SSR `/`, responsive QA, and Merge Gate.
-- **Active release contents**: `9495b696cf22c84cf61375f7df22e5ac5907cc3c`, merged through Frontend PR #25 as `3ae8295c33ed743e54b8dc9e16d2484139e6d264`. The merge commit has zero file differences from the pinned contents. Backend CI #1073 rebuilt this exact Frontend source and passed the 40/40 production contract and composed HTTPS release.
+- **Active release contents**: `022788ace31982e2b08ea099800de784b4dbe482`, merged through Frontend PR #21 after FRONTEND-2C PRs #18–#20 established protected quality checks, formatting/lint cleanup, bundle budgets and import hygiene. Frontend CI #140 passed all 10 protected jobs on validated source head `abf1e846bfa246892b6009fc2f5cde480cac29e2`; the merge commit is the canonical `main` tip.
 - **Framework**: React 19 + TypeScript + Vite + Tailwind CSS
 - **Routing and state**: TanStack Router/Query, typed backend adapter, Socket.IO realtime client
 - **Ownership**: All new user-facing web functionality belongs in the standalone repository.
@@ -226,7 +226,7 @@ This template enforces:
 
 - **Backend release image**: `Dockerfile.backend` builds and starts the compiled backend without root `src/`, `public/`, Vite, or Tailwind inputs; CI verifies `GET /health`.
 - **Backend/PostgreSQL composition**: `deploy/docker-compose.backend.yml` provides the independently verified backend and persistent database boundary.
-- **Standalone Frontend release image**: active Frontend contents `9495b696cf22c84cf61375f7df22e5ac5907cc3c` package `.output` plus one shared worker-to-Node adapter as a non-root SSR process.
+- **Standalone Frontend release image**: active Frontend contents `022788ace31982e2b08ea099800de784b4dbe482` package `.output` plus one shared worker-to-Node adapter as a non-root SSR process.
 - **Composed HTTPS release**: backend source `010532f0b162097c8a645b1dc07c89081d25cb99` and exact Frontend contents `9495b696cf22c84cf61375f7df22e5ac5907cc3c` passed CI Pipeline #1073 (`30667404383`). The promoted backend merge `a33a8c30588f1e4705d27856e61d839c8efd42ac` has the same file tree. The checks proved healthy PostgreSQL/backend/frontend/proxy services, HTTPS SSR and health, production origin enforcement, authenticated transports, the 40/40 cross-repository contract, rollback integrity and post-removal invariants. External deployment remains a separate unchecked operation.
 - **Migration Runner**: `server/src/platform/storage/postgres/migrationRunner.ts` — auto-applies pending migrations on startup (skips when STORAGE_PROVIDER=inmemory).
 - **Rollback inventory**: CUTOVER-1A and CUTOVER-1B remain independently deployable and are unaffected by removal of the non-executable combined stack. The deleted legacy source/configuration/deployment inventory remains recoverable by reverting the focused CLEANUP-1C change from baseline `85a2fa8d512738e6d02ffae42da77af7a27db6fc`. The promoted default and pinned pre-promotion rollback reference remain protected.
@@ -237,6 +237,7 @@ This template enforces:
 
 ## Last Changes
 
+- July 31, 2026: FRONTEND-2C completed through protected quality and cleanup (PR #18), production bundle budgets (PR #19), Lucide import hygiene and tightened budgets (PR #20), and authentication/realtime recovery coverage (PR #21). Canonical `Frontend/main` is `022788ace31982e2b08ea099800de784b4dbe482`; Frontend CI #140 passed all 10 jobs with 22 workspace tests and the protected 40-check backend contract. REL-203 issue #144 promotes this exact source into the backend release pairing.
 - July 31, 2026: DATA-202 completed through pipeline persistence (PR #137), autonomous session/checkpoint persistence (PR #139), and Studio operational evidence plus runtime ownership classification (PR #141). The final protected source head `010532f0b162097c8a645b1dc07c89081d25cb99` passed CI Pipeline #1073 and merged as `a33a8c30588f1e4705d27856e61d839c8efd42ac`. Compatibility-write inventory remains zero; 23 operational runtime owners are explicitly classified. The exact Frontend contents remain `9495b696cf22c84cf61375f7df22e5ac5907cc3c`.
 - July 31, 2026: REL-202 records the current DATA-202 release candidate, immutable CI artifact digests, preserved rollback reference and the boundary between verified CI composition and an unperformed external deployment. Issue #142 tracks the documentation-only closeout.
 - July 28, 2026: HARDEN-2A / DOC-201 synchronized the active authentication and two-repository deployment guides, linked their claims to native/composed/protected evidence, annotated the conflicting July 16 decision records as superseded, and expanded the auth-contract test into a search-based authority guard. Issue #49 tracks the focused documentation-only implementation.
