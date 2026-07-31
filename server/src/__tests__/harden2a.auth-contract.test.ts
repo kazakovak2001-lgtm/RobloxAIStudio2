@@ -226,9 +226,9 @@ describe("HARDEN-2A auth contract", async () => {
 
     const refreshed = await auth.refreshSessionDurable(legacyRefreshToken);
     expect(refreshed.success).toBe(true);
-    expect(
-      (await auth.refreshSessionDurable(legacyRefreshToken)).success,
-    ).toBe(false);
+    expect((await auth.refreshSessionDurable(legacyRefreshToken)).success).toBe(
+      false,
+    );
   });
 
   it("keeps authoritative auth guidance on opaque-session terminology", async () => {
