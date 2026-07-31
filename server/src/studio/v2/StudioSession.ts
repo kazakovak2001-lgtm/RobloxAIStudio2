@@ -3,6 +3,7 @@
  */
 
 import { randomUUID } from "crypto";
+import type { StudioOperationalEvidence } from "./StudioEvidenceStore";
 import type { StudioClient } from "./StudioTypes";
 
 export type StudioVerificationStatus =
@@ -180,6 +181,28 @@ export class StudioSessionManager {
     session.lastExecutionId = executionId;
     session.verificationStatus = "failed";
     session.verificationError = error;
+    return true;
+  }
+
+  applyEvidence(
+    clientId: string,
+    evidence: StudioOperationalEvidence,
+  ): boolean {
+    const session = this.getByClient(clientId);
+    if (!session || session.status !== "active") return false;
+    session.syncCount = evidence.syncCount;
+    session.lastCommandId = evidence.command.id;
+    session.lastExecutionId = evidence.executionId;
+    session.lastArtifactCount = evidence.artifactCount;
+    session.lastQueuedAt = evidence.lastQueuedAt;
+    session.lastDeliveredAt = evidence.lastDeliveredAt;
+    session.lastAcknowledgedAt = evidence.lastAcknowledgedAt;
+    session.lastSyncAt = evidence.lastSyncAt;
+    session.lastVerifiedAt = evidence.lastVerifiedAt;
+    session.verifiedExecutionId = evidence.verifiedExecutionId;
+    session.verifiedArtifactCount = evidence.verifiedArtifactCount;
+    session.verificationStatus = evidence.verificationStatus;
+    session.verificationError = evidence.verificationError;
     return true;
   }
 

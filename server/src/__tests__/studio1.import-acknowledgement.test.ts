@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { InMemoryStorageProvider } from "../platform/storage/StorageProvider";
 import { StudioRuntime } from "../studio/v2/StudioRuntime";
 
-function createQueuedExport() {
+async function createQueuedExport() {
   const runtime = new StudioRuntime({
     storage: new InMemoryStorageProvider(),
   });
@@ -23,7 +23,7 @@ function createQueuedExport() {
 
   const client = runtime.bridge.connect("0.650", projectId);
   runtime.sessions.create(client);
-  const queued = runtime.queueProjectExport(
+  const queued = await runtime.queueProjectExport(
     client.clientId,
     projectId,
     executionId,
@@ -50,21 +50,21 @@ function createQueuedExport() {
 }
 
 describe("STUDIO-1c import acknowledgement", () => {
-  it("verifies an import only after polling, acknowledgement, and exact receipts", () => {
+  it("verifies an import only after polling, acknowledgement, and exact receipts", async () => {
     const { runtime, projectId, executionId, clientId, commandId, receipts } =
-      createQueuedExport();
+      await createQueuedExport();
 
-    expect(runtime.getCommand(commandId)).toMatchObject({
+    expect(await runtime.getCommand(commandId)).toMatchObject({
       status: "sent",
     });
-    expect(runtime.getCommand(commandId)?.deliveredAt).toBeUndefined();
+    expect((await runtime.getCommand(commandId))?.deliveredAt).toBeUndefined();
     expect(runtime.sessions.getByClient(clientId)).toMatchObject({
       verificationStatus: "queued",
     });
     expect(runtime.sessions.getByClient(clientId)?.lastSyncAt).toBeUndefined();
 
-    expect(runtime.drainCommands(clientId)).toHaveLength(1);
-    expect(runtime.getCommand(commandId)).toMatchObject({
+    expect(await runtime.drainCommands(clientId)).toHaveLength(1);
+    expect(await runtime.getCommand(commandId)).toMatchObject({
       status: "sent",
       deliveredAt: expect.any(Number),
     });
@@ -73,7 +73,10 @@ describe("STUDIO-1c import acknowledgement", () => {
     });
     expect(runtime.sessions.getByClient(clientId)?.lastSyncAt).toBeUndefined();
 
-    const acknowledged = runtime.acknowledgeProjectExport(clientId, commandId);
+    const acknowledged = await runtime.acknowledgeProjectExport(
+      clientId,
+      commandId,
+    );
     expect(acknowledged).toMatchObject({
       success: true,
       verified: false,
@@ -84,7 +87,7 @@ describe("STUDIO-1c import acknowledgement", () => {
     });
     expect(runtime.sessions.getByClient(clientId)?.lastSyncAt).toBeUndefined();
 
-    const completed = runtime.reportProjectExport(clientId, commandId, {
+    const completed = await runtime.reportProjectExport(clientId, commandId, {
       status: "completed",
       executionId,
       artifacts: receipts,
@@ -133,19 +136,19 @@ describe("STUDIO-1c import acknowledgement", () => {
     );
   });
 
-  it("fails verification on a hash mismatch and permits a fresh retry", () => {
+  it("fails verification on a hash mismatch and permits a fresh retry", async () => {
     const { runtime, executionId, projectId, clientId, commandId, receipts } =
-      createQueuedExport();
+      await createQueuedExport();
 
-    runtime.drainCommands(clientId);
-    expect(runtime.acknowledgeProjectExport(clientId, commandId).success).toBe(
-      true,
-    );
+    await runtime.drainCommands(clientId);
+    expect(
+      (await runtime.acknowledgeProjectExport(clientId, commandId)).success,
+    ).toBe(true);
 
     const mismatched = receipts.map((receipt, index) =>
       index === 0 ? { ...receipt, hash: "incorrect-hash" } : receipt,
     );
-    const result = runtime.reportProjectExport(clientId, commandId, {
+    const result = await runtime.reportProjectExport(clientId, commandId, {
       status: "completed",
       executionId,
       artifacts: mismatched,
@@ -171,7 +174,11 @@ describe("STUDIO-1c import acknowledgement", () => {
       ]),
     );
 
-    const retry = runtime.queueProjectExport(clientId, projectId, executionId);
+    const retry = await runtime.queueProjectExport(
+      clientId,
+      projectId,
+      executionId,
+    );
     expect(retry.success).toBe(true);
     if (!retry.success) return;
     expect(retry.data.noChanges).toBe(false);
@@ -179,12 +186,13 @@ describe("STUDIO-1c import acknowledgement", () => {
     expect(runtime.bridge.getPendingCommandCount(clientId)).toBe(1);
   });
 
-  it("records an explicit plugin import failure without verification", () => {
-    const { runtime, executionId, clientId, commandId } = createQueuedExport();
+  it("records an explicit plugin import failure without verification", async () => {
+    const { runtime, executionId, clientId, commandId } =
+      await createQueuedExport();
 
-    runtime.drainCommands(clientId);
-    runtime.acknowledgeProjectExport(clientId, commandId);
-    const result = runtime.reportProjectExport(clientId, commandId, {
+    await runtime.drainCommands(clientId);
+    await runtime.acknowledgeProjectExport(clientId, commandId);
+    const result = await runtime.reportProjectExport(clientId, commandId, {
       status: "failed",
       executionId,
       artifacts: [],
@@ -206,39 +214,39 @@ describe("STUDIO-1c import acknowledgement", () => {
     expect(runtime.sessions.getByClient(clientId)?.lastSyncAt).toBeUndefined();
   });
 
-  it("rejects wrong clients and invalid lifecycle ordering", () => {
+  it("rejects wrong clients and invalid lifecycle ordering", async () => {
     const { runtime, executionId, projectId, clientId, commandId, receipts } =
-      createQueuedExport();
+      await createQueuedExport();
     const otherClient = runtime.bridge.connect("0.650", projectId);
     runtime.sessions.create(otherClient);
 
     expect(
-      runtime.acknowledgeProjectExport(otherClient.clientId, commandId),
+      await runtime.acknowledgeProjectExport(otherClient.clientId, commandId),
     ).toMatchObject({ success: false, reason: "client_mismatch" });
-    expect(runtime.acknowledgeProjectExport(clientId, commandId)).toMatchObject(
-      {
-        success: false,
-        reason: "not_delivered",
-      },
-    );
-
-    runtime.drainCommands(clientId);
     expect(
-      runtime.reportProjectExport(clientId, commandId, {
+      await runtime.acknowledgeProjectExport(clientId, commandId),
+    ).toMatchObject({
+      success: false,
+      reason: "not_delivered",
+    });
+
+    await runtime.drainCommands(clientId);
+    expect(
+      await runtime.reportProjectExport(clientId, commandId, {
         status: "completed",
         executionId,
         artifacts: receipts,
       }),
     ).toMatchObject({ success: false, reason: "invalid_status" });
 
-    expect(runtime.acknowledgeProjectExport(clientId, commandId).success).toBe(
-      true,
-    );
-    expect(runtime.acknowledgeProjectExport(clientId, commandId)).toMatchObject(
-      {
-        success: true,
-        command: { status: "acknowledged" },
-      },
-    );
+    expect(
+      (await runtime.acknowledgeProjectExport(clientId, commandId)).success,
+    ).toBe(true);
+    expect(
+      await runtime.acknowledgeProjectExport(clientId, commandId),
+    ).toMatchObject({
+      success: true,
+      command: { status: "acknowledged" },
+    });
   });
 });

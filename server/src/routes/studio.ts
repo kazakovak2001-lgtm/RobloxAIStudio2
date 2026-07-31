@@ -4,6 +4,7 @@
 
 import { Router, type Response } from "express";
 import { ArtifactStore } from "../pipeline/v2";
+import { DurableStorageError } from "../platform/storage/StorageProvider";
 import {
   getSharedStudioRuntime,
   StudioRuntime,
@@ -134,6 +135,17 @@ function sendCommandAction(
   });
 }
 
+function sendStudioMutationError(res: Response, error: unknown): void {
+  if (error instanceof DurableStorageError) {
+    res.status(503).json({
+      success: false,
+      error: "Durable storage is temporarily unavailable",
+    });
+    return;
+  }
+  res.status(500).json({ success: false, error: "Studio operation failed" });
+}
+
 export function createStudioRouter(
   runtimeOrStore?: StudioRuntime | ArtifactStore,
 ): Router {
@@ -234,7 +246,7 @@ export function createStudioRouter(
     );
   });
 
-  dispatcher.register("COMMAND_ACK", (msg) => {
+  dispatcher.register("COMMAND_ACK", async (msg) => {
     const { clientId, commandId } = msg.payload;
     if (typeof clientId !== "string" || typeof commandId !== "string") {
       return createResponse(
@@ -244,7 +256,7 @@ export function createStudioRouter(
         "clientId and commandId are required",
       );
     }
-    const result = runtime.acknowledgeProjectExport(clientId, commandId);
+    const result = await runtime.acknowledgeProjectExport(clientId, commandId);
     return createResponse(
       msg,
       result.success ? "ok" : "error",
@@ -262,7 +274,7 @@ export function createStudioRouter(
     );
   });
 
-  dispatcher.register("COMMAND_RESULT", (msg) => {
+  dispatcher.register("COMMAND_RESULT", async (msg) => {
     const { clientId, commandId } = msg.payload;
     if (typeof clientId !== "string" || typeof commandId !== "string") {
       return createResponse(
@@ -276,7 +288,7 @@ export function createStudioRouter(
     if (!parsed.data) {
       return createResponse(msg, "error", {}, parsed.error);
     }
-    const result = runtime.reportProjectExport(
+    const result = await runtime.reportProjectExport(
       clientId,
       commandId,
       parsed.data,
@@ -327,7 +339,7 @@ export function createStudioRouter(
   });
 
   // POST /api/studio/connect
-  router.post("/connect", (req, res) => {
+  router.post("/connect", async (req, res) => {
     const { studioVersion, projectId } = req.body;
 
     if (!studioVersion || typeof studioVersion !== "string") {
@@ -340,6 +352,14 @@ export function createStudioRouter(
 
     const client = bridge.connect(studioVersion, projectId);
     const session = sessionManager.create(client);
+    try {
+      await runtime.reconcileClient(client.clientId, projectId);
+    } catch (error) {
+      bridge.disconnect(client.clientId);
+      sessionManager.close(client.clientId);
+      sendStudioMutationError(res, error);
+      return;
+    }
 
     console.log(
       `[studio] Client connected: ${client.clientId} (Studio ${studioVersion})`,
@@ -412,7 +432,7 @@ export function createStudioRouter(
   });
 
   // GET /api/studio/commands — plugin polling of the existing command queue
-  router.get("/commands", (req, res) => {
+  router.get("/commands", async (req, res) => {
     const clientId = req.query.clientId as string | undefined;
     if (!clientId) {
       res.status(400).json({ success: false, error: "clientId is required" });
@@ -423,18 +443,28 @@ export function createStudioRouter(
       res.status(404).json({ success: false, error: "Client not found" });
       return;
     }
-    const commands = runtime.drainCommands(clientId);
-    res.json({ success: true, data: { clientId, commands } });
+    try {
+      const commands = await runtime.drainCommands(clientId);
+      res.json({ success: true, data: { clientId, commands } });
+    } catch (error) {
+      sendStudioMutationError(res, error);
+    }
   });
 
   // GET /api/studio/commands/:commandId — command lifecycle status
-  router.get("/commands/:commandId", (req, res) => {
+  router.get("/commands/:commandId", async (req, res) => {
     const clientId = req.query.clientId as string | undefined;
     if (!clientId) {
       res.status(400).json({ success: false, error: "clientId is required" });
       return;
     }
-    const command = runtime.getCommand(req.params.commandId);
+    let command;
+    try {
+      command = await runtime.getCommand(req.params.commandId);
+    } catch (error) {
+      sendStudioMutationError(res, error);
+      return;
+    }
     if (!command) {
       res.status(404).json({ success: false, error: "Command not found" });
       return;
@@ -450,20 +480,24 @@ export function createStudioRouter(
   });
 
   // POST /api/studio/commands/:commandId/acknowledge
-  router.post("/commands/:commandId/acknowledge", (req, res) => {
+  router.post("/commands/:commandId/acknowledge", async (req, res) => {
     const { clientId } = req.body as { clientId?: unknown };
     if (typeof clientId !== "string") {
       res.status(400).json({ success: false, error: "clientId is required" });
       return;
     }
-    sendCommandAction(
-      res,
-      runtime.acknowledgeProjectExport(clientId, req.params.commandId),
-    );
+    try {
+      sendCommandAction(
+        res,
+        await runtime.acknowledgeProjectExport(clientId, req.params.commandId),
+      );
+    } catch (error) {
+      sendStudioMutationError(res, error);
+    }
   });
 
   // POST /api/studio/commands/:commandId/result
-  router.post("/commands/:commandId/result", (req, res) => {
+  router.post("/commands/:commandId/result", async (req, res) => {
     const body = req.body as Record<string, unknown>;
     if (typeof body.clientId !== "string") {
       res.status(400).json({ success: false, error: "clientId is required" });
@@ -474,14 +508,18 @@ export function createStudioRouter(
       res.status(400).json({ success: false, error: parsed.error });
       return;
     }
-    sendCommandAction(
-      res,
-      runtime.reportProjectExport(
-        body.clientId,
-        req.params.commandId,
-        parsed.data,
-      ),
-    );
+    try {
+      sendCommandAction(
+        res,
+        await runtime.reportProjectExport(
+          body.clientId,
+          req.params.commandId,
+          parsed.data,
+        ),
+      );
+    } catch (error) {
+      sendStudioMutationError(res, error);
+    }
   });
 
   // GET /api/studio/events
@@ -499,15 +537,12 @@ export function createStudioRouter(
       const response = await dispatcher.dispatch(message);
       res.json({ success: true, data: response });
     } catch (err) {
-      res.status(500).json({
-        success: false,
-        error: err instanceof Error ? err.message : "Dispatch failed",
-      });
+      sendStudioMutationError(res, err);
     }
   });
 
   // POST /api/studio/protocol/register — register a plugin client
-  router.post("/protocol/register", (req, res) => {
+  router.post("/protocol/register", async (req, res) => {
     const { pluginVersion, studioVersion, projectName, protocolVersion } =
       req.body;
 
@@ -519,6 +554,14 @@ export function createStudioRouter(
 
     const client = bridge.connect(studioVersion, projectName);
     const session = sessionManager.create(client);
+    try {
+      await runtime.reconcileClient(client.clientId, projectName);
+    } catch (error) {
+      bridge.disconnect(client.clientId);
+      sessionManager.close(client.clientId);
+      sendStudioMutationError(res, error);
+      return;
+    }
 
     console.log(
       `[studio-protocol] Plugin registered: ${client.clientId} (plugin ${pluginVersion}, protocol ${protocolVersion})`,

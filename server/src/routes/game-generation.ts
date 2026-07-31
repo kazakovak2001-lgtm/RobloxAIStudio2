@@ -7,6 +7,7 @@ import type {
 } from "../studio/integration/types";
 import type { ProjectRuntime } from "./projects";
 import { ProjectGenerationStartCoordinator } from "../platform/projects/ProjectLifecycleCoordinator";
+import { DurableStorageError } from "../platform/storage/StorageProvider";
 
 type StudioConnectionStatus =
   "connected" | "disconnected" | "syncing" | "error";
@@ -43,6 +44,21 @@ export function createGameGenerationRouter(
   const generationStartCoordinator = new ProjectGenerationStartCoordinator(
     projectRepository,
   );
+
+  const sendStudioError = (
+    res: Parameters<ProjectRuntime["access"]["requireProjectAccess"]>[1],
+    error: unknown,
+    fallback: string,
+  ): void => {
+    if (error instanceof DurableStorageError) {
+      res.status(503).json({
+        success: false,
+        error: "Durable storage is temporarily unavailable",
+      });
+      return;
+    }
+    res.status(500).json({ success: false, error: fallback });
+  };
 
   const mapStudioStatus = (
     session: StudioProjectSession | null,
@@ -293,13 +309,20 @@ export function createGameGenerationRouter(
       const { projectId } = req.params;
       if (!(await access.requireProjectAccess(req, res, projectId))) return;
       const studioId = req.query.studioId as string | undefined;
-      const session = findStudioSession(projectId, studioId);
+      const liveSession = findStudioSession(projectId, studioId);
+      const session =
+        liveSession ??
+        (!studioId ? await studioManager.getProjectEvidence(projectId) : null);
       const pendingChanges = session
-        ? studioManager.getPendingCommandCount(session.studioId)
+        ? liveSession
+          ? studioManager.getPendingCommandCount(session.studioId)
+          : session.verificationStatus === "queued"
+            ? 1
+            : 0
         : 0;
 
       const response: StudioConnectionInfo = {
-        status: mapStudioStatus(session),
+        status: mapStudioStatus(liveSession),
         studioId: session?.studioId,
         lastSyncAt: session?.lastSyncAt
           ? new Date(session.lastSyncAt).toISOString()
@@ -317,9 +340,7 @@ export function createGameGenerationRouter(
 
       res.json({ success: true, data: response });
     } catch (error) {
-      res
-        .status(500)
-        .json({ success: false, error: "Failed to load Studio status" });
+      sendStudioError(res, error, "Failed to load Studio status");
     }
   });
 
@@ -349,7 +370,7 @@ export function createGameGenerationRouter(
         return;
       }
 
-      const syncResult = studioManager.synchronizeExecution(
+      const syncResult = await studioManager.synchronizeExecution(
         session.studioId,
         projectId,
         execution.id,
@@ -390,9 +411,7 @@ export function createGameGenerationRouter(
 
       res.json({ success: true, data: response });
     } catch (error) {
-      res
-        .status(500)
-        .json({ success: false, error: "Studio synchronization failed" });
+      sendStudioError(res, error, "Studio synchronization failed");
     }
   });
 

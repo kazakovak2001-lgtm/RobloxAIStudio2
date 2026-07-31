@@ -8,6 +8,7 @@
 
 import type { GenerationPackage } from "../../generation/coordinator/types";
 import type { BridgeSession } from "../v2/StudioSession";
+import type { StudioOperationalEvidence } from "../v2/StudioEvidenceStore";
 import { getSharedStudioRuntime } from "../v2/StudioRuntime";
 import { StudioImportValidator } from "./StudioImportValidator";
 import { StudioSyncMetrics } from "./StudioSyncMetrics";
@@ -124,14 +125,18 @@ export class StudioIntegrationManager {
       );
     }
 
-    return this.synchronizeExecution(studioId, pkg.projectId, pkg.packageId);
+    return await this.synchronizeExecution(
+      studioId,
+      pkg.projectId,
+      pkg.packageId,
+    );
   }
 
-  synchronizeExecution(
+  async synchronizeExecution(
     studioId: string,
     projectId: string,
     executionId: string,
-  ): SyncResult {
+  ): Promise<SyncResult> {
     const startedAt = Date.now();
     this.emit({
       type: "SyncStarted",
@@ -140,7 +145,7 @@ export class StudioIntegrationManager {
       data: { projectId, executionId },
     });
 
-    const queued = this.runtime.queueProjectExport(
+    const queued = await this.runtime.queueProjectExport(
       studioId,
       projectId,
       executionId,
@@ -182,6 +187,13 @@ export class StudioIntegrationManager {
   getSession(studioId: string): StudioProjectSession | null {
     const session = this.runtime.sessions.getByClient(studioId);
     return session?.projectId ? this.mapSession(session) : null;
+  }
+
+  async getProjectEvidence(
+    projectId: string,
+  ): Promise<StudioProjectSession | null> {
+    const evidence = await this.runtime.getProjectEvidence(projectId);
+    return evidence ? this.mapEvidence(evidence) : null;
   }
 
   getActiveSessions(): StudioProjectSession[] {
@@ -260,6 +272,39 @@ export class StudioIntegrationManager {
       verifiedExecutionId: session.verifiedExecutionId,
       verifiedArtifactCount: session.verifiedArtifactCount,
       verificationError: session.verificationError,
+    };
+  }
+
+  private mapEvidence(
+    evidence: StudioOperationalEvidence,
+  ): StudioProjectSession {
+    const verificationStatus = evidence.verificationStatus;
+    const status =
+      verificationStatus === "failed"
+        ? "failed"
+        : verificationStatus === "verified"
+          ? "completed"
+          : verificationStatus === "queued" ||
+              verificationStatus === "delivered" ||
+              verificationStatus === "acknowledged"
+            ? "syncing"
+            : "idle";
+    return {
+      sessionId: `durable-${evidence.projectId}`,
+      studioId: evidence.command.clientId,
+      projectId: evidence.projectId,
+      packageId: evidence.executionId,
+      status,
+      connectedAt: evidence.lastQueuedAt,
+      lastSyncAt: evidence.lastSyncAt,
+      syncCount: evidence.syncCount,
+      version: evidence.version,
+      artifactVerified: verificationStatus === "verified",
+      verificationStatus,
+      lastCommandId: evidence.command.id,
+      verifiedExecutionId: evidence.verifiedExecutionId,
+      verifiedArtifactCount: evidence.verifiedArtifactCount,
+      verificationError: evidence.verificationError,
     };
   }
 

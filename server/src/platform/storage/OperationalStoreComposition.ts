@@ -12,6 +12,11 @@ import {
   type PipelineStore,
 } from "../../pipeline/v2/store/PipelineStore";
 import {
+  configureStudioEvidenceStoreFactory,
+  type StudioEvidenceStore,
+  type StudioOperationalEvidence,
+} from "../../studio/v2/StudioEvidenceStore";
+import {
   DurableStorageConflictError,
   type DurableMutation,
   type StorageProvider,
@@ -22,6 +27,9 @@ const PIPELINE_RECOVERY_CLAIMS = "pipeline_runtime_recovery_claims";
 const AUTONOMOUS_SESSIONS = "autonomous_runtime_sessions";
 const AUTONOMOUS_RECOVERY_CLAIMS = "autonomous_runtime_recovery_claims";
 const AUTONOMOUS_EXECUTION_CLAIMS = "autonomous_runtime_execution_claims";
+const STUDIO_EVIDENCE = "studio_operational_evidence";
+const STUDIO_PROJECT_EVIDENCE = "studio_project_operational_evidence";
+const STUDIO_TRANSITION_CLAIMS = "studio_operational_transition_claims";
 
 export function configureOperationalStores(storage: StorageProvider): void {
   configureArtifactStorageFactory(() => storage);
@@ -29,6 +37,84 @@ export function configureOperationalStores(storage: StorageProvider): void {
   configureAutonomousSessionStoreFactory(
     () => new StorageAutonomousSessionStore(storage),
   );
+  configureStudioEvidenceStoreFactory(
+    () => new StorageStudioEvidenceStore(storage),
+  );
+}
+
+export class StorageStudioEvidenceStore implements StudioEvidenceStore {
+  constructor(private readonly storage: StorageProvider) {}
+
+  async ready(): Promise<void> {
+    await this.storage.ready?.();
+  }
+
+  async refresh(): Promise<void> {
+    await this.storage.refresh?.([STUDIO_EVIDENCE, STUDIO_PROJECT_EVIDENCE]);
+  }
+
+  getCommand(commandId: string): StudioOperationalEvidence | null {
+    const evidence = this.storage.get<StudioOperationalEvidence>(
+      STUDIO_EVIDENCE,
+      commandId,
+    );
+    return evidence ? structuredClone(evidence) : null;
+  }
+
+  getLatestByProject(projectId: string): StudioOperationalEvidence | null {
+    const evidence = this.storage.get<StudioOperationalEvidence>(
+      STUDIO_PROJECT_EVIDENCE,
+      projectId,
+    );
+    return evidence ? structuredClone(evidence) : null;
+  }
+
+  async saveTransition(
+    evidence: StudioOperationalEvidence,
+    transition: string,
+  ): Promise<boolean> {
+    const snapshot = structuredClone(evidence);
+    const expectedVersion =
+      (this.getLatestByProject(snapshot.projectId)?.version ?? 0) + 1;
+    if (snapshot.version !== expectedVersion) {
+      await this.refresh();
+      return false;
+    }
+
+    try {
+      await this.storage.applyDurableBatch([
+        {
+          operation: "set",
+          collection: STUDIO_TRANSITION_CLAIMS,
+          id: `${snapshot.projectId}:${snapshot.version}`,
+          data: {
+            projectId: snapshot.projectId,
+            commandId: snapshot.command.id,
+            version: snapshot.version,
+            transition,
+          },
+          requireAbsent: true,
+        },
+        {
+          operation: "set",
+          collection: STUDIO_EVIDENCE,
+          id: snapshot.command.id,
+          data: snapshot,
+        },
+        {
+          operation: "set",
+          collection: STUDIO_PROJECT_EVIDENCE,
+          id: snapshot.projectId,
+          data: snapshot,
+        },
+      ]);
+      return true;
+    } catch (error) {
+      if (!(error instanceof DurableStorageConflictError)) throw error;
+      await this.refresh();
+      return false;
+    }
+  }
 }
 
 export class StorageAutonomousSessionStore implements AutonomousSessionStore {
