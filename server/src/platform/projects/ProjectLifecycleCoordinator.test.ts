@@ -73,7 +73,10 @@ async function createOutcomeFixture() {
       { status: "failed" },
     ],
   });
-  return { storage, coordinator: new GenerationOutcomeCoordinator(storage) };
+  return {
+    storage,
+    coordinator: new GenerationOutcomeCoordinator(storage),
+  };
 }
 
 describe("GenerationOutcomeCoordinator", () => {
