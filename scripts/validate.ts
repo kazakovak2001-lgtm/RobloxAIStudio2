@@ -63,7 +63,6 @@ function validateDocumentationAuthority(): DocumentationAuthorityError[] {
   const roadmap = documents.get(roadmapPath) ?? "";
   const reconciliation = documents.get(reconciliationPath) ?? "";
   const readme = documents.get(readmePath) ?? "";
-  const currentAuthority = `${roadmap}\n${reconciliation}\n${readme}`;
 
   const requiredCurrentClaims = [
     "`ARCH-2B` | Exhaustive truthful architecture boundary gate | Critical | ✅ Complete",
@@ -90,9 +89,9 @@ function validateDocumentationAuthority(): DocumentationAuthorityError[] {
   ];
 
   for (const pattern of forbiddenCurrentClaims) {
-    if (pattern.test(currentAuthority)) {
+    if (pattern.test(roadmap)) {
       errors.push({
-        file: "current documentation authority",
+        file: roadmapPath,
         message: `stale completed-gate status matches ${pattern}`,
       });
     }
@@ -122,11 +121,14 @@ function validateDocumentationAuthority(): DocumentationAuthorityError[] {
     });
   }
 
-  if (!readme.includes("All new user-facing web work belongs in the standalone `Frontend` repository")) {
+  if (
+    !readme.includes(
+      "All new user-facing web work belongs in the standalone `Frontend` repository",
+    )
+  ) {
     errors.push({
       file: readmePath,
-      message:
-        "standalone Frontend repository ownership must remain explicit",
+      message: "standalone Frontend repository ownership must remain explicit",
     });
   }
 
@@ -183,9 +185,7 @@ function main(): void {
   }
 
   for (const error of documentationErrors) {
-    console.error(
-      `  ERROR [DOC_AUTHORITY] ${error.file} — ${error.message}`,
-    );
+    console.error(`  ERROR [DOC_AUTHORITY] ${error.file} — ${error.message}`);
   }
 
   const totalErrors =
