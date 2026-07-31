@@ -127,11 +127,8 @@ export function createConceptRouter(
           stageCount: result.state.stages.length,
         },
       });
-    } catch (err) {
-      res.status(500).json({
-        success: false,
-        error: err instanceof Error ? err.message : "Pipeline execution failed",
-      });
+    } catch (error) {
+      handlePipelineMutationError(error, res);
     }
   });
 
@@ -146,15 +143,20 @@ export function createConceptRouter(
   });
 
   // POST /api/concept/experience/:pipelineId/pause
-  router.post("/experience/:pipelineId/pause", (req, res) => {
-    const success = pipelineEngine.pause(req.params.pipelineId);
-    if (!success) {
-      res
-        .status(400)
-        .json({ success: false, error: "Cannot pause pipeline (not running)" });
-      return;
+  router.post("/experience/:pipelineId/pause", async (req, res) => {
+    try {
+      const success = await pipelineEngine.pause(req.params.pipelineId);
+      if (!success) {
+        res.status(400).json({
+          success: false,
+          error: "Cannot pause pipeline (not running)",
+        });
+        return;
+      }
+      res.json({ success: true, data: { status: "paused" } });
+    } catch (error) {
+      handlePipelineMutationError(error, res);
     }
-    res.json({ success: true, data: { status: "paused" } });
   });
 
   // POST /api/concept/experience/:pipelineId/resume
@@ -165,7 +167,6 @@ export function createConceptRouter(
       res.status(404).json({ success: false, error: "Pipeline not found" });
       return;
     }
-    // Find the concept to get blueprint
     const concept = concepts.get(state.projectId);
     const blueprint = (concept as Record<string, unknown>) ?? {};
 
@@ -186,25 +187,26 @@ export function createConceptRouter(
         success: true,
         data: { status: result.state.status, pipelineId },
       });
-    } catch (err) {
-      res.status(500).json({
-        success: false,
-        error: err instanceof Error ? err.message : "Resume failed",
-      });
+    } catch (error) {
+      handlePipelineMutationError(error, res);
     }
   });
 
   // POST /api/concept/experience/:pipelineId/cancel
-  router.post("/experience/:pipelineId/cancel", (req, res) => {
-    const success = pipelineEngine.cancel(req.params.pipelineId);
-    if (!success) {
-      res.status(400).json({
-        success: false,
-        error: "Cannot cancel pipeline (not running or paused)",
-      });
-      return;
+  router.post("/experience/:pipelineId/cancel", async (req, res) => {
+    try {
+      const success = await pipelineEngine.cancel(req.params.pipelineId);
+      if (!success) {
+        res.status(400).json({
+          success: false,
+          error: "Cannot cancel pipeline (not running or paused)",
+        });
+        return;
+      }
+      res.json({ success: true, data: { status: "cancelled" } });
+    } catch (error) {
+      handlePipelineMutationError(error, res);
     }
-    res.json({ success: true, data: { status: "cancelled" } });
   });
 
   // POST /api/concept/experience/:pipelineId/retry
@@ -235,11 +237,8 @@ export function createConceptRouter(
         success: true,
         data: { status: result.state.status, pipelineId },
       });
-    } catch (err) {
-      res.status(500).json({
-        success: false,
-        error: err instanceof Error ? err.message : "Retry failed",
-      });
+    } catch (error) {
+      handlePipelineMutationError(error, res);
     }
   });
 
@@ -274,11 +273,8 @@ export function createConceptRouter(
           success: true,
           data: { status: result.state.status, stage },
         });
-      } catch (err) {
-        res.status(500).json({
-          success: false,
-          error: err instanceof Error ? err.message : "Stage retry failed",
-        });
+      } catch (error) {
+        handlePipelineMutationError(error, res);
       }
     },
   );
@@ -297,7 +293,6 @@ export function createConceptRouter(
     }> = [];
 
     for (const [conceptId] of concepts.entries()) {
-      // Find all pipeline runs associated with this concept
       const pipelineState = pipelineEngine.getState(conceptId);
       if (!pipelineState) continue;
       history.push({
@@ -312,7 +307,6 @@ export function createConceptRouter(
       });
     }
 
-    // Also check all known pipeline runs
     const allRuns = pipelineEngine.getAllStates();
     for (const state of allRuns) {
       if (!history.find((h) => h.pipelineId === state.pipelineId)) {
@@ -329,9 +323,7 @@ export function createConceptRouter(
       }
     }
 
-    // Sort by startedAt descending
     history.sort((a, b) => b.startedAt - a.startedAt);
-
     res.json({ success: true, data: history });
   });
 
@@ -345,7 +337,6 @@ export function createConceptRouter(
     }
 
     const artifacts = pipelineEngine.getArtifacts(pipelineId);
-    // Return without full content for list view (summary only)
     const summaries = artifacts.map((a) => ({
       id: a.id,
       pipelineId: a.pipelineId,
@@ -482,7 +473,6 @@ export function createConceptRouter(
   });
 
   // POST /api/concept/experience/generate-direct
-  // Direct pipeline generation for workspace — no concept required.
   router.post("/experience/generate-direct", async (req, res) => {
     const { projectId } = req.body;
 
@@ -501,7 +491,6 @@ export function createConceptRouter(
         createdAt: Date.now(),
       };
 
-      // Reserve durable history before the background executor is launched.
       const pipelineId = await pipelineEngine.startAsync(
         projectId,
         blueprint,
@@ -579,6 +568,20 @@ function asyncArtifactMutation(
       handleArtifactMutationError(error, res);
     });
   };
+}
+
+function handlePipelineMutationError(error: unknown, res: Response): void {
+  if (error instanceof DurableStorageError) {
+    console.error("[concept] pipeline mutation rejected", error);
+    res.status(503).json({
+      success: false,
+      error: "Durable storage is temporarily unavailable",
+    });
+    return;
+  }
+
+  console.error("[concept] pipeline mutation failed", error);
+  res.status(500).json({ success: false, error: "Pipeline mutation failed" });
 }
 
 function handleArtifactMutationError(error: unknown, res: Response): void {

@@ -8,7 +8,7 @@ import type { PipelineStore } from "./PipelineStore";
 export class InMemoryPipelineStore implements PipelineStore {
   private pipelines: Map<string, PipelineState> = new Map();
 
-  save(state: PipelineState): void {
+  async save(state: PipelineState): Promise<void> {
     this.pipelines.set(state.pipelineId, state);
   }
 
@@ -20,7 +20,7 @@ export class InMemoryPipelineStore implements PipelineStore {
     return Array.from(this.pipelines.values());
   }
 
-  delete(pipelineId: string): boolean {
+  async delete(pipelineId: string): Promise<boolean> {
     return this.pipelines.delete(pipelineId);
   }
 
@@ -36,20 +36,21 @@ export class InMemoryPipelineStore implements PipelineStore {
     return this.getAll().filter((p) => p.status === status);
   }
 
-  markInterrupted(): number {
+  async markInterrupted(): Promise<number> {
     let count = 0;
     for (const state of this.pipelines.values()) {
       if (state.status === "running") {
         state.status = "failed";
         state.finishedAt = Date.now();
         state.currentStage = null;
-        // Find the running stage and mark it failed
         for (const stage of state.stages) {
           if (stage.status === "running") {
             stage.status = "failed";
             stage.error = "Interrupted: server restart";
             stage.completedAt = Date.now();
-            state.failedStages.push(stage.name);
+            if (!state.failedStages.includes(stage.name)) {
+              state.failedStages.push(stage.name);
+            }
           }
         }
         count++;

@@ -13,6 +13,8 @@ export type AgentExecutorFn = (
   input: Record<string, unknown>,
 ) => Promise<Record<string, unknown>>;
 
+export type PipelineCheckpointFn = (state: PipelineState) => Promise<void>;
+
 export interface PipelineResult {
   state: PipelineState;
   outputs: Record<string, unknown>;
@@ -36,12 +38,19 @@ export class PipelineExecutor {
     blueprint: Record<string, unknown>,
     agentExecutor: AgentExecutorFn,
     resumeFrom?: PipelineState,
+    checkpoint?: PipelineCheckpointFn,
   ): Promise<PipelineResult> {
-    const state = resumeFrom ?? createPipelineState(projectId);
+    const state = resumeFrom
+      ? structuredClone(resumeFrom)
+      : createPipelineState(projectId);
     const sessionId = this.context.createSession(projectId, blueprint);
     const startTime = Date.now();
+    const persistCheckpoint = async (): Promise<void> => {
+      await checkpoint?.(structuredClone(state));
+    };
 
     state.status = "running";
+    await persistCheckpoint();
     this.events.emit({
       type: "pipeline.started",
       pipelineId: state.pipelineId,
@@ -50,13 +59,13 @@ export class PipelineExecutor {
     });
 
     for (const stageRecord of state.stages) {
-      // Skip already completed stages (for recovery)
       if (stageRecord.status === "completed") continue;
 
       const stageName = stageRecord.name;
       state.currentStage = stageName;
       stageRecord.status = "running";
       stageRecord.startedAt = Date.now();
+      await persistCheckpoint();
 
       this.events.emit({
         type: "stage.started",
@@ -84,6 +93,7 @@ export class PipelineExecutor {
           stageRecord.agentId ?? stageName,
           output,
         );
+        await persistCheckpoint();
         this.events.emit({
           type: "stage.completed",
           pipelineId: state.pipelineId,
@@ -99,13 +109,19 @@ export class PipelineExecutor {
         stageRecord.durationMs =
           stageRecord.completedAt - stageRecord.startedAt;
         stageRecord.error = error;
-        state.failedStages.push(stageName);
+        if (!state.failedStages.includes(stageName)) {
+          state.failedStages.push(stageName);
+        }
 
         this.context.recordFailure(
           sessionId,
           stageRecord.agentId ?? stageName,
           error,
         );
+        state.status = "failed";
+        state.currentStage = null;
+        state.finishedAt = Date.now();
+        await persistCheckpoint();
         this.events.emit({
           type: "stage.failed",
           pipelineId: state.pipelineId,
@@ -114,11 +130,6 @@ export class PipelineExecutor {
           error,
           timestamp: Date.now(),
         });
-
-        // Stop on failure
-        state.status = "failed";
-        state.currentStage = null;
-        state.finishedAt = Date.now();
         this.events.emit({
           type: "pipeline.failed",
           pipelineId: state.pipelineId,
@@ -137,6 +148,7 @@ export class PipelineExecutor {
     state.status = "completed";
     state.currentStage = null;
     state.finishedAt = Date.now();
+    await persistCheckpoint();
     this.events.emit({
       type: "pipeline.completed",
       pipelineId: state.pipelineId,
@@ -159,21 +171,24 @@ export class PipelineExecutor {
     failedState: PipelineState,
     blueprint: Record<string, unknown>,
     agentExecutor: AgentExecutorFn,
+    checkpoint?: PipelineCheckpointFn,
   ): Promise<PipelineResult> {
-    failedState.status = "recovering";
-    // Reset failed stages to pending
-    for (const stage of failedState.stages) {
+    const state = structuredClone(failedState);
+    state.status = "recovering";
+    for (const stage of state.stages) {
       if (stage.status === "failed") {
         stage.status = "pending";
         stage.error = undefined;
       }
     }
-    failedState.failedStages = [];
+    state.failedStages = [];
+    await checkpoint?.(structuredClone(state));
     return this.execute(
-      failedState.projectId,
+      state.projectId,
       blueprint,
       agentExecutor,
-      failedState,
+      state,
+      checkpoint,
     );
   }
 
@@ -190,7 +205,6 @@ export class PipelineExecutor {
     agentExecutor: AgentExecutorFn,
   ): Promise<Record<string, unknown>> {
     if (!stage.agentId) {
-      // Non-agent stages (REQUEST, EXPORT) pass through
       return { _stage: stage.name, _passthrough: true };
     }
     const input = this.context.getAccumulated(sessionId);
