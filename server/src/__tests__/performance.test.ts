@@ -133,7 +133,9 @@ describe("Performance Benchmarks", () => {
         "Create an adventure game",
       ];
 
-      const sessions = prompts.map((p, i) => orch.run(p, `concurrent-${i}`));
+      const sessions = await Promise.all(
+        prompts.map((p, i) => orch.run(p, `concurrent-${i}`)),
+      );
 
       expect(sessions).toHaveLength(5);
       for (const s of sessions) {

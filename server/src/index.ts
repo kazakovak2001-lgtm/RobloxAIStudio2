@@ -617,7 +617,7 @@ app.use("/api/domain", createDomainRouter());
 
 // Autonomous Orchestrator API
 import { createAutonomousRouter } from "./routes/autonomous";
-app.use("/api/autonomous", createAutonomousRouter(events));
+app.use("/api/autonomous", createAutonomousRouter(events, access));
 
 // AI Project Controller API
 import { createControllerRouter } from "./routes/controller";

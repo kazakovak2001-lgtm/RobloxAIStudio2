@@ -150,7 +150,7 @@ describe("Integration: Full Pipeline", () => {
 
   it("Autonomous orchestrator starts and tracks session", async () => {
     const orch = new AutonomousOrchestrator();
-    const session = orch.run("Create a simple obby game", "test-auto");
+    const session = await orch.run("Create a simple obby game", "test-auto");
 
     expect(session.id).toBeTruthy();
     expect(session.status).toBe("running");

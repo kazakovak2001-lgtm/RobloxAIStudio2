@@ -4,9 +4,14 @@ import type { PipelineEvent } from "../types/pipeline-events";
 import { AutonomousOrchestrator } from "./AutonomousOrchestrator";
 import {
   AutonomousPhaseRegistry,
+  createAutonomousPhaseContext,
   type AutonomousPhaseAdapter,
 } from "./AutonomousPhaseRegistry";
 import type { OrchestratorSession } from "./OrchestratorTypes";
+import {
+  InMemoryAutonomousSessionStore,
+  type AutonomousSessionRecord,
+} from "./store/AutonomousSessionStore";
 
 async function waitForTerminal(
   session: OrchestratorSession,
@@ -30,7 +35,7 @@ describe("AutonomousOrchestrator bounded preview truthfulness", () => {
     });
 
     const orchestrator = new AutonomousOrchestrator(events);
-    const session = orchestrator.run(
+    const session = await orchestrator.run(
       "Create a cooperative obby with checkpoints",
       "project-preview",
     );
@@ -126,8 +131,11 @@ describe("AutonomousOrchestrator bounded preview truthfulness", () => {
   it("produces deterministic non-billable bounded evidence", async () => {
     const orchestrator = new AutonomousOrchestrator();
 
-    const first = orchestrator.run("Build a horror survival game", "project-a");
-    const second = orchestrator.run(
+    const first = await orchestrator.run(
+      "Build a horror survival game",
+      "project-a",
+    );
+    const second = await orchestrator.run(
       "Build a horror survival game",
       "project-b",
     );
@@ -158,13 +166,13 @@ describe("AutonomousOrchestrator bounded preview truthfulness", () => {
     });
 
     const orchestrator = new AutonomousOrchestrator(events);
-    const session = orchestrator.run(
+    const session = await orchestrator.run(
       "Build a cooperative obby with safe pause and resume",
       "project-race",
     );
 
-    expect(orchestrator.pause(session.id)).toBe(true);
-    expect(orchestrator.resume(session.id)).toBe(true);
+    expect(await orchestrator.pause(session.id)).toBe(true);
+    expect(await orchestrator.resume(session.id)).toBe(true);
     await waitForTerminal(session);
 
     expect(session.status).toBe("preview_completed");
@@ -184,9 +192,79 @@ describe("AutonomousOrchestrator bounded preview truthfulness", () => {
     );
   });
 
+  it("recovers a restart before the first checkpoint from durable pre-phase state", async () => {
+    const sessionStore = new InMemoryAutonomousSessionStore();
+    const prompt = "Build a restart-safe obby";
+    const startedAt = Date.now();
+    const record: AutonomousSessionRecord = {
+      session: {
+        id: "orch-pre-checkpoint",
+        projectId: "project-pre-checkpoint",
+        prompt,
+        executionMode: "bounded",
+        resultAuthority: "preview-only",
+        status: "running",
+        currentPhase: "genre_detection",
+        phases: [
+          {
+            id: "node-genre_detection",
+            phase: "genre_detection",
+            status: "running",
+            startedAt,
+          },
+          {
+            id: "node-preview-completed",
+            phase: "preview_completed",
+            status: "pending",
+          },
+        ],
+        goals: {
+          targetScore: 80,
+          budget: 10000,
+          timeLimitMs: 300000,
+          maxCost: 1,
+          maxRepairIterations: 3,
+        },
+        cost: {
+          totalTokens: 0,
+          totalCost: 0,
+          totalTimeMs: 0,
+          source: "measured",
+          perPhase: {},
+        },
+        checkpoints: [],
+        qualityScore: null,
+        startedAt,
+        recoveryCount: 0,
+        executionGeneration: 0,
+      },
+      context: createAutonomousPhaseContext("project-pre-checkpoint", prompt),
+      checkpointSequence: 0,
+    };
+    await sessionStore.save(record);
+
+    const orchestrator = new AutonomousOrchestrator(undefined, {
+      sessionStore,
+      phaseRegistry: new AutonomousPhaseRegistry([]),
+    });
+    await orchestrator.ready();
+    const session = orchestrator.getSession(record.session.id)!;
+
+    expect(session).toMatchObject({
+      status: "paused",
+      recoveryReason: "server_restart",
+      checkpoints: [],
+    });
+    expect(await orchestrator.recover(session.id)).toBe(true);
+    await waitForTerminal(session);
+    expect(session.status).toBe("preview_completed");
+    expect(session.recoveryCount).toBe(1);
+    expect(session.executionGeneration).toBe(1);
+  });
+
   it("keeps bounded checkpoint cost snapshots isolated", async () => {
     const orchestrator = new AutonomousOrchestrator();
-    const session = orchestrator.run(
+    const session = await orchestrator.run(
       "Build a deterministic tycoon preview",
       "project-checkpoint",
     );
@@ -204,8 +282,11 @@ describe("AutonomousOrchestrator bounded preview truthfulness", () => {
   });
 
   it("rejects malformed checkpoint snapshots without corrupting session cost", async () => {
-    const orchestrator = new AutonomousOrchestrator();
-    const session = orchestrator.run(
+    const sessionStore = new InMemoryAutonomousSessionStore();
+    const orchestrator = new AutonomousOrchestrator(undefined, {
+      sessionStore,
+    });
+    const session = await orchestrator.run(
       "Build a checkpoint validation obby",
       "project-invalid-checkpoint",
     );
@@ -222,8 +303,11 @@ describe("AutonomousOrchestrator bounded preview truthfulness", () => {
       phases: [],
       qualityScore: null,
     };
+    const persisted = sessionStore.get(session.id)!;
+    persisted.session.checkpoints[0].snapshot = checkpoint.snapshot;
+    await sessionStore.save(persisted);
 
-    expect(orchestrator.recover(session.id, checkpoint.id)).toBe(false);
+    expect(await orchestrator.recover(session.id, checkpoint.id)).toBe(false);
     expect(session.cost).toBe(originalCost);
     expect(session.status).toBe("preview_completed");
   });
@@ -253,7 +337,7 @@ describe("AutonomousOrchestrator bounded preview truthfulness", () => {
     const orchestrator = new AutonomousOrchestrator(events, {
       phaseRegistry: new AutonomousPhaseRegistry([failingAdapter]),
     });
-    const session = orchestrator.run(
+    const session = await orchestrator.run(
       "Build an error handling obby",
       "project-top-level-error",
     );

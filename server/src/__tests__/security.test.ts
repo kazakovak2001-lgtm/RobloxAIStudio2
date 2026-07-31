@@ -9,28 +9,31 @@ import { PlaytestEngine } from "../playtest";
 
 describe("Security Audit", () => {
   describe("Input Validation", () => {
-    it("rejects empty prompt in orchestrator", () => {
+    it("rejects empty prompt in orchestrator", async () => {
       const orch = new AutonomousOrchestrator();
       // The API layer validates this; engine itself should handle gracefully
-      const session = orch.run("test", "proj-1");
+      const session = await orch.run("test", "proj-1");
       expect(session.id).toBeTruthy();
     });
 
-    it("handles extremely long prompts without crash", () => {
+    it("handles extremely long prompts without crash", async () => {
       const orch = new AutonomousOrchestrator();
       const longPrompt = "Create a game ".repeat(10000);
-      const session = orch.run(longPrompt, "long-prompt");
+      const session = await orch.run(longPrompt, "long-prompt");
       expect(session.id).toBeTruthy();
       expect(session.status).toBe("running");
     });
 
-    it("handles special characters in project IDs", () => {
+    it("handles special characters in project IDs", async () => {
       const orch = new AutonomousOrchestrator();
-      const session = orch.run("test game", "proj-<script>alert(1)</script>");
+      const session = await orch.run(
+        "test game",
+        "proj-<script>alert(1)</script>",
+      );
       expect(session.id).toBeTruthy();
     });
 
-    it("playtest handles empty scripts array", () => {
+    it("playtest handles empty scripts array", async () => {
       const engine = new PlaytestEngine();
       const report = engine.run({
         projectId: "empty",
@@ -41,7 +44,7 @@ describe("Security Audit", () => {
       expect(report.overallScore).toBeLessThanOrEqual(100);
     });
 
-    it("playtest handles malformed script content", () => {
+    it("playtest handles malformed script content", async () => {
       const engine = new PlaytestEngine();
       const report = engine.run({
         projectId: "malformed",
@@ -64,23 +67,23 @@ describe("Security Audit", () => {
   describe("Lua Code Security", () => {
     const validator = new LuaCodeValidator();
 
-    it("detects loadstring usage", () => {
+    it("detects loadstring usage", async () => {
       const report = validator.validate("test", 'loadstring("exploit")()');
       expect(report.errors.length).toBeGreaterThan(0);
       expect(report.errors.some((e) => e.includes("loadstring"))).toBe(true);
     });
 
-    it("detects setfenv usage", () => {
+    it("detects setfenv usage", async () => {
       const report = validator.validate("test", "setfenv(1, {})");
       expect(report.errors.length).toBeGreaterThan(0);
     });
 
-    it("detects getfenv usage", () => {
+    it("detects getfenv usage", async () => {
       const report = validator.validate("test", "local env = getfenv()");
       expect(report.errors.length).toBeGreaterThan(0);
     });
 
-    it("passes clean script", () => {
+    it("passes clean script", async () => {
       const report = validator.validate(
         "test",
         `--[[\n  Clean script\n]]\nlocal module = {}\nfunction module.init()\n  print("Hello")\nend\nreturn module\n`,
@@ -89,7 +92,7 @@ describe("Security Audit", () => {
       expect(report.passed).toBe(true);
     });
 
-    it("warns about deprecated APIs", () => {
+    it("warns about deprecated APIs", async () => {
       const report = validator.validate(
         "test",
         "wait(1)\nspawn(function() end)",
@@ -99,17 +102,17 @@ describe("Security Audit", () => {
   });
 
   describe("API Boundary Checks", () => {
-    it("orchestrator pause/resume/cancel require valid session", () => {
+    it("orchestrator pause/resume/cancel require valid session", async () => {
       const orch = new AutonomousOrchestrator();
-      expect(orch.pause("nonexistent")).toBe(false);
-      expect(orch.resume("nonexistent")).toBe(false);
-      expect(orch.cancel("nonexistent")).toBe(false);
+      expect(await orch.pause("nonexistent")).toBe(false);
+      expect(await orch.resume("nonexistent")).toBe(false);
+      expect(await orch.cancel("nonexistent")).toBe(false);
     });
 
-    it("orchestrator cancel stops execution", () => {
+    it("orchestrator cancel stops execution", async () => {
       const orch = new AutonomousOrchestrator();
-      const session = orch.run("test game", "cancel-test");
-      const cancelled = orch.cancel(session.id);
+      const session = await orch.run("test game", "cancel-test");
+      const cancelled = await orch.cancel(session.id);
       expect(cancelled).toBe(true);
       const final = orch.getSession(session.id);
       expect(final!.status).toBe("cancelled");
