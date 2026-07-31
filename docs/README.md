@@ -1,6 +1,6 @@
 # Roblox AI Studio Documentation
 
-**Last updated:** July 28, 2026
+**Last updated:** July 31, 2026
 
 This directory documents the backend, standalone Frontend boundary, Roblox Studio plugin, release evidence, and current engineering roadmap.
 
@@ -31,7 +31,8 @@ The old embedded root `src/` frontend is removed and protected by a permanent in
 - CUTOVER-1 and CLEANUP-1A–1D: complete.
 - TECH-AUDIT-2: complete.
 - HARDEN-2A: complete through SEC-201, FE-201, INT-201, and DOC-201.
-- ARCH-2B, FRONTEND-2C, RUNTIME-2D, DURABILITY-2E: planned in that order.
+- FRONTEND-2C: complete through Frontend PRs #18–#21 and REL-203 release-pair promotion.
+- ARCH-2B, RUNTIME-2D, DURABILITY-2E: remain planned.
 - STUDIO-2F native asset/GUI/place expansion: optional and deferred.
 - F-12 collaborative development: deferred until authorization, runtime, and durability gates pass.
 

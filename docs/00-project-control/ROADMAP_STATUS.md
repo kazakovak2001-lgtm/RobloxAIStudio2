@@ -1,6 +1,6 @@
 # Roadmap Status
 
-**Last Updated**: July 28, 2026
+**Last Updated**: July 31, 2026
 
 ---
 
@@ -19,7 +19,7 @@ This sequence is authoritative for work after the standalone frontend integratio
 | TECH-AUDIT-2  | Evidence-based two-repository technical baseline               | Critical | ✅ Complete                         | CUTOVER-1             |
 | HARDEN-2A     | Auth response, Studio state, and contract-E2E correctness      | Critical | ✅ Complete                         | TECH-AUDIT-2          |
 | ARCH-2B       | Exhaustive and truthful architecture boundary gate             | Critical | Planned                             | HARDEN-2A             |
-| FRONTEND-2C   | Protected Frontend quality and bundle baseline                 | High     | Planned                             | HARDEN-2A             |
+| FRONTEND-2C   | Protected Frontend quality and bundle baseline                 | High     | ✅ Complete                         | HARDEN-2A             |
 | RUNTIME-2D    | Runtime/provider/orchestration/memory consolidation            | High     | Planned                             | ARCH-2B               |
 | DURABILITY-2E | Request-level durability and operational-state classification  | High     | Planned                             | RUNTIME-2D            |
 | STUDIO-2F     | Optional native asset, GUI, runtime, and place delivery        | Medium   | Deferred                            | DURABILITY-2E         |
