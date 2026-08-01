@@ -105,7 +105,8 @@ function classified(
   };
 }
 
-const publicEvidence = "server/src/__tests__/security2gE.authorization-domains.test.ts";
+const publicEvidence =
+  "server/src/__tests__/security2gE.authorization-domains.test.ts";
 const userSelfEvidence = publicEvidence;
 const projectEvidence = "server/src/routes/__tests__/projects.runtime.test.ts";
 
@@ -115,19 +116,47 @@ const overrides = new Map<
 >([
   [
     "rest|server/src/index.ts|GET /health",
-    classified("public", "anonymous", "system.health.read", "system", publicEvidence, "not-applicable-public"),
+    classified(
+      "public",
+      "anonymous",
+      "system.health.read",
+      "system",
+      publicEvidence,
+      "not-applicable-public",
+    ),
   ],
   [
     "rest|server/src/index.ts|GET /",
-    classified("public", "anonymous", "system.root.read", "system", publicEvidence, "not-applicable-public"),
+    classified(
+      "public",
+      "anonymous",
+      "system.root.read",
+      "system",
+      publicEvidence,
+      "not-applicable-public",
+    ),
   ],
   [
     "rest|server/src/routes/system.ts|GET /status",
-    classified("public", "anonymous", "system.status.read", "system", publicEvidence, "not-applicable-public"),
+    classified(
+      "public",
+      "anonymous",
+      "system.status.read",
+      "system",
+      publicEvidence,
+      "not-applicable-public",
+    ),
   ],
   [
     "rest|server/src/routes/system.ts|GET /agents",
-    classified("public", "anonymous", "system.agents.read", "system", publicEvidence, "not-applicable-public"),
+    classified(
+      "public",
+      "anonymous",
+      "system.agents.read",
+      "system",
+      publicEvidence,
+      "not-applicable-public",
+    ),
   ],
   ...[
     "POST /auth/register",
@@ -151,7 +180,14 @@ const overrides = new Map<
   ),
   [
     "rest|server/src/routes/platform.ts|GET /auth/me",
-    classified("authenticated", "user-session", "user.self.read", "current-user", userSelfEvidence, userSelfEvidence),
+    classified(
+      "authenticated",
+      "user-session",
+      "user.self.read",
+      "current-user",
+      userSelfEvidence,
+      userSelfEvidence,
+    ),
   ],
   ...[
     ["GET /users/:id", "user.self.read"],
@@ -163,7 +199,14 @@ const overrides = new Map<
     ([operation, capability]) =>
       [
         `rest|server/src/routes/platform.ts|${operation}`,
-        classified("user-self", "user-session", capability, "path-user", userSelfEvidence, userSelfEvidence),
+        classified(
+          "user-self",
+          "user-session",
+          capability,
+          "path-user",
+          userSelfEvidence,
+          userSelfEvidence,
+        ),
       ] as const,
   ),
   ...[
@@ -173,7 +216,14 @@ const overrides = new Map<
     ([operation, capability]) =>
       [
         `rest|server/src/routes/platform.ts|${operation}`,
-        classified("project-owner", "user-session", capability, "path-project", projectEvidence, projectEvidence),
+        classified(
+          "project-owner",
+          "user-session",
+          capability,
+          "path-project",
+          projectEvidence,
+          projectEvidence,
+        ),
       ] as const,
   ),
 ]);
