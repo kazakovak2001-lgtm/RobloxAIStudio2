@@ -119,10 +119,11 @@ artifact_guard = '''    if (!projectId || typeof projectId !== "string") {
       artifactIds.length === 0
     ) {'''
 start = text.index('router.post("/sync/artifacts"')
-segment = text[start:]
-if 'error: "projectId is required"' not in segment[:1000]:
-    segment = segment.replace(artifact_anchor, artifact_guard, 1)
-    text = text[:start] + segment
+end = text.index('\n  router.', start + 1)
+handler = text[start:end]
+if 'access.requireProjectAccess(req, res, projectId)' not in handler:
+    handler = handler.replace(artifact_anchor, artifact_guard, 1)
+    text = text[:start] + handler + text[end:]
 route.write_text(text)
 
 generator = Path("scripts/generate-authorization-matrix.ts")
