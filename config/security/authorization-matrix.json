@@ -1,0 +1,39 @@
+{
+  "version": 1,
+  "controlId": "SECURITY-2G-E",
+  "operations": [
+    {
+      "transport": "rest",
+      "source": "server/src/index.ts",
+      "operation": "GET /health",
+      "classification": "public",
+      "principal": "anonymous",
+      "capability": "system.health.read",
+      "resourceScope": "system",
+      "positiveEvidence": "server/src/__tests__/integration.test.ts",
+      "negativeEvidence": "not-applicable-public"
+    },
+    {
+      "transport": "socket",
+      "source": "server/src/socket/index.ts",
+      "operation": "project:join",
+      "classification": "project-owner",
+      "principal": "user-session",
+      "capability": "project.room.join",
+      "resourceScope": "project",
+      "positiveEvidence": "server/src/__tests__/harden2a.auth-contract.test.ts",
+      "negativeEvidence": "server/src/__tests__/harden2a.auth-contract.test.ts"
+    },
+    {
+      "transport": "socket",
+      "source": "server/src/socket/index.ts",
+      "operation": "project:leave",
+      "classification": "authenticated",
+      "principal": "user-session",
+      "capability": "project.room.leave",
+      "resourceScope": "joined-project",
+      "positiveEvidence": "missing",
+      "negativeEvidence": "missing"
+    }
+  ]
+}
