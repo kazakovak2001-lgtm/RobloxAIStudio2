@@ -40,3 +40,11 @@ for old, new in replacements:
     text = text.replace(old, new, 1)
 
 path.write_text(text)
+
+validator = Path("scripts/validate.ts")
+validator_text = validator.read_text()
+old_claim = '"`SECURITY-2G` | Dependency, SAST, credential, image, SBOM, and RBAC control gate | High | In progress — `SECURITY-2G-D`",'
+new_claim = '"`SECURITY-2G` | Dependency, SAST, credential, image, SBOM, and RBAC control gate | High | In progress — `SECURITY-2G-E`",'
+if old_claim not in validator_text:
+    raise SystemExit("documentation validator SECURITY-2G-D claim missing")
+validator.write_text(validator_text.replace(old_claim, new_claim, 1))
