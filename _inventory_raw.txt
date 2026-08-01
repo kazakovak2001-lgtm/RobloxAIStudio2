@@ -5,6 +5,8 @@
 .eslintrc.json
 .github/copilot-instructions.md
 .github/workflows/ci.yml
+.github/workflows/inventory-diagnostic.yml
+.github/workflows/security-sast-credential-scan.yml
 .github/workflows/studio-plugin-package.yml
 .gitignore
 .husky/commit-msg
