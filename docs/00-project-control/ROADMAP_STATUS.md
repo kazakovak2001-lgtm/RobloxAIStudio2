@@ -24,7 +24,7 @@ This file is the ordered current delivery authority. The dated TECH-AUDIT-2 road
 | `FRONTEND-2C` | Protected Frontend quality and bundle baseline | High | ✅ Complete | `HARDEN-2A` |
 | `RUNTIME-2D` | Runtime/provider/orchestration/memory ownership | High | ✅ Complete | `ARCH-2B` |
 | `DURABILITY-2E` | Durable writes and operational-state truthfulness | High | ✅ Complete | `RUNTIME-2D` |
-| `SECURITY-2G` | Dependency, SAST, secret, image, SBOM, and RBAC control gate | High | **In progress — SECURITY-2G-A** | `DURABILITY-2E` |
+| `SECURITY-2G` | Dependency, SAST, secret, image, SBOM, and RBAC control gate | High | In progress — `SECURITY-2G-A` | `DURABILITY-2E` |
 | `DOC-202` | Documentation-authority inventory and deterministic guards | Medium | In progress | `SECURITY-2G` decisions |
 | `STUDIO-2F` | Native assets, GUI, runtime, and place delivery | Medium | Deferred | control gates |
 | `AUTONOMY-3A` | Real engine-backed autonomous phases and broader recovery | High | Deferred | control gates |
