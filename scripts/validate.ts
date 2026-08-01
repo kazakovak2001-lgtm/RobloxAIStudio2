@@ -47,11 +47,12 @@ function getAllTrackedFiles(): string[] {
 function validateDocumentationAuthority(): DocumentationAuthorityError[] {
   const roadmapPath = "docs/00-project-control/ROADMAP_STATUS.md";
   const readmePath = "docs/README.md";
+  const securityBaselinePath = "docs/00-project-control/SECURITY-2G_CONTROL_BASELINE.md";
 
   const documents = new Map<string, string>();
   const errors: DocumentationAuthorityError[] = [];
 
-  for (const path of [roadmapPath, readmePath]) {
+  for (const path of [roadmapPath, readmePath, securityBaselinePath]) {
     try {
       documents.set(path, readFileSync(path, "utf-8"));
     } catch {
@@ -61,13 +62,14 @@ function validateDocumentationAuthority(): DocumentationAuthorityError[] {
 
   const roadmap = documents.get(roadmapPath) ?? "";
   const readme = documents.get(readmePath) ?? "";
+  const securityBaseline = documents.get(securityBaselinePath) ?? "";
 
   const requiredCurrentClaims = [
     "`ARCH-2B` | Exhaustive truthful architecture boundary gate | Critical | ✅ Complete",
     "`FRONTEND-2C` | Protected Frontend quality and bundle baseline | High | ✅ Complete",
     "`RUNTIME-2D` | Runtime/provider/orchestration/memory ownership | High | ✅ Complete",
     "`DURABILITY-2E` | Durable writes and operational-state truthfulness | High | ✅ Complete",
-    "`SECURITY-2G` | Dependency, SAST, secret, image, SBOM, and RBAC control gate | High | **Next**",
+    "`SECURITY-2G` | Dependency, SAST, secret, image, SBOM, and RBAC control gate | High | In progress — `SECURITY-2G-A`",
   ];
 
   for (const claim of requiredCurrentClaims) {
@@ -107,6 +109,31 @@ function validateDocumentationAuthority(): DocumentationAuthorityError[] {
       errors.push({
         file: roadmapPath,
         message: `missing exact reconciliation evidence: ${evidence}`,
+      });
+    }
+  }
+
+  if (!roadmap.includes("SECURITY-2G_CONTROL_BASELINE.md")) {
+    errors.push({
+      file: roadmapPath,
+      message: "SECURITY-2G baseline must be linked from current roadmap authority",
+    });
+  }
+
+  const requiredSecurityBaselineClaims = [
+    "issue #148",
+    "a1d2c231d8cea41fb6cf68bbfd447091c0cd957e",
+    "022788ace31982e2b08ea099800de784b4dbe482",
+    "SECURITY-2G-B — Dependency controls",
+    "SECURITY-2G-F — Consolidated gate",
+    "Expired, ambiguous, wildcard or ownerless exceptions fail validation",
+  ];
+
+  for (const claim of requiredSecurityBaselineClaims) {
+    if (!securityBaseline.includes(claim)) {
+      errors.push({
+        file: securityBaselinePath,
+        message: `missing required security baseline claim: ${claim}`,
       });
     }
   }
