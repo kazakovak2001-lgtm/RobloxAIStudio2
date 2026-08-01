@@ -81,7 +81,7 @@ Completion of `SECURITY-2G-B` does not complete `SECURITY-2G`; controls remain m
 - `FRONTEND-2C`: Frontend PRs #18–#21; canonical `Frontend/main` contents `022788ace31982e2b08ea099800de784b4dbe482`; promoted by REL-203 PR #145.
 - `RUNTIME-2D`: issue #57 closed as completed; runtime ownership is protected by architecture, runtime, and memory validators.
 - `DURABILITY-2E`: DATA-201 issue #63 and DATA-202 issue #135 closed; DATA-202 final slice merge `a33a8c30588f1e4705d27856e61d839c8efd42ac`.
-- `SECURITY-2G-A`: issue #148 and PR #149; merged baseline commit `1fe7683d25364465765cfde656842e7f33f96e47`.
+- `SECURITY-2G-A`: issue #148 and PR #149; reviewed head `a1d2c231d8cea41fb6cf68bbfd447091c0cd957e`; merged baseline commit `1fe7683d25364465765cfde656842e7f33f96e47`.
 - `SECURITY-2G-B`: issue #150 and draft PR #151; dependency controls remain in progress until protected audit evidence is green.
 - Active paired release: backend merge `7ccc4e02ba4175318856cd14b845e4ccd4dc6057` plus Frontend contents `022788ace31982e2b08ea099800de784b4dbe482`.
 
