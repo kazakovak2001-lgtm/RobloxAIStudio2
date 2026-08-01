@@ -109,6 +109,8 @@ const publicEvidence =
   "server/src/__tests__/security2gE.authorization-domains.test.ts";
 const userSelfEvidence = publicEvidence;
 const projectEvidence = "server/src/routes/__tests__/projects.runtime.test.ts";
+const directProjectRouteEvidence =
+  "server/src/__tests__/security2gE.project-routes.test.ts";
 
 const overrides = new Map<
   string,
@@ -223,6 +225,30 @@ const overrides = new Map<
           "path-project",
           projectEvidence,
           projectEvidence,
+        ),
+      ] as const,
+  ),
+  ...[
+    ["POST /:projectId/generate", "project.generation.start"],
+    ["POST /:projectId/blueprints", "project.blueprint.create"],
+    [
+      "GET /:projectId/generation/:executionId/status",
+      "project.generation.read",
+    ],
+    ["GET /:projectId/studio/status", "project.studio.status.read"],
+    ["POST /:projectId/studio/sync", "project.studio.sync"],
+    ["GET /:projectId/export", "project.export.read"],
+  ].map(
+    ([operation, capability]) =>
+      [
+        `rest|server/src/routes/game-generation.ts|${operation}`,
+        classified(
+          "project-owner",
+          "user-session",
+          capability,
+          "path-project",
+          directProjectRouteEvidence,
+          directProjectRouteEvidence,
         ),
       ] as const,
   ),
