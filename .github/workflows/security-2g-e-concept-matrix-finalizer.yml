@@ -25,6 +25,7 @@ jobs:
         run: |
           python - <<'PY'
           from pathlib import Path
+          import re
 
           generator = Path('scripts/generate-authorization-matrix.ts')
           text = generator.read_text()
@@ -126,30 +127,30 @@ jobs:
 
           concept = Path('server/src/routes/concept.ts')
           source = concept.read_text()
-          old = '''  router.get("/experience/history", (_req, res) => {
-            const history: Array<{'''
-          new = '''  router.get("/experience/history", async (req, res) => {
-            const history: Array<{'''
-          if old in source:
-              source = source.replace(old, new, 1)
-          elif new not in source:
+          source, count = re.subn(
+              r'router\.get\("/experience/history",\s*\(_req,\s*res\)\s*=>\s*\{',
+              'router.get("/experience/history", async (req, res) => {',
+              source,
+              count=1,
+          )
+          if count == 0 and 'router.get("/experience/history", async (req, res) =>' not in source:
               raise SystemExit('history handler anchor not found')
 
-          old_end = '''    history.sort((a, b) => b.startedAt - a.startedAt);
-            res.json({ success: true, data: history });
-          });'''
-          new_end = '''    history.sort((a, b) => b.startedAt - a.startedAt);
+          replacement = '''history.sort((a, b) => b.startedAt - a.startedAt);
             const visibleHistory = [];
             for (const state of history) {
               if (await access.hasProjectAccess(req, state.projectId)) {
                 visibleHistory.push(state);
               }
             }
-            res.json({ success: true, data: visibleHistory });
-          });'''
-          if old_end in source:
-              source = source.replace(old_end, new_end, 1)
-          elif new_end not in source:
+            res.json({ success: true, data: visibleHistory });'''
+          source, count = re.subn(
+              r'history\.sort\(\(a, b\) => b\.startedAt - a\.startedAt\);\s*res\.json\(\{ success: true, data: history \}\);',
+              replacement,
+              source,
+              count=1,
+          )
+          if count == 0 and 'data: visibleHistory' not in source:
               raise SystemExit('history response anchor not found')
           concept.write_text(source)
           PY
