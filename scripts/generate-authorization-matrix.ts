@@ -153,6 +153,8 @@ const systemMetadataScopeEvidence =
   "server/src/__tests__/security2gE.system-metadata-scope.test.ts";
 const compileScopeEvidence =
   "server/src/__tests__/security2gE.compile-scope.test.ts";
+const simulationScopeEvidence =
+  "server/src/__tests__/security2gE.simulation-scope.test.ts";
 const directProjectRouteEvidence =
   "server/src/__tests__/security2gE.project-routes.test.ts";
 const indirectBlueprintEvidence =
@@ -1070,6 +1072,39 @@ const overrides = new Map<
       "body-project",
       compileScopeEvidence,
       compileScopeEvidence,
+    ),
+  ],
+  ...[
+    ["POST /game", "project.simulation.game.execute", "body-blueprint-project"],
+    ["POST /run", "project.simulation.run.execute", "body-blueprint-project"],
+    [
+      "GET /metrics/:gameId",
+      "project.simulation.metrics.read",
+      "path-game-project",
+    ],
+  ].map(
+    ([operation, capability, scope]) =>
+      [
+        `rest|server/src/routes/simulation.ts|${operation}`,
+        classified(
+          "project-owner",
+          "user-session",
+          capability,
+          scope,
+          simulationScopeEvidence,
+          simulationScopeEvidence,
+        ),
+      ] as const,
+  ),
+  [
+    "rest|server/src/routes/simulation.ts|POST /feedback",
+    classified(
+      "authenticated",
+      "user-session-or-api-key",
+      "system.simulation.feedback.analyze",
+      "request-simulation-report",
+      simulationScopeEvidence,
+      simulationScopeEvidence,
     ),
   ],
 ]);

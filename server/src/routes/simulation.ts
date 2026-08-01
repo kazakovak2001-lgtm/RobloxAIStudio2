@@ -11,8 +11,9 @@ import { GameplayMetricsEngine } from "../simulation/metrics/GameplayMetricsEngi
 import { SimulationFeedbackEngine } from "../simulation/feedback/SimulationFeedbackEngine";
 import { GenerationRefinementBridge } from "../simulation/bridge/GenerationRefinementBridge";
 import type { RobloxGameBlueprint } from "../generation/blueprint/GameBlueprintEngine";
+import type { ProjectAccessControl } from "./projects";
 
-export function createSimulationRouter(): Router {
+export function createSimulationRouter(access: ProjectAccessControl): Router {
   const router = Router();
   const simEngine = new GameSimulationEngine();
   const playtester = new PlaytestAgent();
@@ -36,6 +37,8 @@ export function createSimulationRouter(): Router {
           .json({ success: false, error: "Blueprint with id required" });
         return;
       }
+
+      if (!(await access.requireProjectAccess(req, res, blueprint.id))) return;
 
       const ticks = req.body.ticks ?? 100;
 
@@ -84,9 +87,16 @@ export function createSimulationRouter(): Router {
   });
 
   // POST /simulate/run — run simulation only (no analysis)
-  router.post("/run", (req, res) => {
+  router.post("/run", async (req, res) => {
     try {
       const blueprint = req.body.blueprint as RobloxGameBlueprint;
+      if (!blueprint?.id) {
+        res
+          .status(400)
+          .json({ success: false, error: "Blueprint with id required" });
+        return;
+      }
+      if (!(await access.requireProjectAccess(req, res, blueprint.id))) return;
       const ticks = req.body.ticks ?? 50;
       const simulation = simEngine.simulateGame(blueprint, ticks);
       res.json({ success: true, data: simulation });
@@ -96,10 +106,19 @@ export function createSimulationRouter(): Router {
   });
 
   // GET /simulate/metrics/:gameId — get stored metrics
-  router.get("/metrics/:gameId", (req, res) => {
-    const stored = results.get(req.params.gameId);
+  router.get("/metrics/:gameId", async (req, res) => {
+    const gameId = req.params.gameId;
+    const stored = results.get(gameId);
     if (!stored) {
       res.status(404).json({ success: false, error: "No simulation data" });
+      return;
+    }
+    if (access.hasProjectAccess) {
+      if (!(await access.hasProjectAccess(req, gameId))) {
+        res.status(404).json({ success: false, error: "No simulation data" });
+        return;
+      }
+    } else if (!(await access.requireProjectAccess(req, res, gameId))) {
       return;
     }
     res.json({ success: true, data: stored.metrics });
