@@ -3,7 +3,12 @@
  * Uses existing LLMProvider + AgentRegistry. No new frameworks.
  */
 
-import { Router } from "express";
+import {
+  Router,
+  type NextFunction,
+  type Request,
+  type Response,
+} from "express";
 import type { LLMProvider } from "../ai/provider";
 import type { AgentRegistry } from "../agents/core/AgentRegistry";
 
@@ -17,13 +22,33 @@ interface DetectedIntent {
   confidence: number;
 }
 
+function requireAiChatUserSession(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): void {
+  if (process.env.NODE_ENV !== "production") {
+    next();
+    return;
+  }
+  const userId = (req as Request & { user?: { userId?: string } }).user?.userId;
+  if (!userId) {
+    res.status(403).json({
+      success: false,
+      error: "AI chat user session required",
+    });
+    return;
+  }
+  next();
+}
+
 export function createAiChatRouter(
   llm: LLMProvider | null,
   agentRegistry?: AgentRegistry,
 ): Router {
   const router = Router();
 
-  router.post("/chat", async (req, res) => {
+  router.post("/chat", requireAiChatUserSession, async (req, res) => {
     const { messages, gameContext } = req.body;
 
     if (!messages || !Array.isArray(messages) || messages.length === 0) {

@@ -204,12 +204,12 @@
       "transport": "rest",
       "source": "server/src/routes/aiChat.ts",
       "operation": "POST /chat",
-      "classification": "unclassified",
-      "principal": "unresolved",
-      "capability": "unresolved",
-      "resourceScope": "unresolved",
-      "positiveEvidence": "missing",
-      "negativeEvidence": "missing"
+      "classification": "authenticated",
+      "principal": "user-session",
+      "capability": "user.ai-chat.execute",
+      "resourceScope": "current-user-session",
+      "positiveEvidence": "server/src/__tests__/security2gE.ai-chat-session-boundary.test.ts",
+      "negativeEvidence": "server/src/__tests__/security2gE.ai-chat-session-boundary.test.ts"
     },
     {
       "transport": "rest",

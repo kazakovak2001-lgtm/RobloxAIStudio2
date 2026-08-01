@@ -133,6 +133,8 @@ const agentCollaborationScopeEvidence =
   "server/src/__tests__/security2gE.agent-collaboration-scope.test.ts";
 const autonomousHealthScopeEvidence =
   "server/src/__tests__/security2gE.autonomous-health-scope.test.ts";
+const aiChatSessionEvidence =
+  "server/src/__tests__/security2gE.ai-chat-session-boundary.test.ts";
 const directProjectRouteEvidence =
   "server/src/__tests__/security2gE.project-routes.test.ts";
 const indirectBlueprintEvidence =
@@ -819,6 +821,17 @@ const overrides = new Map<
         ),
       ] as const,
   ),
+  [
+    "rest|server/src/routes/aiChat.ts|POST /chat",
+    classified(
+      "authenticated",
+      "user-session",
+      "user.ai-chat.execute",
+      "current-user-session",
+      aiChatSessionEvidence,
+      aiChatSessionEvidence,
+    ),
+  ],
 ]);
 
 const current = JSON.parse(
