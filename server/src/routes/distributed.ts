@@ -15,16 +15,77 @@
  *   POST /api/distributed/retry/:id — retry dead-letter job
  */
 
-import { Router } from "express";
+import {
+  Router,
+  type NextFunction,
+  type Request,
+  type Response,
+} from "express";
 import { ExecutionCoordinator } from "../distributed/execution/ExecutionCoordinator";
+import type { ProjectAccessControl } from "./projects";
+
+function requireDistributedOperator(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): void {
+  if (process.env.NODE_ENV !== "production") {
+    next();
+    return;
+  }
+  const operatorIds = new Set(
+    (process.env.DISTRIBUTED_OPERATOR_USER_IDS ?? "")
+      .split(",")
+      .map((value) => value.trim())
+      .filter(Boolean),
+  );
+  const userId = (req as Request & { user?: { userId?: string } }).user?.userId;
+  if (!userId || !operatorIds.has(userId)) {
+    res
+      .status(403)
+      .json({ success: false, error: "Distributed operator access required" });
+    return;
+  }
+  next();
+}
 
 export function createDistributedRouter(
   coordinator: ExecutionCoordinator,
+  access: ProjectAccessControl,
 ): Router {
   const router = Router();
 
+  const requireJobProjectAccess = async (
+    req: Request,
+    res: Response,
+    jobId: string,
+  ) => {
+    const job = coordinator.getJobStatus(jobId);
+    if (!job || !job.projectId) {
+      res.status(404).json({ success: false, error: "Job not found" });
+      return undefined;
+    }
+    if (!(await access.requireProjectAccess(req, res, job.projectId)))
+      return undefined;
+    return job;
+  };
+
+  const filterAuthorizedDeadLetters = async (req: Request) => {
+    const visible = [];
+    for (const entry of coordinator.getQueue().getDeadLetterQueue()) {
+      if (!entry.job.projectId) continue;
+      if (
+        access.hasProjectAccess &&
+        (await access.hasProjectAccess(req, entry.job.projectId))
+      ) {
+        visible.push(entry);
+      }
+    }
+    return visible;
+  };
+
   // POST /submit — submit a new execution job
-  router.post("/submit", (req, res) => {
+  router.post("/submit", async (req, res) => {
     try {
       const {
         intent,
@@ -40,6 +101,13 @@ export function createDistributedRouter(
         res.status(400).json({ success: false, error: "intent is required" });
         return;
       }
+      if (!projectId || typeof projectId !== "string") {
+        res
+          .status(400)
+          .json({ success: false, error: "projectId is required" });
+        return;
+      }
+      if (!(await access.requireProjectAccess(req, res, projectId))) return;
 
       const job = coordinator.submit({
         intent,
@@ -67,8 +135,8 @@ export function createDistributedRouter(
   });
 
   // GET /job/:id — get job status
-  router.get("/job/:id", (req, res) => {
-    const job = coordinator.getJobStatus(req.params.id);
+  router.get("/job/:id", async (req, res) => {
+    const job = await requireJobProjectAccess(req, res, req.params.id);
     if (!job) {
       res.status(404).json({ success: false, error: "Job not found" });
       return;
@@ -95,19 +163,19 @@ export function createDistributedRouter(
   });
 
   // GET /cluster — cluster health
-  router.get("/cluster", (_req, res) => {
+  router.get("/cluster", requireDistributedOperator, (_req, res) => {
     const health = coordinator.getClusterHealth();
     res.json({ success: true, data: health });
   });
 
   // GET /queue — queue metrics
-  router.get("/queue", (_req, res) => {
+  router.get("/queue", requireDistributedOperator, (_req, res) => {
     const metrics = coordinator.getQueue().getMetrics();
     res.json({ success: true, data: metrics });
   });
 
   // GET /workers — worker list
-  router.get("/workers", (_req, res) => {
+  router.get("/workers", requireDistributedOperator, (_req, res) => {
     const health = coordinator.getClusterHealth();
     res.json({
       success: true,
@@ -119,7 +187,7 @@ export function createDistributedRouter(
   });
 
   // POST /scale — manual scaling
-  router.post("/scale", (req, res) => {
+  router.post("/scale", requireDistributedOperator, (req, res) => {
     const { action, count } = req.body;
 
     if (action === "up") {
@@ -154,8 +222,8 @@ export function createDistributedRouter(
   });
 
   // GET /dead-letter — dead letter queue
-  router.get("/dead-letter", (_req, res) => {
-    const entries = coordinator.getQueue().getDeadLetterQueue();
+  router.get("/dead-letter", async (req, res) => {
+    const entries = await filterAuthorizedDeadLetters(req);
     res.json({
       success: true,
       data: {
@@ -172,7 +240,9 @@ export function createDistributedRouter(
   });
 
   // POST /retry/:id — retry a dead-letter job
-  router.post("/retry/:id", (req, res) => {
+  router.post("/retry/:id", async (req, res) => {
+    const job = await requireJobProjectAccess(req, res, req.params.id);
+    if (!job) return;
     const success = coordinator.getQueue().retryDeadLetter(req.params.id);
     if (!success) {
       res

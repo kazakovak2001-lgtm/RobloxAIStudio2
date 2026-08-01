@@ -573,7 +573,10 @@ app.use("/api/v2", createV2Router(agentRegistry, gateway));
 // ─── Distributed Execution Layer ────────────────────────────────────────────
 const executionCoordinator = new ExecutionCoordinator(agentRegistry);
 executionCoordinator.initialize();
-app.use("/api/distributed", createDistributedRouter(executionCoordinator));
+app.use(
+  "/api/distributed",
+  createDistributedRouter(executionCoordinator, access),
+);
 app.use("/api/analytics", createAnalyticsRouter());
 
 // System status API

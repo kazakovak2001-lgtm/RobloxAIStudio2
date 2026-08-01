@@ -10,7 +10,9 @@ const source = fs.readFileSync(
 describe("SECURITY-2G-E distributed authorization scope", () => {
   it("requires project access before project-bound job operations", () => {
     expect(source).toContain("ProjectAccessControl");
-    expect(source).toContain("access.requireProjectAccess(req, res, projectId)");
+    expect(source).toContain(
+      "access.requireProjectAccess(req, res, projectId)",
+    );
     expect(source).toContain("job.projectId");
     expect(source).toContain("filterAuthorizedDeadLetters");
   });
@@ -18,8 +20,12 @@ describe("SECURITY-2G-E distributed authorization scope", () => {
   it("guards cluster administration with an explicit operator allowlist", () => {
     expect(source).toContain("DISTRIBUTED_OPERATOR_USER_IDS");
     expect(source).toContain("requireDistributedOperator");
-    expect(source).toContain("router.get(\"/cluster\", requireDistributedOperator");
-    expect(source).toContain("router.post(\"/scale\", requireDistributedOperator");
+    expect(source).toContain(
+      'router.get("/cluster", requireDistributedOperator',
+    );
+    expect(source).toContain(
+      'router.post("/scale", requireDistributedOperator',
+    );
   });
 
   it("authorizes retry before mutating the dead-letter queue", () => {

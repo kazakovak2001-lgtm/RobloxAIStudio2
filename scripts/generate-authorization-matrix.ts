@@ -123,6 +123,8 @@ const analyticsOperatorEvidence =
   "server/src/__tests__/security2gE.analytics-operator-boundary.test.ts";
 const debugOperatorEvidence =
   "server/src/__tests__/security2gE.debug-operator-boundary.test.ts";
+const distributedScopeEvidence =
+  "server/src/__tests__/security2gE.distributed-scope.test.ts";
 const directProjectRouteEvidence =
   "server/src/__tests__/security2gE.project-routes.test.ts";
 const indirectBlueprintEvidence =
@@ -634,6 +636,52 @@ const overrides = new Map<
           "global-debug-trace-store",
           debugOperatorEvidence,
           debugOperatorEvidence,
+        ),
+      ] as const,
+  ),
+  ...[
+    ["POST /submit", "project.distributed.job.submit", "body-project"],
+    ["GET /job/:id", "project.distributed.job.read", "resolved-job-project"],
+    [
+      "GET /dead-letter",
+      "project.distributed.dead-letter.list",
+      "owner-project-set",
+    ],
+    [
+      "POST /retry/:id",
+      "project.distributed.dead-letter.retry",
+      "resolved-job-project",
+    ],
+  ].map(
+    ([operation, capability, scope]) =>
+      [
+        `rest|server/src/routes/distributed.ts|${operation}`,
+        classified(
+          "project-owner",
+          "user-session",
+          capability,
+          scope,
+          distributedScopeEvidence,
+          distributedScopeEvidence,
+        ),
+      ] as const,
+  ),
+  ...[
+    ["GET /cluster", "system.distributed.cluster.read"],
+    ["GET /queue", "system.distributed.queue.read"],
+    ["GET /workers", "system.distributed.workers.read"],
+    ["POST /scale", "system.distributed.scale.execute"],
+  ].map(
+    ([operation, capability]) =>
+      [
+        `rest|server/src/routes/distributed.ts|${operation}`,
+        classified(
+          "distributed-operator",
+          "user-session",
+          capability,
+          "global-distributed-runtime",
+          distributedScopeEvidence,
+          distributedScopeEvidence,
         ),
       ] as const,
   ),
