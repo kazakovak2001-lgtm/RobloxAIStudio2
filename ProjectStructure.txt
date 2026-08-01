@@ -11,6 +11,7 @@
 │   ├── copilot-instructions.md
 │   └── workflows
 │       ├── ci.yml
+│       ├── security-image-sbom.yml
 │       ├── security-sast-credential-scan.yml
 │       └── studio-plugin-package.yml
 ├── .gitignore
@@ -103,6 +104,7 @@
 │       └── nginx.conf
 ├── docker-compose.yml
 ├── Dockerfile.backend
+├── Dockerfile.frontend.release
 ├── docs
 │   ├── 00-project-control
 │   │   ├── CORE-1A_DURABLE_PROJECTS.md
@@ -563,6 +565,7 @@
 │   ├── validate-boundaries.ts
 │   ├── validate-controller.ts
 │   ├── validate-durable-writes.ts
+│   ├── validate-image-sbom-policy.ts
 │   ├── validate-layer-debt-evidence.ts
 │   ├── validate-memory-ownership.ts
 │   ├── validate-operational-state-ownership.ts

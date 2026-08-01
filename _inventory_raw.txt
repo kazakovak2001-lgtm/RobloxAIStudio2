@@ -5,6 +5,7 @@
 .eslintrc.json
 .github/copilot-instructions.md
 .github/workflows/ci.yml
+.github/workflows/security-image-sbom.yml
 .github/workflows/security-sast-credential-scan.yml
 .github/workflows/studio-plugin-package.yml
 .gitignore
@@ -54,6 +55,7 @@
 .vscode/settings.json
 AI_DEVELOPMENT_GOVERNANCE.md
 Dockerfile.backend
+Dockerfile.frontend.release
 E2E_PIPELINE_VALIDATION_REPORT.md
 FINAL_V1_RELEASE_SIGN_OFF.md
 MODULE_STATUS.md
@@ -479,6 +481,7 @@ scripts/validate-architecture.ts
 scripts/validate-boundaries.ts
 scripts/validate-controller.ts
 scripts/validate-durable-writes.ts
+scripts/validate-image-sbom-policy.ts
 scripts/validate-layer-debt-evidence.ts
 scripts/validate-memory-ownership.ts
 scripts/validate-operational-state-ownership.ts
