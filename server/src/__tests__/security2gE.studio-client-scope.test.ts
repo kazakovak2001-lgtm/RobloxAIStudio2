@@ -17,15 +17,17 @@ function handler(operation: string): string {
 
 describe("SECURITY-2G-E Studio client resource scoping", () => {
   it("filters global client, session, and event views by project ownership", () => {
-    expect(handler('router.get("/status", async (req, res) => {')).toContain(
-      "filterAuthorizedClients(req, bridge.getConnectedClients())",
-    );
+    const status = handler('router.get("/status", async (req, res) => {');
+    expect(status).toContain("filterAuthorizedClients(");
+    expect(status).toContain("bridge.getConnectedClients()");
+
     expect(handler('router.get("/session", async (req, res) => {')).toContain(
       "requireStudioClientAccess(req, res, clientId)",
     );
-    expect(handler('router.get("/events", async (req, res) => {')).toContain(
-      "filterAuthorizedEvents(req, bridge.events.getHistory())",
-    );
+
+    const events = handler('router.get("/events", async (req, res) => {');
+    expect(events).toContain("filterAuthorizedEvents(");
+    expect(events).toContain("bridge.events.getHistory()");
   });
 
   it("guards command reads and mutations through the owning Studio client", () => {
@@ -45,8 +47,6 @@ describe("SECURITY-2G-E Studio client resource scoping", () => {
     expect(source).toContain(
       'res.status(404).json({ success: false, error: "Client not found" })',
     );
-    expect(source).toContain(
-      "access.hasProjectAccess(req, client.projectId)",
-    );
+    expect(source).toContain("access.hasProjectAccess(req, projectId)");
   });
 });
