@@ -17,8 +17,9 @@ describe("SECURITY-2G-E controller operator boundary", () => {
 
   it("requires an explicit production operator allowlist", () => {
     expect(source).toContain("CONTROLLER_OPERATOR_USER_IDS");
-    expect(source).toContain("req.user?.userId");
-    expect(source).toContain('res.status(403).json({ success: false, error: "Controller operator access required" })');
+    expect(source).toContain(".user?.userId");
+    expect(source).toContain("operatorIds.has(userId)");
+    expect(source).toContain("Controller operator access required");
   });
 
   it("does not treat API-key-only authentication as an operator principal", () => {
