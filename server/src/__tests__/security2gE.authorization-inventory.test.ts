@@ -53,9 +53,7 @@ function discoverOperations(): string[] {
     const content = fs.readFileSync(file, "utf8");
 
     for (const match of content.matchAll(restPattern)) {
-      discovered.add(
-        `rest|${source}|${match[1].toUpperCase()} ${match[2]}`,
-      );
+      discovered.add(`rest|${source}|${match[1].toUpperCase()} ${match[2]}`);
     }
     for (const match of content.matchAll(socketPattern)) {
       if (match[1] === "disconnect") continue;
@@ -88,7 +86,9 @@ describe("SECURITY-2G-E authorization inventory", () => {
     const untracked = discovered.filter(
       (operation) => !tracked.includes(operation),
     );
-    const stale = tracked.filter((operation) => !discovered.includes(operation));
+    const stale = tracked.filter(
+      (operation) => !discovered.includes(operation),
+    );
 
     expect({ untracked, stale }).toEqual({ untracked: [], stale: [] });
   });
