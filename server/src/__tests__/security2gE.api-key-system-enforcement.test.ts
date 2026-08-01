@@ -18,7 +18,9 @@ describe("SECURITY-2G-E API key system enforcement", () => {
   });
 
   it("enforces the status capability before reading platform runtime metadata", () => {
-    const handler = systemRoute.slice(systemRoute.indexOf('router.get("/status"'));
+    const handler = systemRoute.slice(
+      systemRoute.indexOf('router.get("/status"'),
+    );
     expect(handler).toContain('"system.platform.status.read"');
     expect(handler).toContain('"platform-runtime-metadata"');
     expect(handler.indexOf("requireApiKeyCapability")).toBeLessThan(

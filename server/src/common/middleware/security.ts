@@ -158,12 +158,7 @@ export function corsMiddleware(
 
 // ─── Authentication ─────────────────────────────────────────────────────────
 
-const PUBLIC_PATHS = [
-  "/health",
-  "/api/system/status",
-  "/api/system/agents",
-  "/",
-];
+const PUBLIC_PATHS = ["/health", "/"];
 
 const PUBLIC_PREFIXES = [
   "/api/platform/auth", // Auth routes (login, register, refresh, logout) must be public
