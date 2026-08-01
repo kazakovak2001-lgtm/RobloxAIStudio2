@@ -1887,34 +1887,34 @@
       "transport": "rest",
       "source": "server/src/routes/repair.ts",
       "operation": "GET /:projectId",
-      "classification": "unclassified",
-      "principal": "unresolved",
-      "capability": "unresolved",
-      "resourceScope": "unresolved",
-      "positiveEvidence": "missing",
-      "negativeEvidence": "missing"
+      "classification": "project-owner",
+      "principal": "user-session",
+      "capability": "project.repair.session.read",
+      "resourceScope": "path-project",
+      "positiveEvidence": "server/src/__tests__/security2gE.repair-scope.test.ts",
+      "negativeEvidence": "server/src/__tests__/security2gE.repair-scope.test.ts"
     },
     {
       "transport": "rest",
       "source": "server/src/routes/repair.ts",
       "operation": "GET /history/:projectId",
-      "classification": "unclassified",
-      "principal": "unresolved",
-      "capability": "unresolved",
-      "resourceScope": "unresolved",
-      "positiveEvidence": "missing",
-      "negativeEvidence": "missing"
+      "classification": "project-owner",
+      "principal": "user-session",
+      "capability": "project.repair.history.read",
+      "resourceScope": "path-project",
+      "positiveEvidence": "server/src/__tests__/security2gE.repair-scope.test.ts",
+      "negativeEvidence": "server/src/__tests__/security2gE.repair-scope.test.ts"
     },
     {
       "transport": "rest",
       "source": "server/src/routes/repair.ts",
       "operation": "POST /run",
-      "classification": "unclassified",
-      "principal": "unresolved",
-      "capability": "unresolved",
-      "resourceScope": "unresolved",
-      "positiveEvidence": "missing",
-      "negativeEvidence": "missing"
+      "classification": "project-owner",
+      "principal": "user-session",
+      "capability": "project.repair.run",
+      "resourceScope": "body-project",
+      "positiveEvidence": "server/src/__tests__/security2gE.repair-scope.test.ts",
+      "negativeEvidence": "server/src/__tests__/security2gE.repair-scope.test.ts"
     },
     {
       "transport": "rest",

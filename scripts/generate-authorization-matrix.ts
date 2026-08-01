@@ -161,6 +161,8 @@ const luaGenerationScopeEvidence =
   "server/src/__tests__/security2gE.lua-generation-scope.test.ts";
 const playtestScopeEvidence =
   "server/src/__tests__/security2gE.playtest-scope.test.ts";
+const repairScopeEvidence =
+  "server/src/__tests__/security2gE.repair-scope.test.ts";
 const directProjectRouteEvidence =
   "server/src/__tests__/security2gE.project-routes.test.ts";
 const indirectBlueprintEvidence =
@@ -1183,6 +1185,24 @@ const overrides = new Map<
           scope,
           playtestScopeEvidence,
           playtestScopeEvidence,
+        ),
+      ] as const,
+  ),
+  ...[
+    ["POST /run", "project.repair.run", "body-project"],
+    ["GET /:projectId", "project.repair.session.read", "path-project"],
+    ["GET /history/:projectId", "project.repair.history.read", "path-project"],
+  ].map(
+    ([operation, capability, scope]) =>
+      [
+        `rest|server/src/routes/repair.ts|${operation}`,
+        classified(
+          "project-owner",
+          "user-session",
+          capability,
+          scope,
+          repairScopeEvidence,
+          repairScopeEvidence,
         ),
       ] as const,
   ),
