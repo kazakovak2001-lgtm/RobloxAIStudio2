@@ -23,11 +23,17 @@ describe("SECURITY-2G-E API key principal propagation", () => {
   });
 
   it("resolves a typed API key principal without inventing user identity", () => {
-    expect(store).toContain("resolvePrincipal(rawKey: unknown): ApiKeyPrincipal | null");
+    expect(store).toContain(
+      "resolvePrincipal(rawKey: unknown): ApiKeyPrincipal | null",
+    );
     expect(store).toContain('type: "api-key"');
     expect(store).toContain("keyId: record.id");
-    expect(store).toContain("capabilities: normalizeScopeValues(record.capabilities)");
-    expect(store).toContain("resourceScopes: normalizeScopeValues(record.resourceScopes)");
+    expect(store).toContain(
+      "capabilities: normalizeScopeValues(record.capabilities)",
+    );
+    expect(store).toContain(
+      "resourceScopes: normalizeScopeValues(record.resourceScopes)",
+    );
     expect(store).not.toContain("userId: record.ownerId");
   });
 

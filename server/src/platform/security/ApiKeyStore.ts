@@ -21,6 +21,16 @@ export interface ApiKeyMetadata {
   id?: string;
   label?: string;
   ownerId?: string;
+  capabilities?: string[];
+  resourceScopes?: string[];
+}
+
+export interface ApiKeyPrincipal {
+  type: "api-key";
+  keyId: string;
+  ownerId?: string;
+  capabilities: string[];
+  resourceScopes: string[];
 }
 
 export interface IssuedApiKey {
@@ -34,6 +44,8 @@ export interface StoredApiKey {
   createdAt: string;
   label?: string;
   ownerId?: string;
+  capabilities?: string[];
+  resourceScopes?: string[];
   revokedAt?: string;
 }
 
@@ -42,7 +54,15 @@ export interface RedactedApiKey {
   createdAt: string;
   label?: string;
   ownerId?: string;
+  capabilities: string[];
+  resourceScopes: string[];
   revokedAt?: string;
+}
+
+function normalizeScopeValues(values: string[] | undefined): string[] {
+  return [
+    ...new Set((values ?? []).map((value) => value.trim()).filter(Boolean)),
+  ];
 }
 
 function digestKey(key: string): string {
@@ -116,6 +136,8 @@ export class ApiKeyStore {
         createdAt: new Date().toISOString(),
         ...(metadata.label ? { label: metadata.label } : {}),
         ...(metadata.ownerId ? { ownerId: metadata.ownerId } : {}),
+        capabilities: normalizeScopeValues(metadata.capabilities),
+        resourceScopes: normalizeScopeValues(metadata.resourceScopes),
       };
       await this.storage.setDurable(COLLECTION, id, record);
       return { id, key };
@@ -129,18 +151,32 @@ export class ApiKeyStore {
     );
   }
 
-  validate(rawKey: unknown): boolean {
-    if (typeof rawKey !== "string") return false;
+  resolvePrincipal(rawKey: unknown): ApiKeyPrincipal | null {
+    if (typeof rawKey !== "string") return null;
     const key = rawKey.trim();
-    if (key.length < MIN_KEY_LENGTH) return false;
+    if (key.length < MIN_KEY_LENGTH) return null;
 
     const candidateDigest = digestKey(key);
-    return this.storage
+    const record = this.storage
       .list<StoredApiKey>(COLLECTION)
-      .some(
-        (record) =>
-          !record.revokedAt && isEqualDigest(record.digest, candidateDigest),
+      .find(
+        (candidate) =>
+          !candidate.revokedAt &&
+          isEqualDigest(candidate.digest, candidateDigest),
       );
+    if (!record) return null;
+
+    return {
+      type: "api-key",
+      keyId: record.id,
+      ...(record.ownerId ? { ownerId: record.ownerId } : {}),
+      capabilities: normalizeScopeValues(record.capabilities),
+      resourceScopes: normalizeScopeValues(record.resourceScopes),
+    };
+  }
+
+  validate(rawKey: unknown): boolean {
+    return this.resolvePrincipal(rawKey) !== null;
   }
 
   async revokeDurable(id: string): Promise<boolean> {
@@ -166,6 +202,8 @@ export class ApiKeyStore {
       createdAt: record.createdAt,
       ...(record.label ? { label: record.label } : {}),
       ...(record.ownerId ? { ownerId: record.ownerId } : {}),
+      capabilities: normalizeScopeValues(record.capabilities),
+      resourceScopes: normalizeScopeValues(record.resourceScopes),
       ...(record.revokedAt ? { revokedAt: record.revokedAt } : {}),
     }));
   }

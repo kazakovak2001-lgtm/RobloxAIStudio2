@@ -6,13 +6,26 @@ import type { Request, Response, NextFunction } from "express";
 import rateLimit from "express-rate-limit";
 import helmet from "helmet";
 import { authService } from "../../platform/auth/authServiceInstance";
-import { ApiKeyStore } from "../../platform/security/ApiKeyStore";
+import {
+  ApiKeyStore,
+  type ApiKeyPrincipal,
+} from "../../platform/security/ApiKeyStore";
 import {
   InMemoryStorageProvider,
   type StorageProvider,
 } from "../../platform/storage/StorageProvider";
 
 let apiKeyStore: ApiKeyStore | null = null;
+
+export type ApiKeyAuthenticatedRequest = Request & {
+  apiKeyPrincipal?: ApiKeyPrincipal;
+};
+
+export function getRequestApiKeyPrincipal(
+  req: Request,
+): ApiKeyPrincipal | null {
+  return (req as ApiKeyAuthenticatedRequest).apiKeyPrincipal ?? null;
+}
 
 /** Use the same configured storage provider as the rest of the API process. */
 export function configureApiKeyStore(storage: StorageProvider): ApiKeyStore {
@@ -211,8 +224,14 @@ export async function authMiddleware(
     // Cookie token invalid — fall through to 401
   }
 
-  if (apiKey && getApiKeyStore().validate(apiKey)) {
-    // Registered API key authentication (Studio plugin, CI/CD)
+  const apiKeyPrincipal = apiKey
+    ? getApiKeyStore().resolvePrincipal(apiKey)
+    : null;
+  if (apiKeyPrincipal) {
+    // API keys authenticate as their own principal. They never gain an implicit
+    // user identity or wildcard capability; unscoped legacy keys resolve with
+    // empty capability and resource-scope arrays.
+    (req as ApiKeyAuthenticatedRequest).apiKeyPrincipal = apiKeyPrincipal;
     next();
     return;
   }
