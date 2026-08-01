@@ -12,8 +12,9 @@ import { EmergentBehaviorEngine } from "../world/emergence/EmergentBehaviorEngin
 import { WorldMutationEngine } from "../world/mutation/WorldMutationEngine";
 import { WorldSimulationBridge } from "../world/bridge/WorldSimulationBridge";
 import type { RobloxGameBlueprint } from "../generation/blueprint/GameBlueprintEngine";
+import type { ProjectAccessControl } from "./projects";
 
-export function createWorldRouter(): Router {
+export function createWorldRouter(access: ProjectAccessControl): Router {
   const router = Router();
   const npcEngine = new NPCBehaviorEngine();
   const interactionGraph = new InteractionGraphEngine();
@@ -30,6 +31,8 @@ export function createWorldRouter(): Router {
         res.status(400).json({ success: false, error: "Blueprint required" });
         return;
       }
+
+      if (!(await access.requireProjectAccess(req, res, blueprint.id))) return;
 
       const world = new WorldStateEngine();
       world.initialize(blueprint.npcs, blueprint.world.biomes);

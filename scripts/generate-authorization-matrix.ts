@@ -141,6 +141,8 @@ const economyScopeEvidence =
   "server/src/__tests__/security2gE.economy-scope.test.ts";
 const evaluationOperatorEvidence =
   "server/src/__tests__/security2gE.evaluation-operator-boundary.test.ts";
+const worldScopeEvidence =
+  "server/src/__tests__/security2gE.world-scope.test.ts";
 const directProjectRouteEvidence =
   "server/src/__tests__/security2gE.project-routes.test.ts";
 const indirectBlueprintEvidence =
@@ -917,6 +919,43 @@ const overrides = new Map<
           "global-evaluation-runtime",
           evaluationOperatorEvidence,
           evaluationOperatorEvidence,
+        ),
+      ] as const,
+  ),
+  [
+    "rest|server/src/routes/world.ts|POST /simulate",
+    classified(
+      "project-owner",
+      "user-session",
+      "project.world.simulate",
+      "body-blueprint-project",
+      worldScopeEvidence,
+      worldScopeEvidence,
+    ),
+  ],
+  ...[
+    ["POST /tick", "system.world.tick.metadata.read", "placeholder-metadata"],
+    [
+      "GET /state/:gameId",
+      "system.world.state.metadata.read",
+      "placeholder-metadata",
+    ],
+    [
+      "GET /emergence/:gameId",
+      "system.world.emergence.metadata.read",
+      "placeholder-metadata",
+    ],
+  ].map(
+    ([operation, capability, scope]) =>
+      [
+        `rest|server/src/routes/world.ts|${operation}`,
+        classified(
+          "authenticated",
+          "user-session-or-api-key",
+          capability,
+          scope,
+          worldScopeEvidence,
+          worldScopeEvidence,
         ),
       ] as const,
   ),
