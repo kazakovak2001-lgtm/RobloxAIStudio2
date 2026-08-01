@@ -28,116 +28,77 @@ jobs:
 
           studio = Path('server/src/routes/studio.ts')
           source = studio.read_text()
-          import_anchor = 'import type { StudioArtifactReceipt } from "../studio/v2/StudioTypes";\n'
           access_import = 'import type { ProjectAccessControl } from "./projects";\n'
           if access_import not in source:
-              source = source.replace(import_anchor, import_anchor + access_import, 1)
-
-          old_signature = '''export function createStudioRouter(
-            runtimeOrStore?: StudioRuntime | ArtifactStore,
-          ): Router {'''
-          new_signature = '''export function createStudioRouter(
-            runtimeOrStore?: StudioRuntime | ArtifactStore,
-            access?: ProjectAccessControl,
-          ): Router {'''
+              source = source.replace(
+                  'import type { StudioArtifactReceipt } from "../studio/v2/StudioTypes";\n',
+                  'import type { StudioArtifactReceipt } from "../studio/v2/StudioTypes";\n' + access_import,
+                  1,
+              )
           if 'access?: ProjectAccessControl' not in source:
-              source = source.replace(old_signature, new_signature, 1)
+              source = source.replace(
+                  '  runtimeOrStore?: StudioRuntime | ArtifactStore,\n): Router {',
+                  '  runtimeOrStore?: StudioRuntime | ArtifactStore,\n  access?: ProjectAccessControl,\n): Router {',
+                  1,
+              )
 
-          source = source.replace(
-              'router.post("/connect", async (req, res) => {\n    const { studioVersion, projectId } = req.body;',
-              'router.post("/connect", async (req, res) => {\n    const { studioVersion, projectId } = req.body;',
-              1,
-          )
-          connect_anchor = '''    if (!studioVersion || typeof studioVersion !== "string") {
-              res.status(400).json({
-                success: false,
-                error: "studioVersion is required",
-              });
-              return;
-            }
+          if source.count('access.requireProjectAccess(req, res, projectId)') < 1:
+              source = source.replace(
+                  '    const client = bridge.connect(studioVersion, projectId);',
+                  '''    if (!projectId || typeof projectId !== "string") {
+                res.status(400).json({ success: false, error: "projectId is required" });
+                return;
+              }
+              if (!access || !(await access.requireProjectAccess(req, res, projectId))) {
+                return;
+              }
 
-            const client = bridge.connect(studioVersion, projectId);'''
-          connect_guard = '''    if (!studioVersion || typeof studioVersion !== "string") {
-              res.status(400).json({
-                success: false,
-                error: "studioVersion is required",
-              });
-              return;
-            }
-            if (!projectId || typeof projectId !== "string") {
-              res.status(400).json({ success: false, error: "projectId is required" });
-              return;
-            }
-            if (!access || !(await access.requireProjectAccess(req, res, projectId))) {
-              return;
-            }
-
-            const client = bridge.connect(studioVersion, projectId);'''
-          if 'access.requireProjectAccess(req, res, projectId)' not in source:
-              if connect_anchor not in source:
-                  raise SystemExit('studio connect anchor not found')
-              source = source.replace(connect_anchor, connect_guard, 1)
+              const client = bridge.connect(studioVersion, projectId);''',
+                  1,
+              )
 
           source = source.replace(
               'router.post("/sync/project", (req, res) => {',
               'router.post("/sync/project", async (req, res) => {',
               1,
           )
-          sync_anchor = '''    const lookupId = executionId ?? projectId;
-            if (!lookupId || typeof lookupId !== "string") {
-              res.status(400).json({
-                success: false,
-                error: "projectId or executionId is required",
-              });
-              return;
-            }
-            const snapshot = runtime.getProjectSnapshot(lookupId);'''
-          sync_guard = '''    const lookupId = executionId ?? projectId;
-            if (!projectId || typeof projectId !== "string") {
-              res.status(400).json({ success: false, error: "projectId is required" });
-              return;
-            }
-            if (!access || !(await access.requireProjectAccess(req, res, projectId))) {
-              return;
-            }
-            if (!lookupId || typeof lookupId !== "string") {
-              res.status(400).json({
-                success: false,
-                error: "projectId or executionId is required",
-              });
-              return;
-            }
-            const snapshot = runtime.getProjectSnapshot(lookupId);'''
           if source.count('access.requireProjectAccess(req, res, projectId)') < 2:
-              if sync_anchor not in source:
-                  raise SystemExit('studio sync project anchor not found')
-              source = source.replace(sync_anchor, sync_guard, 1)
+              source = source.replace(
+                  '    const lookupId = executionId ?? projectId;',
+                  '''    const lookupId = executionId ?? projectId;
+              if (!projectId || typeof projectId !== "string") {
+                res.status(400).json({ success: false, error: "projectId is required" });
+                return;
+              }
+              if (!access || !(await access.requireProjectAccess(req, res, projectId))) {
+                return;
+              }''',
+                  1,
+              )
 
           source = source.replace(
               'router.get("/sync/status", (req, res) => {',
               'router.get("/sync/status", async (req, res) => {',
               1,
           )
-          status_anchor = '''    const projectId = req.query.projectId as string | undefined;
-            const status = runtime.getSyncStatus(projectId);'''
-          status_guard = '''    const projectId = req.query.projectId as string | undefined;
-            if (!projectId) {
-              res.status(400).json({ success: false, error: "projectId is required" });
-              return;
-            }
-            if (!access || !(await access.requireProjectAccess(req, res, projectId))) {
-              return;
-            }
-            const status = runtime.getSyncStatus(projectId);'''
           if source.count('access.requireProjectAccess(req, res, projectId)') < 3:
-              if status_anchor not in source:
-                  raise SystemExit('studio sync status anchor not found')
-              source = source.replace(status_anchor, status_guard, 1)
+              source = source.replace(
+                  '    const projectId = req.query.projectId as string | undefined;\n    const status = runtime.getSyncStatus(projectId);',
+                  '''    const projectId = req.query.projectId as string | undefined;
+              if (!projectId) {
+                res.status(400).json({ success: false, error: "projectId is required" });
+                return;
+              }
+              if (!access || !(await access.requireProjectAccess(req, res, projectId))) {
+                return;
+              }
+              const status = runtime.getSyncStatus(projectId);''',
+                  1,
+              )
           studio.write_text(source)
 
           index = Path('server/src/index.ts')
-          index_source = index.read_text()
-          index_source = index_source.replace(
+          index_source = index.read_text().replace(
               'app.use("/api/studio", createStudioRouter());',
               'app.use("/api/studio", createStudioRouter(undefined, access));',
               1,
@@ -146,35 +107,33 @@ jobs:
 
           generator = Path('scripts/generate-authorization-matrix.ts')
           text = generator.read_text()
-          evidence_anchor = 'const projectRoutesEvidence =\n  "server/src/__tests__/security2gE.projects-routes.test.ts";\n'
           if 'const studioParityEvidence =' not in text:
               text = text.replace(
-                  evidence_anchor,
-                  evidence_anchor + 'const studioParityEvidence =\n  "server/src/__tests__/security2gE.studio-project-parity.test.ts";\n',
+                  'const projectRoutesEvidence =\n  "server/src/__tests__/security2gE.projects-routes.test.ts";\n',
+                  'const projectRoutesEvidence =\n  "server/src/__tests__/security2gE.projects-routes.test.ts";\nconst studioParityEvidence =\n  "server/src/__tests__/security2gE.studio-project-parity.test.ts";\n',
                   1,
               )
-          block = '''  ...[
-            ["POST /connect", "project.studio.connect", "body-project"],
-            ["POST /sync/project", "project.studio.snapshot.read", "body-project"],
-            ["GET /sync/status", "project.studio.sync.status.read", "query-project"],
-          ].map(
-            ([operation, capability, scope]) =>
-              [
-                `rest|server/src/routes/studio.ts|${operation}`,
-                classified(
-                  "project-owner",
-                  "user-session",
-                  capability,
-                  scope,
-                  studioParityEvidence,
-                  studioParityEvidence,
-                ),
-              ] as const,
-          ),
-          '''
           if 'project.studio.connect' not in text:
-              marker = ']);\n\nconst current = JSON.parse('
-              text = text.replace(marker, block + marker, 1)
+              block = '''  ...[
+                ["POST /connect", "project.studio.connect", "body-project"],
+                ["POST /sync/project", "project.studio.snapshot.read", "body-project"],
+                ["GET /sync/status", "project.studio.sync.status.read", "query-project"],
+              ].map(
+                ([operation, capability, scope]) =>
+                  [
+                    `rest|server/src/routes/studio.ts|${operation}`,
+                    classified(
+                      "project-owner",
+                      "user-session",
+                      capability,
+                      scope,
+                      studioParityEvidence,
+                      studioParityEvidence,
+                    ),
+                  ] as const,
+              ),
+              '''
+              text = text.replace(']);\n\nconst current = JSON.parse(', block + ']);\n\nconst current = JSON.parse(', 1)
           generator.write_text(text)
           PY
       - run: node --import tsx scripts/generate-authorization-matrix.ts
