@@ -165,6 +165,8 @@ const repairScopeEvidence =
   "server/src/__tests__/security2gE.repair-scope.test.ts";
 const knowledgeScopeEvidence =
   "server/src/__tests__/security2gE.knowledge-scope.test.ts";
+const gameArchitectScopeEvidence =
+  "server/src/__tests__/security2gE.game-architect-scope.test.ts";
 const directProjectRouteEvidence =
   "server/src/__tests__/security2gE.project-routes.test.ts";
 const indirectBlueprintEvidence =
@@ -1250,6 +1252,24 @@ const overrides = new Map<
       knowledgeScopeEvidence,
     ),
   ],
+  ...[
+    ["POST /analyze", "system.game-architect.analysis.execute"],
+    ["POST /generate-design", "system.game-architect.design.generate"],
+    ["POST /generate-prompts", "system.game-architect.prompts.generate"],
+  ].map(
+    ([operation, capability]) =>
+      [
+        `rest|server/src/routes/gameArchitect.ts|${operation}`,
+        classified(
+          "authenticated",
+          "user-session-or-api-key",
+          capability,
+          "request-game-idea",
+          gameArchitectScopeEvidence,
+          gameArchitectScopeEvidence,
+        ),
+      ] as const,
+  ),
 ]);
 
 const current = JSON.parse(

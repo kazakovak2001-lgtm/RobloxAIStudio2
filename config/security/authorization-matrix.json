@@ -1326,34 +1326,34 @@
       "transport": "rest",
       "source": "server/src/routes/gameArchitect.ts",
       "operation": "POST /analyze",
-      "classification": "unclassified",
-      "principal": "unresolved",
-      "capability": "unresolved",
-      "resourceScope": "unresolved",
-      "positiveEvidence": "missing",
-      "negativeEvidence": "missing"
+      "classification": "authenticated",
+      "principal": "user-session-or-api-key",
+      "capability": "system.game-architect.analysis.execute",
+      "resourceScope": "request-game-idea",
+      "positiveEvidence": "server/src/__tests__/security2gE.game-architect-scope.test.ts",
+      "negativeEvidence": "server/src/__tests__/security2gE.game-architect-scope.test.ts"
     },
     {
       "transport": "rest",
       "source": "server/src/routes/gameArchitect.ts",
       "operation": "POST /generate-design",
-      "classification": "unclassified",
-      "principal": "unresolved",
-      "capability": "unresolved",
-      "resourceScope": "unresolved",
-      "positiveEvidence": "missing",
-      "negativeEvidence": "missing"
+      "classification": "authenticated",
+      "principal": "user-session-or-api-key",
+      "capability": "system.game-architect.design.generate",
+      "resourceScope": "request-game-idea",
+      "positiveEvidence": "server/src/__tests__/security2gE.game-architect-scope.test.ts",
+      "negativeEvidence": "server/src/__tests__/security2gE.game-architect-scope.test.ts"
     },
     {
       "transport": "rest",
       "source": "server/src/routes/gameArchitect.ts",
       "operation": "POST /generate-prompts",
-      "classification": "unclassified",
-      "principal": "unresolved",
-      "capability": "unresolved",
-      "resourceScope": "unresolved",
-      "positiveEvidence": "missing",
-      "negativeEvidence": "missing"
+      "classification": "authenticated",
+      "principal": "user-session-or-api-key",
+      "capability": "system.game-architect.prompts.generate",
+      "resourceScope": "request-game-idea",
+      "positiveEvidence": "server/src/__tests__/security2gE.game-architect-scope.test.ts",
+      "negativeEvidence": "server/src/__tests__/security2gE.game-architect-scope.test.ts"
     },
     {
       "transport": "rest",
