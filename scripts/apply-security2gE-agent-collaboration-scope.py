@@ -60,8 +60,8 @@ if "const agentCollaborationScopeEvidence =" not in matrix:
 if "project.agent-collaboration.run" not in matrix:
     block = '''  [\n    "rest|server/src/routes/agentCollaboration.ts|POST /run",\n    classified(\n      "project-owner",\n      "user-session",\n      "project.agent-collaboration.run",\n      "body-project",\n      agentCollaborationScopeEvidence,\n      agentCollaborationScopeEvidence,\n    ),\n  ],\n  ...[\n    ["GET /status", "system.agent-collaboration.status.read"],\n    ["GET /messages", "system.agent-collaboration.messages.read"],\n    ["GET /metrics", "system.agent-collaboration.metrics.read"],\n    ["GET /consensus", "system.agent-collaboration.consensus.read"],\n  ].map(\n    ([operation, capability]) =>\n      [\n        `rest|server/src/routes/agentCollaboration.ts|${operation}`,\n        classified(\n          "collaboration-operator",\n          "user-session",\n          capability,\n          "global-agent-collaboration-runtime",\n          agentCollaborationScopeEvidence,\n          agentCollaborationScopeEvidence,\n        ),\n      ] as const,\n  ),\n'''
     matrix = matrix.replace(
-        "]);\n\nconst current = JSON.parse(
-        block + "]);\n\nconst current = JSON.parse(
+        "]);\n\nconst current = JSON.parse(",
+        block + "]);\n\nconst current = JSON.parse(",
         1,
     )
 generator.write_text(matrix)
