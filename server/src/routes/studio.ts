@@ -12,6 +12,7 @@ import {
   type StudioImportReportInput,
 } from "../studio/v2/StudioRuntime";
 import type { StudioArtifactReceipt } from "../studio/v2/StudioTypes";
+import type { ProjectAccessControl } from "./projects";
 import {
   ProtocolDispatcher,
   ProtocolValidator,
@@ -148,6 +149,7 @@ function sendStudioMutationError(res: Response, error: unknown): void {
 
 export function createStudioRouter(
   runtimeOrStore?: StudioRuntime | ArtifactStore,
+  access?: ProjectAccessControl,
 ): Router {
   const router = Router();
   const runtime =
@@ -347,6 +349,14 @@ export function createStudioRouter(
         success: false,
         error: "studioVersion is required",
       });
+      return;
+    }
+
+    if (!projectId || typeof projectId !== "string") {
+      res.status(400).json({ success: false, error: "projectId is required" });
+      return;
+    }
+    if (!access || !(await access.requireProjectAccess(req, res, projectId))) {
       return;
     }
 
@@ -603,9 +613,16 @@ export function createStudioRouter(
   // ─── Sync REST API ────────────────────────────────────────────────────────
 
   // POST /api/studio/sync/project
-  router.post("/sync/project", (req, res) => {
+  router.post("/sync/project", async (req, res) => {
     const { projectId, executionId } = req.body;
     const lookupId = executionId ?? projectId;
+    if (!projectId || typeof projectId !== "string") {
+      res.status(400).json({ success: false, error: "projectId is required" });
+      return;
+    }
+    if (!access || !(await access.requireProjectAccess(req, res, projectId))) {
+      return;
+    }
     if (!lookupId || typeof lookupId !== "string") {
       res.status(400).json({
         success: false,
@@ -647,8 +664,15 @@ export function createStudioRouter(
   });
 
   // GET /api/studio/sync/status
-  router.get("/sync/status", (req, res) => {
+  router.get("/sync/status", async (req, res) => {
     const projectId = req.query.projectId as string | undefined;
+    if (!projectId) {
+      res.status(400).json({ success: false, error: "projectId is required" });
+      return;
+    }
+    if (!access || !(await access.requireProjectAccess(req, res, projectId))) {
+      return;
+    }
     const status = runtime.getSyncStatus(projectId);
     res.json({ success: true, data: status });
   });

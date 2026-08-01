@@ -111,6 +111,8 @@ const userSelfEvidence = publicEvidence;
 const projectEvidence = "server/src/routes/__tests__/projects.runtime.test.ts";
 const projectRoutesEvidence =
   "server/src/__tests__/security2gE.projects-routes.test.ts";
+const studioParityEvidence =
+  "server/src/__tests__/security2gE.studio-project-parity.test.ts";
 const directProjectRouteEvidence =
   "server/src/__tests__/security2gE.project-routes.test.ts";
 const indirectBlueprintEvidence =
@@ -425,6 +427,24 @@ const overrides = new Map<
           scope,
           projectRoutesEvidence,
           projectRoutesEvidence,
+        ),
+      ] as const,
+  ),
+  ...[
+    ["POST /connect", "project.studio.connect", "body-project"],
+    ["POST /sync/project", "project.studio.snapshot.read", "body-project"],
+    ["GET /sync/status", "project.studio.sync.status.read", "query-project"],
+  ].map(
+    ([operation, capability, scope]) =>
+      [
+        `rest|server/src/routes/studio.ts|${operation}`,
+        classified(
+          "project-owner",
+          "user-session",
+          capability,
+          scope,
+          studioParityEvidence,
+          studioParityEvidence,
         ),
       ] as const,
   ),

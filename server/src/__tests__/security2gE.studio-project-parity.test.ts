@@ -25,7 +25,9 @@ describe("SECURITY-2G-E Studio REST and Socket.IO project parity", () => {
     expect(joinStart).toBeGreaterThanOrEqual(0);
     expect(leaveStart).toBeGreaterThan(joinStart);
     const join = socketSource.slice(joinStart, leaveStart);
-    expect(join).toContain("canJoinProject(projectId.trim(), authenticatedUserId)");
+    expect(join).toContain(
+      "canJoinProject(projectId.trim(), authenticatedUserId)",
+    );
     expect(join).toContain('error: "Project access denied"');
     expect(join.indexOf("canJoinProject(")).toBeLessThan(
       join.indexOf("socket.join("),

@@ -589,7 +589,7 @@ app.use(
 
 // Studio Bridge API
 import { createStudioRouter } from "./routes/studio";
-app.use("/api/studio", createStudioRouter());
+app.use("/api/studio", createStudioRouter(undefined, access));
 
 // AI Game Architect API
 import { createGameArchitectRouter } from "./routes/gameArchitect";
