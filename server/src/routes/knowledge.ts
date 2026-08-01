@@ -5,6 +5,7 @@
 import { Router } from "express";
 import { KnowledgeEngine } from "../knowledge";
 import type { ProjectAccessControl } from "./projects";
+import { requireApiKeyCapability } from "../common/middleware/security";
 
 export function createKnowledgeRouter(access: ProjectAccessControl): Router {
   const router = Router();
@@ -12,6 +13,16 @@ export function createKnowledgeRouter(access: ProjectAccessControl): Router {
 
   // GET /api/knowledge/patterns
   router.get("/patterns", (req, res) => {
+    if (
+      !requireApiKeyCapability(
+        req,
+        res,
+        "system.knowledge.patterns.read",
+        "knowledge-pattern-registry",
+      )
+    ) {
+      return;
+    }
     const type = req.query.type as string | undefined;
     const patterns = type
       ? engine.patterns.getByType(type as never)
@@ -21,6 +32,16 @@ export function createKnowledgeRouter(access: ProjectAccessControl): Router {
 
   // GET /api/knowledge/prompts
   router.get("/prompts", (req, res) => {
+    if (
+      !requireApiKeyCapability(
+        req,
+        res,
+        "system.knowledge.prompts.read",
+        "knowledge-prompt-registry",
+      )
+    ) {
+      return;
+    }
     const agent = req.query.agent as string | undefined;
     const prompts = agent
       ? engine.prompts.getByAgent(agent)
@@ -34,6 +55,16 @@ export function createKnowledgeRouter(access: ProjectAccessControl): Router {
 
   // GET /api/knowledge/search
   router.get("/search", (req, res) => {
+    if (
+      !requireApiKeyCapability(
+        req,
+        res,
+        "system.knowledge.search",
+        "knowledge-runtime",
+      )
+    ) {
+      return;
+    }
     const genre = req.query.genre as string | undefined;
     const systems = req.query.systems
       ? (req.query.systems as string).split(",")
@@ -57,6 +88,16 @@ export function createKnowledgeRouter(access: ProjectAccessControl): Router {
 
   // GET /api/knowledge/recommend
   router.get("/recommend", (req, res) => {
+    if (
+      !requireApiKeyCapability(
+        req,
+        res,
+        "system.knowledge.recommendations.read",
+        "knowledge-runtime",
+      )
+    ) {
+      return;
+    }
     const genre = (req.query.genre as string) ?? "adventure";
     const systems = req.query.systems
       ? (req.query.systems as string).split(",")
