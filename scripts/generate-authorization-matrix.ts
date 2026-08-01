@@ -177,6 +177,8 @@ const autonomousRunScopeEvidence =
   "server/src/__tests__/security2gE.autonomous-run-scope.test.ts";
 const gameGenerationFinalScopeEvidence =
   "server/src/__tests__/security2gE.game-generation-final-scope.test.ts";
+const socketLeaveParityEvidence =
+  "server/src/__tests__/security2gE.socket-leave-parity.test.ts";
 const directProjectRouteEvidence =
   "server/src/__tests__/security2gE.project-routes.test.ts";
 const indirectBlueprintEvidence =
@@ -1399,6 +1401,17 @@ const overrides = new Map<
       "global-generation-cache",
       gameGenerationFinalScopeEvidence,
       gameGenerationFinalScopeEvidence,
+    ),
+  ],
+  [
+    "socket|server/src/socket/index.ts|project:leave",
+    classified(
+      "authenticated",
+      "user-session",
+      "project.room.leave",
+      "joined-project",
+      socketLeaveParityEvidence,
+      socketLeaveParityEvidence,
     ),
   ],
 ]);

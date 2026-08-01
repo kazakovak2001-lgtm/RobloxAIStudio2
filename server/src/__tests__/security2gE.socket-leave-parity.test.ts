@@ -28,11 +28,13 @@ describe("SECURITY-2G-E Socket.IO leave parity", () => {
     expect(handler).toContain('typeof projectId !== "string"');
     expect(handler).toContain("!projectId.trim()");
     expect(handler).toContain("player.projectId !== projectId.trim()");
-    expect(handler).toContain("!canJoinProject(projectId.trim(), authenticatedUserId)");
-    expect(handler).toContain('error: "Project access denied"');
-    expect(handler.indexOf("player.projectId !== projectId.trim()")).toBeLessThan(
-      handler.indexOf("socket.leave"),
+    expect(handler).toContain(
+      "!canJoinProject(projectId.trim(), authenticatedUserId)",
     );
+    expect(handler).toContain('error: "Project access denied"');
+    expect(
+      handler.indexOf("player.projectId !== projectId.trim()"),
+    ).toBeLessThan(handler.indexOf("socket.leave"));
   });
 
   it("clears joined-project state only after an authorized leave", () => {

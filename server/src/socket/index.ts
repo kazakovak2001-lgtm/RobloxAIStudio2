@@ -64,8 +64,24 @@ export class RealtimeServer {
       });
 
       socket.on("project:leave", ({ projectId }: { projectId: ProjectId }) => {
+        if (
+          typeof projectId !== "string" ||
+          !projectId.trim() ||
+          player.projectId !== projectId.trim() ||
+          (canJoinProject &&
+            !canJoinProject(projectId.trim(), authenticatedUserId))
+        ) {
+          socket.emit("project:error", {
+            projectId,
+            error: "Project access denied",
+          });
+          return;
+        }
+
+        projectId = projectId.trim();
         socket.leave(`project:${projectId}`);
         this.untrackProjectRoom(projectId, socket.id);
+        player.projectId = undefined;
         socket
           .to(`project:${projectId}`)
           .emit("player:left", { userId: player.userId, projectId });

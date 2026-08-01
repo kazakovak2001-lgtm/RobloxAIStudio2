@@ -2243,8 +2243,8 @@
       "principal": "user-session",
       "capability": "project.room.leave",
       "resourceScope": "joined-project",
-      "positiveEvidence": "missing",
-      "negativeEvidence": "missing"
+      "positiveEvidence": "server/src/__tests__/security2gE.socket-leave-parity.test.ts",
+      "negativeEvidence": "server/src/__tests__/security2gE.socket-leave-parity.test.ts"
     }
   ]
 }
