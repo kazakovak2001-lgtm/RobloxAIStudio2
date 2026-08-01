@@ -12,6 +12,7 @@ import { BalanceGenerator } from "../economy/balancing/BalanceGenerator";
 import { EconomyFeedbackBridge } from "../economy/bridge/EconomyFeedbackBridge";
 import type { RobloxGameBlueprint } from "../generation/blueprint/GameBlueprintEngine";
 import type { ProjectAccessControl } from "./projects";
+import { requireApiKeyCapability } from "../common/middleware/security";
 
 export function createEconomyRouter(access: ProjectAccessControl): Router {
   const router = Router();
@@ -91,6 +92,16 @@ export function createEconomyRouter(access: ProjectAccessControl): Router {
 
   // POST /economy/balance — get balance patch for a report
   router.post("/balance", (req, res) => {
+    if (
+      !requireApiKeyCapability(
+        req,
+        res,
+        "system.economy.balance.execute",
+        "request-economy-report",
+      )
+    ) {
+      return;
+    }
     try {
       const report = req.body.report;
       if (!report) {
@@ -107,7 +118,17 @@ export function createEconomyRouter(access: ProjectAccessControl): Router {
   });
 
   // GET /economy/report/:gameId — placeholder for stored reports
-  router.get("/report/:gameId", (_req, res) => {
+  router.get("/report/:gameId", (req, res) => {
+    if (
+      !requireApiKeyCapability(
+        req,
+        res,
+        "system.economy.report.metadata.read",
+        "placeholder-metadata",
+      )
+    ) {
+      return;
+    }
     res.json({
       success: true,
       data: {

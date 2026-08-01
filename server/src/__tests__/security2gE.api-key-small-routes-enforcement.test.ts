@@ -31,7 +31,9 @@ describe("SECURITY-2G-E API-key enforcement for small routes", () => {
     expect(
       report.indexOf('"system.economy.report.metadata.read"'),
     ).toBeLessThan(report.indexOf('"Economy reports stored in Memory v0.6'));
-    expect(source).toContain("access.requireProjectAccess(req, res, blueprint.id)");
+    expect(source).toContain(
+      "access.requireProjectAccess(req, res, blueprint.id)",
+    );
   });
 
   it("guards simulation feedback while preserving project-owned simulation routes", () => {
@@ -45,7 +47,9 @@ describe("SECURITY-2G-E API-key enforcement for small routes", () => {
     ).toBeLessThan(
       feedback.indexOf("feedbackEngine.generateFeedback(report, metrics)"),
     );
-    expect(source).toContain("access.requireProjectAccess(req, res, blueprint.id)");
+    expect(source).toContain(
+      "access.requireProjectAccess(req, res, blueprint.id)",
+    );
   });
 
   it("guards stateless blueprint generation and preserves project-owned generation routes", () => {
@@ -61,7 +65,11 @@ describe("SECURITY-2G-E API-key enforcement for small routes", () => {
     expect(
       blueprint.indexOf('"system.generation.v2.blueprint.generate"'),
     ).toBeLessThan(blueprint.indexOf("blueprintEngine.generate(outputs)"));
-    expect(source).toContain("access.requireProjectAccess(req, res, projectId)");
-    expect(source).toContain("access.requireProjectAccess(req, res, blueprint.id)");
+    expect(source).toContain(
+      "access.requireProjectAccess(req, res, projectId)",
+    );
+    expect(source).toContain(
+      "access.requireProjectAccess(req, res, blueprint.id)",
+    );
   });
 });

@@ -15,6 +15,7 @@ import { PlannerEngine } from "../planning/core/PlannerEngine";
 import { PlanExecutor } from "../planning/execution/PlanExecutor";
 import { AgentRegistry } from "../agents/core/AgentRegistry";
 import type { ProjectAccessControl } from "./projects";
+import { requireApiKeyCapability } from "../common/middleware/security";
 
 export function createGenerationV2Router(
   agentRegistry: AgentRegistry,
@@ -103,6 +104,16 @@ export function createGenerationV2Router(
 
   // POST /generate/blueprint — generate only the blueprint
   router.post("/blueprint", (req, res) => {
+    if (
+      !requireApiKeyCapability(
+        req,
+        res,
+        "system.generation.v2.blueprint.generate",
+        "request-generation-outputs",
+      )
+    ) {
+      return;
+    }
     try {
       const outputs = req.body.outputs ?? req.body;
       const blueprint = blueprintEngine.generate(outputs);

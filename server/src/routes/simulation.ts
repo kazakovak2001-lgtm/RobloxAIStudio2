@@ -12,6 +12,7 @@ import { SimulationFeedbackEngine } from "../simulation/feedback/SimulationFeedb
 import { GenerationRefinementBridge } from "../simulation/bridge/GenerationRefinementBridge";
 import type { RobloxGameBlueprint } from "../generation/blueprint/GameBlueprintEngine";
 import type { ProjectAccessControl } from "./projects";
+import { requireApiKeyCapability } from "../common/middleware/security";
 
 export function createSimulationRouter(access: ProjectAccessControl): Router {
   const router = Router();
@@ -126,6 +127,16 @@ export function createSimulationRouter(access: ProjectAccessControl): Router {
 
   // POST /simulate/feedback — get feedback for an existing simulation
   router.post("/feedback", (req, res) => {
+    if (
+      !requireApiKeyCapability(
+        req,
+        res,
+        "system.simulation.feedback.analyze",
+        "request-simulation-report",
+      )
+    ) {
+      return;
+    }
     const { report, metrics } = req.body;
     if (!report || !metrics) {
       res
