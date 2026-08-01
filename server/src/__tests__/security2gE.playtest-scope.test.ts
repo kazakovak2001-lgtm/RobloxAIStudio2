@@ -35,7 +35,7 @@ describe("SECURITY-2G-E playtest scope", () => {
     ).toBeLessThan(route.indexOf("engine.run(input)"));
     expect(route).toContain("await access.hasProjectAccess(req, projectId)");
     expect(route).toContain('error: "No playtest report found"');
-    expect(index).toContain('createPlaytestRouter(access)');
+    expect(index).toContain("createPlaytestRouter(access)");
   });
 
   it("classifies both playtest operations as project-owner", () => {

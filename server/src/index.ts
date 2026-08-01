@@ -604,7 +604,7 @@ app.use("/api/lua", createLuaGenerationRouter(access));
 
 // Playtest API
 import { createPlaytestRouter } from "./routes/playtest";
-app.use("/api/playtest", createPlaytestRouter());
+app.use("/api/playtest", createPlaytestRouter(access));
 
 // Repair API
 import { createRepairRouter } from "./routes/repair";
