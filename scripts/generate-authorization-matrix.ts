@@ -173,6 +173,8 @@ const platformRemainingScopeEvidence =
   "server/src/__tests__/security2gE.platform-remaining-scope.test.ts";
 const conceptEntryScopeEvidence =
   "server/src/__tests__/security2gE.concept-entry-scope.test.ts";
+const autonomousRunScopeEvidence =
+  "server/src/__tests__/security2gE.autonomous-run-scope.test.ts";
 const directProjectRouteEvidence =
   "server/src/__tests__/security2gE.project-routes.test.ts";
 const indirectBlueprintEvidence =
@@ -1362,6 +1364,17 @@ const overrides = new Map<
       "body-project",
       conceptEntryScopeEvidence,
       conceptEntryScopeEvidence,
+    ),
+  ],
+  [
+    "rest|server/src/routes/autonomous.ts|POST /run",
+    classified(
+      "project-owner",
+      "user-session",
+      "project.autonomous.run",
+      "body-project",
+      autonomousRunScopeEvidence,
+      autonomousRunScopeEvidence,
     ),
   ],
 ]);

@@ -402,12 +402,12 @@
       "transport": "rest",
       "source": "server/src/routes/autonomous.ts",
       "operation": "POST /run",
-      "classification": "unclassified",
-      "principal": "unresolved",
-      "capability": "unresolved",
-      "resourceScope": "unresolved",
-      "positiveEvidence": "missing",
-      "negativeEvidence": "missing"
+      "classification": "project-owner",
+      "principal": "user-session",
+      "capability": "project.autonomous.run",
+      "resourceScope": "body-project",
+      "positiveEvidence": "server/src/__tests__/security2gE.autonomous-run-scope.test.ts",
+      "negativeEvidence": "server/src/__tests__/security2gE.autonomous-run-scope.test.ts"
     },
     {
       "transport": "rest",
