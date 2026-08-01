@@ -9,7 +9,7 @@ const source = fs.readFileSync(
 
 describe("SECURITY-2G-E distributed authorization scope", () => {
   it("requires project access before project-bound job operations", () => {
-    expect(source).toContain("type ProjectAccessControl");
+    expect(source).toContain("ProjectAccessControl");
     expect(source).toContain("access.requireProjectAccess(req, res, projectId)");
     expect(source).toContain("job.projectId");
     expect(source).toContain("filterAuthorizedDeadLetters");
@@ -24,10 +24,10 @@ describe("SECURITY-2G-E distributed authorization scope", () => {
 
   it("authorizes retry before mutating the dead-letter queue", () => {
     const route = source.indexOf('router.post("/retry/:id"');
-    const access = source.indexOf("access.requireProjectAccess", route);
+    const resolver = source.indexOf("requireJobProjectAccess", route);
     const mutation = source.indexOf("retryDeadLetter", route);
     expect(route).toBeGreaterThanOrEqual(0);
-    expect(access).toBeGreaterThan(route);
-    expect(mutation).toBeGreaterThan(access);
+    expect(resolver).toBeGreaterThan(route);
+    expect(mutation).toBeGreaterThan(resolver);
   });
 });
