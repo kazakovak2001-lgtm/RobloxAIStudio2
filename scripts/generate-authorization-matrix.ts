@@ -143,6 +143,8 @@ const evaluationOperatorEvidence =
   "server/src/__tests__/security2gE.evaluation-operator-boundary.test.ts";
 const worldScopeEvidence =
   "server/src/__tests__/security2gE.world-scope.test.ts";
+const lifecycleScopeEvidence =
+  "server/src/__tests__/security2gE.lifecycle-scope.test.ts";
 const directProjectRouteEvidence =
   "server/src/__tests__/security2gE.project-routes.test.ts";
 const indirectBlueprintEvidence =
@@ -956,6 +958,29 @@ const overrides = new Map<
           scope,
           worldScopeEvidence,
           worldScopeEvidence,
+        ),
+      ] as const,
+  ),
+  ...[
+    ["POST /start", "project.lifecycle.start", "body-game-project"],
+    ["POST /tick", "project.lifecycle.tick", "body-game-project"],
+    ["POST /patch", "project.lifecycle.patch", "body-blueprint-project"],
+    [
+      "GET /status/:gameId",
+      "project.lifecycle.status.read",
+      "path-game-project",
+    ],
+  ].map(
+    ([operation, capability, scope]) =>
+      [
+        `rest|server/src/routes/lifecycle.ts|${operation}`,
+        classified(
+          "project-owner",
+          "user-session",
+          capability,
+          scope,
+          lifecycleScopeEvidence,
+          lifecycleScopeEvidence,
         ),
       ] as const,
   ),

@@ -16,13 +16,11 @@ describe("SECURITY-2G-E lifecycle project scope", () => {
     expect(routeSource).toContain(
       "export function createLifecycleRouter(access: ProjectAccessControl): Router",
     );
-    expect(routeSource.match(/access\.requireProjectAccess\(/g)).toHaveLength(4);
-    expect(routeSource).toContain(
-      'blueprint.id !== gameId',
+    expect(routeSource.match(/access\.requireProjectAccess\(/g)).toHaveLength(
+      4,
     );
-    expect(routeSource).toContain(
-      'error: "blueprint.id must match gameId"',
-    );
+    expect(routeSource).toContain("blueprint.id !== gameId");
+    expect(routeSource).toContain('error: "blueprint.id must match gameId"');
     expect(indexSource).toContain(
       'app.use("/api/lifecycle", createLifecycleRouter(access));',
     );
