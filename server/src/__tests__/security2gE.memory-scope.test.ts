@@ -13,11 +13,13 @@ const indexSource = fs.readFileSync(
 
 describe("SECURITY-2G-E memory scope", () => {
   it("requires project ownership before project memory reads, writes, and search", () => {
-    expect(routeSource).toContain("createMemoryRouter(access: ProjectAccessControl)");
+    expect(routeSource).toContain(
+      "createMemoryRouter(access: ProjectAccessControl)",
+    );
     expect(routeSource).toContain("projectId query parameter required");
     expect(routeSource).toContain("projectId required");
     expect(routeSource.match(/access\.requireProjectAccess/g)?.length).toBe(3);
-    expect(indexSource).toContain('createMemoryRouter(access)');
+    expect(indexSource).toContain("createMemoryRouter(access)");
   });
 
   it("guards global memory stats with a user-session operator allowlist", () => {

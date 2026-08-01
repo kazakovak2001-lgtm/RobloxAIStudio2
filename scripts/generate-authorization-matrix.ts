@@ -145,6 +145,8 @@ const worldScopeEvidence =
   "server/src/__tests__/security2gE.world-scope.test.ts";
 const lifecycleScopeEvidence =
   "server/src/__tests__/security2gE.lifecycle-scope.test.ts";
+const memoryScopeEvidence =
+  "server/src/__tests__/security2gE.memory-scope.test.ts";
 const directProjectRouteEvidence =
   "server/src/__tests__/security2gE.project-routes.test.ts";
 const indirectBlueprintEvidence =
@@ -984,6 +986,35 @@ const overrides = new Map<
         ),
       ] as const,
   ),
+  ...[
+    ["GET /:agentId", "project.memory.entries.read", "query-project"],
+    ["POST /store", "project.memory.entry.store", "body-project"],
+    ["POST /search", "project.memory.search", "body-project"],
+  ].map(
+    ([operation, capability, scope]) =>
+      [
+        `rest|server/src/routes/memory.ts|${operation}`,
+        classified(
+          "project-owner",
+          "user-session",
+          capability,
+          scope,
+          memoryScopeEvidence,
+          memoryScopeEvidence,
+        ),
+      ] as const,
+  ),
+  [
+    "rest|server/src/routes/memory.ts|GET /system/stats",
+    classified(
+      "memory-operator",
+      "user-session",
+      "system.memory.stats.read",
+      "global-memory-runtime",
+      memoryScopeEvidence,
+      memoryScopeEvidence,
+    ),
+  ],
 ]);
 
 const current = JSON.parse(

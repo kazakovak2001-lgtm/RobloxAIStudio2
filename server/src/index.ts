@@ -555,7 +555,7 @@ app.use(
   createGameGenerationRouter(gameService, studioManager, projectRuntime),
 );
 app.use("/api/evaluation", createEvaluationRouter(agentRegistry));
-app.use("/api/memory", createMemoryRouter());
+app.use("/api/memory", createMemoryRouter(access));
 app.use("/api/plan", createPlanningRouter(agentRegistry));
 app.use("/api/generate", createGenerationV2Router(agentRegistry));
 app.use("/api/simulate", createSimulationRouter());
