@@ -139,6 +139,8 @@ const domainScopeEvidence =
   "server/src/__tests__/security2gE.domain-scope.test.ts";
 const economyScopeEvidence =
   "server/src/__tests__/security2gE.economy-scope.test.ts";
+const evaluationOperatorEvidence =
+  "server/src/__tests__/security2gE.evaluation-operator-boundary.test.ts";
 const directProjectRouteEvidence =
   "server/src/__tests__/security2gE.project-routes.test.ts";
 const indirectBlueprintEvidence =
@@ -899,6 +901,25 @@ const overrides = new Map<
       economyScopeEvidence,
     ),
   ],
+  ...[
+    ["GET /score/:agent", "system.evaluation.score.read"],
+    ["GET /history", "system.evaluation.history.read"],
+    ["GET /alerts", "system.evaluation.alerts.read"],
+    ["POST /run", "system.evaluation.suite.execute"],
+  ].map(
+    ([operation, capability]) =>
+      [
+        `rest|server/src/routes/evaluation.ts|${operation}`,
+        classified(
+          "evaluation-operator",
+          "user-session",
+          capability,
+          "global-evaluation-runtime",
+          evaluationOperatorEvidence,
+          evaluationOperatorEvidence,
+        ),
+      ] as const,
+  ),
 ]);
 
 const current = JSON.parse(

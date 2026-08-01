@@ -26,8 +26,6 @@ describe("SECURITY-2G-E evaluation operator boundary", () => {
     expect(source).toContain(
       'router.get("/alerts", requireEvaluationOperator,',
     );
-    expect(source).toContain(
-      'router.post("/run", requireEvaluationOperator,',
-    );
+    expect(source).toContain('router.post("/run", requireEvaluationOperator,');
   });
 });
