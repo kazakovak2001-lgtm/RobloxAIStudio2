@@ -29,9 +29,12 @@ describe("SECURITY-2G-E project route authorization", () => {
     expect(handler('router.get("/", async (req, res) => {')).toContain(
       "projects.getByOwner(userId)",
     );
-    expect(handler('router.post("/", async (req, res) => {')).toContain(
-      "projects.createDurable(\n      userId,",
+    const createBody = handler('router.post("/", async (req, res) => {');
+    expect(createBody).toContain("projects.createDurable(");
+    expect(createBody.indexOf("projects.createDurable(")).toBeLessThan(
+      createBody.indexOf("res.json("),
     );
+    expect(createBody).toMatch(/projects\.createDurable\(\s*userId,/);
   });
 
   it("guards every path-project read and mutation before success", () => {
