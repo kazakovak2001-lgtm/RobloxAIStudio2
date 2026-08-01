@@ -567,7 +567,7 @@ app.use("/api/debug", createDebugRouter());
 
 // ─── Versioned API Gateway ──────────────────────────────────────────────────
 const gateway = new ApiGateway({ version: "1.0.0" });
-app.use("/api/v1", createV1Router(agentRegistry, gateway));
+app.use("/api/v1", createV1Router(agentRegistry, gateway, access));
 app.use("/api/v2", createV2Router(agentRegistry, gateway));
 
 // ─── Distributed Execution Layer ────────────────────────────────────────────

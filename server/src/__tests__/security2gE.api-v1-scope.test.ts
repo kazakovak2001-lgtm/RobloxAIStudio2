@@ -13,8 +13,12 @@ const bootstrap = fs.readFileSync(
 
 describe("SECURITY-2G-E API v1 authorization scope", () => {
   it("requires project access before compile and plan creation", () => {
-    expect(source).toContain('import type { ProjectAccessControl } from "../../routes/projects"');
-    expect(source).toContain("access.requireProjectAccess(req, res, projectId)");
+    expect(source).toContain(
+      'import type { ProjectAccessControl } from "../../routes/projects"',
+    );
+    expect(source).toContain(
+      "access.requireProjectAccess(req, res, projectId)",
+    );
     expect(source).toContain("projectId is required");
   });
 
@@ -26,6 +30,8 @@ describe("SECURITY-2G-E API v1 authorization scope", () => {
   });
 
   it("passes the shared access contract from the production bootstrap", () => {
-    expect(bootstrap).toContain("createV1Router(agentRegistry, gateway, access)");
+    expect(bootstrap).toContain(
+      "createV1Router(agentRegistry, gateway, access)",
+    );
   });
 });

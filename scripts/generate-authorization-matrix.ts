@@ -125,6 +125,8 @@ const debugOperatorEvidence =
   "server/src/__tests__/security2gE.debug-operator-boundary.test.ts";
 const distributedScopeEvidence =
   "server/src/__tests__/security2gE.distributed-scope.test.ts";
+const apiV1ScopeEvidence =
+  "server/src/__tests__/security2gE.api-v1-scope.test.ts";
 const directProjectRouteEvidence =
   "server/src/__tests__/security2gE.project-routes.test.ts";
 const indirectBlueprintEvidence =
@@ -682,6 +684,46 @@ const overrides = new Map<
           "global-distributed-runtime",
           distributedScopeEvidence,
           distributedScopeEvidence,
+        ),
+      ] as const,
+  ),
+  ...[
+    ["POST /compile", "project.api.v1.compile", "body-project"],
+    ["POST /plan/create", "project.api.v1.plan.create", "body-project"],
+    [
+      "POST /plan/execute",
+      "project.api.v1.plan.execute",
+      "resolved-plan-project",
+    ],
+    ["GET /plan/:id", "project.api.v1.plan.read", "resolved-plan-project"],
+  ].map(
+    ([operation, capability, scope]) =>
+      [
+        `rest|server/src/api/v1/index.ts|${operation}`,
+        classified(
+          "project-owner",
+          "user-session",
+          capability,
+          scope,
+          apiV1ScopeEvidence,
+          apiV1ScopeEvidence,
+        ),
+      ] as const,
+  ),
+  ...[
+    ["GET /status", "system.api.v1.status.read"],
+    ["GET /contracts", "system.api.v1.contracts.read"],
+  ].map(
+    ([operation, capability]) =>
+      [
+        `rest|server/src/api/v1/index.ts|${operation}`,
+        classified(
+          "authenticated",
+          "user-session",
+          capability,
+          "api-v1-metadata",
+          apiV1ScopeEvidence,
+          apiV1ScopeEvidence,
         ),
       ] as const,
   ),
