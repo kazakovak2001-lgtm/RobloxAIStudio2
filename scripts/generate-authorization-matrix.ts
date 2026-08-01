@@ -41,11 +41,15 @@ function relativeSource(absolutePath: string): string {
   return path.relative(repositoryRoot, absolutePath).replaceAll(path.sep, "/");
 }
 
-function operationKey(operation: Pick<MatrixOperation, "transport" | "source" | "operation">): string {
+function operationKey(
+  operation: Pick<MatrixOperation, "transport" | "source" | "operation">,
+): string {
   return `${operation.transport}|${operation.source}|${operation.operation}`;
 }
 
-function discoverOperations(): Array<Pick<MatrixOperation, "transport" | "source" | "operation">> {
+function discoverOperations(): Array<
+  Pick<MatrixOperation, "transport" | "source" | "operation">
+> {
   const discovered = new Map<
     string,
     Pick<MatrixOperation, "transport" | "source" | "operation">
