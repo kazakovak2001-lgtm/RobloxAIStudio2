@@ -117,6 +117,8 @@ const studioClientScopeEvidence =
   "server/src/__tests__/security2gE.studio-client-scope.test.ts";
 const studioProtocolScopeEvidence =
   "server/src/__tests__/security2gE.studio-protocol-scope.test.ts";
+const controllerOperatorEvidence =
+  "server/src/__tests__/security2gE.controller-operator-boundary.test.ts";
 const directProjectRouteEvidence =
   "server/src/__tests__/security2gE.project-routes.test.ts";
 const indirectBlueprintEvidence =
@@ -550,6 +552,38 @@ const overrides = new Map<
       studioProtocolScopeEvidence,
     ),
   ],
+  ...[
+    ["GET /health", "system.controller.health.read"],
+    ["POST /architecture/scan", "system.controller.architecture.scan"],
+    ["POST /review", "system.controller.code.review"],
+    ["POST /duplicates/check", "system.controller.duplicates.check"],
+    ["GET /knowledge/query", "system.controller.knowledge.query"],
+    ["GET /knowledge/stats", "system.controller.knowledge.stats.read"],
+    ["GET /secrets/status", "system.controller.secrets.status.read"],
+    ["GET /graph/dependents", "system.controller.graph.dependents.read"],
+    ["GET /graph/dependencies", "system.controller.graph.dependencies.read"],
+    ["GET /graph/impact", "system.controller.graph.impact.read"],
+    ["GET /graph/suggest-location", "system.controller.graph.location.suggest"],
+    ["GET /graph/stats", "system.controller.graph.stats.read"],
+    ["POST /pre-check", "system.controller.precheck.execute"],
+    ["GET /decisions/search", "system.controller.decisions.search"],
+    ["GET /decisions/rules", "system.controller.decisions.rules.read"],
+    ["GET /decisions/stats", "system.controller.decisions.stats.read"],
+    ["GET /decisions/for-module", "system.controller.decisions.module.read"],
+  ].map(
+    ([operation, capability]) =>
+      [
+        `rest|server/src/routes/controller.ts|${operation}`,
+        classified(
+          "controller-operator",
+          "user-session",
+          capability,
+          "global-controller-runtime",
+          controllerOperatorEvidence,
+          controllerOperatorEvidence,
+        ),
+      ] as const,
+  ),
 ]);
 
 const current = JSON.parse(
