@@ -3,7 +3,7 @@
 # Roadmap Status
 
 **Last Updated:** August 1, 2026  
-**Current backend release:** `release/cutover-1e-candidate@76f4e7a7be1684ac7984533d6c8d698ba6c99e7e`  
+**Current backend release:** `release/cutover-1e-candidate@d55fdb4d7eb920d0271d1ee7affe08666cdb270a`  
 **Current Frontend contents:** `kazakovak2001-lgtm/Frontend@022788ace31982e2b08ea099800de784b4dbe482`
 
 This file is the ordered current delivery authority. The dated TECH-AUDIT-2 roadmap and sprint backlog are historical planning baselines and do not override the status below. See [DOC-202A reconciliation](./DOC-202A_ROADMAP_AUTHORITY_RECONCILIATION.md) for exact completion evidence.
@@ -24,7 +24,7 @@ This file is the ordered current delivery authority. The dated TECH-AUDIT-2 road
 | `FRONTEND-2C` | Protected Frontend quality and bundle baseline | High | ✅ Complete | `HARDEN-2A` |
 | `RUNTIME-2D` | Runtime/provider/orchestration/memory ownership | High | ✅ Complete | `ARCH-2B` |
 | `DURABILITY-2E` | Durable writes and operational-state truthfulness | High | ✅ Complete | `RUNTIME-2D` |
-| `SECURITY-2G` | Dependency, SAST, credential, image, SBOM, and RBAC control gate | High | In progress — `SECURITY-2G-D` | `DURABILITY-2E` |
+| `SECURITY-2G` | Dependency, SAST, credential, image, SBOM, and RBAC control gate | High | In progress — `SECURITY-2G-E` | `DURABILITY-2E` |
 | `DOC-202` | Documentation-authority inventory and deterministic guards | Medium | In progress | `SECURITY-2G` decisions |
 | `STUDIO-2F` | Native assets, GUI, runtime, and place delivery | Medium | Deferred | control gates |
 | `AUTONOMY-3A` | Real engine-backed autonomous phases and broader recovery | High | Deferred | control gates |
@@ -32,12 +32,12 @@ This file is the ordered current delivery authority. The dated TECH-AUDIT-2 road
 
 ## SECURITY-2G control baseline
 
-**Status:** In progress — image scanning and SBOM slice  
-**Tracker:** issue #154  
-**Backend baseline:** `release/cutover-1e-candidate@76f4e7a7be1684ac7984533d6c8d698ba6c99e7e`  
+**Status:** In progress — RBAC and authorization parity slice  
+**Tracker:** issue #156  
+**Backend baseline:** `release/cutover-1e-candidate@d55fdb4d7eb920d0271d1ee7affe08666cdb270a`  
 **Frontend release contents:** `kazakovak2001-lgtm/Frontend@022788ace31982e2b08ea099800de784b4dbe482`
 
-`SECURITY-2G-A` established the truthful policy contract. `SECURITY-2G-B` completed production dependency controls. `SECURITY-2G-C` completed backend CodeQL and Gitleaks evidence. `SECURITY-2G-D` now implements exact backend and paired Frontend runtime-image scanning, digest-bound SPDX SBOM evidence, deterministic policy validation and hardened runtime images with npm removed from final stages. Existing protected CI remains prerequisite evidence. Frontend-owned SAST and credential coverage, authorization controls and the consolidated gate remain separate work.
+`SECURITY-2G-A` established the truthful policy contract. `SECURITY-2G-B` completed production dependency controls. `SECURITY-2G-C` completed backend CodeQL and Gitleaks evidence. `SECURITY-2G-D` completed exact backend and paired Frontend runtime-image scanning, digest-bound SPDX SBOM evidence, deterministic policy validation and hardened runtime images with npm removed from final stages. `SECURITY-2G-E` is the active draft slice: its generated matrix covers 204 REST and Socket operations with complete classification and evidence references, API-key eligible routes enforce explicit capabilities and resource scopes, and the two client Socket.IO authority events have positive and negative parity evidence. The consolidated gate remains separate `SECURITY-2G-F` work.
 
 | Control | Current state | Owner | Enforcement point | Blocking threshold | Required evidence |
 | --- | --- | --- | --- | --- | --- |
@@ -49,7 +49,7 @@ This file is the ordered current delivery authority. The dated TECH-AUDIT-2 road
 | Backend image vulnerabilities | Implemented in `SECURITY-2G-D` | Backend repository | Exact release-image build | No unexpired critical or high fixed runtime-package finding | Image digest, Trivy report and source commit |
 | Frontend image vulnerabilities | Implemented for the paired release in `SECURITY-2G-D` | Backend release integration over exact Frontend commit | Paired release-image build | Same threshold as backend image | Frontend image digest and report bound to exact Frontend commit |
 | SBOM | Implemented in `SECURITY-2G-D` for both paired release images | Backend release integration | Exact release-image build | SPDX JSON generated and policy-validated for every paired release image | SPDX document, image digest and paired source commits |
-| Application RBAC | Not yet inventoried as one authoritative matrix | Backend application | Unit, integration and contract tests | Every protected REST and Socket.IO operation has positive and negative authorization evidence | Route/event matrix and test evidence |
+| Application RBAC | Implemented on draft PR #157; pending reviewed merge | Backend application | Generated authorization matrix plus unit, integration and contract tests | Every protected REST and Socket.IO operation has classification, capability, resource scope and positive/negative evidence | 204-operation route/event matrix, 50 SECURITY-2G-E test files, 137 passing tests |
 | Security exceptions | Implemented in `SECURITY-2G-B` and extended in `SECURITY-2G-C` | Control owner plus reviewer | Repository validation and CI | Named owner, exact scope, reason and expiry required | Tracked exception registry and expiry check |
 
 Policy principles:
@@ -74,7 +74,7 @@ Ordered delivery:
 
 Every exception records the control, exact package/advisory/rule/path/fingerprint/component/case, affected repository and release identity, owner, rationale, compensating control, approval reference, creation date and expiry. Expired, ambiguous, wildcard or ownerless exceptions fail validation.
 
-Completion of `SECURITY-2G-D` does not complete `SECURITY-2G`; Frontend-owned SAST and credential coverage, authorization parity and the consolidated-gate slice remain separate work.
+Completion of `SECURITY-2G-D` does not complete `SECURITY-2G`. `SECURITY-2G-E` remains a draft until reviewed and merged; `SECURITY-2G-F` remains the separate consolidated blocking gate and final documentation reconciliation.
 
 ## Completion evidence
 
@@ -85,8 +85,9 @@ Completion of `SECURITY-2G-D` does not complete `SECURITY-2G`; Frontend-owned SA
 - `SECURITY-2G-A`: issue #148 and PR #149; reviewed head `15261bea2a63ff574a2f8f33b93cfec53f5ecec6`; merged baseline commit `1fe7683d25364465765cfde656842e7f33f96e47`.
 - `SECURITY-2G-B`: issue #150 and PR #151; reviewed head `ccb65bfc7c906f43634aab587f492d5a67179a41`; merged dependency-control commit `8dd23f88a0b23e2eedf5f2c38a36f0c12570cbab`.
 - `SECURITY-2G-C`: issue #152 and PR #153; reviewed head `60b184a645e06f57d0ac53d3bf67a968a5e7b647`; merged commit `76f4e7a7be1684ac7984533d6c8d698ba6c99e7e`.
-- `SECURITY-2G-D`: issue #154 and draft PR #155; exact paired runtime-image scanning, digest-bound SPDX SBOM evidence and deterministic image policy validation are active on the PR branch.
-- Active paired release: backend merge `76f4e7a7be1684ac7984533d6c8d698ba6c99e7e` plus Frontend contents `022788ace31982e2b08ea099800de784b4dbe482`.
+- `SECURITY-2G-D`: issue #154 and PR #155; merged commit `d55fdb4d7eb920d0271d1ee7affe08666cdb270a`; exact paired runtime-image scanning, digest-bound SPDX SBOM evidence and deterministic image policy validation are complete.
+- `SECURITY-2G-E`: issue #156 and draft PR #157; generated authorization matrix contains 204 classified operations with no missing evidence references; all 26 API-key eligible operations enforce explicit capabilities and resource scopes; Socket.IO `project:join` and `project:leave` have positive and negative parity evidence; consolidated validation passes 50 test files and 137 tests plus TypeScript.
+- Active paired release: backend merge `d55fdb4d7eb920d0271d1ee7affe08666cdb270a` plus Frontend contents `022788ace31982e2b08ea099800de784b4dbe482`.
 
 ## Runtime truthfulness
 
