@@ -14,8 +14,13 @@ describe("SECURITY-2G-E agent collaboration authorization scope", () => {
       "access.requireProjectAccess(req, res, projectId)",
       route,
     );
-    const mutation = source.indexOf("coordinator.runCollaborativeSession", route);
-    expect(source).toContain('import type { ProjectAccessControl } from "./projects"');
+    const mutation = source.indexOf(
+      "coordinator.runCollaborativeSession",
+      route,
+    );
+    expect(source).toContain(
+      'import type { ProjectAccessControl } from "./projects"',
+    );
     expect(route).toBeGreaterThanOrEqual(0);
     expect(guard).toBeGreaterThan(route);
     expect(mutation).toBeGreaterThan(guard);
@@ -25,7 +30,9 @@ describe("SECURITY-2G-E agent collaboration authorization scope", () => {
     expect(source).toContain("COLLABORATION_OPERATOR_USER_IDS");
     expect(source).toContain("requireCollaborationOperator");
     for (const route of ["/status", "/messages", "/metrics", "/consensus"]) {
-      expect(source).toContain(`router.get("${route}", requireCollaborationOperator`);
+      expect(source).toContain(
+        `router.get("${route}", requireCollaborationOperator`,
+      );
     }
   });
 

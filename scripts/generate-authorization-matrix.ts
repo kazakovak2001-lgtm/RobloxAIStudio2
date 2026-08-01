@@ -129,6 +129,8 @@ const apiV1ScopeEvidence =
   "server/src/__tests__/security2gE.api-v1-scope.test.ts";
 const apiV2ScopeEvidence =
   "server/src/__tests__/security2gE.api-v2-scope.test.ts";
+const agentCollaborationScopeEvidence =
+  "server/src/__tests__/security2gE.agent-collaboration-scope.test.ts";
 const directProjectRouteEvidence =
   "server/src/__tests__/security2gE.project-routes.test.ts";
 const indirectBlueprintEvidence =
@@ -757,6 +759,36 @@ const overrides = new Map<
       apiV2ScopeEvidence,
     ),
   ],
+  [
+    "rest|server/src/routes/agentCollaboration.ts|POST /run",
+    classified(
+      "project-owner",
+      "user-session",
+      "project.agent-collaboration.run",
+      "body-project",
+      agentCollaborationScopeEvidence,
+      agentCollaborationScopeEvidence,
+    ),
+  ],
+  ...[
+    ["GET /status", "system.agent-collaboration.status.read"],
+    ["GET /messages", "system.agent-collaboration.messages.read"],
+    ["GET /metrics", "system.agent-collaboration.metrics.read"],
+    ["GET /consensus", "system.agent-collaboration.consensus.read"],
+  ].map(
+    ([operation, capability]) =>
+      [
+        `rest|server/src/routes/agentCollaboration.ts|${operation}`,
+        classified(
+          "collaboration-operator",
+          "user-session",
+          capability,
+          "global-agent-collaboration-runtime",
+          agentCollaborationScopeEvidence,
+          agentCollaborationScopeEvidence,
+        ),
+      ] as const,
+  ),
 ]);
 
 const current = JSON.parse(

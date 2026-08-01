@@ -616,7 +616,7 @@ app.use("/api/knowledge", createKnowledgeRouter());
 
 // Agent Collaboration API
 import { createAgentCollaborationRouter } from "./routes/agentCollaboration";
-app.use("/api/agents", createAgentCollaborationRouter());
+app.use("/api/agents", createAgentCollaborationRouter(access));
 
 // Domain Intelligence API
 import { createDomainRouter } from "./routes/domain";
