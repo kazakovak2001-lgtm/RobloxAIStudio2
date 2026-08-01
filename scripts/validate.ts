@@ -118,7 +118,9 @@ function validateSecurityPolicy(policy: unknown, today: string): string[] {
     ];
     for (const field of requiredTextFields) {
       if (!isExactNonEmpty(exception[field])) {
-        errors.push(`${prefix}.${field} must be exact, non-empty and non-wildcard`);
+        errors.push(
+          `${prefix}.${field} must be exact, non-empty and non-wildcard`,
+        );
       }
     }
 
@@ -180,16 +182,43 @@ function runSecurityPolicySelfTests(): string[] {
   }
 
   const invalidFixtures: Array<[string, unknown]> = [
-    ["wildcard", { ...valid, exceptions: [{ ...valid.exceptions[0], advisory: "*" }] }],
-    ["ownerless", { ...valid, exceptions: [{ ...valid.exceptions[0], owner: "" }] }],
-    ["expired", { ...valid, exceptions: [{ ...valid.exceptions[0], expiresAt: "2026-07-31" }] }],
+    [
+      "wildcard",
+      {
+        ...valid,
+        exceptions: [{ ...valid.exceptions[0], advisory: "*" }],
+      },
+    ],
+    [
+      "ownerless",
+      { ...valid, exceptions: [{ ...valid.exceptions[0], owner: "" }] },
+    ],
+    [
+      "expired",
+      {
+        ...valid,
+        exceptions: [
+          { ...valid.exceptions[0], expiresAt: "2026-07-31" },
+        ],
+      },
+    ],
     [
       "ambiguous repository",
-      { ...valid, exceptions: [{ ...valid.exceptions[0], repository: "RobloxAIStudio2" }] },
+      {
+        ...valid,
+        exceptions: [
+          { ...valid.exceptions[0], repository: "RobloxAIStudio2" },
+        ],
+      },
     ],
     [
       "overlong lifetime",
-      { ...valid, exceptions: [{ ...valid.exceptions[0], expiresAt: "2026-09-15" }] },
+      {
+        ...valid,
+        exceptions: [
+          { ...valid.exceptions[0], expiresAt: "2026-09-15" },
+        ],
+      },
     ],
   ];
   for (const [name, fixture] of invalidFixtures) {
@@ -224,7 +253,7 @@ function validateDocumentationAuthority(): DocumentationAuthorityError[] {
     "`FRONTEND-2C` | Protected Frontend quality and bundle baseline | High | ✅ Complete",
     "`RUNTIME-2D` | Runtime/provider/orchestration/memory ownership | High | ✅ Complete",
     "`DURABILITY-2E` | Durable writes and operational-state truthfulness | High | ✅ Complete",
-    "`SECURITY-2G` | Dependency, SAST, secret, image, SBOM, and RBAC control gate | High | In progress — `SECURITY-2G-A`",
+    "`SECURITY-2G` | Dependency, SAST, secret, image, SBOM, and RBAC control gate | High | In progress — `SECURITY-2G-B`",
   ];
 
   for (const claim of requiredCurrentClaims) {
@@ -286,7 +315,9 @@ function validateDocumentationAuthority(): DocumentationAuthorityError[] {
 }
 
 function main(): void {
-  const packageManifest = JSON.parse(readFileSync("package.json", "utf-8")) as PackageManifest;
+  const packageManifest = JSON.parse(
+    readFileSync("package.json", "utf-8"),
+  ) as PackageManifest;
   const policyErrors = validateSecurityPolicy(
     packageManifest.securityPolicy,
     new Date().toISOString().slice(0, 10),
@@ -305,7 +336,8 @@ function main(): void {
   }
 
   const stagedFiles = getStagedFiles();
-  const filesToCheck = stagedFiles.length > 0 ? stagedFiles : getAllTrackedFiles();
+  const filesToCheck =
+    stagedFiles.length > 0 ? stagedFiles : getAllTrackedFiles();
   console.log(`Validating ${filesToCheck.length} files...\n`);
 
   const sensitiveResult = detectSensitiveFiles(filesToCheck);
@@ -320,7 +352,9 @@ function main(): void {
       if (!result.valid) {
         contentErrors += result.errors.length;
         for (const error of result.errors) {
-          console.error(`  ERROR [${error.code}] ${error.file}:${error.line} — ${error.message}`);
+          console.error(
+            `  ERROR [${error.code}] ${error.file}:${error.line} — ${error.message}`,
+          );
         }
       }
     } catch {
@@ -328,12 +362,26 @@ function main(): void {
     }
   }
 
-  for (const error of sensitiveResult.errors) console.error(`  ERROR [${error.code}] ${error.message}`);
-  for (const error of hygieneResult.errors) console.error(`  ERROR [${error.code}] ${error.message}`);
-  for (const warning of hygieneResult.warnings) console.warn(`  WARN  [${warning.code}] ${warning.message}`);
-  for (const error of documentationErrors) console.error(`  ERROR [DOC_AUTHORITY] ${error.file} — ${error.message}`);
+  for (const error of sensitiveResult.errors) {
+    console.error(`  ERROR [${error.code}] ${error.message}`);
+  }
+  for (const error of hygieneResult.errors) {
+    console.error(`  ERROR [${error.code}] ${error.message}`);
+  }
+  for (const warning of hygieneResult.warnings) {
+    console.warn(`  WARN  [${warning.code}] ${warning.message}`);
+  }
+  for (const error of documentationErrors) {
+    console.error(`  ERROR [DOC_AUTHORITY] ${error.file} — ${error.message}`);
+  }
 
-  const totalErrors = sensitiveResult.errors.length + hygieneResult.errors.length + contentErrors + documentationErrors.length + policyErrors.length + selfTestErrors.length;
+  const totalErrors =
+    sensitiveResult.errors.length +
+    hygieneResult.errors.length +
+    contentErrors +
+    documentationErrors.length +
+    policyErrors.length +
+    selfTestErrors.length;
   if (totalErrors > 0) {
     console.error(`\n✗ Validation failed with ${totalErrors} error(s)\n`);
     process.exit(1);
