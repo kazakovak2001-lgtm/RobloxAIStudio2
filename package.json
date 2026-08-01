@@ -10,11 +10,14 @@
   "securityPolicy": {
     "dependencyAuditLevel": "high",
     "productionOnly": true,
+    "sastScanner": "github-codeql/javascript-typescript",
     "sastSeverity": "high",
     "sastConfidence": "high",
+    "secretScanner": "gitleaks",
     "secretPullRequestScope": "changed-content",
     "secretHistoryBoundary": "8dd23f88a0b23e2eedf5f2c38a36f0c12570cbab",
     "secretExceptionMaterial": "fingerprint-or-rule-path-only",
+    "secretPlaintextMaterialAllowed": false,
     "exceptions": []
   },
   "scripts": {
