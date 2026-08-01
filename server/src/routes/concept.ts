@@ -13,13 +13,61 @@ import { PipelineEngine } from "../pipeline/v2/PipelineEngine";
 import { AgentRegistry } from "../agents/core/AgentRegistry";
 import type { GenerationHistoryRepository } from "../projects/repository/generationHistory.repository";
 import { DurableStorageError } from "../platform/storage/StorageProvider";
+import type { ProjectAccessControl } from "./projects";
 
 export function createConceptRouter(
   agentRegistry: AgentRegistry,
   generationHistory: GenerationHistoryRepository,
+  access: ProjectAccessControl,
 ): Router {
   const router = Router();
   const pipelineEngine = new PipelineEngine();
+  const concealProjectAccess = async (
+    req: Request,
+    res: Response,
+    projectId: string,
+    resourceName: "Pipeline" | "Artifact",
+  ): Promise<boolean> => {
+    if (access.hasProjectAccess) {
+      if (await access.hasProjectAccess(req, projectId)) return true;
+    } else if (await access.requireProjectAccess(req, res, projectId)) {
+      return true;
+    }
+    if (!res.headersSent) {
+      res.status(404).json({
+        success: false,
+        error: `${resourceName} not found`,
+      });
+    }
+    return false;
+  };
+
+  router.param("pipelineId", async (req, res, next, value) => {
+    const state = pipelineEngine.getState(value);
+    if (!state) {
+      res.status(404).json({ success: false, error: "Pipeline not found" });
+      return;
+    }
+    if (!(await concealProjectAccess(req, res, state.projectId, "Pipeline"))) {
+      return;
+    }
+    next();
+  });
+
+  router.param("artifactId", async (req, res, next, value) => {
+    const artifact = pipelineEngine.getArtifact(value);
+    const state = artifact
+      ? pipelineEngine.getState(artifact.pipelineId)
+      : undefined;
+    if (!artifact || !state) {
+      res.status(404).json({ success: false, error: "Artifact not found" });
+      return;
+    }
+    if (!(await concealProjectAccess(req, res, state.projectId, "Artifact"))) {
+      return;
+    }
+    next();
+  });
 
   // In-memory concept store (production would use DB)
   const concepts = new Map<string, Record<string, unknown>>();

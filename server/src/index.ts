@@ -582,7 +582,10 @@ app.use("/api/system", createSystemRouter());
 
 // Concept & Experience generation API
 import { createConceptRouter } from "./routes/concept";
-app.use("/api/concept", createConceptRouter(agentRegistry, generationHistory));
+app.use(
+  "/api/concept",
+  createConceptRouter(agentRegistry, generationHistory, access),
+);
 
 // Studio Bridge API
 import { createStudioRouter } from "./routes/studio";
