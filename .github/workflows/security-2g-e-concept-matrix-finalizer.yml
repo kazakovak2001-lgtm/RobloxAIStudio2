@@ -1,0 +1,171 @@
+name: SECURITY-2G-E Concept Matrix Finalizer
+
+on:
+  pull_request:
+    branches:
+      - release/cutover-1e-candidate
+
+permissions:
+  contents: write
+
+jobs:
+  finalize-concept-matrix:
+    if: github.event.pull_request.head.ref == 'agent/security-2g-e-rbac-parity'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/security-2g-e-rbac-parity
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Classify concept resources and filter history
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          generator = Path('scripts/generate-authorization-matrix.ts')
+          text = generator.read_text()
+          evidence_anchor = '''const indirectSessionEvidence =
+            "server/src/__tests__/security2gE.indirect-session-routes.test.ts";
+          '''
+          if 'const conceptResolverEvidence =' not in text:
+              if evidence_anchor not in text:
+                  raise SystemExit('generator evidence anchor not found')
+              text = text.replace(
+                  evidence_anchor,
+                  evidence_anchor + '''const conceptResolverEvidence =
+            "server/src/__tests__/security2gE.concept-resource-resolvers.test.ts";
+          const conceptHistoryEvidence =
+            "server/src/__tests__/security2gE.concept-matrix-history.test.ts";
+          ''',
+                  1,
+              )
+
+          pipeline_block = '''  ...[
+            ["GET /experience/status/:pipelineId", "project.pipeline.read"],
+            ["POST /experience/:pipelineId/pause", "project.pipeline.pause"],
+            ["POST /experience/:pipelineId/resume", "project.pipeline.resume"],
+            ["POST /experience/:pipelineId/cancel", "project.pipeline.cancel"],
+            ["POST /experience/:pipelineId/retry", "project.pipeline.retry"],
+            [
+              "POST /experience/:pipelineId/stage/:stage/retry",
+              "project.pipeline.stage.retry",
+            ],
+            ["GET /experience/:pipelineId/artifacts", "project.artifact.list"],
+            ["GET /experience/:pipelineId/review", "project.review.read"],
+            ["GET /experience/:pipelineId/metrics", "project.metrics.read"],
+            ["GET /experience/:pipelineId/audit", "project.audit.read"],
+          ].map(
+            ([operation, capability]) =>
+              [
+                `rest|server/src/routes/concept.ts|${operation}`,
+                classified(
+                  "project-owner",
+                  "user-session",
+                  capability,
+                  "resolved-pipeline-project",
+                  conceptResolverEvidence,
+                  conceptResolverEvidence,
+                ),
+              ] as const,
+          ),
+          '''
+          artifact_block = '''  ...[
+            ["GET /experience/artifact/:artifactId", "project.artifact.read"],
+            [
+              "POST /experience/artifact/:artifactId/approve",
+              "project.artifact.approve",
+            ],
+            [
+              "POST /experience/artifact/:artifactId/reject",
+              "project.artifact.reject",
+            ],
+            [
+              "POST /experience/artifact/:artifactId/comment",
+              "project.artifact.comment",
+            ],
+            [
+              "POST /experience/artifact/:artifactId/edit",
+              "project.artifact.edit",
+            ],
+          ].map(
+            ([operation, capability]) =>
+              [
+                `rest|server/src/routes/concept.ts|${operation}`,
+                classified(
+                  "project-owner",
+                  "user-session",
+                  capability,
+                  "resolved-artifact-project",
+                  conceptResolverEvidence,
+                  conceptResolverEvidence,
+                ),
+              ] as const,
+          ),
+          [
+            "rest|server/src/routes/concept.ts|GET /experience/history",
+            classified(
+              "project-owner-filtered",
+              "user-session",
+              "project.pipeline.history.read",
+              "filtered-project-set",
+              conceptHistoryEvidence,
+              conceptHistoryEvidence,
+            ),
+          ],
+          '''
+          if 'resolved-pipeline-project' not in text:
+              marker = ']);\n\nconst current = JSON.parse('
+              if marker not in text:
+                  raise SystemExit('generator terminator not found')
+              text = text.replace(marker, pipeline_block + artifact_block + marker, 1)
+          generator.write_text(text)
+
+          concept = Path('server/src/routes/concept.ts')
+          source = concept.read_text()
+          old = '''  router.get("/experience/history", (_req, res) => {
+            const history: Array<{'''
+          new = '''  router.get("/experience/history", async (req, res) => {
+            const history: Array<{'''
+          if old in source:
+              source = source.replace(old, new, 1)
+          elif new not in source:
+              raise SystemExit('history handler anchor not found')
+
+          old_end = '''    history.sort((a, b) => b.startedAt - a.startedAt);
+            res.json({ success: true, data: history });
+          });'''
+          new_end = '''    history.sort((a, b) => b.startedAt - a.startedAt);
+            const visibleHistory = [];
+            for (const state of history) {
+              if (await access.hasProjectAccess(req, state.projectId)) {
+                visibleHistory.push(state);
+              }
+            }
+            res.json({ success: true, data: visibleHistory });
+          });'''
+          if old_end in source:
+              source = source.replace(old_end, new_end, 1)
+          elif new_end not in source:
+              raise SystemExit('history response anchor not found')
+          concept.write_text(source)
+          PY
+      - name: Generate authorization matrix
+        run: node --import tsx scripts/generate-authorization-matrix.ts
+      - name: Format changed files
+        run: node node_modules/prettier/bin/prettier.cjs --write scripts/generate-authorization-matrix.ts config/security/authorization-matrix.json server/src/routes/concept.ts server/src/__tests__/security2gE.concept-matrix-history.test.ts
+      - name: Run focused authorization tests
+        run: node node_modules/vitest/vitest.mjs --config config/testing/vitest.backend.config.ts run server/src/__tests__/security2gE.concept-resource-resolvers.test.ts server/src/__tests__/security2gE.concept-matrix-history.test.ts
+      - name: Validate TypeScript
+        run: npm run typecheck
+      - name: Commit generated authority
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add scripts/generate-authorization-matrix.ts config/security/authorization-matrix.json server/src/routes/concept.ts server/src/__tests__/security2gE.concept-matrix-history.test.ts
+          git diff --cached --quiet && exit 0
+          git commit -m "feat(security): classify concept resources and filter history"
+          git push origin HEAD:agent/security-2g-e-rbac-parity
