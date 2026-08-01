@@ -53,8 +53,6 @@ describe("SECURITY-2G-E indirect autonomous session authorization", () => {
     expect(source).toContain(
       'res.status(404).json({ success: false, error: "Session not found" })',
     );
-    expect(source).toContain(
-      "access.hasProjectAccess(req, session.projectId)",
-    );
+    expect(source).toContain("access.hasProjectAccess(req, session.projectId)");
   });
 });

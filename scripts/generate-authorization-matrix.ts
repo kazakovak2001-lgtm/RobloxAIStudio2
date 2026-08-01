@@ -113,6 +113,8 @@ const directProjectRouteEvidence =
   "server/src/__tests__/security2gE.project-routes.test.ts";
 const indirectBlueprintEvidence =
   "server/src/__tests__/security2gE.indirect-blueprint-routes.test.ts";
+const indirectSessionEvidence =
+  "server/src/__tests__/security2gE.indirect-session-routes.test.ts";
 
 const overrides = new Map<
   string,
@@ -269,6 +271,27 @@ const overrides = new Map<
           "resolved-blueprint-project",
           indirectBlueprintEvidence,
           indirectBlueprintEvidence,
+        ),
+      ] as const,
+  ),
+  ...[
+    ["GET /status/:sessionId", "project.autonomous.session.read"],
+    ["GET /capabilities/:sessionId", "project.autonomous.capabilities.read"],
+    ["POST /pause/:sessionId", "project.autonomous.pause"],
+    ["POST /resume/:sessionId", "project.autonomous.resume"],
+    ["POST /recover/:sessionId", "project.autonomous.recover"],
+    ["POST /cancel/:sessionId", "project.autonomous.cancel"],
+  ].map(
+    ([operation, capability]) =>
+      [
+        `rest|server/src/routes/autonomous.ts|${operation}`,
+        classified(
+          "project-owner",
+          "user-session",
+          capability,
+          "resolved-session-project",
+          indirectSessionEvidence,
+          indirectSessionEvidence,
         ),
       ] as const,
   ),
