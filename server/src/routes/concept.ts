@@ -71,9 +71,10 @@ export function createConceptRouter(
 
   // In-memory concept store (production would use DB)
   const concepts = new Map<string, Record<string, unknown>>();
+  const conceptOwners = new Map<string, string>();
 
   // POST /api/concept/generate
-  router.post("/generate", (req, res) => {
+  router.post("/generate", async (req, res) => {
     const {
       gameDescription,
       genre,
@@ -81,6 +82,8 @@ export function createConceptRouter(
       targetAudience,
       additionalRequirements,
     } = req.body;
+    const userId = await access.requireAuthenticatedUser(req, res);
+    if (!userId) return;
 
     if (
       !gameDescription ||
@@ -131,13 +134,22 @@ export function createConceptRouter(
     };
 
     concepts.set(conceptId, concept);
+    conceptOwners.set(conceptId, userId);
     res.json({ success: true, data: concept });
   });
 
   // GET /api/concept/:id
-  router.get("/:id", (req, res) => {
-    const concept = concepts.get(req.params.id);
-    if (!concept) {
+  router.get("/:id", async (req, res) => {
+    const conceptId = req.params.id;
+    const concept = concepts.get(conceptId);
+    const ownerId = conceptOwners.get(conceptId);
+    if (!concept || !ownerId) {
+      res.status(404).json({ success: false, error: "Concept not found" });
+      return;
+    }
+    const userId = await access.requireAuthenticatedUser(req, res);
+    if (!userId) return;
+    if (userId !== ownerId) {
       res.status(404).json({ success: false, error: "Concept not found" });
       return;
     }
@@ -148,12 +160,19 @@ export function createConceptRouter(
   router.post("/experience/generate", async (req, res) => {
     const { conceptId } = req.body;
     const concept = concepts.get(conceptId);
+    const ownerId = conceptOwners.get(conceptId);
 
-    if (!concept) {
+    if (!concept || !ownerId) {
       res.status(404).json({
         success: false,
-        error: "Concept not found. Generate a concept first.",
+        error: "Concept not found",
       });
+      return;
+    }
+    const userId = await access.requireAuthenticatedUser(req, res);
+    if (!userId) return;
+    if (userId !== ownerId) {
+      res.status(404).json({ success: false, error: "Concept not found" });
       return;
     }
 
@@ -536,6 +555,7 @@ export function createConceptRouter(
       res.status(400).json({ success: false, error: "projectId is required" });
       return;
     }
+    if (!(await access.requireProjectAccess(req, res, projectId))) return;
 
     try {
       console.log(`[GENERATION_REQUEST] projectId=${projectId}`);

@@ -3,7 +3,10 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
 const root = resolve(__dirname, "../../..");
-const route = readFileSync(resolve(root, "server/src/routes/concept.ts"), "utf8");
+const route = readFileSync(
+  resolve(root, "server/src/routes/concept.ts"),
+  "utf8",
+);
 const generator = readFileSync(
   resolve(root, "scripts/generate-authorization-matrix.ts"),
   "utf8",
@@ -21,23 +24,23 @@ describe("SECURITY-2G-E concept entry scope", () => {
   it("binds generated concepts to the authenticated user session", () => {
     const generate = handlerSlice(
       'router.post("/generate"',
-      '// GET /api/concept/:id',
+      "// GET /api/concept/:id",
     );
     expect(generate).toContain("access.requireAuthenticatedUser(req, res)");
     expect(generate).toContain("conceptOwners.set(conceptId, userId)");
-    expect(generate.indexOf("access.requireAuthenticatedUser(req, res)")).toBeLessThan(
-      generate.indexOf("concepts.set(conceptId, concept)"),
-    );
+    expect(
+      generate.indexOf("access.requireAuthenticatedUser(req, res)"),
+    ).toBeLessThan(generate.indexOf("concepts.set(conceptId, concept)"));
   });
 
   it("conceals foreign concept reads and pipeline execution", () => {
     const read = handlerSlice(
       'router.get("/:id"',
-      '// POST /api/experience/generate',
+      "// POST /api/experience/generate",
     );
     const experience = handlerSlice(
       'router.post("/experience/generate"',
-      '// GET /api/concept/experience/status',
+      "// GET /api/concept/experience/status",
     );
     for (const slice of [read, experience]) {
       expect(slice).toContain("conceptOwners.get");
@@ -52,9 +55,11 @@ describe("SECURITY-2G-E concept entry scope", () => {
   it("guards direct generation before pipeline and history side effects", () => {
     const direct = handlerSlice(
       'router.post("/experience/generate-direct"',
-      '// GET /api/concept/experience/:pipelineId/metrics',
+      "// GET /api/concept/experience/:pipelineId/metrics",
     );
-    const guard = direct.indexOf("access.requireProjectAccess(req, res, projectId)");
+    const guard = direct.indexOf(
+      "access.requireProjectAccess(req, res, projectId)",
+    );
     expect(guard).toBeGreaterThanOrEqual(0);
     expect(guard).toBeLessThan(direct.indexOf("pipelineEngine.startAsync"));
     expect(guard).toBeLessThan(direct.indexOf("generationHistory.record"));

@@ -468,12 +468,12 @@
       "transport": "rest",
       "source": "server/src/routes/concept.ts",
       "operation": "GET /:id",
-      "classification": "unclassified",
-      "principal": "unresolved",
-      "capability": "unresolved",
-      "resourceScope": "unresolved",
-      "positiveEvidence": "missing",
-      "negativeEvidence": "missing"
+      "classification": "user-self",
+      "principal": "user-session",
+      "capability": "user.concept.read",
+      "resourceScope": "session-owned-concept",
+      "positiveEvidence": "server/src/__tests__/security2gE.concept-entry-scope.test.ts",
+      "negativeEvidence": "server/src/__tests__/security2gE.concept-entry-scope.test.ts"
     },
     {
       "transport": "rest",
@@ -655,34 +655,34 @@
       "transport": "rest",
       "source": "server/src/routes/concept.ts",
       "operation": "POST /experience/generate",
-      "classification": "unclassified",
-      "principal": "unresolved",
-      "capability": "unresolved",
-      "resourceScope": "unresolved",
-      "positiveEvidence": "missing",
-      "negativeEvidence": "missing"
+      "classification": "user-self",
+      "principal": "user-session",
+      "capability": "user.concept.pipeline.generate",
+      "resourceScope": "session-owned-concept",
+      "positiveEvidence": "server/src/__tests__/security2gE.concept-entry-scope.test.ts",
+      "negativeEvidence": "server/src/__tests__/security2gE.concept-entry-scope.test.ts"
     },
     {
       "transport": "rest",
       "source": "server/src/routes/concept.ts",
       "operation": "POST /experience/generate-direct",
-      "classification": "unclassified",
-      "principal": "unresolved",
-      "capability": "unresolved",
-      "resourceScope": "unresolved",
-      "positiveEvidence": "missing",
-      "negativeEvidence": "missing"
+      "classification": "project-owner",
+      "principal": "user-session",
+      "capability": "project.concept.pipeline.generate-direct",
+      "resourceScope": "body-project",
+      "positiveEvidence": "server/src/__tests__/security2gE.concept-entry-scope.test.ts",
+      "negativeEvidence": "server/src/__tests__/security2gE.concept-entry-scope.test.ts"
     },
     {
       "transport": "rest",
       "source": "server/src/routes/concept.ts",
       "operation": "POST /generate",
-      "classification": "unclassified",
-      "principal": "unresolved",
-      "capability": "unresolved",
-      "resourceScope": "unresolved",
-      "positiveEvidence": "missing",
-      "negativeEvidence": "missing"
+      "classification": "user-self",
+      "principal": "user-session",
+      "capability": "user.concept.create",
+      "resourceScope": "session-owned-concept",
+      "positiveEvidence": "server/src/__tests__/security2gE.concept-entry-scope.test.ts",
+      "negativeEvidence": "server/src/__tests__/security2gE.concept-entry-scope.test.ts"
     },
     {
       "transport": "rest",

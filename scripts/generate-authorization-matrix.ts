@@ -171,6 +171,8 @@ const chatPersistenceScopeEvidence =
   "server/src/__tests__/security2gE.chat-persistence-scope.test.ts";
 const platformRemainingScopeEvidence =
   "server/src/__tests__/security2gE.platform-remaining-scope.test.ts";
+const conceptEntryScopeEvidence =
+  "server/src/__tests__/security2gE.concept-entry-scope.test.ts";
 const directProjectRouteEvidence =
   "server/src/__tests__/security2gE.project-routes.test.ts";
 const indirectBlueprintEvidence =
@@ -1333,6 +1335,35 @@ const overrides = new Map<
         ),
       ] as const,
   ),
+  ...[
+    ["POST /generate", "user.concept.create"],
+    ["GET /:id", "user.concept.read"],
+    ["POST /experience/generate", "user.concept.pipeline.generate"],
+  ].map(
+    ([operation, capability]) =>
+      [
+        `rest|server/src/routes/concept.ts|${operation}`,
+        classified(
+          "user-self",
+          "user-session",
+          capability,
+          "session-owned-concept",
+          conceptEntryScopeEvidence,
+          conceptEntryScopeEvidence,
+        ),
+      ] as const,
+  ),
+  [
+    "rest|server/src/routes/concept.ts|POST /experience/generate-direct",
+    classified(
+      "project-owner",
+      "user-session",
+      "project.concept.pipeline.generate-direct",
+      "body-project",
+      conceptEntryScopeEvidence,
+      conceptEntryScopeEvidence,
+    ),
+  ],
 ]);
 
 const current = JSON.parse(
