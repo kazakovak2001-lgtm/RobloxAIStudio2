@@ -155,6 +155,8 @@ const compileScopeEvidence =
   "server/src/__tests__/security2gE.compile-scope.test.ts";
 const simulationScopeEvidence =
   "server/src/__tests__/security2gE.simulation-scope.test.ts";
+const generationV2ScopeEvidence =
+  "server/src/__tests__/security2gE.generation-v2-scope.test.ts";
 const directProjectRouteEvidence =
   "server/src/__tests__/security2gE.project-routes.test.ts";
 const indirectBlueprintEvidence =
@@ -1105,6 +1107,43 @@ const overrides = new Map<
       "request-simulation-report",
       simulationScopeEvidence,
       simulationScopeEvidence,
+    ),
+  ],
+  ...[
+    ["POST /game", "project.generation.v2.game.execute", "body-project"],
+    [
+      "POST /lua",
+      "project.generation.v2.lua.generate",
+      "body-blueprint-project",
+    ],
+    [
+      "POST /export",
+      "project.generation.v2.export.generate",
+      "body-blueprint-project",
+    ],
+  ].map(
+    ([operation, capability, scope]) =>
+      [
+        `rest|server/src/routes/generation-v2.ts|${operation}`,
+        classified(
+          "project-owner",
+          "user-session",
+          capability,
+          scope,
+          generationV2ScopeEvidence,
+          generationV2ScopeEvidence,
+        ),
+      ] as const,
+  ),
+  [
+    "rest|server/src/routes/generation-v2.ts|POST /blueprint",
+    classified(
+      "authenticated",
+      "user-session-or-api-key",
+      "system.generation.v2.blueprint.generate",
+      "request-generation-outputs",
+      generationV2ScopeEvidence,
+      generationV2ScopeEvidence,
     ),
   ],
 ]);

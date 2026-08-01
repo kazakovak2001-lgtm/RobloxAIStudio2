@@ -31,9 +31,9 @@ describe("SECURITY-2G-E generation v2 scope", () => {
     expect(route).toContain(
       "await access.requireProjectAccess(req, res, projectId)",
     );
-    expect(route.indexOf("requireProjectAccess(req, res, projectId)")).toBeLessThan(
-      route.indexOf("planner.createPlan"),
-    );
+    expect(
+      route.indexOf("requireProjectAccess(req, res, projectId)"),
+    ).toBeLessThan(route.indexOf("planner.createPlan"));
 
     const luaHandler = route.slice(
       route.indexOf('router.post("/lua"'),
@@ -42,9 +42,9 @@ describe("SECURITY-2G-E generation v2 scope", () => {
     expect(luaHandler).toContain(
       "await access.requireProjectAccess(req, res, blueprint.id)",
     );
-    expect(luaHandler.indexOf("requireProjectAccess(req, res, blueprint.id)")).toBeLessThan(
-      luaHandler.indexOf("luaGen.generate(blueprint)"),
-    );
+    expect(
+      luaHandler.indexOf("requireProjectAccess(req, res, blueprint.id)"),
+    ).toBeLessThan(luaHandler.indexOf("luaGen.generate(blueprint)"));
 
     const exportHandler = route.slice(route.indexOf('router.post("/export"'));
     expect(exportHandler).toContain(
@@ -52,10 +52,10 @@ describe("SECURITY-2G-E generation v2 scope", () => {
     );
     expect(
       exportHandler.indexOf("requireProjectAccess(req, res, blueprint.id)"),
-    ).toBeLessThan(exportHandler.indexOf("exporter.build(blueprint, lua, assets)"));
-    expect(index).toContain(
-      'createGenerationV2Router(agentRegistry, access)',
+    ).toBeLessThan(
+      exportHandler.indexOf("exporter.build(blueprint, lua, assets)"),
     );
+    expect(index).toContain("createGenerationV2Router(agentRegistry, access)");
   });
 
   it("classifies all four generation v2 operations", () => {

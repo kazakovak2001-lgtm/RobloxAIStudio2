@@ -14,8 +14,12 @@ import { RobloxExportBuilder } from "../generation/export/RobloxExportBuilder";
 import { PlannerEngine } from "../planning/core/PlannerEngine";
 import { PlanExecutor } from "../planning/execution/PlanExecutor";
 import { AgentRegistry } from "../agents/core/AgentRegistry";
+import type { ProjectAccessControl } from "./projects";
 
-export function createGenerationV2Router(agentRegistry: AgentRegistry): Router {
+export function createGenerationV2Router(
+  agentRegistry: AgentRegistry,
+  access: ProjectAccessControl,
+): Router {
   const router = Router();
   const blueprintEngine = new GameBlueprintEngine();
   const luaGen = new LuaGenerator();
@@ -29,6 +33,13 @@ export function createGenerationV2Router(agentRegistry: AgentRegistry): Router {
   router.post("/game", async (req, res) => {
     try {
       const { intent, constraints, projectId } = req.body;
+      if (typeof projectId !== "string" || projectId.trim().length === 0) {
+        res
+          .status(400)
+          .json({ success: false, error: "projectId is required" });
+        return;
+      }
+      if (!(await access.requireProjectAccess(req, res, projectId))) return;
 
       // 1. Plan
       const plan = planner.createPlan({
@@ -104,13 +115,16 @@ export function createGenerationV2Router(agentRegistry: AgentRegistry): Router {
   });
 
   // POST /generate/lua — generate Lua from a blueprint
-  router.post("/lua", (req, res) => {
+  router.post("/lua", async (req, res) => {
     try {
       const blueprint = req.body.blueprint;
-      if (!blueprint) {
-        res.status(400).json({ success: false, error: "Blueprint required" });
+      if (!blueprint?.id) {
+        res
+          .status(400)
+          .json({ success: false, error: "Blueprint with id required" });
         return;
       }
+      if (!(await access.requireProjectAccess(req, res, blueprint.id))) return;
       const lua = luaGen.generate(blueprint);
       res.json({ success: true, data: lua });
     } catch (error) {
@@ -119,16 +133,17 @@ export function createGenerationV2Router(agentRegistry: AgentRegistry): Router {
   });
 
   // POST /generate/export — generate export package
-  router.post("/export", (req, res) => {
+  router.post("/export", async (req, res) => {
     try {
       const { blueprint, lua, assets } = req.body;
-      if (!blueprint || !lua || !assets) {
+      if (!blueprint?.id || !lua || !assets) {
         res.status(400).json({
           success: false,
-          error: "blueprint, lua, and assets required",
+          error: "blueprint with id, lua, and assets required",
         });
         return;
       }
+      if (!(await access.requireProjectAccess(req, res, blueprint.id))) return;
       const result = exporter.build(blueprint, lua, assets);
       res.json({ success: true, data: result });
     } catch (error) {
