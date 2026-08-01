@@ -247,7 +247,7 @@ function validateDocumentationAuthority(): DocumentationAuthorityError[] {
     "`FRONTEND-2C` | Protected Frontend quality and bundle baseline | High | ✅ Complete",
     "`RUNTIME-2D` | Runtime/provider/orchestration/memory ownership | High | ✅ Complete",
     "`DURABILITY-2E` | Durable writes and operational-state truthfulness | High | ✅ Complete",
-    "`SECURITY-2G` | Dependency, SAST, secret, image, SBOM, and RBAC control gate | High | In progress — `SECURITY-2G-B`",
+    "`SECURITY-2G` | Dependency, SAST, secret, image, SBOM, and RBAC control gate | High | In progress — `SECURITY-2G-C`",
   ];
 
   for (const claim of requiredCurrentClaims) {
@@ -269,7 +269,7 @@ function validateDocumentationAuthority(): DocumentationAuthorityError[] {
   }
 
   const requiredEvidence = [
-    "7ccc4e02ba4175318856cd14b845e4ccd4dc6057",
+    "8dd23f88a0b23e2eedf5f2c38a36f0c12570cbab",
     "022788ace31982e2b08ea099800de784b4dbe482",
     "a33a8c30588f1e4705d27856e61d839c8efd42ac",
     "kazakovak2001-lgtm/Frontend",
@@ -283,9 +283,10 @@ function validateDocumentationAuthority(): DocumentationAuthorityError[] {
   const requiredSecurityBaselineClaims = [
     "## SECURITY-2G control baseline",
     "issue #148",
-    "a1d2c231d8cea41fb6cf68bbfd447091c0cd957e",
+    "15261bea2a63ff574a2f8f33b93cfec53f5ecec6",
     "022788ace31982e2b08ea099800de784b4dbe482",
     "SECURITY-2G-B — Dependency controls",
+    "SECURITY-2G-C — SAST and secrets",
     "SECURITY-2G-F — Consolidated gate",
     "Expired, ambiguous, wildcard or ownerless exceptions fail validation",
   ];
