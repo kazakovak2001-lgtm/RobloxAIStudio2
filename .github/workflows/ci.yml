@@ -401,6 +401,79 @@ jobs:
           if-no-files-found: error
           retention-days: 3
 
+  dependency-security:
+    name: Dependency Security Evidence
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    env:
+      SECURITY_SOURCE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+      SECURITY_BASE_SHA: ${{ github.event.pull_request.base.sha || '' }}
+    steps:
+      - name: Checkout exact dependency source
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.SECURITY_SOURCE_SHA }}
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "npm"
+      - name: Install exact dependency graph
+        run: npm ci --ignore-scripts
+      - name: Validate dependency policy and exception registry
+        run: npm run validate:security-policy
+      - name: Capture dependency change evidence
+        run: |
+          mkdir -p artifacts/security-dependencies
+          if [[ -n "$SECURITY_BASE_SHA" ]]; then
+            git diff --name-status "$SECURITY_BASE_SHA" "$SECURITY_SOURCE_SHA" -- package.json package-lock.json \
+              > artifacts/security-dependencies/dependency-changes.txt
+          else
+            printf '%s\n' "No pull-request base SHA supplied for event ${GITHUB_EVENT_NAME}." \
+              > artifacts/security-dependencies/dependency-changes.txt
+          fi
+      - name: Run production dependency audit
+        id: production-audit
+        shell: bash
+        run: |
+          set +e
+          npm audit --omit=dev --audit-level=high --json \
+            > artifacts/security-dependencies/npm-audit.json
+          audit_status=$?
+          set -e
+          echo "status=$audit_status" >> "$GITHUB_OUTPUT"
+      - name: Bind audit evidence to source and lockfile
+        if: always()
+        env:
+          AUDIT_STATUS: ${{ steps.production-audit.outputs.status || '1' }}
+        run: |
+          lockfile_sha256="$(sha256sum package-lock.json | awk '{print $1}')"
+          changed_files="$(jq --raw-input --slurp 'split("\n") | map(select(length > 0))' artifacts/security-dependencies/dependency-changes.txt)"
+          jq --null-input \
+            --arg controlId "SECURITY-2G-B" \
+            --arg repository "kazakovak2001-lgtm/RobloxAIStudio2" \
+            --arg sourceSha "$SECURITY_SOURCE_SHA" \
+            --arg lockfileSha256 "$lockfile_sha256" \
+            --argjson auditExitCode "$AUDIT_STATUS" \
+            --argjson dependencyChanges "$changed_files" \
+            --slurpfile audit artifacts/security-dependencies/npm-audit.json \
+            '{controlId: $controlId, repository: $repository, sourceSha: $sourceSha, lockfileSha256: $lockfileSha256, productionOnly: true, auditLevel: "high", auditExitCode: $auditExitCode, dependencyChanges: $dependencyChanges, audit: $audit[0]}' \
+            > artifacts/security-dependencies/evidence.json
+      - name: Publish dependency security evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: security-2g-b-dependencies-${{ env.SECURITY_SOURCE_SHA }}
+          path: artifacts/security-dependencies
+          if-no-files-found: error
+          retention-days: 14
+      - name: Enforce production dependency threshold
+        env:
+          AUDIT_STATUS: ${{ steps.production-audit.outputs.status || '1' }}
+        run: test "$AUDIT_STATUS" -eq 0
+
   validate:
     name: Repository Validation
     runs-on: ubuntu-latest
@@ -443,6 +516,7 @@ jobs:
         composed-release,
         release-readiness,
         legacy-frontend-audit,
+        dependency-security,
         validate,
       ]
     steps:
