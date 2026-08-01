@@ -135,6 +135,8 @@ const autonomousHealthScopeEvidence =
   "server/src/__tests__/security2gE.autonomous-health-scope.test.ts";
 const aiChatSessionEvidence =
   "server/src/__tests__/security2gE.ai-chat-session-boundary.test.ts";
+const domainScopeEvidence =
+  "server/src/__tests__/security2gE.domain-scope.test.ts";
 const directProjectRouteEvidence =
   "server/src/__tests__/security2gE.project-routes.test.ts";
 const indirectBlueprintEvidence =
@@ -832,6 +834,30 @@ const overrides = new Map<
       aiChatSessionEvidence,
     ),
   ],
+  ...[
+    ["GET /genres", "system.domain.genres.list", "domain-taxonomy"],
+    ["GET /genres/:genre", "system.domain.genre.read", "domain-taxonomy"],
+    ["GET /patterns", "system.domain.patterns.read", "domain-knowledge"],
+    [
+      "GET /recommendations",
+      "system.domain.recommendations.read",
+      "domain-knowledge",
+    ],
+    ["POST /analyze", "system.domain.analysis.execute", "request-domain-input"],
+  ].map(
+    ([operation, capability, scope]) =>
+      [
+        `rest|server/src/routes/domain.ts|${operation}`,
+        classified(
+          "authenticated",
+          "user-session-or-api-key",
+          capability,
+          scope,
+          domainScopeEvidence,
+          domainScopeEvidence,
+        ),
+      ] as const,
+  ),
 ]);
 
 const current = JSON.parse(
