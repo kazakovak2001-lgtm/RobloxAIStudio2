@@ -87,6 +87,97 @@ function discoverOperations(): Array<
   );
 }
 
+function classified(
+  classification: string,
+  principal: string,
+  capability: string,
+  resourceScope: string,
+  positiveEvidence: string,
+  negativeEvidence: string,
+): Omit<MatrixOperation, "transport" | "source" | "operation"> {
+  return {
+    classification,
+    principal,
+    capability,
+    resourceScope,
+    positiveEvidence,
+    negativeEvidence,
+  };
+}
+
+const publicEvidence = "server/src/__tests__/security2gE.authorization-domains.test.ts";
+const userSelfEvidence = publicEvidence;
+const projectEvidence = "server/src/routes/__tests__/projects.runtime.test.ts";
+
+const overrides = new Map<
+  string,
+  Omit<MatrixOperation, "transport" | "source" | "operation">
+>([
+  [
+    "rest|server/src/index.ts|GET /health",
+    classified("public", "anonymous", "system.health.read", "system", publicEvidence, "not-applicable-public"),
+  ],
+  [
+    "rest|server/src/index.ts|GET /",
+    classified("public", "anonymous", "system.root.read", "system", publicEvidence, "not-applicable-public"),
+  ],
+  [
+    "rest|server/src/routes/system.ts|GET /status",
+    classified("public", "anonymous", "system.status.read", "system", publicEvidence, "not-applicable-public"),
+  ],
+  [
+    "rest|server/src/routes/system.ts|GET /agents",
+    classified("public", "anonymous", "system.agents.read", "system", publicEvidence, "not-applicable-public"),
+  ],
+  ...[
+    "POST /auth/register",
+    "POST /auth/login",
+    "POST /auth/logout",
+    "POST /auth/refresh",
+    "POST /auth/forgot-password",
+  ].map(
+    (operation) =>
+      [
+        `rest|server/src/routes/platform.ts|${operation}`,
+        classified(
+          "public",
+          "anonymous",
+          `auth.${operation.split("/").at(-1)!.replace("-", ".")}`,
+          "authentication",
+          publicEvidence,
+          "not-applicable-public",
+        ),
+      ] as const,
+  ),
+  [
+    "rest|server/src/routes/platform.ts|GET /auth/me",
+    classified("authenticated", "user-session", "user.self.read", "current-user", userSelfEvidence, userSelfEvidence),
+  ],
+  ...[
+    ["GET /users/:id", "user.self.read"],
+    ["PATCH /users/:id", "user.self.update"],
+    ["GET /users/:id/preferences", "user.preferences.read"],
+    ["PUT /users/:id/preferences", "user.preferences.update"],
+    ["GET /users/:id/limits", "user.limits.read"],
+  ].map(
+    ([operation, capability]) =>
+      [
+        `rest|server/src/routes/platform.ts|${operation}`,
+        classified("user-self", "user-session", capability, "path-user", userSelfEvidence, userSelfEvidence),
+      ] as const,
+  ),
+  ...[
+    ["GET /versions/:projectId", "project.versions.read"],
+    ["POST /versions/:projectId", "project.versions.create"],
+  ].map(
+    ([operation, capability]) =>
+      [
+        `rest|server/src/routes/platform.ts|${operation}`,
+        classified("project-owner", "user-session", capability, "path-project", projectEvidence, projectEvidence),
+      ] as const,
+  ),
+]);
+
 const current = JSON.parse(
   fs.readFileSync(matrixPath, "utf8"),
 ) as AuthorizationMatrix;
@@ -95,6 +186,9 @@ const currentByKey = new Map(
 );
 
 const operations = discoverOperations().map((operation): MatrixOperation => {
+  const override = overrides.get(operationKey(operation));
+  if (override) return { ...operation, ...override };
+
   const existing = currentByKey.get(operationKey(operation));
   if (existing) return existing;
 
