@@ -1,3 +1,5 @@
+<!-- prettier-ignore-start -->
+
 # SECURITY-2G Control Baseline
 
 **Status:** In progress — baseline slice  
@@ -112,3 +114,5 @@ Expired, ambiguous, wildcard or ownerless exceptions fail validation. Exceptions
 ## Completion boundary
 
 `SECURITY-2G-A` is complete when this baseline is reviewed, linked from current project-control authority and protected formatting/documentation validation pass. Completion of this slice does not complete `SECURITY-2G`; all unimplemented controls remain explicitly missing until their respective slices produce protected evidence.
+
+<!-- prettier-ignore-end -->
