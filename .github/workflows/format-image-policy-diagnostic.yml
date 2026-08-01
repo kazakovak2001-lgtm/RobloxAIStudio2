@@ -1,0 +1,26 @@
+name: Format Image Policy Diagnostic
+
+on:
+  pull_request:
+    branches: [release/cutover-1e-candidate]
+
+jobs:
+  format-diagnostic:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+      - run: npm ci
+      - name: Print canonical validator content
+        run: |
+          node node_modules/prettier/bin/prettier.cjs --write scripts/validate-image-sbom-policy.ts
+          printf '%s\n' '---BEGIN CANONICAL---'
+          cat scripts/validate-image-sbom-policy.ts
+          printf '%s\n' '---END CANONICAL---'
