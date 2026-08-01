@@ -149,6 +149,8 @@ const memoryScopeEvidence =
   "server/src/__tests__/security2gE.memory-scope.test.ts";
 const planningScopeEvidence =
   "server/src/__tests__/security2gE.planning-scope.test.ts";
+const systemMetadataScopeEvidence =
+  "server/src/__tests__/security2gE.system-metadata-scope.test.ts";
 const directProjectRouteEvidence =
   "server/src/__tests__/security2gE.project-routes.test.ts";
 const indirectBlueprintEvidence =
@@ -1032,6 +1034,28 @@ const overrides = new Map<
           scope,
           planningScopeEvidence,
           planningScopeEvidence,
+        ),
+      ] as const,
+  ),
+  ...[
+    ["GET /status", "system.platform.status.read", "platform-runtime-metadata"],
+    ["GET /agents", "system.platform.agents.list", "governance-agent-registry"],
+    [
+      "GET /agents/:id",
+      "system.platform.agent.read",
+      "governance-agent-registry",
+    ],
+  ].map(
+    ([operation, capability, scope]) =>
+      [
+        `rest|server/src/routes/system.ts|${operation}`,
+        classified(
+          "authenticated",
+          "user-session-or-api-key",
+          capability,
+          scope,
+          systemMetadataScopeEvidence,
+          systemMetadataScopeEvidence,
         ),
       ] as const,
   ),

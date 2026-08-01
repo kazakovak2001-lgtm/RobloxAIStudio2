@@ -2151,34 +2151,34 @@
       "transport": "rest",
       "source": "server/src/routes/system.ts",
       "operation": "GET /agents",
-      "classification": "public",
-      "principal": "anonymous",
-      "capability": "system.agents.read",
-      "resourceScope": "system",
-      "positiveEvidence": "server/src/__tests__/security2gE.authorization-domains.test.ts",
-      "negativeEvidence": "not-applicable-public"
+      "classification": "authenticated",
+      "principal": "user-session-or-api-key",
+      "capability": "system.platform.agents.list",
+      "resourceScope": "governance-agent-registry",
+      "positiveEvidence": "server/src/__tests__/security2gE.system-metadata-scope.test.ts",
+      "negativeEvidence": "server/src/__tests__/security2gE.system-metadata-scope.test.ts"
     },
     {
       "transport": "rest",
       "source": "server/src/routes/system.ts",
       "operation": "GET /agents/:id",
-      "classification": "unclassified",
-      "principal": "unresolved",
-      "capability": "unresolved",
-      "resourceScope": "unresolved",
-      "positiveEvidence": "missing",
-      "negativeEvidence": "missing"
+      "classification": "authenticated",
+      "principal": "user-session-or-api-key",
+      "capability": "system.platform.agent.read",
+      "resourceScope": "governance-agent-registry",
+      "positiveEvidence": "server/src/__tests__/security2gE.system-metadata-scope.test.ts",
+      "negativeEvidence": "server/src/__tests__/security2gE.system-metadata-scope.test.ts"
     },
     {
       "transport": "rest",
       "source": "server/src/routes/system.ts",
       "operation": "GET /status",
-      "classification": "public",
-      "principal": "anonymous",
-      "capability": "system.status.read",
-      "resourceScope": "system",
-      "positiveEvidence": "server/src/__tests__/security2gE.authorization-domains.test.ts",
-      "negativeEvidence": "not-applicable-public"
+      "classification": "authenticated",
+      "principal": "user-session-or-api-key",
+      "capability": "system.platform.status.read",
+      "resourceScope": "platform-runtime-metadata",
+      "positiveEvidence": "server/src/__tests__/security2gE.system-metadata-scope.test.ts",
+      "negativeEvidence": "server/src/__tests__/security2gE.system-metadata-scope.test.ts"
     },
     {
       "transport": "rest",
