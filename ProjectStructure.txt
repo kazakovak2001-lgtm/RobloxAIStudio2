@@ -11,6 +11,7 @@
 │   ├── copilot-instructions.md
 │   └── workflows
 │       ├── ci.yml
+│       ├── security-sast-credential-scan.yml
 │       └── studio-plugin-package.yml
 ├── .gitignore
 ├── .husky
