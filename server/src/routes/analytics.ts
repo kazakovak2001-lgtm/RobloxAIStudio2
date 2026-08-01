@@ -16,12 +16,45 @@
  *   GET  /api/analytics/lowest-scores  — lowest scoring agents
  */
 
-import { Router } from "express";
+import {
+  Router,
+  type NextFunction,
+  type Request,
+  type Response,
+} from "express";
 import { FeedbackLoopPipeline } from "../core/analytics/FeedbackLoopPipeline";
+
+function requireAnalyticsOperator(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): void {
+  if (process.env.NODE_ENV !== "production") {
+    next();
+    return;
+  }
+
+  const operatorIds = new Set(
+    (process.env.ANALYTICS_OPERATOR_USER_IDS ?? "")
+      .split(",")
+      .map((value) => value.trim())
+      .filter(Boolean),
+  );
+  const userId = (req as Request & { user?: { userId?: string } }).user?.userId;
+  if (!userId || !operatorIds.has(userId)) {
+    res
+      .status(403)
+      .json({ success: false, error: "Analytics operator access required" });
+    return;
+  }
+  next();
+}
 
 export function createAnalyticsRouter(): Router {
   const router = Router();
   const pipeline = new FeedbackLoopPipeline();
+
+  router.use(requireAnalyticsOperator);
 
   // GET /system — system health report
   router.get("/system", (_req, res) => {

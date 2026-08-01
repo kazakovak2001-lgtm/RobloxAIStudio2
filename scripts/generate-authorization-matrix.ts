@@ -119,6 +119,8 @@ const studioProtocolScopeEvidence =
   "server/src/__tests__/security2gE.studio-protocol-scope.test.ts";
 const controllerOperatorEvidence =
   "server/src/__tests__/security2gE.controller-operator-boundary.test.ts";
+const analyticsOperatorEvidence =
+  "server/src/__tests__/security2gE.analytics-operator-boundary.test.ts";
 const directProjectRouteEvidence =
   "server/src/__tests__/security2gE.project-routes.test.ts";
 const indirectBlueprintEvidence =
@@ -581,6 +583,31 @@ const overrides = new Map<
           "global-controller-runtime",
           controllerOperatorEvidence,
           controllerOperatorEvidence,
+        ),
+      ] as const,
+  ),
+  ...[
+    ["GET /system", "system.analytics.health.read"],
+    ["GET /agents", "system.analytics.agents.read"],
+    ["GET /agent/:name", "system.analytics.agent.read"],
+    ["GET /execution/:id", "system.analytics.execution.read"],
+    ["GET /patterns", "system.analytics.patterns.read"],
+    ["GET /signals", "system.analytics.signals.read"],
+    ["GET /suggestions", "system.analytics.suggestions.read"],
+    ["POST /cycle", "system.analytics.cycle.execute"],
+    ["GET /slowest", "system.analytics.rankings.slowest.read"],
+    ["GET /lowest-scores", "system.analytics.rankings.lowest.read"],
+  ].map(
+    ([operation, capability]) =>
+      [
+        `rest|server/src/routes/analytics.ts|${operation}`,
+        classified(
+          "analytics-operator",
+          "user-session",
+          capability,
+          "global-analytics-runtime",
+          analyticsOperatorEvidence,
+          analyticsOperatorEvidence,
         ),
       ] as const,
   ),
