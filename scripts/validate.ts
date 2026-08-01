@@ -47,12 +47,11 @@ function getAllTrackedFiles(): string[] {
 function validateDocumentationAuthority(): DocumentationAuthorityError[] {
   const roadmapPath = "docs/00-project-control/ROADMAP_STATUS.md";
   const readmePath = "docs/README.md";
-  const securityBaselinePath = "docs/00-project-control/SECURITY-2G_CONTROL_BASELINE.md";
 
   const documents = new Map<string, string>();
   const errors: DocumentationAuthorityError[] = [];
 
-  for (const path of [roadmapPath, readmePath, securityBaselinePath]) {
+  for (const path of [roadmapPath, readmePath]) {
     try {
       documents.set(path, readFileSync(path, "utf-8"));
     } catch {
@@ -62,7 +61,6 @@ function validateDocumentationAuthority(): DocumentationAuthorityError[] {
 
   const roadmap = documents.get(roadmapPath) ?? "";
   const readme = documents.get(readmePath) ?? "";
-  const securityBaseline = documents.get(securityBaselinePath) ?? "";
 
   const requiredCurrentClaims = [
     "`ARCH-2B` | Exhaustive truthful architecture boundary gate | Critical | ✅ Complete",
@@ -113,14 +111,8 @@ function validateDocumentationAuthority(): DocumentationAuthorityError[] {
     }
   }
 
-  if (!roadmap.includes("SECURITY-2G_CONTROL_BASELINE.md")) {
-    errors.push({
-      file: roadmapPath,
-      message: "SECURITY-2G baseline must be linked from current roadmap authority",
-    });
-  }
-
   const requiredSecurityBaselineClaims = [
+    "## SECURITY-2G control baseline",
     "issue #148",
     "a1d2c231d8cea41fb6cf68bbfd447091c0cd957e",
     "022788ace31982e2b08ea099800de784b4dbe482",
@@ -130,9 +122,9 @@ function validateDocumentationAuthority(): DocumentationAuthorityError[] {
   ];
 
   for (const claim of requiredSecurityBaselineClaims) {
-    if (!securityBaseline.includes(claim)) {
+    if (!roadmap.includes(claim)) {
       errors.push({
-        file: securityBaselinePath,
+        file: roadmapPath,
         message: `missing required security baseline claim: ${claim}`,
       });
     }
