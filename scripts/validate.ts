@@ -197,27 +197,21 @@ function runSecurityPolicySelfTests(): string[] {
       "expired",
       {
         ...valid,
-        exceptions: [
-          { ...valid.exceptions[0], expiresAt: "2026-07-31" },
-        ],
+        exceptions: [{ ...valid.exceptions[0], expiresAt: "2026-07-31" }],
       },
     ],
     [
       "ambiguous repository",
       {
         ...valid,
-        exceptions: [
-          { ...valid.exceptions[0], repository: "RobloxAIStudio2" },
-        ],
+        exceptions: [{ ...valid.exceptions[0], repository: "RobloxAIStudio2" }],
       },
     ],
     [
       "overlong lifetime",
       {
         ...valid,
-        exceptions: [
-          { ...valid.exceptions[0], expiresAt: "2026-09-15" },
-        ],
+        exceptions: [{ ...valid.exceptions[0], expiresAt: "2026-09-15" }],
       },
     ],
   ];
