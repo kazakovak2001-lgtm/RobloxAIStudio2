@@ -113,6 +113,8 @@ const projectRoutesEvidence =
   "server/src/__tests__/security2gE.projects-routes.test.ts";
 const studioParityEvidence =
   "server/src/__tests__/security2gE.studio-project-parity.test.ts";
+const studioClientScopeEvidence =
+  "server/src/__tests__/security2gE.studio-client-scope.test.ts";
 const directProjectRouteEvidence =
   "server/src/__tests__/security2gE.project-routes.test.ts";
 const indirectBlueprintEvidence =
@@ -445,6 +447,58 @@ const overrides = new Map<
           scope,
           studioParityEvidence,
           studioParityEvidence,
+        ),
+      ] as const,
+  ),
+  ...[
+    ["GET /status", "project.studio.clients.read", "authorized-project-set"],
+    [
+      "POST /disconnect",
+      "project.studio.client.disconnect",
+      "resolved-client-project",
+    ],
+    [
+      "POST /heartbeat",
+      "project.studio.client.heartbeat",
+      "resolved-client-project",
+    ],
+    [
+      "GET /session",
+      "project.studio.sessions.read",
+      "authorized-project-set-or-client",
+    ],
+    [
+      "GET /commands",
+      "project.studio.commands.poll",
+      "resolved-client-project",
+    ],
+    [
+      "GET /commands/:commandId",
+      "project.studio.command.read",
+      "resolved-client-project",
+    ],
+    [
+      "POST /commands/:commandId/acknowledge",
+      "project.studio.command.acknowledge",
+      "resolved-client-project",
+    ],
+    [
+      "POST /commands/:commandId/result",
+      "project.studio.command.report",
+      "resolved-client-project",
+    ],
+    ["GET /events", "project.studio.events.read", "authorized-project-set"],
+  ].map(
+    ([operation, capability, scope]) =>
+      [
+        `rest|server/src/routes/studio.ts|${operation}`,
+        classified(
+          "project-owner",
+          "user-session",
+          capability,
+          scope,
+          studioClientScopeEvidence,
+          studioClientScopeEvidence,
         ),
       ] as const,
   ),

@@ -166,6 +166,66 @@ export function createStudioRouter(
 
   runtime.startTimeoutMonitor();
 
+  const hasStudioProjectAccess = async (
+    req: Parameters<ProjectAccessControl["requireProjectAccess"]>[0],
+    projectId?: string,
+  ): Promise<boolean> =>
+    Boolean(
+      projectId &&
+      access?.hasProjectAccess &&
+      (await access.hasProjectAccess(req, projectId)),
+    );
+
+  const requireStudioClientAccess = async (
+    req: Parameters<ProjectAccessControl["requireProjectAccess"]>[0],
+    res: Response,
+    clientId: string,
+  ) => {
+    const client = bridge.getClient(clientId);
+    if (
+      !client?.projectId ||
+      !(await hasStudioProjectAccess(req, client.projectId))
+    ) {
+      res.status(404).json({ success: false, error: "Client not found" });
+      return null;
+    }
+    return client;
+  };
+
+  const filterAuthorizedClients = async (
+    req: Parameters<ProjectAccessControl["requireProjectAccess"]>[0],
+    clients: ReturnType<typeof bridge.getConnectedClients>,
+  ) => {
+    const checks = await Promise.all(
+      clients.map(async (client) => ({
+        client,
+        allowed: await hasStudioProjectAccess(req, client.projectId),
+      })),
+    );
+    return checks.filter(({ allowed }) => allowed).map(({ client }) => client);
+  };
+
+  const filterAuthorizedEvents = async (
+    req: Parameters<ProjectAccessControl["requireProjectAccess"]>[0],
+    events: ReturnType<typeof bridge.events.getHistory>,
+  ) => {
+    const checks = await Promise.all(
+      events.map(async (event) => {
+        const record = event as typeof event & {
+          projectId?: string;
+          clientId?: string;
+        };
+        const projectId =
+          record.projectId ??
+          (record.clientId
+            ? bridge.getClient(record.clientId)?.projectId
+            : undefined);
+        return { event, allowed: await hasStudioProjectAccess(req, projectId) };
+      }),
+    );
+    return checks.filter(({ allowed }) => allowed).map(({ event }) => event);
+  };
+
   // ─── Register Sync Protocol Handlers ────────────────────────────────────────
 
   dispatcher.register("GET_PROJECT", (msg) => {
@@ -314,8 +374,11 @@ export function createStudioRouter(
   });
 
   // GET /api/studio/status
-  router.get("/status", (_req, res) => {
-    const clients = bridge.getConnectedClients();
+  router.get("/status", async (req, res) => {
+    const clients = await filterAuthorizedClients(
+      req,
+      bridge.getConnectedClients(),
+    );
     const sessions = sessionManager.getActiveSessions();
 
     res.json({
@@ -388,13 +451,14 @@ export function createStudioRouter(
   });
 
   // POST /api/studio/disconnect
-  router.post("/disconnect", (req, res) => {
+  router.post("/disconnect", async (req, res) => {
     const { clientId } = req.body;
 
     if (!clientId || typeof clientId !== "string") {
       res.status(400).json({ success: false, error: "clientId is required" });
       return;
     }
+    if (!(await requireStudioClientAccess(req, res, clientId))) return;
 
     bridge.disconnect(clientId);
     sessionManager.close(clientId);
@@ -405,13 +469,14 @@ export function createStudioRouter(
   });
 
   // POST /api/studio/heartbeat
-  router.post("/heartbeat", (req, res) => {
+  router.post("/heartbeat", async (req, res) => {
     const { clientId } = req.body;
 
     if (!clientId || typeof clientId !== "string") {
       res.status(400).json({ success: false, error: "clientId is required" });
       return;
     }
+    if (!(await requireStudioClientAccess(req, res, clientId))) return;
 
     const bridgeOk = bridge.heartbeat(clientId);
     const sessionOk = sessionManager.recordActivity(clientId);
@@ -425,10 +490,11 @@ export function createStudioRouter(
   });
 
   // GET /api/studio/session
-  router.get("/session", (req, res) => {
+  router.get("/session", async (req, res) => {
     const clientId = req.query.clientId as string | undefined;
 
     if (clientId) {
+      if (!(await requireStudioClientAccess(req, res, clientId))) return;
       const session = sessionManager.getByClient(clientId);
       if (!session) {
         res.status(404).json({ success: false, error: "Session not found" });
@@ -438,7 +504,19 @@ export function createStudioRouter(
       return;
     }
 
-    res.json({ success: true, data: sessionManager.getActiveSessions() });
+    const authorizedClients = await filterAuthorizedClients(
+      req,
+      bridge.getConnectedClients(),
+    );
+    const authorizedClientIds = new Set(
+      authorizedClients.map((client) => client.clientId),
+    );
+    res.json({
+      success: true,
+      data: sessionManager
+        .getActiveSessions()
+        .filter((session) => authorizedClientIds.has(session.clientId)),
+    });
   });
 
   // GET /api/studio/commands — plugin polling of the existing command queue
@@ -448,7 +526,7 @@ export function createStudioRouter(
       res.status(400).json({ success: false, error: "clientId is required" });
       return;
     }
-    const client = bridge.getClient(clientId);
+    const client = await requireStudioClientAccess(req, res, clientId);
     if (!client || client.status !== "connected") {
       res.status(404).json({ success: false, error: "Client not found" });
       return;
@@ -468,6 +546,7 @@ export function createStudioRouter(
       res.status(400).json({ success: false, error: "clientId is required" });
       return;
     }
+    if (!(await requireStudioClientAccess(req, res, clientId))) return;
     let command;
     try {
       command = await runtime.getCommand(req.params.commandId);
@@ -496,6 +575,7 @@ export function createStudioRouter(
       res.status(400).json({ success: false, error: "clientId is required" });
       return;
     }
+    if (!(await requireStudioClientAccess(req, res, clientId))) return;
     try {
       sendCommandAction(
         res,
@@ -513,6 +593,8 @@ export function createStudioRouter(
       res.status(400).json({ success: false, error: "clientId is required" });
       return;
     }
+    const clientId = body.clientId;
+    if (!(await requireStudioClientAccess(req, res, clientId))) return;
     const parsed = parseImportReport(body);
     if (!parsed.data) {
       res.status(400).json({ success: false, error: parsed.error });
@@ -533,8 +615,11 @@ export function createStudioRouter(
   });
 
   // GET /api/studio/events
-  router.get("/events", (_req, res) => {
-    const history = bridge.events.getHistory();
+  router.get("/events", async (req, res) => {
+    const history = await filterAuthorizedEvents(
+      req,
+      bridge.events.getHistory(),
+    );
     res.json({ success: true, data: history.slice(-50) });
   });
 
