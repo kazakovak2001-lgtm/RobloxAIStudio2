@@ -31,18 +31,18 @@ describe("SECURITY-2G-E chat persistence scope", () => {
     expect(route).toContain(
       "access.requireProjectAccess(req, res, conversation.projectId)",
     );
-    expect(route).toContain(
-      "access.requireProjectAccess(req, res, projectId)",
-    );
-    expect(route.indexOf("requireProjectAccess(req, res, req.params.projectId)")).toBeLessThan(
-      route.indexOf("chatPersistence.getHistory"),
-    );
-    expect(route.indexOf("requireProjectAccess(req, res, conversation.projectId)")).toBeLessThan(
-      route.indexOf("chatPersistence.createMessage"),
-    );
-    expect(route.lastIndexOf("requireProjectAccess(req, res, conversation.projectId)")).toBeLessThan(
-      route.indexOf("chatPersistence.deleteConversation"),
-    );
+    expect(route).toContain("access.requireProjectAccess(req, res, projectId)");
+    expect(
+      route.indexOf("requireProjectAccess(req, res, req.params.projectId)"),
+    ).toBeLessThan(route.indexOf("chatPersistence.getHistory"));
+    expect(
+      route.indexOf("requireProjectAccess(req, res, conversation.projectId)"),
+    ).toBeLessThan(route.indexOf("chatPersistence.createMessage"));
+    expect(
+      route.lastIndexOf(
+        "requireProjectAccess(req, res, conversation.projectId)",
+      ),
+    ).toBeLessThan(route.indexOf("chatPersistence.deleteConversation"));
   });
 
   it("classifies all four chat persistence operations", () => {

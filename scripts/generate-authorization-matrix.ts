@@ -167,6 +167,8 @@ const knowledgeScopeEvidence =
   "server/src/__tests__/security2gE.knowledge-scope.test.ts";
 const gameArchitectScopeEvidence =
   "server/src/__tests__/security2gE.game-architect-scope.test.ts";
+const chatPersistenceScopeEvidence =
+  "server/src/__tests__/security2gE.chat-persistence-scope.test.ts";
 const directProjectRouteEvidence =
   "server/src/__tests__/security2gE.project-routes.test.ts";
 const indirectBlueprintEvidence =
@@ -1267,6 +1269,37 @@ const overrides = new Map<
           "request-game-idea",
           gameArchitectScopeEvidence,
           gameArchitectScopeEvidence,
+        ),
+      ] as const,
+  ),
+  ...[
+    ["GET /:projectId/history", "project.chat.history.read", "path-project"],
+    [
+      "GET /conversation/:id",
+      "project.chat.conversation.read",
+      "resolved-conversation-project",
+    ],
+    [
+      "POST /message",
+      "project.chat.message.create",
+      "body-or-resolved-conversation-project",
+    ],
+    [
+      "DELETE /conversation/:id",
+      "project.chat.conversation.delete",
+      "resolved-conversation-project",
+    ],
+  ].map(
+    ([operation, capability, scope]) =>
+      [
+        `rest|server/src/routes/chatPersistence.ts|${operation}`,
+        classified(
+          "project-owner",
+          "user-session",
+          capability,
+          scope,
+          chatPersistenceScopeEvidence,
+          chatPersistenceScopeEvidence,
         ),
       ] as const,
   ),
