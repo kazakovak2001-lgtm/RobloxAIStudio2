@@ -4,11 +4,36 @@ import fs from "node:fs";
 const route = fs.readFileSync("server/src/routes/domain.ts", "utf8");
 
 const expectations = [
-  ["/genres", "system.domain.genres.list", "domain-taxonomy", "engine.genres.getAll"],
-  ["/genres/:genre", "system.domain.genre.read", "domain-taxonomy", "engine.genres.get"],
-  ["/patterns", "system.domain.patterns.read", "domain-knowledge", "engine.bestPractices"],
-  ["/recommendations", "system.domain.recommendations.read", "domain-knowledge", "engine.getRecommendations"],
-  ["/analyze", "system.domain.analysis.execute", "request-domain-input", "engine.analyze"],
+  [
+    "/genres",
+    "system.domain.genres.list",
+    "domain-taxonomy",
+    "engine.genres.getAll",
+  ],
+  [
+    "/genres/:genre",
+    "system.domain.genre.read",
+    "domain-taxonomy",
+    "engine.genres.get",
+  ],
+  [
+    "/patterns",
+    "system.domain.patterns.read",
+    "domain-knowledge",
+    "engine.bestPractices",
+  ],
+  [
+    "/recommendations",
+    "system.domain.recommendations.read",
+    "domain-knowledge",
+    "engine.getRecommendations",
+  ],
+  [
+    "/analyze",
+    "system.domain.analysis.execute",
+    "request-domain-input",
+    "engine.analyze",
+  ],
 ] as const;
 
 describe("SECURITY-2G-E domain API-key enforcement", () => {
@@ -18,7 +43,10 @@ describe("SECURITY-2G-E domain API-key enforcement", () => {
     );
 
     for (const [operation, capability, scope, sideEffect] of expectations) {
-      const marker = operation === "/analyze" ? `router.post("${operation}"` : `router.get("${operation}"`;
+      const marker =
+        operation === "/analyze"
+          ? `router.post("${operation}"`
+          : `router.get("${operation}"`;
       const start = route.indexOf(marker);
       expect(start).toBeGreaterThanOrEqual(0);
       const handler = route.slice(start, route.indexOf("\n  });", start) + 6);
