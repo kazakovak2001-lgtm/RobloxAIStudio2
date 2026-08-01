@@ -22,9 +22,9 @@ describe("SECURITY-2G-E project route authorization", () => {
     ]) {
       const body = handler(registration);
       expect(body).toContain("access.requireAuthenticatedUser(req, res)");
-      expect(body.indexOf("access.requireAuthenticatedUser(req, res)")).toBeLessThan(
-        body.indexOf("res.json("),
-      );
+      expect(
+        body.indexOf("access.requireAuthenticatedUser(req, res)"),
+      ).toBeLessThan(body.indexOf("res.json("));
     }
     expect(handler('router.get("/", async (req, res) => {')).toContain(
       "projects.getByOwner(userId)",

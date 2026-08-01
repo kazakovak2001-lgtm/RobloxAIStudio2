@@ -109,6 +109,8 @@ const publicEvidence =
   "server/src/__tests__/security2gE.authorization-domains.test.ts";
 const userSelfEvidence = publicEvidence;
 const projectEvidence = "server/src/routes/__tests__/projects.runtime.test.ts";
+const projectRoutesEvidence =
+  "server/src/__tests__/security2gE.projects-routes.test.ts";
 const directProjectRouteEvidence =
   "server/src/__tests__/security2gE.project-routes.test.ts";
 const indirectBlueprintEvidence =
@@ -400,6 +402,32 @@ const overrides = new Map<
       conceptHistoryEvidence,
     ),
   ],
+  ...[
+    ["GET /", "user.projects.list", "owner-project-set", "authenticated"],
+    ["POST /", "user.projects.create", "current-user", "authenticated"],
+    ["GET /:id", "project.read", "path-project", "project-owner"],
+    [
+      "GET /:id/history",
+      "project.history.read",
+      "path-project",
+      "project-owner",
+    ],
+    ["PUT /:id", "project.update", "path-project", "project-owner"],
+    ["DELETE /:id", "project.delete", "path-project", "project-owner"],
+  ].map(
+    ([operation, capability, scope, classification]) =>
+      [
+        `rest|server/src/routes/projects.ts|${operation}`,
+        classified(
+          classification,
+          "user-session",
+          capability,
+          scope,
+          projectRoutesEvidence,
+          projectRoutesEvidence,
+        ),
+      ] as const,
+  ),
 ]);
 
 const current = JSON.parse(
