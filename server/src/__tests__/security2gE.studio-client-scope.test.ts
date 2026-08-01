@@ -2,6 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 
+// This contract test intentionally inspects route ordering and fail-closed guards.
 const source = fs.readFileSync(
   path.join(process.cwd(), "server/src/routes/studio.ts"),
   "utf8",
