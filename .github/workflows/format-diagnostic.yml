@@ -1,0 +1,22 @@
+name: Format Diagnostic
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  package-format:
+    name: Package Format Diagnostic
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+      - run: npm ci --ignore-scripts
+      - name: Print canonical package diff
+        run: |
+          npm exec prettier -- package.json --write
+          git diff -- package.json
+          test -z "$(git status --short package.json)"
