@@ -27,7 +27,9 @@ const matrix = JSON.parse(
 describe("SECURITY-2G-E lua generation scope", () => {
   it("guards every project-bound Lua operation before generation", () => {
     expect(route).toContain("access: ProjectAccessControl");
-    expect(route.match(/requireProjectAccess\(req, res, projectId\)/g)).toHaveLength(4);
+    expect(
+      route.match(/requireProjectAccess\(req, res, projectId\)/g),
+    ).toHaveLength(4);
 
     const handlers = [
       ["/generate", "engine.generate({"],
@@ -42,13 +44,15 @@ describe("SECURITY-2G-E lua generation scope", () => {
       const next = route.indexOf("router.post(", start + 1);
       const end = next === -1 ? route.length : next;
       const handler = route.slice(start, end);
-      expect(handler.indexOf("requireProjectAccess(req, res, projectId)")).toBeGreaterThanOrEqual(0);
-      expect(handler.indexOf("requireProjectAccess(req, res, projectId)")).toBeLessThan(
-        handler.indexOf(execution),
-      );
+      expect(
+        handler.indexOf("requireProjectAccess(req, res, projectId)"),
+      ).toBeGreaterThanOrEqual(0);
+      expect(
+        handler.indexOf("requireProjectAccess(req, res, projectId)"),
+      ).toBeLessThan(handler.indexOf(execution));
     }
 
-    expect(index).toContain('createLuaGenerationRouter(access)');
+    expect(index).toContain("createLuaGenerationRouter(access)");
   });
 
   it("classifies all four Lua generation operations", () => {

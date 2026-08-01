@@ -157,6 +157,8 @@ const simulationScopeEvidence =
   "server/src/__tests__/security2gE.simulation-scope.test.ts";
 const generationV2ScopeEvidence =
   "server/src/__tests__/security2gE.generation-v2-scope.test.ts";
+const luaGenerationScopeEvidence =
+  "server/src/__tests__/security2gE.lua-generation-scope.test.ts";
 const directProjectRouteEvidence =
   "server/src/__tests__/security2gE.project-routes.test.ts";
 const indirectBlueprintEvidence =
@@ -1146,6 +1148,25 @@ const overrides = new Map<
       generationV2ScopeEvidence,
     ),
   ],
+  ...[
+    ["POST /generate", "project.lua.generate"],
+    ["POST /generate-full", "project.lua.generate-full"],
+    ["POST /assemble-experience", "project.lua.experience.assemble"],
+    ["POST /generate-assets", "project.lua.assets.generate"],
+  ].map(
+    ([operation, capability]) =>
+      [
+        `rest|server/src/routes/luaGeneration.ts|${operation}`,
+        classified(
+          "project-owner",
+          "user-session",
+          capability,
+          "body-project",
+          luaGenerationScopeEvidence,
+          luaGenerationScopeEvidence,
+        ),
+      ] as const,
+  ),
 ]);
 
 const current = JSON.parse(

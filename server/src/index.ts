@@ -600,7 +600,7 @@ app.use("/api/ai/game-architect", createGameArchitectRouter());
 
 // Lua Generation API
 import { createLuaGenerationRouter } from "./routes/luaGeneration";
-app.use("/api/lua", createLuaGenerationRouter());
+app.use("/api/lua", createLuaGenerationRouter(access));
 
 // Playtest API
 import { createPlaytestRouter } from "./routes/playtest";
