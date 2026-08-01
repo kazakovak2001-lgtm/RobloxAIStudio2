@@ -54,28 +54,41 @@ function exact(value: unknown): value is string {
 export function validateEvidence(evidence: ImageEvidence): string[] {
   const errors: string[] = [];
   if (evidence.controlId !== "SECURITY-2G-D") errors.push("controlId");
-  if (evidence.repository !== "kazakovak2001-lgtm/RobloxAIStudio2") errors.push("repository");
-  if (evidence.frontendRepository !== "kazakovak2001-lgtm/Frontend") errors.push("frontendRepository");
+  if (evidence.repository !== "kazakovak2001-lgtm/RobloxAIStudio2")
+    errors.push("repository");
+  if (evidence.frontendRepository !== "kazakovak2001-lgtm/Frontend")
+    errors.push("frontendRepository");
   if (!SHA_PATTERN.test(evidence.backendSha)) errors.push("backendSha");
   if (!SHA_PATTERN.test(evidence.frontendSha)) errors.push("frontendSha");
-  if (!DIGEST_PATTERN.test(evidence.backendImageDigest)) errors.push("backendImageDigest");
-  if (!DIGEST_PATTERN.test(evidence.frontendImageDigest)) errors.push("frontendImageDigest");
-  if (evidence.vulnerabilityScanner !== "trivy") errors.push("vulnerabilityScanner");
-  if (evidence.vulnerabilityScannerVersion !== "0.70.0") errors.push("vulnerabilityScannerVersion");
+  if (!DIGEST_PATTERN.test(evidence.backendImageDigest))
+    errors.push("backendImageDigest");
+  if (!DIGEST_PATTERN.test(evidence.frontendImageDigest))
+    errors.push("frontendImageDigest");
+  if (evidence.vulnerabilityScanner !== "trivy")
+    errors.push("vulnerabilityScanner");
+  if (evidence.vulnerabilityScannerVersion !== "0.70.0")
+    errors.push("vulnerabilityScannerVersion");
   if (evidence.scannerScope !== "vulnerability") errors.push("scannerScope");
-  if (JSON.stringify(evidence.blockingSeverities) !== JSON.stringify(["CRITICAL", "HIGH"])) {
+  if (
+    JSON.stringify(evidence.blockingSeverities) !==
+    JSON.stringify(["CRITICAL", "HIGH"])
+  ) {
     errors.push("blockingSeverities");
   }
   if (evidence.ignoreUnfixed !== true) errors.push("ignoreUnfixed");
   if (evidence.sbomGenerator !== "syft") errors.push("sbomGenerator");
-  if (evidence.sbomGeneratorVersion !== "1.44.0") errors.push("sbomGeneratorVersion");
+  if (evidence.sbomGeneratorVersion !== "1.44.0")
+    errors.push("sbomGeneratorVersion");
   if (evidence.sbomFormat !== "spdx-json") errors.push("sbomFormat");
   if (evidence.backendExitCode !== 0) errors.push("backendExitCode");
   if (evidence.frontendExitCode !== 0) errors.push("frontendExitCode");
   return errors;
 }
 
-export function validateException(exception: ImageException, today = "2026-08-01"): string[] {
+export function validateException(
+  exception: ImageException,
+  today = "2026-08-01",
+): string[] {
   const errors: string[] = [];
   if (exception.controlId !== "SECURITY-2G-D") errors.push("controlId");
   if (exception.scanner !== "trivy") errors.push("scanner");
@@ -87,12 +100,20 @@ export function validateException(exception: ImageException, today = "2026-08-01
   if (!exact(exception.rationale)) errors.push("rationale");
   if (!exact(exception.compensatingControl)) errors.push("compensatingControl");
   if (!exact(exception.approvalReference)) errors.push("approvalReference");
-  if (!DATE_PATTERN.test(exception.createdAt) || !DATE_PATTERN.test(exception.expiresAt)) {
+  if (
+    !DATE_PATTERN.test(exception.createdAt) ||
+    !DATE_PATTERN.test(exception.expiresAt)
+  ) {
     errors.push("dates");
   } else {
-    if (exception.createdAt > exception.expiresAt || exception.expiresAt < today) errors.push("expired");
+    if (
+      exception.createdAt > exception.expiresAt ||
+      exception.expiresAt < today
+    )
+      errors.push("expired");
     const lifetime =
-      (Date.parse(`${exception.expiresAt}T00:00:00Z`) - Date.parse(`${exception.createdAt}T00:00:00Z`)) /
+      (Date.parse(`${exception.expiresAt}T00:00:00Z`) -
+        Date.parse(`${exception.createdAt}T00:00:00Z`)) /
       86_400_000;
     if (lifetime > 30) errors.push("lifetime");
   }
@@ -105,38 +126,67 @@ function vulnerabilityCount(report: unknown): number {
   if (!Array.isArray(results)) return 0;
   return results.reduce((total, result) => {
     if (!result || typeof result !== "object") return total;
-    const vulnerabilities = (result as { Vulnerabilities?: unknown[] }).Vulnerabilities;
+    const vulnerabilities = (result as { Vulnerabilities?: unknown[] })
+      .Vulnerabilities;
     return total + (Array.isArray(vulnerabilities) ? vulnerabilities.length : 0);
   }, 0);
 }
 
 function validateSpdx(document: unknown): void {
   assert.ok(document && typeof document === "object", "SBOM must be an object");
-  const record = document as { spdxVersion?: string; SPDXID?: string; packages?: unknown[] };
+  const record = document as {
+    spdxVersion?: string;
+    SPDXID?: string;
+    packages?: unknown[];
+  };
   assert.match(record.spdxVersion ?? "", /^SPDX-2\./, "SBOM must use SPDX 2.x");
-  assert.equal(record.SPDXID, "SPDXRef-DOCUMENT", "SBOM must identify the SPDX document");
-  assert.ok(Array.isArray(record.packages) && record.packages.length > 0, "SBOM must contain packages");
+  assert.equal(
+    record.SPDXID,
+    "SPDXRef-DOCUMENT",
+    "SBOM must identify the SPDX document",
+  );
+  assert.ok(
+    Array.isArray(record.packages) && record.packages.length > 0,
+    "SBOM must contain packages",
+  );
 }
 
 function runArtifactValidation(root: string): void {
-  const evidence = JSON.parse(readFileSync(resolve(root, "evidence.json"), "utf8")) as ImageEvidence;
+  const evidence = JSON.parse(
+    readFileSync(resolve(root, "evidence.json"), "utf8"),
+  ) as ImageEvidence;
   assert.deepEqual(validateEvidence(evidence), [], "image evidence policy mismatch");
 
   for (const component of ["backend", "frontend"] as const) {
-    const digest = readFileSync(resolve(root, component, "image-digest.txt"), "utf8").trim();
-    assert.match(digest, DIGEST_PATTERN, `${component} image digest must be immutable`);
+    const digest = readFileSync(
+      resolve(root, component, "image-digest.txt"),
+      "utf8",
+    ).trim();
+    assert.match(
+      digest,
+      DIGEST_PATTERN,
+      `${component} image digest must be immutable`,
+    );
     assert.equal(
       digest,
-      component === "backend" ? evidence.backendImageDigest : evidence.frontendImageDigest,
+      component === "backend"
+        ? evidence.backendImageDigest
+        : evidence.frontendImageDigest,
       `${component} evidence digest must match the scanned image`,
     );
 
     const report = JSON.parse(
       readFileSync(resolve(root, component, "vulnerabilities.json"), "utf8"),
     ) as unknown;
-    assert.equal(vulnerabilityCount(report), 0, `${component} image contains blocking findings`);
+    assert.equal(
+      vulnerabilityCount(report),
+      0,
+      `${component} image contains blocking findings`,
+    );
 
-    const sbom = JSON.parse(readFileSync(resolve(root, component, "sbom.spdx.json"), "utf8")) as unknown;
+    const sbom = JSON.parse(
+      readFileSync(resolve(root, component, "sbom.spdx.json"), "utf8"),
+    ) as unknown;
     validateSpdx(sbom);
   }
 }
@@ -170,7 +220,8 @@ function runFixtures(): void {
     { ...validEvidence, blockingSeverities: ["CRITICAL"] },
     { ...validEvidence, backendExitCode: 1 },
   ];
-  for (const fixture of invalidEvidence) assert.notDeepEqual(validateEvidence(fixture), []);
+  for (const fixture of invalidEvidence)
+    assert.notDeepEqual(validateEvidence(fixture), []);
 
   const validException: ImageException = {
     controlId: "SECURITY-2G-D",
@@ -195,7 +246,8 @@ function runFixtures(): void {
     { ...validException, expiresAt: "2026-07-31" },
     { ...validException, expiresAt: "2026-12-31" },
   ];
-  for (const fixture of invalidExceptions) assert.notDeepEqual(validateException(fixture), []);
+  for (const fixture of invalidExceptions)
+    assert.notDeepEqual(validateException(fixture), []);
 }
 
 runFixtures();
