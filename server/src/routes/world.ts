@@ -13,6 +13,7 @@ import { WorldMutationEngine } from "../world/mutation/WorldMutationEngine";
 import { WorldSimulationBridge } from "../world/bridge/WorldSimulationBridge";
 import type { RobloxGameBlueprint } from "../generation/blueprint/GameBlueprintEngine";
 import type { ProjectAccessControl } from "./projects";
+import { requireApiKeyCapability } from "../common/middleware/security";
 
 export function createWorldRouter(access: ProjectAccessControl): Router {
   const router = Router();
@@ -105,7 +106,17 @@ export function createWorldRouter(access: ProjectAccessControl): Router {
   });
 
   // POST /world/tick — run a single tick (for incremental simulation)
-  router.post("/tick", (_req, res) => {
+  router.post("/tick", (req, res) => {
+    if (
+      !requireApiKeyCapability(
+        req,
+        res,
+        "system.world.tick.metadata.read",
+        "placeholder-metadata",
+      )
+    ) {
+      return;
+    }
     try {
       // Single-tick mode would require persistent world state (future)
       res.json({
@@ -118,7 +129,17 @@ export function createWorldRouter(access: ProjectAccessControl): Router {
   });
 
   // GET /world/state/:gameId — placeholder
-  router.get("/state/:gameId", (_req, res) => {
+  router.get("/state/:gameId", (req, res) => {
+    if (
+      !requireApiKeyCapability(
+        req,
+        res,
+        "system.world.state.metadata.read",
+        "placeholder-metadata",
+      )
+    ) {
+      return;
+    }
     res.json({
       success: true,
       data: {
@@ -128,7 +149,17 @@ export function createWorldRouter(access: ProjectAccessControl): Router {
   });
 
   // GET /world/emergence/:gameId — placeholder
-  router.get("/emergence/:gameId", (_req, res) => {
+  router.get("/emergence/:gameId", (req, res) => {
+    if (
+      !requireApiKeyCapability(
+        req,
+        res,
+        "system.world.emergence.metadata.read",
+        "placeholder-metadata",
+      )
+    ) {
+      return;
+    }
     res.json({
       success: true,
       data: {

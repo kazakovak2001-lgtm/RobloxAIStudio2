@@ -66,6 +66,8 @@ describe("SECURITY-2G-E final API-key route enforcement", () => {
       emergence.indexOf("Emergence data stored"),
     );
 
-    expect(source).toContain("access.requireProjectAccess(req, res, blueprint.id)");
+    expect(source).toContain(
+      "access.requireProjectAccess(req, res, blueprint.id)",
+    );
   });
 });
