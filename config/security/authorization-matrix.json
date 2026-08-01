@@ -1590,34 +1590,34 @@
       "transport": "rest",
       "source": "server/src/routes/planning.ts",
       "operation": "GET /:id",
-      "classification": "unclassified",
-      "principal": "unresolved",
-      "capability": "unresolved",
-      "resourceScope": "unresolved",
-      "positiveEvidence": "missing",
-      "negativeEvidence": "missing"
+      "classification": "project-owner",
+      "principal": "user-session",
+      "capability": "project.planning.read",
+      "resourceScope": "resolved-plan-project",
+      "positiveEvidence": "server/src/__tests__/security2gE.planning-scope.test.ts",
+      "negativeEvidence": "server/src/__tests__/security2gE.planning-scope.test.ts"
     },
     {
       "transport": "rest",
       "source": "server/src/routes/planning.ts",
       "operation": "POST /create",
-      "classification": "unclassified",
-      "principal": "unresolved",
-      "capability": "unresolved",
-      "resourceScope": "unresolved",
-      "positiveEvidence": "missing",
-      "negativeEvidence": "missing"
+      "classification": "project-owner",
+      "principal": "user-session",
+      "capability": "project.planning.create",
+      "resourceScope": "body-project",
+      "positiveEvidence": "server/src/__tests__/security2gE.planning-scope.test.ts",
+      "negativeEvidence": "server/src/__tests__/security2gE.planning-scope.test.ts"
     },
     {
       "transport": "rest",
       "source": "server/src/routes/planning.ts",
       "operation": "POST /execute",
-      "classification": "unclassified",
-      "principal": "unresolved",
-      "capability": "unresolved",
-      "resourceScope": "unresolved",
-      "positiveEvidence": "missing",
-      "negativeEvidence": "missing"
+      "classification": "project-owner",
+      "principal": "user-session",
+      "capability": "project.planning.execute",
+      "resourceScope": "resolved-plan-project",
+      "positiveEvidence": "server/src/__tests__/security2gE.planning-scope.test.ts",
+      "negativeEvidence": "server/src/__tests__/security2gE.planning-scope.test.ts"
     },
     {
       "transport": "rest",
