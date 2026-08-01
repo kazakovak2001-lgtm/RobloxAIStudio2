@@ -36,6 +36,18 @@ jobs:
           lines.insert(matches[0], '            --file Dockerfile.frontend.release \\')
           ci.write_text('\n'.join(lines) + '\n')
 
+          validator = Path('scripts/validate.ts')
+          text = validator.read_text()
+          validator_replacements = {
+            '"`SECURITY-2G` | Dependency, SAST, credential, image, SBOM, and RBAC control gate | High | In progress — `SECURITY-2G-C`"': '"`SECURITY-2G` | Dependency, SAST, credential, image, SBOM, and RBAC control gate | High | In progress — `SECURITY-2G-D`"',
+            '"8dd23f88a0b23e2eedf5f2c38a36f0c12570cbab"': '"76f4e7a7be1684ac7984533d6c8d698ba6c99e7e"',
+          }
+          for old, new in validator_replacements.items():
+              if text.count(old) != 1:
+                  raise SystemExit(f'expected validator text exactly once: {old}')
+              text = text.replace(old, new)
+          validator.write_text(text)
+
           roadmap = Path('docs/00-project-control/ROADMAP_STATUS.md')
           text = roadmap.read_text()
           replacements = {
@@ -66,7 +78,7 @@ jobs:
           node scripts/cleanup/generate-tracked-inventories.mjs
       - name: Validate formatted authority state
         run: |
-          npm run format -- .github/workflows/ci.yml docs/00-project-control/ROADMAP_STATUS.md
+          npm run format -- .github/workflows/ci.yml docs/00-project-control/ROADMAP_STATUS.md scripts/validate.ts
           npm run validate
           npm run format:check
       - name: Commit deterministic finalization
