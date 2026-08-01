@@ -1,0 +1,24 @@
+name: SECURITY-2G-E Prettier Diagnostic
+
+on:
+  pull_request:
+    branches:
+      - release/cutover-1e-candidate
+
+permissions:
+  contents: read
+
+jobs:
+  canonical-prettier:
+    if: github.event.pull_request.head.ref == 'agent/security-2g-e-rbac-parity'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Print canonical authorization inventory test
+        run: |
+          node node_modules/prettier/bin/prettier.cjs server/src/__tests__/security2gE.authorization-inventory.test.ts
