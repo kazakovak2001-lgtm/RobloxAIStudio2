@@ -29,7 +29,7 @@ describe("SECURITY-2G-E autonomous latest and health scope", () => {
   });
 
   it("keeps only the exact root health path public", () => {
-    expect(security).toContain('const PUBLIC_PATHS = [');
+    expect(security).toContain("const PUBLIC_PATHS = [");
     expect(security).toContain('"/health"');
     expect(security).not.toContain('"/health/database"');
     expect(security).not.toContain('"/health/storage"');

@@ -131,6 +131,8 @@ const apiV2ScopeEvidence =
   "server/src/__tests__/security2gE.api-v2-scope.test.ts";
 const agentCollaborationScopeEvidence =
   "server/src/__tests__/security2gE.agent-collaboration-scope.test.ts";
+const autonomousHealthScopeEvidence =
+  "server/src/__tests__/security2gE.autonomous-health-scope.test.ts";
 const directProjectRouteEvidence =
   "server/src/__tests__/security2gE.project-routes.test.ts";
 const indirectBlueprintEvidence =
@@ -786,6 +788,34 @@ const overrides = new Map<
           "global-agent-collaboration-runtime",
           agentCollaborationScopeEvidence,
           agentCollaborationScopeEvidence,
+        ),
+      ] as const,
+  ),
+  [
+    "rest|server/src/routes/autonomous.ts|GET /project/:projectId/latest",
+    classified(
+      "project-owner",
+      "user-session",
+      "project.autonomous.latest.read",
+      "path-project",
+      autonomousHealthScopeEvidence,
+      autonomousHealthScopeEvidence,
+    ),
+  ],
+  ...[
+    ["GET /health/database", "system.health.database.read"],
+    ["GET /health/storage", "system.health.storage.read"],
+  ].map(
+    ([operation, capability]) =>
+      [
+        `rest|server/src/index.ts|${operation}`,
+        classified(
+          "authenticated",
+          "user-session-or-api-key",
+          capability,
+          "system-operational-metadata",
+          autonomousHealthScopeEvidence,
+          autonomousHealthScopeEvidence,
         ),
       ] as const,
   ),

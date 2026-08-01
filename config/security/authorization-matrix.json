@@ -127,23 +127,23 @@
       "transport": "rest",
       "source": "server/src/index.ts",
       "operation": "GET /health/database",
-      "classification": "unclassified",
-      "principal": "unresolved",
-      "capability": "unresolved",
-      "resourceScope": "unresolved",
-      "positiveEvidence": "missing",
-      "negativeEvidence": "missing"
+      "classification": "authenticated",
+      "principal": "user-session-or-api-key",
+      "capability": "system.health.database.read",
+      "resourceScope": "system-operational-metadata",
+      "positiveEvidence": "server/src/__tests__/security2gE.autonomous-health-scope.test.ts",
+      "negativeEvidence": "server/src/__tests__/security2gE.autonomous-health-scope.test.ts"
     },
     {
       "transport": "rest",
       "source": "server/src/index.ts",
       "operation": "GET /health/storage",
-      "classification": "unclassified",
-      "principal": "unresolved",
-      "capability": "unresolved",
-      "resourceScope": "unresolved",
-      "positiveEvidence": "missing",
-      "negativeEvidence": "missing"
+      "classification": "authenticated",
+      "principal": "user-session-or-api-key",
+      "capability": "system.health.storage.read",
+      "resourceScope": "system-operational-metadata",
+      "positiveEvidence": "server/src/__tests__/security2gE.autonomous-health-scope.test.ts",
+      "negativeEvidence": "server/src/__tests__/security2gE.autonomous-health-scope.test.ts"
     },
     {
       "transport": "rest",
@@ -336,12 +336,12 @@
       "transport": "rest",
       "source": "server/src/routes/autonomous.ts",
       "operation": "GET /project/:projectId/latest",
-      "classification": "unclassified",
-      "principal": "unresolved",
-      "capability": "unresolved",
-      "resourceScope": "unresolved",
-      "positiveEvidence": "missing",
-      "negativeEvidence": "missing"
+      "classification": "project-owner",
+      "principal": "user-session",
+      "capability": "project.autonomous.latest.read",
+      "resourceScope": "path-project",
+      "positiveEvidence": "server/src/__tests__/security2gE.autonomous-health-scope.test.ts",
+      "negativeEvidence": "server/src/__tests__/security2gE.autonomous-health-scope.test.ts"
     },
     {
       "transport": "rest",
