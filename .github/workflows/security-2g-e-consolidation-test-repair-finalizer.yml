@@ -1,0 +1,37 @@
+name: SECURITY-2G-E Consolidation Test Repair Finalizer
+
+on:
+  pull_request:
+    branches: [release/cutover-1e-candidate]
+
+permissions:
+  contents: write
+
+jobs:
+  finalize:
+    if: github.event.pull_request.head.ref == 'agent/security-2g-e-rbac-parity'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/security-2g-e-rbac-parity
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: python scripts/apply-security2gE-consolidation-test-repair.py
+      - run: node node_modules/prettier/bin/prettier.cjs --write server/src/__tests__/security2gE.authorization-domains.test.ts server/src/__tests__/security2gE.domain-scope.test.ts server/src/__tests__/security2gE.system-metadata-scope.test.ts
+      - name: Run complete SECURITY-2G-E suite
+        run: |
+          FILES=$(find server/src/__tests__ -maxdepth 1 -type f -name 'security2gE*.test.ts' -print | sort | tr '\n' ' ')
+          node node_modules/vitest/vitest.mjs --config config/testing/vitest.backend.config.ts run $FILES
+      - run: npm run typecheck
+      - name: Publish
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add server/src/__tests__/security2gE.authorization-domains.test.ts server/src/__tests__/security2gE.domain-scope.test.ts server/src/__tests__/security2gE.system-metadata-scope.test.ts
+          git diff --cached --quiet && exit 0
+          git commit -m "test(security): align authorization consolidation contracts"
+          git push origin HEAD:agent/security-2g-e-rbac-parity
