@@ -28,42 +28,21 @@ jobs:
 
           path = Path('scripts/generate-authorization-matrix.ts')
           text = path.read_text()
-          anchor = '''const directProjectRouteEvidence =
+          evidence_anchor = '''const directProjectRouteEvidence =
             "server/src/__tests__/security2gE.project-routes.test.ts";
           '''
-          replacement = anchor + '''const indirectBlueprintEvidence =
+          if 'const indirectBlueprintEvidence =' not in text:
+              if evidence_anchor not in text:
+                  raise SystemExit('evidence anchor not found')
+              text = text.replace(
+                  evidence_anchor,
+                  evidence_anchor + '''const indirectBlueprintEvidence =
             "server/src/__tests__/security2gE.indirect-blueprint-routes.test.ts";
-          '''
-          if anchor not in text:
-              raise SystemExit('evidence anchor not found')
-          text = text.replace(anchor, replacement, 1)
+          ''',
+                  1,
+              )
 
-          anchor = '''  ...[
-            ["POST /:projectId/generate", "project.generation.start"],
-            ["POST /:projectId/blueprints", "project.blueprint.create"],
-            [
-              "GET /:projectId/generation/:executionId/status",
-              "project.generation.read",
-            ],
-            ["GET /:projectId/studio/status", "project.studio.status.read"],
-            ["POST /:projectId/studio/sync", "project.studio.sync"],
-            ["GET /:projectId/export", "project.export.read"],
-          ].map(
-            ([operation, capability]) =>
-              [
-                `rest|server/src/routes/game-generation.ts|${operation}`,
-                classified(
-                  "project-owner",
-                  "user-session",
-                  capability,
-                  "path-project",
-                  directProjectRouteEvidence,
-                  directProjectRouteEvidence,
-                ),
-              ] as const,
-          ),
-          '''
-          insertion = anchor + '''  ...[
+          block = '''  ...[
             ["GET /blueprints/:blueprintId", "project.blueprint.read"],
             [
               "GET /blueprints/:blueprintId/validate",
@@ -88,9 +67,13 @@ jobs:
               ] as const,
           ),
           '''
-          if anchor not in text:
-              raise SystemExit('classification anchor not found')
-          path.write_text(text.replace(anchor, insertion, 1))
+          if 'resolved-blueprint-project' not in text:
+              marker = ']);\n\nconst current = JSON.parse('
+              if marker not in text:
+                  raise SystemExit('matrix terminator not found')
+              text = text.replace(marker, block + marker, 1)
+
+          path.write_text(text)
           PY
       - name: Generate classified matrix
         run: node --import tsx scripts/generate-authorization-matrix.ts
