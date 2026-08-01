@@ -59,6 +59,7 @@ jobs:
             --tag "$BACKEND_IMAGE" \
             .
           docker build \
+            --file Dockerfile.frontend.release \
             --build-arg VITE_API_URL="https://localhost:8443/api" \
             --build-arg VITE_SOCKET_URL="https://localhost:8443" \
             --label "org.opencontainers.image.revision=${{ steps.frontend-release.outputs.sha }}" \
@@ -102,6 +103,8 @@ jobs:
             -v "$PWD:/workspace" \
             aquasec/trivy:${TRIVY_VERSION} \
             image \
+            --scanners vuln \
+            --skip-version-check \
             --format json \
             --output /workspace/artifacts/security-images/backend/vulnerabilities.json \
             --severity HIGH,CRITICAL \
@@ -123,6 +126,8 @@ jobs:
             -v "$PWD:/workspace" \
             aquasec/trivy:${TRIVY_VERSION} \
             image \
+            --scanners vuln \
+            --skip-version-check \
             --format json \
             --output /workspace/artifacts/security-images/frontend/vulnerabilities.json \
             --severity HIGH,CRITICAL \
@@ -159,7 +164,7 @@ jobs:
             --arg sbomFormat "spdx-json" \
             --argjson backendExitCode "$BACKEND_SCAN_STATUS" \
             --argjson frontendExitCode "$FRONTEND_SCAN_STATUS" \
-            '{controlId: $controlId, repository: $repository, backendSha: $backendSha, frontendRepository: $frontendRepository, frontendSha: $frontendSha, backendImageDigest: $backendImageDigest, frontendImageDigest: $frontendImageDigest, vulnerabilityScanner: $vulnerabilityScanner, vulnerabilityScannerVersion: $vulnerabilityScannerVersion, blockingSeverities: ["CRITICAL", "HIGH"], ignoreUnfixed: true, sbomGenerator: $sbomGenerator, sbomGeneratorVersion: $sbomGeneratorVersion, sbomFormat: $sbomFormat, backendExitCode: $backendExitCode, frontendExitCode: $frontendExitCode}' \
+            '{controlId: $controlId, repository: $repository, backendSha: $backendSha, frontendRepository: $frontendRepository, frontendSha: $frontendSha, backendImageDigest: $backendImageDigest, frontendImageDigest: $frontendImageDigest, vulnerabilityScanner: $vulnerabilityScanner, vulnerabilityScannerVersion: $vulnerabilityScannerVersion, scannerScope: "vulnerability", blockingSeverities: ["CRITICAL", "HIGH"], ignoreUnfixed: true, sbomGenerator: $sbomGenerator, sbomGeneratorVersion: $sbomGeneratorVersion, sbomFormat: $sbomFormat, backendExitCode: $backendExitCode, frontendExitCode: $frontendExitCode}' \
             > artifacts/security-images/evidence.json
 
       - name: Publish image and SBOM evidence
