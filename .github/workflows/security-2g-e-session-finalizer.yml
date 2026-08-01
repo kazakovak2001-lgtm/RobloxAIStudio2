@@ -1,0 +1,87 @@
+name: SECURITY-2G-E Session Finalizer
+
+on:
+  pull_request:
+    branches:
+      - release/cutover-1e-candidate
+
+permissions:
+  contents: write
+
+jobs:
+  finalize-session-routes:
+    if: github.event.pull_request.head.ref == 'agent/security-2g-e-rbac-parity'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/security-2g-e-rbac-parity
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Add indirect session classifications
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path('scripts/generate-authorization-matrix.ts')
+          text = path.read_text()
+          evidence_anchor = '''const indirectBlueprintEvidence =
+            "server/src/__tests__/security2gE.indirect-blueprint-routes.test.ts";
+          '''
+          if 'const indirectSessionEvidence =' not in text:
+              if evidence_anchor not in text:
+                  raise SystemExit('evidence anchor not found')
+              text = text.replace(
+                  evidence_anchor,
+                  evidence_anchor + '''const indirectSessionEvidence =
+            "server/src/__tests__/security2gE.indirect-session-routes.test.ts";
+          ''',
+                  1,
+              )
+
+          block = '''  ...[
+            ["GET /status/:sessionId", "project.autonomous.session.read"],
+            ["GET /capabilities/:sessionId", "project.autonomous.capabilities.read"],
+            ["POST /pause/:sessionId", "project.autonomous.pause"],
+            ["POST /resume/:sessionId", "project.autonomous.resume"],
+            ["POST /recover/:sessionId", "project.autonomous.recover"],
+            ["POST /cancel/:sessionId", "project.autonomous.cancel"],
+          ].map(
+            ([operation, capability]) =>
+              [
+                `rest|server/src/routes/autonomous.ts|${operation}`,
+                classified(
+                  "project-owner",
+                  "user-session",
+                  capability,
+                  "resolved-session-project",
+                  indirectSessionEvidence,
+                  indirectSessionEvidence,
+                ),
+              ] as const,
+          ),
+          '''
+          if 'resolved-session-project' not in text:
+              marker = ']);\n\nconst current = JSON.parse('
+              if marker not in text:
+                  raise SystemExit('matrix terminator not found')
+              text = text.replace(marker, block + marker, 1)
+          path.write_text(text)
+          PY
+      - name: Generate classified matrix
+        run: node --import tsx scripts/generate-authorization-matrix.ts
+      - name: Format changed files
+        run: node node_modules/prettier/bin/prettier.cjs --write scripts/generate-authorization-matrix.ts config/security/authorization-matrix.json server/src/__tests__/security2gE.indirect-session-routes.test.ts
+      - name: Run focused session authorization tests
+        run: node node_modules/vitest/vitest.mjs --config config/testing/vitest.backend.config.ts run server/src/__tests__/security2gE.indirect-session-routes.test.ts server/src/routes/__tests__/projects.runtime.test.ts
+      - name: Commit generated authority
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add scripts/generate-authorization-matrix.ts config/security/authorization-matrix.json server/src/__tests__/security2gE.indirect-session-routes.test.ts
+          git diff --cached --quiet && exit 0
+          git commit -m "feat(security): classify indirect autonomous session routes"
+          git push origin HEAD:agent/security-2g-e-rbac-parity
