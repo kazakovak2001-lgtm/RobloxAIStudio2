@@ -1,0 +1,87 @@
+name: Security 2G-D Finalizer
+
+on:
+  pull_request:
+    branches: [release/cutover-1e-candidate]
+
+permissions:
+  contents: write
+
+jobs:
+  finalize:
+    if: github.event.pull_request.head.ref == 'agent/security-2g-d-image-sbom'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/security-2g-d-image-sbom
+          fetch-depth: 0
+          persist-credentials: true
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+      - run: npm ci
+      - name: Apply exact CI and roadmap authority updates
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          ci = Path('.github/workflows/ci.yml')
+          text = ci.read_text()
+          old = '''          docker build \\
+            --build-arg VITE_API_URL="$RELEASE_ORIGIN/api" \\
+            --build-arg VITE_SOCKET_URL="$RELEASE_ORIGIN" \\
+            --tag "$FRONTEND_IMAGE" \\
+            standalone-frontend'''
+          new = '''          docker build \\
+            --file Dockerfile.frontend.release \\
+            --build-arg VITE_API_URL="$RELEASE_ORIGIN/api" \\
+            --build-arg VITE_SOCKET_URL="$RELEASE_ORIGIN" \\
+            --tag "$FRONTEND_IMAGE" \\
+            standalone-frontend'''
+          if text.count(old) != 1:
+              raise SystemExit('expected composed-release frontend build block exactly once')
+          ci.write_text(text.replace(old, new))
+
+          roadmap = Path('docs/00-project-control/ROADMAP_STATUS.md')
+          text = roadmap.read_text()
+          replacements = {
+            '**Current backend release:** `release/cutover-1e-candidate@8dd23f88a0b23e2eedf5f2c38a36f0c12570cbab`': '**Current backend release:** `release/cutover-1e-candidate@76f4e7a7be1684ac7984533d6c8d698ba6c99e7e`',
+            '| `SECURITY-2G` | Dependency, SAST, credential, image, SBOM, and RBAC control gate | High | In progress — `SECURITY-2G-C` | `DURABILITY-2E` |': '| `SECURITY-2G` | Dependency, SAST, credential, image, SBOM, and RBAC control gate | High | In progress — `SECURITY-2G-D` | `DURABILITY-2E` |',
+            '**Status:** In progress — SAST and credential detection slice': '**Status:** In progress — image scanning and SBOM slice',
+            '**Tracker:** issue #152': '**Tracker:** issue #154',
+            '**Backend baseline:** `release/cutover-1e-candidate@8dd23f88a0b23e2eedf5f2c38a36f0c12570cbab`': '**Backend baseline:** `release/cutover-1e-candidate@76f4e7a7be1684ac7984533d6c8d698ba6c99e7e`',
+            '`SECURITY-2G-A` established the truthful policy contract. `SECURITY-2G-B` completed production dependency audit policy, deterministic dependency-change evidence and the tracked exception registry. `SECURITY-2G-C` now implements backend JavaScript/TypeScript CodeQL evidence and Gitleaks evidence for pull-request changed content plus an explicit bounded-history scan. Existing protected CI proves compilation, linting, formatting, tests, PostgreSQL restart durability, executable release images, the exact Frontend production contract, composed HTTPS, rollback readiness and architecture/runtime/durability ownership. Those controls remain prerequisites; they do not substitute for Frontend scanner coverage, image, SBOM or authorization controls.': '`SECURITY-2G-A` established the truthful policy contract. `SECURITY-2G-B` completed production dependency controls. `SECURITY-2G-C` completed backend CodeQL and Gitleaks evidence. `SECURITY-2G-D` now implements exact backend and paired Frontend runtime-image scanning, digest-bound SPDX SBOM evidence, deterministic policy validation and hardened runtime images with npm removed from final stages. Existing protected CI remains prerequisite evidence and the composed HTTPS release now builds the same hardened Frontend runtime definition. Frontend-owned SAST and credential coverage, authorization controls and the consolidated gate remain separate work.',
+            '| Backend SAST | Implemented in `SECURITY-2G-C`; final PR review pending | Backend repository | Pull request and protected push security workflow | No unexpired high-confidence critical or high finding | CodeQL result identity and artifact bound to source commit |': '| Backend SAST | Implemented in `SECURITY-2G-C` | Backend repository | Pull request and protected push security workflow | No unexpired high-confidence critical or high finding | CodeQL result identity and artifact bound to source commit |',
+            '| Backend credential detection | Implemented in `SECURITY-2G-C`; final PR review pending | Backend repository | Pull request plus explicit history boundary | No verified live credential; exceptions use exact fingerprints, not plaintext | Redacted changed-content and bounded-history reports |': '| Backend credential detection | Implemented in `SECURITY-2G-C` | Backend repository | Pull request plus explicit history boundary | No verified live credential; exceptions use exact fingerprints, not plaintext | Redacted changed-content and bounded-history reports |',
+            '| Backend image vulnerabilities | Missing authoritative gate | Backend repository | Release-image build | No unexpired critical or high runtime-package finding | Image digest and vulnerability report |': '| Backend image vulnerabilities | Implemented in `SECURITY-2G-D` | Backend repository | Exact release-image build | No unexpired critical or high fixed runtime-package finding | Image digest, Trivy report and source commit |',
+            '| Frontend image vulnerabilities | Missing authoritative gate | Frontend repository and paired release | Frontend release and composed release | Same threshold as backend image | Frontend image digest and report bound to release commit |': '| Frontend image vulnerabilities | Implemented for the paired release in `SECURITY-2G-D` | Backend release integration over exact Frontend commit | Paired release-image and composed-release build | Same threshold as backend image | Frontend image digest and report bound to exact Frontend commit |',
+            '| SBOM | Missing | Producing repository | Release-image build | SPDX or CycloneDX generated for every release image | SBOM digest, image digest and source commit |': '| SBOM | Implemented in `SECURITY-2G-D` for both paired release images | Backend release integration | Exact release-image build | SPDX JSON generated and policy-validated for every paired release image | SPDX document, image digest and paired source commits |',
+            '- `SECURITY-2G-C`: issue #152 and draft PR #153; backend CodeQL and Gitleaks evidence is implemented on the PR branch and remains subject to final protected CI and review of the exact final head.': '- `SECURITY-2G-C`: issue #152 and PR #153; reviewed head `60b184a645e06f57d0ac53d3bf67a968a5e7b647`; merged commit `76f4e7a7be1684ac7984533d6c8d698ba6c99e7e`.\n- `SECURITY-2G-D`: issue #154 and draft PR #155; exact paired runtime-image scanning, digest-bound SPDX SBOM evidence and deterministic image policy validation are active on the PR branch.',
+            '- Active paired release: backend merge `8dd23f88a0b23e2eedf5f2c38a36f0c12570cbab` plus Frontend contents `022788ace31982e2b08ea099800de784b4dbe482`.': '- Active paired release: backend merge `76f4e7a7be1684ac7984533d6c8d698ba6c99e7e` plus Frontend contents `022788ace31982e2b08ea099800de784b4dbe482`.',
+            'Completion of `SECURITY-2G-C` does not complete `SECURITY-2G`; Frontend scanner coverage and later image, SBOM, authorization and consolidated-gate slices remain separate work.': 'Completion of `SECURITY-2G-D` does not complete `SECURITY-2G`; Frontend-owned SAST and credential coverage, authorization parity and the consolidated-gate slice remain separate work.'
+          }
+          for old, new in replacements.items():
+              if text.count(old) != 1:
+                  raise SystemExit(f'expected roadmap text exactly once: {old[:80]}')
+              text = text.replace(old, new)
+          roadmap.write_text(text)
+          PY
+      - name: Remove one-time workflow and regenerate tracked inventories
+        run: |
+          git rm .github/workflows/security-2g-d-finalize.yml
+          node scripts/cleanup/generate-tracked-inventories.mjs
+      - name: Validate formatted authority state
+        run: |
+          npm run format -- .github/workflows/ci.yml docs/00-project-control/ROADMAP_STATUS.md
+          npm run validate
+          npm run format:check
+      - name: Commit deterministic finalization
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add .github/workflows/ci.yml docs/00-project-control/ROADMAP_STATUS.md _inventory_raw.txt ProjectStructure.txt .
+          git diff --cached --exit-code && exit 1 || true
+          git commit -m "feat(security): finalize image sbom release authority"
+          git push origin HEAD:agent/security-2g-d-image-sbom
