@@ -72,34 +72,34 @@
       "transport": "rest",
       "source": "server/src/api/v2/index.ts",
       "operation": "GET /status",
-      "classification": "unclassified",
-      "principal": "unresolved",
-      "capability": "unresolved",
-      "resourceScope": "unresolved",
-      "positiveEvidence": "missing",
-      "negativeEvidence": "missing"
+      "classification": "authenticated",
+      "principal": "user-session",
+      "capability": "system.api.v2.status.read",
+      "resourceScope": "api-v2-metadata",
+      "positiveEvidence": "server/src/__tests__/security2gE.api-v2-scope.test.ts",
+      "negativeEvidence": "server/src/__tests__/security2gE.api-v2-scope.test.ts"
     },
     {
       "transport": "rest",
       "source": "server/src/api/v2/index.ts",
       "operation": "POST /compile/stream",
-      "classification": "unclassified",
-      "principal": "unresolved",
-      "capability": "unresolved",
-      "resourceScope": "unresolved",
-      "positiveEvidence": "missing",
-      "negativeEvidence": "missing"
+      "classification": "project-owner",
+      "principal": "user-session",
+      "capability": "project.api.v2.compile.stream",
+      "resourceScope": "body-project",
+      "positiveEvidence": "server/src/__tests__/security2gE.api-v2-scope.test.ts",
+      "negativeEvidence": "server/src/__tests__/security2gE.api-v2-scope.test.ts"
     },
     {
       "transport": "rest",
       "source": "server/src/api/v2/index.ts",
       "operation": "POST /plan/dag",
-      "classification": "unclassified",
-      "principal": "unresolved",
-      "capability": "unresolved",
-      "resourceScope": "unresolved",
-      "positiveEvidence": "missing",
-      "negativeEvidence": "missing"
+      "classification": "project-owner",
+      "principal": "user-session",
+      "capability": "project.api.v2.plan.dag.create",
+      "resourceScope": "body-project",
+      "positiveEvidence": "server/src/__tests__/security2gE.api-v2-scope.test.ts",
+      "negativeEvidence": "server/src/__tests__/security2gE.api-v2-scope.test.ts"
     },
     {
       "transport": "rest",

@@ -127,6 +127,8 @@ const distributedScopeEvidence =
   "server/src/__tests__/security2gE.distributed-scope.test.ts";
 const apiV1ScopeEvidence =
   "server/src/__tests__/security2gE.api-v1-scope.test.ts";
+const apiV2ScopeEvidence =
+  "server/src/__tests__/security2gE.api-v2-scope.test.ts";
 const directProjectRouteEvidence =
   "server/src/__tests__/security2gE.project-routes.test.ts";
 const indirectBlueprintEvidence =
@@ -727,6 +729,34 @@ const overrides = new Map<
         ),
       ] as const,
   ),
+  ...[
+    ["POST /compile/stream", "project.api.v2.compile.stream"],
+    ["POST /plan/dag", "project.api.v2.plan.dag.create"],
+  ].map(
+    ([operation, capability]) =>
+      [
+        `rest|server/src/api/v2/index.ts|${operation}`,
+        classified(
+          "project-owner",
+          "user-session",
+          capability,
+          "body-project",
+          apiV2ScopeEvidence,
+          apiV2ScopeEvidence,
+        ),
+      ] as const,
+  ),
+  [
+    "rest|server/src/api/v2/index.ts|GET /status",
+    classified(
+      "authenticated",
+      "user-session",
+      "system.api.v2.status.read",
+      "api-v2-metadata",
+      apiV2ScopeEvidence,
+      apiV2ScopeEvidence,
+    ),
+  ],
 ]);
 
 const current = JSON.parse(
