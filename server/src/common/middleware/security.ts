@@ -27,6 +27,28 @@ export function getRequestApiKeyPrincipal(
   return (req as ApiKeyAuthenticatedRequest).apiKeyPrincipal ?? null;
 }
 
+export function requireApiKeyCapability(
+  req: Request,
+  res: Response,
+  capability: string,
+  resourceScope: string,
+): boolean {
+  const principal = getRequestApiKeyPrincipal(req);
+  if (!principal) return true;
+
+  if (
+    !principal.capabilities.includes(capability) ||
+    !principal.resourceScopes.includes(resourceScope)
+  ) {
+    res.status(403).json({
+      success: false,
+      error: "API key capability or resource scope denied",
+    });
+    return false;
+  }
+  return true;
+}
+
 /** Use the same configured storage provider as the rest of the API process. */
 export function configureApiKeyStore(storage: StorageProvider): ApiKeyStore {
   apiKeyStore = new ApiKeyStore(storage);

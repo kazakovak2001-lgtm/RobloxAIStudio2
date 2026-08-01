@@ -131,6 +131,7 @@ import {
   configureApiKeyStore,
   getAllowedFrontendOrigins,
   getApiKeyStore,
+  requireApiKeyCapability,
   requestLogger,
 } from "./common/middleware/security";
 
@@ -649,7 +650,17 @@ app.use(
 );
 
 // Database health endpoints
-app.get("/health/database", async (_req, res) => {
+app.get("/health/database", async (req, res) => {
+  if (
+    !requireApiKeyCapability(
+      req,
+      res,
+      "system.health.database.read",
+      "system-operational-metadata",
+    )
+  ) {
+    return;
+  }
   if (!(storageProvider instanceof PostgresStorageProvider)) {
     res.json({
       success: true,
@@ -661,7 +672,17 @@ app.get("/health/database", async (_req, res) => {
   res.json({ success: true, data: status });
 });
 
-app.get("/health/storage", (_req, res) => {
+app.get("/health/storage", (req, res) => {
+  if (
+    !requireApiKeyCapability(
+      req,
+      res,
+      "system.health.storage.read",
+      "system-operational-metadata",
+    )
+  ) {
+    return;
+  }
   const operational = storageProvider.getOperationalStatus();
   res.json({
     success: true,
