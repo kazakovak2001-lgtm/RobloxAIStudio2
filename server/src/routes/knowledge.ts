@@ -4,8 +4,9 @@
 
 import { Router } from "express";
 import { KnowledgeEngine } from "../knowledge";
+import type { ProjectAccessControl } from "./projects";
 
-export function createKnowledgeRouter(): Router {
+export function createKnowledgeRouter(access: ProjectAccessControl): Router {
   const router = Router();
   const engine = new KnowledgeEngine();
 
@@ -42,12 +43,14 @@ export function createKnowledgeRouter(): Router {
   });
 
   // POST /api/knowledge/store — store a generation record for learning
-  router.post("/store", (req, res) => {
+  router.post("/store", async (req, res) => {
     const record = req.body;
     if (!record.projectId) {
       res.status(400).json({ success: false, error: "projectId required" });
       return;
     }
+    if (!(await access.requireProjectAccess(req, res, record.projectId)))
+      return;
     engine.learn(record);
     res.json({ success: true });
   });

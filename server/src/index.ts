@@ -612,7 +612,7 @@ app.use("/api/repair", createRepairRouter(access));
 
 // Knowledge API
 import { createKnowledgeRouter } from "./routes/knowledge";
-app.use("/api/knowledge", createKnowledgeRouter());
+app.use("/api/knowledge", createKnowledgeRouter(access));
 
 // Agent Collaboration API
 import { createAgentCollaborationRouter } from "./routes/agentCollaboration";

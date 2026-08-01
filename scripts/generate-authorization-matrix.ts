@@ -163,6 +163,8 @@ const playtestScopeEvidence =
   "server/src/__tests__/security2gE.playtest-scope.test.ts";
 const repairScopeEvidence =
   "server/src/__tests__/security2gE.repair-scope.test.ts";
+const knowledgeScopeEvidence =
+  "server/src/__tests__/security2gE.knowledge-scope.test.ts";
 const directProjectRouteEvidence =
   "server/src/__tests__/security2gE.project-routes.test.ts";
 const indirectBlueprintEvidence =
@@ -1206,6 +1208,48 @@ const overrides = new Map<
         ),
       ] as const,
   ),
+  ...[
+    [
+      "GET /patterns",
+      "system.knowledge.patterns.read",
+      "knowledge-pattern-registry",
+    ],
+    [
+      "GET /prompts",
+      "system.knowledge.prompts.read",
+      "knowledge-prompt-registry",
+    ],
+    ["GET /search", "system.knowledge.search", "knowledge-runtime"],
+    [
+      "GET /recommend",
+      "system.knowledge.recommendations.read",
+      "knowledge-runtime",
+    ],
+  ].map(
+    ([operation, capability, scope]) =>
+      [
+        `rest|server/src/routes/knowledge.ts|${operation}`,
+        classified(
+          "authenticated",
+          "user-session-or-api-key",
+          capability,
+          scope,
+          knowledgeScopeEvidence,
+          knowledgeScopeEvidence,
+        ),
+      ] as const,
+  ),
+  [
+    "rest|server/src/routes/knowledge.ts|POST /store",
+    classified(
+      "project-owner",
+      "user-session",
+      "project.knowledge.record.store",
+      "body-project",
+      knowledgeScopeEvidence,
+      knowledgeScopeEvidence,
+    ),
+  ],
 ]);
 
 const current = JSON.parse(

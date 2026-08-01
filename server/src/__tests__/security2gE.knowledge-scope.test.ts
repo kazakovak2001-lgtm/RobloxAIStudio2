@@ -33,7 +33,7 @@ describe("SECURITY-2G-E knowledge scope", () => {
     expect(
       route.indexOf("requireProjectAccess(req, res, record.projectId)"),
     ).toBeLessThan(route.indexOf("engine.learn(record)"));
-    expect(index).toContain('createKnowledgeRouter(access)');
+    expect(index).toContain("createKnowledgeRouter(access)");
   });
 
   it("classifies all five knowledge operations", () => {
