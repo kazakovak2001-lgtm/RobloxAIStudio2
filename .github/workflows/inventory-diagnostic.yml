@@ -1,0 +1,24 @@
+name: Inventory Diagnostic
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  inventory:
+    name: Tracked Inventory Diagnostic
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+      - run: npm ci --ignore-scripts
+      - name: Generate canonical tracked inventories
+        run: |
+          node scripts/cleanup/generate-tracked-inventories.mjs
+          git diff -- _inventory_raw.txt ProjectStructure.txt project_structure.txt
+          test -z "$(git status --short _inventory_raw.txt ProjectStructure.txt project_structure.txt)"
