@@ -111,6 +111,8 @@ const userSelfEvidence = publicEvidence;
 const projectEvidence = "server/src/routes/__tests__/projects.runtime.test.ts";
 const directProjectRouteEvidence =
   "server/src/__tests__/security2gE.project-routes.test.ts";
+const indirectBlueprintEvidence =
+  "server/src/__tests__/security2gE.indirect-blueprint-routes.test.ts";
 
 const overrides = new Map<
   string,
@@ -249,6 +251,24 @@ const overrides = new Map<
           "path-project",
           directProjectRouteEvidence,
           directProjectRouteEvidence,
+        ),
+      ] as const,
+  ),
+  ...[
+    ["GET /blueprints/:blueprintId", "project.blueprint.read"],
+    ["GET /blueprints/:blueprintId/validate", "project.blueprint.validate"],
+    ["GET /blueprints/:blueprintId/executions", "project.execution.list"],
+  ].map(
+    ([operation, capability]) =>
+      [
+        `rest|server/src/routes/game-generation.ts|${operation}`,
+        classified(
+          "project-owner",
+          "user-session",
+          capability,
+          "resolved-blueprint-project",
+          indirectBlueprintEvidence,
+          indirectBlueprintEvidence,
         ),
       ] as const,
   ),

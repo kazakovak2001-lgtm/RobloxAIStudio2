@@ -2,16 +2,16 @@ import fs from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 
-const sourcePath = path.resolve(
-  __dirname,
-  "../routes/game-generation.ts",
-);
+const sourcePath = path.resolve(__dirname, "../routes/game-generation.ts");
 const source = fs.readFileSync(sourcePath, "utf8");
 
 function routeBody(method: string, route: string): string {
   const marker = `router.${method}("${route}"`;
   const start = source.indexOf(marker);
-  expect(start, `${method.toUpperCase()} ${route} must exist`).toBeGreaterThanOrEqual(0);
+  expect(
+    start,
+    `${method.toUpperCase()} ${route} must exist`,
+  ).toBeGreaterThanOrEqual(0);
 
   const nextRoute = source.indexOf("\n  router.", start + marker.length);
   return source.slice(start, nextRoute === -1 ? source.length : nextRoute);

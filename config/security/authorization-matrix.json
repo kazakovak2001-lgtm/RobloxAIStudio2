@@ -1238,34 +1238,34 @@
       "transport": "rest",
       "source": "server/src/routes/game-generation.ts",
       "operation": "GET /blueprints/:blueprintId",
-      "classification": "unclassified",
-      "principal": "unresolved",
-      "capability": "unresolved",
-      "resourceScope": "unresolved",
-      "positiveEvidence": "missing",
-      "negativeEvidence": "missing"
+      "classification": "project-owner",
+      "principal": "user-session",
+      "capability": "project.blueprint.read",
+      "resourceScope": "resolved-blueprint-project",
+      "positiveEvidence": "server/src/__tests__/security2gE.indirect-blueprint-routes.test.ts",
+      "negativeEvidence": "server/src/__tests__/security2gE.indirect-blueprint-routes.test.ts"
     },
     {
       "transport": "rest",
       "source": "server/src/routes/game-generation.ts",
       "operation": "GET /blueprints/:blueprintId/executions",
-      "classification": "unclassified",
-      "principal": "unresolved",
-      "capability": "unresolved",
-      "resourceScope": "unresolved",
-      "positiveEvidence": "missing",
-      "negativeEvidence": "missing"
+      "classification": "project-owner",
+      "principal": "user-session",
+      "capability": "project.execution.list",
+      "resourceScope": "resolved-blueprint-project",
+      "positiveEvidence": "server/src/__tests__/security2gE.indirect-blueprint-routes.test.ts",
+      "negativeEvidence": "server/src/__tests__/security2gE.indirect-blueprint-routes.test.ts"
     },
     {
       "transport": "rest",
       "source": "server/src/routes/game-generation.ts",
       "operation": "GET /blueprints/:blueprintId/validate",
-      "classification": "unclassified",
-      "principal": "unresolved",
-      "capability": "unresolved",
-      "resourceScope": "unresolved",
-      "positiveEvidence": "missing",
-      "negativeEvidence": "missing"
+      "classification": "project-owner",
+      "principal": "user-session",
+      "capability": "project.blueprint.validate",
+      "resourceScope": "resolved-blueprint-project",
+      "positiveEvidence": "server/src/__tests__/security2gE.indirect-blueprint-routes.test.ts",
+      "negativeEvidence": "server/src/__tests__/security2gE.indirect-blueprint-routes.test.ts"
     },
     {
       "transport": "rest",
