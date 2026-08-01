@@ -13,7 +13,12 @@ const securitySource = fs.readFileSync(
 
 describe("SECURITY-2G-E system metadata scope", () => {
   it("keeps system metadata behind global authentication", () => {
-    expect(securitySource).toContain("getApiKeyStore().validate(apiKey)");
+    expect(securitySource).toContain(
+      "getApiKeyStore().resolvePrincipal(apiKey)",
+    );
+    expect(securitySource).toContain(
+      "(req as ApiKeyAuthenticatedRequest).apiKeyPrincipal = apiKeyPrincipal",
+    );
     expect(securitySource).not.toContain('"/api/system"');
   });
 

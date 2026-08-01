@@ -46,8 +46,6 @@ describe("SECURITY-2G-E initial authorization domains", () => {
     const allowed = [
       ["GET", "/health"],
       ["GET", "/"],
-      ["GET", "/api/system/status"],
-      ["GET", "/api/system/agents"],
       ["POST", "/api/platform/auth/login"],
       ["POST", "/api/platform/auth/register"],
       ["POST", "/api/platform/auth/refresh"],
@@ -86,6 +84,28 @@ describe("SECURITY-2G-E initial authorization domains", () => {
       );
       expect(protectedPassed).toBe(false);
       expect(protectedStatus).toBe(401);
+
+      for (const protectedPath of [
+        "/api/system/status",
+        "/api/system/agents",
+      ]) {
+        let passed = false;
+        let status = 0;
+        await authMiddleware(
+          { method: "GET", path: protectedPath, headers: {} } as never,
+          {
+            status: (value: number) => {
+              status = value;
+              return { json: () => undefined };
+            },
+          } as never,
+          () => {
+            passed = true;
+          },
+        );
+        expect(passed, protectedPath).toBe(false);
+        expect(status, protectedPath).toBe(401);
+      }
     } finally {
       process.env.NODE_ENV = previous;
     }

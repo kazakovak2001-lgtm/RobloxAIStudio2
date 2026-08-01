@@ -14,7 +14,12 @@ const securitySource = fs.readFileSync(
 describe("SECURITY-2G-E domain intelligence scope", () => {
   it("keeps domain operations behind the global authentication middleware", () => {
     expect(securitySource).toContain("const PUBLIC_PATHS");
-    expect(securitySource).toContain("getApiKeyStore().validate(apiKey)");
+    expect(securitySource).toContain(
+      "getApiKeyStore().resolvePrincipal(apiKey)",
+    );
+    expect(securitySource).toContain(
+      "(req as ApiKeyAuthenticatedRequest).apiKeyPrincipal = apiKeyPrincipal",
+    );
     expect(securitySource).not.toContain('"/api/domain"');
   });
 
