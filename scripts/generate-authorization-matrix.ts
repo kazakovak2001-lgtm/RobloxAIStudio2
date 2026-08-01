@@ -169,6 +169,8 @@ const gameArchitectScopeEvidence =
   "server/src/__tests__/security2gE.game-architect-scope.test.ts";
 const chatPersistenceScopeEvidence =
   "server/src/__tests__/security2gE.chat-persistence-scope.test.ts";
+const platformRemainingScopeEvidence =
+  "server/src/__tests__/security2gE.platform-remaining-scope.test.ts";
 const directProjectRouteEvidence =
   "server/src/__tests__/security2gE.project-routes.test.ts";
 const indirectBlueprintEvidence =
@@ -1300,6 +1302,34 @@ const overrides = new Map<
           scope,
           chatPersistenceScopeEvidence,
           chatPersistenceScopeEvidence,
+        ),
+      ] as const,
+  ),
+  [
+    "rest|server/src/routes/platform.ts|POST /users",
+    classified(
+      "platform-operator",
+      "user-session",
+      "system.platform.users.create",
+      "global-user-directory",
+      platformRemainingScopeEvidence,
+      platformRemainingScopeEvidence,
+    ),
+  ],
+  ...[
+    ["GET /registry/agents", "system.platform.registry.agents.list"],
+    ["GET /registry/agents/:id", "system.platform.registry.agent.read"],
+  ].map(
+    ([operation, capability]) =>
+      [
+        `rest|server/src/routes/platform.ts|${operation}`,
+        classified(
+          "authenticated",
+          "user-session-or-api-key",
+          capability,
+          "platform-agent-registry",
+          platformRemainingScopeEvidence,
+          platformRemainingScopeEvidence,
         ),
       ] as const,
   ),

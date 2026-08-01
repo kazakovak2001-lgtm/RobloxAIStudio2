@@ -1634,23 +1634,23 @@
       "transport": "rest",
       "source": "server/src/routes/platform.ts",
       "operation": "GET /registry/agents",
-      "classification": "unclassified",
-      "principal": "unresolved",
-      "capability": "unresolved",
-      "resourceScope": "unresolved",
-      "positiveEvidence": "missing",
-      "negativeEvidence": "missing"
+      "classification": "authenticated",
+      "principal": "user-session-or-api-key",
+      "capability": "system.platform.registry.agents.list",
+      "resourceScope": "platform-agent-registry",
+      "positiveEvidence": "server/src/__tests__/security2gE.platform-remaining-scope.test.ts",
+      "negativeEvidence": "server/src/__tests__/security2gE.platform-remaining-scope.test.ts"
     },
     {
       "transport": "rest",
       "source": "server/src/routes/platform.ts",
       "operation": "GET /registry/agents/:id",
-      "classification": "unclassified",
-      "principal": "unresolved",
-      "capability": "unresolved",
-      "resourceScope": "unresolved",
-      "positiveEvidence": "missing",
-      "negativeEvidence": "missing"
+      "classification": "authenticated",
+      "principal": "user-session-or-api-key",
+      "capability": "system.platform.registry.agent.read",
+      "resourceScope": "platform-agent-registry",
+      "positiveEvidence": "server/src/__tests__/security2gE.platform-remaining-scope.test.ts",
+      "negativeEvidence": "server/src/__tests__/security2gE.platform-remaining-scope.test.ts"
     },
     {
       "transport": "rest",
@@ -1766,12 +1766,12 @@
       "transport": "rest",
       "source": "server/src/routes/platform.ts",
       "operation": "POST /users",
-      "classification": "unclassified",
-      "principal": "unresolved",
-      "capability": "unresolved",
-      "resourceScope": "unresolved",
-      "positiveEvidence": "missing",
-      "negativeEvidence": "missing"
+      "classification": "platform-operator",
+      "principal": "user-session",
+      "capability": "system.platform.users.create",
+      "resourceScope": "global-user-directory",
+      "positiveEvidence": "server/src/__tests__/security2gE.platform-remaining-scope.test.ts",
+      "negativeEvidence": "server/src/__tests__/security2gE.platform-remaining-scope.test.ts"
     },
     {
       "transport": "rest",
