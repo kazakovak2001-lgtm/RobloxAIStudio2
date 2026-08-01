@@ -1,5 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
+import { describe, expect, it } from "vitest";
 
 interface MatrixOperation {
   transport: "rest" | "socket";
@@ -43,7 +44,8 @@ function relativeSource(absolutePath: string): string {
 
 function discoverOperations(): string[] {
   const discovered = new Set<string>();
-  const restPattern = /\b(?:app|router)\.(get|post|put|patch|delete)\(\s*["'`]([^"'`]+)["'`]/g;
+  const restPattern =
+    /\b(?:app|router)\.(get|post|put|patch|delete)\(\s*["'`]([^"'`]+)["'`]/g;
   const socketPattern = /\bsocket\.on\(\s*["'`]([^"'`]+)["'`]/g;
 
   for (const file of listTypeScriptFiles(serverRoot)) {
@@ -51,7 +53,9 @@ function discoverOperations(): string[] {
     const content = fs.readFileSync(file, "utf8");
 
     for (const match of content.matchAll(restPattern)) {
-      discovered.add(`rest|${source}|${match[1].toUpperCase()} ${match[2]}`);
+      discovered.add(
+        `rest|${source}|${match[1].toUpperCase()} ${match[2]}`,
+      );
     }
     for (const match of content.matchAll(socketPattern)) {
       if (match[1] === "disconnect") continue;
@@ -81,7 +85,9 @@ describe("SECURITY-2G-E authorization inventory", () => {
   it("classifies every statically registered REST and Socket.IO operation", () => {
     const discovered = discoverOperations();
     const tracked = matrixKeys(matrix);
-    const untracked = discovered.filter((operation) => !tracked.includes(operation));
+    const untracked = discovered.filter(
+      (operation) => !tracked.includes(operation),
+    );
     const stale = tracked.filter((operation) => !discovered.includes(operation));
 
     expect({ untracked, stale }).toEqual({ untracked: [], stale: [] });
