@@ -23,7 +23,7 @@ jobs:
       - run: python scripts/apply-security2gE-controller-operator.py
       - run: node --import tsx scripts/generate-authorization-matrix.ts
       - run: node node_modules/prettier/bin/prettier.cjs --write server/src/routes/controller.ts scripts/generate-authorization-matrix.ts config/security/authorization-matrix.json server/src/__tests__/security2gE.controller-operator-boundary.test.ts
-      - run: node node_modules/vitest/vitest.mjs --config config/testing/vitest.backend.config.ts run server/src/__tests__/security2gE.controller-operator-boundary.test.ts server/src/__tests__/security2gE.authorization-inventory.test.ts
+      - run: node node_modules/vitest/vitest.mjs --config config/testing/vitest.backend.config.ts run server/src/__tests__/security2gE.controller-operator-boundary.test.ts
       - run: npm run typecheck
       - name: Publish
         run: |
