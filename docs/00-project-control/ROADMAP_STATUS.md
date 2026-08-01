@@ -24,7 +24,7 @@ This file is the ordered current delivery authority. The dated TECH-AUDIT-2 road
 | `FRONTEND-2C` | Protected Frontend quality and bundle baseline | High | ✅ Complete | `HARDEN-2A` |
 | `RUNTIME-2D` | Runtime/provider/orchestration/memory ownership | High | ✅ Complete | `ARCH-2B` |
 | `DURABILITY-2E` | Durable writes and operational-state truthfulness | High | ✅ Complete | `RUNTIME-2D` |
-| `SECURITY-2G` | Dependency, SAST, secret, image, SBOM, and RBAC control gate | High | In progress — `SECURITY-2G-A` | `DURABILITY-2E` |
+| `SECURITY-2G` | Dependency, SAST, secret, image, SBOM, and RBAC control gate | High | In progress — `SECURITY-2G-B` | `DURABILITY-2E` |
 | `DOC-202` | Documentation-authority inventory and deterministic guards | Medium | In progress | `SECURITY-2G` decisions |
 | `STUDIO-2F` | Native assets, GUI, runtime, and place delivery | Medium | Deferred | control gates |
 | `AUTONOMY-3A` | Real engine-backed autonomous phases and broader recovery | High | Deferred | control gates |
@@ -32,24 +32,24 @@ This file is the ordered current delivery authority. The dated TECH-AUDIT-2 road
 
 ## SECURITY-2G control baseline
 
-**Status:** In progress — baseline slice  
-**Tracker:** issue #148  
-**Backend baseline:** `release/cutover-1e-candidate@a1d2c231d8cea41fb6cf68bbfd447091c0cd957e`  
+**Status:** In progress — dependency controls slice  
+**Tracker:** issue #150  
+**Backend baseline:** `release/cutover-1e-candidate@1fe7683d25364465765cfde656842e7f33f96e47`  
 **Frontend release contents:** `kazakovak2001-lgtm/Frontend@022788ace31982e2b08ea099800de784b4dbe482`
 
-`SECURITY-2G` begins with a truthful policy contract. Existing protected CI proves compilation, linting, formatting, tests, PostgreSQL restart durability, executable release images, the exact Frontend production contract, composed HTTPS, rollback readiness and architecture/runtime/durability ownership. Those controls are prerequisites; they do not substitute for dependency, SAST, secret, image, SBOM or authorization policy.
+`SECURITY-2G-A` established the truthful policy contract. `SECURITY-2G-B` now implements production dependency audit policy, deterministic dependency-change evidence and the tracked exception registry. Existing protected CI proves compilation, linting, formatting, tests, PostgreSQL restart durability, executable release images, the exact Frontend production contract, composed HTTPS, rollback readiness and architecture/runtime/durability ownership. Those controls remain prerequisites; they do not substitute for the remaining SAST, secret, image, SBOM or authorization controls.
 
 | Control | Current state | Owner | Enforcement point | Blocking threshold | Required evidence |
 | --- | --- | --- | --- | --- | --- |
-| Production dependency vulnerabilities | Missing authoritative gate | Backend repository | Pull request and protected push CI | No unexpired critical or high production finding | Scanner report, lockfile identity, exception registry |
-| Dependency change review | Missing authoritative gate | Changed repository | Pull request CI | Deny newly introduced vulnerable or disallowed dependency changes | Dependency diff and policy result |
+| Production dependency vulnerabilities | In progress — `SECURITY-2G-B` | Backend repository | Pull request and protected push CI | No unexpired critical or high production finding | Scanner report, lockfile identity, exception registry |
+| Dependency change review | In progress — `SECURITY-2G-B` | Changed repository | Pull request CI | Deny newly introduced vulnerable or disallowed dependency changes | Dependency diff and policy result |
 | SAST | Missing authoritative gate | Backend and Frontend repositories | Pull request and protected push CI | No unexpired high-confidence critical or high finding | SARIF/result identity bound to commit |
 | Secret detection | Missing authoritative gate | Each repository | Pull request plus defined history boundary | No verified live secret; exceptions use fingerprints, not plaintext | Scan report and revocation evidence where applicable |
 | Backend image vulnerabilities | Missing authoritative gate | Backend repository | Release-image build | No unexpired critical or high runtime-package finding | Image digest and vulnerability report |
 | Frontend image vulnerabilities | Missing authoritative gate | Frontend repository and paired release | Frontend release and composed release | Same threshold as backend image | Frontend image digest and report bound to release commit |
 | SBOM | Missing | Producing repository | Release-image build | SPDX or CycloneDX generated for every release image | SBOM digest, image digest and source commit |
 | Application RBAC | Not yet inventoried as one authoritative matrix | Backend application | Unit, integration and contract tests | Every protected REST and Socket.IO operation has positive and negative authorization evidence | Route/event matrix and test evidence |
-| Security exceptions | Missing central policy | Control owner plus reviewer | Repository validation and CI | Named owner, exact scope, reason and expiry required | Tracked exception registry and expiry check |
+| Security exceptions | Implemented in `SECURITY-2G-B` | Control owner plus reviewer | Repository validation and CI | Named owner, exact scope, reason and expiry required | Tracked exception registry and expiry check |
 
 Policy principles:
 
@@ -73,7 +73,7 @@ Ordered delivery:
 
 Every exception records the control, exact package/advisory/rule/path/fingerprint/component/case, affected repository and release identity, owner, rationale, compensating control, approval reference, creation date and expiry. Expired, ambiguous, wildcard or ownerless exceptions fail validation.
 
-Completion of `SECURITY-2G-A` does not complete `SECURITY-2G`; controls remain missing until their respective slices produce protected evidence.
+Completion of `SECURITY-2G-B` does not complete `SECURITY-2G`; controls remain missing until their respective slices produce protected evidence.
 
 ## Completion evidence
 
@@ -81,6 +81,8 @@ Completion of `SECURITY-2G-A` does not complete `SECURITY-2G`; controls remain m
 - `FRONTEND-2C`: Frontend PRs #18–#21; canonical `Frontend/main` contents `022788ace31982e2b08ea099800de784b4dbe482`; promoted by REL-203 PR #145.
 - `RUNTIME-2D`: issue #57 closed as completed; runtime ownership is protected by architecture, runtime, and memory validators.
 - `DURABILITY-2E`: DATA-201 issue #63 and DATA-202 issue #135 closed; DATA-202 final slice merge `a33a8c30588f1e4705d27856e61d839c8efd42ac`.
+- `SECURITY-2G-A`: issue #148 and PR #149; reviewed head `a1d2c231d8cea41fb6cf68bbfd447091c0cd957e`; merged baseline commit `1fe7683d25364465765cfde656842e7f33f96e47`.
+- `SECURITY-2G-B`: issue #150 and draft PR #151; dependency controls remain in progress until protected audit evidence is green.
 - Active paired release: backend merge `7ccc4e02ba4175318856cd14b845e4ccd4dc6057` plus Frontend contents `022788ace31982e2b08ea099800de784b4dbe482`.
 
 ## Runtime truthfulness
