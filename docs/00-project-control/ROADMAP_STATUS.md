@@ -3,7 +3,7 @@
 # Roadmap Status
 
 **Last Updated:** August 1, 2026  
-**Current backend release:** `release/cutover-1e-candidate@8dd23f88a0b23e2eedf5f2c38a36f0c12570cbab`  
+**Current backend release:** `release/cutover-1e-candidate@76f4e7a7be1684ac7984533d6c8d698ba6c99e7e`  
 **Current Frontend contents:** `kazakovak2001-lgtm/Frontend@022788ace31982e2b08ea099800de784b4dbe482`
 
 This file is the ordered current delivery authority. The dated TECH-AUDIT-2 roadmap and sprint backlog are historical planning baselines and do not override the status below. See [DOC-202A reconciliation](./DOC-202A_ROADMAP_AUTHORITY_RECONCILIATION.md) for exact completion evidence.
@@ -24,7 +24,7 @@ This file is the ordered current delivery authority. The dated TECH-AUDIT-2 road
 | `FRONTEND-2C` | Protected Frontend quality and bundle baseline | High | ✅ Complete | `HARDEN-2A` |
 | `RUNTIME-2D` | Runtime/provider/orchestration/memory ownership | High | ✅ Complete | `ARCH-2B` |
 | `DURABILITY-2E` | Durable writes and operational-state truthfulness | High | ✅ Complete | `RUNTIME-2D` |
-| `SECURITY-2G` | Dependency, SAST, credential, image, SBOM, and RBAC control gate | High | In progress — `SECURITY-2G-C` | `DURABILITY-2E` |
+| `SECURITY-2G` | Dependency, SAST, credential, image, SBOM, and RBAC control gate | High | In progress — `SECURITY-2G-D` | `DURABILITY-2E` |
 | `DOC-202` | Documentation-authority inventory and deterministic guards | Medium | In progress | `SECURITY-2G` decisions |
 | `STUDIO-2F` | Native assets, GUI, runtime, and place delivery | Medium | Deferred | control gates |
 | `AUTONOMY-3A` | Real engine-backed autonomous phases and broader recovery | High | Deferred | control gates |
@@ -32,23 +32,23 @@ This file is the ordered current delivery authority. The dated TECH-AUDIT-2 road
 
 ## SECURITY-2G control baseline
 
-**Status:** In progress — SAST and credential detection slice  
-**Tracker:** issue #152  
-**Backend baseline:** `release/cutover-1e-candidate@8dd23f88a0b23e2eedf5f2c38a36f0c12570cbab`  
+**Status:** In progress — image scanning and SBOM slice  
+**Tracker:** issue #154  
+**Backend baseline:** `release/cutover-1e-candidate@76f4e7a7be1684ac7984533d6c8d698ba6c99e7e`  
 **Frontend release contents:** `kazakovak2001-lgtm/Frontend@022788ace31982e2b08ea099800de784b4dbe482`
 
-`SECURITY-2G-A` established the truthful policy contract. `SECURITY-2G-B` completed production dependency audit policy, deterministic dependency-change evidence and the tracked exception registry. `SECURITY-2G-C` now implements backend JavaScript/TypeScript CodeQL evidence and Gitleaks evidence for pull-request changed content plus an explicit bounded-history scan. Existing protected CI proves compilation, linting, formatting, tests, PostgreSQL restart durability, executable release images, the exact Frontend production contract, composed HTTPS, rollback readiness and architecture/runtime/durability ownership. Those controls remain prerequisites; they do not substitute for Frontend scanner coverage, image, SBOM or authorization controls.
+`SECURITY-2G-A` established the truthful policy contract. `SECURITY-2G-B` completed production dependency controls. `SECURITY-2G-C` completed backend CodeQL and Gitleaks evidence. `SECURITY-2G-D` now implements exact backend and paired Frontend runtime-image scanning, digest-bound SPDX SBOM evidence, deterministic policy validation and hardened runtime images with npm removed from final stages. Existing protected CI remains prerequisite evidence. Frontend-owned SAST and credential coverage, authorization controls and the consolidated gate remain separate work.
 
 | Control | Current state | Owner | Enforcement point | Blocking threshold | Required evidence |
 | --- | --- | --- | --- | --- | --- |
 | Production dependency vulnerabilities | Implemented in `SECURITY-2G-B` | Backend repository | Pull request and protected push CI | No unexpired critical or high production finding | Scanner report, lockfile identity, exception registry |
 | Dependency change review | Implemented in `SECURITY-2G-B` | Changed repository | Pull request CI | Deny newly introduced vulnerable or disallowed dependency changes | Dependency diff and policy result |
-| Backend SAST | Implemented in `SECURITY-2G-C`; final PR review pending | Backend repository | Pull request and protected push security workflow | No unexpired high-confidence critical or high finding | CodeQL result identity and artifact bound to source commit |
-| Backend credential detection | Implemented in `SECURITY-2G-C`; final PR review pending | Backend repository | Pull request plus explicit history boundary | No verified live credential; exceptions use exact fingerprints, not plaintext | Redacted changed-content and bounded-history reports |
+| Backend SAST | Implemented in `SECURITY-2G-C` | Backend repository | Pull request and protected push security workflow | No unexpired high-confidence critical or high finding | CodeQL result identity and artifact bound to source commit |
+| Backend credential detection | Implemented in `SECURITY-2G-C` | Backend repository | Pull request plus explicit history boundary | No verified live credential; exceptions use exact fingerprints, not plaintext | Redacted changed-content and bounded-history reports |
 | Frontend SAST and credential detection | Not yet implemented | Frontend repository | Frontend pull request and protected push CI | Same policy thresholds as backend | Frontend-owned scanner evidence bound to Frontend commit |
-| Backend image vulnerabilities | Missing authoritative gate | Backend repository | Release-image build | No unexpired critical or high runtime-package finding | Image digest and vulnerability report |
-| Frontend image vulnerabilities | Missing authoritative gate | Frontend repository and paired release | Frontend release and composed release | Same threshold as backend image | Frontend image digest and report bound to release commit |
-| SBOM | Missing | Producing repository | Release-image build | SPDX or CycloneDX generated for every release image | SBOM digest, image digest and source commit |
+| Backend image vulnerabilities | Implemented in `SECURITY-2G-D` | Backend repository | Exact release-image build | No unexpired critical or high fixed runtime-package finding | Image digest, Trivy report and source commit |
+| Frontend image vulnerabilities | Implemented for the paired release in `SECURITY-2G-D` | Backend release integration over exact Frontend commit | Paired release-image build | Same threshold as backend image | Frontend image digest and report bound to exact Frontend commit |
+| SBOM | Implemented in `SECURITY-2G-D` for both paired release images | Backend release integration | Exact release-image build | SPDX JSON generated and policy-validated for every paired release image | SPDX document, image digest and paired source commits |
 | Application RBAC | Not yet inventoried as one authoritative matrix | Backend application | Unit, integration and contract tests | Every protected REST and Socket.IO operation has positive and negative authorization evidence | Route/event matrix and test evidence |
 | Security exceptions | Implemented in `SECURITY-2G-B` and extended in `SECURITY-2G-C` | Control owner plus reviewer | Repository validation and CI | Named owner, exact scope, reason and expiry required | Tracked exception registry and expiry check |
 
@@ -74,7 +74,7 @@ Ordered delivery:
 
 Every exception records the control, exact package/advisory/rule/path/fingerprint/component/case, affected repository and release identity, owner, rationale, compensating control, approval reference, creation date and expiry. Expired, ambiguous, wildcard or ownerless exceptions fail validation.
 
-Completion of `SECURITY-2G-C` does not complete `SECURITY-2G`; Frontend scanner coverage and later image, SBOM, authorization and consolidated-gate slices remain separate work.
+Completion of `SECURITY-2G-D` does not complete `SECURITY-2G`; Frontend-owned SAST and credential coverage, authorization parity and the consolidated-gate slice remain separate work.
 
 ## Completion evidence
 
@@ -84,8 +84,9 @@ Completion of `SECURITY-2G-C` does not complete `SECURITY-2G`; Frontend scanner 
 - `DURABILITY-2E`: DATA-201 issue #63 and DATA-202 issue #135 closed; DATA-202 final slice merge `a33a8c30588f1e4705d27856e61d839c8efd42ac`.
 - `SECURITY-2G-A`: issue #148 and PR #149; reviewed head `15261bea2a63ff574a2f8f33b93cfec53f5ecec6`; merged baseline commit `1fe7683d25364465765cfde656842e7f33f96e47`.
 - `SECURITY-2G-B`: issue #150 and PR #151; reviewed head `ccb65bfc7c906f43634aab587f492d5a67179a41`; merged dependency-control commit `8dd23f88a0b23e2eedf5f2c38a36f0c12570cbab`.
-- `SECURITY-2G-C`: issue #152 and draft PR #153; backend CodeQL and Gitleaks evidence is implemented on the PR branch and remains subject to final protected CI and review of the exact final head.
-- Active paired release: backend merge `8dd23f88a0b23e2eedf5f2c38a36f0c12570cbab` plus Frontend contents `022788ace31982e2b08ea099800de784b4dbe482`.
+- `SECURITY-2G-C`: issue #152 and PR #153; reviewed head `60b184a645e06f57d0ac53d3bf67a968a5e7b647`; merged commit `76f4e7a7be1684ac7984533d6c8d698ba6c99e7e`.
+- `SECURITY-2G-D`: issue #154 and draft PR #155; exact paired runtime-image scanning, digest-bound SPDX SBOM evidence and deterministic image policy validation are active on the PR branch.
+- Active paired release: backend merge `76f4e7a7be1684ac7984533d6c8d698ba6c99e7e` plus Frontend contents `022788ace31982e2b08ea099800de784b4dbe482`.
 
 ## Runtime truthfulness
 

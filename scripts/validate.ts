@@ -247,7 +247,7 @@ function validateDocumentationAuthority(): DocumentationAuthorityError[] {
     "`FRONTEND-2C` | Protected Frontend quality and bundle baseline | High | ✅ Complete",
     "`RUNTIME-2D` | Runtime/provider/orchestration/memory ownership | High | ✅ Complete",
     "`DURABILITY-2E` | Durable writes and operational-state truthfulness | High | ✅ Complete",
-    "`SECURITY-2G` | Dependency, SAST, credential, image, SBOM, and RBAC control gate | High | In progress — `SECURITY-2G-C`",
+    "`SECURITY-2G` | Dependency, SAST, credential, image, SBOM, and RBAC control gate | High | In progress — `SECURITY-2G-D`",
   ];
 
   for (const claim of requiredCurrentClaims) {
@@ -269,7 +269,7 @@ function validateDocumentationAuthority(): DocumentationAuthorityError[] {
   }
 
   const requiredEvidence = [
-    "8dd23f88a0b23e2eedf5f2c38a36f0c12570cbab",
+    "76f4e7a7be1684ac7984533d6c8d698ba6c99e7e",
     "022788ace31982e2b08ea099800de784b4dbe482",
     "a33a8c30588f1e4705d27856e61d839c8efd42ac",
     "kazakovak2001-lgtm/Frontend",

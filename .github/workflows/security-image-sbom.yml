@@ -1,0 +1,207 @@
+name: Security Image and SBOM Scan
+
+on:
+  pull_request:
+  push:
+    branches: [release/cutover-1e-candidate]
+  workflow_call:
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  image-evidence:
+    name: Release Image and SBOM Evidence
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    env:
+      SECURITY_SOURCE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+      TRIVY_VERSION: 0.70.0
+      SYFT_VERSION: 1.44.0
+      BACKEND_IMAGE: roblox-ai-studio-backend:security-2g-d
+      FRONTEND_IMAGE: roblox-ai-studio-frontend:security-2g-d
+    steps:
+      - name: Checkout exact backend source
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.SECURITY_SOURCE_SHA }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Resolve exact Frontend release commit
+        id: frontend-release
+        run: |
+          frontend_sha="$(jq --raw-output '.frontendRelease.commit' config/cutover/release-baseline.inventory.json)"
+          [[ "$frontend_sha" =~ ^[0-9a-f]{40}$ ]]
+          echo "sha=$frontend_sha" >> "$GITHUB_OUTPUT"
+
+      - name: Checkout exact Frontend release source
+        uses: actions/checkout@v4
+        with:
+          repository: kazakovak2001-lgtm/Frontend
+          ref: ${{ steps.frontend-release.outputs.sha }}
+          path: standalone-frontend
+          persist-credentials: false
+
+      - name: Verify exact release sources
+        run: |
+          test "$(git rev-parse HEAD)" = "$SECURITY_SOURCE_SHA"
+          test "$(git -C standalone-frontend rev-parse HEAD)" = "${{ steps.frontend-release.outputs.sha }}"
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "npm"
+
+      - name: Install exact policy-validation dependencies
+        run: npm ci --ignore-scripts
+
+      - name: Validate deterministic image policy fixtures
+        run: node --import tsx scripts/validate-image-sbom-policy.ts
+
+      - name: Build exact backend and Frontend release images
+        run: |
+          docker build \
+            --file Dockerfile.backend \
+            --label "org.opencontainers.image.revision=$SECURITY_SOURCE_SHA" \
+            --tag "$BACKEND_IMAGE" \
+            .
+          docker build \
+            --file Dockerfile.frontend.release \
+            --build-arg VITE_API_URL="https://localhost:8443/api" \
+            --build-arg VITE_SOCKET_URL="https://localhost:8443" \
+            --label "org.opencontainers.image.revision=${{ steps.frontend-release.outputs.sha }}" \
+            --tag "$FRONTEND_IMAGE" \
+            standalone-frontend
+
+      - name: Record immutable image identities
+        run: |
+          mkdir -p artifacts/security-images/backend artifacts/security-images/frontend
+          backend_digest="$(docker image inspect --format '{{.Id}}' "$BACKEND_IMAGE")"
+          frontend_digest="$(docker image inspect --format '{{.Id}}' "$FRONTEND_IMAGE")"
+          [[ "$backend_digest" =~ ^sha256:[0-9a-f]{64}$ ]]
+          [[ "$frontend_digest" =~ ^sha256:[0-9a-f]{64}$ ]]
+          printf '%s\n' "$backend_digest" > artifacts/security-images/backend/image-digest.txt
+          printf '%s\n' "$frontend_digest" > artifacts/security-images/frontend/image-digest.txt
+          docker image inspect "$BACKEND_IMAGE" > artifacts/security-images/backend/image-inspect.json
+          docker image inspect "$FRONTEND_IMAGE" > artifacts/security-images/frontend/image-inspect.json
+
+      - name: Generate SPDX JSON SBOMs
+        run: |
+          docker run --rm \
+            -v /var/run/docker.sock:/var/run/docker.sock \
+            -v "$PWD:/workspace" \
+            anchore/syft:v${SYFT_VERSION} \
+            "$BACKEND_IMAGE" \
+            -o spdx-json=/workspace/artifacts/security-images/backend/sbom.spdx.json
+          docker run --rm \
+            -v /var/run/docker.sock:/var/run/docker.sock \
+            -v "$PWD:/workspace" \
+            anchore/syft:v${SYFT_VERSION} \
+            "$FRONTEND_IMAGE" \
+            -o spdx-json=/workspace/artifacts/security-images/frontend/sbom.spdx.json
+
+      - name: Scan backend runtime image
+        id: backend-scan
+        shell: bash
+        run: |
+          set +e
+          docker run --rm \
+            -v /var/run/docker.sock:/var/run/docker.sock \
+            -v "$PWD:/workspace" \
+            aquasec/trivy:${TRIVY_VERSION} \
+            image \
+            --scanners vuln \
+            --skip-version-check \
+            --format json \
+            --output /workspace/artifacts/security-images/backend/vulnerabilities.json \
+            --severity HIGH,CRITICAL \
+            --ignore-unfixed \
+            --exit-code 1 \
+            "$BACKEND_IMAGE"
+          status=$?
+          set -e
+          test -s artifacts/security-images/backend/vulnerabilities.json || printf '{"Results":[]}\n' > artifacts/security-images/backend/vulnerabilities.json
+          echo "status=$status" >> "$GITHUB_OUTPUT"
+
+      - name: Scan Frontend runtime image
+        id: frontend-scan
+        shell: bash
+        run: |
+          set +e
+          docker run --rm \
+            -v /var/run/docker.sock:/var/run/docker.sock \
+            -v "$PWD:/workspace" \
+            aquasec/trivy:${TRIVY_VERSION} \
+            image \
+            --scanners vuln \
+            --skip-version-check \
+            --format json \
+            --output /workspace/artifacts/security-images/frontend/vulnerabilities.json \
+            --severity HIGH,CRITICAL \
+            --ignore-unfixed \
+            --exit-code 1 \
+            "$FRONTEND_IMAGE"
+          status=$?
+          set -e
+          test -s artifacts/security-images/frontend/vulnerabilities.json || printf '{"Results":[]}\n' > artifacts/security-images/frontend/vulnerabilities.json
+          echo "status=$status" >> "$GITHUB_OUTPUT"
+
+      - name: Bind image and SBOM evidence to release identities
+        if: always()
+        env:
+          BACKEND_SCAN_STATUS: ${{ steps.backend-scan.outputs.status || '1' }}
+          FRONTEND_SCAN_STATUS: ${{ steps.frontend-scan.outputs.status || '1' }}
+          FRONTEND_SHA: ${{ steps.frontend-release.outputs.sha }}
+        run: |
+          mkdir -p artifacts/security-images
+          backend_digest="$(cat artifacts/security-images/backend/image-digest.txt 2>/dev/null || true)"
+          frontend_digest="$(cat artifacts/security-images/frontend/image-digest.txt 2>/dev/null || true)"
+          jq --null-input \
+            --arg controlId "SECURITY-2G-D" \
+            --arg repository "kazakovak2001-lgtm/RobloxAIStudio2" \
+            --arg backendSha "$SECURITY_SOURCE_SHA" \
+            --arg frontendRepository "kazakovak2001-lgtm/Frontend" \
+            --arg frontendSha "$FRONTEND_SHA" \
+            --arg backendImageDigest "$backend_digest" \
+            --arg frontendImageDigest "$frontend_digest" \
+            --arg vulnerabilityScanner "trivy" \
+            --arg vulnerabilityScannerVersion "$TRIVY_VERSION" \
+            --arg sbomGenerator "syft" \
+            --arg sbomGeneratorVersion "$SYFT_VERSION" \
+            --arg sbomFormat "spdx-json" \
+            --argjson backendExitCode "$BACKEND_SCAN_STATUS" \
+            --argjson frontendExitCode "$FRONTEND_SCAN_STATUS" \
+            '{controlId: $controlId, repository: $repository, backendSha: $backendSha, frontendRepository: $frontendRepository, frontendSha: $frontendSha, backendImageDigest: $backendImageDigest, frontendImageDigest: $frontendImageDigest, vulnerabilityScanner: $vulnerabilityScanner, vulnerabilityScannerVersion: $vulnerabilityScannerVersion, scannerScope: "vulnerability", blockingSeverities: ["CRITICAL", "HIGH"], ignoreUnfixed: true, sbomGenerator: $sbomGenerator, sbomGeneratorVersion: $sbomGeneratorVersion, sbomFormat: $sbomFormat, backendExitCode: $backendExitCode, frontendExitCode: $frontendExitCode}' \
+            > artifacts/security-images/evidence.json
+
+      - name: Validate generated image and SBOM evidence
+        if: always()
+        run: node --import tsx scripts/validate-image-sbom-policy.ts artifacts/security-images
+
+      - name: Publish image and SBOM evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: security-2g-d-images-${{ env.SECURITY_SOURCE_SHA }}
+          path: artifacts/security-images
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Enforce image vulnerability threshold
+        env:
+          BACKEND_SCAN_STATUS: ${{ steps.backend-scan.outputs.status || '1' }}
+          FRONTEND_SCAN_STATUS: ${{ steps.frontend-scan.outputs.status || '1' }}
+        run: |
+          test "$BACKEND_SCAN_STATUS" -eq 0
+          test "$FRONTEND_SCAN_STATUS" -eq 0
+
+  image-security-gate:
+    name: Security Image and SBOM Gate
+    runs-on: ubuntu-latest
+    needs: [image-evidence]
+    steps:
+      - run: echo "Image vulnerability and SBOM checks passed"

@@ -1,0 +1,47 @@
+# syntax=docker/dockerfile:1
+
+# Backend-owned paired release image for the exact canonical Frontend source.
+# The build context must be the checked-out Frontend repository.
+FROM node:22-alpine AS builder
+
+WORKDIR /app
+
+ARG VITE_API_URL=http://127.0.0.1:5000/api
+ARG VITE_SOCKET_URL=http://127.0.0.1:5000
+ENV VITE_API_URL=${VITE_API_URL}
+ENV VITE_SOCKET_URL=${VITE_SOCKET_URL}
+
+COPY package.json package-lock.json ./
+RUN npm ci
+
+COPY . .
+RUN npm run build
+
+FROM node:22-alpine AS production
+
+WORKDIR /app
+
+ENV NODE_ENV=production
+ENV HOST=0.0.0.0
+ENV PORT=3000
+ENV PUBLIC_ORIGIN=http://127.0.0.1:3000
+
+COPY --from=builder /app/.output ./.output
+COPY scripts/runtime ./scripts/runtime
+
+# npm and npx are not used by the runtime server. Remove them from the final
+# image so build tooling and its transitive packages are not shipped.
+RUN rm -rf /usr/local/lib/node_modules/npm \
+    /usr/local/bin/npm \
+    /usr/local/bin/npx && \
+    addgroup -g 1001 -S appgroup && \
+    adduser -S appuser -u 1001 -G appgroup
+
+USER appuser
+
+EXPOSE 3000
+
+HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
+  CMD wget --no-verbose --tries=1 --spider http://127.0.0.1:3000/health || exit 1
+
+CMD ["node", "scripts/runtime/serve-frontend.mjs"]
