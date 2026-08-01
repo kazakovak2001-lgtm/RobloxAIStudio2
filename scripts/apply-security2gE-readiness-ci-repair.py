@@ -71,40 +71,38 @@ const target = process.argv[2];
 assert(target, "Usage: adapt-int201-rbac-contract.mjs <e2e-backend.mjs>");
 
 const source = readFileSync(target, "utf8");
-const legacyBlock = `  await check("analytics module", async () => {
-    const [system, agents, suggestions, cycle] = await Promise.all([
-      request("/analytics/system"),
-      request("/analytics/agents"),
-      request("/analytics/suggestions"),
-      request("/analytics/cycle", { method: "POST" }),
-    ]);
-    assert(
-      system && agents && suggestions && cycle,
-      "Analytics module returned an empty contract",
-    );
-  });`;
-const rbacBlock = `  await check("analytics operator boundary", async () => {
-    const cases = [
-      ["/analytics/system", {}],
-      ["/analytics/agents", {}],
-      ["/analytics/suggestions", {}],
-      ["/analytics/cycle", { method: "POST" }],
-    ];
-    for (const [path, options] of cases) {
-      const payload = await request(path, options, 403);
-      assert(
-        payload.success === false &&
-          payload.error === "Analytics operator access required",
-        \`Regular user session unexpectedly accessed operator route \${path}\`,
-      );
-    }
-  });`;
+const startMarker = '  await check("analytics module", async () => {';
+const endMarker = '  await check("knowledge module", async () => {';
+const start = source.indexOf(startMarker);
+const end = source.indexOf(endMarker, start);
+assert(start >= 0, "Expected immutable INT-201 analytics start marker is missing");
+assert(end > start, "Expected immutable INT-201 analytics end marker is missing");
+assert(source.indexOf(startMarker, start + 1) < 0, "Analytics start marker is not unique");
+assert(source.indexOf(endMarker, end + 1) < 0, "Analytics end marker is not unique");
 
-assert(source.includes(legacyBlock), "Expected immutable INT-201 analytics block is missing");
-assert(!source.includes(rbacBlock), "INT-201 RBAC adapter was already applied");
-const adapted = source.replace(legacyBlock, rbacBlock);
-assert(!adapted.includes(legacyBlock), "Legacy analytics success contract remains");
-assert(adapted.includes(rbacBlock), "RBAC denial contract was not installed");
+const replacement = [
+  '  await check("analytics operator boundary", async () => {',
+  "    const cases = [",
+  '      ["/analytics/system", {}],',
+  '      ["/analytics/agents", {}],',
+  '      ["/analytics/suggestions", {}],',
+  '      ["/analytics/cycle", { method: "POST" }],',
+  "    ];",
+  "    for (const [path, options] of cases) {",
+  "      const payload = await request(path, options, 403);",
+  "      assert(",
+  "        payload.success === false &&",
+  '          payload.error === "Analytics operator access required",',
+  "        `Regular user session unexpectedly accessed operator route ${path}` ,",
+  "      );",
+  "    }",
+  "  });",
+  "",
+].join("\n");
+
+const adapted = source.slice(0, start) + replacement + source.slice(end);
+assert(!adapted.includes(startMarker), "Legacy analytics success contract remains");
+assert(adapted.includes('await check("analytics operator boundary"'), "RBAC denial contract was not installed");
 writeFileSync(target, adapted);
 ''')
 
