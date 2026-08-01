@@ -28,15 +28,14 @@ describe("SECURITY-2G-E final game generation scope", () => {
   });
 
   it("scopes streaming clients and broadcasts by project", () => {
-    expect(streaming).toContain(
-      "new Map<string, { response: Response; projectId: string }>()",
-    );
+    expect(streaming).toContain("{ response: Response; projectId: string }");
     expect(streaming).toContain(
       "registerClient(clientId: string, projectId: string, res: Response)",
     );
     expect(streaming).toContain("const projectId = filterProjectId ?? event.projectId");
     expect(streaming).toContain("if (!projectId) return");
     expect(streaming).toContain("if (client.projectId === projectId)");
+    expect(streaming).toContain("this.clients.get(clientId)?.response");
   });
 
   it("requires a generation operator before returning global cache stats", () => {
