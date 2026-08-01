@@ -33,6 +33,11 @@ text = text.replace(
     2,
 )
 text = text.replace(
+    '    const client = this.clients.get(clientId);\n    return client !== undefined && !client.writableEnded;',
+    '    const client = this.clients.get(clientId)?.response;\n    return client !== undefined && !client.writableEnded;',
+    1,
+)
+text = text.replace(
     '    for (const client of this.clients.values()) {\n      if (!client.writableEnded) {\n        client.end();\n      }\n    }',
     '    for (const client of this.clients.values()) {\n      if (!client.response.writableEnded) {\n        client.response.end();\n      }\n    }',
     1,
