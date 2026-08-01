@@ -28,21 +28,13 @@ jobs:
           from pathlib import Path
 
           ci = Path('.github/workflows/ci.yml')
-          text = ci.read_text()
-          old = '''          docker build \\
-            --build-arg VITE_API_URL="$RELEASE_ORIGIN/api" \\
-            --build-arg VITE_SOCKET_URL="$RELEASE_ORIGIN" \\
-            --tag "$FRONTEND_IMAGE" \\
-            standalone-frontend'''
-          new = '''          docker build \\
-            --file Dockerfile.frontend.release \\
-            --build-arg VITE_API_URL="$RELEASE_ORIGIN/api" \\
-            --build-arg VITE_SOCKET_URL="$RELEASE_ORIGIN" \\
-            --tag "$FRONTEND_IMAGE" \\
-            standalone-frontend'''
-          if text.count(old) != 1:
-              raise SystemExit('expected composed-release frontend build block exactly once')
-          ci.write_text(text.replace(old, new))
+          lines = ci.read_text().splitlines()
+          target = '            --build-arg VITE_API_URL="$RELEASE_ORIGIN/api" \\'
+          matches = [index for index, line in enumerate(lines) if line == target]
+          if len(matches) != 1:
+              raise SystemExit(f'expected composed-release VITE_API_URL line exactly once, found {len(matches)}')
+          lines.insert(matches[0], '            --file Dockerfile.frontend.release \\')
+          ci.write_text('\n'.join(lines) + '\n')
 
           roadmap = Path('docs/00-project-control/ROADMAP_STATUS.md')
           text = roadmap.read_text()
@@ -81,7 +73,7 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add .github/workflows/ci.yml docs/00-project-control/ROADMAP_STATUS.md _inventory_raw.txt ProjectStructure.txt .
+          git add .
           git diff --cached --exit-code && exit 1 || true
           git commit -m "feat(security): finalize image sbom release authority"
           git push origin HEAD:agent/security-2g-d-image-sbom
