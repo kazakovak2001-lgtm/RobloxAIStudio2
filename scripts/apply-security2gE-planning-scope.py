@@ -45,11 +45,11 @@ text = text.replace(
     '  router.get("/:id", async (req, res) => {',
     1,
 )
-text = text.replace(
-    '    res.json({\n      success: true,',
-    '    if (!(await requirePlanProjectAccess(req, res, plan))) return;\n\n    res.json({\n      success: true,',
-    1,
-)
+read_anchor = '''    if (!plan) {\n      res.status(404).json({ success: false, error: "Plan not found" });\n      return;\n    }\n\n    res.json({\n'''
+read_replacement = '''    if (!plan) {\n      res.status(404).json({ success: false, error: "Plan not found" });\n      return;\n    }\n    if (!(await requirePlanProjectAccess(req, res, plan))) return;\n\n    res.json({\n'''
+if read_anchor not in text:
+    raise SystemExit("planning read guard anchor missing")
+text = text.replace(read_anchor, read_replacement, 1)
 route.write_text(text)
 
 index = Path("server/src/index.ts")
