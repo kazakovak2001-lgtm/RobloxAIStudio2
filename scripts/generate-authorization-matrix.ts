@@ -115,6 +115,8 @@ const studioParityEvidence =
   "server/src/__tests__/security2gE.studio-project-parity.test.ts";
 const studioClientScopeEvidence =
   "server/src/__tests__/security2gE.studio-client-scope.test.ts";
+const studioProtocolScopeEvidence =
+  "server/src/__tests__/security2gE.studio-protocol-scope.test.ts";
 const directProjectRouteEvidence =
   "server/src/__tests__/security2gE.project-routes.test.ts";
 const indirectBlueprintEvidence =
@@ -502,6 +504,52 @@ const overrides = new Map<
         ),
       ] as const,
   ),
+  ...[
+    [
+      "POST /protocol/message",
+      "project.studio.protocol.message.dispatch",
+      "resolved-message-project",
+    ],
+    [
+      "POST /protocol/register",
+      "project.studio.protocol.register",
+      "body-project",
+    ],
+    [
+      "GET /protocol/log",
+      "project.studio.protocol.log.read",
+      "resolved-client-session",
+    ],
+    [
+      "POST /sync/artifacts",
+      "project.studio.artifacts.transfer",
+      "body-project",
+    ],
+  ].map(
+    ([operation, capability, scope]) =>
+      [
+        `rest|server/src/routes/studio.ts|${operation}`,
+        classified(
+          "project-owner",
+          "user-session",
+          capability,
+          scope,
+          studioProtocolScopeEvidence,
+          studioProtocolScopeEvidence,
+        ),
+      ] as const,
+  ),
+  [
+    "rest|server/src/routes/studio.ts|GET /protocol/info",
+    classified(
+      "authenticated",
+      "user-session",
+      "system.studio.protocol.info.read",
+      "static-system-metadata",
+      studioProtocolScopeEvidence,
+      studioProtocolScopeEvidence,
+    ),
+  ],
 ]);
 
 const current = JSON.parse(

@@ -1997,23 +1997,23 @@
       "transport": "rest",
       "source": "server/src/routes/studio.ts",
       "operation": "GET /protocol/info",
-      "classification": "unclassified",
-      "principal": "unresolved",
-      "capability": "unresolved",
-      "resourceScope": "unresolved",
-      "positiveEvidence": "missing",
-      "negativeEvidence": "missing"
+      "classification": "authenticated",
+      "principal": "user-session",
+      "capability": "system.studio.protocol.info.read",
+      "resourceScope": "static-system-metadata",
+      "positiveEvidence": "server/src/__tests__/security2gE.studio-protocol-scope.test.ts",
+      "negativeEvidence": "server/src/__tests__/security2gE.studio-protocol-scope.test.ts"
     },
     {
       "transport": "rest",
       "source": "server/src/routes/studio.ts",
       "operation": "GET /protocol/log",
-      "classification": "unclassified",
-      "principal": "unresolved",
-      "capability": "unresolved",
-      "resourceScope": "unresolved",
-      "positiveEvidence": "missing",
-      "negativeEvidence": "missing"
+      "classification": "project-owner",
+      "principal": "user-session",
+      "capability": "project.studio.protocol.log.read",
+      "resourceScope": "resolved-client-session",
+      "positiveEvidence": "server/src/__tests__/security2gE.studio-protocol-scope.test.ts",
+      "negativeEvidence": "server/src/__tests__/security2gE.studio-protocol-scope.test.ts"
     },
     {
       "transport": "rest",
@@ -2107,34 +2107,34 @@
       "transport": "rest",
       "source": "server/src/routes/studio.ts",
       "operation": "POST /protocol/message",
-      "classification": "unclassified",
-      "principal": "unresolved",
-      "capability": "unresolved",
-      "resourceScope": "unresolved",
-      "positiveEvidence": "missing",
-      "negativeEvidence": "missing"
+      "classification": "project-owner",
+      "principal": "user-session",
+      "capability": "project.studio.protocol.message.dispatch",
+      "resourceScope": "resolved-message-project",
+      "positiveEvidence": "server/src/__tests__/security2gE.studio-protocol-scope.test.ts",
+      "negativeEvidence": "server/src/__tests__/security2gE.studio-protocol-scope.test.ts"
     },
     {
       "transport": "rest",
       "source": "server/src/routes/studio.ts",
       "operation": "POST /protocol/register",
-      "classification": "unclassified",
-      "principal": "unresolved",
-      "capability": "unresolved",
-      "resourceScope": "unresolved",
-      "positiveEvidence": "missing",
-      "negativeEvidence": "missing"
+      "classification": "project-owner",
+      "principal": "user-session",
+      "capability": "project.studio.protocol.register",
+      "resourceScope": "body-project",
+      "positiveEvidence": "server/src/__tests__/security2gE.studio-protocol-scope.test.ts",
+      "negativeEvidence": "server/src/__tests__/security2gE.studio-protocol-scope.test.ts"
     },
     {
       "transport": "rest",
       "source": "server/src/routes/studio.ts",
       "operation": "POST /sync/artifacts",
-      "classification": "unclassified",
-      "principal": "unresolved",
-      "capability": "unresolved",
-      "resourceScope": "unresolved",
-      "positiveEvidence": "missing",
-      "negativeEvidence": "missing"
+      "classification": "project-owner",
+      "principal": "user-session",
+      "capability": "project.studio.artifacts.transfer",
+      "resourceScope": "body-project",
+      "positiveEvidence": "server/src/__tests__/security2gE.studio-protocol-scope.test.ts",
+      "negativeEvidence": "server/src/__tests__/security2gE.studio-protocol-scope.test.ts"
     },
     {
       "transport": "rest",

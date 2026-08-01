@@ -16,7 +16,9 @@ function handler(operation: string): string {
 
 describe("SECURITY-2G-E Studio protocol resource scoping", () => {
   it("authorizes protocol messages before dispatcher execution", () => {
-    const block = handler('router.post("/protocol/message", async (req, res) => {');
+    const block = handler(
+      'router.post("/protocol/message", async (req, res) => {',
+    );
     expect(block).toContain("resolveProtocolProjectId(message)");
     expect(block).toContain("access.requireProjectAccess(req, res, projectId)");
     expect(block.indexOf("requireProjectAccess")).toBeLessThan(
@@ -31,11 +33,13 @@ describe("SECURITY-2G-E Studio protocol resource scoping", () => {
     ]) {
       const block = handler(registration);
       expect(block).toContain('error: "projectId is required"');
-      expect(block).toContain("access.requireProjectAccess(req, res, projectId)");
+      expect(block).toContain(
+        "access.requireProjectAccess(req, res, projectId)",
+      );
     }
-    expect(handler('router.post("/protocol/register", async (req, res) => {')).toContain(
-      "bridge.connect(studioVersion, projectId)",
-    );
+    expect(
+      handler('router.post("/protocol/register", async (req, res) => {'),
+    ).toContain("bridge.connect(studioVersion, projectId)");
   });
 
   it("filters protocol logs to the authorized client session", () => {
