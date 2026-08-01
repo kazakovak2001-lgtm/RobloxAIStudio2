@@ -16,16 +16,49 @@
  *   DELETE /api/debug/execution/:id        — delete a trace
  */
 
-import { Router } from "express";
+import {
+  Router,
+  type NextFunction,
+  type Request,
+  type Response,
+} from "express";
 import { TraceStore } from "../core/observability/TraceStore";
 import { ExecutionGraphBuilder } from "../core/observability/ExecutionGraphBuilder";
 import { ExecutionReplayEngine } from "../core/observability/ExecutionReplayEngine";
+
+function requireDebugOperator(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): void {
+  if (process.env.NODE_ENV !== "production") {
+    next();
+    return;
+  }
+
+  const operatorIds = new Set(
+    (process.env.DEBUG_OPERATOR_USER_IDS ?? "")
+      .split(",")
+      .map((value) => value.trim())
+      .filter(Boolean),
+  );
+  const userId = (req as Request & { user?: { userId?: string } }).user?.userId;
+  if (!userId || !operatorIds.has(userId)) {
+    res
+      .status(403)
+      .json({ success: false, error: "Debug operator access required" });
+    return;
+  }
+  next();
+}
 
 export function createDebugRouter(): Router {
   const router = Router();
   const store = TraceStore.instance();
   const graphBuilder = new ExecutionGraphBuilder(store);
   const replayEngine = new ExecutionReplayEngine(store);
+
+  router.use(requireDebugOperator);
 
   // GET /executions — list all traced executions
   router.get("/executions", (_req, res) => {

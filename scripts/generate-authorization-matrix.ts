@@ -121,6 +121,8 @@ const controllerOperatorEvidence =
   "server/src/__tests__/security2gE.controller-operator-boundary.test.ts";
 const analyticsOperatorEvidence =
   "server/src/__tests__/security2gE.analytics-operator-boundary.test.ts";
+const debugOperatorEvidence =
+  "server/src/__tests__/security2gE.debug-operator-boundary.test.ts";
 const directProjectRouteEvidence =
   "server/src/__tests__/security2gE.project-routes.test.ts";
 const indirectBlueprintEvidence =
@@ -608,6 +610,30 @@ const overrides = new Map<
           "global-analytics-runtime",
           analyticsOperatorEvidence,
           analyticsOperatorEvidence,
+        ),
+      ] as const,
+  ),
+  ...[
+    ["GET /executions", "system.debug.executions.list"],
+    ["GET /execution/:id", "system.debug.execution.read"],
+    ["GET /trace/:id", "system.debug.trace.read"],
+    ["GET /graph/:id", "system.debug.graph.read"],
+    ["GET /replay/:id", "system.debug.replay.read"],
+    ["GET /compare/:idA/:idB", "system.debug.execution.compare"],
+    ["GET /timeline/:id", "system.debug.timeline.read"],
+    ["DELETE /execution/:id", "system.debug.execution.delete"],
+    ["GET /export/:id", "system.debug.trace.export"],
+  ].map(
+    ([operation, capability]) =>
+      [
+        `rest|server/src/routes/debug.ts|${operation}`,
+        classified(
+          "debug-operator",
+          "user-session",
+          capability,
+          "global-debug-trace-store",
+          debugOperatorEvidence,
+          debugOperatorEvidence,
         ),
       ] as const,
   ),
