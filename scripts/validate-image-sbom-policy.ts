@@ -128,7 +128,9 @@ function vulnerabilityCount(report: unknown): number {
     if (!result || typeof result !== "object") return total;
     const vulnerabilities = (result as { Vulnerabilities?: unknown[] })
       .Vulnerabilities;
-    return total + (Array.isArray(vulnerabilities) ? vulnerabilities.length : 0);
+    return (
+      total + (Array.isArray(vulnerabilities) ? vulnerabilities.length : 0)
+    );
   }, 0);
 }
 
@@ -155,7 +157,11 @@ function runArtifactValidation(root: string): void {
   const evidence = JSON.parse(
     readFileSync(resolve(root, "evidence.json"), "utf8"),
   ) as ImageEvidence;
-  assert.deepEqual(validateEvidence(evidence), [], "image evidence policy mismatch");
+  assert.deepEqual(
+    validateEvidence(evidence),
+    [],
+    "image evidence policy mismatch",
+  );
 
   for (const component of ["backend", "frontend"] as const) {
     const digest = readFileSync(
