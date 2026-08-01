@@ -30,6 +30,51 @@ This file is the ordered current delivery authority. The dated TECH-AUDIT-2 road
 | `AUTONOMY-3A` | Real engine-backed autonomous phases and broader recovery | High | Deferred | control gates |
 | `COLLAB-3B` | Collaborative development | Medium | Deferred | preceding gates |
 
+## SECURITY-2G control baseline
+
+**Status:** In progress — baseline slice  
+**Tracker:** issue #148  
+**Backend baseline:** `release/cutover-1e-candidate@a1d2c231d8cea41fb6cf68bbfd447091c0cd957e`  
+**Frontend release contents:** `kazakovak2001-lgtm/Frontend@022788ace31982e2b08ea099800de784b4dbe482`
+
+`SECURITY-2G` begins with a truthful policy contract. Existing protected CI proves compilation, linting, formatting, tests, PostgreSQL restart durability, executable release images, the exact Frontend production contract, composed HTTPS, rollback readiness and architecture/runtime/durability ownership. Those controls are prerequisites; they do not substitute for dependency, SAST, secret, image, SBOM or authorization policy.
+
+| Control | Current state | Owner | Enforcement point | Blocking threshold | Required evidence |
+| --- | --- | --- | --- | --- | --- |
+| Production dependency vulnerabilities | Missing authoritative gate | Backend repository | Pull request and protected push CI | No unexpired critical or high production finding | Scanner report, lockfile identity, exception registry |
+| Dependency change review | Missing authoritative gate | Changed repository | Pull request CI | Deny newly introduced vulnerable or disallowed dependency changes | Dependency diff and policy result |
+| SAST | Missing authoritative gate | Backend and Frontend repositories | Pull request and protected push CI | No unexpired high-confidence critical or high finding | SARIF/result identity bound to commit |
+| Secret detection | Missing authoritative gate | Each repository | Pull request plus defined history boundary | No verified live secret; exceptions use fingerprints, not plaintext | Scan report and revocation evidence where applicable |
+| Backend image vulnerabilities | Missing authoritative gate | Backend repository | Release-image build | No unexpired critical or high runtime-package finding | Image digest and vulnerability report |
+| Frontend image vulnerabilities | Missing authoritative gate | Frontend repository and paired release | Frontend release and composed release | Same threshold as backend image | Frontend image digest and report bound to release commit |
+| SBOM | Missing | Producing repository | Release-image build | SPDX or CycloneDX generated for every release image | SBOM digest, image digest and source commit |
+| Application RBAC | Not yet inventoried as one authoritative matrix | Backend application | Unit, integration and contract tests | Every protected REST and Socket.IO operation has positive and negative authorization evidence | Route/event matrix and test evidence |
+| Security exceptions | Missing central policy | Control owner plus reviewer | Repository validation and CI | Named owner, exact scope, reason and expiry required | Tracked exception registry and expiry check |
+
+Policy principles:
+
+1. Evidence, not tool configuration, determines completion.
+2. Reports identify the exact source commit, dependency lockfile or image digest.
+3. Critical and high findings affecting shipped runtime code block by default.
+4. Exceptions require an owner, technical rationale, exact scope and expiry.
+5. Secret exceptions use stable fingerprints or rule/path scopes, never plaintext credentials.
+6. Backend and Frontend coverage remain separate and truthful.
+7. Equivalent REST and Socket.IO authority requirements require equivalent negative tests.
+8. Historical secret scanning has an explicit boundary and is never silently approximated.
+
+Ordered delivery:
+
+- `SECURITY-2G-A — Baseline and policy contract`: establish the matrix, thresholds and evidence contract without runtime or dependency changes.
+- `SECURITY-2G-B — Dependency controls`: production dependency audit, dependency review and deterministic exception registry.
+- `SECURITY-2G-C — SAST and secrets`: TypeScript/JavaScript SAST, pull-request secret detection and explicit history boundary.
+- `SECURITY-2G-D — Image scanning and SBOM`: scan exact backend and Frontend images and bind SBOMs to image digests and paired commits.
+- `SECURITY-2G-E — RBAC and authorization parity`: route/event inventory and negative authorization evidence across REST and Socket.IO.
+- `SECURITY-2G-F — Consolidated gate`: blocking merge gate, final protected evidence and documentation reconciliation.
+
+Every exception records the control, exact package/advisory/rule/path/fingerprint/component/case, affected repository and release identity, owner, rationale, compensating control, approval reference, creation date and expiry. Expired, ambiguous, wildcard or ownerless exceptions fail validation.
+
+Completion of `SECURITY-2G-A` does not complete `SECURITY-2G`; controls remain missing until their respective slices produce protected evidence.
+
 ## Completion evidence
 
 - `ARCH-2B`: issue #53 closed as completed; final program merge `56f2e894699231df4219343283e23aaa9c1cab4c`.
@@ -50,7 +95,6 @@ The canonical web application is the separate repository [`kazakovak2001-lgtm/Fr
 
 - [Current Project State](./CURRENT_STATE.md)
 - [DOC-202A Roadmap Authority Reconciliation](./DOC-202A_ROADMAP_AUTHORITY_RECONCILIATION.md)
-- [SECURITY-2G Control Baseline](./SECURITY-2G_CONTROL_BASELINE.md)
 - [Frontend Cutover Contract](./FRONTEND_CUTOVER.md)
 - [CUTOVER-1E Default Promotion](../project/CUTOVER-1E_DEFAULT_PROMOTION.md)
 - [CUTOVER-1F Post-Promotion CI Alignment](../project/CUTOVER-1F_POST_PROMOTION_CI_ALIGNMENT.md)
