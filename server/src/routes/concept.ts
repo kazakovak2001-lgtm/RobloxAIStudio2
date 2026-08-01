@@ -328,7 +328,7 @@ export function createConceptRouter(
   );
 
   // GET /api/concept/experience/history
-  router.get("/experience/history", (_req, res) => {
+  router.get("/experience/history", async (req, res) => {
     const history: Array<{
       pipelineId: string;
       projectId: string;
@@ -372,7 +372,15 @@ export function createConceptRouter(
     }
 
     history.sort((a, b) => b.startedAt - a.startedAt);
-    res.json({ success: true, data: history });
+    const visibleHistory: typeof history = [];
+    for (const state of history) {
+      const allowed = access.hasProjectAccess
+        ? await access.hasProjectAccess(req, state.projectId)
+        : await access.requireProjectAccess(req, res, state.projectId);
+      if (allowed) visibleHistory.push(state);
+      if (res.headersSent) return;
+    }
+    res.json({ success: true, data: visibleHistory });
   });
 
   // GET /api/concept/experience/:pipelineId/artifacts

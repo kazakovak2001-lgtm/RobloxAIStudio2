@@ -115,6 +115,10 @@ const indirectBlueprintEvidence =
   "server/src/__tests__/security2gE.indirect-blueprint-routes.test.ts";
 const indirectSessionEvidence =
   "server/src/__tests__/security2gE.indirect-session-routes.test.ts";
+const conceptResolverEvidence =
+  "server/src/__tests__/security2gE.concept-resource-resolvers.test.ts";
+const conceptHistoryEvidence =
+  "server/src/__tests__/security2gE.concept-matrix-history.test.ts";
 
 const overrides = new Map<
   string,
@@ -295,6 +299,107 @@ const overrides = new Map<
         ),
       ] as const,
   ),
+  ...[
+    [
+      "GET /experience/status/:pipelineId",
+      "project.pipeline.read",
+      "resolved-pipeline-project",
+    ],
+    [
+      "POST /experience/:pipelineId/pause",
+      "project.pipeline.pause",
+      "resolved-pipeline-project",
+    ],
+    [
+      "POST /experience/:pipelineId/resume",
+      "project.pipeline.resume",
+      "resolved-pipeline-project",
+    ],
+    [
+      "POST /experience/:pipelineId/cancel",
+      "project.pipeline.cancel",
+      "resolved-pipeline-project",
+    ],
+    [
+      "POST /experience/:pipelineId/retry",
+      "project.pipeline.retry",
+      "resolved-pipeline-project",
+    ],
+    [
+      "POST /experience/:pipelineId/stage/:stage/retry",
+      "project.pipeline.stage.retry",
+      "resolved-pipeline-project",
+    ],
+    [
+      "GET /experience/:pipelineId/artifacts",
+      "project.artifact.list",
+      "resolved-pipeline-project",
+    ],
+    [
+      "GET /experience/:pipelineId/review",
+      "project.review.read",
+      "resolved-pipeline-project",
+    ],
+    [
+      "GET /experience/:pipelineId/metrics",
+      "project.metrics.read",
+      "resolved-pipeline-project",
+    ],
+    [
+      "GET /experience/:pipelineId/audit",
+      "project.audit.read",
+      "resolved-pipeline-project",
+    ],
+    [
+      "GET /experience/artifact/:artifactId",
+      "project.artifact.read",
+      "resolved-artifact-project",
+    ],
+    [
+      "POST /experience/artifact/:artifactId/approve",
+      "project.artifact.approve",
+      "resolved-artifact-project",
+    ],
+    [
+      "POST /experience/artifact/:artifactId/reject",
+      "project.artifact.reject",
+      "resolved-artifact-project",
+    ],
+    [
+      "POST /experience/artifact/:artifactId/comment",
+      "project.artifact.comment",
+      "resolved-artifact-project",
+    ],
+    [
+      "POST /experience/artifact/:artifactId/edit",
+      "project.artifact.edit",
+      "resolved-artifact-project",
+    ],
+  ].map(
+    ([operation, capability, scope]) =>
+      [
+        `rest|server/src/routes/concept.ts|${operation}`,
+        classified(
+          "project-owner",
+          "user-session",
+          capability,
+          scope,
+          conceptResolverEvidence,
+          conceptResolverEvidence,
+        ),
+      ] as const,
+  ),
+  [
+    "rest|server/src/routes/concept.ts|GET /experience/history",
+    classified(
+      "project-owner-filtered",
+      "user-session",
+      "project.pipeline.history.read",
+      "filtered-project-set",
+      conceptHistoryEvidence,
+      conceptHistoryEvidence,
+    ),
+  ],
 ]);
 
 const current = JSON.parse(
