@@ -51,6 +51,17 @@ jobs:
           test "$(git rev-parse HEAD)" = "$SECURITY_SOURCE_SHA"
           test "$(git -C standalone-frontend rev-parse HEAD)" = "${{ steps.frontend-release.outputs.sha }}"
 
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "npm"
+
+      - name: Install exact policy-validation dependencies
+        run: npm ci --ignore-scripts
+
+      - name: Validate deterministic image policy fixtures
+        run: node --import tsx scripts/validate-image-sbom-policy.ts
+
       - name: Build exact backend and Frontend release images
         run: |
           docker build \
@@ -166,6 +177,10 @@ jobs:
             --argjson frontendExitCode "$FRONTEND_SCAN_STATUS" \
             '{controlId: $controlId, repository: $repository, backendSha: $backendSha, frontendRepository: $frontendRepository, frontendSha: $frontendSha, backendImageDigest: $backendImageDigest, frontendImageDigest: $frontendImageDigest, vulnerabilityScanner: $vulnerabilityScanner, vulnerabilityScannerVersion: $vulnerabilityScannerVersion, scannerScope: "vulnerability", blockingSeverities: ["CRITICAL", "HIGH"], ignoreUnfixed: true, sbomGenerator: $sbomGenerator, sbomGeneratorVersion: $sbomGeneratorVersion, sbomFormat: $sbomFormat, backendExitCode: $backendExitCode, frontendExitCode: $frontendExitCode}' \
             > artifacts/security-images/evidence.json
+
+      - name: Validate generated image and SBOM evidence
+        if: always()
+        run: node --import tsx scripts/validate-image-sbom-policy.ts artifacts/security-images
 
       - name: Publish image and SBOM evidence
         if: always()
