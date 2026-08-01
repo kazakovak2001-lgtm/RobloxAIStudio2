@@ -175,6 +175,8 @@ const conceptEntryScopeEvidence =
   "server/src/__tests__/security2gE.concept-entry-scope.test.ts";
 const autonomousRunScopeEvidence =
   "server/src/__tests__/security2gE.autonomous-run-scope.test.ts";
+const gameGenerationFinalScopeEvidence =
+  "server/src/__tests__/security2gE.game-generation-final-scope.test.ts";
 const directProjectRouteEvidence =
   "server/src/__tests__/security2gE.project-routes.test.ts";
 const indirectBlueprintEvidence =
@@ -1375,6 +1377,28 @@ const overrides = new Map<
       "body-project",
       autonomousRunScopeEvidence,
       autonomousRunScopeEvidence,
+    ),
+  ],
+  [
+    "rest|server/src/routes/game-generation.ts|GET /generation/stream",
+    classified(
+      "project-owner",
+      "user-session",
+      "project.generation.stream.read",
+      "query-project",
+      gameGenerationFinalScopeEvidence,
+      gameGenerationFinalScopeEvidence,
+    ),
+  ],
+  [
+    "rest|server/src/routes/game-generation.ts|GET /system/cache-stats",
+    classified(
+      "generation-operator",
+      "user-session",
+      "system.generation.cache-stats.read",
+      "global-generation-cache",
+      gameGenerationFinalScopeEvidence,
+      gameGenerationFinalScopeEvidence,
     ),
   ],
 ]);

@@ -18,9 +18,13 @@ const matrix = JSON.parse(
 
 describe("SECURITY-2G-E final game generation scope", () => {
   it("requires project ownership before registering the SSE client", () => {
-    const handler = route.slice(route.indexOf('router.get("/generation/stream"'));
+    const handler = route.slice(
+      route.indexOf('router.get("/generation/stream"'),
+    );
     expect(handler).toContain('error: "projectId is required"');
-    expect(handler).toContain("access.requireProjectAccess(req, res, projectId)");
+    expect(handler).toContain(
+      "access.requireProjectAccess(req, res, projectId)",
+    );
     expect(handler.indexOf("requireProjectAccess")).toBeLessThan(
       handler.indexOf("registerClient"),
     );
@@ -32,14 +36,18 @@ describe("SECURITY-2G-E final game generation scope", () => {
     expect(streaming).toContain(
       "registerClient(clientId: string, projectId: string, res: Response)",
     );
-    expect(streaming).toContain("const projectId = filterProjectId ?? event.projectId");
+    expect(streaming).toContain(
+      "const projectId = filterProjectId ?? event.projectId",
+    );
     expect(streaming).toContain("if (!projectId) return");
     expect(streaming).toContain("if (client.projectId === projectId)");
     expect(streaming).toContain("this.clients.get(clientId)?.response");
   });
 
   it("requires a generation operator before returning global cache stats", () => {
-    const handler = route.slice(route.indexOf('router.get("/system/cache-stats"'));
+    const handler = route.slice(
+      route.indexOf('router.get("/system/cache-stats"'),
+    );
     expect(route).toContain("GENERATION_OPERATOR_USER_IDS");
     expect(handler).toContain("requireGenerationOperator(req, res)");
     expect(handler.indexOf("requireGenerationOperator")).toBeLessThan(
@@ -73,7 +81,9 @@ describe("SECURITY-2G-E final game generation scope", () => {
     });
 
     expect(
-      matrix.operations.filter((item) => item.classification === "unclassified"),
+      matrix.operations.filter(
+        (item) => item.classification === "unclassified",
+      ),
     ).toHaveLength(0);
   });
 });

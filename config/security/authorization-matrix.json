@@ -1271,23 +1271,23 @@
       "transport": "rest",
       "source": "server/src/routes/game-generation.ts",
       "operation": "GET /generation/stream",
-      "classification": "unclassified",
-      "principal": "unresolved",
-      "capability": "unresolved",
-      "resourceScope": "unresolved",
-      "positiveEvidence": "missing",
-      "negativeEvidence": "missing"
+      "classification": "project-owner",
+      "principal": "user-session",
+      "capability": "project.generation.stream.read",
+      "resourceScope": "query-project",
+      "positiveEvidence": "server/src/__tests__/security2gE.game-generation-final-scope.test.ts",
+      "negativeEvidence": "server/src/__tests__/security2gE.game-generation-final-scope.test.ts"
     },
     {
       "transport": "rest",
       "source": "server/src/routes/game-generation.ts",
       "operation": "GET /system/cache-stats",
-      "classification": "unclassified",
-      "principal": "unresolved",
-      "capability": "unresolved",
-      "resourceScope": "unresolved",
-      "positiveEvidence": "missing",
-      "negativeEvidence": "missing"
+      "classification": "generation-operator",
+      "principal": "user-session",
+      "capability": "system.generation.cache-stats.read",
+      "resourceScope": "global-generation-cache",
+      "positiveEvidence": "server/src/__tests__/security2gE.game-generation-final-scope.test.ts",
+      "negativeEvidence": "server/src/__tests__/security2gE.game-generation-final-scope.test.ts"
     },
     {
       "transport": "rest",
