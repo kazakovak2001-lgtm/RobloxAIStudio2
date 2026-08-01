@@ -559,7 +559,7 @@ app.use("/api/memory", createMemoryRouter());
 app.use("/api/plan", createPlanningRouter(agentRegistry));
 app.use("/api/generate", createGenerationV2Router(agentRegistry));
 app.use("/api/simulate", createSimulationRouter());
-app.use("/api/economy", createEconomyRouter());
+app.use("/api/economy", createEconomyRouter(access));
 app.use("/api/world", createWorldRouter());
 app.use("/api/lifecycle", createLifecycleRouter());
 app.use("/api/compile", createCompileRouter(agentRegistry));

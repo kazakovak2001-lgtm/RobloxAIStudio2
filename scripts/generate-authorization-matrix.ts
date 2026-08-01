@@ -137,6 +137,8 @@ const aiChatSessionEvidence =
   "server/src/__tests__/security2gE.ai-chat-session-boundary.test.ts";
 const domainScopeEvidence =
   "server/src/__tests__/security2gE.domain-scope.test.ts";
+const economyScopeEvidence =
+  "server/src/__tests__/security2gE.economy-scope.test.ts";
 const directProjectRouteEvidence =
   "server/src/__tests__/security2gE.project-routes.test.ts";
 const indirectBlueprintEvidence =
@@ -858,6 +860,45 @@ const overrides = new Map<
         ),
       ] as const,
   ),
+  ...[
+    ["POST /analyze", "project.economy.analyze"],
+    ["POST /simulate", "project.economy.simulate"],
+  ].map(
+    ([operation, capability]) =>
+      [
+        `rest|server/src/routes/economy.ts|${operation}`,
+        classified(
+          "project-owner",
+          "user-session",
+          capability,
+          "body-blueprint-project",
+          economyScopeEvidence,
+          economyScopeEvidence,
+        ),
+      ] as const,
+  ),
+  [
+    "rest|server/src/routes/economy.ts|POST /balance",
+    classified(
+      "authenticated",
+      "user-session-or-api-key",
+      "system.economy.balance.execute",
+      "request-economy-report",
+      economyScopeEvidence,
+      economyScopeEvidence,
+    ),
+  ],
+  [
+    "rest|server/src/routes/economy.ts|GET /report/:gameId",
+    classified(
+      "authenticated",
+      "user-session-or-api-key",
+      "system.economy.report.metadata.read",
+      "placeholder-metadata",
+      economyScopeEvidence,
+      economyScopeEvidence,
+    ),
+  ],
 ]);
 
 const current = JSON.parse(
