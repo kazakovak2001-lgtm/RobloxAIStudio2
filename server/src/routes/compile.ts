@@ -20,8 +20,12 @@ import { EconomySimulationEngine } from "../economy/simulation/EconomySimulation
 import { GameArtifactBuilder } from "../artifacts/GameArtifactBuilder";
 import { RobloxProjectCompiler } from "../export/RobloxProjectCompiler";
 import { AgentRegistry } from "../agents/core/AgentRegistry";
+import type { ProjectAccessControl } from "./projects";
 
-export function createCompileRouter(agentRegistry: AgentRegistry): Router {
+export function createCompileRouter(
+  agentRegistry: AgentRegistry,
+  access: ProjectAccessControl,
+): Router {
   const router = Router();
 
   // POST /compile — full deterministic compile: goal → Roblox project
@@ -29,6 +33,13 @@ export function createCompileRouter(agentRegistry: AgentRegistry): Router {
     try {
       const startTime = Date.now();
       const { intent, constraints, projectId } = req.body;
+      if (typeof projectId !== "string" || projectId.trim().length === 0) {
+        res
+          .status(400)
+          .json({ success: false, error: "projectId is required" });
+        return;
+      }
+      if (!(await access.requireProjectAccess(req, res, projectId))) return;
 
       // Stage 1: Plan
       const planner = new PlannerEngine();

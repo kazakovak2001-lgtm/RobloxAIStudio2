@@ -562,7 +562,7 @@ app.use("/api/simulate", createSimulationRouter());
 app.use("/api/economy", createEconomyRouter(access));
 app.use("/api/world", createWorldRouter(access));
 app.use("/api/lifecycle", createLifecycleRouter(access));
-app.use("/api/compile", createCompileRouter(agentRegistry));
+app.use("/api/compile", createCompileRouter(agentRegistry, access));
 app.use("/api/debug", createDebugRouter());
 
 // ─── Versioned API Gateway ──────────────────────────────────────────────────

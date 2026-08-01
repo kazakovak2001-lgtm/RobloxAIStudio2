@@ -151,6 +151,8 @@ const planningScopeEvidence =
   "server/src/__tests__/security2gE.planning-scope.test.ts";
 const systemMetadataScopeEvidence =
   "server/src/__tests__/security2gE.system-metadata-scope.test.ts";
+const compileScopeEvidence =
+  "server/src/__tests__/security2gE.compile-scope.test.ts";
 const directProjectRouteEvidence =
   "server/src/__tests__/security2gE.project-routes.test.ts";
 const indirectBlueprintEvidence =
@@ -1059,6 +1061,17 @@ const overrides = new Map<
         ),
       ] as const,
   ),
+  [
+    "rest|server/src/routes/compile.ts|POST /",
+    classified(
+      "project-owner",
+      "user-session",
+      "project.compile.execute",
+      "body-project",
+      compileScopeEvidence,
+      compileScopeEvidence,
+    ),
+  ],
 ]);
 
 const current = JSON.parse(
