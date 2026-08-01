@@ -10,6 +10,11 @@
   "securityPolicy": {
     "dependencyAuditLevel": "high",
     "productionOnly": true,
+    "sastSeverity": "high",
+    "sastConfidence": "high",
+    "secretPullRequestScope": "changed-content",
+    "secretHistoryBoundary": "8dd23f88a0b23e2eedf5f2c38a36f0c12570cbab",
+    "secretExceptionMaterial": "fingerprint-or-rule-path-only",
     "exceptions": []
   },
   "scripts": {
