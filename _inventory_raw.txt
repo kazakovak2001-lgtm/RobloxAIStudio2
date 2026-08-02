@@ -5,7 +5,6 @@
 .eslintrc.json
 .github/copilot-instructions.md
 .github/workflows/ci.yml
-.github/workflows/security-2g-e-refresh-inventories.yml
 .github/workflows/security-image-sbom.yml
 .github/workflows/security-sast-credential-scan.yml
 .github/workflows/studio-plugin-package.yml
