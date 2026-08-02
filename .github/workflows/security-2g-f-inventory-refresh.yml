@@ -33,10 +33,13 @@ jobs:
           mv _inventory_raw.txt.tmp _inventory_raw.txt
           grep -vF 'security-2g-f-inventory-refresh.yml' ProjectStructure.txt > ProjectStructure.txt.tmp
           mv ProjectStructure.txt.tmp ProjectStructure.txt
+          cp _inventory_raw.txt /tmp/security-2g-f-_inventory_raw.txt
+          cp ProjectStructure.txt /tmp/security-2g-f-ProjectStructure.txt
       - name: Checkout writable PR branch
         run: |
           git checkout agent/security-2g-f-consolidated-gate
-          git checkout refs/pull/162/merge -- _inventory_raw.txt ProjectStructure.txt
+          cp /tmp/security-2g-f-_inventory_raw.txt _inventory_raw.txt
+          cp /tmp/security-2g-f-ProjectStructure.txt ProjectStructure.txt
       - name: Verify bounded diff
         run: |
           unexpected="$(git diff --name-only | grep -v -E '^(_inventory_raw\.txt|ProjectStructure\.txt)$' || true)"
