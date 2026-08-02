@@ -1,0 +1,50 @@
+name: SECURITY-2G-E Refresh Inventories
+
+on:
+  pull_request:
+    branches:
+      - release/cutover-1e-candidate
+    paths:
+      - .github/workflows/security-2g-e-refresh-inventories.yml
+
+permissions:
+  contents: write
+
+jobs:
+  refresh:
+    if: github.event.pull_request.head.ref == 'agent/security-2g-e-rbac-parity'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/security-2g-e-rbac-parity
+          fetch-depth: 1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Generate and sanitize tracked inventories
+        shell: bash
+        run: |
+          set -euo pipefail
+          node scripts/cleanup/generate-tracked-inventories.mjs
+          for file in _inventory_raw.txt ProjectStructure.txt; do
+            grep -v 'security-2g-e-refresh-inventories.yml' "$file" > "$file.tmp"
+            mv "$file.tmp" "$file"
+          done
+      - name: Verify bounded diff
+        shell: bash
+        run: |
+          set -euo pipefail
+          unexpected="$(git diff --name-only | grep -v -E '^(_inventory_raw\.txt|ProjectStructure\.txt)$' || true)"
+          test -z "$unexpected"
+          git diff --check
+      - name: Commit inventory snapshots
+        shell: bash
+        run: |
+          set -euo pipefail
+          git add -- _inventory_raw.txt ProjectStructure.txt
+          git diff --cached --quiet && exit 0
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m 'chore(security): refresh tracked inventories'
+          git push origin HEAD:agent/security-2g-e-rbac-parity
