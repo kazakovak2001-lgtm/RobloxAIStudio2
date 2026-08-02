@@ -6,13 +6,48 @@ import type { Request, Response, NextFunction } from "express";
 import rateLimit from "express-rate-limit";
 import helmet from "helmet";
 import { authService } from "../../platform/auth/authServiceInstance";
-import { ApiKeyStore } from "../../platform/security/ApiKeyStore";
+import {
+  ApiKeyStore,
+  type ApiKeyPrincipal,
+} from "../../platform/security/ApiKeyStore";
 import {
   InMemoryStorageProvider,
   type StorageProvider,
 } from "../../platform/storage/StorageProvider";
 
 let apiKeyStore: ApiKeyStore | null = null;
+
+export type ApiKeyAuthenticatedRequest = Request & {
+  apiKeyPrincipal?: ApiKeyPrincipal;
+};
+
+export function getRequestApiKeyPrincipal(
+  req: Request,
+): ApiKeyPrincipal | null {
+  return (req as ApiKeyAuthenticatedRequest).apiKeyPrincipal ?? null;
+}
+
+export function requireApiKeyCapability(
+  req: Request,
+  res: Response,
+  capability: string,
+  resourceScope: string,
+): boolean {
+  const principal = getRequestApiKeyPrincipal(req);
+  if (!principal) return true;
+
+  if (
+    !principal.capabilities.includes(capability) ||
+    !principal.resourceScopes.includes(resourceScope)
+  ) {
+    res.status(403).json({
+      success: false,
+      error: "API key capability or resource scope denied",
+    });
+    return false;
+  }
+  return true;
+}
 
 /** Use the same configured storage provider as the rest of the API process. */
 export function configureApiKeyStore(storage: StorageProvider): ApiKeyStore {
@@ -123,12 +158,7 @@ export function corsMiddleware(
 
 // ─── Authentication ─────────────────────────────────────────────────────────
 
-const PUBLIC_PATHS = [
-  "/health",
-  "/api/system/status",
-  "/api/system/agents",
-  "/",
-];
+const PUBLIC_PATHS = ["/health", "/"];
 
 const PUBLIC_PREFIXES = [
   "/api/platform/auth", // Auth routes (login, register, refresh, logout) must be public
@@ -211,8 +241,14 @@ export async function authMiddleware(
     // Cookie token invalid — fall through to 401
   }
 
-  if (apiKey && getApiKeyStore().validate(apiKey)) {
-    // Registered API key authentication (Studio plugin, CI/CD)
+  const apiKeyPrincipal = apiKey
+    ? getApiKeyStore().resolvePrincipal(apiKey)
+    : null;
+  if (apiKeyPrincipal) {
+    // API keys authenticate as their own principal. They never gain an implicit
+    // user identity or wildcard capability; unscoped legacy keys resolve with
+    // empty capability and resource-scope arrays.
+    (req as ApiKeyAuthenticatedRequest).apiKeyPrincipal = apiKeyPrincipal;
     next();
     return;
   }

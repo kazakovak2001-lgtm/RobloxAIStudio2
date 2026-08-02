@@ -131,6 +131,7 @@ import {
   configureApiKeyStore,
   getAllowedFrontendOrigins,
   getApiKeyStore,
+  requireApiKeyCapability,
   requestLogger,
 } from "./common/middleware/security";
 
@@ -555,25 +556,28 @@ app.use(
   createGameGenerationRouter(gameService, studioManager, projectRuntime),
 );
 app.use("/api/evaluation", createEvaluationRouter(agentRegistry));
-app.use("/api/memory", createMemoryRouter());
-app.use("/api/plan", createPlanningRouter(agentRegistry));
-app.use("/api/generate", createGenerationV2Router(agentRegistry));
-app.use("/api/simulate", createSimulationRouter());
-app.use("/api/economy", createEconomyRouter());
-app.use("/api/world", createWorldRouter());
-app.use("/api/lifecycle", createLifecycleRouter());
-app.use("/api/compile", createCompileRouter(agentRegistry));
+app.use("/api/memory", createMemoryRouter(access));
+app.use("/api/plan", createPlanningRouter(agentRegistry, access));
+app.use("/api/generate", createGenerationV2Router(agentRegistry, access));
+app.use("/api/simulate", createSimulationRouter(access));
+app.use("/api/economy", createEconomyRouter(access));
+app.use("/api/world", createWorldRouter(access));
+app.use("/api/lifecycle", createLifecycleRouter(access));
+app.use("/api/compile", createCompileRouter(agentRegistry, access));
 app.use("/api/debug", createDebugRouter());
 
 // ─── Versioned API Gateway ──────────────────────────────────────────────────
 const gateway = new ApiGateway({ version: "1.0.0" });
-app.use("/api/v1", createV1Router(agentRegistry, gateway));
-app.use("/api/v2", createV2Router(agentRegistry, gateway));
+app.use("/api/v1", createV1Router(agentRegistry, gateway, access));
+app.use("/api/v2", createV2Router(agentRegistry, gateway, access));
 
 // ─── Distributed Execution Layer ────────────────────────────────────────────
 const executionCoordinator = new ExecutionCoordinator(agentRegistry);
 executionCoordinator.initialize();
-app.use("/api/distributed", createDistributedRouter(executionCoordinator));
+app.use(
+  "/api/distributed",
+  createDistributedRouter(executionCoordinator, access),
+);
 app.use("/api/analytics", createAnalyticsRouter());
 
 // System status API
@@ -582,11 +586,14 @@ app.use("/api/system", createSystemRouter());
 
 // Concept & Experience generation API
 import { createConceptRouter } from "./routes/concept";
-app.use("/api/concept", createConceptRouter(agentRegistry, generationHistory));
+app.use(
+  "/api/concept",
+  createConceptRouter(agentRegistry, generationHistory, access),
+);
 
 // Studio Bridge API
 import { createStudioRouter } from "./routes/studio";
-app.use("/api/studio", createStudioRouter());
+app.use("/api/studio", createStudioRouter(undefined, access));
 
 // AI Game Architect API
 import { createGameArchitectRouter } from "./routes/gameArchitect";
@@ -594,23 +601,23 @@ app.use("/api/ai/game-architect", createGameArchitectRouter());
 
 // Lua Generation API
 import { createLuaGenerationRouter } from "./routes/luaGeneration";
-app.use("/api/lua", createLuaGenerationRouter());
+app.use("/api/lua", createLuaGenerationRouter(access));
 
 // Playtest API
 import { createPlaytestRouter } from "./routes/playtest";
-app.use("/api/playtest", createPlaytestRouter());
+app.use("/api/playtest", createPlaytestRouter(access));
 
 // Repair API
 import { createRepairRouter } from "./routes/repair";
-app.use("/api/repair", createRepairRouter());
+app.use("/api/repair", createRepairRouter(access));
 
 // Knowledge API
 import { createKnowledgeRouter } from "./routes/knowledge";
-app.use("/api/knowledge", createKnowledgeRouter());
+app.use("/api/knowledge", createKnowledgeRouter(access));
 
 // Agent Collaboration API
 import { createAgentCollaborationRouter } from "./routes/agentCollaboration";
-app.use("/api/agents", createAgentCollaborationRouter());
+app.use("/api/agents", createAgentCollaborationRouter(access));
 
 // Domain Intelligence API
 import { createDomainRouter } from "./routes/domain";
@@ -643,7 +650,17 @@ app.use(
 );
 
 // Database health endpoints
-app.get("/health/database", async (_req, res) => {
+app.get("/health/database", async (req, res) => {
+  if (
+    !requireApiKeyCapability(
+      req,
+      res,
+      "system.health.database.read",
+      "system-operational-metadata",
+    )
+  ) {
+    return;
+  }
   if (!(storageProvider instanceof PostgresStorageProvider)) {
     res.json({
       success: true,
@@ -655,7 +672,17 @@ app.get("/health/database", async (_req, res) => {
   res.json({ success: true, data: status });
 });
 
-app.get("/health/storage", (_req, res) => {
+app.get("/health/storage", (req, res) => {
+  if (
+    !requireApiKeyCapability(
+      req,
+      res,
+      "system.health.storage.read",
+      "system-operational-metadata",
+    )
+  ) {
+    return;
+  }
   const operational = storageProvider.getOperationalStatus();
   res.json({
     success: true,

@@ -20,7 +20,10 @@ import {
   getRefreshTokenFromCookies,
 } from "../common/middleware/cookies";
 import type { ProjectAccessControl } from "./projects";
-import { loginRateLimiter } from "../common/middleware/security";
+import {
+  loginRateLimiter,
+  requireApiKeyCapability,
+} from "../common/middleware/security";
 
 interface UserPreferences {
   appearance: "dark" | "system";
@@ -48,6 +51,28 @@ export function createPlatformRouter({
   const versions = new VersionHistoryRepository();
   const registry = new AgentRegistryService();
   const preferences = new Map<string, UserPreferences>();
+  const platformOperatorUserIds = new Set(
+    (process.env.PLATFORM_OPERATOR_USER_IDS ?? "")
+      .split(",")
+      .map((value) => value.trim())
+      .filter(Boolean),
+  );
+  const requirePlatformOperator = async (
+    req: Request,
+    res: Response,
+  ): Promise<boolean> => {
+    if (process.env.NODE_ENV !== "production") return true;
+    const userId = await access.requireAuthenticatedUser(req, res);
+    if (!userId) return false;
+    if (!platformOperatorUserIds.has(userId)) {
+      res.status(403).json({
+        success: false,
+        error: "Platform operator access required",
+      });
+      return false;
+    }
+    return true;
+  };
   const requireSelf = async (
     req: Request,
     res: Response,
@@ -231,6 +256,7 @@ export function createPlatformRouter({
   // ─── Users ────────────────────────────────────────────────
 
   router.post("/users", async (req, res) => {
+    if (!(await requirePlatformOperator(req, res))) return;
     const { email, displayName, tier } = req.body;
     if (!email || !displayName) {
       res
@@ -373,11 +399,31 @@ export function createPlatformRouter({
 
   // ─── Agent Registry ───────────────────────────────────────
 
-  router.get("/registry/agents", (_req, res) => {
+  router.get("/registry/agents", (req, res) => {
+    if (
+      !requireApiKeyCapability(
+        req,
+        res,
+        "system.platform.registry.agents.list",
+        "platform-agent-registry",
+      )
+    ) {
+      return;
+    }
     res.json({ success: true, data: registry.getActive() });
   });
 
   router.get("/registry/agents/:id", (req, res) => {
+    if (
+      !requireApiKeyCapability(
+        req,
+        res,
+        "system.platform.registry.agent.read",
+        "platform-agent-registry",
+      )
+    ) {
+      return;
+    }
     const agent = registry.get(req.params.id);
     if (!agent) {
       res.status(404).json({ success: false, error: "Agent not found" });

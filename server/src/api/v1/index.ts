@@ -33,13 +33,33 @@ import { ImbalanceDetector } from "../../economy/detection/ImbalanceDetector";
 import { EconomySimulationEngine } from "../../economy/simulation/EconomySimulationEngine";
 import { GameArtifactBuilder } from "../../artifacts/GameArtifactBuilder";
 import { RobloxProjectCompiler } from "../../export/RobloxProjectCompiler";
+import type { ProjectAccessControl } from "../../routes/projects";
 
 export function createV1Router(
   agentRegistry: AgentRegistry,
   gateway: ApiGateway,
+  access: ProjectAccessControl,
 ): Router {
   const router = gateway.createVersionedRouter("v1");
   const formatter = new ResponseFormatter("1.0.0");
+
+  const requirePlanProjectAccess = async (
+    req: Parameters<ProjectAccessControl["requireProjectAccess"]>[0],
+    res: Parameters<ProjectAccessControl["requireProjectAccess"]>[1],
+    planId: string,
+  ) => {
+    const plan = plans.get(planId);
+    const projectId = plan?.goal.projectId;
+    if (!plan || !projectId) {
+      res.status(404).json(formatter.notFound("Plan", planId));
+      return undefined;
+    }
+    if (!(await access.requireProjectAccess(req, res, projectId)))
+      return undefined;
+    return plan;
+  };
+
+  const plans = new Map<string, ReturnType<PlannerEngine["createPlan"]>>();
 
   // ─── POST /compile — full deterministic compile ─────────────────────────
   router.post("/compile", async (req, res) => {
@@ -48,6 +68,20 @@ export function createV1Router(
 
     try {
       const { intent, constraints, projectId } = req.body;
+      if (!projectId || typeof projectId !== "string") {
+        res
+          .status(400)
+          .json(
+            formatter.error(
+              "PROJECT_ID_REQUIRED",
+              "projectId is required",
+              undefined,
+              { traceId, startTime },
+            ),
+          );
+        return;
+      }
+      if (!(await access.requireProjectAccess(req, res, projectId))) return;
 
       const planner = new PlannerEngine();
       const executor = new PlanExecutor();
@@ -176,19 +210,32 @@ export function createV1Router(
   });
 
   // ─── POST /plan/create ─────────────────────────────────────────────────
-  const plans = new Map<string, ReturnType<PlannerEngine["createPlan"]>>();
-
-  router.post("/plan/create", (req, res) => {
+  router.post("/plan/create", async (req, res) => {
     const traceId = (req as RequestWithTrace).traceId;
     const startTime = (req as RequestWithTrace).startTime;
 
     try {
+      const projectId = req.body.projectId;
+      if (!projectId || typeof projectId !== "string") {
+        res
+          .status(400)
+          .json(
+            formatter.error(
+              "PROJECT_ID_REQUIRED",
+              "projectId is required",
+              undefined,
+              { traceId, startTime },
+            ),
+          );
+        return;
+      }
+      if (!(await access.requireProjectAccess(req, res, projectId))) return;
       const planner = new PlannerEngine();
       const plan = planner.createPlan({
         intent: req.body.intent ?? req.body.goal ?? "Generate a Roblox game",
         constraints: req.body.constraints ?? [],
         requiredAgents: req.body.requiredAgents,
-        projectId: req.body.projectId,
+        projectId,
         context: req.body.context,
       });
       plans.set(plan.planId, plan);
@@ -231,7 +278,7 @@ export function createV1Router(
 
     try {
       const { planId, options } = req.body;
-      const plan = plans.get(planId);
+      const plan = await requirePlanProjectAccess(req, res, planId);
       if (!plan) {
         res.status(404).json(formatter.notFound("Plan", planId, { traceId }));
         return;
@@ -277,9 +324,9 @@ export function createV1Router(
   });
 
   // ─── GET /plan/:id ─────────────────────────────────────────────────────
-  router.get("/plan/:id", (req, res) => {
+  router.get("/plan/:id", async (req, res) => {
     const traceId = (req as unknown as RequestWithTrace).traceId;
-    const plan = plans.get(req.params.id);
+    const plan = await requirePlanProjectAccess(req, res, req.params.id);
     if (!plan) {
       res
         .status(404)

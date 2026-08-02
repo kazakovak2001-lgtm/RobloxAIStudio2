@@ -5,17 +5,50 @@
  * Uses agents registered in AgentRegistry for execution.
  */
 
-import { Router } from "express";
+import {
+  Router,
+  type NextFunction,
+  type Request,
+  type Response,
+} from "express";
 import type { AgentRegistry } from "../agents/core/AgentRegistry";
 import { CodebaseKnowledge } from "../knowledge/CodebaseKnowledge";
 import { DecisionMemory } from "../knowledge/DecisionMemory";
 import { ControllerSecretStatusService } from "../projects/services/controller-secret-status.service";
+
+function requireControllerOperator(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): void {
+  if (process.env.NODE_ENV !== "production") {
+    next();
+    return;
+  }
+
+  const operatorIds = new Set(
+    (process.env.CONTROLLER_OPERATOR_USER_IDS ?? "")
+      .split(",")
+      .map((value) => value.trim())
+      .filter(Boolean),
+  );
+  const userId = (req as Request & { user?: { userId?: string } }).user?.userId;
+  if (!userId || !operatorIds.has(userId)) {
+    res
+      .status(403)
+      .json({ success: false, error: "Controller operator access required" });
+    return;
+  }
+  next();
+}
 
 export function createControllerRouter(agentRegistry: AgentRegistry): Router {
   const router = Router();
   const codebaseKnowledge = new CodebaseKnowledge();
   const decisionMemory = new DecisionMemory();
   const secretStatus = new ControllerSecretStatusService();
+
+  router.use(requireControllerOperator);
 
   // Fix #2: Index at startup (not lazily on first request) to avoid blocking event loop.
   codebaseKnowledge.indexSourceTree();

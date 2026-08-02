@@ -11,8 +11,10 @@ import { ImbalanceDetector } from "../economy/detection/ImbalanceDetector";
 import { BalanceGenerator } from "../economy/balancing/BalanceGenerator";
 import { EconomyFeedbackBridge } from "../economy/bridge/EconomyFeedbackBridge";
 import type { RobloxGameBlueprint } from "../generation/blueprint/GameBlueprintEngine";
+import type { ProjectAccessControl } from "./projects";
+import { requireApiKeyCapability } from "../common/middleware/security";
 
-export function createEconomyRouter(): Router {
+export function createEconomyRouter(access: ProjectAccessControl): Router {
   const router = Router();
   const modelEngine = new EconomyModelEngine();
   const simEngine = new EconomySimulationEngine();
@@ -28,6 +30,8 @@ export function createEconomyRouter(): Router {
         res.status(400).json({ success: false, error: "Blueprint required" });
         return;
       }
+
+      if (!(await access.requireProjectAccess(req, res, blueprint.id))) return;
 
       const model = modelEngine.parse(blueprint);
       const simulation = simEngine.simulate(model, req.body.ticks ?? 200);
@@ -68,9 +72,14 @@ export function createEconomyRouter(): Router {
   });
 
   // POST /economy/simulate — simulation only
-  router.post("/simulate", (req, res) => {
+  router.post("/simulate", async (req, res) => {
     try {
       const blueprint = req.body.blueprint as RobloxGameBlueprint;
+      if (!blueprint?.id) {
+        res.status(400).json({ success: false, error: "Blueprint required" });
+        return;
+      }
+      if (!(await access.requireProjectAccess(req, res, blueprint.id))) return;
       const model = modelEngine.parse(blueprint);
       const result = simEngine.simulate(model, req.body.ticks ?? 200);
       res.json({ success: true, data: result });
@@ -83,6 +92,16 @@ export function createEconomyRouter(): Router {
 
   // POST /economy/balance — get balance patch for a report
   router.post("/balance", (req, res) => {
+    if (
+      !requireApiKeyCapability(
+        req,
+        res,
+        "system.economy.balance.execute",
+        "request-economy-report",
+      )
+    ) {
+      return;
+    }
     try {
       const report = req.body.report;
       if (!report) {
@@ -99,7 +118,17 @@ export function createEconomyRouter(): Router {
   });
 
   // GET /economy/report/:gameId — placeholder for stored reports
-  router.get("/report/:gameId", (_req, res) => {
+  router.get("/report/:gameId", (req, res) => {
+    if (
+      !requireApiKeyCapability(
+        req,
+        res,
+        "system.economy.report.metadata.read",
+        "placeholder-metadata",
+      )
+    ) {
+      return;
+    }
     res.json({
       success: true,
       data: {

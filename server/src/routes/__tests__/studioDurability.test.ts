@@ -44,9 +44,14 @@ afterEach(async () => {
 describe("Studio durable HTTP acknowledgement", () => {
   it("maps durable command failures to a generic 503", async () => {
     runtime = new StudioRuntime({ evidence: new RejectingEvidenceStore() });
+    const client = runtime.bridge.connect("1.0.0", "project-1");
+    const access = {
+      hasProjectAccess: async () => true,
+      requireProjectAccess: async () => true,
+    } as never;
     const app = express();
     app.use(express.json());
-    app.use("/api/studio", createStudioRouter(runtime));
+    app.use("/api/studio", createStudioRouter(runtime, access));
     server = app.listen(0);
     await new Promise<void>((resolve) => server?.once("listening", resolve));
     const address = server.address();
@@ -59,7 +64,7 @@ describe("Studio durable HTTP acknowledgement", () => {
       {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ clientId: "studio-1" }),
+        body: JSON.stringify({ clientId: client.clientId }),
       },
     );
     const body = (await response.json()) as Record<string, unknown>;
@@ -79,7 +84,7 @@ describe("Studio durable HTTP acknowledgement", () => {
       command: "acknowledge",
       timestamp: Date.now(),
       direction: "client_to_server",
-      payload: { clientId: "studio-1", commandId: "command-1" },
+      payload: { clientId: client.clientId, commandId: "command-1" },
     };
     for (let attempt = 0; attempt < 2; attempt += 1) {
       const protocolResponse = await fetch(

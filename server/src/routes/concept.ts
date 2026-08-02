@@ -13,19 +13,68 @@ import { PipelineEngine } from "../pipeline/v2/PipelineEngine";
 import { AgentRegistry } from "../agents/core/AgentRegistry";
 import type { GenerationHistoryRepository } from "../projects/repository/generationHistory.repository";
 import { DurableStorageError } from "../platform/storage/StorageProvider";
+import type { ProjectAccessControl } from "./projects";
 
 export function createConceptRouter(
   agentRegistry: AgentRegistry,
   generationHistory: GenerationHistoryRepository,
+  access: ProjectAccessControl,
 ): Router {
   const router = Router();
   const pipelineEngine = new PipelineEngine();
+  const concealProjectAccess = async (
+    req: Request,
+    res: Response,
+    projectId: string,
+    resourceName: "Pipeline" | "Artifact",
+  ): Promise<boolean> => {
+    if (access.hasProjectAccess) {
+      if (await access.hasProjectAccess(req, projectId)) return true;
+    } else if (await access.requireProjectAccess(req, res, projectId)) {
+      return true;
+    }
+    if (!res.headersSent) {
+      res.status(404).json({
+        success: false,
+        error: `${resourceName} not found`,
+      });
+    }
+    return false;
+  };
+
+  router.param("pipelineId", async (req, res, next, value) => {
+    const state = pipelineEngine.getState(value);
+    if (!state) {
+      res.status(404).json({ success: false, error: "Pipeline not found" });
+      return;
+    }
+    if (!(await concealProjectAccess(req, res, state.projectId, "Pipeline"))) {
+      return;
+    }
+    next();
+  });
+
+  router.param("artifactId", async (req, res, next, value) => {
+    const artifact = pipelineEngine.getArtifact(value);
+    const state = artifact
+      ? pipelineEngine.getState(artifact.pipelineId)
+      : undefined;
+    if (!artifact || !state) {
+      res.status(404).json({ success: false, error: "Artifact not found" });
+      return;
+    }
+    if (!(await concealProjectAccess(req, res, state.projectId, "Artifact"))) {
+      return;
+    }
+    next();
+  });
 
   // In-memory concept store (production would use DB)
   const concepts = new Map<string, Record<string, unknown>>();
+  const conceptOwners = new Map<string, string>();
 
   // POST /api/concept/generate
-  router.post("/generate", (req, res) => {
+  router.post("/generate", async (req, res) => {
     const {
       gameDescription,
       genre,
@@ -33,6 +82,8 @@ export function createConceptRouter(
       targetAudience,
       additionalRequirements,
     } = req.body;
+    const userId = await access.requireAuthenticatedUser(req, res);
+    if (!userId) return;
 
     if (
       !gameDescription ||
@@ -83,13 +134,22 @@ export function createConceptRouter(
     };
 
     concepts.set(conceptId, concept);
+    conceptOwners.set(conceptId, userId);
     res.json({ success: true, data: concept });
   });
 
   // GET /api/concept/:id
-  router.get("/:id", (req, res) => {
-    const concept = concepts.get(req.params.id);
-    if (!concept) {
+  router.get("/:id", async (req, res) => {
+    const conceptId = req.params.id;
+    const concept = concepts.get(conceptId);
+    const ownerId = conceptOwners.get(conceptId);
+    if (!concept || !ownerId) {
+      res.status(404).json({ success: false, error: "Concept not found" });
+      return;
+    }
+    const userId = await access.requireAuthenticatedUser(req, res);
+    if (!userId) return;
+    if (userId !== ownerId) {
       res.status(404).json({ success: false, error: "Concept not found" });
       return;
     }
@@ -100,12 +160,19 @@ export function createConceptRouter(
   router.post("/experience/generate", async (req, res) => {
     const { conceptId } = req.body;
     const concept = concepts.get(conceptId);
+    const ownerId = conceptOwners.get(conceptId);
 
-    if (!concept) {
+    if (!concept || !ownerId) {
       res.status(404).json({
         success: false,
-        error: "Concept not found. Generate a concept first.",
+        error: "Concept not found",
       });
+      return;
+    }
+    const userId = await access.requireAuthenticatedUser(req, res);
+    if (!userId) return;
+    if (userId !== ownerId) {
+      res.status(404).json({ success: false, error: "Concept not found" });
       return;
     }
 
@@ -280,7 +347,7 @@ export function createConceptRouter(
   );
 
   // GET /api/concept/experience/history
-  router.get("/experience/history", (_req, res) => {
+  router.get("/experience/history", async (req, res) => {
     const history: Array<{
       pipelineId: string;
       projectId: string;
@@ -324,7 +391,15 @@ export function createConceptRouter(
     }
 
     history.sort((a, b) => b.startedAt - a.startedAt);
-    res.json({ success: true, data: history });
+    const visibleHistory: typeof history = [];
+    for (const state of history) {
+      const allowed = access.hasProjectAccess
+        ? await access.hasProjectAccess(req, state.projectId)
+        : await access.requireProjectAccess(req, res, state.projectId);
+      if (allowed) visibleHistory.push(state);
+      if (res.headersSent) return;
+    }
+    res.json({ success: true, data: visibleHistory });
   });
 
   // GET /api/concept/experience/:pipelineId/artifacts
@@ -480,6 +555,7 @@ export function createConceptRouter(
       res.status(400).json({ success: false, error: "projectId is required" });
       return;
     }
+    if (!(await access.requireProjectAccess(req, res, projectId))) return;
 
     try {
       console.log(`[GENERATION_REQUEST] projectId=${projectId}`);

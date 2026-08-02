@@ -9,21 +9,24 @@ import type {
  * Streams pipeline execution updates to clients in real-time
  */
 export class StreamingUpdateHandler {
-  private clients = new Map<string, Response>();
+  private clients = new Map<
+    string,
+    { response: Response; projectId: string }
+  >();
   private eventBuffer = new Map<string, PipelineEvent[]>();
   private maxBufferSize = 100;
 
   /**
    * Register a client connection
    */
-  registerClient(clientId: string, res: Response): void {
+  registerClient(clientId: string, projectId: string, res: Response): void {
     // Set SSE headers
     res.setHeader("Content-Type", "text/event-stream");
     res.setHeader("Cache-Control", "no-cache");
     res.setHeader("Connection", "keep-alive");
     res.setHeader("Access-Control-Allow-Origin", "*");
 
-    this.clients.set(clientId, res);
+    this.clients.set(clientId, { response: res, projectId });
 
     // Send heartbeat to keep connection alive
     const heartbeatInterval = setInterval(() => {
@@ -54,7 +57,7 @@ export class StreamingUpdateHandler {
    * Send an event to a specific client
    */
   sendEvent(clientId: string, event: PipelineEvent): void {
-    const client = this.clients.get(clientId);
+    const client = this.clients.get(clientId)?.response;
 
     if (client && !client.writableEnded) {
       try {
@@ -84,9 +87,11 @@ export class StreamingUpdateHandler {
   /**
    * Send event to multiple clients (broadcast)
    */
-  broadcastEvent(event: PipelineEvent, _filterPipelineId?: string): void {
-    for (const clientId of this.clients.keys()) {
-      this.sendEvent(clientId, event);
+  broadcastEvent(event: PipelineEvent, filterProjectId?: string): void {
+    const projectId = filterProjectId ?? event.projectId;
+    if (!projectId) return;
+    for (const [clientId, client] of this.clients.entries()) {
+      if (client.projectId === projectId) this.sendEvent(clientId, event);
     }
   }
 
@@ -94,7 +99,7 @@ export class StreamingUpdateHandler {
    * Send a heartbeat/ping to keep connection alive
    */
   private sendHeartbeat(clientId: string): void {
-    const client = this.clients.get(clientId);
+    const client = this.clients.get(clientId)?.response;
     if (client && !client.writableEnded) {
       try {
         client.write(": heartbeat\n\n");
@@ -109,7 +114,7 @@ export class StreamingUpdateHandler {
    * Check if a client is connected
    */
   isClientConnected(clientId: string): boolean {
-    const client = this.clients.get(clientId);
+    const client = this.clients.get(clientId)?.response;
     return client !== undefined && !client.writableEnded;
   }
 
@@ -124,7 +129,7 @@ export class StreamingUpdateHandler {
    * Close a specific client connection
    */
   closeClient(clientId: string): void {
-    const client = this.clients.get(clientId);
+    const client = this.clients.get(clientId)?.response;
     if (client && !client.writableEnded) {
       client.end();
     }
@@ -136,8 +141,8 @@ export class StreamingUpdateHandler {
    */
   closeAll(): void {
     for (const client of this.clients.values()) {
-      if (!client.writableEnded) {
-        client.end();
+      if (!client.response.writableEnded) {
+        client.response.end();
       }
     }
     this.clients.clear();

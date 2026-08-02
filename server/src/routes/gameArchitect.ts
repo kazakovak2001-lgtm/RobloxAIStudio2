@@ -5,6 +5,7 @@
 import { Router } from "express";
 import { GameArchitect } from "../ai/gameArchitect";
 import type { GameIdeaInput } from "../ai/gameArchitect";
+import { requireApiKeyCapability } from "../common/middleware/security";
 
 export function createGameArchitectRouter(): Router {
   const router = Router();
@@ -12,6 +13,16 @@ export function createGameArchitectRouter(): Router {
 
   // POST /api/ai/game-architect/analyze
   router.post("/analyze", (req, res) => {
+    if (
+      !requireApiKeyCapability(
+        req,
+        res,
+        "system.game-architect.analysis.execute",
+        "request-game-idea",
+      )
+    ) {
+      return;
+    }
     const input = req.body as GameIdeaInput;
 
     if (
@@ -32,6 +43,16 @@ export function createGameArchitectRouter(): Router {
 
   // POST /api/ai/game-architect/generate-design
   router.post("/generate-design", (req, res) => {
+    if (
+      !requireApiKeyCapability(
+        req,
+        res,
+        "system.game-architect.design.generate",
+        "request-game-idea",
+      )
+    ) {
+      return;
+    }
     const input = req.body as GameIdeaInput;
 
     if (
@@ -55,6 +76,16 @@ export function createGameArchitectRouter(): Router {
 
   // POST /api/ai/game-architect/generate-prompts
   router.post("/generate-prompts", (req, res) => {
+    if (
+      !requireApiKeyCapability(
+        req,
+        res,
+        "system.game-architect.prompts.generate",
+        "request-game-idea",
+      )
+    ) {
+      return;
+    }
     const input = req.body as GameIdeaInput;
 
     if (

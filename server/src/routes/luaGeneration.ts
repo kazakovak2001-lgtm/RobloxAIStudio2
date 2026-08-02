@@ -7,15 +7,18 @@ import { LuaGenerationEngine } from "../generation/lua";
 import { ExperienceAssembler } from "../generation/experience";
 import { AssetGenerationEngine } from "../generation/assets";
 import type { GameplaySystem } from "../generation/lua";
+import type { ProjectAccessControl } from "./projects";
 
-export function createLuaGenerationRouter(): Router {
+export function createLuaGenerationRouter(
+  access: ProjectAccessControl,
+): Router {
   const router = Router();
   const engine = new LuaGenerationEngine();
   const assembler = new ExperienceAssembler();
   const assetEngine = new AssetGenerationEngine();
 
   // POST /api/lua/generate — generate scripts for specific systems
-  router.post("/generate", (req, res) => {
+  router.post("/generate", async (req, res) => {
     const { projectId, gameName, genre, systems, features } = req.body;
 
     if (!projectId || !gameName) {
@@ -24,6 +27,7 @@ export function createLuaGenerationRouter(): Router {
         .json({ success: false, error: "projectId and gameName required" });
       return;
     }
+    if (!(await access.requireProjectAccess(req, res, projectId))) return;
 
     const result = engine.generate({
       projectId,
@@ -37,7 +41,7 @@ export function createLuaGenerationRouter(): Router {
   });
 
   // POST /api/lua/generate-full — generate all core systems
-  router.post("/generate-full", (req, res) => {
+  router.post("/generate-full", async (req, res) => {
     const { projectId, gameName, genre } = req.body;
 
     if (!projectId || !gameName) {
@@ -46,6 +50,7 @@ export function createLuaGenerationRouter(): Router {
         .json({ success: false, error: "projectId and gameName required" });
       return;
     }
+    if (!(await access.requireProjectAccess(req, res, projectId))) return;
 
     const result = engine.generateFullPackage(
       projectId,
@@ -56,7 +61,7 @@ export function createLuaGenerationRouter(): Router {
   });
 
   // POST /api/lua/assemble-experience — generate + assemble into complete experience
-  router.post("/assemble-experience", (req, res) => {
+  router.post("/assemble-experience", async (req, res) => {
     const { projectId, gameName, genre, conceptId, pipelineId } = req.body;
 
     if (!projectId || !gameName) {
@@ -65,6 +70,7 @@ export function createLuaGenerationRouter(): Router {
         .json({ success: false, error: "projectId and gameName required" });
       return;
     }
+    if (!(await access.requireProjectAccess(req, res, projectId))) return;
 
     const generationResult = engine.generateFullPackage(
       projectId,
@@ -92,7 +98,7 @@ export function createLuaGenerationRouter(): Router {
   });
 
   // POST /api/lua/generate-assets — generate asset package
-  router.post("/generate-assets", (req, res) => {
+  router.post("/generate-assets", async (req, res) => {
     const { projectId, gameName, genre, systems } = req.body;
 
     if (!projectId || !gameName) {
@@ -101,6 +107,7 @@ export function createLuaGenerationRouter(): Router {
         .json({ success: false, error: "projectId and gameName required" });
       return;
     }
+    if (!(await access.requireProjectAccess(req, res, projectId))) return;
 
     const result = assetEngine.generate({
       projectId,

@@ -11,8 +11,12 @@ import {
   type ExecutionOptions,
 } from "../planning/execution/PlanExecutor";
 import { AgentRegistry } from "../agents/core/AgentRegistry";
+import type { ProjectAccessControl } from "./projects";
 
-export function createPlanningRouter(agentRegistry: AgentRegistry): Router {
+export function createPlanningRouter(
+  agentRegistry: AgentRegistry,
+  access: ProjectAccessControl,
+): Router {
   const router = Router();
   const planner = new PlannerEngine();
   const executor = new PlanExecutor();
@@ -20,14 +24,41 @@ export function createPlanningRouter(agentRegistry: AgentRegistry): Router {
   // Store plans in memory for retrieval
   const plans = new Map<string, ReturnType<PlannerEngine["createPlan"]>>();
 
+  const requirePlanProjectAccess = async (
+    req: Parameters<ProjectAccessControl["requireProjectAccess"]>[0],
+    res: Parameters<ProjectAccessControl["requireProjectAccess"]>[1],
+    plan: ReturnType<PlannerEngine["createPlan"]>,
+  ): Promise<boolean> => {
+    const projectId = plan.goal.projectId;
+    if (!projectId) {
+      res.status(404).json({ success: false, error: "Plan not found" });
+      return false;
+    }
+    if (access.hasProjectAccess) {
+      if (await access.hasProjectAccess(req, projectId)) return true;
+      res.status(404).json({ success: false, error: "Plan not found" });
+      return false;
+    }
+    return access.requireProjectAccess(req, res, projectId);
+  };
+
   // POST /plan/create — create a new execution plan from a goal
-  router.post("/create", (req, res) => {
+  router.post("/create", async (req, res) => {
     try {
+      const projectId = req.body.projectId;
+      if (typeof projectId !== "string" || projectId.trim().length === 0) {
+        res
+          .status(400)
+          .json({ success: false, error: "projectId is required" });
+        return;
+      }
+      if (!(await access.requireProjectAccess(req, res, projectId))) return;
+
       const goal: PlanGoal = {
         intent: req.body.intent ?? req.body.goal ?? "Generate a Roblox game",
         constraints: req.body.constraints ?? [],
         requiredAgents: req.body.requiredAgents,
-        projectId: req.body.projectId,
+        projectId,
         context: req.body.context,
       };
 
@@ -65,6 +96,8 @@ export function createPlanningRouter(agentRegistry: AgentRegistry): Router {
         return;
       }
 
+      if (!(await requirePlanProjectAccess(req, res, plan))) return;
+
       const execOptions: ExecutionOptions = {
         projectId: plan.goal.projectId,
         stopOnFailure: options?.stopOnFailure ?? true,
@@ -95,12 +128,13 @@ export function createPlanningRouter(agentRegistry: AgentRegistry): Router {
   });
 
   // GET /plan/:id — get plan details
-  router.get("/:id", (req, res) => {
+  router.get("/:id", async (req, res) => {
     const plan = plans.get(req.params.id);
     if (!plan) {
       res.status(404).json({ success: false, error: "Plan not found" });
       return;
     }
+    if (!(await requirePlanProjectAccess(req, res, plan))) return;
 
     res.json({
       success: true,

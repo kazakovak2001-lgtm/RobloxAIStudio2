@@ -12,8 +12,10 @@ import { EmergentBehaviorEngine } from "../world/emergence/EmergentBehaviorEngin
 import { WorldMutationEngine } from "../world/mutation/WorldMutationEngine";
 import { WorldSimulationBridge } from "../world/bridge/WorldSimulationBridge";
 import type { RobloxGameBlueprint } from "../generation/blueprint/GameBlueprintEngine";
+import type { ProjectAccessControl } from "./projects";
+import { requireApiKeyCapability } from "../common/middleware/security";
 
-export function createWorldRouter(): Router {
+export function createWorldRouter(access: ProjectAccessControl): Router {
   const router = Router();
   const npcEngine = new NPCBehaviorEngine();
   const interactionGraph = new InteractionGraphEngine();
@@ -30,6 +32,8 @@ export function createWorldRouter(): Router {
         res.status(400).json({ success: false, error: "Blueprint required" });
         return;
       }
+
+      if (!(await access.requireProjectAccess(req, res, blueprint.id))) return;
 
       const world = new WorldStateEngine();
       world.initialize(blueprint.npcs, blueprint.world.biomes);
@@ -102,7 +106,17 @@ export function createWorldRouter(): Router {
   });
 
   // POST /world/tick — run a single tick (for incremental simulation)
-  router.post("/tick", (_req, res) => {
+  router.post("/tick", (req, res) => {
+    if (
+      !requireApiKeyCapability(
+        req,
+        res,
+        "system.world.tick.metadata.read",
+        "placeholder-metadata",
+      )
+    ) {
+      return;
+    }
     try {
       // Single-tick mode would require persistent world state (future)
       res.json({
@@ -115,7 +129,17 @@ export function createWorldRouter(): Router {
   });
 
   // GET /world/state/:gameId — placeholder
-  router.get("/state/:gameId", (_req, res) => {
+  router.get("/state/:gameId", (req, res) => {
+    if (
+      !requireApiKeyCapability(
+        req,
+        res,
+        "system.world.state.metadata.read",
+        "placeholder-metadata",
+      )
+    ) {
+      return;
+    }
     res.json({
       success: true,
       data: {
@@ -125,7 +149,17 @@ export function createWorldRouter(): Router {
   });
 
   // GET /world/emergence/:gameId — placeholder
-  router.get("/emergence/:gameId", (_req, res) => {
+  router.get("/emergence/:gameId", (req, res) => {
+    if (
+      !requireApiKeyCapability(
+        req,
+        res,
+        "system.world.emergence.metadata.read",
+        "placeholder-metadata",
+      )
+    ) {
+      return;
+    }
     res.json({
       success: true,
       data: {

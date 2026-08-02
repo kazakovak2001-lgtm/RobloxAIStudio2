@@ -12,6 +12,7 @@ import {
   type StudioImportReportInput,
 } from "../studio/v2/StudioRuntime";
 import type { StudioArtifactReceipt } from "../studio/v2/StudioTypes";
+import type { ProjectAccessControl } from "./projects";
 import {
   ProtocolDispatcher,
   ProtocolValidator,
@@ -148,6 +149,7 @@ function sendStudioMutationError(res: Response, error: unknown): void {
 
 export function createStudioRouter(
   runtimeOrStore?: StudioRuntime | ArtifactStore,
+  access?: ProjectAccessControl,
 ): Router {
   const router = Router();
   const runtime =
@@ -163,6 +165,80 @@ export function createStudioRouter(
   const validator = new ProtocolValidator();
 
   runtime.startTimeoutMonitor();
+
+  const hasStudioProjectAccess = async (
+    req: Parameters<ProjectAccessControl["requireProjectAccess"]>[0],
+    projectId?: string,
+  ): Promise<boolean> =>
+    Boolean(
+      projectId &&
+      access?.hasProjectAccess &&
+      (await access.hasProjectAccess(req, projectId)),
+    );
+
+  const requireStudioClientAccess = async (
+    req: Parameters<ProjectAccessControl["requireProjectAccess"]>[0],
+    res: Response,
+    clientId: string,
+  ) => {
+    const client = bridge.getClient(clientId);
+    if (
+      !client?.projectId ||
+      !(await hasStudioProjectAccess(req, client.projectId))
+    ) {
+      res.status(404).json({ success: false, error: "Client not found" });
+      return null;
+    }
+    return client;
+  };
+
+  const filterAuthorizedClients = async (
+    req: Parameters<ProjectAccessControl["requireProjectAccess"]>[0],
+    clients: ReturnType<typeof bridge.getConnectedClients>,
+  ) => {
+    const checks = await Promise.all(
+      clients.map(async (client) => ({
+        client,
+        allowed: await hasStudioProjectAccess(req, client.projectId),
+      })),
+    );
+    return checks.filter(({ allowed }) => allowed).map(({ client }) => client);
+  };
+
+  const resolveProtocolProjectId = (
+    message: Record<string, unknown>,
+  ): string | undefined => {
+    const payload =
+      message.payload && typeof message.payload === "object"
+        ? (message.payload as Record<string, unknown>)
+        : undefined;
+    if (typeof payload?.projectId === "string") return payload.projectId;
+    if (typeof payload?.clientId === "string") {
+      return bridge.getClient(payload.clientId)?.projectId;
+    }
+    return undefined;
+  };
+
+  const filterAuthorizedEvents = async (
+    req: Parameters<ProjectAccessControl["requireProjectAccess"]>[0],
+    events: ReturnType<typeof bridge.events.getHistory>,
+  ) => {
+    const checks = await Promise.all(
+      events.map(async (event) => {
+        const record = event as typeof event & {
+          projectId?: string;
+          clientId?: string;
+        };
+        const projectId =
+          record.projectId ??
+          (record.clientId
+            ? bridge.getClient(record.clientId)?.projectId
+            : undefined);
+        return { event, allowed: await hasStudioProjectAccess(req, projectId) };
+      }),
+    );
+    return checks.filter(({ allowed }) => allowed).map(({ event }) => event);
+  };
 
   // ─── Register Sync Protocol Handlers ────────────────────────────────────────
 
@@ -312,8 +388,11 @@ export function createStudioRouter(
   });
 
   // GET /api/studio/status
-  router.get("/status", (_req, res) => {
-    const clients = bridge.getConnectedClients();
+  router.get("/status", async (req, res) => {
+    const clients = await filterAuthorizedClients(
+      req,
+      bridge.getConnectedClients(),
+    );
     const sessions = sessionManager.getActiveSessions();
 
     res.json({
@@ -350,6 +429,14 @@ export function createStudioRouter(
       return;
     }
 
+    if (!projectId || typeof projectId !== "string") {
+      res.status(400).json({ success: false, error: "projectId is required" });
+      return;
+    }
+    if (!access || !(await access.requireProjectAccess(req, res, projectId))) {
+      return;
+    }
+
     const client = bridge.connect(studioVersion, projectId);
     const session = sessionManager.create(client);
     try {
@@ -378,13 +465,14 @@ export function createStudioRouter(
   });
 
   // POST /api/studio/disconnect
-  router.post("/disconnect", (req, res) => {
+  router.post("/disconnect", async (req, res) => {
     const { clientId } = req.body;
 
     if (!clientId || typeof clientId !== "string") {
       res.status(400).json({ success: false, error: "clientId is required" });
       return;
     }
+    if (!(await requireStudioClientAccess(req, res, clientId))) return;
 
     bridge.disconnect(clientId);
     sessionManager.close(clientId);
@@ -395,13 +483,14 @@ export function createStudioRouter(
   });
 
   // POST /api/studio/heartbeat
-  router.post("/heartbeat", (req, res) => {
+  router.post("/heartbeat", async (req, res) => {
     const { clientId } = req.body;
 
     if (!clientId || typeof clientId !== "string") {
       res.status(400).json({ success: false, error: "clientId is required" });
       return;
     }
+    if (!(await requireStudioClientAccess(req, res, clientId))) return;
 
     const bridgeOk = bridge.heartbeat(clientId);
     const sessionOk = sessionManager.recordActivity(clientId);
@@ -415,10 +504,11 @@ export function createStudioRouter(
   });
 
   // GET /api/studio/session
-  router.get("/session", (req, res) => {
+  router.get("/session", async (req, res) => {
     const clientId = req.query.clientId as string | undefined;
 
     if (clientId) {
+      if (!(await requireStudioClientAccess(req, res, clientId))) return;
       const session = sessionManager.getByClient(clientId);
       if (!session) {
         res.status(404).json({ success: false, error: "Session not found" });
@@ -428,7 +518,19 @@ export function createStudioRouter(
       return;
     }
 
-    res.json({ success: true, data: sessionManager.getActiveSessions() });
+    const authorizedClients = await filterAuthorizedClients(
+      req,
+      bridge.getConnectedClients(),
+    );
+    const authorizedClientIds = new Set(
+      authorizedClients.map((client) => client.clientId),
+    );
+    res.json({
+      success: true,
+      data: sessionManager
+        .getActiveSessions()
+        .filter((session) => authorizedClientIds.has(session.clientId)),
+    });
   });
 
   // GET /api/studio/commands — plugin polling of the existing command queue
@@ -438,7 +540,7 @@ export function createStudioRouter(
       res.status(400).json({ success: false, error: "clientId is required" });
       return;
     }
-    const client = bridge.getClient(clientId);
+    const client = await requireStudioClientAccess(req, res, clientId);
     if (!client || client.status !== "connected") {
       res.status(404).json({ success: false, error: "Client not found" });
       return;
@@ -458,6 +560,7 @@ export function createStudioRouter(
       res.status(400).json({ success: false, error: "clientId is required" });
       return;
     }
+    if (!(await requireStudioClientAccess(req, res, clientId))) return;
     let command;
     try {
       command = await runtime.getCommand(req.params.commandId);
@@ -486,6 +589,7 @@ export function createStudioRouter(
       res.status(400).json({ success: false, error: "clientId is required" });
       return;
     }
+    if (!(await requireStudioClientAccess(req, res, clientId))) return;
     try {
       sendCommandAction(
         res,
@@ -503,6 +607,8 @@ export function createStudioRouter(
       res.status(400).json({ success: false, error: "clientId is required" });
       return;
     }
+    const clientId = body.clientId;
+    if (!(await requireStudioClientAccess(req, res, clientId))) return;
     const parsed = parseImportReport(body);
     if (!parsed.data) {
       res.status(400).json({ success: false, error: parsed.error });
@@ -523,8 +629,11 @@ export function createStudioRouter(
   });
 
   // GET /api/studio/events
-  router.get("/events", (_req, res) => {
-    const history = bridge.events.getHistory();
+  router.get("/events", async (req, res) => {
+    const history = await filterAuthorizedEvents(
+      req,
+      bridge.events.getHistory(),
+    );
     res.json({ success: true, data: history.slice(-50) });
   });
 
@@ -532,9 +641,21 @@ export function createStudioRouter(
 
   // POST /api/studio/protocol/message — dispatch a protocol message
   router.post("/protocol/message", async (req, res) => {
-    const message = req.body;
+    const message = req.body as Record<string, unknown>;
+    const projectId = resolveProtocolProjectId(message);
+    if (!projectId) {
+      res
+        .status(400)
+        .json({ success: false, error: "projectId or clientId is required" });
+      return;
+    }
+    if (!access || !(await access.requireProjectAccess(req, res, projectId))) {
+      return;
+    }
     try {
-      const response = await dispatcher.dispatch(message);
+      const response = await dispatcher.dispatch(
+        message as unknown as Parameters<typeof dispatcher.dispatch>[0],
+      );
       res.json({ success: true, data: response });
     } catch (err) {
       sendStudioMutationError(res, err);
@@ -543,7 +664,7 @@ export function createStudioRouter(
 
   // POST /api/studio/protocol/register — register a plugin client
   router.post("/protocol/register", async (req, res) => {
-    const { pluginVersion, studioVersion, projectName, protocolVersion } =
+    const { pluginVersion, studioVersion, projectId, protocolVersion } =
       req.body;
 
     const validationError = validator.validateRegistration(req.body);
@@ -551,11 +672,18 @@ export function createStudioRouter(
       res.status(400).json({ success: false, error: validationError });
       return;
     }
+    if (!projectId || typeof projectId !== "string") {
+      res.status(400).json({ success: false, error: "projectId is required" });
+      return;
+    }
+    if (!access || !(await access.requireProjectAccess(req, res, projectId))) {
+      return;
+    }
 
-    const client = bridge.connect(studioVersion, projectName);
+    const client = bridge.connect(studioVersion, projectId);
     const session = sessionManager.create(client);
     try {
-      await runtime.reconcileClient(client.clientId, projectName);
+      await runtime.reconcileClient(client.clientId, projectId);
     } catch (error) {
       bridge.disconnect(client.clientId);
       sessionManager.close(client.clientId);
@@ -581,9 +709,22 @@ export function createStudioRouter(
   });
 
   // GET /api/studio/protocol/log — get message log
-  router.get("/protocol/log", (req, res) => {
+  router.get("/protocol/log", async (req, res) => {
+    const clientId = req.query.clientId as string | undefined;
+    if (!clientId) {
+      res.status(400).json({ success: false, error: "clientId is required" });
+      return;
+    }
+    if (!(await requireStudioClientAccess(req, res, clientId))) return;
+    const session = sessionManager.getByClient(clientId);
+    if (!session) {
+      res.status(404).json({ success: false, error: "Session not found" });
+      return;
+    }
     const limit = parseInt((req.query.limit as string) ?? "50", 10);
-    const log = dispatcher.getLog(limit);
+    const log = dispatcher
+      .getLog(limit)
+      .filter((entry) => entry.sessionId === session.sessionId);
     res.json({ success: true, data: log });
   });
 
@@ -603,9 +744,16 @@ export function createStudioRouter(
   // ─── Sync REST API ────────────────────────────────────────────────────────
 
   // POST /api/studio/sync/project
-  router.post("/sync/project", (req, res) => {
+  router.post("/sync/project", async (req, res) => {
     const { projectId, executionId } = req.body;
     const lookupId = executionId ?? projectId;
+    if (!projectId || typeof projectId !== "string") {
+      res.status(400).json({ success: false, error: "projectId is required" });
+      return;
+    }
+    if (!access || !(await access.requireProjectAccess(req, res, projectId))) {
+      return;
+    }
     if (!lookupId || typeof lookupId !== "string") {
       res.status(400).json({
         success: false,
@@ -622,8 +770,15 @@ export function createStudioRouter(
   });
 
   // POST /api/studio/sync/artifacts
-  router.post("/sync/artifacts", (req, res) => {
-    const { artifactIds } = req.body;
+  router.post("/sync/artifacts", async (req, res) => {
+    const { artifactIds, projectId } = req.body;
+    if (!projectId || typeof projectId !== "string") {
+      res.status(400).json({ success: false, error: "projectId is required" });
+      return;
+    }
+    if (!access || !(await access.requireProjectAccess(req, res, projectId))) {
+      return;
+    }
     if (
       !artifactIds ||
       !Array.isArray(artifactIds) ||
@@ -647,8 +802,15 @@ export function createStudioRouter(
   });
 
   // GET /api/studio/sync/status
-  router.get("/sync/status", (req, res) => {
+  router.get("/sync/status", async (req, res) => {
     const projectId = req.query.projectId as string | undefined;
+    if (!projectId) {
+      res.status(400).json({ success: false, error: "projectId is required" });
+      return;
+    }
+    if (!access || !(await access.requireProjectAccess(req, res, projectId))) {
+      return;
+    }
     const status = runtime.getSyncStatus(projectId);
     res.json({ success: true, data: status });
   });

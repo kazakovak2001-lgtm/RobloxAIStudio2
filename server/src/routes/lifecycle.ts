@@ -15,8 +15,9 @@ import { ContinuousEvolutionEngine } from "../lifecycle/evolution/ContinuousEvol
 import { GameHealthMonitor } from "../lifecycle/monitor/GameHealthMonitor";
 import { LifecycleFeedbackBridge } from "../lifecycle/bridge/LifecycleFeedbackBridge";
 import type { RobloxGameBlueprint } from "../generation/blueprint/GameBlueprintEngine";
+import type { ProjectAccessControl } from "./projects";
 
-export function createLifecycleRouter(): Router {
+export function createLifecycleRouter(access: ProjectAccessControl): Router {
   const router = Router();
   const controller = new GameLifecycleController();
   const liveUpdate = new LiveUpdateEngine();
@@ -26,12 +27,13 @@ export function createLifecycleRouter(): Router {
   const bridge = new LifecycleFeedbackBridge();
 
   // POST /lifecycle/start — start lifecycle for a generated game
-  router.post("/start", (req, res) => {
+  router.post("/start", async (req, res) => {
     const { gameId } = req.body;
     if (!gameId) {
       res.status(400).json({ success: false, error: "gameId required" });
       return;
     }
+    if (!(await access.requireProjectAccess(req, res, gameId))) return;
     const lifecycle = controller.start(gameId);
     res.json({ success: true, data: lifecycle });
   });
@@ -47,6 +49,15 @@ export function createLifecycleRouter(): Router {
           .json({ success: false, error: "gameId and blueprint required" });
         return;
       }
+
+      if (!blueprint.id || blueprint.id !== gameId) {
+        res.status(400).json({
+          success: false,
+          error: "blueprint.id must match gameId",
+        });
+        return;
+      }
+      if (!(await access.requireProjectAccess(req, res, gameId))) return;
 
       controller.tick(gameId);
 
@@ -126,7 +137,7 @@ export function createLifecycleRouter(): Router {
   });
 
   // POST /lifecycle/patch — manually apply patches
-  router.post("/patch", (req, res) => {
+  router.post("/patch", async (req, res) => {
     try {
       const { blueprint, patches } = req.body;
       if (!blueprint || !patches) {
@@ -135,6 +146,13 @@ export function createLifecycleRouter(): Router {
           .json({ success: false, error: "blueprint and patches required" });
         return;
       }
+      if (!blueprint.id) {
+        res
+          .status(400)
+          .json({ success: false, error: "blueprint.id required" });
+        return;
+      }
+      if (!(await access.requireProjectAccess(req, res, blueprint.id))) return;
       const result = liveUpdate.applyPatches(blueprint, patches);
       res.json({ success: true, data: result });
     } catch (error) {
@@ -145,7 +163,9 @@ export function createLifecycleRouter(): Router {
   });
 
   // GET /lifecycle/status/:gameId — get lifecycle status
-  router.get("/status/:gameId", (req, res) => {
+  router.get("/status/:gameId", async (req, res) => {
+    if (!(await access.requireProjectAccess(req, res, req.params.gameId)))
+      return;
     const lifecycle = controller.getLifecycle(req.params.gameId);
     const health = healthMonitor.getLatest(req.params.gameId);
     if (!lifecycle) {

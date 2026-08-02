@@ -16,10 +16,12 @@ import { PlannerEngine } from "../../planning/core/PlannerEngine";
 import { PlanExecutor } from "../../planning/execution/PlanExecutor";
 import { AgentRegistry } from "../../agents/core/AgentRegistry";
 import { ExecutionTracer } from "../../core/observability/ExecutionTracer";
+import type { ProjectAccessControl } from "../../routes/projects";
 
 export function createV2Router(
   agentRegistry: AgentRegistry,
   gateway: ApiGateway,
+  access: ProjectAccessControl,
 ): Router {
   const router = gateway.createVersionedRouter("v2");
   const formatter = new ResponseFormatter("2.0.0-experimental");
@@ -27,6 +29,21 @@ export function createV2Router(
   // ─── POST /compile/stream — compile with SSE streaming ─────────────────
   router.post("/compile/stream", async (req, res) => {
     const traceId = (req as RequestWithTrace).traceId;
+    const projectId = req.body.projectId;
+    if (!projectId || typeof projectId !== "string") {
+      res
+        .status(400)
+        .json(
+          formatter.error(
+            "PROJECT_ID_REQUIRED",
+            "projectId is required",
+            undefined,
+            { traceId },
+          ),
+        );
+      return;
+    }
+    if (!(await access.requireProjectAccess(req, res, projectId))) return;
 
     // Set SSE headers
     res.setHeader("Content-Type", "text/event-stream");
@@ -61,7 +78,7 @@ export function createV2Router(
     tracer.addListener(listener);
 
     try {
-      const { intent, constraints, projectId } = req.body;
+      const { intent, constraints } = req.body;
 
       sendEvent("start", { traceId, intent });
 
@@ -102,16 +119,31 @@ export function createV2Router(
   });
 
   // ─── POST /plan/dag — full DAG with dependencies visible ───────────────
-  router.post("/plan/dag", (req, res) => {
+  router.post("/plan/dag", async (req, res) => {
     const traceId = (req as RequestWithTrace).traceId;
     const startTime = (req as RequestWithTrace).startTime;
 
     try {
+      const projectId = req.body.projectId;
+      if (!projectId || typeof projectId !== "string") {
+        res
+          .status(400)
+          .json(
+            formatter.error(
+              "PROJECT_ID_REQUIRED",
+              "projectId is required",
+              undefined,
+              { traceId, startTime },
+            ),
+          );
+        return;
+      }
+      if (!(await access.requireProjectAccess(req, res, projectId))) return;
       const planner = new PlannerEngine();
       const plan = planner.createPlan({
         intent: req.body.intent ?? "Generate a Roblox game",
         constraints: req.body.constraints ?? [],
-        projectId: req.body.projectId,
+        projectId,
       });
 
       const nodes = plan.graph.getAllNodes();

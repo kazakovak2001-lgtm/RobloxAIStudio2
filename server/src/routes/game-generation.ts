@@ -44,6 +44,27 @@ export function createGameGenerationRouter(
   const generationStartCoordinator = new ProjectGenerationStartCoordinator(
     projectRepository,
   );
+  const generationOperatorUserIds = new Set(
+    (process.env.GENERATION_OPERATOR_USER_IDS ?? "")
+      .split(",")
+      .map((value) => value.trim())
+      .filter(Boolean),
+  );
+  const requireGenerationOperator = async (
+    req: Parameters<typeof access.requireAuthenticatedUser>[0],
+    res: Parameters<typeof access.requireAuthenticatedUser>[1],
+  ): Promise<boolean> => {
+    if (process.env.NODE_ENV !== "production") return true;
+    const userId = await access.requireAuthenticatedUser(req, res);
+    if (!userId) return false;
+    if (!generationOperatorUserIds.has(userId)) {
+      res
+        .status(403)
+        .json({ success: false, error: "Generation operator access required" });
+      return false;
+    }
+    return true;
+  };
 
   const sendStudioError = (
     res: Parameters<ProjectRuntime["access"]["requireProjectAccess"]>[1],
@@ -292,7 +313,8 @@ export function createGameGenerationRouter(
   });
 
   // Cache stats
-  router.get("/system/cache-stats", async (_req, res) => {
+  router.get("/system/cache-stats", async (req, res) => {
+    if (!(await requireGenerationOperator(req, res))) return;
     try {
       const stats = gameService.getCacheStats();
       res.json({ success: true, data: stats });
@@ -450,12 +472,19 @@ export function createGameGenerationRouter(
 
   // Server-Sent Events stream for pipeline execution updates
   // Clients subscribe with GET /api/projects/generation/stream?clientId=<id>
-  router.get("/generation/stream", (req, res) => {
+  router.get("/generation/stream", async (req, res) => {
+    const projectId =
+      typeof req.query.projectId === "string" ? req.query.projectId.trim() : "";
+    if (!projectId) {
+      res.status(400).json({ success: false, error: "projectId is required" });
+      return;
+    }
+    if (!(await access.requireProjectAccess(req, res, projectId))) return;
     const clientId =
       typeof req.query.clientId === "string"
         ? req.query.clientId
         : `client-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
-    gameService.getStreamingHandler().registerClient(clientId, res);
+    gameService.getStreamingHandler().registerClient(clientId, projectId, res);
   });
 
   return router;
