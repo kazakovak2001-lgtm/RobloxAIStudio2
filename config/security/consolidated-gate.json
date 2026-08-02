@@ -46,7 +46,12 @@
       "evidence": "runtime-image-scan-and-spdx-sbom",
       "workflow": ".github/workflows/security-image-sbom.yml",
       "job": "Release Image and SBOM Evidence",
-      "bindings": ["backend-source", "frontend-source", "backend-image-digest", "frontend-image-digest"]
+      "bindings": [
+        "backend-source",
+        "frontend-source",
+        "backend-image-digest",
+        "frontend-image-digest"
+      ]
     },
     {
       "id": "SECURITY-2G-E",
