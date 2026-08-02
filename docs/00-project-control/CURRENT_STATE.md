@@ -1,8 +1,8 @@
 # Current Project State
 
-**Last Updated**: July 31, 2026
-**Phase**: FRONTEND-2C complete — REL-203 release-pair promotion
-**Build Status**: REL-203 starts from protected backend base `release/cutover-1e-candidate@f5206a1bed8bce643dfdb169ded951395055c5e5`; the protected REL-203 PR source head containing the promoted inventory is the authority for the candidate backend side of the pair. FRONTEND-2C completed through Frontend PRs #18–#21, and canonical `Frontend/main` is `022788ace31982e2b08ea099800de784b4dbe482`. Frontend CI #140 passed TypeScript, ESLint, Prettier, 22 workspace tests, production build, protected bundle budgets, responsive QA, release image, the 40-check backend contract and Merge Gate. REL-203 issue #144 promotes this exact Frontend commit into the backend release pair; the backend protected PR chain remains the authority for paired release composition. No external production deployment is claimed.
+**Last Updated**: August 2, 2026
+**Phase**: SECURITY-2G implementation complete — consolidated gate pending reviewed merge
+**Build Status**: SECURITY-2G-A through SECURITY-2G-F are implemented. The current backend release baseline is `release/cutover-1e-candidate@29bcd8ed53f9e86f41e753f305ad952c0dbc1de5`, paired with `kazakovak2001-lgtm/Frontend@03aa0615ea13e06b08cdce36b993fa94fb07966a`. PR #162 adds the deterministic consolidated evidence manifest, fail-closed validator, negative fixtures and blocking workflow. Exact-head CI, SAST, credential, image/SBOM, RBAC, protected 40-check production contract, composed HTTPS release, rollback and post-removal invariant gates pass. PR #162 still requires reviewed exact-head merge approval. No external production deployment is claimed.
 
 ---
 

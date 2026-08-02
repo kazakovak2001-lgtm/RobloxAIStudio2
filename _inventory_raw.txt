@@ -5,6 +5,7 @@
 .eslintrc.json
 .github/copilot-instructions.md
 .github/workflows/ci.yml
+.github/workflows/security-consolidated-gate.yml
 .github/workflows/security-image-sbom.yml
 .github/workflows/security-sast-credential-scan.yml
 .github/workflows/studio-plugin-package.yml
@@ -76,6 +77,7 @@ config/durability/compatibility-write-inventory.json
 config/runtime/operational-state-ownership.json
 config/runtime/runtime-ownership.json
 config/security/authorization-matrix.json
+config/security/consolidated-gate.json
 config/testing/vitest.backend.config.ts
 deploy/docker-compose.backend.yml
 deploy/docker-compose.release.yml
@@ -490,6 +492,7 @@ scripts/validate-layer-debt-evidence.ts
 scripts/validate-memory-ownership.ts
 scripts/validate-operational-state-ownership.ts
 scripts/validate-runtime-ownership.ts
+scripts/validate-security-consolidated-gate.ts
 scripts/validate.ts
 server/prisma/schema.prisma
 server/src/__tests__/agentDecisionEngine.routing.test.ts

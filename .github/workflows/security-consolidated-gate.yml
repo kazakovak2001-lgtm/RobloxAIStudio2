@@ -1,0 +1,43 @@
+name: SECURITY-2G Consolidated Gate
+
+on:
+  pull_request:
+  push:
+    branches:
+      - release/cutover-1e-candidate
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  consolidated-security-evidence:
+    name: SECURITY-2G Consolidated Evidence
+    runs-on: ubuntu-24.04
+    env:
+      SECURITY_2G_F_OUTPUT: artifacts/security-2g-f/evidence.json
+      SECURITY_2G_F_BACKEND_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+    steps:
+      - name: Checkout exact backend source
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.SECURITY_2G_F_BACKEND_SHA }}
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+      - name: Install exact validation dependencies
+        run: npm ci --ignore-scripts
+      - name: Validate consolidated evidence contract and fixtures
+        env:
+          GITHUB_SHA: ${{ env.SECURITY_2G_F_BACKEND_SHA }}
+        run: node --import tsx scripts/validate-security-consolidated-gate.ts
+      - name: Publish consolidated security evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: security-2g-f-consolidated-${{ env.SECURITY_2G_F_BACKEND_SHA }}
+          path: artifacts/security-2g-f
+          if-no-files-found: error
+          retention-days: 14

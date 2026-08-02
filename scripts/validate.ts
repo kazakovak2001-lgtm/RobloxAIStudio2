@@ -247,7 +247,7 @@ function validateDocumentationAuthority(): DocumentationAuthorityError[] {
     "`FRONTEND-2C` | Protected Frontend quality and bundle baseline | High | ✅ Complete",
     "`RUNTIME-2D` | Runtime/provider/orchestration/memory ownership | High | ✅ Complete",
     "`DURABILITY-2E` | Durable writes and operational-state truthfulness | High | ✅ Complete",
-    "`SECURITY-2G` | Dependency, SAST, credential, image, SBOM, and RBAC control gate | High | In progress — `SECURITY-2G-E`",
+    "`SECURITY-2G` | Dependency, SAST, credential, image, SBOM, and RBAC control gate | High | ✅ Complete — `SECURITY-2G-F`",
   ];
 
   for (const claim of requiredCurrentClaims) {
