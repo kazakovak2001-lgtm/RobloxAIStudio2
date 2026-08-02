@@ -6,6 +6,11 @@ on:
       - agent/security-2g-e-rbac-parity
     paths:
       - .github/workflows/security-2g-e-refresh-inventories.yml
+  pull_request:
+    branches:
+      - release/cutover-1e-candidate
+    paths:
+      - .github/workflows/security-2g-e-refresh-inventories.yml
   workflow_dispatch:
 
 permissions:
@@ -13,7 +18,7 @@ permissions:
 
 jobs:
   refresh:
-    if: github.ref == 'refs/heads/agent/security-2g-e-rbac-parity'
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.ref == 'agent/security-2g-e-rbac-parity'
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
