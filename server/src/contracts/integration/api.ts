@@ -12,5 +12,11 @@ export interface CreateGenerationRequest {
 export interface GenerationResponse {
   pipelineId: string;
   projectId: string;
-  status: string;
+  status: "queued" | "running" | "completed" | "failed";
+}
+
+export interface ProjectLifecycleResponse {
+  projectId: string;
+  status: ProjectSummary["status"];
+  updatedAt: string;
 }
