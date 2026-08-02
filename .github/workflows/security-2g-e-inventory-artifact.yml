@@ -1,0 +1,30 @@
+name: SECURITY-2G-E Inventory Artifact
+
+on:
+  push:
+    branches:
+      - agent/security-2g-e-rbac-parity
+    paths:
+      - .github/workflows/security-2g-e-inventory-artifact.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  generate:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: node scripts/cleanup/generate-tracked-inventories.mjs
+      - uses: actions/upload-artifact@v4
+        with:
+          name: security-2g-e-generated-inventories
+          path: |
+            _inventory_raw.txt
+            ProjectStructure.txt
+          if-no-files-found: error
+          retention-days: 1
