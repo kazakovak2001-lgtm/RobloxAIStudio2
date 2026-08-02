@@ -13,7 +13,7 @@
   },
   "frontendRelease": {
     "repository": "kazakovak2001-lgtm/Frontend",
-    "commit": "813b0d83214ae50c5db122273fd7ed199c339d0d"
+    "commit": "9f7cc7340eca7dca5ef04227dc1722cb533318dd"
   },
   "activeRelease": {
     "files": [
@@ -157,7 +157,7 @@
       {
         "kind": "exact",
         "value": "server/src/execution/gameGenerationResultAggregator.ts",
-        "classification": "superseded-unpromoted-generation-experiment"
+        "classification": "superseded-unpromoted-result-contract"
       },
       {
         "kind": "exact",
