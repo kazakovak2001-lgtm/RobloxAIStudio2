@@ -131,11 +131,6 @@
       },
       {
         "kind": "exact",
-        "value": ".blackboxrules",
-        "classification": "superseded-tooling-metadata"
-      },
-      {
-        "kind": "exact",
         "value": "server/src/agents/implementations/GameDesignerAgent.ts",
         "classification": "superseded-by-current-canonical-agent-runtime"
       },
