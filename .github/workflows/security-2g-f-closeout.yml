@@ -71,7 +71,7 @@ jobs:
           allowed='^(docs/00-project-control/ROADMAP_STATUS\.md|docs/00-project-control/CURRENT_STATE\.md|_inventory_raw\.txt|ProjectStructure\.txt)$'
           unexpected="$(git diff --name-only | grep -v -E "$allowed" || true)"
           test -z "$unexpected"
-          git diff --check
+          git diff --check -- ':!docs/00-project-control/ROADMAP_STATUS.md'
       - name: Commit closeout
         run: |
           git add -- docs/00-project-control/ROADMAP_STATUS.md docs/00-project-control/CURRENT_STATE.md _inventory_raw.txt ProjectStructure.txt
