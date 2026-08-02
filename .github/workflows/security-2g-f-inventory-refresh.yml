@@ -1,0 +1,52 @@
+name: SECURITY-2G-F Inventory Refresh
+
+on:
+  pull_request:
+    branches:
+      - release/cutover-1e-candidate
+    paths:
+      - .github/workflows/security-2g-f-inventory-refresh.yml
+
+permissions:
+  contents: write
+
+jobs:
+  refresh:
+    if: github.event.pull_request.number == 162 && github.event.pull_request.head.ref == 'agent/security-2g-f-consolidated-gate'
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout PR merge tree
+        uses: actions/checkout@v4
+        with:
+          ref: refs/pull/162/merge
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+      - run: npm ci --ignore-scripts
+      - name: Generate exact merge-tree inventories
+        run: node scripts/cleanup/generate-tracked-inventories.mjs
+      - name: Remove temporary workflow from generated snapshots
+        run: |
+          grep -vF '.github/workflows/security-2g-f-inventory-refresh.yml' _inventory_raw.txt > _inventory_raw.txt.tmp
+          mv _inventory_raw.txt.tmp _inventory_raw.txt
+          grep -vF 'security-2g-f-inventory-refresh.yml' ProjectStructure.txt > ProjectStructure.txt.tmp
+          mv ProjectStructure.txt.tmp ProjectStructure.txt
+      - name: Checkout writable PR branch
+        run: |
+          git checkout agent/security-2g-f-consolidated-gate
+          git checkout refs/pull/162/merge -- _inventory_raw.txt ProjectStructure.txt
+      - name: Verify bounded diff
+        run: |
+          unexpected="$(git diff --name-only | grep -v -E '^(_inventory_raw\.txt|ProjectStructure\.txt)$' || true)"
+          test -z "$unexpected"
+          git diff --check
+      - name: Commit refreshed inventories
+        run: |
+          git add -- _inventory_raw.txt ProjectStructure.txt
+          git diff --cached --quiet && exit 0
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m 'chore(security): refresh consolidated gate inventories'
+          git push origin HEAD:agent/security-2g-f-consolidated-gate
