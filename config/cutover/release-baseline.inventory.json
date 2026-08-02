@@ -13,7 +13,7 @@
   },
   "frontendRelease": {
     "repository": "kazakovak2001-lgtm/Frontend",
-    "commit": "a9b673c19cc454cbaf0fa1870172188b089e88c9"
+    "commit": "03aa0615ea13e06b08cdce36b993fa94fb07966a"
   },
   "activeRelease": {
     "files": [
@@ -128,6 +128,11 @@
         "kind": "regex",
         "value": "^errors[0-9]*\\.txt$",
         "classification": "temporary-diagnostics-cleanup"
+      },
+      {
+        "kind": "exact",
+        "value": ".blackboxrules",
+        "classification": "superseded-tooling-metadata"
       },
       {
         "kind": "exact",
