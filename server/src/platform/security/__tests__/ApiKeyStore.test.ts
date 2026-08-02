@@ -74,6 +74,8 @@ describe("ApiKeyStore", () => {
         createdAt: expect.any(String),
         label: "test",
         ownerId: "user-1",
+        capabilities: [],
+        resourceScopes: [],
       },
     ]);
     expect(JSON.stringify(storage.list("platform_api_keys"))).not.toContain(
@@ -108,6 +110,8 @@ describe("ApiKeyStore", () => {
         id: issued.id,
         createdAt: expect.any(String),
         label: "generated",
+        capabilities: [],
+        resourceScopes: [],
       },
     ]);
   });
