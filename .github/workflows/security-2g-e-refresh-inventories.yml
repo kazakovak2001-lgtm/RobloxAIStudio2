@@ -29,7 +29,11 @@ jobs:
         with:
           node-version: 22
       - name: Generate tracked inventories
-        run: node scripts/cleanup/generate-tracked-inventories.mjs
+        shell: bash
+        run: |
+          set -euo pipefail
+          node scripts/cleanup/generate-tracked-inventories.mjs
+          sed -i '\|^\.github/workflows/security-2g-e-refresh-inventories\.yml$|d' _inventory_raw.txt ProjectStructure.txt
       - name: Verify bounded diff
         shell: bash
         run: |
