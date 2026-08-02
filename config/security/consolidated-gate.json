@@ -1,0 +1,89 @@
+{
+  "version": 1,
+  "controlId": "SECURITY-2G-F",
+  "repository": "kazakovak2001-lgtm/RobloxAIStudio2",
+  "backendSource": {
+    "binding": "GITHUB_SHA",
+    "requiredFormat": "git-sha-40"
+  },
+  "frontendSource": {
+    "repository": "kazakovak2001-lgtm/Frontend",
+    "inventoryPath": "config/cutover/release-baseline.inventory.json"
+  },
+  "identityInputs": {
+    "lockfile": "package-lock.json",
+    "authorizationMatrix": "config/security/authorization-matrix.json",
+    "securityPolicy": "package.json"
+  },
+  "requiredControls": [
+    {
+      "id": "SECURITY-2G-B",
+      "owner": "backend-repository",
+      "evidence": "production-dependency-audit",
+      "workflow": ".github/workflows/ci.yml",
+      "job": "Dependency Security Evidence",
+      "bindings": ["backend-source", "lockfile-sha256"]
+    },
+    {
+      "id": "SECURITY-2G-C-SAST",
+      "owner": "backend-repository",
+      "evidence": "codeql-javascript-typescript",
+      "workflow": ".github/workflows/security-sast-credential-scan.yml",
+      "job": "Backend CodeQL Evidence",
+      "bindings": ["backend-source"]
+    },
+    {
+      "id": "SECURITY-2G-C-CREDENTIALS",
+      "owner": "backend-repository",
+      "evidence": "gitleaks-changed-content-and-bounded-history",
+      "workflow": ".github/workflows/security-sast-credential-scan.yml",
+      "job": "Gitleaks Evidence",
+      "bindings": ["backend-source", "history-boundary", "exception-registry"]
+    },
+    {
+      "id": "SECURITY-2G-D",
+      "owner": "paired-release-integration",
+      "evidence": "runtime-image-scan-and-spdx-sbom",
+      "workflow": ".github/workflows/security-image-sbom.yml",
+      "job": "Release Image and SBOM Evidence",
+      "bindings": ["backend-source", "frontend-source", "backend-image-digest", "frontend-image-digest"]
+    },
+    {
+      "id": "SECURITY-2G-E",
+      "owner": "backend-application",
+      "evidence": "authorization-matrix-and-positive-negative-tests",
+      "workflow": ".github/workflows/ci.yml",
+      "job": "Test Suite",
+      "bindings": ["backend-source", "authorization-matrix-sha256"]
+    },
+    {
+      "id": "INT-201",
+      "owner": "paired-release-integration",
+      "evidence": "protected-production-contract",
+      "workflow": ".github/workflows/ci.yml",
+      "job": "Frontend Production Contract",
+      "bindings": ["backend-source", "frontend-source"]
+    },
+    {
+      "id": "CUTOVER-1C",
+      "owner": "paired-release-integration",
+      "evidence": "composed-https-release",
+      "workflow": ".github/workflows/ci.yml",
+      "job": "Composed HTTPS Release",
+      "bindings": ["backend-source", "frontend-source"]
+    }
+  ],
+  "requiredCheckRuns": [
+    "CI Pipeline",
+    "Security SAST and Credential Scan",
+    "Security Image and SBOM Scan",
+    "SECURITY-2G Consolidated Gate"
+  ],
+  "exceptionPolicy": {
+    "ownerRequired": true,
+    "approvalReferenceRequired": true,
+    "expiryRequired": true,
+    "wildcardsForbidden": true,
+    "plaintextCredentialsForbidden": true
+  }
+}
