@@ -1,9 +1,9 @@
 name: SECURITY-2G-E Inventory Artifact
 
 on:
-  push:
+  pull_request:
     branches:
-      - agent/security-2g-e-rbac-parity
+      - release/cutover-1e-candidate
     paths:
       - .github/workflows/security-2g-e-inventory-artifact.yml
   workflow_dispatch:
