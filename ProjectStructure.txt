@@ -11,6 +11,7 @@
 │   ├── copilot-instructions.md
 │   └── workflows
 │       ├── ci.yml
+│       ├── security-consolidated-gate.yml
 │       ├── security-image-sbom.yml
 │       ├── security-sast-credential-scan.yml
 │       └── studio-plugin-package.yml
@@ -96,7 +97,8 @@
 │   │   ├── operational-state-ownership.json
 │   │   └── runtime-ownership.json
 │   ├── security
-│   │   └── authorization-matrix.json
+│   │   ├── authorization-matrix.json
+│   │   └── consolidated-gate.json
 │   └── testing
 │       └── vitest.backend.config.ts
 ├── deploy
@@ -575,6 +577,7 @@
 │   ├── validate-memory-ownership.ts
 │   ├── validate-operational-state-ownership.ts
 │   ├── validate-runtime-ownership.ts
+│   ├── validate-security-consolidated-gate.ts
 │   └── validate.ts
 ├── server
 │   ├── prisma
