@@ -62,17 +62,23 @@ function validateInventory(candidate: unknown): string[] {
 
   const inventory = candidate as Partial<AuthorityInventory>;
   if (inventory.version !== 1) errors.push("version must be 1");
-  if (inventory.controlId !== "DOC-202A") errors.push("controlId must be DOC-202A");
+  if (inventory.controlId !== "DOC-202A")
+    errors.push("controlId must be DOC-202A");
   if (inventory.repository !== "kazakovak2001-lgtm/RobloxAIStudio2") {
     errors.push("repository must name the exact backend repository");
   }
-  if (inventory.releaseIdentity?.backendBranch !== "release/cutover-1e-candidate") {
+  if (
+    inventory.releaseIdentity?.backendBranch !== "release/cutover-1e-candidate"
+  ) {
     errors.push("backendBranch must name the protected release branch");
   }
   if (!isSha(inventory.releaseIdentity?.backendCommit)) {
     errors.push("backendCommit must be an exact 40-character SHA");
   }
-  if (inventory.releaseIdentity?.frontendRepository !== "kazakovak2001-lgtm/Frontend") {
+  if (
+    inventory.releaseIdentity?.frontendRepository !==
+    "kazakovak2001-lgtm/Frontend"
+  ) {
     errors.push("frontendRepository must name the exact paired repository");
   }
   if (!isSha(inventory.releaseIdentity?.frontendCommit)) {
@@ -87,38 +93,52 @@ function validateInventory(candidate: unknown): string[] {
     for (const [index, entry] of inventory.authority.entries()) {
       const prefix = `authority[${index}]`;
       if (!isExactText(entry.path)) errors.push(`${prefix}.path must be exact`);
-      if (!isExactText(entry.owner)) errors.push(`${prefix}.owner must be exact`);
+      if (!isExactText(entry.owner))
+        errors.push(`${prefix}.owner must be exact`);
       if (!Number.isInteger(entry.rank) || entry.rank <= 0) {
         errors.push(`${prefix}.rank must be a positive integer`);
       }
       if (entry.status !== "current" && entry.status !== "supporting") {
         errors.push(`${prefix}.status must be current or supporting`);
       }
-      if (!Array.isArray(entry.requiredClaims) || entry.requiredClaims.length === 0) {
+      if (
+        !Array.isArray(entry.requiredClaims) ||
+        entry.requiredClaims.length === 0
+      ) {
         errors.push(`${prefix}.requiredClaims must be non-empty`);
       }
       if (!Array.isArray(entry.forbiddenClaims)) {
         errors.push(`${prefix}.forbiddenClaims must be an array`);
       }
-      if (paths.has(entry.path)) errors.push(`${prefix}.path duplicates another authority entry`);
-      if (ranks.has(entry.rank)) errors.push(`${prefix}.rank duplicates another authority entry`);
+      if (paths.has(entry.path))
+        errors.push(`${prefix}.path duplicates another authority entry`);
+      if (ranks.has(entry.rank))
+        errors.push(`${prefix}.rank duplicates another authority entry`);
       paths.add(entry.path);
       ranks.add(entry.rank);
     }
   }
 
-  if (!Array.isArray(inventory.historical) || inventory.historical.length === 0) {
+  if (
+    !Array.isArray(inventory.historical) ||
+    inventory.historical.length === 0
+  ) {
     errors.push("historical must be a non-empty array");
   } else {
     for (const [index, entry] of inventory.historical.entries()) {
       const prefix = `historical[${index}]`;
       if (!isExactText(entry.path)) errors.push(`${prefix}.path must be exact`);
-      if (!isExactText(entry.owner)) errors.push(`${prefix}.owner must be exact`);
-      if (entry.status !== "historical") errors.push(`${prefix}.status must be historical`);
+      if (!isExactText(entry.owner))
+        errors.push(`${prefix}.owner must be exact`);
+      if (entry.status !== "historical")
+        errors.push(`${prefix}.status must be historical`);
     }
   }
 
-  if (!Array.isArray(inventory.linkChecks) || inventory.linkChecks.length === 0) {
+  if (
+    !Array.isArray(inventory.linkChecks) ||
+    inventory.linkChecks.length === 0
+  ) {
     errors.push("linkChecks must be a non-empty array");
   }
 
@@ -137,12 +157,16 @@ function validateRepository(inventory: AuthorityInventory): string[] {
     const content = readFileSync(entry.path, "utf-8");
     for (const claim of entry.requiredClaims) {
       if (!content.includes(claim)) {
-        errors.push(`${entry.path}: missing required claim ${JSON.stringify(claim)}`);
+        errors.push(
+          `${entry.path}: missing required claim ${JSON.stringify(claim)}`,
+        );
       }
     }
     for (const claim of entry.forbiddenClaims) {
       if (content.includes(claim)) {
-        errors.push(`${entry.path}: contains forbidden stale claim ${JSON.stringify(claim)}`);
+        errors.push(
+          `${entry.path}: contains forbidden stale claim ${JSON.stringify(claim)}`,
+        );
       }
     }
   }
@@ -152,7 +176,9 @@ function validateRepository(inventory: AuthorityInventory): string[] {
       errors.push(`${entry.path}: historical file is missing`);
     }
     if (currentPaths.has(entry.path)) {
-      errors.push(`${entry.path}: file cannot be both current authority and historical`);
+      errors.push(
+        `${entry.path}: file cannot be both current authority and historical`,
+      );
     }
   }
 
@@ -162,7 +188,9 @@ function validateRepository(inventory: AuthorityInventory): string[] {
       continue;
     }
     if (!existsSync(link.target)) {
-      errors.push(`${link.source}: authority link target is missing: ${link.target}`);
+      errors.push(
+        `${link.source}: authority link target is missing: ${link.target}`,
+      );
       continue;
     }
     const source = readFileSync(link.source, "utf-8");
@@ -184,7 +212,10 @@ function runSelfTests(inventory: AuthorityInventory): string[] {
   }
 
   const invalid: Array<[string, unknown]> = [
-    ["wildcard owner", { ...inventory, authority: [{ ...inventory.authority[0], owner: "*" }] }],
+    [
+      "wildcard owner",
+      { ...inventory, authority: [{ ...inventory.authority[0], owner: "*" }] },
+    ],
     [
       "duplicate rank",
       {
@@ -196,7 +227,13 @@ function runSelfTests(inventory: AuthorityInventory): string[] {
     ],
     [
       "ambiguous backend identity",
-      { ...inventory, releaseIdentity: { ...inventory.releaseIdentity, backendCommit: "HEAD" } },
+      {
+        ...inventory,
+        releaseIdentity: {
+          ...inventory.releaseIdentity,
+          backendCommit: "HEAD",
+        },
+      },
     ],
     [
       "historical promoted to current",
@@ -217,7 +254,9 @@ function runSelfTests(inventory: AuthorityInventory): string[] {
 }
 
 function main(): void {
-  const inventory = JSON.parse(readFileSync(inventoryPath, "utf-8")) as AuthorityInventory;
+  const inventory = JSON.parse(
+    readFileSync(inventoryPath, "utf-8"),
+  ) as AuthorityInventory;
   const errors = [
     ...validateInventory(inventory),
     ...runSelfTests(inventory),

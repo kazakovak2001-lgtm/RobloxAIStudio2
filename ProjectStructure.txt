@@ -91,6 +91,8 @@
 │   ├── cutover
 │   │   ├── promoted-baseline.inventory.json
 │   │   └── release-baseline.inventory.json
+│   ├── documentation
+│   │   └── authority-inventory.json
 │   ├── durability
 │   │   └── compatibility-write-inventory.json
 │   ├── runtime
@@ -122,6 +124,7 @@
 │   │   ├── DECISION_LOG.md
 │   │   ├── decisions
 │   │   │   └── 2026-07-24-core-1b-durable-runtime.md
+│   │   ├── DOC-202A_ROADMAP_AUTHORITY_RECONCILIATION.md
 │   │   ├── FRONTEND_CUTOVER.md
 │   │   ├── ROADMAP_STATUS.md
 │   │   ├── SECURITY-2G-E_AUTHORIZATION_MATRIX.md
@@ -571,6 +574,7 @@
 │   ├── validate-architecture.ts
 │   ├── validate-boundaries.ts
 │   ├── validate-controller.ts
+│   ├── validate-documentation-authority.ts
 │   ├── validate-durable-writes.ts
 │   ├── validate-image-sbom-policy.ts
 │   ├── validate-layer-debt-evidence.ts

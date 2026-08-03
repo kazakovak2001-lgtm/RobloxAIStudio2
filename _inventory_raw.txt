@@ -73,6 +73,7 @@ commitlint.config.js
 config/cleanup/legacy-frontend-decommission.inventory.json
 config/cutover/promoted-baseline.inventory.json
 config/cutover/release-baseline.inventory.json
+config/documentation/authority-inventory.json
 config/durability/compatibility-write-inventory.json
 config/runtime/operational-state-ownership.json
 config/runtime/runtime-ownership.json
@@ -92,6 +93,7 @@ docs/00-project-control/CUTOVER-1D_RELEASE_BASELINE_READINESS.md
 docs/00-project-control/DATA-201C_TRANSACTION_DEGRADATION_POLICY.md
 docs/00-project-control/DATA-202_ROLE_MUTATION_SLICE.md
 docs/00-project-control/DECISION_LOG.md
+docs/00-project-control/DOC-202A_ROADMAP_AUTHORITY_RECONCILIATION.md
 docs/00-project-control/FRONTEND_CUTOVER.md
 docs/00-project-control/ROADMAP_STATUS.md
 docs/00-project-control/SECURITY-2G-E_AUTHORIZATION_MATRIX.md
@@ -486,6 +488,7 @@ scripts/test-pre-check.ts
 scripts/validate-architecture.ts
 scripts/validate-boundaries.ts
 scripts/validate-controller.ts
+scripts/validate-documentation-authority.ts
 scripts/validate-durable-writes.ts
 scripts/validate-image-sbom-policy.ts
 scripts/validate-layer-debt-evidence.ts

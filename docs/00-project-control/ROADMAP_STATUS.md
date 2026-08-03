@@ -3,7 +3,7 @@
 # Roadmap Status
 
 **Last Updated:** August 2, 2026  
-**Current backend release:** `release/cutover-1e-candidate@29bcd8ed53f9e86f41e753f305ad952c0dbc1de5`  
+**Current backend release:** `release/cutover-1e-candidate@da55f716c798ec8c6a7f25a8e2a3b7b0a2244416`  
 **Current Frontend contents:** `kazakovak2001-lgtm/Frontend@03aa0615ea13e06b08cdce36b993fa94fb07966a`
 
 This file is the ordered current delivery authority. The dated TECH-AUDIT-2 roadmap and sprint backlog are historical planning baselines and do not override the status below. See [DOC-202A reconciliation](./DOC-202A_ROADMAP_AUTHORITY_RECONCILIATION.md) for exact completion evidence.
@@ -25,14 +25,14 @@ This file is the ordered current delivery authority. The dated TECH-AUDIT-2 road
 | `RUNTIME-2D` | Runtime/provider/orchestration/memory ownership | High | ✅ Complete | `ARCH-2B` |
 | `DURABILITY-2E` | Durable writes and operational-state truthfulness | High | ✅ Complete | `RUNTIME-2D` |
 | `SECURITY-2G` | Dependency, SAST, credential, image, SBOM, and RBAC control gate | High | ✅ Complete — `SECURITY-2G-F` | `DURABILITY-2E` |
-| `DOC-202` | Documentation-authority inventory and deterministic guards | Medium | Next — separate delivery | `SECURITY-2G` |
+| `DOC-202` | Documentation-authority inventory and deterministic guards | Medium | In progress — `DOC-202A` | `SECURITY-2G` |
 | `STUDIO-2F` | Native assets, GUI, runtime, and place delivery | Medium | Deferred | control gates |
 | `AUTONOMY-3A` | Real engine-backed autonomous phases and broader recovery | High | Deferred | control gates |
 | `COLLAB-3B` | Collaborative development | Medium | Deferred | preceding gates |
 
 ## SECURITY-2G control baseline
 
-**Status:** Complete implementation — consolidated gate validated; PR #162 pending reviewed merge  
+**Status:** Complete — merged through PR #162  
 **Tracker:** issue #161 and PR #162  
 **Backend baseline:** `release/cutover-1e-candidate@29bcd8ed53f9e86f41e753f305ad952c0dbc1de5`  
 **Frontend release contents:** `kazakovak2001-lgtm/Frontend@03aa0615ea13e06b08cdce36b993fa94fb07966a`
@@ -74,7 +74,7 @@ Ordered delivery:
 
 Every exception records the control, exact package/advisory/rule/path/fingerprint/component/case, affected repository and release identity, owner, rationale, compensating control, approval reference, creation date and expiry. Expired, ambiguous, wildcard or ownerless exceptions fail validation.
 
-`SECURITY-2G` implementation is complete through `SECURITY-2G-F`. PR #162 remains subject to reviewed exact-head merge approval; `DOC-202`, `STUDIO-2F`, `AUTONOMY-3A` and `COLLAB-3B` remain separate subsequent deliveries.
+`SECURITY-2G` is complete through merged PR #162 at `da55f716c798ec8c6a7f25a8e2a3b7b0a2244416`. `DOC-202A` is the active documentation-authority delivery; `STUDIO-2F`, `AUTONOMY-3A` and `COLLAB-3B` remain separate subsequent deliveries.
 
 ## Completion evidence
 
@@ -87,8 +87,8 @@ Every exception records the control, exact package/advisory/rule/path/fingerprin
 - `SECURITY-2G-C`: issue #152 and PR #153; reviewed head `60b184a645e06f57d0ac53d3bf67a968a5e7b647`; merged commit `76f4e7a7be1684ac7984533d6c8d698ba6c99e7e`.
 - `SECURITY-2G-D`: issue #154 and PR #155; merged commit `d55fdb4d7eb920d0271d1ee7affe08666cdb270a`; exact paired runtime-image scanning, digest-bound SPDX SBOM evidence and deterministic image policy validation are complete.
 - `SECURITY-2G-E`: issue #156 and PR #157; merged commit `29bcd8ed53f9e86f41e753f305ad952c0dbc1de5`; generated authorization matrix contains 204 classified operations, all 26 API-key eligible operations enforce explicit capabilities and resource scopes, and Socket.IO `project:join` and `project:leave` have positive and negative parity evidence.
-- `SECURITY-2G-F`: issue #161 and PR #162; deterministic consolidated manifest and validator bind dependency, CodeQL, credential, image, SBOM, RBAC, production-contract and composed-release evidence; negative fixtures reject missing, stale, wildcard, unowned and unbound evidence; exact-head CI, SAST, image/SBOM and consolidated workflows pass before reviewed merge.
-- Active paired release baseline: backend merge `29bcd8ed53f9e86f41e753f305ad952c0dbc1de5` plus Frontend contents `03aa0615ea13e06b08cdce36b993fa94fb07966a`.
+- `SECURITY-2G-F`: issue #161 and PR #162; squash merge `da55f716c798ec8c6a7f25a8e2a3b7b0a2244416`; deterministic consolidated manifest and validator bind dependency, CodeQL, credential, image, SBOM, RBAC, production-contract and composed-release evidence; negative fixtures reject missing, stale, wildcard, unowned and unbound evidence.
+- Active paired release baseline: backend merge `da55f716c798ec8c6a7f25a8e2a3b7b0a2244416` plus Frontend contents `03aa0615ea13e06b08cdce36b993fa94fb07966a`.
 
 ## Runtime truthfulness
 
