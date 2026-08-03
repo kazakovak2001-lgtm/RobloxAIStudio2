@@ -1,0 +1,102 @@
+name: DOC-202A Integrate
+
+on:
+  pull_request:
+    branches:
+      - release/cutover-1e-candidate
+    paths:
+      - .github/workflows/doc-202a-integrate.yml
+
+permissions:
+  contents: write
+
+jobs:
+  integrate:
+    if: github.event.pull_request.number == 164 && github.event.pull_request.head.ref == 'agent/doc-202a-authority-inventory'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/doc-202a-authority-inventory
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+      - run: npm ci --ignore-scripts
+      - name: Reconcile authority documents
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          roadmap = Path('docs/00-project-control/ROADMAP_STATUS.md')
+          text = roadmap.read_text()
+          replacements = {
+            '**Current backend release:** `release/cutover-1e-candidate@29bcd8ed53f9e86f41e753f305ad952c0dbc1de5`': '**Current backend release:** `release/cutover-1e-candidate@da55f716c798ec8c6a7f25a8e2a3b7b0a2244416`',
+            '| `DOC-202` | Documentation-authority inventory and deterministic guards | Medium | Next — separate delivery | `SECURITY-2G` |': '| `DOC-202` | Documentation-authority inventory and deterministic guards | Medium | In progress — `DOC-202A` | `SECURITY-2G` |',
+            '**Status:** Complete implementation — consolidated gate validated; PR #162 pending reviewed merge  ': '**Status:** Complete — merged through PR #162  ',
+            '`SECURITY-2G` implementation is complete through `SECURITY-2G-F`. PR #162 remains subject to reviewed exact-head merge approval; `DOC-202`, `STUDIO-2F`, `AUTONOMY-3A` and `COLLAB-3B` remain separate subsequent deliveries.': '`SECURITY-2G` is complete through merged PR #162 at `da55f716c798ec8c6a7f25a8e2a3b7b0a2244416`. `DOC-202A` is the active documentation-authority delivery; `STUDIO-2F`, `AUTONOMY-3A` and `COLLAB-3B` remain separate subsequent deliveries.',
+            '- `SECURITY-2G-F`: issue #161 and PR #162; deterministic consolidated manifest and validator bind dependency, CodeQL, credential, image, SBOM, RBAC, production-contract and composed-release evidence; negative fixtures reject missing, stale, wildcard, unowned and unbound evidence; exact-head CI, SAST, image/SBOM and consolidated workflows pass before reviewed merge.': '- `SECURITY-2G-F`: issue #161 and PR #162; squash merge `da55f716c798ec8c6a7f25a8e2a3b7b0a2244416`; deterministic consolidated manifest and validator bind dependency, CodeQL, credential, image, SBOM, RBAC, production-contract and composed-release evidence; negative fixtures reject missing, stale, wildcard, unowned and unbound evidence.',
+            '- Active paired release baseline: backend merge `29bcd8ed53f9e86f41e753f305ad952c0dbc1de5` plus Frontend contents `03aa0615ea13e06b08cdce36b993fa94fb07966a`.': '- Active paired release baseline: backend merge `da55f716c798ec8c6a7f25a8e2a3b7b0a2244416` plus Frontend contents `03aa0615ea13e06b08cdce36b993fa94fb07966a`.'
+          }
+          for old, new in replacements.items():
+              if old not in text:
+                  raise SystemExit(f'missing ROADMAP_STATUS anchor: {old[:120]}')
+              text = text.replace(old, new, 1)
+          roadmap.write_text(text)
+
+          current = Path('docs/00-project-control/CURRENT_STATE.md')
+          text = current.read_text()
+          old = "**Last Updated**: August 2, 2026\n**Phase**: SECURITY-2G implementation complete — consolidated gate pending reviewed merge\n**Build Status**: SECURITY-2G-A through SECURITY-2G-F are implemented. The current backend release baseline is `release/cutover-1e-candidate@29bcd8ed53f9e86f41e753f305ad952c0dbc1de5`, paired with `kazakovak2001-lgtm/Frontend@03aa0615ea13e06b08cdce36b993fa94fb07966a`. PR #162 adds the deterministic consolidated evidence manifest, fail-closed validator, negative fixtures and blocking workflow. Exact-head CI, SAST, credential, image/SBOM, RBAC, protected 40-check production contract, composed HTTPS release, rollback and post-removal invariant gates pass. PR #162 still requires reviewed exact-head merge approval. No external production deployment is claimed."
+          new = "**Last Updated**: August 3, 2026\n**Phase**: DOC-202A in progress — documentation authority inventory and post-merge reconciliation\n**Build Status**: SECURITY-2G is complete through squash merge `da55f716c798ec8c6a7f25a8e2a3b7b0a2244416`, paired with `kazakovak2001-lgtm/Frontend@03aa0615ea13e06b08cdce36b993fa94fb07966a`. DOC-202A issue #163 and draft PR #164 establish a tracked documentation-authority inventory, fail-closed validator, deterministic negative fixtures and an explicit reconciliation record. No external production deployment is claimed."
+          if old not in text:
+              raise SystemExit('missing CURRENT_STATE header anchor')
+          current.write_text(text.replace(old, new, 1))
+          PY
+      - name: Integrate authority validator
+        run: |
+          node - <<'NODE'
+          const fs = require('node:fs');
+          const pkg = JSON.parse(fs.readFileSync('package.json', 'utf8'));
+          pkg.scripts['validate:documentation-authority'] = 'node --import tsx scripts/validate-documentation-authority.ts';
+          pkg.scripts.validate = 'npm run validate:layer-debt && npm run validate:runtime && npm run validate:memory && npm run validate:durable-writes && npm run validate:operational-state && npm run validate:documentation-authority && node --import tsx scripts/validate.ts';
+          fs.writeFileSync('package.json', JSON.stringify(pkg, null, 2) + '\n');
+          NODE
+          python3 - <<'PY'
+          from pathlib import Path
+          path = Path('scripts/validate.ts')
+          text = path.read_text()
+          start = text.index('// prettier-ignore\nfunction validateDocumentationAuthority()')
+          end = text.index('\nfunction main(): void {', start)
+          text = text[:start] + text[end+1:]
+          text = text.replace('  const documentationErrors = validateDocumentationAuthority();\n', '')
+          text = text.replace('  for (const error of documentationErrors) {\n    console.error(`  ERROR [DOC_AUTHORITY] ${error.file} — ${error.message}`);\n  }\n\n', '')
+          text = text.replace('    documentationErrors.length +\n', '')
+          text = text.replace('interface DocumentationAuthorityError {\n  file: string;\n  message: string;\n}\n\n', '')
+          path.write_text(text)
+          PY
+      - name: Format and validate authority boundary
+        run: |
+          npm run format -- package.json scripts/validate.ts scripts/validate-documentation-authority.ts config/documentation/authority-inventory.json docs/00-project-control/DOC-202A_ROADMAP_AUTHORITY_RECONCILIATION.md
+          npm run validate:documentation-authority
+          npm run typecheck
+          npm run lint
+          npm run format:check
+      - name: Regenerate deterministic inventories
+        run: |
+          node scripts/cleanup/generate-tracked-inventories.mjs
+          grep -vF '.github/workflows/doc-202a-integrate.yml' _inventory_raw.txt > _inventory_raw.txt.tmp
+          mv _inventory_raw.txt.tmp _inventory_raw.txt
+          grep -vF 'doc-202a-integrate.yml' ProjectStructure.txt > ProjectStructure.txt.tmp
+          mv ProjectStructure.txt.tmp ProjectStructure.txt
+      - name: Verify bounded diff and commit
+        run: |
+          allowed='^(docs/00-project-control/ROADMAP_STATUS\.md|docs/00-project-control/CURRENT_STATE\.md|package\.json|scripts/validate\.ts|scripts/validate-documentation-authority\.ts|config/documentation/authority-inventory\.json|docs/00-project-control/DOC-202A_ROADMAP_AUTHORITY_RECONCILIATION\.md|_inventory_raw\.txt|ProjectStructure\.txt)$'
+          unexpected="$(git diff --name-only | grep -v -E "$allowed" || true)"
+          test -z "$unexpected"
+          git diff --check -- ':!docs/00-project-control/ROADMAP_STATUS.md'
+          git add -- docs/00-project-control/ROADMAP_STATUS.md docs/00-project-control/CURRENT_STATE.md package.json scripts/validate.ts scripts/validate-documentation-authority.ts config/documentation/authority-inventory.json docs/00-project-control/DOC-202A_ROADMAP_AUTHORITY_RECONCILIATION.md _inventory_raw.txt ProjectStructure.txt
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m 'docs(authority): integrate DOC-202A validation'
+          git push origin HEAD:agent/doc-202a-authority-inventory
