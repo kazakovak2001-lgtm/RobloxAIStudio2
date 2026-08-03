@@ -1,0 +1,83 @@
+{
+  "version": 1,
+  "controlId": "DOC-202A",
+  "repository": "kazakovak2001-lgtm/RobloxAIStudio2",
+  "releaseIdentity": {
+    "backendBranch": "release/cutover-1e-candidate",
+    "backendCommit": "da55f716c798ec8c6a7f25a8e2a3b7b0a2244416",
+    "frontendRepository": "kazakovak2001-lgtm/Frontend",
+    "frontendCommit": "03aa0615ea13e06b08cdce36b993fa94fb07966a"
+  },
+  "authority": [
+    {
+      "path": "docs/00-project-control/ROADMAP_STATUS.md",
+      "owner": "project-control",
+      "rank": 1,
+      "status": "current",
+      "requiredClaims": [
+        "`SECURITY-2G` | Dependency, SAST, credential, image, SBOM, and RBAC control gate | High | ✅ Complete — `SECURITY-2G-F`",
+        "`DOC-202` | Documentation-authority inventory and deterministic guards | Medium",
+        "da55f716c798ec8c6a7f25a8e2a3b7b0a2244416",
+        "03aa0615ea13e06b08cdce36b993fa94fb07966a"
+      ],
+      "forbiddenClaims": [
+        "PR #162 pending reviewed merge",
+        "PR #162 remains subject to reviewed exact-head merge approval"
+      ]
+    },
+    {
+      "path": "docs/00-project-control/CURRENT_STATE.md",
+      "owner": "project-control",
+      "rank": 2,
+      "status": "current",
+      "requiredClaims": [
+        "da55f716c798ec8c6a7f25a8e2a3b7b0a2244416",
+        "03aa0615ea13e06b08cdce36b993fa94fb07966a",
+        "SECURITY-2G complete"
+      ],
+      "forbiddenClaims": [
+        "pending reviewed merge",
+        "still requires reviewed exact-head merge approval"
+      ]
+    },
+    {
+      "path": "docs/00-project-control/DOC-202A_ROADMAP_AUTHORITY_RECONCILIATION.md",
+      "owner": "project-control",
+      "rank": 3,
+      "status": "supporting",
+      "requiredClaims": [
+        "DOC-202A",
+        "da55f716c798ec8c6a7f25a8e2a3b7b0a2244416",
+        "03aa0615ea13e06b08cdce36b993fa94fb07966a"
+      ],
+      "forbiddenClaims": []
+    }
+  ],
+  "historical": [
+    {
+      "path": "docs/02-audits/technical-v2/ROADMAP_v2_UPDATE.md",
+      "owner": "technical-audit",
+      "status": "historical"
+    },
+    {
+      "path": "docs/02-audits/technical-v2/SPRINT_BACKLOG.md",
+      "owner": "technical-audit",
+      "status": "historical"
+    },
+    {
+      "path": "docs/02-audits/technical-v2/EXECUTIVE_AUDIT.md",
+      "owner": "technical-audit",
+      "status": "historical"
+    }
+  ],
+  "linkChecks": [
+    {
+      "source": "docs/00-project-control/ROADMAP_STATUS.md",
+      "target": "docs/00-project-control/DOC-202A_ROADMAP_AUTHORITY_RECONCILIATION.md"
+    },
+    {
+      "source": "docs/00-project-control/ROADMAP_STATUS.md",
+      "target": "docs/00-project-control/CURRENT_STATE.md"
+    }
+  ]
+}
