@@ -22,7 +22,7 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
       - uses: actions/setup-node@v4
         with:
-          node-version: '22'
+          node-version: "22"
           cache: npm
       - run: npm ci
       - name: Format exact contract file
@@ -31,7 +31,7 @@ jobs:
         run: |
           test "$(git diff --name-only)" = "server/src/contracts/integration/api.ts"
           git diff --check
-          npm run format:check
+          node node_modules/prettier/bin/prettier.cjs --check server/src/contracts/integration/api.ts
       - name: Commit repair
         run: |
           git config user.name github-actions[bot]
