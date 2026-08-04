@@ -1,0 +1,60 @@
+name: INTEGRATION-1A Inventory Refresh
+
+on:
+  pull_request:
+    branches: [release/cutover-1e-candidate]
+    paths:
+      - .github/workflows/integration-1a-inventory-refresh.yml
+
+permissions:
+  contents: write
+
+jobs:
+  refresh:
+    if: github.event.pull_request.number == 166 && github.event.pull_request.head.ref == 'agent/integration-1a-contract-baseline'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/integration-1a-contract-baseline
+          fetch-depth: 0
+      - name: Generate final-tree inventories
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import subprocess
+
+          helper = '.github/workflows/integration-1a-inventory-refresh.yml'
+          files = subprocess.check_output(['git', 'ls-files'], text=True).splitlines()
+          files = sorted(path for path in files if path != helper)
+          Path('_inventory_raw.txt').write_text('\n'.join(files) + '\n')
+
+          root = {}
+          for path in files:
+              node = root
+              parts = path.split('/')
+              for part in parts:
+                  node = node.setdefault(part, {})
+
+          lines = ['.']
+          def emit(node, prefix=''):
+              entries = sorted(node.items())
+              for index, (name, children) in enumerate(entries):
+                  last = index == len(entries) - 1
+                  lines.append(prefix + ('└── ' if last else '├── ') + name)
+                  if children:
+                      emit(children, prefix + ('    ' if last else '│   '))
+          emit(root)
+          Path('ProjectStructure.txt').write_text('\n'.join(lines) + '\n')
+          PY
+      - name: Verify bounded inventory diff
+        run: |
+          test "$(git diff --name-only | sort)" = $'ProjectStructure.txt\n_inventory_raw.txt'
+          git diff --check
+      - name: Commit inventory refresh
+        run: |
+          git add -- ProjectStructure.txt _inventory_raw.txt
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m 'chore(integration): refresh repository inventories'
+          git push origin HEAD:agent/integration-1a-contract-baseline
