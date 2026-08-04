@@ -1,4 +1,5 @@
 .
+├── _inventory_raw.txt
 ├── .agents
 │   └── agents
 │       └── j.agent.md
@@ -77,16 +78,6 @@
 ├── .vscode
 │   └── settings.json
 ├── AI_DEVELOPMENT_GOVERNANCE.md
-├── Dockerfile.backend
-├── Dockerfile.frontend.release
-├── E2E_PIPELINE_VALIDATION_REPORT.md
-├── FINAL_V1_RELEASE_SIGN_OFF.md
-├── MODULE_STATUS.md
-├── ProjectStructure.txt
-├── README.md
-├── RELEASE_HARDENING_REPORT.md
-├── V1_RELEASE_NOTES.md
-├── _inventory_raw.txt
 ├── architecture.layer-debt.json
 ├── architecture.manifest.json
 ├── artifacts
@@ -118,6 +109,8 @@
 │   └── release
 │       └── nginx.conf
 ├── docker-compose.yml
+├── Dockerfile.backend
+├── Dockerfile.frontend.release
 ├── docs
 │   ├── 00-project-control
 │   │   ├── CORE-1A_DURABLE_PROJECTS.md
@@ -129,31 +122,29 @@
 │   │   ├── DATA-201C_TRANSACTION_DEGRADATION_POLICY.md
 │   │   ├── DATA-202_ROLE_MUTATION_SLICE.md
 │   │   ├── DECISION_LOG.md
+│   │   ├── decisions
+│   │   │   └── 2026-07-24-core-1b-durable-runtime.md
 │   │   ├── DOC-202A_ROADMAP_AUTHORITY_RECONCILIATION.md
 │   │   ├── FRONTEND_CUTOVER.md
 │   │   ├── ROADMAP_STATUS.md
 │   │   ├── SECURITY-2G-E_AUTHORIZATION_MATRIX.md
+│   │   ├── STUDIO-1_AUDIT.md
 │   │   ├── STUDIO-1A_ARTIFACT_LINEAGE.md
 │   │   ├── STUDIO-1B_RUNTIME_CONSOLIDATION.md
 │   │   ├── STUDIO-1C_IMPORT_ACKNOWLEDGEMENT.md
 │   │   ├── STUDIO-1D_REAL_PLUGIN_ACCEPTANCE.md
 │   │   ├── STUDIO-1E_DESKTOP_ACCEPTANCE_RUNBOOK.md
 │   │   ├── STUDIO-1F_DESKTOP_FINDINGS_AND_RERUN.md
-│   │   ├── STUDIO-1G_DESKTOP_ACCEPTANCE_RESULT.md
-│   │   ├── STUDIO-1_AUDIT.md
-│   │   └── decisions
-│   │       └── 2026-07-24-core-1b-durable-runtime.md
+│   │   └── STUDIO-1G_DESKTOP_ACCEPTANCE_RESULT.md
 │   ├── 01-architecture
 │   │   └── .gitkeep
 │   ├── 02-audits
-│   │   ├── FINAL_V1_REALITY_AUDIT.md
-│   │   ├── PHASE_2B_COMPLETION_AUDIT.md
-│   │   ├── SECURITY_RELEASE_AUDIT.md
 │   │   ├── architecture
 │   │   │   ├── PHASE_2_GATE_REVIEW.md
 │   │   │   └── POST_AUTH_MULTI_PROJECT_READINESS.md
 │   │   ├── backend
 │   │   │   └── .gitkeep
+│   │   ├── FINAL_V1_REALITY_AUDIT.md
 │   │   ├── frontend
 │   │   │   └── .gitkeep
 │   │   ├── infrastructure
@@ -171,9 +162,11 @@
 │   │   │   ├── INTEGRATION_AUDIT_RESULT.md
 │   │   │   ├── KNOWLEDGE_BASE_IMPLEMENTATION_PLAN.md
 │   │   │   └── PLAYTESTING_PRE_IMPLEMENTATION_REPORT.md
+│   │   ├── PHASE_2B_COMPLETION_AUDIT.md
 │   │   ├── project
 │   │   │   ├── PHASE_1_GATE_REVIEW.md
 │   │   │   └── POST_INTEGRATION_REALITY_AUDIT.md
+│   │   ├── SECURITY_RELEASE_AUDIT.md
 │   │   ├── technical-v2
 │   │   │   ├── ARCH-205_IMPLEMENTATION_NOTES.md
 │   │   │   ├── ARCHITECTURE_GAP_REPORT.md
@@ -207,8 +200,17 @@
 │   │   │   └── responsive-layout-fix.md
 │   │   └── planned
 │   │       └── .gitkeep
-│   ├── AGENT_ARCHITECTURE.md
+│   ├── adr
+│   │   ├── ADR-0001-template.md
+│   │   ├── ADR-0002-orchestrator-core.md
+│   │   ├── ADR-0003-ai-router.md
+│   │   ├── ADR-0004-evaluation-layer.md
+│   │   ├── ADR-0005-shared-project-memory.md
+│   │   ├── ADR-0006-autonomous-planning.md
+│   │   ├── ADR-0007-generation-pipeline.md
+│   │   └── ADR-0008-project-assembly.md
 │   ├── AGENT_ARCHITECTURE_DECISION.md
+│   ├── AGENT_ARCHITECTURE.md
 │   ├── AGENT_MERGE_REPORT.md
 │   ├── AI_AGENT_CAPABILITY_AUDIT.md
 │   ├── AI_AGENT_OBSERVABILITY_AUDIT.md
@@ -225,128 +227,32 @@
 │   ├── AI_WORKSPACE_AGENT_DELEGATION_IMPLEMENTATION.md
 │   ├── AI_WORKSPACE_AGENT_ORCHESTRATION_DESIGN.md
 │   ├── AI_WORKSPACE_CHAT_ROUTING_FIX.md
+│   ├── AI_WORKSPACE_CONVERSATION_AUDIT.md
 │   ├── AI_WORKSPACE_CONVERSATIONAL_ARCHITECTURE.md
 │   ├── AI_WORKSPACE_CONVERSATIONAL_CHAT_IMPLEMENTATION.md
-│   ├── AI_WORKSPACE_CONVERSATION_AUDIT.md
 │   ├── ALIAS_CONFIGURATION_REPORT.md
 │   ├── ANALYTICS_INTEGRATION_REPORT.md
 │   ├── ANALYTICS_PRE_AUDIT_REPORT.md
 │   ├── API.md
-│   ├── ARCHITECTURE.md
-│   ├── ARCHITECTURE_AUDIT.md
-│   ├── ARCHITECTURE_GRAPH_REPORT.md
-│   ├── AUTH_IMPLEMENTATION_PLAN.md
-│   ├── AUTONOMOUS_PIPELINE_ARCHITECTURE.md
-│   ├── AUTONOMOUS_PIPELINE_IMPLEMENTATION_PLAN.md
-│   ├── AUTONOMOUS_PIPELINE_INTEGRATION_REPORT.md
-│   ├── CHANGELOG.md
-│   ├── COMPONENT_COMPLIANCE_REPORT.md
-│   ├── DECISION_MEMORY_REPORT.md
-│   ├── DESIGN_SYSTEM_AUDIT.md
-│   ├── DESIGN_SYSTEM_EXECUTION_REPORT.md
-│   ├── DESIGN_SYSTEM_EXECUTION_RESULTS.md
-│   ├── DESIGN_SYSTEM_MIGRATION_REPORT.md
-│   ├── DESIGN_TOKEN_AUDIT.md
-│   ├── DEVELOPMENT_READINESS_REPORT.md
-│   ├── DOCUMENTATION_CLEANUP_REPORT.md
-│   ├── DOCUMENTATION_INVENTORY.md
-│   ├── DOCUMENTATION_STATUS.md
-│   ├── ECONOMY_INTEGRATION_REPORT.md
-│   ├── ECONOMY_PRE_IMPLEMENTATION_REPORT.md
-│   ├── ENGINEERING_HANDBOOK.md
-│   ├── ENGINEERING_HANDBOOK_COMPLIANCE.md
-│   ├── ENGINEERING_HANDBOOK_UPDATE.md
-│   ├── ENV_CONFIGURATION_GUIDE.md
-│   ├── F11_STORAGE_IMPLEMENTATION_PLAN.md
-│   ├── FEATURE_DEPENDENCY_MAP.md
-│   ├── FEATURE_PRIORITY_MATRIX.md
-│   ├── FINAL_REPOSITORY_HEALTH_REPORT.md
-│   ├── FRONTEND_CONTRACT_ALIGNMENT.md
-│   ├── FRONTEND_TEST_FOUNDATION_REPORT.md
-│   ├── GAME_SIMULATION_INTEGRATION_REPORT.md
-│   ├── GAME_SIMULATION_PRE_AUDIT_REPORT.md
-│   ├── GIT_COMMIT_PREPARATION_REPORT.md
-│   ├── IMPLEMENTATION_PROCESS_REPORT.md
-│   ├── INFRASTRUCTURE_READINESS_REPORT.md
-│   ├── KIRO_CONTROLLER_INTEGRATION.md
-│   ├── KIRO_INTEGRATION_VALIDATION_REPORT.md
-│   ├── KNOWLEDGE_BASE_INTEGRATION_REPORT.md
-│   ├── KNOWLEDGE_BASE_PRE_IMPLEMENTATION_REPORT.md
-│   ├── LLM_PROVIDER_CONFIGURATION_AUDIT.md
-│   ├── PERSISTENT_STORAGE_IMPLEMENTATION_PLAN.md
-│   ├── PHASE_1_RELEASE_READINESS_REPORT.md
-│   ├── PHASE_8_VALIDATION_REPORT.md
-│   ├── PLAYTESTING_IMPLEMENTATION_PLAN.md
-│   ├── PLAYTESTING_INTEGRATION_REPORT.md
-│   ├── PLUGIN_MANAGER_INTEGRATION_REPORT.md
-│   ├── POST_COMMIT_VALIDATION_REPORT.md
-│   ├── POST_INTEGRATION_AUDIT_REPORT.md
-│   ├── PRE_IMPLEMENTATION_CHECK_REPORT.md
-│   ├── PRODUCTION_DEPLOYMENT_CHECKLIST.md
-│   ├── PRODUCTION_DEPLOYMENT_GUIDE.md
-│   ├── PRODUCTION_READINESS_REPORT.md
-│   ├── PROJECT_ARCHITECTURE_MAP.md
-│   ├── PROJECT_DOCUMENTATION_MIGRATION_REPORT.md
-│   ├── QUALITY_GATES.md
-│   ├── README.md
-│   ├── REFACTORING_PLAN.md
-│   ├── REPOSITORY_CONFORMANCE_REPORT.md
-│   ├── REPOSITORY_HEALTH_REPORT.md
-│   ├── RESPONSIVE_FIX_RESULTS.md
-│   ├── ROADMAP.md
-│   ├── ROADMAP_REPRIORITIZATION_REPORT.md
-│   ├── SECURITY_FINAL_AUDIT.md
-│   ├── STAFF_REVIEW_REMEDIATION_REPORT.md
-│   ├── TESTING_STRATEGY.md
-│   ├── UI_REVIEW_REPORT.md
-│   ├── UPDATED_ARCHITECTURE_MAP.md
-│   ├── UX3D_BEFORE_AFTER_COMPARISON.md
-│   ├── UX3D_FINAL_VALIDATION_REPORT.md
-│   ├── UX4_ARCHITECTURE_PLAN.md
-│   ├── V1_RELEASE_CHECKLIST.md
-│   ├── VALIDATION_REPORT.md
-│   ├── WORKFLOW_INTEGRATION_AUDIT.md
-│   ├── adr
-│   │   ├── ADR-0001-template.md
-│   │   ├── ADR-0002-orchestrator-core.md
-│   │   ├── ADR-0003-ai-router.md
-│   │   ├── ADR-0004-evaluation-layer.md
-│   │   ├── ADR-0005-shared-project-memory.md
-│   │   ├── ADR-0006-autonomous-planning.md
-│   │   ├── ADR-0007-generation-pipeline.md
-│   │   └── ADR-0008-project-assembly.md
 │   ├── architecture
 │   │   ├── FRONTEND_CURRENT_STATE_AUDIT.md
 │   │   └── FRONTEND_MASTER_ARCHITECTURE.md
+│   ├── ARCHITECTURE_AUDIT.md
+│   ├── ARCHITECTURE_GRAPH_REPORT.md
+│   ├── ARCHITECTURE.md
 │   ├── archive
-│   │   ├── ARCHITECTURE_AUDIT.md
 │   │   ├── ARCHITECTURE_AUDIT_REPORT_v3.md
 │   │   ├── ARCHITECTURE_AUDIT_v2.md
+│   │   ├── ARCHITECTURE_AUDIT.md
 │   │   ├── ARCHITECTURE_REFACTOR_PLAN.md
-│   │   ├── ARCHITECTURE_VERSION.md
 │   │   ├── ARCHITECTURE_v3.2.md
+│   │   ├── ARCHITECTURE_VERSION.md
 │   │   ├── CODE_HEALTH_REPORT.md
 │   │   ├── DEAD_CODE_REPORT.md
 │   │   ├── DOMAIN_MIGRATION_PLAN.md
 │   │   ├── DUPLICATE_ANALYSIS.md
 │   │   ├── IMPLEMENTATION_COMPLETE.md
 │   │   ├── IMPLEMENTATION_SUMMARY.md
-│   │   ├── PERFORMANCE_REPORT.md
-│   │   ├── PRODUCTION_HARDENING_REPORT.md
-│   │   ├── PRODUCTIZATION_REPORT.md
-│   │   ├── PROJECT_ARCHITECTURE_REPORT.md
-│   │   ├── PROJECT_INVENTORY.md
-│   │   ├── QUICK_REFERENCE.md
-│   │   ├── REFACTORING_ROADMAP.md
-│   │   ├── REPOSITORY_MAP.md
-│   │   ├── ROOT_CAUSE.md
-│   │   ├── RobloxAIStudioPlugin_README.md
-│   │   ├── SECURITY_AUDIT.md
-│   │   ├── STATIC_ANALYSIS_REPORT.md
-│   │   ├── STUDIO_INTEGRATION_REPORT.md
-│   │   ├── TECHNICAL_DEBT_REPORT.md
-│   │   ├── TEST_REPORT.md
-│   │   ├── TODO.md
 │   │   ├── migrations
 │   │   │   ├── DOCUMENTATION_EXECUTION_REPORT.md
 │   │   │   ├── DOCUMENTATION_SYNC_REPORT.md
@@ -373,6 +279,13 @@
 │   │   │   ├── STRUCTURE_EXECUTION_REPORT.md
 │   │   │   ├── STRUCTURE_EXECUTION_RESULTS.md
 │   │   │   └── STRUCTURE_STANDARDIZATION_REPORT.md
+│   │   ├── PERFORMANCE_REPORT.md
+│   │   ├── PRODUCTION_HARDENING_REPORT.md
+│   │   ├── PRODUCTIZATION_REPORT.md
+│   │   ├── PROJECT_ARCHITECTURE_REPORT.md
+│   │   ├── PROJECT_INVENTORY.md
+│   │   ├── QUICK_REFERENCE.md
+│   │   ├── REFACTORING_ROADMAP.md
 │   │   ├── registries
 │   │   │   ├── COMPONENT_REGISTRY.md
 │   │   │   ├── FEATURE_REGISTRY.md
@@ -380,22 +293,38 @@
 │   │   │   ├── UPDATED_COMPONENT_REGISTRY.md
 │   │   │   ├── UPDATED_FEATURE_REGISTRY.md
 │   │   │   └── UPDATED_PROJECT_INVENTORY.md
+│   │   ├── REPOSITORY_MAP.md
 │   │   ├── roadmaps
 │   │   │   ├── DEVELOPMENT_ROADMAP.md
 │   │   │   ├── PHASE_2_IMPLEMENTATION_STRATEGY.md
 │   │   │   └── PRODUCT_ROADMAP.md
+│   │   ├── RobloxAIStudioPlugin_README.md
+│   │   ├── ROOT_CAUSE.md
 │   │   ├── security
 │   │   │   └── SECURITY_PRODUCTION_AUDIT.md
-│   │   └── tech-debt
-│   │       ├── TECHNICAL_DEBT_FINAL_REVIEW.md
-│   │       ├── TECHNICAL_DEBT_REPORT.md
-│   │       └── UPDATED_TECHNICAL_DEBT_REPORT.md
+│   │   ├── SECURITY_AUDIT.md
+│   │   ├── STATIC_ANALYSIS_REPORT.md
+│   │   ├── STUDIO_INTEGRATION_REPORT.md
+│   │   ├── tech-debt
+│   │   │   ├── TECHNICAL_DEBT_FINAL_REVIEW.md
+│   │   │   ├── TECHNICAL_DEBT_REPORT.md
+│   │   │   └── UPDATED_TECHNICAL_DEBT_REPORT.md
+│   │   ├── TECHNICAL_DEBT_REPORT.md
+│   │   ├── TEST_REPORT.md
+│   │   └── TODO.md
 │   ├── audits
 │   │   ├── DEAD_CODE_REMOVAL_REPORT.md
 │   │   ├── DOCUMENTATION_STATUS_REPORT.md
 │   │   ├── MASTER_ARCHITECTURE_AUDIT.md
 │   │   ├── PHASE_0_VALIDATION_REPORT.md
 │   │   └── TECH_DEBT_MASTER.md
+│   ├── AUTH_IMPLEMENTATION_PLAN.md
+│   ├── AUTONOMOUS_PIPELINE_ARCHITECTURE.md
+│   ├── AUTONOMOUS_PIPELINE_IMPLEMENTATION_PLAN.md
+│   ├── AUTONOMOUS_PIPELINE_INTEGRATION_REPORT.md
+│   ├── CHANGELOG.md
+│   ├── COMPONENT_COMPLIANCE_REPORT.md
+│   ├── DECISION_MEMORY_REPORT.md
 │   ├── design
 │   │   ├── DESIGN_MIGRATION_REPORT.md
 │   │   ├── DESIGN_REDESIGN_COMPLETION_REPORT.md
@@ -403,16 +332,40 @@
 │   │   ├── SCREEN_DESIGNS.md
 │   │   ├── UI_COMPONENT_LIBRARY.md
 │   │   ├── UI_CURRENT_STATE_AUDIT.md
-│   │   ├── UX-3_IMPLEMENTATION_REPORT.md
 │   │   ├── UX_FLOW_MAP.md
-│   │   └── UX_IMPLEMENTATION_PROGRESS.md
+│   │   ├── UX_IMPLEMENTATION_PROGRESS.md
+│   │   └── UX-3_IMPLEMENTATION_REPORT.md
+│   ├── DESIGN_SYSTEM_AUDIT.md
+│   ├── DESIGN_SYSTEM_EXECUTION_REPORT.md
+│   ├── DESIGN_SYSTEM_EXECUTION_RESULTS.md
+│   ├── DESIGN_SYSTEM_MIGRATION_REPORT.md
+│   ├── DESIGN_TOKEN_AUDIT.md
 │   ├── development
 │   │   ├── ARCHITECTURE_RULES.md
 │   │   ├── DEVELOPMENT_WORKFLOW.md
 │   │   ├── VALIDATION_PROCESS.md
 │   │   └── VERSIONING.md
+│   ├── DEVELOPMENT_READINESS_REPORT.md
 │   ├── devops
 │   │   └── GITIGNORE_AUDIT.md
+│   ├── DOCUMENTATION_CLEANUP_REPORT.md
+│   ├── DOCUMENTATION_INVENTORY.md
+│   ├── DOCUMENTATION_STATUS.md
+│   ├── ECONOMY_INTEGRATION_REPORT.md
+│   ├── ECONOMY_PRE_IMPLEMENTATION_REPORT.md
+│   ├── ENGINEERING_HANDBOOK_COMPLIANCE.md
+│   ├── ENGINEERING_HANDBOOK_UPDATE.md
+│   ├── ENGINEERING_HANDBOOK.md
+│   ├── ENV_CONFIGURATION_GUIDE.md
+│   ├── F11_STORAGE_IMPLEMENTATION_PLAN.md
+│   ├── FEATURE_DEPENDENCY_MAP.md
+│   ├── FEATURE_PRIORITY_MATRIX.md
+│   ├── FINAL_REPOSITORY_HEALTH_REPORT.md
+│   ├── FRONTEND_CONTRACT_ALIGNMENT.md
+│   ├── FRONTEND_TEST_FOUNDATION_REPORT.md
+│   ├── GAME_SIMULATION_INTEGRATION_REPORT.md
+│   ├── GAME_SIMULATION_PRE_AUDIT_REPORT.md
+│   ├── GIT_COMMIT_PREPARATION_REPORT.md
 │   ├── governance
 │   │   ├── CHANGELOG_GUIDELINES.md
 │   │   ├── CORE.md
@@ -421,6 +374,13 @@
 │   │   ├── QUALITY_GATE.md
 │   │   ├── REPORT_TEMPLATE.md
 │   │   └── ROADMAP_RULES.md
+│   ├── IMPLEMENTATION_PROCESS_REPORT.md
+│   ├── INFRASTRUCTURE_READINESS_REPORT.md
+│   ├── KIRO_CONTROLLER_INTEGRATION.md
+│   ├── KIRO_INTEGRATION_VALIDATION_REPORT.md
+│   ├── KNOWLEDGE_BASE_INTEGRATION_REPORT.md
+│   ├── KNOWLEDGE_BASE_PRE_IMPLEMENTATION_REPORT.md
+│   ├── LLM_PROVIDER_CONFIGURATION_AUDIT.md
 │   ├── migration
 │   │   ├── BUILD_VALIDATION_REPORT.md
 │   │   ├── COMMAND_PANEL_MERGE_REPORT.md
@@ -440,6 +400,18 @@
 │   │   ├── PLUGIN_RECOVERY_CHANGELOG.md
 │   │   ├── PLUGIN_RECOVERY_REPORT.md
 │   │   └── SYNC_MANAGER_MERGE_REPORT.md
+│   ├── PERSISTENT_STORAGE_IMPLEMENTATION_PLAN.md
+│   ├── PHASE_1_RELEASE_READINESS_REPORT.md
+│   ├── PHASE_8_VALIDATION_REPORT.md
+│   ├── PLAYTESTING_IMPLEMENTATION_PLAN.md
+│   ├── PLAYTESTING_INTEGRATION_REPORT.md
+│   ├── PLUGIN_MANAGER_INTEGRATION_REPORT.md
+│   ├── POST_COMMIT_VALIDATION_REPORT.md
+│   ├── POST_INTEGRATION_AUDIT_REPORT.md
+│   ├── PRE_IMPLEMENTATION_CHECK_REPORT.md
+│   ├── PRODUCTION_DEPLOYMENT_CHECKLIST.md
+│   ├── PRODUCTION_DEPLOYMENT_GUIDE.md
+│   ├── PRODUCTION_READINESS_REPORT.md
 │   ├── project
 │   │   ├── CLEANUP-1A_LEGACY_FRONTEND_DECOMMISSION_AUDIT.md
 │   │   ├── CLEANUP-1B_TOOLING_DECOUPLING.md
@@ -447,13 +419,33 @@
 │   │   ├── CLEANUP-1D_POST_REMOVAL_VERIFICATION.md
 │   │   ├── CUTOVER-1E_DEFAULT_PROMOTION.md
 │   │   └── CUTOVER-1F_POST_PROMOTION_CI_ALIGNMENT.md
+│   ├── PROJECT_ARCHITECTURE_MAP.md
+│   ├── PROJECT_DOCUMENTATION_MIGRATION_REPORT.md
+│   ├── QUALITY_GATES.md
+│   ├── README.md
+│   ├── REFACTORING_PLAN.md
+│   ├── REPOSITORY_CONFORMANCE_REPORT.md
+│   ├── REPOSITORY_HEALTH_REPORT.md
+│   ├── RESPONSIVE_FIX_RESULTS.md
+│   ├── ROADMAP_REPRIORITIZATION_REPORT.md
+│   ├── ROADMAP.md
+│   ├── SECURITY_FINAL_AUDIT.md
+│   ├── STAFF_REVIEW_REMEDIATION_REPORT.md
 │   ├── templates
 │   │   └── IMPLEMENTATION_TASK_TEMPLATE.md
 │   ├── testing
 │   │   ├── ROBLOX_STUDIO_PLUGIN_TEST_PLAN.md
 │   │   └── ROBLOX_STUDIO_TEST_RESULTS.md
+│   ├── TESTING_STRATEGY.md
+│   ├── UI_REVIEW_REPORT.md
+│   ├── UPDATED_ARCHITECTURE_MAP.md
+│   ├── UX3D_BEFORE_AFTER_COMPARISON.md
+│   ├── UX3D_FINAL_VALIDATION_REPORT.md
+│   ├── UX4_ARCHITECTURE_PLAN.md
+│   ├── V1_RELEASE_CHECKLIST.md
+│   ├── VALIDATION_REPORT.md
+│   ├── WORKFLOW_INTEGRATION_AUDIT.md
 │   └── workspace-ux-redesign-v2
-│       ├── README.md
 │       ├── audit
 │       │   ├── component-catalog.md
 │       │   ├── fragmentation-analysis.md
@@ -465,6 +457,7 @@
 │       ├── migration
 │       │   ├── .gitkeep
 │       │   └── integration-guide.md
+│       ├── README.md
 │       ├── responsive
 │       │   └── .gitkeep
 │       ├── risks
@@ -482,14 +475,20 @@
 │       │   └── .gitkeep
 │       └── zones
 │           └── .gitkeep
+├── E2E_PIPELINE_VALIDATION_REPORT.md
 ├── eslint.config.js
+├── FINAL_V1_RELEASE_SIGN_OFF.md
+├── MODULE_STATUS.md
 ├── package-lock.json
 ├── package.json
 ├── project_structure.txt
+├── ProjectStructure.txt
+├── README.md
 ├── release
 │   ├── BETA_CHECKLIST.md
 │   ├── KNOWN_LIMITATIONS.md
 │   └── RELEASE_NOTES.md
+├── RELEASE_HARDENING_REPORT.md
 ├── reports
 │   ├── agent_execution_report.json
 │   ├── agent_validation_report.json
@@ -609,8 +608,8 @@
 │   │   │   ├── platform.test.ts
 │   │   │   ├── pluginProtocol.test.ts
 │   │   │   ├── preservationProperty.test.ts
-│   │   │   ├── productLayer.test.ts
 │   │   │   ├── productionQuality.test.ts
+│   │   │   ├── productLayer.test.ts
 │   │   │   ├── saasFoundation.test.ts
 │   │   │   ├── security.test.ts
 │   │   │   ├── security2gE.agent-collaboration-scope.test.ts
@@ -698,31 +697,31 @@
 │   │   │   │   ├── TesterAgent.ts
 │   │   │   │   └── UIGeneratorAgent.ts
 │   │   │   └── orchestrator
+│   │   │       ├── __tests__
+│   │   │       │   └── Orchestration.test.ts
 │   │   │       ├── AgentDependencyPlanner.ts
 │   │   │       ├── AgentExecutionValidator.ts
 │   │   │       ├── AgentMessageBus.ts
 │   │   │       ├── AgentOrchestrator.ts
 │   │   │       ├── BaseAgentV2.ts
 │   │   │       ├── CapabilityRegistry.ts
-│   │   │       ├── SharedAgentContext.ts
-│   │   │       ├── __tests__
-│   │   │       │   └── Orchestration.test.ts
 │   │   │       ├── index.ts
+│   │   │       ├── SharedAgentContext.ts
 │   │   │       └── types.ts
 │   │   ├── ai
 │   │   │   ├── agents
-│   │   │   │   ├── AgentMetadata.ts
-│   │   │   │   ├── AgentRegistry.ts
 │   │   │   │   ├── __tests__
 │   │   │   │   │   └── AgentRegistry.test.ts
+│   │   │   │   ├── AgentMetadata.ts
+│   │   │   │   ├── AgentRegistry.ts
 │   │   │   │   └── index.ts
 │   │   │   ├── context
+│   │   │   │   ├── __tests__
+│   │   │   │   │   └── ContextManager.test.ts
 │   │   │   │   ├── ContextManager.ts
 │   │   │   │   ├── ContextSerializer.ts
 │   │   │   │   ├── ContextTypes.ts
 │   │   │   │   ├── ContextValidator.ts
-│   │   │   │   ├── __tests__
-│   │   │   │   │   └── ContextManager.test.ts
 │   │   │   │   └── index.ts
 │   │   │   ├── gameArchitect
 │   │   │   │   ├── AgentPromptGenerator.ts
@@ -731,46 +730,46 @@
 │   │   │   │   ├── GameArchitectTypes.ts
 │   │   │   │   ├── GameDesignGenerator.ts
 │   │   │   │   ├── GameIdeaAnalyzer.ts
-│   │   │   │   ├── PromptQualityValidator.ts
-│   │   │   │   └── index.ts
+│   │   │   │   ├── index.ts
+│   │   │   │   └── PromptQualityValidator.ts
 │   │   │   ├── memory
-│   │   │   │   ├── MemoryEntry.ts
-│   │   │   │   ├── MemorySearch.ts
-│   │   │   │   ├── MemoryStore.ts
 │   │   │   │   ├── __tests__
 │   │   │   │   │   └── MemoryStore.test.ts
-│   │   │   │   └── index.ts
+│   │   │   │   ├── index.ts
+│   │   │   │   ├── MemoryEntry.ts
+│   │   │   │   ├── MemorySearch.ts
+│   │   │   │   └── MemoryStore.ts
 │   │   │   ├── outputParser.ts
-│   │   │   ├── promptTemplates.ts
 │   │   │   ├── prompts
-│   │   │   │   ├── PromptEngine.ts
 │   │   │   │   ├── __tests__
 │   │   │   │   │   └── PromptEngine.test.ts
 │   │   │   │   ├── defaultPrompts.ts
-│   │   │   │   └── index.ts
+│   │   │   │   ├── index.ts
+│   │   │   │   └── PromptEngine.ts
+│   │   │   ├── promptTemplates.ts
 │   │   │   ├── provider.ts
 │   │   │   ├── router.ts
 │   │   │   └── runtime
+│   │   │       ├── __tests__
+│   │   │       │   └── AgentRuntime.test.ts
 │   │   │       ├── AgentRuntime.ts
 │   │   │       ├── AgentValidator.ts
 │   │   │       ├── ExecutionPolicy.ts
-│   │   │       ├── __tests__
-│   │   │       │   └── AgentRuntime.test.ts
 │   │   │       └── index.ts
 │   │   ├── analytics
 │   │   │   ├── GameQualityScorer.ts
 │   │   │   ├── GenerationVersionManager.ts
+│   │   │   ├── index.ts
 │   │   │   ├── MultiplayerValidator.ts
-│   │   │   ├── QualityDashboard.ts
-│   │   │   └── index.ts
+│   │   │   └── QualityDashboard.ts
 │   │   ├── api
 │   │   │   ├── contracts
 │   │   │   │   └── index.ts
 │   │   │   ├── gateway
 │   │   │   │   ├── ApiGateway.ts
 │   │   │   │   ├── ApiSchemaValidator.ts
-│   │   │   │   ├── ResponseFormatter.ts
-│   │   │   │   └── index.ts
+│   │   │   │   ├── index.ts
+│   │   │   │   └── ResponseFormatter.ts
 │   │   │   ├── index.ts
 │   │   │   ├── v1
 │   │   │   │   └── index.ts
@@ -796,13 +795,13 @@
 │   │   │   ├── ScriptAssembler.ts
 │   │   │   └── WorkspaceBuilder.ts
 │   │   ├── assets
+│   │   │   ├── __tests__
+│   │   │   │   └── AssetGeneration.test.ts
 │   │   │   ├── AssetGenerationEngine.ts
 │   │   │   ├── AssetManifestBuilder.ts
 │   │   │   ├── AssetReferenceResolver.ts
 │   │   │   ├── AssetRegistry.ts
 │   │   │   ├── AssetValidationService.ts
-│   │   │   ├── __tests__
-│   │   │   │   └── AssetGeneration.test.ts
 │   │   │   ├── index.ts
 │   │   │   └── types.ts
 │   │   ├── cloud
@@ -814,11 +813,11 @@
 │   │   │   └── secrets
 │   │   │       └── GCPSecretProvider.ts
 │   │   ├── collaboration
-│   │   │   ├── AIAgentRegistry.ts
 │   │   │   ├── AgentEventBridge.ts
 │   │   │   ├── AgentMemoryManager.ts
 │   │   │   ├── AgentOrchestrator.ts
 │   │   │   ├── AgentTaskEngine.ts
+│   │   │   ├── AIAgentRegistry.ts
 │   │   │   ├── CollaborationGraphEngine.ts
 │   │   │   └── CollaborationTypes.ts
 │   │   ├── common
@@ -852,38 +851,38 @@
 │   │   │   │   ├── ExecutionAnalyticsEngine.ts
 │   │   │   │   ├── FeedbackLoopPipeline.ts
 │   │   │   │   ├── FeedbackSignalEngine.ts
+│   │   │   │   ├── index.ts
 │   │   │   │   ├── OptimizationEngine.ts
 │   │   │   │   ├── PatternDetector.ts
-│   │   │   │   ├── index.ts
 │   │   │   │   └── types.ts
 │   │   │   ├── architecture
+│   │   │   │   ├── __tests__
+│   │   │   │   │   └── cleanup1d.post-removal.test.ts
 │   │   │   │   ├── ArchitecturePolicy.ts
 │   │   │   │   ├── BoundaryValidator.ts
 │   │   │   │   ├── ImportBoundaryValidator.ts
-│   │   │   │   ├── RuntimeBoundaryGuard.ts
-│   │   │   │   └── __tests__
-│   │   │   │       └── cleanup1d.post-removal.test.ts
+│   │   │   │   └── RuntimeBoundaryGuard.ts
 │   │   │   ├── observability
 │   │   │   │   ├── ExecutionGraphBuilder.ts
 │   │   │   │   ├── ExecutionReplayEngine.ts
 │   │   │   │   ├── ExecutionTracer.ts
-│   │   │   │   ├── TraceStore.ts
 │   │   │   │   ├── index.ts
+│   │   │   │   ├── TraceStore.ts
 │   │   │   │   └── types.ts
 │   │   │   └── pipeline
 │   │   │       └── PipelineConsistencyService.ts
 │   │   ├── distributed
 │   │   │   ├── CompilerWorkerNode.ts
 │   │   │   ├── DistributedExecutionCoordinator.ts
+│   │   │   ├── execution
+│   │   │   │   ├── ExecutionContext.ts
+│   │   │   │   ├── ExecutionCoordinator.ts
+│   │   │   │   ├── ExecutionJobQueue.ts
+│   │   │   │   ├── ExecutionWorker.ts
+│   │   │   │   └── index.ts
 │   │   │   ├── JobQueueManager.ts
 │   │   │   ├── JobResultAggregator.ts
-│   │   │   ├── WorkerHealthMonitor.ts
-│   │   │   └── execution
-│   │   │       ├── ExecutionContext.ts
-│   │   │       ├── ExecutionCoordinator.ts
-│   │   │       ├── ExecutionJobQueue.ts
-│   │   │       ├── ExecutionWorker.ts
-│   │   │       └── index.ts
+│   │   │   └── WorkerHealthMonitor.ts
 │   │   ├── domain
 │   │   │   ├── BenchmarkEngine.ts
 │   │   │   ├── BestPractices.ts
@@ -903,10 +902,6 @@
 │   │   │   └── simulation
 │   │   │       └── EconomySimulationEngine.ts
 │   │   ├── evaluation
-│   │   │   ├── EvaluationRegistry.ts
-│   │   │   ├── EvaluationResult.ts
-│   │   │   ├── EvaluationRules.ts
-│   │   │   ├── Evaluator.ts
 │   │   │   ├── agents
 │   │   │   │   └── AgentEvaluator.ts
 │   │   │   ├── analytics
@@ -915,6 +910,10 @@
 │   │   │   │   └── EvaluationEngine.ts
 │   │   │   ├── datasets
 │   │   │   │   └── PromptDataset.ts
+│   │   │   ├── EvaluationRegistry.ts
+│   │   │   ├── EvaluationResult.ts
+│   │   │   ├── EvaluationRules.ts
+│   │   │   ├── Evaluator.ts
 │   │   │   └── regression
 │   │   │       └── EvaluationSuite.ts
 │   │   ├── eventsource
@@ -935,18 +934,11 @@
 │   │   ├── export
 │   │   │   ├── RobloxProjectCompiler.ts
 │   │   │   └── v2
-│   │   │       ├── ExportManager.ts
 │   │   │       ├── __tests__
 │   │   │       │   └── Export.test.ts
+│   │   │       ├── ExportManager.ts
 │   │   │       └── index.ts
 │   │   ├── generation
-│   │   │   ├── BlueprintValidator.ts
-│   │   │   ├── GenerationBlueprint.ts
-│   │   │   ├── GenerationManifest.ts
-│   │   │   ├── GenerationPipeline.ts
-│   │   │   ├── GenerationRegistry.ts
-│   │   │   ├── GenerationReport.ts
-│   │   │   ├── GenerationTypes.ts
 │   │   │   ├── assets
 │   │   │   │   ├── AssetGenerationEngine.ts
 │   │   │   │   ├── AssetGenerator.ts
@@ -957,20 +949,31 @@
 │   │   │   │   └── index.ts
 │   │   │   ├── blueprint
 │   │   │   │   └── GameBlueprintEngine.ts
+│   │   │   ├── BlueprintValidator.ts
 │   │   │   ├── coordinator
+│   │   │   │   ├── __tests__
+│   │   │   │   │   └── GenerationPipeline.integration.test.ts
 │   │   │   │   ├── AgentExecutionManager.ts
 │   │   │   │   ├── ArtifactAssembler.ts
 │   │   │   │   ├── GenerationContext.ts
 │   │   │   │   ├── GenerationCoordinator.ts
 │   │   │   │   ├── GenerationPackageBuilder.ts
+│   │   │   │   ├── index.ts
 │   │   │   │   ├── PipelineIntegrityValidator.ts
 │   │   │   │   ├── ProjectStructureValidator.ts
-│   │   │   │   ├── __tests__
-│   │   │   │   │   └── GenerationPipeline.integration.test.ts
-│   │   │   │   ├── index.ts
 │   │   │   │   └── types.ts
 │   │   │   ├── engine
+│   │   │   │   ├── __tests__
+│   │   │   │   │   ├── ConcreteGenerators.integration.test.ts
+│   │   │   │   │   ├── DomainGenerators.integration.test.ts
+│   │   │   │   │   └── GenerationEngine.integration.test.ts
 │   │   │   │   ├── BaseGenerator.ts
+│   │   │   │   ├── builders
+│   │   │   │   │   ├── ConfigurationBuilder.ts
+│   │   │   │   │   ├── FolderBuilder.ts
+│   │   │   │   │   ├── LuaScriptBuilder.ts
+│   │   │   │   │   ├── ManifestBuilder.ts
+│   │   │   │   │   └── ModuleBuilder.ts
 │   │   │   │   ├── GenerationCache.ts
 │   │   │   │   ├── GenerationDependencyResolver.ts
 │   │   │   │   ├── GenerationEngine.ts
@@ -981,22 +984,12 @@
 │   │   │   │   ├── GenerationSessionManager.ts
 │   │   │   │   ├── GeneratorExecutionGraph.ts
 │   │   │   │   ├── GeneratorRegistry.ts
-│   │   │   │   ├── __tests__
-│   │   │   │   │   ├── ConcreteGenerators.integration.test.ts
-│   │   │   │   │   ├── DomainGenerators.integration.test.ts
-│   │   │   │   │   └── GenerationEngine.integration.test.ts
-│   │   │   │   ├── builders
-│   │   │   │   │   ├── ConfigurationBuilder.ts
-│   │   │   │   │   ├── FolderBuilder.ts
-│   │   │   │   │   ├── LuaScriptBuilder.ts
-│   │   │   │   │   ├── ManifestBuilder.ts
-│   │   │   │   │   └── ModuleBuilder.ts
 │   │   │   │   ├── generators
 │   │   │   │   │   ├── ConfigurationGenerator.ts
 │   │   │   │   │   ├── EnvironmentGenerator.ts
 │   │   │   │   │   ├── FolderGenerator.ts
-│   │   │   │   │   ├── GameStructureGenerator.ts
 │   │   │   │   │   ├── GameplayGenerator.ts
+│   │   │   │   │   ├── GameStructureGenerator.ts
 │   │   │   │   │   ├── ModuleGenerator.ts
 │   │   │   │   │   ├── ScriptGenerator.ts
 │   │   │   │   │   └── ServiceGenerator.ts
@@ -1005,8 +998,8 @@
 │   │   │   │   │   └── RobloxProjectModel.ts
 │   │   │   │   └── validators
 │   │   │   │       ├── EnvironmentValidator.ts
-│   │   │   │       ├── GameStructureValidator.ts
 │   │   │   │       ├── GameplayValidator.ts
+│   │   │   │       ├── GameStructureValidator.ts
 │   │   │   │       └── LuaSyntaxValidator.ts
 │   │   │   ├── experience
 │   │   │   │   ├── DependencyResolver.ts
@@ -1017,32 +1010,41 @@
 │   │   │   │   └── index.ts
 │   │   │   ├── export
 │   │   │   │   └── RobloxExportBuilder.ts
+│   │   │   ├── GenerationBlueprint.ts
+│   │   │   ├── GenerationManifest.ts
+│   │   │   ├── GenerationPipeline.ts
+│   │   │   ├── GenerationRegistry.ts
+│   │   │   ├── GenerationReport.ts
+│   │   │   ├── GenerationTypes.ts
 │   │   │   ├── lua
+│   │   │   │   ├── index.ts
 │   │   │   │   ├── LuaArtifactBuilder.ts
 │   │   │   │   ├── LuaCodeValidator.ts
 │   │   │   │   ├── LuaGenerationEngine.ts
 │   │   │   │   ├── LuaGenerationTypes.ts
 │   │   │   │   ├── LuaGenerator.ts
-│   │   │   │   ├── LuaTemplateRegistry.ts
-│   │   │   │   └── index.ts
+│   │   │   │   └── LuaTemplateRegistry.ts
 │   │   │   └── validation
 │   │   │       └── GameValidationEngine.ts
 │   │   ├── governance
+│   │   │   ├── aiGovernance.ts
 │   │   │   ├── AssemblyGovernanceService.ts
 │   │   │   ├── CIControlPipeline.ts
 │   │   │   ├── GovernancePolicyEngine.ts
 │   │   │   ├── GovernanceValidator.ts
-│   │   │   ├── PolicyRegistry.ts
-│   │   │   └── aiGovernance.ts
+│   │   │   └── PolicyRegistry.ts
 │   │   ├── index.ts
 │   │   ├── integration
-│   │   │   ├── EndToEndValidator.ts
-│   │   │   ├── PlatformIntegrationManager.ts
-│   │   │   ├── ProductionAuditService.ts
 │   │   │   ├── __tests__
 │   │   │   │   └── PlatformIntegration.test.ts
-│   │   │   └── index.ts
+│   │   │   ├── EndToEndValidator.ts
+│   │   │   ├── index.ts
+│   │   │   ├── PlatformIntegrationManager.ts
+│   │   │   └── ProductionAuditService.ts
 │   │   ├── jobs
+│   │   │   ├── __tests__
+│   │   │   │   └── JobEngine.integration.test.ts
+│   │   │   ├── index.ts
 │   │   │   ├── JobLifecycle.ts
 │   │   │   ├── JobManager.ts
 │   │   │   ├── JobMetricsService.ts
@@ -1050,19 +1052,16 @@
 │   │   │   ├── JobQueue.ts
 │   │   │   ├── JobScheduler.ts
 │   │   │   ├── JobStateMachine.ts
-│   │   │   ├── __tests__
-│   │   │   │   └── JobEngine.integration.test.ts
-│   │   │   ├── index.ts
 │   │   │   └── types.ts
 │   │   ├── knowledge
 │   │   │   ├── CodebaseKnowledge.ts
 │   │   │   ├── DecisionMemory.ts
+│   │   │   ├── index.ts
 │   │   │   ├── KnowledgeEngine.ts
 │   │   │   ├── KnowledgeTypes.ts
 │   │   │   ├── PatternRepository.ts
 │   │   │   ├── PromptRankingRepository.ts
-│   │   │   ├── SimilarityEngine.ts
-│   │   │   └── index.ts
+│   │   │   └── SimilarityEngine.ts
 │   │   ├── lifecycle
 │   │   │   ├── bridge
 │   │   │   │   └── LifecycleFeedbackBridge.ts
@@ -1077,9 +1076,6 @@
 │   │   │   └── patch
 │   │   │       └── AutoPatchGenerator.ts
 │   │   ├── lua
-│   │   │   ├── LuaFormatter.ts
-│   │   │   ├── LuaGenerationEngine.ts
-│   │   │   ├── LuaRequireResolver.ts
 │   │   │   ├── __tests__
 │   │   │   │   └── LuaGeneration.integration.test.ts
 │   │   │   ├── builders
@@ -1088,6 +1084,9 @@
 │   │   │   │   ├── ModuleScriptBuilder.ts
 │   │   │   │   └── ServerScriptBuilder.ts
 │   │   │   ├── index.ts
+│   │   │   ├── LuaFormatter.ts
+│   │   │   ├── LuaGenerationEngine.ts
+│   │   │   ├── LuaRequireResolver.ts
 │   │   │   ├── templates
 │   │   │   │   ├── BaseLuaTemplate.ts
 │   │   │   │   ├── ConfigurationTemplate.ts
@@ -1099,12 +1098,6 @@
 │   │   │       ├── LuaDependencyValidator.ts
 │   │   │       └── LuaNamingValidator.ts
 │   │   ├── memory
-│   │   │   ├── MemoryManager.ts
-│   │   │   ├── MemoryRegistry.ts
-│   │   │   ├── MemorySerializer.ts
-│   │   │   ├── MemoryTypes.ts
-│   │   │   ├── ProjectContext.ts
-│   │   │   ├── ProjectMemory.ts
 │   │   │   ├── agents
 │   │   │   │   └── AgentMemoryBridge.ts
 │   │   │   ├── core
@@ -1112,16 +1105,22 @@
 │   │   │   ├── indexing
 │   │   │   │   └── MemoryIndex.ts
 │   │   │   ├── knowledge
+│   │   │   │   ├── __tests__
+│   │   │   │   │   └── MemorySystem.test.ts
 │   │   │   │   ├── ArtifactIndex.ts
 │   │   │   │   ├── ContextResolver.ts
+│   │   │   │   ├── index.ts
 │   │   │   │   ├── KnowledgeRepository.ts
 │   │   │   │   ├── MemoryManager.ts
 │   │   │   │   ├── MemoryMetrics.ts
 │   │   │   │   ├── MemoryStorage.ts
-│   │   │   │   ├── __tests__
-│   │   │   │   │   └── MemorySystem.test.ts
-│   │   │   │   ├── index.ts
 │   │   │   │   └── types.ts
+│   │   │   ├── MemoryManager.ts
+│   │   │   ├── MemoryRegistry.ts
+│   │   │   ├── MemorySerializer.ts
+│   │   │   ├── MemoryTypes.ts
+│   │   │   ├── ProjectContext.ts
+│   │   │   ├── ProjectMemory.ts
 │   │   │   ├── semantic
 │   │   │   │   └── SemanticRetriever.ts
 │   │   │   └── store
@@ -1131,8 +1130,8 @@
 │   │   │   ├── AutonomousOrchestrator.test.ts
 │   │   │   ├── AutonomousOrchestrator.ts
 │   │   │   ├── AutonomousPhaseRegistry.ts
-│   │   │   ├── OrchestratorTypes.ts
 │   │   │   ├── index.ts
+│   │   │   ├── OrchestratorTypes.ts
 │   │   │   └── store
 │   │   │       ├── AutonomousSessionStore.test.ts
 │   │   │       └── AutonomousSessionStore.ts
@@ -1140,62 +1139,62 @@
 │   │   │   ├── __tests__
 │   │   │   │   └── observability.test.ts
 │   │   │   ├── audit
+│   │   │   │   ├── index.ts
 │   │   │   │   ├── InMemoryAuditStore.ts
-│   │   │   │   ├── PipelineAuditLog.ts
-│   │   │   │   └── index.ts
+│   │   │   │   └── PipelineAuditLog.ts
 │   │   │   ├── events
 │   │   │   │   ├── DefaultPipelineEventBus.ts
+│   │   │   │   ├── index.ts
 │   │   │   │   ├── PipelineEvent.ts
-│   │   │   │   ├── PipelineEventBus.ts
-│   │   │   │   └── index.ts
+│   │   │   │   └── PipelineEventBus.ts
 │   │   │   ├── metrics
-│   │   │   │   ├── PipelineMetrics.ts
-│   │   │   │   └── index.ts
+│   │   │   │   ├── index.ts
+│   │   │   │   └── PipelineMetrics.ts
 │   │   │   └── v2
+│   │   │       ├── __tests__
+│   │   │       │   ├── ArtifactStore.durability.test.ts
+│   │   │       │   ├── Pipeline.test.ts
+│   │   │       │   └── PipelineStore.test.ts
 │   │   │       ├── ArtifactStore.ts
+│   │   │       ├── index.ts
 │   │   │       ├── PipelineContext.ts
 │   │   │       ├── PipelineEngine.ts
 │   │   │       ├── PipelineEvents.ts
 │   │   │       ├── PipelineExecutor.ts
 │   │   │       ├── PipelineStage.ts
-│   │   │       ├── __tests__
-│   │   │       │   ├── ArtifactStore.durability.test.ts
-│   │   │       │   ├── Pipeline.test.ts
-│   │   │       │   └── PipelineStore.test.ts
-│   │   │       ├── index.ts
 │   │   │       └── store
 │   │   │           ├── FilePipelineStore.ts
+│   │   │           ├── index.ts
 │   │   │           ├── InMemoryPipelineStore.ts
-│   │   │           ├── PipelineStore.ts
-│   │   │           └── index.ts
+│   │   │           └── PipelineStore.ts
 │   │   ├── planning
+│   │   │   ├── core
+│   │   │   │   └── PlannerEngine.ts
+│   │   │   ├── execution
+│   │   │   │   └── PlanExecutor.ts
 │   │   │   ├── ExecutionPlan.ts
+│   │   │   ├── model
+│   │   │   │   └── TaskGraph.ts
 │   │   │   ├── PlanningContext.ts
 │   │   │   ├── PlanningEngine.ts
 │   │   │   ├── PlanningMetrics.ts
 │   │   │   ├── PlanningRegistry.ts
 │   │   │   ├── PlanningRules.ts
-│   │   │   ├── PlanningTypes.ts
-│   │   │   ├── core
-│   │   │   │   └── PlannerEngine.ts
-│   │   │   ├── execution
-│   │   │   │   └── PlanExecutor.ts
-│   │   │   └── model
-│   │   │       └── TaskGraph.ts
+│   │   │   └── PlanningTypes.ts
 │   │   ├── platform
 │   │   │   ├── auth
 │   │   │   │   ├── AuthService.ts
-│   │   │   │   ├── AuthTypes.ts
-│   │   │   │   ├── SessionManager.ts
-│   │   │   │   ├── TokenProvider.ts
 │   │   │   │   ├── authServiceInstance.ts
-│   │   │   │   └── index.ts
+│   │   │   │   ├── AuthTypes.ts
+│   │   │   │   ├── index.ts
+│   │   │   │   ├── SessionManager.ts
+│   │   │   │   └── TokenProvider.ts
 │   │   │   ├── index.ts
 │   │   │   ├── projects
+│   │   │   │   ├── index.ts
 │   │   │   │   ├── ProjectLifecycleCoordinator.test.ts
 │   │   │   │   ├── ProjectLifecycleCoordinator.ts
-│   │   │   │   ├── SaaSProjectRepository.ts
-│   │   │   │   └── index.ts
+│   │   │   │   └── SaaSProjectRepository.ts
 │   │   │   ├── queue
 │   │   │   │   ├── GenerationQueue.ts
 │   │   │   │   └── index.ts
@@ -1203,49 +1202,49 @@
 │   │   │   │   ├── AgentRegistryService.ts
 │   │   │   │   └── index.ts
 │   │   │   ├── security
-│   │   │   │   ├── ApiKeyStore.ts
-│   │   │   │   ├── PermissionMiddleware.ts
 │   │   │   │   ├── __tests__
 │   │   │   │   │   └── ApiKeyStore.test.ts
-│   │   │   │   └── index.ts
-│   │   │   ├── storage
-│   │   │   │   ├── OperationalStoreComposition.ts
-│   │   │   │   ├── StorageFactory.ts
-│   │   │   │   ├── StorageProvider.ts
+│   │   │   │   ├── ApiKeyStore.ts
 │   │   │   │   ├── index.ts
-│   │   │   │   └── postgres
-│   │   │   │       ├── DatabaseHealth.ts
-│   │   │   │       ├── PostgresStorageProvider.test.ts
-│   │   │   │       ├── PostgresStorageProvider.ts
-│   │   │   │       ├── index.ts
-│   │   │   │       ├── migrationRunner.ts
-│   │   │   │       └── migrations.ts
+│   │   │   │   └── PermissionMiddleware.ts
+│   │   │   ├── storage
+│   │   │   │   ├── index.ts
+│   │   │   │   ├── OperationalStoreComposition.ts
+│   │   │   │   ├── postgres
+│   │   │   │   │   ├── DatabaseHealth.ts
+│   │   │   │   │   ├── index.ts
+│   │   │   │   │   ├── migrationRunner.ts
+│   │   │   │   │   ├── migrations.ts
+│   │   │   │   │   ├── PostgresStorageProvider.test.ts
+│   │   │   │   │   └── PostgresStorageProvider.ts
+│   │   │   │   ├── StorageFactory.ts
+│   │   │   │   └── StorageProvider.ts
 │   │   │   ├── teams
-│   │   │   │   ├── TeamWorkspace.ts
-│   │   │   │   └── index.ts
+│   │   │   │   ├── index.ts
+│   │   │   │   └── TeamWorkspace.ts
 │   │   │   ├── usage
-│   │   │   │   ├── UsageService.ts
-│   │   │   │   └── index.ts
+│   │   │   │   ├── index.ts
+│   │   │   │   └── UsageService.ts
 │   │   │   ├── users
+│   │   │   │   ├── index.ts
 │   │   │   │   ├── UserRepository.ts
 │   │   │   │   ├── UserService.durability.test.ts
 │   │   │   │   ├── UserService.ts
-│   │   │   │   ├── UserTypes.ts
-│   │   │   │   └── index.ts
+│   │   │   │   └── UserTypes.ts
 │   │   │   └── versioning
-│   │   │       ├── VersionHistory.ts
-│   │   │       └── index.ts
+│   │   │       ├── index.ts
+│   │   │       └── VersionHistory.ts
 │   │   ├── playtest
+│   │   │   ├── index.ts
 │   │   │   ├── PlaytestEngine.ts
 │   │   │   ├── PlaytestRuleEngine.ts
-│   │   │   ├── PlaytestTypes.ts
-│   │   │   └── index.ts
+│   │   │   └── PlaytestTypes.ts
 │   │   ├── plugins
 │   │   │   ├── ExtensionPointManager.ts
 │   │   │   ├── PluginLifecycleManager.ts
 │   │   │   ├── PluginRegistry.ts
-│   │   │   ├── PluginSDK.ts
-│   │   │   └── PluginSandbox.ts
+│   │   │   ├── PluginSandbox.ts
+│   │   │   └── PluginSDK.ts
 │   │   ├── projects
 │   │   │   ├── cache
 │   │   │   │   └── blueprint.cache.ts
@@ -1278,13 +1277,6 @@
 │   │   │   │   ├── providerFactory.test.ts
 │   │   │   │   └── providers.test.ts
 │   │   │   ├── ai
-│   │   │   │   ├── BaseProvider.ts
-│   │   │   │   ├── PromptBuilder.ts
-│   │   │   │   ├── ProviderFactory.ts
-│   │   │   │   ├── ProviderHealthService.ts
-│   │   │   │   ├── ProviderRegistry.ts
-│   │   │   │   ├── ResponseNormalizer.ts
-│   │   │   │   ├── RetryPolicy.ts
 │   │   │   │   ├── __tests__
 │   │   │   │   │   └── ProviderIntegration.test.ts
 │   │   │   │   ├── adapters
@@ -1292,7 +1284,14 @@
 │   │   │   │   │   ├── GoogleProvider.ts
 │   │   │   │   │   ├── LocalProvider.ts
 │   │   │   │   │   └── OpenAIProvider.ts
+│   │   │   │   ├── BaseProvider.ts
 │   │   │   │   ├── index.ts
+│   │   │   │   ├── PromptBuilder.ts
+│   │   │   │   ├── ProviderFactory.ts
+│   │   │   │   ├── ProviderHealthService.ts
+│   │   │   │   ├── ProviderRegistry.ts
+│   │   │   │   ├── ResponseNormalizer.ts
+│   │   │   │   ├── RetryPolicy.ts
 │   │   │   │   └── types.ts
 │   │   │   ├── anthropic.ts
 │   │   │   ├── gemini.ts
@@ -1304,11 +1303,11 @@
 │   │   │   ├── openrouter.ts
 │   │   │   └── providerFactory.ts
 │   │   ├── repair
+│   │   │   ├── index.ts
 │   │   │   ├── RepairEngine.ts
 │   │   │   ├── RepairExecutor.ts
 │   │   │   ├── RepairPlanner.ts
-│   │   │   ├── RepairTypes.ts
-│   │   │   └── index.ts
+│   │   │   └── RepairTypes.ts
 │   │   ├── routes
 │   │   │   ├── __tests__
 │   │   │   │   ├── platform.durability.test.ts
@@ -1379,6 +1378,19 @@
 │   │   │   ├── index.ts
 │   │   │   └── streaming.ts
 │   │   ├── studio
+│   │   │   ├── artifacts
+│   │   │   │   └── GenerationArtifactRecorder.ts
+│   │   │   ├── integration
+│   │   │   │   ├── __tests__
+│   │   │   │   │   └── StudioIntegration.test.ts
+│   │   │   │   ├── index.ts
+│   │   │   │   ├── PackageSynchronizer.ts
+│   │   │   │   ├── ProjectDiffEngine.ts
+│   │   │   │   ├── StudioConnectionRegistry.ts
+│   │   │   │   ├── StudioImportValidator.ts
+│   │   │   │   ├── StudioIntegrationManager.ts
+│   │   │   │   ├── StudioSyncMetrics.ts
+│   │   │   │   └── types.ts
 │   │   │   ├── SceneGraphTranslator.ts
 │   │   │   ├── StudioAssetMapper.ts
 │   │   │   ├── StudioBridgeServer.ts
@@ -1386,27 +1398,7 @@
 │   │   │   ├── StudioRealtimeSyncManager.ts
 │   │   │   ├── StudioSyncEngine.ts
 │   │   │   ├── StudioTypes.ts
-│   │   │   ├── artifacts
-│   │   │   │   └── GenerationArtifactRecorder.ts
-│   │   │   ├── integration
-│   │   │   │   ├── PackageSynchronizer.ts
-│   │   │   │   ├── ProjectDiffEngine.ts
-│   │   │   │   ├── StudioConnectionRegistry.ts
-│   │   │   │   ├── StudioImportValidator.ts
-│   │   │   │   ├── StudioIntegrationManager.ts
-│   │   │   │   ├── StudioSyncMetrics.ts
-│   │   │   │   ├── __tests__
-│   │   │   │   │   └── StudioIntegration.test.ts
-│   │   │   │   ├── index.ts
-│   │   │   │   └── types.ts
 │   │   │   └── v2
-│   │   │       ├── StudioBridge.ts
-│   │   │       ├── StudioEvents.ts
-│   │   │       ├── StudioEvidenceStore.test.ts
-│   │   │       ├── StudioEvidenceStore.ts
-│   │   │       ├── StudioRuntime.ts
-│   │   │       ├── StudioSession.ts
-│   │   │       ├── StudioTypes.ts
 │   │   │       ├── __tests__
 │   │   │       │   └── Studio.test.ts
 │   │   │       ├── commands
@@ -1415,21 +1407,28 @@
 │   │   │       ├── manifest
 │   │   │       │   └── ProjectManifest.ts
 │   │   │       ├── protocol
+│   │   │       │   ├── index.ts
 │   │   │       │   ├── ProtocolDispatcher.ts
 │   │   │       │   ├── ProtocolValidator.ts
-│   │   │       │   ├── StudioProtocol.ts
-│   │   │       │   └── index.ts
+│   │   │       │   └── StudioProtocol.ts
+│   │   │       ├── StudioBridge.ts
+│   │   │       ├── StudioEvents.ts
+│   │   │       ├── StudioEvidenceStore.test.ts
+│   │   │       ├── StudioEvidenceStore.ts
+│   │   │       ├── StudioRuntime.ts
+│   │   │       ├── StudioSession.ts
+│   │   │       ├── StudioTypes.ts
 │   │   │       └── sync
-│   │   │           ├── ArtifactTransferManager.ts
-│   │   │           ├── ProjectSyncManager.ts
-│   │   │           ├── SyncTypes.ts
-│   │   │           ├── SyncValidator.ts
 │   │   │           ├── __tests__
 │   │   │           │   ├── ArtifactTransferManager.unit.test.ts
 │   │   │           │   ├── ProjectSyncManager.unit.test.ts
-│   │   │           │   ├── SyncValidator.unit.test.ts
-│   │   │           │   └── smoke.test.ts
-│   │   │           └── index.ts
+│   │   │           │   ├── smoke.test.ts
+│   │   │           │   └── SyncValidator.unit.test.ts
+│   │   │           ├── ArtifactTransferManager.ts
+│   │   │           ├── index.ts
+│   │   │           ├── ProjectSyncManager.ts
+│   │   │           ├── SyncTypes.ts
+│   │   │           └── SyncValidator.ts
 │   │   ├── types
 │   │   │   ├── ai.ts
 │   │   │   ├── blueprint.ts
@@ -1439,15 +1438,15 @@
 │   │   │   ├── llm.ts
 │   │   │   └── pipeline-events.ts
 │   │   ├── ui-gen
+│   │   │   ├── __tests__
+│   │   │   │   └── UIGeneration.test.ts
+│   │   │   ├── index.ts
+│   │   │   ├── types.ts
 │   │   │   ├── UIGenerationEngine.ts
 │   │   │   ├── UIHierarchyBuilder.ts
 │   │   │   ├── UILayoutBuilder.ts
 │   │   │   ├── UIStyleBuilder.ts
-│   │   │   ├── UIValidationService.ts
-│   │   │   ├── __tests__
-│   │   │   │   └── UIGeneration.test.ts
-│   │   │   ├── index.ts
-│   │   │   └── types.ts
+│   │   │   └── UIValidationService.ts
 │   │   ├── validation
 │   │   │   ├── __tests__
 │   │   │   │   └── commitValidator.test.ts
@@ -1466,25 +1465,26 @@
 │   │       └── npc
 │   │           └── NPCBehaviorEngine.ts
 │   └── tsconfig.json
-└── studio-plugin
-    ├── README.md
-    ├── plugin.lua
-    └── src
-        ├── core
-        │   ├── Config.lua
-        │   └── Events.lua
-        ├── legacy
-        │   └── ApiClient.lua
-        ├── services
-        │   ├── ConnectionManager.lua
-        │   ├── ConnectionManager_legacy.lua
-        │   ├── StudioConnector.lua
-        │   ├── SyncManager.lua
-        │   └── SyncManager_legacy.lua
-        ├── ui
-        │   ├── CommandPanel.lua
-        │   └── UI_legacy.lua
-        └── utils
-            ├── ArtifactLoader.lua
-            ├── ErrorReporter.lua
-            └── RuntimeValidator.lua
+├── studio-plugin
+│   ├── plugin.lua
+│   ├── README.md
+│   └── src
+│       ├── core
+│       │   ├── Config.lua
+│       │   └── Events.lua
+│       ├── legacy
+│       │   └── ApiClient.lua
+│       ├── services
+│       │   ├── ConnectionManager_legacy.lua
+│       │   ├── ConnectionManager.lua
+│       │   ├── StudioConnector.lua
+│       │   ├── SyncManager_legacy.lua
+│       │   └── SyncManager.lua
+│       ├── ui
+│       │   ├── CommandPanel.lua
+│       │   └── UI_legacy.lua
+│       └── utils
+│           ├── ArtifactLoader.lua
+│           ├── ErrorReporter.lua
+│           └── RuntimeValidator.lua
+└── V1_RELEASE_NOTES.md
