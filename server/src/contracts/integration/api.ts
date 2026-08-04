@@ -1,22 +1,39 @@
+export type ProjectStatus =
+  | "draft"
+  | "generating"
+  | "testing"
+  | "ready"
+  | "published"
+  | "archived";
+
 export interface ProjectSummary {
   id: string;
   name: string;
-  status: "draft" | "running" | "ready";
+  status: ProjectStatus;
+  updatedAt: string;
 }
 
-export interface CreateGenerationRequest {
+export interface AutonomousRunRequest {
   projectId: string;
   prompt: string;
+  goals?: string[];
 }
 
-export interface GenerationResponse {
-  pipelineId: string;
-  projectId: string;
-  status: "queued" | "running" | "completed" | "failed";
+export interface AutonomousRunResponse {
+  success: true;
+  data: {
+    sessionId: string;
+    status: string;
+    currentPhase: string;
+    executionMode: string;
+    resultAuthority: string;
+    productionCompleted: false;
+    warning: string;
+  };
 }
 
-export interface ProjectLifecycleResponse {
-  projectId: string;
-  status: ProjectSummary["status"];
-  updatedAt: string;
+export interface ProjectGenerationStartResponse {
+  success: true;
+  executionId: string;
+  status: "generation_started";
 }
