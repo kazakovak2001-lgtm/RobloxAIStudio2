@@ -1,10 +1,5 @@
 export type ProjectStatus =
-  | "draft"
-  | "generating"
-  | "testing"
-  | "ready"
-  | "published"
-  | "archived";
+  "draft" | "generating" | "testing" | "ready" | "published" | "archived";
 
 export interface ProjectSummary {
   id: string;
