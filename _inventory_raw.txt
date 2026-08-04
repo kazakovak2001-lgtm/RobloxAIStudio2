@@ -710,6 +710,8 @@ server/src/compiler/CompilerTelemetry.ts
 server/src/compiler/ExecutionGuard.ts
 server/src/compiler/ProjectIsolationLayer.ts
 server/src/compiler/ProjectRegistry.ts
+server/src/contracts/integration/api.ts
+server/src/contracts/integration/events.ts
 server/src/core/agents/AgentDecisionEngine.ts
 server/src/core/agents/AgentPerformanceMemory.ts
 server/src/core/agents/AgentSelectionPolicy.ts

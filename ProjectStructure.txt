@@ -834,6 +834,10 @@
 │   │   │   ├── ExecutionGuard.ts
 │   │   │   ├── ProjectIsolationLayer.ts
 │   │   │   └── ProjectRegistry.ts
+│   │   ├── contracts
+│   │   │   └── integration
+│   │   │       ├── api.ts
+│   │   │       └── events.ts
 │   │   ├── core
 │   │   │   ├── agents
 │   │   │   │   ├── AgentDecisionEngine.ts
