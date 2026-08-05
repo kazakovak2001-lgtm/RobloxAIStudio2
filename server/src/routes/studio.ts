@@ -12,6 +12,7 @@ import {
   type StudioImportReportInput,
 } from "../studio/v2/StudioRuntime";
 import type { StudioArtifactReceipt } from "../studio/v2/StudioTypes";
+import { STUDIO_PROJECT_ACCESS_CAPABILITY } from "../platform/security/ApiKeyStore";
 import type { ProjectAccessControl } from "./projects";
 import {
   ProtocolDispatcher,
@@ -173,7 +174,26 @@ export function createStudioRouter(
     Boolean(
       projectId &&
       access?.hasProjectAccess &&
-      (await access.hasProjectAccess(req, projectId)),
+      (await access.hasProjectAccess(
+        req,
+        projectId,
+        STUDIO_PROJECT_ACCESS_CAPABILITY,
+      )),
+    );
+
+  const requireStudioProjectAccess = async (
+    req: Parameters<ProjectAccessControl["requireProjectAccess"]>[0],
+    res: Response,
+    projectId: string,
+  ): Promise<boolean> =>
+    Boolean(
+      access &&
+      (await access.requireProjectAccess(
+        req,
+        res,
+        projectId,
+        STUDIO_PROJECT_ACCESS_CAPABILITY,
+      )),
     );
 
   const requireStudioClientAccess = async (
@@ -433,7 +453,7 @@ export function createStudioRouter(
       res.status(400).json({ success: false, error: "projectId is required" });
       return;
     }
-    if (!access || !(await access.requireProjectAccess(req, res, projectId))) {
+    if (!(await requireStudioProjectAccess(req, res, projectId))) {
       return;
     }
 
@@ -649,7 +669,7 @@ export function createStudioRouter(
         .json({ success: false, error: "projectId or clientId is required" });
       return;
     }
-    if (!access || !(await access.requireProjectAccess(req, res, projectId))) {
+    if (!(await requireStudioProjectAccess(req, res, projectId))) {
       return;
     }
     try {
@@ -676,7 +696,7 @@ export function createStudioRouter(
       res.status(400).json({ success: false, error: "projectId is required" });
       return;
     }
-    if (!access || !(await access.requireProjectAccess(req, res, projectId))) {
+    if (!(await requireStudioProjectAccess(req, res, projectId))) {
       return;
     }
 
@@ -751,7 +771,7 @@ export function createStudioRouter(
       res.status(400).json({ success: false, error: "projectId is required" });
       return;
     }
-    if (!access || !(await access.requireProjectAccess(req, res, projectId))) {
+    if (!(await requireStudioProjectAccess(req, res, projectId))) {
       return;
     }
     if (!lookupId || typeof lookupId !== "string") {
@@ -776,7 +796,7 @@ export function createStudioRouter(
       res.status(400).json({ success: false, error: "projectId is required" });
       return;
     }
-    if (!access || !(await access.requireProjectAccess(req, res, projectId))) {
+    if (!(await requireStudioProjectAccess(req, res, projectId))) {
       return;
     }
     if (
@@ -808,7 +828,7 @@ export function createStudioRouter(
       res.status(400).json({ success: false, error: "projectId is required" });
       return;
     }
-    if (!access || !(await access.requireProjectAccess(req, res, projectId))) {
+    if (!(await requireStudioProjectAccess(req, res, projectId))) {
       return;
     }
     const status = runtime.getSyncStatus(projectId);

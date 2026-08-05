@@ -20,8 +20,8 @@ describe("SECURITY-2G-E Studio protocol resource scoping", () => {
       'router.post("/protocol/message", async (req, res) => {',
     );
     expect(block).toContain("resolveProtocolProjectId(message)");
-    expect(block).toContain("access.requireProjectAccess(req, res, projectId)");
-    expect(block.indexOf("requireProjectAccess")).toBeLessThan(
+    expect(block).toContain("requireStudioProjectAccess(req, res, projectId)");
+    expect(block.indexOf("requireStudioProjectAccess")).toBeLessThan(
       block.indexOf("dispatcher.dispatch"),
     );
   });
@@ -34,7 +34,7 @@ describe("SECURITY-2G-E Studio protocol resource scoping", () => {
       const block = handler(registration);
       expect(block).toContain('error: "projectId is required"');
       expect(block).toContain(
-        "access.requireProjectAccess(req, res, projectId)",
+        "requireStudioProjectAccess(req, res, projectId)",
       );
     }
     expect(

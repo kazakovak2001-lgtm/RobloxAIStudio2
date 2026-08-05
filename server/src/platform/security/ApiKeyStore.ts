@@ -16,6 +16,7 @@ import type { StorageProvider } from "../storage/StorageProvider";
 
 const COLLECTION = "platform_api_keys";
 const MIN_KEY_LENGTH = 16;
+export const STUDIO_PROJECT_ACCESS_CAPABILITY = "studio.project.access";
 
 export interface ApiKeyMetadata {
   id?: string;
@@ -232,6 +233,50 @@ export class ApiKeyStore {
       added += 1;
     }
     return added;
+  }
+
+  /** Seed one project-scoped Studio key without embedding it in the plugin. */
+  async seedStudioFromEnvironmentDurable(
+    rawKey = process.env.STUDIO_API_KEY,
+    rawProjectId = process.env.STUDIO_PROJECT_ID,
+  ): Promise<number> {
+    const key = rawKey?.trim() ?? "";
+    const projectId = rawProjectId?.trim() ?? "";
+    if (!key && !projectId) return 0;
+    if (!key || !projectId) {
+      throw new Error(
+        "STUDIO_API_KEY and STUDIO_PROJECT_ID must be configured together",
+      );
+    }
+
+    const digest = digestKey(key);
+    const existing = this.storage
+      .list<StoredApiKey>(COLLECTION)
+      .find((record) => record.digest === digest);
+    if (existing) {
+      const capabilities = normalizeScopeValues(existing.capabilities);
+      const resourceScopes = normalizeScopeValues(existing.resourceScopes);
+      if (
+        !existing.revokedAt &&
+        capabilities.length === 1 &&
+        capabilities[0] === STUDIO_PROJECT_ACCESS_CAPABILITY &&
+        resourceScopes.length === 1 &&
+        resourceScopes[0] === projectId
+      ) {
+        return 0;
+      }
+      throw new Error(
+        "STUDIO_API_KEY already exists with different access metadata",
+      );
+    }
+
+    await this.issueDurable(key, {
+      id: "studio-env-" + digest.slice(0, 24),
+      label: "studio-environment",
+      capabilities: [STUDIO_PROJECT_ACCESS_CAPABILITY],
+      resourceScopes: [projectId],
+    });
+    return 1;
   }
 
   /**

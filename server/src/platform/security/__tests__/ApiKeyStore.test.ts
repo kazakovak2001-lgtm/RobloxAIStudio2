@@ -273,6 +273,26 @@ describe("ApiKeyStore", () => {
     );
   });
 
+  it("seeds one exact project-scoped Studio key idempotently", async () => {
+    const key = "studio-seed-key-123456789";
+
+    await expect(
+      store.seedStudioFromEnvironmentDurable(key, "project-1"),
+    ).resolves.toBe(1);
+    await expect(
+      store.seedStudioFromEnvironmentDurable(key, "project-1"),
+    ).resolves.toBe(0);
+    expect(store.resolvePrincipal(key)).toEqual({
+      type: "api-key",
+      keyId: expect.stringMatching(/^studio-env-/),
+      capabilities: ["studio.project.access"],
+      resourceScopes: ["project-1"],
+    });
+    await expect(
+      store.seedStudioFromEnvironmentDurable(key, undefined),
+    ).rejects.toThrow(/configured together/);
+  });
+
   it("seeds unique keys from API_KEYS without duplicating records", async () => {
     const value =
       "seed-api-key-123456789, seed-api-key-123456789, another-seed-api-key-123456";

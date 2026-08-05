@@ -769,6 +769,7 @@ async function bootstrap(): Promise<void> {
   await runMigrations();
   await initializeStorageProvider(storageProvider);
   await getApiKeyStore().seedFromEnvironmentDurable();
+  await getApiKeyStore().seedStudioFromEnvironmentDurable();
   startServer(PORT);
 }
 

@@ -67,15 +67,19 @@ See [STUDIO-1e Desktop Acceptance Packaging and Runbook](../docs/00-project-cont
 - Permission for the plugin to communicate with the configured backend address and create or edit script source.
 - Backend running at the URL configured in `src/core/Config.lua` (`http://localhost:5000` by default).
 - The canonical `.rbxmx` package produced by `npm run studio:package` or the GitHub Actions artifact.
+- Backend `STUDIO_API_KEY` and `STUDIO_PROJECT_ID` configured together. The project ID must be exact, and the key should be a locally generated random secret of at least 16 characters.
 
 ## Connection
 
 1. Open the **AI Studio** toolbar panel.
 2. Copy the project ID from the standalone web Workspace.
 3. Paste it into **Project ID**.
-4. Select **Connect**.
+4. Paste the matching `STUDIO_API_KEY` into **Studio API key**. It is stored only in local Roblox Studio plugin settings and is not part of the distributed `.rbxmx` package.
+5. Restart the backend after setting `STUDIO_API_KEY` and `STUDIO_PROJECT_ID`, then select **Connect**.
 
 The project ID is persisted with plugin settings and is sent to `POST /api/studio/connect`. It must match the project that will queue the export; `game.Name` is not used as an ownership substitute.
+
+At startup, the backend seeds the Studio key as an API principal with only the `studio.project.access` capability and the exact `STUDIO_PROJECT_ID` resource scope. A missing key is rejected with `401`; a valid key with a different capability or project scope is rejected with `403`. General project routes continue to require the browser owner session.
 
 The plugin then:
 

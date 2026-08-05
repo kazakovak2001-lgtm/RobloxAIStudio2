@@ -19,8 +19,9 @@ function ConnectionManager.new(connector, events, errorReporter)
     return self
 end
 
-function ConnectionManager:connect(projectId)
+function ConnectionManager:connect(projectId, apiKey)
     self._projectId = projectId
+    self._connector:setApiKey(apiKey)
     self._status = "connecting"
     local ok = self._connector:connect(projectId)
     if ok then
