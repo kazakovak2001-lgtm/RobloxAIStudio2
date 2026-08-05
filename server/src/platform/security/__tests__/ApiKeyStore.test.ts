@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from "vitest";
-import { ApiKeyStore } from "../ApiKeyStore";
+import { ApiKeyStore, type StoredApiKey } from "../ApiKeyStore";
 import {
   DurableStorageError,
   InMemoryStorageProvider,
@@ -78,6 +78,10 @@ describe("ApiKeyStore", () => {
         resourceScopes: [],
       },
     ]);
+    const stored = storage.get<StoredApiKey>("platform_api_keys", issued.id);
+    expect(stored?.digest).toMatch(
+      /^scrypt-v1\$16384\$8\$1\$[0-9a-f]{32}\$[0-9a-f]{64}$/,
+    );
     expect(JSON.stringify(storage.list("platform_api_keys"))).not.toContain(
       issued.key,
     );
@@ -271,6 +275,42 @@ describe("ApiKeyStore", () => {
     await expect(store.issueDurable("too-short")).rejects.toThrow(
       /at least 16/,
     );
+  });
+
+  it("migrates a matching legacy Studio digest to scrypt during seeding", async () => {
+    const key = "legacy-studio-seed-key-123456789";
+    const legacyDigest =
+      "3b1087ed86e837c8105e89040b030007aca091680ecb894904579330672c125a";
+    await storage.setDurable<StoredApiKey>(
+      "platform_api_keys",
+      "legacy-studio-key",
+      {
+        id: "legacy-studio-key",
+        digest: legacyDigest,
+        createdAt: new Date().toISOString(),
+        label: "legacy-studio",
+        capabilities: ["studio.project.access"],
+        resourceScopes: ["project-1"],
+      },
+    );
+
+    expect(store.resolvePrincipal(key)).toMatchObject({
+      type: "api-key",
+      keyId: "legacy-studio-key",
+      capabilities: ["studio.project.access"],
+      resourceScopes: ["project-1"],
+    });
+    await expect(
+      store.seedStudioFromEnvironmentDurable(key, "project-1"),
+    ).resolves.toBe(0);
+
+    const migrated = storage.get<StoredApiKey>(
+      "platform_api_keys",
+      "legacy-studio-key",
+    );
+    expect(migrated?.digest).toMatch(/^scrypt-v1\$/);
+    expect(migrated?.digest).not.toBe(legacyDigest);
+    expect(store.validate(key)).toBe(true);
   });
 
   it("seeds one exact project-scoped Studio key idempotently", async () => {

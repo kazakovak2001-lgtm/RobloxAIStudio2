@@ -2,20 +2,27 @@
  * API key storage and validation.
  *
  * Plain-text API keys are accepted only at issue/seed time. The storage layer
- * keeps SHA-256 digests, so diagnostics and durable storage never expose a
- * reusable credential.
+ * keeps salted, versioned scrypt digests, so diagnostics and durable storage
+ * never expose a reusable credential.
  */
 
 import {
   createHash,
   randomBytes,
   randomUUID,
+  scryptSync,
   timingSafeEqual,
 } from "node:crypto";
 import type { StorageProvider } from "../storage/StorageProvider";
 
 const COLLECTION = "platform_api_keys";
 const MIN_KEY_LENGTH = 16;
+const SCRYPT_PREFIX = "scrypt-v1";
+const SCRYPT_COST = 16_384;
+const SCRYPT_BLOCK_SIZE = 8;
+const SCRYPT_PARALLELIZATION = 1;
+const SCRYPT_SALT_BYTES = 16;
+const SCRYPT_KEY_BYTES = 32;
 export const STUDIO_PROJECT_ACCESS_CAPABILITY = "studio.project.access";
 
 export interface ApiKeyMetadata {
@@ -66,17 +73,78 @@ function normalizeScopeValues(values: string[] | undefined): string[] {
   ];
 }
 
-function digestKey(key: string): string {
+function hashKey(key: string): string {
+  const salt = randomBytes(SCRYPT_SALT_BYTES);
+  const derived = scryptSync(key, salt, SCRYPT_KEY_BYTES, {
+    N: SCRYPT_COST,
+    r: SCRYPT_BLOCK_SIZE,
+    p: SCRYPT_PARALLELIZATION,
+    maxmem: 64 * 1024 * 1024,
+  });
+  return [
+    SCRYPT_PREFIX,
+    SCRYPT_COST,
+    SCRYPT_BLOCK_SIZE,
+    SCRYPT_PARALLELIZATION,
+    salt.toString("hex"),
+    derived.toString("hex"),
+  ].join("$");
+}
+
+function legacyDigestKey(key: string): string {
+  // Compatibility-only verification for records written before scrypt-v1.
+  // lgtm[js/insufficient-password-hash]
   return createHash("sha256").update(key, "utf8").digest("hex");
 }
 
-function isEqualDigest(left: string, right: string): boolean {
-  const leftBuffer = Buffer.from(left, "hex");
-  const rightBuffer = Buffer.from(right, "hex");
-  return (
-    leftBuffer.length === rightBuffer.length &&
-    timingSafeEqual(leftBuffer, rightBuffer)
+function isLegacyDigest(digest: string): boolean {
+  return /^[0-9a-f]{64}$/.test(digest);
+}
+
+function isEqualBuffer(left: Buffer, right: Buffer): boolean {
+  return left.length === right.length && timingSafeEqual(left, right);
+}
+
+function verifyDigest(digest: string, key: string): boolean {
+  if (isLegacyDigest(digest)) {
+    return isEqualBuffer(
+      Buffer.from(digest, "hex"),
+      Buffer.from(legacyDigestKey(key), "hex"),
+    );
+  }
+
+  const [
+    prefix,
+    cost,
+    blockSize,
+    parallelization,
+    saltHex = "",
+    derivedHex = "",
+  ] = digest.split("$");
+  if (
+    prefix !== SCRYPT_PREFIX ||
+    cost !== String(SCRYPT_COST) ||
+    blockSize !== String(SCRYPT_BLOCK_SIZE) ||
+    parallelization !== String(SCRYPT_PARALLELIZATION) ||
+    !new RegExp("^[0-9a-f]{" + SCRYPT_SALT_BYTES * 2 + "}$").test(saltHex) ||
+    !new RegExp("^[0-9a-f]{" + SCRYPT_KEY_BYTES * 2 + "}$").test(derivedHex)
+  ) {
+    return false;
+  }
+
+  const expected = Buffer.from(derivedHex, "hex");
+  const actual = scryptSync(
+    key,
+    Buffer.from(saltHex, "hex"),
+    SCRYPT_KEY_BYTES,
+    {
+      N: SCRYPT_COST,
+      r: SCRYPT_BLOCK_SIZE,
+      p: SCRYPT_PARALLELIZATION,
+      maxmem: 64 * 1024 * 1024,
+    },
   );
+  return isEqualBuffer(actual, expected);
 }
 
 /**
@@ -115,6 +183,29 @@ export class ApiKeyStore {
     }
   }
 
+  private async upgradeLegacyDigestDurable(
+    record: StoredApiKey,
+    rawKey: string,
+  ): Promise<void> {
+    if (record.revokedAt || !isLegacyDigest(record.digest)) return;
+
+    await this.enqueueKeyMutation(record.id, async () => {
+      const current = this.storage.get<StoredApiKey>(COLLECTION, record.id);
+      if (
+        !current ||
+        current.revokedAt ||
+        !isLegacyDigest(current.digest) ||
+        !verifyDigest(current.digest, rawKey)
+      ) {
+        return;
+      }
+      await this.storage.setDurable(COLLECTION, current.id, {
+        ...current,
+        digest: hashKey(rawKey),
+      });
+    });
+  }
+
   async issueDurable(
     rawKey: string,
     metadata: ApiKeyMetadata = {},
@@ -133,7 +224,7 @@ export class ApiKeyStore {
     return this.enqueueKeyMutation(id, async () => {
       const record: StoredApiKey = {
         id,
-        digest: digestKey(key),
+        digest: hashKey(key),
         createdAt: new Date().toISOString(),
         ...(metadata.label ? { label: metadata.label } : {}),
         ...(metadata.ownerId ? { ownerId: metadata.ownerId } : {}),
@@ -157,13 +248,11 @@ export class ApiKeyStore {
     const key = rawKey.trim();
     if (key.length < MIN_KEY_LENGTH) return null;
 
-    const candidateDigest = digestKey(key);
     const record = this.storage
       .list<StoredApiKey>(COLLECTION)
       .find(
         (candidate) =>
-          !candidate.revokedAt &&
-          isEqualDigest(candidate.digest, candidateDigest),
+          !candidate.revokedAt && verifyDigest(candidate.digest, key),
       );
     if (!record) return null;
 
@@ -220,14 +309,16 @@ export class ApiKeyStore {
       const key = candidate.trim();
       if (key.length < MIN_KEY_LENGTH) continue;
 
-      const digest = digestKey(key);
-      const exists = this.storage
+      const existing = this.storage
         .list<StoredApiKey>(COLLECTION)
-        .some((record) => record.digest === digest);
-      if (exists) continue;
+        .find((record) => verifyDigest(record.digest, key));
+      if (existing) {
+        await this.upgradeLegacyDigestDurable(existing, key);
+        continue;
+      }
 
       await this.issueDurable(key, {
-        id: `env-${digest.slice(0, 24)}`,
+        id: "env-" + randomUUID(),
         label: "environment",
       });
       added += 1;
@@ -249,10 +340,9 @@ export class ApiKeyStore {
       );
     }
 
-    const digest = digestKey(key);
     const existing = this.storage
       .list<StoredApiKey>(COLLECTION)
-      .find((record) => record.digest === digest);
+      .find((record) => verifyDigest(record.digest, key));
     if (existing) {
       const capabilities = normalizeScopeValues(existing.capabilities);
       const resourceScopes = normalizeScopeValues(existing.resourceScopes);
@@ -263,6 +353,7 @@ export class ApiKeyStore {
         resourceScopes.length === 1 &&
         resourceScopes[0] === projectId
       ) {
+        await this.upgradeLegacyDigestDurable(existing, key);
         return 0;
       }
       throw new Error(
@@ -271,7 +362,7 @@ export class ApiKeyStore {
     }
 
     await this.issueDurable(key, {
-      id: "studio-env-" + digest.slice(0, 24),
+      id: "studio-env-" + randomUUID(),
       label: "studio-environment",
       capabilities: [STUDIO_PROJECT_ACCESS_CAPABILITY],
       resourceScopes: [projectId],
