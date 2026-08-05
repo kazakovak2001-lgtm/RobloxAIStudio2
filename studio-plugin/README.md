@@ -87,6 +87,8 @@ The project ID is persisted with plugin settings and is sent to `POST /api/studi
 
 At startup, the backend seeds the Studio key as an API principal with only the `studio.project.access` capability and the exact `STUDIO_PROJECT_ID` resource scope. Changing the configured key revokes superseded environment-managed Studio keys; removing both variables revokes all such keys. A missing key is rejected with `401`; a valid key with a different capability or project scope is rejected with `403`. General project routes continue to require the browser owner session.
 
+Configuration errors are fail-fast and stop backend startup. When changing `STUDIO_PROJECT_ID`, generate a new structured key with a new lookup ID, update both the backend and local plugin setting, and restart; successful seeding revokes the superseded environment-managed key.
+
 The plugin then:
 
 - sends the existing protocol `HELLO` message;

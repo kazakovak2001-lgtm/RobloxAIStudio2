@@ -29,6 +29,7 @@ describe("Studio project-scoped API key access", () => {
   afterEach(async () => {
     process.env.NODE_ENV = previousNodeEnv;
     studioRuntime?.stopTimeoutMonitor();
+    server?.closeAllConnections();
     await new Promise<void>(
       (resolve) => server?.close(() => resolve()) ?? resolve(),
     );
@@ -91,6 +92,36 @@ describe("Studio project-scoped API key access", () => {
     });
   }
 
+  it("returns 403 when Studio project access control is unavailable", async () => {
+    studioRuntime = new StudioRuntime();
+    const app = express();
+    app.use(express.json());
+    app.use("/api/studio", createStudioRouter(studioRuntime));
+    server = app.listen(0);
+    await new Promise<void>((resolve) => server?.once("listening", resolve));
+    const address = server.address();
+    if (!address || typeof address === "string") {
+      throw new Error("Expected a TCP test server");
+    }
+
+    const response = await fetch(
+      `http://127.0.0.1:${address.port}/api/studio/connect`,
+      {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          studioVersion: "2024.1",
+          projectId: "project-without-access-control",
+        }),
+      },
+    );
+
+    expect(response.status).toBe(403);
+    await expect(response.json()).resolves.toMatchObject({
+      success: false,
+      error: "Studio project access control is unavailable",
+    });
+  });
   it("returns 401 without a key and 403 for wrong capability or scope", async () => {
     const { keyStore, project, url } = await startServer();
     const wrongCapability = await keyStore.issueDurable(

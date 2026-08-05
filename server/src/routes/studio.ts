@@ -185,16 +185,21 @@ export function createStudioRouter(
     req: Parameters<ProjectAccessControl["requireProjectAccess"]>[0],
     res: Response,
     projectId: string,
-  ): Promise<boolean> =>
-    Boolean(
-      access &&
-      (await access.requireProjectAccess(
-        req,
-        res,
-        projectId,
-        STUDIO_PROJECT_ACCESS_CAPABILITY,
-      )),
+  ): Promise<boolean> => {
+    if (!access) {
+      res.status(403).json({
+        success: false,
+        error: "Studio project access control is unavailable",
+      });
+      return false;
+    }
+    return access.requireProjectAccess(
+      req,
+      res,
+      projectId,
+      STUDIO_PROJECT_ACCESS_CAPABILITY,
     );
+  };
 
   const requireStudioClientAccess = async (
     req: Parameters<ProjectAccessControl["requireProjectAccess"]>[0],
