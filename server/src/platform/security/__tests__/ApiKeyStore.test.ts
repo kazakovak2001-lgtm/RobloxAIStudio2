@@ -277,7 +277,7 @@ describe("ApiKeyStore", () => {
     );
   });
 
-  it("migrates a matching legacy Studio digest to scrypt during seeding", async () => {
+  it("rejects legacy SHA-256 digests and safely reseeds the Studio key", async () => {
     const key = "legacy-studio-seed-key-123456789";
     const legacyDigest =
       "3b1087ed86e837c8105e89040b030007aca091680ecb894904579330672c125a";
@@ -294,23 +294,22 @@ describe("ApiKeyStore", () => {
       },
     );
 
-    expect(store.resolvePrincipal(key)).toMatchObject({
-      type: "api-key",
-      keyId: "legacy-studio-key",
-      capabilities: ["studio.project.access"],
-      resourceScopes: ["project-1"],
-    });
+    expect(store.resolvePrincipal(key)).toBeNull();
     await expect(
       store.seedStudioFromEnvironmentDurable(key, "project-1"),
-    ).resolves.toBe(0);
+    ).resolves.toBe(1);
 
-    const migrated = storage.get<StoredApiKey>(
+    const legacy = storage.get<StoredApiKey>(
       "platform_api_keys",
       "legacy-studio-key",
     );
-    expect(migrated?.digest).toMatch(/^scrypt-v1\$/);
-    expect(migrated?.digest).not.toBe(legacyDigest);
-    expect(store.validate(key)).toBe(true);
+    expect(legacy?.digest).toBe(legacyDigest);
+    expect(store.resolvePrincipal(key)).toMatchObject({
+      type: "api-key",
+      keyId: expect.stringMatching(/^studio-env-/),
+      capabilities: ["studio.project.access"],
+      resourceScopes: ["project-1"],
+    });
   });
 
   it("seeds one exact project-scoped Studio key idempotently", async () => {

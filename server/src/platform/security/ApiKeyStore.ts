@@ -7,7 +7,6 @@
  */
 
 import {
-  createHash,
   randomBytes,
   randomUUID,
   scryptSync,
@@ -91,28 +90,11 @@ function hashKey(key: string): string {
   ].join("$");
 }
 
-function legacyDigestKey(key: string): string {
-  // Compatibility-only verification for records written before scrypt-v1.
-  // lgtm[js/insufficient-password-hash]
-  return createHash("sha256").update(key, "utf8").digest("hex");
-}
-
-function isLegacyDigest(digest: string): boolean {
-  return /^[0-9a-f]{64}$/.test(digest);
-}
-
 function isEqualBuffer(left: Buffer, right: Buffer): boolean {
   return left.length === right.length && timingSafeEqual(left, right);
 }
 
 function verifyDigest(digest: string, key: string): boolean {
-  if (isLegacyDigest(digest)) {
-    return isEqualBuffer(
-      Buffer.from(digest, "hex"),
-      Buffer.from(legacyDigestKey(key), "hex"),
-    );
-  }
-
   const [
     prefix,
     cost,
@@ -181,29 +163,6 @@ export class ApiKeyStore {
         this.mutationQueues.delete(id);
       }
     }
-  }
-
-  private async upgradeLegacyDigestDurable(
-    record: StoredApiKey,
-    rawKey: string,
-  ): Promise<void> {
-    if (record.revokedAt || !isLegacyDigest(record.digest)) return;
-
-    await this.enqueueKeyMutation(record.id, async () => {
-      const current = this.storage.get<StoredApiKey>(COLLECTION, record.id);
-      if (
-        !current ||
-        current.revokedAt ||
-        !isLegacyDigest(current.digest) ||
-        !verifyDigest(current.digest, rawKey)
-      ) {
-        return;
-      }
-      await this.storage.setDurable(COLLECTION, current.id, {
-        ...current,
-        digest: hashKey(rawKey),
-      });
-    });
   }
 
   async issueDurable(
@@ -312,10 +271,7 @@ export class ApiKeyStore {
       const existing = this.storage
         .list<StoredApiKey>(COLLECTION)
         .find((record) => verifyDigest(record.digest, key));
-      if (existing) {
-        await this.upgradeLegacyDigestDurable(existing, key);
-        continue;
-      }
+      if (existing) continue;
 
       await this.issueDurable(key, {
         id: "env-" + randomUUID(),
@@ -353,7 +309,6 @@ export class ApiKeyStore {
         resourceScopes.length === 1 &&
         resourceScopes[0] === projectId
       ) {
-        await this.upgradeLegacyDigestDurable(existing, key);
         return 0;
       }
       throw new Error(
