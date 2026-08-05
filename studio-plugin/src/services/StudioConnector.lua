@@ -8,14 +8,19 @@ local Config = require(script.Parent.Parent.core.Config)
 local StudioConnector = {}
 StudioConnector.__index = StudioConnector
 
-function StudioConnector.new()
+function StudioConnector.new(apiKey)
     local self = setmetatable({}, StudioConnector)
     self._sessionId = nil
     self._clientId = nil
     self._projectId = nil
     self._connected = false
+    self._apiKey = apiKey or ""
     self._lastMessageId = 0
     return self
+end
+
+function StudioConnector:setApiKey(apiKey)
+    self._apiKey = apiKey or ""
 end
 
 function StudioConnector:connect(projectId)
@@ -191,7 +196,7 @@ function StudioConnector:_headers()
     -- PostAsync sets Content-Type from Enum.HttpContentType.ApplicationJson.
     -- Roblox rejects callers that also provide Content-Type in custom headers.
     local headers = {}
-    if Config.API_KEY ~= "" then headers["X-API-Key"] = Config.API_KEY end
+    if self._apiKey ~= "" then headers["X-API-Key"] = self._apiKey end
     if self._sessionId then headers["X-Studio-Session"] = self._sessionId end
     return headers
 end

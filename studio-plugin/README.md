@@ -67,15 +67,27 @@ See [STUDIO-1e Desktop Acceptance Packaging and Runbook](../docs/00-project-cont
 - Permission for the plugin to communicate with the configured backend address and create or edit script source.
 - Backend running at the URL configured in `src/core/Config.lua` (`http://localhost:5000` by default).
 - The canonical `.rbxmx` package produced by `npm run studio:package` or the GitHub Actions artifact.
+- Backend `STUDIO_API_KEY` and `STUDIO_PROJECT_ID` configured together. The project ID must be exact, and the key must use the `rai_<16 hex lookup characters>_<32+ random characters>` format.
 
 ## Connection
+
+Generate a key locally before configuring the backend and plugin:
+
+```powershell
+node -e "const c=require('node:crypto'); console.log('rai_'+c.randomBytes(8).toString('hex')+'_'+c.randomBytes(32).toString('hex'))"
+```
 
 1. Open the **AI Studio** toolbar panel.
 2. Copy the project ID from the standalone web Workspace.
 3. Paste it into **Project ID**.
-4. Select **Connect**.
+4. Paste the matching `STUDIO_API_KEY` into **Studio API key**. It is stored only in local Roblox Studio plugin settings and is not part of the distributed `.rbxmx` package.
+5. Restart the backend after setting `STUDIO_API_KEY` and `STUDIO_PROJECT_ID`, then select **Connect**.
 
 The project ID is persisted with plugin settings and is sent to `POST /api/studio/connect`. It must match the project that will queue the export; `game.Name` is not used as an ownership substitute.
+
+At startup, the backend seeds the Studio key as an API principal with only the `studio.project.access` capability and the exact `STUDIO_PROJECT_ID` resource scope. Changing the configured key revokes superseded environment-managed Studio keys; removing both variables revokes all such keys. A missing key is rejected with `401`; a valid key with a different capability or project scope is rejected with `403`. General project routes continue to require the browser owner session.
+
+Configuration errors are fail-fast and stop backend startup. When changing `STUDIO_PROJECT_ID`, generate a new structured key with a new lookup ID, update both the backend and local plugin setting, and restart; successful seeding revokes the superseded environment-managed key.
 
 The plugin then:
 

@@ -1314,6 +1314,7 @@
 │   │   │   │   ├── platform.registration.durability.test.ts
 │   │   │   │   ├── projects.durability.test.ts
 │   │   │   │   ├── projects.runtime.test.ts
+│   │   │   │   ├── studioApiKeyAccess.test.ts
 │   │   │   │   ├── studioDurability.test.ts
 │   │   │   │   └── studioProtocol.smoke.test.ts
 │   │   │   ├── agentCollaboration.ts

@@ -94,6 +94,10 @@ describe("STUDIO-1d canonical Roblox plugin contract", () => {
     expect(panel).toContain('SetSetting("AIStudioProjectId", projectId)');
     expect(panel).toContain('self:_textBox(frame, "Project ID"');
     expect(panel).toContain('self:_updateStatus("Project ID required"');
+    expect(panel).toContain('GetSetting("AIStudioApiKey")');
+    expect(panel).toContain('SetSetting("AIStudioApiKey", apiKey)');
+    expect(connector).toContain('headers["X-API-Key"] = self._apiKey');
+    expect(connector).not.toContain("Config.API_KEY");
   });
 
   it("keeps the active plugin modules syntactically coherent", () => {

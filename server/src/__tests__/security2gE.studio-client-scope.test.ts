@@ -47,6 +47,8 @@ describe("SECURITY-2G-E Studio client resource scoping", () => {
     expect(source).toContain(
       'res.status(404).json({ success: false, error: "Client not found" })',
     );
-    expect(source).toContain("access.hasProjectAccess(req, projectId)");
+    expect(source).toMatch(
+      /access\.hasProjectAccess\(\s*req,\s*projectId,\s*STUDIO_PROJECT_ACCESS_CAPABILITY/,
+    );
   });
 });

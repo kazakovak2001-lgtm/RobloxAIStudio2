@@ -1074,6 +1074,7 @@ server/src/routes/__tests__/platform.durability.test.ts
 server/src/routes/__tests__/platform.registration.durability.test.ts
 server/src/routes/__tests__/projects.durability.test.ts
 server/src/routes/__tests__/projects.runtime.test.ts
+server/src/routes/__tests__/studioApiKeyAccess.test.ts
 server/src/routes/__tests__/studioDurability.test.ts
 server/src/routes/__tests__/studioProtocol.smoke.test.ts
 server/src/routes/agentCollaboration.ts

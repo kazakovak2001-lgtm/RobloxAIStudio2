@@ -5,7 +5,7 @@
 local Config = {}
 
 Config.BACKEND_URL = "http://localhost:5000"
-Config.API_KEY = ""
+
 Config.PROTOCOL_VERSION = "1.0.0"
 Config.PLUGIN_VERSION = "1.8.0"
 Config.HEARTBEAT_INTERVAL = 15

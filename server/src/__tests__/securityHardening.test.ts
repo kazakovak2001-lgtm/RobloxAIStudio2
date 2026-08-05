@@ -173,9 +173,12 @@ describe("Security Hardening", async () => {
       process.env.NODE_ENV = "production";
       const store = getApiKeyStore();
       await store.clearDurable();
-      const issued = await store.issueDurable("my-api-key-1234567", {
-        label: "security-test",
-      });
+      const issued = await store.issueDurable(
+        "rai_0000000000000012_12121212121212121212121212121212",
+        {
+          label: "security-test",
+        },
+      );
 
       let nextCalled = false;
       const req = {
@@ -204,7 +207,9 @@ describe("Security Hardening", async () => {
       const req = {
         path: "/api/projects",
         method: "GET",
-        headers: { "x-api-key": "unknown-api-key-123456789" },
+        headers: {
+          "x-api-key": "rai_00000000000000ff_ffffffffffffffffffffffffffffffff",
+        },
       } as never;
       const res = {
         status: (code: number) => {
@@ -213,7 +218,7 @@ describe("Security Hardening", async () => {
         },
       } as never;
 
-      authMiddleware(req, res, () => undefined);
+      await authMiddleware(req, res, () => undefined);
       expect(statusCode).toBe(401);
 
       process.env.NODE_ENV = originalEnv;
@@ -224,15 +229,22 @@ describe("Security Hardening", async () => {
       process.env.NODE_ENV = "production";
       const store = getApiKeyStore();
       await store.clearDurable();
-      await store.issueDurable("array-header-api-key-123456", {
-        label: "array-test",
-      });
+      await store.issueDurable(
+        "rai_0000000000000014_14141414141414141414141414141414",
+        {
+          label: "array-test",
+        },
+      );
 
       let statusCode = 0;
       const req = {
         path: "/api/projects",
         method: "GET",
-        headers: { "x-api-key": ["array-header-api-key-123456"] },
+        headers: {
+          "x-api-key": [
+            "rai_0000000000000014_14141414141414141414141414141414",
+          ],
+        },
       } as never;
       const res = {
         status: (code: number) => {
@@ -241,7 +253,7 @@ describe("Security Hardening", async () => {
         },
       } as never;
 
-      authMiddleware(req, res, () => undefined);
+      await authMiddleware(req, res, () => undefined);
       expect(statusCode).toBe(401);
 
       await store.clearDurable();

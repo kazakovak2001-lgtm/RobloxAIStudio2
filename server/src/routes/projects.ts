@@ -15,6 +15,10 @@ import {
   type GenerationHistoryRepository,
 } from "../projects/repository/generationHistory.repository";
 import { getTokenFromCookies } from "../common/middleware/cookies";
+import {
+  getRequestApiKeyPrincipal,
+  requireApiKeyCapability,
+} from "../common/middleware/security";
 
 export interface ProjectAccessControl {
   getRequestUserId(req: Request): Promise<string | null>;
@@ -23,8 +27,13 @@ export interface ProjectAccessControl {
     req: Request,
     res: Response,
     projectId: string,
+    apiKeyCapability?: string,
   ): Promise<boolean>;
-  hasProjectAccess?(req: Request, projectId: string): Promise<boolean>;
+  hasProjectAccess?(
+    req: Request,
+    projectId: string,
+    apiKeyCapability?: string,
+  ): Promise<boolean>;
 }
 
 export interface ProjectRuntime {
@@ -67,7 +76,26 @@ export function createProjectRuntime(
     req: Request,
     res: Response,
     projectId: string,
+    apiKeyCapability?: string,
   ): Promise<boolean> => {
+    if (getRequestApiKeyPrincipal(req)) {
+      if (!apiKeyCapability) {
+        res.status(403).json({
+          success: false,
+          error: "API key is not permitted for this route",
+        });
+        return false;
+      }
+      if (!requireApiKeyCapability(req, res, apiKeyCapability, projectId)) {
+        return false;
+      }
+      if (!projectRepository.get(projectId)) {
+        res.status(404).json({ success: false, error: "Project not found" });
+        return false;
+      }
+      return true;
+    }
+
     const userId = await requireAuthenticatedUser(req, res);
     if (!userId) return false;
 
@@ -86,7 +114,17 @@ export function createProjectRuntime(
   const hasProjectAccess = async (
     req: Request,
     projectId: string,
+    apiKeyCapability?: string,
   ): Promise<boolean> => {
+    const apiKeyPrincipal = getRequestApiKeyPrincipal(req);
+    if (apiKeyPrincipal) {
+      return Boolean(
+        apiKeyCapability &&
+        projectRepository.get(projectId) &&
+        apiKeyPrincipal.capabilities.includes(apiKeyCapability) &&
+        apiKeyPrincipal.resourceScopes.includes(projectId),
+      );
+    }
     const userId = await getRequestUserId(req);
     return Boolean(
       userId &&

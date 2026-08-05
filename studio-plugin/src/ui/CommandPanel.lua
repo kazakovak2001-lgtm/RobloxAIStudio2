@@ -48,17 +48,20 @@ function CommandPanel:_build()
 
     local savedProjectId = self._plugin:GetSetting("AIStudioProjectId")
     local defaultProjectId = type(savedProjectId) == "string" and savedProjectId or ""
+    local savedApiKey = self._plugin:GetSetting("AIStudioApiKey")
+    local defaultApiKey = type(savedApiKey) == "string" and savedApiKey or ""
 
     self:_label(frame, "AI Studio v" .. Config.PLUGIN_VERSION, 16, 0)
     self._elements.statusLabel = self:_label(frame, "Disconnected", 12, 1)
     self._elements.projectInput = self:_textBox(frame, "Project ID", defaultProjectId, 2)
-    self._elements.sessionLabel = self:_label(frame, "Session: —", 11, 3)
-    self._elements.syncLabel = self:_label(frame, "Import: Waiting", 11, 4)
-    self:_btn(frame, "Connect", 5, function() self:_onConnect() end)
-    self:_btn(frame, "Generate in Workspace", 6, function() self:_onGenerate() end)
-    self:_btn(frame, "Check Export Queue", 7, function() self:_onSync() end)
-    self:_btn(frame, "Disconnect", 8, function() self:_onDisconnect() end)
-    self:_btn(frame, "Show Errors", 9, function() self:_onShowErrors() end)
+    self._elements.apiKeyInput = self:_textBox(frame, "Studio API key", defaultApiKey, 3)
+    self._elements.sessionLabel = self:_label(frame, "Session: —", 11, 4)
+    self._elements.syncLabel = self:_label(frame, "Import: Waiting", 11, 5)
+    self:_btn(frame, "Connect", 6, function() self:_onConnect() end)
+    self:_btn(frame, "Generate in Workspace", 7, function() self:_onGenerate() end)
+    self:_btn(frame, "Check Export Queue", 8, function() self:_onSync() end)
+    self:_btn(frame, "Disconnect", 9, function() self:_onDisconnect() end)
+    self:_btn(frame, "Show Errors", 10, function() self:_onShowErrors() end)
 end
 
 function CommandPanel:_onConnect()
@@ -70,9 +73,15 @@ function CommandPanel:_onConnect()
     end
 
     self._plugin:SetSetting("AIStudioProjectId", projectId)
+    local apiKey = self._elements.apiKeyInput.Text:match("^%s*(.-)%s*$") or ""
+    if apiKey == "" then
+        self:_updateStatus("Studio API key required", Color3.fromRGB(255, 100, 100))
+        return
+    end
+    self._plugin:SetSetting("AIStudioApiKey", apiKey)
     self:_updateStatus("Connecting...", Color3.fromRGB(255, 200, 100))
     task.spawn(function()
-        if self._conn:connect(projectId) then
+        if self._conn:connect(projectId, apiKey) then
             self:_updateStatus("Connected", Color3.fromRGB(100, 255, 100))
             self._elements.syncLabel.Text = "Import: Waiting for export"
         else
