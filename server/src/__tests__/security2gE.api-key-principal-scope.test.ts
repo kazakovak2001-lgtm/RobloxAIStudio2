@@ -14,6 +14,7 @@ describe("SECURITY-2G-E API key principal propagation", () => {
   it("stores explicit capability and resource scopes", () => {
     expect(store).toContain("capabilities?: string[]");
     expect(store).toContain("resourceScopes?: string[]");
+    expect(store).toContain("lookupId: string");
     expect(store).toContain(
       "capabilities: normalizeScopeValues(metadata.capabilities)",
     );
@@ -24,7 +25,7 @@ describe("SECURITY-2G-E API key principal propagation", () => {
 
   it("resolves a typed API key principal without inventing user identity", () => {
     expect(store).toContain(
-      "resolvePrincipal(rawKey: unknown): ApiKeyPrincipal | null",
+      "async resolvePrincipal(rawKey: unknown): Promise<ApiKeyPrincipal | null>",
     );
     expect(store).toContain('type: "api-key"');
     expect(store).toContain("keyId: record.id");
@@ -35,6 +36,9 @@ describe("SECURITY-2G-E API key principal propagation", () => {
       "resourceScopes: normalizeScopeValues(record.resourceScopes)",
     );
     expect(store).not.toContain("userId: record.ownerId");
+    expect(store).toContain("candidate.lookupId === lookupId");
+    expect(store).toContain("async function verifyDigest");
+    expect(store).not.toContain("scryptSync");
   });
 
   it("keeps legacy unscoped keys fail-closed for authorization", () => {
@@ -48,6 +52,9 @@ describe("SECURITY-2G-E API key principal propagation", () => {
     expect(security).toContain("ApiKeyAuthenticatedRequest");
     expect(security).toContain("getRequestApiKeyPrincipal");
     expect(security).toContain("getApiKeyStore().resolvePrincipal(apiKey)");
+    expect(security).toContain(
+      "await getApiKeyStore().resolvePrincipal(apiKey)",
+    );
     expect(security).toContain(
       "(req as ApiKeyAuthenticatedRequest).apiKeyPrincipal = apiKeyPrincipal",
     );

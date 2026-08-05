@@ -94,14 +94,14 @@ describe("Studio project-scoped API key access", () => {
   it("returns 401 without a key and 403 for wrong capability or scope", async () => {
     const { keyStore, project, url } = await startServer();
     const wrongCapability = await keyStore.issueDurable(
-      "wrong-capability-key-123456789",
+      "rai_0000000000000015_15151515151515151515151515151515",
       {
         capabilities: ["project.read"],
         resourceScopes: [project.id],
       },
     );
     const wrongScope = await keyStore.issueDurable(
-      "wrong-scope-key-123456789",
+      "rai_0000000000000016_16161616161616161616161616161616",
       {
         capabilities: [STUDIO_PROJECT_ACCESS_CAPABILITY],
         resourceScopes: ["different-project"],
@@ -117,10 +117,13 @@ describe("Studio project-scoped API key access", () => {
 
   it("connects with the exact Studio capability and project scope", async () => {
     const { keyStore, project, projectUrl, url } = await startServer();
-    const issued = await keyStore.issueDurable("correct-studio-key-123456789", {
-      capabilities: [STUDIO_PROJECT_ACCESS_CAPABILITY],
-      resourceScopes: [project.id],
-    });
+    const issued = await keyStore.issueDurable(
+      "rai_0000000000000017_17171717171717171717171717171717",
+      {
+        capabilities: [STUDIO_PROJECT_ACCESS_CAPABILITY],
+        resourceScopes: [project.id],
+      },
+    );
 
     const response = await connect(url, project.id, issued.key);
     const body = (await response.json()) as {

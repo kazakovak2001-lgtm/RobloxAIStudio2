@@ -6,12 +6,7 @@
  * never expose a reusable credential.
  */
 
-import {
-  randomBytes,
-  randomUUID,
-  scryptSync,
-  timingSafeEqual,
-} from "node:crypto";
+import { randomBytes, randomUUID, scrypt, timingSafeEqual } from "node:crypto";
 import type { StorageProvider } from "../storage/StorageProvider";
 
 const COLLECTION = "platform_api_keys";
@@ -22,6 +17,8 @@ const SCRYPT_BLOCK_SIZE = 8;
 const SCRYPT_PARALLELIZATION = 1;
 const SCRYPT_SALT_BYTES = 16;
 const SCRYPT_KEY_BYTES = 32;
+const API_KEY_PATTERN = /^rai_([0-9a-f]{16})_[A-Za-z0-9_-]{32,}$/;
+const STUDIO_ENVIRONMENT_LABEL = "studio-environment";
 export const STUDIO_PROJECT_ACCESS_CAPABILITY = "studio.project.access";
 
 export interface ApiKeyMetadata {
@@ -47,6 +44,7 @@ export interface IssuedApiKey {
 
 export interface StoredApiKey {
   id: string;
+  lookupId: string;
   digest: string;
   createdAt: string;
   label?: string;
@@ -72,14 +70,33 @@ function normalizeScopeValues(values: string[] | undefined): string[] {
   ];
 }
 
-function hashKey(key: string): string {
-  const salt = randomBytes(SCRYPT_SALT_BYTES);
-  const derived = scryptSync(key, salt, SCRYPT_KEY_BYTES, {
-    N: SCRYPT_COST,
-    r: SCRYPT_BLOCK_SIZE,
-    p: SCRYPT_PARALLELIZATION,
-    maxmem: 64 * 1024 * 1024,
+function parseLookupId(key: string): string | null {
+  return API_KEY_PATTERN.exec(key)?.[1] ?? null;
+}
+
+function deriveKey(key: string, salt: Buffer): Promise<Buffer> {
+  return new Promise((resolve, reject) => {
+    scrypt(
+      key,
+      salt,
+      SCRYPT_KEY_BYTES,
+      {
+        N: SCRYPT_COST,
+        r: SCRYPT_BLOCK_SIZE,
+        p: SCRYPT_PARALLELIZATION,
+        maxmem: 64 * 1024 * 1024,
+      },
+      (error, derived) => {
+        if (error) reject(error);
+        else resolve(derived);
+      },
+    );
   });
+}
+
+async function hashKey(key: string): Promise<string> {
+  const salt = randomBytes(SCRYPT_SALT_BYTES);
+  const derived = await deriveKey(key, salt);
   return [
     SCRYPT_PREFIX,
     SCRYPT_COST,
@@ -94,7 +111,23 @@ function isEqualBuffer(left: Buffer, right: Buffer): boolean {
   return left.length === right.length && timingSafeEqual(left, right);
 }
 
-function verifyDigest(digest: string, key: string): boolean {
+function isSupportedDigest(digest: string): boolean {
+  const [prefix, cost, blockSize, parallelization, saltHex, derivedHex] =
+    digest.split("$");
+  return (
+    prefix === SCRYPT_PREFIX &&
+    cost === String(SCRYPT_COST) &&
+    blockSize === String(SCRYPT_BLOCK_SIZE) &&
+    parallelization === String(SCRYPT_PARALLELIZATION) &&
+    new RegExp("^[0-9a-f]{" + SCRYPT_SALT_BYTES * 2 + "}$").test(
+      saltHex ?? "",
+    ) &&
+    new RegExp("^[0-9a-f]{" + SCRYPT_KEY_BYTES * 2 + "}$").test(
+      derivedHex ?? "",
+    )
+  );
+}
+async function verifyDigest(digest: string, key: string): Promise<boolean> {
   const [
     prefix,
     cost,
@@ -115,17 +148,7 @@ function verifyDigest(digest: string, key: string): boolean {
   }
 
   const expected = Buffer.from(derivedHex, "hex");
-  const actual = scryptSync(
-    key,
-    Buffer.from(saltHex, "hex"),
-    SCRYPT_KEY_BYTES,
-    {
-      N: SCRYPT_COST,
-      r: SCRYPT_BLOCK_SIZE,
-      p: SCRYPT_PARALLELIZATION,
-      maxmem: 64 * 1024 * 1024,
-    },
-  );
+  const actual = await deriveKey(key, Buffer.from(saltHex, "hex"));
   return isEqualBuffer(actual, expected);
 }
 
@@ -141,6 +164,21 @@ export class ApiKeyStore {
   private cleanupRequests = 0;
 
   constructor(private readonly storage: StorageProvider) {}
+
+  private async findActiveRecord(key: string): Promise<StoredApiKey | null> {
+    const lookupId = parseLookupId(key);
+    if (!lookupId) return null;
+
+    const candidates = this.storage
+      .list<StoredApiKey>(COLLECTION)
+      .filter(
+        (candidate) => !candidate.revokedAt && candidate.lookupId === lookupId,
+      );
+    for (const candidate of candidates) {
+      if (await verifyDigest(candidate.digest, key)) return candidate;
+    }
+    return null;
+  }
 
   private async enqueueKeyMutation<T>(
     id: string,
@@ -170,9 +208,10 @@ export class ApiKeyStore {
     metadata: ApiKeyMetadata = {},
   ): Promise<IssuedApiKey> {
     const key = rawKey.trim();
-    if (key.length < MIN_KEY_LENGTH) {
+    const lookupId = parseLookupId(key);
+    if (key.length < MIN_KEY_LENGTH || !lookupId) {
       throw new Error(
-        `API key must contain at least ${MIN_KEY_LENGTH} characters`,
+        "API key must use rai_<16 hex lookup characters>_<32+ secret characters>",
       );
     }
     if (this.cleanupRequests > 0) {
@@ -180,10 +219,24 @@ export class ApiKeyStore {
     }
 
     const id = metadata.id ?? randomUUID();
-    return this.enqueueKeyMutation(id, async () => {
+    return this.enqueueKeyMutation(`lookup:${lookupId}`, async () => {
+      const lookupOwner = this.storage
+        .list<StoredApiKey>(COLLECTION)
+        .find(
+          (record) =>
+            !record.revokedAt &&
+            record.lookupId === lookupId &&
+            isSupportedDigest(record.digest) &&
+            record.id !== id,
+        );
+      if (lookupOwner) {
+        throw new Error("API key lookup ID is already active");
+      }
+
       const record: StoredApiKey = {
         id,
-        digest: hashKey(key),
+        lookupId,
+        digest: await hashKey(key),
         createdAt: new Date().toISOString(),
         ...(metadata.label ? { label: metadata.label } : {}),
         ...(metadata.ownerId ? { ownerId: metadata.ownerId } : {}),
@@ -197,22 +250,17 @@ export class ApiKeyStore {
 
   async generateDurable(metadata: ApiKeyMetadata = {}): Promise<IssuedApiKey> {
     return this.issueDurable(
-      `rai_${randomBytes(32).toString("hex")}`,
+      `rai_${randomBytes(8).toString("hex")}_${randomBytes(32).toString("hex")}`,
       metadata,
     );
   }
 
-  resolvePrincipal(rawKey: unknown): ApiKeyPrincipal | null {
+  async resolvePrincipal(rawKey: unknown): Promise<ApiKeyPrincipal | null> {
     if (typeof rawKey !== "string") return null;
     const key = rawKey.trim();
     if (key.length < MIN_KEY_LENGTH) return null;
 
-    const record = this.storage
-      .list<StoredApiKey>(COLLECTION)
-      .find(
-        (candidate) =>
-          !candidate.revokedAt && verifyDigest(candidate.digest, key),
-      );
+    const record = await this.findActiveRecord(key);
     if (!record) return null;
 
     return {
@@ -224,8 +272,8 @@ export class ApiKeyStore {
     };
   }
 
-  validate(rawKey: unknown): boolean {
-    return this.resolvePrincipal(rawKey) !== null;
+  async validate(rawKey: unknown): Promise<boolean> {
+    return (await this.resolvePrincipal(rawKey)) !== null;
   }
 
   async revokeDurable(id: string): Promise<boolean> {
@@ -268,9 +316,7 @@ export class ApiKeyStore {
       const key = candidate.trim();
       if (key.length < MIN_KEY_LENGTH) continue;
 
-      const existing = this.storage
-        .list<StoredApiKey>(COLLECTION)
-        .find((record) => verifyDigest(record.digest, key));
+      const existing = await this.findActiveRecord(key);
       if (existing) continue;
 
       await this.issueDurable(key, {
@@ -289,16 +335,16 @@ export class ApiKeyStore {
   ): Promise<number> {
     const key = rawKey?.trim() ?? "";
     const projectId = rawProjectId?.trim() ?? "";
-    if (!key && !projectId) return 0;
+    if (!key && !projectId) {
+      return this.revokeSupersededStudioEnvironmentKeys();
+    }
     if (!key || !projectId) {
       throw new Error(
         "STUDIO_API_KEY and STUDIO_PROJECT_ID must be configured together",
       );
     }
 
-    const existing = this.storage
-      .list<StoredApiKey>(COLLECTION)
-      .find((record) => verifyDigest(record.digest, key));
+    const existing = await this.findActiveRecord(key);
     if (existing) {
       const capabilities = normalizeScopeValues(existing.capabilities);
       const resourceScopes = normalizeScopeValues(existing.resourceScopes);
@@ -309,20 +355,39 @@ export class ApiKeyStore {
         resourceScopes.length === 1 &&
         resourceScopes[0] === projectId
       ) {
-        return 0;
+        return this.revokeSupersededStudioEnvironmentKeys(existing.id);
       }
       throw new Error(
         "STUDIO_API_KEY already exists with different access metadata",
       );
     }
 
-    await this.issueDurable(key, {
+    const issued = await this.issueDurable(key, {
       id: "studio-env-" + randomUUID(),
-      label: "studio-environment",
+      label: STUDIO_ENVIRONMENT_LABEL,
       capabilities: [STUDIO_PROJECT_ACCESS_CAPABILITY],
       resourceScopes: [projectId],
     });
+    await this.revokeSupersededStudioEnvironmentKeys(issued.id);
     return 1;
+  }
+
+  private async revokeSupersededStudioEnvironmentKeys(
+    activeId?: string,
+  ): Promise<number> {
+    const superseded = this.storage
+      .list<StoredApiKey>(COLLECTION)
+      .filter(
+        (record) =>
+          record.label === STUDIO_ENVIRONMENT_LABEL &&
+          !record.revokedAt &&
+          record.id !== activeId,
+      );
+    let revoked = 0;
+    for (const record of superseded) {
+      if (await this.revokeDurable(record.id)) revoked += 1;
+    }
+    return revoked;
   }
 
   /**

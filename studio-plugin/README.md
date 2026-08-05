@@ -67,9 +67,15 @@ See [STUDIO-1e Desktop Acceptance Packaging and Runbook](../docs/00-project-cont
 - Permission for the plugin to communicate with the configured backend address and create or edit script source.
 - Backend running at the URL configured in `src/core/Config.lua` (`http://localhost:5000` by default).
 - The canonical `.rbxmx` package produced by `npm run studio:package` or the GitHub Actions artifact.
-- Backend `STUDIO_API_KEY` and `STUDIO_PROJECT_ID` configured together. The project ID must be exact, and the key should be a locally generated random secret of at least 16 characters.
+- Backend `STUDIO_API_KEY` and `STUDIO_PROJECT_ID` configured together. The project ID must be exact, and the key must use the `rai_<16 hex lookup characters>_<32+ random characters>` format.
 
 ## Connection
+
+Generate a key locally before configuring the backend and plugin:
+
+```powershell
+node -e "const c=require('node:crypto'); console.log('rai_'+c.randomBytes(8).toString('hex')+'_'+c.randomBytes(32).toString('hex'))"
+```
 
 1. Open the **AI Studio** toolbar panel.
 2. Copy the project ID from the standalone web Workspace.
@@ -79,7 +85,7 @@ See [STUDIO-1e Desktop Acceptance Packaging and Runbook](../docs/00-project-cont
 
 The project ID is persisted with plugin settings and is sent to `POST /api/studio/connect`. It must match the project that will queue the export; `game.Name` is not used as an ownership substitute.
 
-At startup, the backend seeds the Studio key as an API principal with only the `studio.project.access` capability and the exact `STUDIO_PROJECT_ID` resource scope. A missing key is rejected with `401`; a valid key with a different capability or project scope is rejected with `403`. General project routes continue to require the browser owner session.
+At startup, the backend seeds the Studio key as an API principal with only the `studio.project.access` capability and the exact `STUDIO_PROJECT_ID` resource scope. Changing the configured key revokes superseded environment-managed Studio keys; removing both variables revokes all such keys. A missing key is rejected with `401`; a valid key with a different capability or project scope is rejected with `403`. General project routes continue to require the browser owner session.
 
 The plugin then:
 

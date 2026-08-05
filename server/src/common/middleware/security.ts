@@ -176,7 +176,7 @@ export async function authMiddleware(
   // project-scoped Studio routes can authorize the API-key principal.
   if (process.env.NODE_ENV !== "production") {
     const apiKeyPrincipal = apiKey
-      ? getApiKeyStore().resolvePrincipal(apiKey)
+      ? await getApiKeyStore().resolvePrincipal(apiKey)
       : null;
     if (apiKeyPrincipal) {
       (req as ApiKeyAuthenticatedRequest).apiKeyPrincipal = apiKeyPrincipal;
@@ -250,7 +250,7 @@ export async function authMiddleware(
   }
 
   const apiKeyPrincipal = apiKey
-    ? getApiKeyStore().resolvePrincipal(apiKey)
+    ? await getApiKeyStore().resolvePrincipal(apiKey)
     : null;
   if (apiKeyPrincipal) {
     // API keys authenticate as their own principal. They never gain an implicit
