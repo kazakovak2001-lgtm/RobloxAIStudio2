@@ -37,10 +37,10 @@ This file is the ordered current delivery authority. The dated TECH-AUDIT-2 road
 
 ## SECURITY-2G control baseline
 
-**Status:** Complete — merged through PR #162  
-**Tracker:** issue #161 and PR #162  
-**Backend baseline:** `release/cutover-1e-candidate@29bcd8ed53f9e86f41e753f305ad952c0dbc1de5`  
-**Frontend release contents:** `kazakovak2001-lgtm/Frontend@03aa0615ea13e06b08cdce36b993fa94fb07966a`
+- **Status:** Complete — merged through PR #162
+- **Tracker:** issue #161 and PR #162
+- **Backend baseline:** `release/cutover-1e-candidate@da55f716c798ec8c6a7f25a8e2a3b7b0a2244416`
+- **Frontend release contents:** `kazakovak2001-lgtm/Frontend@03aa0615ea13e06b08cdce36b993fa94fb07966a`
 
 `SECURITY-2G-A` established the truthful policy contract. `SECURITY-2G-B` completed production dependency controls. `SECURITY-2G-C` completed backend CodeQL and Gitleaks evidence. `SECURITY-2G-D` completed exact backend and paired Frontend runtime-image scanning, digest-bound SPDX SBOM evidence, deterministic policy validation and hardened runtime images with npm removed from final stages. `SECURITY-2G-E` completed the generated 204-operation REST and Socket authorization matrix, API-key capability/resource-scope enforcement and positive/negative parity evidence. `SECURITY-2G-F` now consolidates dependency, SAST, credential, image, SBOM, RBAC, 40-check production-contract and composed HTTPS release evidence into one deterministic fail-closed gate with positive and negative fixtures.
 
