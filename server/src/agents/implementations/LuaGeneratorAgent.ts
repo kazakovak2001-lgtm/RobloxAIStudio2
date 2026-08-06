@@ -147,10 +147,12 @@ Validation failure: ${reason}
 Replace the previous solution completely. Keep the implementation small and use these exact runtime patterns:
 - Server: create at least one Folder or Part with Instance.new and parent the generated world to workspace.
 - Server: create a collectible Part in workspace and connect collectible.Touched:Connect(function(hit) ... end).
-- Server: track score or objective progress when a player touches the collectible.
+- Server: create a RemoteEvent in ReplicatedStorage and call event:FireClient(player, score, target) when the player touches the collectible.
 - Client: local playerGui = Players.LocalPlayer:WaitForChild("PlayerGui").
 - Client: local gui = Instance.new("ScreenGui"), then gui.Parent = playerGui.
 - Client: create a visible TextLabel and parent it to gui.
+- Client: connect event.OnClientEvent:Connect(function(score, target) ... end) and update the TextLabel.
+- Use game:GetService to access services. Never call InsertService.
 - Use only Roblox Luau APIs. Do not use promises, :andThen, DataStoreService, TODOs, placeholders, or client-side FireClient.
 - Server and client entries must execute directly and must not return modules.
 Return only the JSON object, with complete code strings.`;

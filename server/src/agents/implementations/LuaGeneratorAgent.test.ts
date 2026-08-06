@@ -110,13 +110,13 @@ describe("LuaGeneratorAgent playable runtime contract", () => {
         server: [
           {
             name: "WorldInitializer.server.lua",
-            code: "local world = Instance.new('Folder')\nworld.Parent = game.ReplicatedStorage\nlocal part = Instance.new('Part')\npart.Parent = world",
+            code: "game.Workspace:InsertService('StarterPlayer')\nlocal collectible = Instance.new('Part')\ncollectible.Parent = game.Workspace\ncollectible.Touched:Connect(function(hit) print(hit.Name) end)",
           },
         ],
         client: [
           {
             name: "HUD.client.lua",
-            code: "local playerGui = game.Players.LocalPlayer.PlayerGui\nlocal label = Instance.new('TextLabel')\nlabel.Parent = playerGui.ScreenGui",
+            code: "local playerGui = game.Players.LocalPlayer:WaitForChild('PlayerGui')\nlocal gui = Instance.new('ScreenGui')\ngui.Parent = playerGui\nlocal label = Instance.new('TextLabel')\nlabel.Text = 'Score: 0'\nlabel.Parent = gui",
           },
         ],
         shared: [],
@@ -139,7 +139,10 @@ describe("LuaGeneratorAgent playable runtime contract", () => {
       "collectible.Touched:Connect",
     );
     expect(generate.mock.calls[2]?.[0]).toContain(
-      "server code must create playable world instances",
+      "runtime code must not call the invalid InsertService API",
+    );
+    expect(generate.mock.calls[2]?.[0]).toContain(
+      "event.OnClientEvent:Connect",
     );
   });
 

@@ -126,17 +126,24 @@ export function getPlayableLuaIssues(
 
   const serverSource = server
     .map((script) =>
-      stripLuaStrings(stripLuaComments(script.content), new Set(["Workspace"])),
+      stripLuaStrings(
+        stripLuaComments(script.content),
+        new Set(["Workspace", "RemoteEvent", "leaderstats", "IntValue"]),
+      ),
     )
     .join("\n");
   const clientSource = client
     .map((script) =>
       stripLuaStrings(
         stripLuaComments(script.content),
-        new Set(["ScreenGui", "PlayerGui"]),
+        new Set(["ScreenGui", "PlayerGui", "leaderstats"]),
       ),
     )
     .join("\n");
+
+  if (/:InsertService\s*\(/i.test(`${serverSource}\n${clientSource}`)) {
+    issues.push("runtime code must not call the invalid InsertService API");
+  }
 
   if (
     !/Instance\.new\s*\(/.test(serverSource) ||
@@ -156,6 +163,21 @@ export function getPlayableLuaIssues(
   }
   if (!/\bplayerGui\b/i.test(clientSource)) {
     issues.push("client code must attach the HUD to PlayerGui");
+  }
+
+  const serverPublishesProgress =
+    (/Instance\.new\s*\(\s*["']RemoteEvent["']/.test(serverSource) &&
+      /\b(?:FireClient|FireAllClients)\s*\(/.test(serverSource)) ||
+    (/\bleaderstats\b/i.test(serverSource) &&
+      /Instance\.new\s*\(\s*["']IntValue["']/.test(serverSource));
+  const clientObservesProgress =
+    /\bOnClientEvent\s*:\s*Connect\s*\(/.test(clientSource) ||
+    (/\bleaderstats\b/i.test(clientSource) &&
+      /\.Changed\s*:\s*Connect\s*\(/.test(clientSource));
+  if (!serverPublishesProgress || !clientObservesProgress) {
+    issues.push(
+      "server and client code must connect objective progress to the HUD",
+    );
   }
 
   return [...new Set(issues)];
