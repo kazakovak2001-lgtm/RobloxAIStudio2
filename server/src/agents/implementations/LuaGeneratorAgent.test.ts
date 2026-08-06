@@ -4,7 +4,11 @@ import {
   getPlayableLuaIssues,
   normalizeLuaScripts,
 } from "../../types/playableLua";
-import { LuaGeneratorAgent, extractServiceNames } from "./LuaGeneratorAgent";
+import {
+  LuaGeneratorAgent,
+  extractServiceNames,
+  normalizeBacktickLuaCode,
+} from "./LuaGeneratorAgent";
 
 const input = {
   blueprint: {
@@ -204,6 +208,26 @@ describe("LuaGeneratorAgent playable runtime contract", () => {
       "GeneratedAdventure",
     );
     expect(generate).toHaveBeenCalledTimes(2);
+  });
+
+  it("normalizes unambiguous backtick-delimited Lua code from local models", () => {
+    const raw =
+      '```json\n{"lua_generator":{"server":[{"name":"Game.server.lua","code": `local world = Instance.new("Folder")\nworld.Parent = workspace`}],"client":[],"shared":[]}}\n```';
+
+    const normalized = normalizeBacktickLuaCode(raw);
+
+    expect(normalized).not.toBeNull();
+    expect(normalized).toContain(
+      '"code": "local world = Instance.new(\\"Folder\\")\\nworld.Parent = workspace"',
+    );
+  });
+
+  it("rejects an unterminated backtick-delimited code value", () => {
+    expect(
+      normalizeBacktickLuaCode(
+        '{"lua_generator":{"server":[{"code": `print("broken")}]}}',
+      ),
+    ).toBeNull();
   });
 
   it("accepts path/content entries through the shared Studio normalizer", async () => {

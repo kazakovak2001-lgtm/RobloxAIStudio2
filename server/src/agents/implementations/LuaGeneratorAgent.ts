@@ -131,6 +131,47 @@ function isPlayableValidationError(error: unknown): boolean {
   );
 }
 
+/**
+ * Some local models emit multiline Lua code as JavaScript-style template
+ * literals inside an otherwise JSON-shaped response. Normalize only an
+ * unambiguous `code` property and leave every other malformed construct
+ * untouched so the response still fails closed.
+ */
+export function normalizeBacktickLuaCode(raw: string): string | null {
+  const codeProperty = /"code"\s*:\s*`/g;
+  let cursor = 0;
+  let normalized = "";
+  let replacements = 0;
+
+  for (
+    let match = codeProperty.exec(raw);
+    match;
+    match = codeProperty.exec(raw)
+  ) {
+    const openingBacktick = codeProperty.lastIndex - 1;
+    let closingBacktick = raw.indexOf("`", openingBacktick + 1);
+
+    while (closingBacktick !== -1) {
+      const suffix = raw.slice(closingBacktick + 1);
+      if (/^\s*[,}]/.test(suffix)) break;
+      closingBacktick = raw.indexOf("`", closingBacktick + 1);
+    }
+
+    if (closingBacktick === -1) return null;
+
+    normalized += raw.slice(cursor, openingBacktick);
+    normalized += JSON.stringify(
+      raw.slice(openingBacktick + 1, closingBacktick),
+    );
+    cursor = closingBacktick + 1;
+    replacements += 1;
+    codeProperty.lastIndex = cursor;
+  }
+
+  if (replacements === 0) return null;
+  return normalized + raw.slice(cursor);
+}
+
 function buildConstrainedPlayableRepairPrompt(
   name: string,
   description: string,
@@ -276,7 +317,13 @@ export class LuaGeneratorAgent extends BaseAgent {
     if (!this.llm) throw new Error("Lua LLM provider is unavailable");
     const { LLMOutputParser } = await import("../../ai/outputParser");
     const raw = await this.llm.generate(prompt, options);
-    const parsed = LLMOutputParser.extractJSON(raw);
+    let parsed = LLMOutputParser.extractJSON(raw);
+    if (!parsed) {
+      const normalizedBackticks = normalizeBacktickLuaCode(raw);
+      if (normalizedBackticks) {
+        parsed = LLMOutputParser.extractJSON(normalizedBackticks);
+      }
+    }
     if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
       throw new Error("Lua LLM response is not a valid JSON object");
     }
