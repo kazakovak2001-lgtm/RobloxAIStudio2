@@ -595,6 +595,7 @@ server/src/agents/implementations/DebugAgent.ts
 server/src/agents/implementations/DocumentationAgent.ts
 server/src/agents/implementations/DuplicationDetectionAgent.ts
 server/src/agents/implementations/GameDesignerAgent.ts
+server/src/agents/implementations/LuaGeneratorAgent.test.ts
 server/src/agents/implementations/LuaGeneratorAgent.ts
 server/src/agents/implementations/OrchestratorAgent.ts
 server/src/agents/implementations/PerformanceAgent.ts
@@ -971,6 +972,7 @@ server/src/planning/PlanningRegistry.ts
 server/src/planning/PlanningRules.ts
 server/src/planning/PlanningTypes.ts
 server/src/planning/core/PlannerEngine.ts
+server/src/planning/execution/PlanExecutor.test.ts
 server/src/planning/execution/PlanExecutor.ts
 server/src/planning/model/TaskGraph.ts
 server/src/platform/auth/AuthService.ts
@@ -1071,6 +1073,7 @@ server/src/repair/RepairExecutor.ts
 server/src/repair/RepairPlanner.ts
 server/src/repair/RepairTypes.ts
 server/src/repair/index.ts
+server/src/routes/__tests__/game-generation-blueprint.test.ts
 server/src/routes/__tests__/platform.durability.test.ts
 server/src/routes/__tests__/platform.registration.durability.test.ts
 server/src/routes/__tests__/projects.durability.test.ts
@@ -1172,6 +1175,7 @@ server/src/types/gameDesignSeed.ts
 server/src/types/index.ts
 server/src/types/llm.ts
 server/src/types/pipeline-events.ts
+server/src/types/playableLua.ts
 server/src/ui-gen/UIGenerationEngine.ts
 server/src/ui-gen/UIHierarchyBuilder.ts
 server/src/ui-gen/UILayoutBuilder.ts

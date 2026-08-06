@@ -689,6 +689,7 @@
 │   │   │   │   ├── DocumentationAgent.ts
 │   │   │   │   ├── DuplicationDetectionAgent.ts
 │   │   │   │   ├── GameDesignerAgent.ts
+│   │   │   │   ├── LuaGeneratorAgent.test.ts
 │   │   │   │   ├── LuaGeneratorAgent.ts
 │   │   │   │   ├── OrchestratorAgent.ts
 │   │   │   │   ├── PerformanceAgent.ts
@@ -1172,6 +1173,7 @@
 │   │   │   ├── core
 │   │   │   │   └── PlannerEngine.ts
 │   │   │   ├── execution
+│   │   │   │   ├── PlanExecutor.test.ts
 │   │   │   │   └── PlanExecutor.ts
 │   │   │   ├── ExecutionPlan.ts
 │   │   │   ├── model
@@ -1311,6 +1313,7 @@
 │   │   │   └── RepairTypes.ts
 │   │   ├── routes
 │   │   │   ├── __tests__
+│   │   │   │   ├── game-generation-blueprint.test.ts
 │   │   │   │   ├── platform.durability.test.ts
 │   │   │   │   ├── platform.registration.durability.test.ts
 │   │   │   │   ├── projects.durability.test.ts
@@ -1438,7 +1441,8 @@
 │   │   │   ├── gameDesignSeed.ts
 │   │   │   ├── index.ts
 │   │   │   ├── llm.ts
-│   │   │   └── pipeline-events.ts
+│   │   │   ├── pipeline-events.ts
+│   │   │   └── playableLua.ts
 │   │   ├── ui-gen
 │   │   │   ├── __tests__
 │   │   │   │   └── UIGeneration.test.ts

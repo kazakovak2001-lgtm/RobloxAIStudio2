@@ -242,6 +242,13 @@ export class PlanExecutor {
       try {
         await this.emitStepStarted(pipelineId, node.id, activeAgent, projectId);
         const output = await agentExecutor(activeAgent, input);
+        if (output._failed === true) {
+          throw new Error(
+            typeof output._error === "string"
+              ? output._error
+              : `${activeAgent} returned a failed result`,
+          );
+        }
         const durationMs = Date.now() - start;
 
         // Evaluate output quality

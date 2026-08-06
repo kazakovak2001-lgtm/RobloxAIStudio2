@@ -8,9 +8,18 @@ import type {
 import type { ProjectRuntime } from "./projects";
 import { ProjectGenerationStartCoordinator } from "../platform/projects/ProjectLifecycleCoordinator";
 import { DurableStorageError } from "../platform/storage/StorageProvider";
+import type { CreateBlueprintInput } from "../projects/types/blueprint";
+import type { SaaSProject } from "../platform/projects/SaaSProjectRepository";
 
 type StudioConnectionStatus =
   "connected" | "disconnected" | "syncing" | "error";
+
+const BLUEPRINT_DIFFICULTIES = ["easy", "medium", "hard", "extreme"] as const;
+type BlueprintDifficulty = (typeof BLUEPRINT_DIFFICULTIES)[number];
+
+function isBlueprintDifficulty(value: unknown): value is BlueprintDifficulty {
+  return BLUEPRINT_DIFFICULTIES.some((difficulty) => difficulty === value);
+}
 
 interface StudioConnectionInfo {
   status: StudioConnectionStatus;
@@ -32,6 +41,49 @@ interface StudioSyncResult extends StudioConnectionInfo {
   durationMs: number;
   executionId?: string;
   commandId?: string;
+}
+
+/** Preserve user-authored project intent when creating the first blueprint. */
+export function buildProjectBlueprintInput(
+  project: SaaSProject,
+): CreateBlueprintInput {
+  const gameType = project.gameType?.trim() || project.genre || "adventure";
+  const difficulty = isBlueprintDifficulty(project.difficulty)
+    ? project.difficulty
+    : "medium";
+  const estimatedPlayers =
+    project.players === "solo"
+      ? "solo"
+      : project.players === "large-group" || project.players === "mmo"
+        ? project.players
+        : "small-group";
+
+  return {
+    project_id: project.id,
+    user_id: project.ownerId,
+    name: project.name,
+    description:
+      (project.description ?? "").trim() ||
+      `Create a complete playable ${gameType} Roblox experience.`,
+    game_type: gameType,
+    genre: [project.genre || gameType],
+    target_audience: project.targetAudience || "general Roblox players",
+    difficulty,
+    estimated_players: estimatedPlayers,
+    gameplay: {
+      mechanics: [],
+      progression: {},
+      balance: {},
+    },
+    ui_layouts: [],
+    architecture: {
+      client_architecture: {},
+      server_architecture: {},
+      networking: {},
+    },
+    assets: { models: [], textures: [], sounds: [], animations: [] },
+    code_spec: { modules: [], patterns: [] },
+  };
 }
 
 export function createGameGenerationRouter(
@@ -175,12 +227,16 @@ export function createGameGenerationRouter(
         (await gameService.getBlueprintByProject(projectId));
 
       if (!existingBlueprint) {
-        await gameService.createBlueprint(userId, projectId, {
-          name: `Project ${projectId}`,
-          description: "Auto-generated blueprint for pipeline execution",
-          genre: "adventure",
-          type: "game",
-        } as never);
+        const project = projectRepository.get(projectId);
+        if (!project) {
+          res.status(404).json({ success: false, error: "Project not found" });
+          return;
+        }
+        await gameService.createBlueprint(
+          userId,
+          projectId,
+          buildProjectBlueprintInput(project),
+        );
       }
 
       const result = await generationStartCoordinator.start(
