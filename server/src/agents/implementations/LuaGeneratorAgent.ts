@@ -2,11 +2,12 @@ import { BaseAgent, type AgentConfig } from "../core/BaseAgent";
 import type { AgentInput } from "../../types";
 import {
   assertPlayableLuaScripts,
-  type PlayableLuaScript,
+  normalizeLuaScripts,
 } from "../../types/playableLua";
 
 const DEFAULT_SERVICES = ["GameManager", "DataService", "PlayerService"];
 
+/** Extract stable architecture names from either array- or object-shaped output. */
 export function extractServiceNames(services: unknown): string[] {
   const values = Array.isArray(services)
     ? services
@@ -26,44 +27,6 @@ export function extractServiceNames(services: unknown): string[] {
     .filter(Boolean)
     .slice(0, 5);
   return names.length > 0 ? names : DEFAULT_SERVICES;
-}
-
-function validationScripts(
-  output: Record<string, unknown>,
-): PlayableLuaScript[] {
-  const value = output.lua_generator;
-  if (!value || typeof value !== "object" || Array.isArray(value)) return [];
-  const lua = value as Record<string, unknown>;
-  const groups: Array<[unknown, string, string]> = [
-    [lua.server, "ServerScriptService", "server"],
-    [lua.client, "StarterPlayerScripts", "client"],
-    [lua.shared, "ReplicatedStorage/Shared", "module"],
-  ];
-  return groups.flatMap(([entries, root, kind]) =>
-    Array.isArray(entries)
-      ? entries.flatMap((entry) => {
-          if (!entry || typeof entry !== "object" || Array.isArray(entry))
-            return [];
-          const name = String(entry.name ?? "").replace(/\.lua$/i, "");
-          const suffix =
-            kind === "server"
-              ? name.endsWith(".server")
-                ? ".lua"
-                : ".server.lua"
-              : kind === "client"
-                ? name.endsWith(".client")
-                  ? ".lua"
-                  : ".client.lua"
-                : ".lua";
-          return [
-            {
-              path: `${root}/${name}${suffix}`,
-              content: String(entry.code ?? ""),
-            },
-          ];
-        })
-      : [],
-  );
 }
 
 function playableFallback(name: string): Record<string, unknown> {
@@ -198,7 +161,7 @@ export class LuaGeneratorAgent extends BaseAgent {
     const description = String(
       bp?.description ?? "Create a playable Roblox game",
     );
-    const services = (arch as any)?.services ?? {};
+    const services = arch?.services ?? {};
     const serviceNames = extractServiceNames(services);
 
     const mechanicsArr = (gameplay as any)?.mechanics;
@@ -232,33 +195,47 @@ export class LuaGeneratorAgent extends BaseAgent {
       `Game Name: ${name}\nServices: ${serviceNames.join(", ")}\n` +
       `Game Brief: ${description}\n` +
       `Gameplay Systems: ${systemsSummary}\nCoding Standards: ${codingStandards}\n\n` +
-      "Generate a playable vertical slice for a blank Baseplate: server code must create visible world parts and a Touched or Activated gameplay objective; client code must create a visible ScreenGui under PlayerGui. " +
+      "Generate a playable vertical slice for a blank Baseplate: server code must create visible world parts and connect a Touched, Activated, Triggered, or MouseClick gameplay objective; client code must create a visible ScreenGui under PlayerGui. " +
       "Server/client entries are runnable Scripts, not modules, so they must not end with return. Shared entries may return modules. Never use TODOs, placeholders, empty functions, or comments instead of behavior. Return only valid JSON.";
 
     const prompt = registryPrompt ?? inlinePrompt;
 
-    let result = await this.generateWithRetry(
-      prompt,
-      ["lua_generator"],
-      fallback,
-      {
+    let result: Record<string, unknown>;
+    try {
+      result = await this.generateLua(prompt, {
         temperature: 0.4,
         maxTokens: 3000,
-      },
-    );
-    try {
-      assertPlayableLuaScripts(validationScripts(result));
+      });
+      assertPlayableLuaScripts(normalizeLuaScripts(result));
     } catch (error) {
       const reason = error instanceof Error ? error.message : String(error);
-      result = await this.generateWithRetry(
+      result = await this.generateLua(
         `${prompt}\n\nREPAIR REQUIRED: ${reason}. Replace the entire response with complete executable code satisfying every runtime requirement.`,
-        ["lua_generator"],
-        fallback,
         { temperature: 0.1, maxTokens: 4000 },
       );
-      assertPlayableLuaScripts(validationScripts(result));
+      assertPlayableLuaScripts(normalizeLuaScripts(result));
     }
 
     return result;
+  }
+
+  private async generateLua(
+    prompt: string,
+    options: { temperature: number; maxTokens: number },
+  ): Promise<Record<string, unknown>> {
+    if (!this.llm) throw new Error("Lua LLM provider is unavailable");
+    const { LLMOutputParser } = await import("../../ai/outputParser");
+    const raw = await this.llm.generate(prompt, options);
+    const parsed = LLMOutputParser.extractJSON(raw);
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+      throw new Error("Lua LLM response is not a valid JSON object");
+    }
+    const normalized = LLMOutputParser.normalizeKeys(
+      parsed as Record<string, unknown>,
+    );
+    if (!("lua_generator" in normalized)) {
+      throw new Error("Lua LLM response is missing lua_generator");
+    }
+    return normalized;
   }
 }

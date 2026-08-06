@@ -21,7 +21,7 @@ local gui = Instance.new("ScreenGui")
 gui.Name = "ObjectiveHud"
 gui.Parent = playerGui
 local label = Instance.new("TextLabel")
-label.Text = "Collect the item"
+label.Text = "TODO list: collect the item"
 label.Parent = gui`;
 
 function completedNode(
@@ -154,6 +154,49 @@ describe("STUDIO-1a canonical artifact lineage", () => {
         }),
       ]),
     ).rejects.toThrow("non-empty Studio scripts array");
+    expect(storage.count("pipeline_artifacts")).toBe(0);
+  });
+
+  it("rejects comment-only runtime evidence and nested fake service roots", async () => {
+    const storage = new InMemoryStorageProvider();
+    const recorder = new GenerationArtifactRecorder(new ArtifactStore(storage));
+    const commentOnly = `-- Instance.new("Part") workspace
+-- collectible.Touched:Connect(function() end)
+-- padding padding padding padding padding padding padding padding padding padding padding`;
+
+    await expect(
+      recorder.record("exec-comment-only", [
+        completedNode("lua_generator", {
+          scripts: [
+            {
+              path: "ReplicatedStorage/Fake/ServerScriptService/Main.server.lua",
+              content: commentOnly,
+            },
+            {
+              path: "ReplicatedStorage/Fake/StarterPlayerScripts/Hud.client.lua",
+              content: `${commentOnly}\n-- Instance.new("ScreenGui") PlayerGui`,
+            },
+          ],
+        }),
+      ]),
+    ).rejects.toThrow("at least one server Script is required");
+
+    await expect(
+      recorder.record("exec-comment-only-roots", [
+        completedNode("lua_generator", {
+          scripts: [
+            {
+              path: "ServerScriptService/Main.server.lua",
+              content: `${commentOnly}\nlocal example = [[Instance.new("Part") workspace Touched:Connect(function() end)]]`,
+            },
+            {
+              path: "StarterPlayerScripts/Hud.client.lua",
+              content: `${commentOnly}\nlocal example = 'Instance.new("ScreenGui") PlayerGui'`,
+            },
+          ],
+        }),
+      ]),
+    ).rejects.toThrow("is too small to implement runtime behavior");
     expect(storage.count("pipeline_artifacts")).toBe(0);
   });
 

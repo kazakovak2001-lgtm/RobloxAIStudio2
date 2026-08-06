@@ -85,4 +85,46 @@ describe("LuaGeneratorAgent playable runtime contract", () => {
     expect(result.error).toContain("Lua generation is not playable");
     expect(generate).toHaveBeenCalledTimes(2);
   });
+
+  it("never substitutes the generic stub game for malformed LLM JSON", async () => {
+    const generate = vi.fn().mockResolvedValue('{ "lua_generator":');
+    const agent = new LuaGeneratorAgent();
+    agent.setLLM({ generate });
+
+    const result = await agent.execute(input);
+
+    expect(result.success).toBe(false);
+    expect(result.error).toContain("not a valid JSON object");
+    expect(JSON.stringify(result.data ?? {})).not.toContain(
+      "GeneratedAdventure",
+    );
+    expect(generate).toHaveBeenCalledTimes(2);
+  });
+
+  it("accepts path/content entries through the shared Studio normalizer", async () => {
+    const fallback = await new LuaGeneratorAgent().execute(input);
+    const normalized = normalizeLuaArtifactContent(fallback.data) as {
+      scripts: Array<{ path: string; content: string }>;
+    };
+    const byRoot = (root: string) =>
+      normalized.scripts
+        .filter((script) => script.path.startsWith(root))
+        .map((script) => ({ path: script.path, content: script.content }));
+    const generate = vi.fn().mockResolvedValue(
+      JSON.stringify({
+        lua_generator: {
+          server: byRoot("ServerScriptService/"),
+          client: byRoot("StarterPlayerScripts/"),
+          shared: byRoot("ReplicatedStorage/Shared/"),
+        },
+      }),
+    );
+    const agent = new LuaGeneratorAgent();
+    agent.setLLM({ generate });
+
+    const result = await agent.execute(input);
+
+    expect(result.success).toBe(true);
+    expect(generate).toHaveBeenCalledTimes(1);
+  });
 });

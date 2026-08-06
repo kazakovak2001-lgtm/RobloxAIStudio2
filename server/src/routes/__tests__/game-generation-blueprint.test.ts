@@ -36,4 +36,30 @@ describe("game generation project blueprint", () => {
       target_audience: "all ages",
     });
   });
+
+  it("uses safe generation defaults for incomplete legacy project metadata", () => {
+    const project = {
+      id: "proj-legacy",
+      ownerId: "owner-1",
+      name: "Legacy Project",
+      description: "   ",
+      genre: "obby",
+      difficulty: "impossible",
+      players: "many",
+      status: "draft",
+      qualityScore: 0,
+      generationCount: 0,
+      scriptCount: 0,
+      assetCount: 0,
+      createdAt: 1,
+      updatedAt: 1,
+    } as SaaSProject;
+
+    expect(buildProjectBlueprintInput(project)).toMatchObject({
+      game_type: "obby",
+      description: "Create a complete playable obby Roblox experience.",
+      difficulty: "medium",
+      estimated_players: "small-group",
+    });
+  });
 });

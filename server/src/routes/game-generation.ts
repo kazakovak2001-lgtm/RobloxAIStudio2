@@ -14,6 +14,13 @@ import type { SaaSProject } from "../platform/projects/SaaSProjectRepository";
 type StudioConnectionStatus =
   "connected" | "disconnected" | "syncing" | "error";
 
+const BLUEPRINT_DIFFICULTIES = ["easy", "medium", "hard", "extreme"] as const;
+type BlueprintDifficulty = (typeof BLUEPRINT_DIFFICULTIES)[number];
+
+function isBlueprintDifficulty(value: unknown): value is BlueprintDifficulty {
+  return BLUEPRINT_DIFFICULTIES.some((difficulty) => difficulty === value);
+}
+
 interface StudioConnectionInfo {
   status: StudioConnectionStatus;
   studioId?: string;
@@ -36,14 +43,13 @@ interface StudioSyncResult extends StudioConnectionInfo {
   commandId?: string;
 }
 
+/** Preserve user-authored project intent when creating the first blueprint. */
 export function buildProjectBlueprintInput(
   project: SaaSProject,
 ): CreateBlueprintInput {
   const gameType = project.gameType?.trim() || project.genre || "adventure";
-  const difficulty = ["easy", "medium", "hard", "extreme"].includes(
-    project.difficulty ?? "",
-  )
-    ? (project.difficulty as "easy" | "medium" | "hard" | "extreme")
+  const difficulty = isBlueprintDifficulty(project.difficulty)
+    ? project.difficulty
     : "medium";
   const estimatedPlayers =
     project.players === "solo"
