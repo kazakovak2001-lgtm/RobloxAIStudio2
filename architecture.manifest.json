@@ -63,7 +63,7 @@
     },
     "shared": {
       "description": "Shared types, utilities, services and validation schemas",
-      "modules": ["common", "services", "types", "validation"],
+      "modules": ["common", "contracts", "services", "types", "validation"],
       "canImportFrom": []
     }
   },
@@ -106,6 +106,10 @@
     },
     "common": {
       "path": "server/src/common",
+      "layer": "shared"
+    },
+    "contracts": {
+      "path": "server/src/contracts",
       "layer": "shared"
     },
     "compiler": {
