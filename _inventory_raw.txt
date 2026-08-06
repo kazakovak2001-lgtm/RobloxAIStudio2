@@ -1081,6 +1081,7 @@ server/src/routes/__tests__/projects.runtime.test.ts
 server/src/routes/__tests__/studioApiKeyAccess.test.ts
 server/src/routes/__tests__/studioDurability.test.ts
 server/src/routes/__tests__/studioProtocol.smoke.test.ts
+server/src/routes/__tests__/studioSync.integration.test.ts
 server/src/routes/agentCollaboration.ts
 server/src/routes/aiChat.ts
 server/src/routes/analytics.ts
@@ -1163,8 +1164,11 @@ server/src/studio/v2/sync/ArtifactTransferManager.ts
 server/src/studio/v2/sync/ProjectSyncManager.ts
 server/src/studio/v2/sync/SyncTypes.ts
 server/src/studio/v2/sync/SyncValidator.ts
+server/src/studio/v2/sync/__tests__/ArtifactTransferManager.pbt.test.ts
 server/src/studio/v2/sync/__tests__/ArtifactTransferManager.unit.test.ts
+server/src/studio/v2/sync/__tests__/ProjectSyncManager.pbt.test.ts
 server/src/studio/v2/sync/__tests__/ProjectSyncManager.unit.test.ts
+server/src/studio/v2/sync/__tests__/SyncValidator.pbt.test.ts
 server/src/studio/v2/sync/__tests__/SyncValidator.unit.test.ts
 server/src/studio/v2/sync/__tests__/smoke.test.ts
 server/src/studio/v2/sync/index.ts

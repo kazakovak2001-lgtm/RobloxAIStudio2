@@ -12,6 +12,7 @@ import {
   type StudioImportReportInput,
 } from "../studio/v2/StudioRuntime";
 import type { StudioArtifactReceipt } from "../studio/v2/StudioTypes";
+import type { SyncChange } from "../studio/v2/sync/SyncTypes";
 import { STUDIO_PROJECT_ACCESS_CAPABILITY } from "../platform/security/ApiKeyStore";
 import type { ProjectAccessControl } from "./projects";
 import {
@@ -24,6 +25,65 @@ import {
 interface ParsedImportReport {
   data?: StudioImportReportInput;
   error?: string;
+}
+
+type ParsedSyncChanges =
+  { data: SyncChange[]; error?: never } | { data?: never; error: string };
+
+function parseSyncChanges(value: unknown): ParsedSyncChanges {
+  if (!Array.isArray(value)) {
+    return { error: "changes must be an array" };
+  }
+
+  const data: SyncChange[] = [];
+  for (const [index, item] of value.entries()) {
+    if (!item || typeof item !== "object" || Array.isArray(item)) {
+      return { error: `changes[${index}] must be an object` };
+    }
+    const change = item as Record<string, unknown>;
+    if (typeof change.changeId !== "string" || !change.changeId.trim()) {
+      return { error: `changes[${index}].changeId must be a non-empty string` };
+    }
+    if (typeof change.artifactId !== "string" || !change.artifactId.trim()) {
+      return {
+        error: `changes[${index}].artifactId must be a non-empty string`,
+      };
+    }
+    if (
+      typeof change.artifactType !== "string" ||
+      !change.artifactType.trim()
+    ) {
+      return {
+        error: `changes[${index}].artifactType must be a non-empty string`,
+      };
+    }
+    if (
+      change.changeType !== "create" &&
+      change.changeType !== "update" &&
+      change.changeType !== "delete"
+    ) {
+      return {
+        error: `changes[${index}].changeType must be create, update, or delete`,
+      };
+    }
+    if (
+      typeof change.timestamp !== "number" ||
+      !Number.isFinite(change.timestamp) ||
+      change.timestamp <= 0
+    ) {
+      return { error: `changes[${index}].timestamp must be a positive number` };
+    }
+    data.push({
+      changeId: change.changeId,
+      artifactId: change.artifactId,
+      artifactType: change.artifactType,
+      changeType: change.changeType,
+      content: change.content,
+      timestamp: change.timestamp,
+    });
+  }
+
+  return { data };
 }
 
 function parseImportReport(
@@ -161,7 +221,6 @@ export function createStudioRouter(
         : getSharedStudioRuntime();
   const bridge = runtime.bridge;
   const sessionManager = runtime.sessions;
-  const syncManager = runtime.sync;
   const dispatcher = new ProtocolDispatcher();
   const validator = new ProtocolValidator();
 
@@ -284,7 +343,10 @@ export function createStudioRouter(
   });
 
   dispatcher.register("GET_ARTIFACTS", (msg) => {
-    const { artifactIds } = msg.payload;
+    const { artifactIds, projectId } = msg.payload;
+    if (!projectId || typeof projectId !== "string") {
+      return createResponse(msg, "error", {}, "Missing projectId");
+    }
     if (
       !artifactIds ||
       !Array.isArray(artifactIds) ||
@@ -292,8 +354,13 @@ export function createStudioRouter(
     ) {
       return createResponse(msg, "error", {}, "artifactIds array is required");
     }
-    const transferManager = syncManager.getTransferManager();
-    const result = transferManager.transfer(artifactIds as string[]);
+    const result = runtime.transferProjectArtifacts(
+      projectId,
+      artifactIds as string[],
+    );
+    if (!result) {
+      return createResponse(msg, "error", {}, "Project artifacts not found");
+    }
     if (result.payloadExceeded) {
       return createResponse(
         msg,
@@ -314,13 +381,17 @@ export function createStudioRouter(
     if (!projectId || typeof projectId !== "string") {
       return createResponse(msg, "error", {}, "Missing projectId");
     }
-    if (!changes || !Array.isArray(changes)) {
-      return createResponse(msg, "error", {}, "Missing changes array");
+    const parsedChanges = parseSyncChanges(changes);
+    if ("error" in parsedChanges) {
+      return createResponse(msg, "error", {}, parsedChanges.error);
     }
-    const result = await syncManager.processSyncRequest(
+    const result = await runtime.processProjectSyncRequest(
       projectId,
-      changes as Array<Record<string, unknown>> as never,
+      parsedChanges.data,
     );
+    if (!result) {
+      return createResponse(msg, "error", {}, "Project artifacts not found");
+    }
     return createResponse(
       msg,
       result.status === "error" ? "error" : "ok",
@@ -333,13 +404,17 @@ export function createStudioRouter(
     if (!projectId || typeof projectId !== "string") {
       return createResponse(msg, "error", {}, "Missing projectId");
     }
-    if (!changes || !Array.isArray(changes)) {
-      return createResponse(msg, "error", {}, "Missing changes array");
+    const parsedChanges = parseSyncChanges(changes);
+    if ("error" in parsedChanges) {
+      return createResponse(msg, "error", {}, parsedChanges.error);
     }
-    const result = syncManager.validateOnly(
+    const result = runtime.validateProjectChanges(
       projectId,
-      changes as Array<Record<string, unknown>> as never,
+      parsedChanges.data,
     );
+    if (!result) {
+      return createResponse(msg, "error", {}, "Project artifacts not found");
+    }
     return createResponse(
       msg,
       result.valid ? "ok" : "error",
@@ -770,8 +845,7 @@ export function createStudioRouter(
 
   // POST /api/studio/sync/project
   router.post("/sync/project", async (req, res) => {
-    const { projectId, executionId } = req.body;
-    const lookupId = executionId ?? projectId;
+    const { projectId } = req.body;
     if (!projectId || typeof projectId !== "string") {
       res.status(400).json({ success: false, error: "projectId is required" });
       return;
@@ -779,14 +853,7 @@ export function createStudioRouter(
     if (!(await requireStudioProjectAccess(req, res, projectId))) {
       return;
     }
-    if (!lookupId || typeof lookupId !== "string") {
-      res.status(400).json({
-        success: false,
-        error: "projectId or executionId is required",
-      });
-      return;
-    }
-    const snapshot = runtime.getProjectSnapshot(lookupId);
+    const snapshot = runtime.getProjectSnapshot(projectId);
     if (!snapshot) {
       res.status(404).json({ success: false, error: "Project not found" });
       return;
@@ -814,7 +881,11 @@ export function createStudioRouter(
         .json({ success: false, error: "artifactIds array is required" });
       return;
     }
-    const result = syncManager.getTransferManager().transfer(artifactIds);
+    const result = runtime.transferProjectArtifacts(projectId, artifactIds);
+    if (!result) {
+      res.status(404).json({ success: false, error: "Project not found" });
+      return;
+    }
     if (result.payloadExceeded) {
       res.status(413).json({
         success: false,

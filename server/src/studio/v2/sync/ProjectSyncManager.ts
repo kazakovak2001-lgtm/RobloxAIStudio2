@@ -2,12 +2,13 @@
  * ProjectSyncManager — Manages project synchronization between DevKit and Studio.
  */
 
-import { randomUUID, createHash } from "crypto";
+import { createHash } from "crypto";
 import { ArtifactStore } from "../../../pipeline/v2/ArtifactStore";
 import { SyncValidator, type ValidationResult } from "./SyncValidator";
 import { ArtifactTransferManager } from "./ArtifactTransferManager";
 import type {
   ProjectSnapshot,
+  ArtifactRef,
   SyncChange,
   SyncResult,
   SyncConflict,
@@ -33,18 +34,9 @@ export class ProjectSyncManager {
    * Generate a project snapshot (metadata + artifact refs).
    */
   getProjectSnapshot(pipelineId: string): ProjectSnapshot | null {
-    const artifacts = this.artifactStore.getByPipeline(pipelineId);
-    if (artifacts.length === 0 && !this.versions.has(pipelineId)) {
-      // Create base version for empty project
-      this.versions.set(pipelineId, this.generateVersion(pipelineId, 0));
-    }
-
-    const version =
-      this.versions.get(pipelineId) ??
-      this.generateVersion(pipelineId, artifacts.length);
-    this.versions.set(pipelineId, version);
-
     const refs = this.transferManager.getArtifactRefs(pipelineId);
+    const version = this.generateVersion(pipelineId, refs);
+    this.versions.set(pipelineId, version);
 
     return {
       projectId: pipelineId,
@@ -64,13 +56,13 @@ export class ProjectSyncManager {
     changes: SyncChange[],
   ): Promise<SyncResult> {
     if (changes.length === 0) {
+      const currentVersion = this.getProjectSnapshot(pipelineId)?.version;
       return {
         status: "no_changes",
         appliedChanges: [],
         conflicts: [],
         errors: [],
-        newVersion:
-          this.versions.get(pipelineId) ?? this.generateVersion(pipelineId, 0),
+        newVersion: currentVersion ?? "0.0.0",
         timestamp: Date.now(),
       };
     }
@@ -87,8 +79,29 @@ export class ProjectSyncManager {
         appliedChanges: [],
         conflicts: [],
         errors: validation.errors.map((e) => `[${e.changeId}] ${e.error}`),
-        newVersion:
-          this.versions.get(pipelineId) ?? this.generateVersion(pipelineId, 0),
+        newVersion: this.getProjectSnapshot(pipelineId)?.version ?? "0.0.0",
+        timestamp: Date.now(),
+      };
+    }
+
+    const unsupported = changes.filter(
+      (change) =>
+        change.changeType === "create" || change.changeType === "delete",
+    );
+    if (unsupported.length > 0) {
+      const detectedConflicts = changes
+        .map((change) => this.detectConflict(pipelineId, change))
+        .filter((conflict): conflict is SyncConflict => conflict !== null);
+      this.conflicts = detectedConflicts;
+      return {
+        status: detectedConflicts.length > 0 ? "conflict" : "error",
+        appliedChanges: [],
+        conflicts: detectedConflicts,
+        errors: unsupported.map(
+          (change) =>
+            `[${change.changeId}] ${change.changeType} is not supported by the canonical ArtifactStore`,
+        ),
+        newVersion: this.getProjectSnapshot(pipelineId)?.version ?? "0.0.0",
         timestamp: Date.now(),
       };
     }
@@ -109,8 +122,7 @@ export class ProjectSyncManager {
 
     // Publish the new version only after all accepted artifact mutations are
     // acknowledged.
-    const newVersion = this.generateVersion(pipelineId, Date.now());
-    this.versions.set(pipelineId, newVersion);
+    const newVersion = this.getProjectSnapshot(pipelineId)?.version ?? "0.0.0";
     this.lastSyncTimestamp = Date.now();
     this.conflicts = detectedConflicts;
 
@@ -193,9 +205,21 @@ export class ProjectSyncManager {
     );
   }
 
-  private generateVersion(projectId: string, seed: number): string {
-    const hash = createHash("md5")
-      .update(`${projectId}-${seed}-${randomUUID().slice(0, 6)}`)
+  private generateVersion(projectId: string, artifacts: ArtifactRef[]): string {
+    const fingerprint = artifacts
+      .map((artifact) =>
+        [
+          artifact.id,
+          artifact.hash,
+          artifact.size,
+          artifact.createdAt,
+          artifact.reviewStatus,
+        ].join(":"),
+      )
+      .sort()
+      .join("|");
+    const hash = createHash("sha256")
+      .update(`${projectId}|${fingerprint}`)
       .digest("hex")
       .slice(0, 8);
     return `1.0.0-${hash}`;

@@ -57,6 +57,16 @@ export class SyncValidator {
       );
     }
 
+    if (!change.artifactId || typeof change.artifactId !== "string") {
+      errors.push("Missing artifactId");
+    }
+
+    if (
+      !(["create", "update", "delete"] as const).includes(change.changeType)
+    ) {
+      errors.push(`Invalid change type: "${String(change.changeType)}"`);
+    }
+
     // Validate content for create/update
     if (
       (change.changeType === "create" || change.changeType === "update") &&
@@ -76,12 +86,16 @@ export class SyncValidator {
     }
 
     // Validate changeId present
-    if (!change.changeId) {
+    if (typeof change.changeId !== "string" || !change.changeId.trim()) {
       errors.push("Missing changeId");
     }
 
     // Validate timestamp
-    if (!change.timestamp || typeof change.timestamp !== "number") {
+    if (
+      typeof change.timestamp !== "number" ||
+      !Number.isFinite(change.timestamp) ||
+      change.timestamp <= 0
+    ) {
       errors.push("Missing or invalid timestamp");
     }
 
