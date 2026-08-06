@@ -14,6 +14,9 @@ const validTypes = [
 ] as const;
 const validTypeSet = new Set<string>(validTypes);
 const nonNullJson = fc.jsonValue().filter((value) => value !== null);
+const nonBlankString = fc
+  .string({ minLength: 1 })
+  .filter((value) => value.trim().length > 0);
 
 const baseChange = (overrides: Partial<SyncChange>): SyncChange => ({
   changeId: "change",
@@ -105,8 +108,8 @@ describe("SyncValidator properties", () => {
       fc.property(
         fc.array(
           fc.record({
-            changeId: fc.string({ minLength: 1 }),
-            artifactId: fc.string({ minLength: 1 }),
+            changeId: nonBlankString,
+            artifactId: nonBlankString,
             artifactType: fc.constantFrom(...validTypes),
             content: nonNullJson,
             timestamp: fc.integer({ min: 1, max: Number.MAX_SAFE_INTEGER }),

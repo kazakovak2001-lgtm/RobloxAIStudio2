@@ -1320,7 +1320,8 @@
 │   │   │   │   ├── projects.runtime.test.ts
 │   │   │   │   ├── studioApiKeyAccess.test.ts
 │   │   │   │   ├── studioDurability.test.ts
-│   │   │   │   └── studioProtocol.smoke.test.ts
+│   │   │   │   ├── studioProtocol.smoke.test.ts
+│   │   │   │   └── studioSync.integration.test.ts
 │   │   │   ├── agentCollaboration.ts
 │   │   │   ├── aiChat.ts
 │   │   │   ├── analytics.ts
@@ -1425,9 +1426,12 @@
 │   │   │       ├── StudioTypes.ts
 │   │   │       └── sync
 │   │   │           ├── __tests__
+│   │   │           │   ├── ArtifactTransferManager.pbt.test.ts
 │   │   │           │   ├── ArtifactTransferManager.unit.test.ts
+│   │   │           │   ├── ProjectSyncManager.pbt.test.ts
 │   │   │           │   ├── ProjectSyncManager.unit.test.ts
 │   │   │           │   ├── smoke.test.ts
+│   │   │           │   ├── SyncValidator.pbt.test.ts
 │   │   │           │   └── SyncValidator.unit.test.ts
 │   │   │           ├── ArtifactTransferManager.ts
 │   │   │           ├── index.ts

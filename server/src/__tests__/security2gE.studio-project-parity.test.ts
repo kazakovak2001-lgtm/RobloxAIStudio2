@@ -44,7 +44,7 @@ describe("SECURITY-2G-E Studio REST and Socket.IO project parity", () => {
       {
         registration: 'router.post("/sync/project", async (req, res) => {',
         guard: "requireStudioProjectAccess(req, res, projectId)",
-        protectedCall: "runtime.getProjectSnapshot(lookupId)",
+        protectedCall: "runtime.getProjectSnapshot(projectId)",
       },
       {
         registration: 'router.get("/sync/status", async (req, res) => {',
