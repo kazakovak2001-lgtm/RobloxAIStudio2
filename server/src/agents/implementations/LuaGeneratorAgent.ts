@@ -145,6 +145,7 @@ Brief: ${description}
 Validation failure: ${reason}
 
 Replace the previous solution completely. Keep the implementation small and use these exact runtime patterns:
+- Output exactly one server entry and exactly one client entry. Keep shared empty. Do not split the playable loop across scripts.
 - Server: create at least one Folder or Part with Instance.new and parent the generated world to workspace.
 - Server: create a collectible Part in workspace and connect collectible.Touched:Connect(function(hit) ... end).
 - Server: create a RemoteEvent in ReplicatedStorage and call event:FireClient(player, score, target) when the player touches the collectible.
@@ -152,7 +153,9 @@ Replace the previous solution completely. Keep the implementation small and use 
 - Client: local gui = Instance.new("ScreenGui"), then gui.Parent = playerGui.
 - Client: create a visible TextLabel and parent it to gui.
 - Client: connect event.OnClientEvent:Connect(function(score, target) ... end) and update the TextLabel.
-- Use game:GetService to access services. Never call InsertService.
+- Create the HUD before connecting OnClientEvent so it is visible immediately when Play starts.
+- Create every runtime dependency yourself. Do not use require or assume Workspace children already exist.
+- Use game:GetService to access services. Never call InsertService or request GamePassService.
 - Use only Roblox Luau APIs. Do not use promises, :andThen, DataStoreService, TODOs, placeholders, or client-side FireClient.
 - Server and client entries must execute directly and must not return modules.
 Return only the JSON object, with complete code strings.`;

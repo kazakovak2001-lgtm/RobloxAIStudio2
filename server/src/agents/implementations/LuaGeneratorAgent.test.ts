@@ -1,5 +1,9 @@
 import { describe, expect, it, vi } from "vitest";
 import { normalizeLuaArtifactContent } from "../../studio/artifacts/GenerationArtifactRecorder";
+import {
+  getPlayableLuaIssues,
+  normalizeLuaScripts,
+} from "../../types/playableLua";
 import { LuaGeneratorAgent, extractServiceNames } from "./LuaGeneratorAgent";
 
 const input = {
@@ -143,6 +147,47 @@ describe("LuaGeneratorAgent playable runtime contract", () => {
     );
     expect(generate.mock.calls[2]?.[0]).toContain(
       "event.OnClientEvent:Connect",
+    );
+  });
+
+  it("rejects disconnected scripts that only pass aggregate token checks", () => {
+    const scripts = normalizeLuaScripts({
+      lua_generator: {
+        server: [
+          {
+            name: "World.server.lua",
+            code: "local world = Instance.new('Folder')\nworld.Parent = workspace\nlocal collectible = Instance.new('Part')\ncollectible.Parent = world\ncollectible.Touched:Connect(function(hit) print(hit.Name) end)",
+          },
+          {
+            name: "Progress.server.lua",
+            code: "local event = Instance.new('RemoteEvent')\nevent.Parent = game:GetService('ReplicatedStorage')\nevent:FireAllClients(1, 1)\nlocal GamePassService = game:GetService('GamePassService')",
+          },
+          {
+            name: "ModuleAsScript.server.lua",
+            code: "return { start = function() print('never executed as a module') end }",
+          },
+        ],
+        client: [
+          {
+            name: "Hud.client.lua",
+            code: "local playerGui = game.Players.LocalPlayer:WaitForChild('PlayerGui')\nlocal gui = Instance.new('ScreenGui')\ngui.Parent = playerGui\nlocal label = Instance.new('TextLabel')\nlabel.Parent = gui",
+          },
+          {
+            name: "Progress.client.lua",
+            code: "game:GetService('ReplicatedStorage'):WaitForChild('Progress').OnClientEvent:Connect(function(score) print(score) end)",
+          },
+        ],
+        shared: [],
+      },
+    });
+
+    expect(getPlayableLuaIssues(scripts)).toEqual(
+      expect.arrayContaining([
+        "server code must not request the nonexistent GamePassService",
+        "server Scripts must not return ModuleScript tables",
+        "one server Script must own the complete world, objective, and progress event",
+        "one client LocalScript must create the HUD before observing progress",
+      ]),
     );
   });
 
