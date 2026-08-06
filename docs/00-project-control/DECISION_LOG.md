@@ -4,6 +4,26 @@ All significant architectural and product decisions are recorded here.
 
 ---
 
+## 2026-08-06 — Exact Runtime Pair Authority
+
+**Decision**: Define the current executable release pair as backend
+`23e23c1c6733f0b3c52ff4f90fc6123b74c0cf72` and Frontend
+`e89f93d88a3c181b65769641e1a586c86827a6c5`. Backend release integration owns
+the Frontend pin; Frontend `config/integration/paired-release.json` is the
+single backend-pin authority for its production, clean-clone and PostgreSQL
+restart workflows.
+
+**Rationale**: Independent hard-coded workflow pins had drifted to older
+commits. Runtime identities are distinguished from subsequent control-only
+commits so the two repositories do not require impossible circular commit
+self-reference.
+
+**Next gate**: Run both reciprocal protected contracts on the exact pair, then
+continue to a fresh post-PR-174 Roblox runtime playtest. No external production
+deployment is claimed.
+
+---
+
 ## 2026-08-06 — STUDIO-ACCEPT-1 Closure and Runtime Priority
 
 **Decision**: Accept the real Roblox Studio desktop evidence recorded under

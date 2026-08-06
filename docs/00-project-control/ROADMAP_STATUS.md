@@ -3,8 +3,8 @@
 # Roadmap Status
 
 **Last Updated:** August 6, 2026
-**Current backend release:** `release/cutover-1e-candidate@730f4c5217bd8fd790410c2092dfa88846d4b27f`
-**Current Frontend contents:** `kazakovak2001-lgtm/Frontend@03aa0615ea13e06b08cdce36b993fa94fb07966a`
+**Current backend runtime release:** `release/cutover-1e-candidate@23e23c1c6733f0b3c52ff4f90fc6123b74c0cf72`
+**Current Frontend runtime contents:** `kazakovak2001-lgtm/Frontend@e89f93d88a3c181b65769641e1a586c86827a6c5`
 
 This file is the ordered current delivery authority. The dated TECH-AUDIT-2 roadmap and sprint backlog are historical planning baselines and do not override the status below. See [DOC-202A reconciliation](./DOC-202A_ROADMAP_AUTHORITY_RECONCILIATION.md) for exact completion evidence.
 
@@ -40,7 +40,7 @@ This file is the ordered current delivery authority. The dated TECH-AUDIT-2 road
 - **Status:** Complete — merged through PR #162
 - **Tracker:** issue #161 and PR #162
 - **Backend baseline:** `release/cutover-1e-candidate@da55f716c798ec8c6a7f25a8e2a3b7b0a2244416`
-- **Frontend release contents:** `kazakovak2001-lgtm/Frontend@03aa0615ea13e06b08cdce36b993fa94fb07966a`
+- **Frontend release contents:** `kazakovak2001-lgtm/Frontend@e89f93d88a3c181b65769641e1a586c86827a6c5`
 
 `SECURITY-2G-A` established the truthful policy contract. `SECURITY-2G-B` completed production dependency controls. `SECURITY-2G-C` completed backend CodeQL and Gitleaks evidence. `SECURITY-2G-D` completed exact backend and paired Frontend runtime-image scanning, digest-bound SPDX SBOM evidence, deterministic policy validation and hardened runtime images with npm removed from final stages. `SECURITY-2G-E` completed the generated 204-operation REST and Socket authorization matrix, API-key capability/resource-scope enforcement and positive/negative parity evidence. `SECURITY-2G-F` now consolidates dependency, SAST, credential, image, SBOM, RBAC, 40-check production-contract and composed HTTPS release evidence into one deterministic fail-closed gate with positive and negative fixtures.
 
@@ -96,7 +96,7 @@ Every exception records the control, exact package/advisory/rule/path/fingerprin
 - `DOC-202A`: issue #163 and PR #164 established the documentation-authority inventory and fail-closed validator.
 - `ROADMAP-AUDIT-1`: issue #169 ranked real Studio acceptance, authoritative runtime playtest, and artifact-applying repair as the remaining product-critical dependency chain.
 - `STUDIO-ACCEPT-1`: issue #170 and [desktop acceptance evidence](./STUDIO-ACCEPT-1_DESKTOP_ACCEPTANCE_RESULT.md) bind backend `3230d2368ed781043fe9f3520c0d3de3836ec3bb`, package SHA-256 `86e102b663d48925f9e313248761bb2d91d7e0794252f6c04e50496d8ba05696`, execution `exec-1785976885787`, command `cmd-eef6e7bd-a`, eight exact receipts, real Studio hierarchy, plugin `Verified`, and backend `artifactVerified=true`.
-- Active paired release baseline: backend merge `730f4c5217bd8fd790410c2092dfa88846d4b27f` plus protected Frontend release contents `03aa0615ea13e06b08cdce36b993fa94fb07966a`. Frontend `e89f93d88a3c181b65769641e1a586c86827a6c5` remains the newer ROADMAP-AUDIT-1 implementation baseline and is not promoted here as a release pin.
+- Active paired runtime baseline: backend `23e23c1c6733f0b3c52ff4f90fc6123b74c0cf72` plus protected Frontend contents `e89f93d88a3c181b65769641e1a586c86827a6c5`. Control-only reconciliation commits may follow these runtime identities; release evidence remains bound to this exact executable pair.
 
 ## Runtime truthfulness
 

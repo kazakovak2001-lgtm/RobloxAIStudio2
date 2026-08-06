@@ -2,7 +2,7 @@
 
 # Roblox AI Studio Documentation
 
-**Last updated:** August 1, 2026
+**Last updated:** August 6, 2026
 
 This directory documents the backend, standalone Frontend boundary, Roblox Studio plugin, release evidence, and current engineering roadmap.
 
@@ -29,8 +29,8 @@ The old embedded root `src/` frontend is removed and protected by a permanent in
 
 ## Active paired release
 
-- Backend: `release/cutover-1e-candidate@7ccc4e02ba4175318856cd14b845e4ccd4dc6057`.
-- Frontend contents: `kazakovak2001-lgtm/Frontend@022788ace31982e2b08ea099800de784b4dbe482`.
+- Backend runtime: `release/cutover-1e-candidate@23e23c1c6733f0b3c52ff4f90fc6123b74c0cf72`.
+- Frontend runtime contents: `kazakovak2001-lgtm/Frontend@e89f93d88a3c181b65769641e1a586c86827a6c5`.
 - Pairing authority: protected Frontend Production Contract, Composed HTTPS Release, promoted-baseline integrity, and Merge Gate evidence.
 - No external production deployment is claimed by repository release evidence alone.
 
@@ -43,9 +43,9 @@ The old embedded root `src/` frontend is removed and protected by a permanent in
 - `FRONTEND-2C`: complete through Frontend PRs #18–#21 and REL-203 release-pair promotion.
 - `RUNTIME-2D`: complete through issue #57 and deterministic runtime ownership validation.
 - `DURABILITY-2E`: complete through DATA-201 and DATA-202; issue #135 is closed.
-- `SECURITY-2G`: next uncompleted control gate.
-- `DOC-202`: in progress; DOC-202A reconciles current authority but does not claim the full inventory is complete.
-- `STUDIO-2F` and `AUTONOMY-3A`: deferred.
+- `SECURITY-2G`, `DOC-202`, `ROADMAP-AUDIT-1`, and `STUDIO-ACCEPT-1`: complete.
+- `RUNTIME-PLAYTEST-1`: next product-critical delivery.
+- `REPAIR-1`, `STUDIO-2F`, and `AUTONOMY-3A`: deferred behind runtime playtest evidence.
 
 See [Roadmap Status](./00-project-control/ROADMAP_STATUS.md) for exact ordering and evidence.
 
