@@ -83,7 +83,64 @@ describe("LuaGeneratorAgent playable runtime contract", () => {
 
     expect(result.success).toBe(false);
     expect(result.error).toContain("Lua generation is not playable");
-    expect(generate).toHaveBeenCalledTimes(2);
+    expect(generate).toHaveBeenCalledTimes(3);
+  });
+
+  it("uses a constrained final repair for structurally valid but unplayable Ollama output", async () => {
+    const playable = await new LuaGeneratorAgent().execute(input);
+    const initial = JSON.stringify({
+      lua_generator: {
+        server: [
+          {
+            name: "GameSetup.server.lua",
+            code: "game.Players.PlayerAdded:Connect(function(player) print(player.Name) end)",
+          },
+        ],
+        client: [
+          {
+            name: "HUD.client.lua",
+            code: "local gui = Instance.new('ScreenGui', game.Players.LocalPlayer.PlayerGui)",
+          },
+        ],
+        shared: [],
+      },
+    });
+    const invalidRepair = JSON.stringify({
+      lua_generator: {
+        server: [
+          {
+            name: "WorldInitializer.server.lua",
+            code: "local world = Instance.new('Folder')\nworld.Parent = game.ReplicatedStorage\nlocal part = Instance.new('Part')\npart.Parent = world",
+          },
+        ],
+        client: [
+          {
+            name: "HUD.client.lua",
+            code: "local playerGui = game.Players.LocalPlayer.PlayerGui\nlocal label = Instance.new('TextLabel')\nlabel.Parent = playerGui.ScreenGui",
+          },
+        ],
+        shared: [],
+      },
+    });
+    const generate = vi
+      .fn()
+      .mockResolvedValueOnce(initial)
+      .mockResolvedValueOnce(invalidRepair)
+      .mockResolvedValueOnce(JSON.stringify(playable.data));
+    const agent = new LuaGeneratorAgent();
+    agent.setLLM({ generate });
+
+    const result = await agent.execute(input);
+
+    expect(result.success).toBe(true);
+    expect(generate).toHaveBeenCalledTimes(3);
+    expect(generate.mock.calls[2]?.[0]).toContain("gui.Parent = playerGui");
+    expect(generate.mock.calls[2]?.[0]).toContain(
+      "collectible.Touched:Connect",
+    );
+    expect(generate.mock.calls[2]?.[0]).toContain(
+      "server code must create playable world instances",
+    );
   });
 
   it("never substitutes the generic stub game for malformed LLM JSON", async () => {

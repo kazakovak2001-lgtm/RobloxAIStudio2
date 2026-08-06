@@ -124,6 +124,38 @@ end)`,
   };
 }
 
+function isPlayableValidationError(error: unknown): boolean {
+  return (
+    error instanceof Error &&
+    error.message.startsWith("Lua generation is not playable:")
+  );
+}
+
+function buildConstrainedPlayableRepairPrompt(
+  name: string,
+  description: string,
+  reason: string,
+): string {
+  return `You are repairing Roblox Luau that failed a strict playability check.
+Return one valid JSON object only, with this exact shape:
+{ "lua_generator": { "server": [{"name":"Game.server.lua","code":"..."}], "client": [{"name":"HUD.client.lua","code":"..."}], "shared": [] } }
+
+Game: ${name}
+Brief: ${description}
+Validation failure: ${reason}
+
+Replace the previous solution completely. Keep the implementation small and use these exact runtime patterns:
+- Server: create at least one Folder or Part with Instance.new and parent the generated world to workspace.
+- Server: create a collectible Part in workspace and connect collectible.Touched:Connect(function(hit) ... end).
+- Server: track score or objective progress when a player touches the collectible.
+- Client: local playerGui = Players.LocalPlayer:WaitForChild("PlayerGui").
+- Client: local gui = Instance.new("ScreenGui"), then gui.Parent = playerGui.
+- Client: create a visible TextLabel and parent it to gui.
+- Use only Roblox Luau APIs. Do not use promises, :andThen, DataStoreService, TODOs, placeholders, or client-side FireClient.
+- Server and client entries must execute directly and must not return modules.
+Return only the JSON object, with complete code strings.`;
+}
+
 export class LuaGeneratorAgent extends BaseAgent {
   public readonly name = "LuaGenerator";
   public readonly description =
@@ -209,11 +241,24 @@ export class LuaGeneratorAgent extends BaseAgent {
       assertPlayableLuaScripts(normalizeLuaScripts(result));
     } catch (error) {
       const reason = error instanceof Error ? error.message : String(error);
-      result = await this.generateLua(
-        `${prompt}\n\nREPAIR REQUIRED: ${reason}. Replace the entire response with complete executable code satisfying every runtime requirement.`,
-        { temperature: 0.1, maxTokens: 4000 },
-      );
-      assertPlayableLuaScripts(normalizeLuaScripts(result));
+      try {
+        result = await this.generateLua(
+          `${prompt}\n\nREPAIR REQUIRED: ${reason}. Replace the entire response with complete executable code satisfying every runtime requirement.`,
+          { temperature: 0.1, maxTokens: 4000 },
+        );
+        assertPlayableLuaScripts(normalizeLuaScripts(result));
+      } catch (repairError) {
+        if (!isPlayableValidationError(repairError)) throw repairError;
+        const repairReason =
+          repairError instanceof Error
+            ? repairError.message
+            : String(repairError);
+        result = await this.generateLua(
+          buildConstrainedPlayableRepairPrompt(name, description, repairReason),
+          { temperature: 0, maxTokens: 4000 },
+        );
+        assertPlayableLuaScripts(normalizeLuaScripts(result));
+      }
     }
 
     return result;
