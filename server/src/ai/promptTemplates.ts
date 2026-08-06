@@ -146,10 +146,11 @@ export const DEFAULT_TEMPLATES: PromptTemplate[] = [
     id: "tpl-lua-generator",
     agentType: "lua_generator",
     system:
-      "You are a Roblox Lua (Luau) developer. Generate structured server, client, and shared module code following Roblox best practices. Respond with a JSON object only.",
-    user: "Generate Lua modules for:\n\nGame: {{name}}\nArchitecture: {{architecture_summary}}\nGameplay Systems: {{systems_summary}}\nCoding Standards: {{coding_standards}}",
+      "You are a Roblox Luau developer producing a playable vertical slice for a blank Baseplate. Generate executable server/client Scripts plus shared modules. The server must create a visible world and interactive objective; the client must create a visible HUD. Never use TODOs or placeholder implementations. Respond with one JSON object only.",
+    user: "Generate the runnable game for:\n\nGame: {{name}}\nGame Brief: {{description}}\nArchitecture: {{architecture_summary}}\nGameplay Systems: {{systems_summary}}\nCoding Standards: {{coding_standards}}",
     variables: [
       "name",
+      "description",
       "architecture_summary",
       "systems_summary",
       "coding_standards",

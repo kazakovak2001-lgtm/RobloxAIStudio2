@@ -1,5 +1,165 @@
 import { BaseAgent, type AgentConfig } from "../core/BaseAgent";
 import type { AgentInput } from "../../types";
+import {
+  assertPlayableLuaScripts,
+  type PlayableLuaScript,
+} from "../../types/playableLua";
+
+const DEFAULT_SERVICES = ["GameManager", "DataService", "PlayerService"];
+
+export function extractServiceNames(services: unknown): string[] {
+  const values = Array.isArray(services)
+    ? services
+    : services && typeof services === "object"
+      ? Object.entries(services).map(([key, value]) =>
+          typeof value === "string" ? value : { name: key, value },
+        )
+      : [];
+  const names = values
+    .map((value) => {
+      if (typeof value === "string") return value.trim();
+      if (value && typeof value === "object" && "name" in value) {
+        return String(value.name).trim();
+      }
+      return "";
+    })
+    .filter(Boolean)
+    .slice(0, 5);
+  return names.length > 0 ? names : DEFAULT_SERVICES;
+}
+
+function validationScripts(
+  output: Record<string, unknown>,
+): PlayableLuaScript[] {
+  const value = output.lua_generator;
+  if (!value || typeof value !== "object" || Array.isArray(value)) return [];
+  const lua = value as Record<string, unknown>;
+  const groups: Array<[unknown, string, string]> = [
+    [lua.server, "ServerScriptService", "server"],
+    [lua.client, "StarterPlayerScripts", "client"],
+    [lua.shared, "ReplicatedStorage/Shared", "module"],
+  ];
+  return groups.flatMap(([entries, root, kind]) =>
+    Array.isArray(entries)
+      ? entries.flatMap((entry) => {
+          if (!entry || typeof entry !== "object" || Array.isArray(entry))
+            return [];
+          const name = String(entry.name ?? "").replace(/\.lua$/i, "");
+          const suffix =
+            kind === "server"
+              ? name.endsWith(".server")
+                ? ".lua"
+                : ".server.lua"
+              : kind === "client"
+                ? name.endsWith(".client")
+                  ? ".lua"
+                  : ".client.lua"
+                : ".lua";
+          return [
+            {
+              path: `${root}/${name}${suffix}`,
+              content: String(entry.code ?? ""),
+            },
+          ];
+        })
+      : [],
+  );
+}
+
+function playableFallback(name: string): Record<string, unknown> {
+  const gameName = JSON.stringify(name);
+  return {
+    lua_generator: {
+      server: [
+        {
+          name: "AdventureBootstrap.server.lua",
+          code: `local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local event = ReplicatedStorage:FindFirstChild("ObjectiveProgress") or Instance.new("RemoteEvent")
+event.Name = "ObjectiveProgress"
+event.Parent = ReplicatedStorage
+
+local world = workspace:FindFirstChild("GeneratedAdventure") or Instance.new("Folder")
+world.Name = "GeneratedAdventure"
+world.Parent = workspace
+
+local function makePart(name, position, color)
+  local part = Instance.new("Part")
+  part.Name = name
+  part.Anchored = true
+  part.Size = Vector3.new(5, 1, 5)
+  part.Position = position
+  part.Color = color
+  part.Parent = world
+  return part
+end
+
+makePart("StartIsland", Vector3.new(0, 3, 0), Color3.fromRGB(72, 120, 72))
+for index = 1, 5 do
+  local collectible = makePart("Collectible" .. index, Vector3.new(index * 8, 5, 0), Color3.fromRGB(255, 200, 40))
+  collectible.Shape = Enum.PartType.Ball
+  collectible.Touched:Connect(function(hit)
+    local player = Players:GetPlayerFromCharacter(hit.Parent)
+    if not player or not collectible.Parent then return end
+    local score = player:FindFirstChild("leaderstats") and player.leaderstats:FindFirstChild("Score")
+    if score then score.Value += 1 end
+    event:FireClient(player, score and score.Value or 0, 5)
+    collectible:Destroy()
+  end)
+end
+
+Players.PlayerAdded:Connect(function(player)
+  local leaderstats = Instance.new("Folder")
+  leaderstats.Name = "leaderstats"
+  leaderstats.Parent = player
+  local score = Instance.new("IntValue")
+  score.Name = "Score"
+  score.Parent = leaderstats
+end)`,
+        },
+      ],
+      client: [
+        {
+          name: "AdventureHUD.client.lua",
+          code: `local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local playerGui = Players.LocalPlayer:WaitForChild("PlayerGui")
+
+local gui = Instance.new("ScreenGui")
+gui.Name = "GeneratedAdventureHUD"
+gui.ResetOnSpawn = false
+gui.Parent = playerGui
+
+local objective = Instance.new("TextLabel")
+objective.Size = UDim2.fromOffset(420, 56)
+objective.Position = UDim2.fromOffset(24, 24)
+objective.BackgroundColor3 = Color3.fromRGB(20, 25, 35)
+objective.TextColor3 = Color3.new(1, 1, 1)
+objective.TextScaled = true
+objective.Text = ${gameName} .. ": collect 5 golden orbs (0/5)"
+objective.Parent = gui
+
+ReplicatedStorage:WaitForChild("ObjectiveProgress").OnClientEvent:Connect(function(score, target)
+  objective.Text = ${gameName} .. ": collect 5 golden orbs (" .. score .. "/" .. target .. ")"
+  if score >= target then objective.Text = "Objective complete!" end
+end)`,
+        },
+      ],
+      shared: [
+        {
+          name: "GameConfig.lua",
+          code: `return { GAME_NAME = ${gameName}, COLLECTIBLE_TARGET = 5 }`,
+        },
+      ],
+      patterns: [
+        "Server-authoritative collectibles",
+        "Runtime world bootstrap",
+        "Client objective HUD",
+      ],
+    },
+  };
+}
 
 export class LuaGeneratorAgent extends BaseAgent {
   public readonly name = "LuaGenerator";
@@ -25,7 +185,7 @@ export class LuaGeneratorAgent extends BaseAgent {
   };
 
   constructor(config?: Partial<AgentConfig>) {
-    super(config);
+    super({ maxRetries: 1, ...config });
   }
 
   protected async process(input: AgentInput): Promise<Record<string, unknown>> {
@@ -35,11 +195,11 @@ export class LuaGeneratorAgent extends BaseAgent {
     const gameplay = input.gameplay as Record<string, unknown> | undefined;
 
     const name = String(bp?.name ?? "UnnamedGame");
+    const description = String(
+      bp?.description ?? "Create a playable Roblox game",
+    );
     const services = (arch as any)?.services ?? {};
-    const serviceNames: string[] =
-      typeof services === "object"
-        ? Object.keys(services).slice(0, 5)
-        : ["GameManager", "DataService", "PlayerService"];
+    const serviceNames = extractServiceNames(services);
 
     const mechanicsArr = (gameplay as any)?.mechanics;
     const systemsSummary = Array.isArray(mechanicsArr)
@@ -49,33 +209,7 @@ export class LuaGeneratorAgent extends BaseAgent {
           .join(", ")
       : "core systems";
 
-    const fallback: Record<string, unknown> = {
-      generatedCode: { scripts: [], modules: {} },
-      lua_generator: {
-        server: serviceNames.map((svc) => ({
-          name: `${svc}.server.lua`,
-          code: `-- ${svc}\nlocal ${svc} = {}\n\nfunction ${svc}.init()\n\tprint("[${svc}] Initialized")\nend\n\nreturn ${svc}`,
-        })),
-        client: [
-          {
-            name: "LocalController.client.lua",
-            code: '-- LocalController\nlocal LocalController = {}\n\nfunction LocalController.init()\n\tprint("[LocalController] Ready")\nend\n\nreturn LocalController',
-          },
-        ],
-        shared: [
-          {
-            name: "GameConfig.lua",
-            code: `-- Shared game configuration\nlocal GameConfig = {\n\tGAME_NAME = "${name}",\n\tVERSION = "1.0.0",\n}\n\nreturn GameConfig`,
-          },
-        ],
-        modules: [],
-        patterns: [
-          "Server-authoritative state management",
-          "RemoteEvent-based client communication",
-          "Module caching pattern",
-        ],
-      },
-    };
+    const fallback = playableFallback(name);
 
     if (!this.llm) return fallback;
 
@@ -84,6 +218,7 @@ export class LuaGeneratorAgent extends BaseAgent {
 
     const registryPrompt = this.buildPrompt({
       name,
+      description,
       architecture_summary: serviceNames.join(", "),
       systems_summary: systemsSummary,
       coding_standards: codingStandards,
@@ -95,13 +230,14 @@ export class LuaGeneratorAgent extends BaseAgent {
       '{ "lua_generator": { "server": Array<{name,code}>, "client": Array<{name,code}>, ' +
       '"shared": Array<{name,code}>, "patterns": string[] } }\n\n' +
       `Game Name: ${name}\nServices: ${serviceNames.join(", ")}\n` +
+      `Game Brief: ${description}\n` +
       `Gameplay Systems: ${systemsSummary}\nCoding Standards: ${codingStandards}\n\n` +
-      "Generate 2-3 server scripts, 1-2 client scripts, 1-2 shared modules. " +
-      "Each script must be complete and runnable. Return only valid JSON.";
+      "Generate a playable vertical slice for a blank Baseplate: server code must create visible world parts and a Touched or Activated gameplay objective; client code must create a visible ScreenGui under PlayerGui. " +
+      "Server/client entries are runnable Scripts, not modules, so they must not end with return. Shared entries may return modules. Never use TODOs, placeholders, empty functions, or comments instead of behavior. Return only valid JSON.";
 
     const prompt = registryPrompt ?? inlinePrompt;
 
-    const result = await this.generateWithRetry(
+    let result = await this.generateWithRetry(
       prompt,
       ["lua_generator"],
       fallback,
@@ -110,9 +246,17 @@ export class LuaGeneratorAgent extends BaseAgent {
         maxTokens: 3000,
       },
     );
-
-    if (!result.generatedCode) {
-      result.generatedCode = { scripts: [], modules: {} };
+    try {
+      assertPlayableLuaScripts(validationScripts(result));
+    } catch (error) {
+      const reason = error instanceof Error ? error.message : String(error);
+      result = await this.generateWithRetry(
+        `${prompt}\n\nREPAIR REQUIRED: ${reason}. Replace the entire response with complete executable code satisfying every runtime requirement.`,
+        ["lua_generator"],
+        fallback,
+        { temperature: 0.1, maxTokens: 4000 },
+      );
+      assertPlayableLuaScripts(validationScripts(result));
     }
 
     return result;

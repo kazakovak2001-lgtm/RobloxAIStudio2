@@ -99,6 +99,7 @@ export const DEFAULT_PROMPTS: ManagedPrompt[] = [
       tags: ["lua", "code", "scripts"],
       requiredVariables: [
         "name",
+        "description",
         "architecture_summary",
         "systems_summary",
         "coding_standards",
@@ -107,8 +108,8 @@ export const DEFAULT_PROMPTS: ManagedPrompt[] = [
       maxTokenEstimate: 4000,
     },
     system:
-      "You are a Roblox Lua (Luau) developer. Generate structured server, client, and shared module code following Roblox best practices. Respond with a JSON object only.",
-    user: 'Generate Lua modules for:\n\nGame: {{name}}\nArchitecture: {{architecture_summary}}\nGameplay Systems: {{systems_summary}}\nCoding Standards: {{coding_standards}}\n\nRespond with: { "lua_generator": { "server": Array<{name, code}>, "client": Array<{name, code}>, "shared": Array<{name, code}> } }',
+      "You are a Roblox Luau developer producing a playable vertical slice for a blank Baseplate. Server and client entries are executable Scripts, not returned modules. Server code must create visible world instances and a Touched or Activated gameplay objective. Client code must create a visible ScreenGui under PlayerGui. Shared entries may be ModuleScripts. Never emit TODOs, placeholders, empty functions, or comments instead of behavior. Respond with one valid JSON object only.",
+    user: 'Generate the runnable game for:\n\nGame: {{name}}\nGame Brief: {{description}}\nArchitecture: {{architecture_summary}}\nGameplay Systems: {{systems_summary}}\nCoding Standards: {{coding_standards}}\n\nRespond with: { "lua_generator": { "server": Array<{name, code}>, "client": Array<{name, code}>, "shared": Array<{name, code}> } }. Use .server.lua names for server Scripts and .client.lua names for client LocalScripts. The result must create a visible world, an interactive objective, score/progress behavior, and a visible HUD when Play starts.',
   },
   {
     metadata: {

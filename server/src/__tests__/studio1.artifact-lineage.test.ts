@@ -5,6 +5,25 @@ import type { TaskNode } from "../planning/model/TaskGraph";
 import { GenerationArtifactRecorder } from "../studio/artifacts/GenerationArtifactRecorder";
 import { ProjectSyncManager } from "../studio/v2/sync/ProjectSyncManager";
 
+const playableServer = `local world = Instance.new("Folder")
+world.Name = "GeneratedWorld"
+world.Parent = workspace
+local collectible = Instance.new("Part")
+collectible.Name = "Collectible"
+collectible.Parent = world
+collectible.Touched:Connect(function(hit)
+  if hit.Parent then collectible:Destroy() end
+end)`;
+
+const playableClient = `local Players = game:GetService("Players")
+local playerGui = Players.LocalPlayer:WaitForChild("PlayerGui")
+local gui = Instance.new("ScreenGui")
+gui.Name = "ObjectiveHud"
+gui.Parent = playerGui
+local label = Instance.new("TextLabel")
+label.Text = "Collect the item"
+label.Parent = gui`;
+
 function completedNode(
   agent: string,
   output: Record<string, unknown>,
@@ -33,7 +52,11 @@ describe("STUDIO-1a canonical artifact lineage", () => {
       scripts: [
         {
           path: "ServerScriptService/Main.server.lua",
-          content: "return { ready = true }",
+          content: playableServer,
+        },
+        {
+          path: "StarterPlayerScripts/Main.client.lua",
+          content: playableClient,
         },
       ],
     };
@@ -75,13 +98,13 @@ describe("STUDIO-1a canonical artifact lineage", () => {
           server: [
             {
               name: "GameManager.server.lua",
-              code: "return { server = true }",
+              code: playableServer,
             },
           ],
           client: [
             {
               name: "LocalController.client.lua",
-              code: "return { client = true }",
+              code: playableClient,
             },
           ],
           shared: [
@@ -100,11 +123,11 @@ describe("STUDIO-1a canonical artifact lineage", () => {
       scripts: [
         {
           path: "ServerScriptService/GameManager.server.lua",
-          content: "return { server = true }",
+          content: playableServer,
         },
         {
           path: "StarterPlayerScripts/LocalController.client.lua",
-          content: "return { client = true }",
+          content: playableClient,
         },
         {
           path: "ReplicatedStorage/Shared/GameConfig.lua",
@@ -143,6 +166,14 @@ describe("STUDIO-1a canonical artifact lineage", () => {
     const [luaArtifact, exportArtifact] = await recorder.record(executionId, [
       completedNode("lua_generator", {
         scripts: [
+          {
+            path: "ServerScriptService/Main.server.lua",
+            content: playableServer,
+          },
+          {
+            path: "StarterPlayerScripts/Main.client.lua",
+            content: playableClient,
+          },
           {
             path: "ReplicatedStorage/Shared/Config.lua",
             content: "return { version = 3 }",

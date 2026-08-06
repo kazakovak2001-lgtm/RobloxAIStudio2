@@ -4,6 +4,7 @@ import {
   type PipelineArtifact,
   type StageName,
 } from "../../pipeline/v2";
+import { assertPlayableLuaScripts } from "../../types/playableLua";
 
 const AGENT_STAGE_MAP: Readonly<Record<string, StageName>> = {
   requirements: "REQUIREMENTS",
@@ -74,6 +75,7 @@ export function normalizeLuaArtifactContent(
 
   if (Array.isArray(output.scripts) && output.scripts.length > 0) {
     validateCanonicalScripts(output.scripts);
+    assertPlayableLuaScripts(output.scripts as StudioLuaScript[]);
     return output;
   }
 
@@ -102,6 +104,7 @@ export function normalizeLuaArtifactContent(
   }
 
   assertUniquePaths(scripts);
+  assertPlayableLuaScripts(scripts);
   return { scripts };
 }
 
