@@ -79,6 +79,14 @@ The package source is unchanged by the subsequent architecture-only merge
 An independent `Get-FileHash -Algorithm SHA256` result matched both the
 manifest `bundleSha256` value and the generated checksum file.
 
+This exact package identity also depends on the acceptance checkout's recorded
+line-ending policy. Git used `core.autocrlf=true`; the nine active Lua files in
+the worktree therefore contained 1,387 CRLF sequences and no bare LF sequences.
+The current packager hashes the raw checkout text. Reproduction of the accepted
+bundle requires the same CRLF checkout transformation. A clean LF checkout of
+the cited commit instead produces a `46582`-byte bundle with SHA-256
+`9857d9b6e80c4f282036aa2f1038617f1cc09bc6230a2f358553051fc8d0cff7`.
+
 ## Authentication boundary
 
 The initial Studio route rejected an API-key-only plugin because project
@@ -182,7 +190,8 @@ The merged API-key correction and the acceptance baseline passed:
 - API key store and environment seed/rotation suite: 18/18 tests;
 - Studio scope and plugin contract suites: 19/19 tests;
 - project TypeScript check;
-- deterministic plugin package build;
+- checkout-local deterministic plugin package build with the line-ending
+  identity recorded above;
 - full backend build after PR #172 restored the exhaustive architecture gate;
 - PR #172 protected CI: 22/22 checks.
 
@@ -203,6 +212,9 @@ The merged API-key correction and the acceptance baseline passed:
    The client ID, command ledger, timestamps, exact receipts, and verified
    project status were retained. No screenshots were committed; this record is
    based on captured text output and authenticated JSON evidence.
+6. Plugin packaging is not yet byte-identical across LF and CRLF checkouts. The
+   accepted Windows artifact remains exactly identified above; future packaging
+   hardening should normalize source line endings before hashing and bundling.
 
 ## Closure and next gate
 
