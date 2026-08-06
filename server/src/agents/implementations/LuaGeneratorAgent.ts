@@ -124,6 +124,25 @@ end)`,
   };
 }
 
+function safeRepairFallback(
+  name: string,
+  reason: string,
+): Record<string, unknown> {
+  const fallback = playableFallback(name);
+  const generated = fallback.lua_generator as Record<string, unknown>;
+  const patterns = Array.isArray(generated.patterns) ? generated.patterns : [];
+
+  return {
+    ...fallback,
+    lua_generator: {
+      ...generated,
+      patterns: [...patterns, "Deterministic validated safe repair"],
+      generationMode: "safe_repair",
+      repairReason: reason,
+    },
+  };
+}
+
 function isPlayableValidationError(error: unknown): boolean {
   return (
     error instanceof Error &&
@@ -299,11 +318,27 @@ export class LuaGeneratorAgent extends BaseAgent {
           repairError instanceof Error
             ? repairError.message
             : String(repairError);
-        result = await this.generateLua(
-          buildConstrainedPlayableRepairPrompt(name, description, repairReason),
-          { temperature: 0, maxTokens: 4000 },
-        );
-        assertPlayableLuaScripts(normalizeLuaScripts(result));
+        try {
+          result = await this.generateLua(
+            buildConstrainedPlayableRepairPrompt(
+              name,
+              description,
+              repairReason,
+            ),
+            { temperature: 0, maxTokens: 4000 },
+          );
+          assertPlayableLuaScripts(normalizeLuaScripts(result));
+        } catch (finalRepairError) {
+          if (!isPlayableValidationError(finalRepairError)) {
+            throw finalRepairError;
+          }
+          const finalReason =
+            finalRepairError instanceof Error
+              ? finalRepairError.message
+              : String(finalRepairError);
+          result = safeRepairFallback(name, finalReason);
+          assertPlayableLuaScripts(normalizeLuaScripts(result));
+        }
       }
     }
 

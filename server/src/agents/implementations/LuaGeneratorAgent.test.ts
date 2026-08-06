@@ -73,7 +73,7 @@ describe("LuaGeneratorAgent playable runtime contract", () => {
     expect(generate.mock.calls[1]?.[0]).toContain("REPAIR REQUIRED");
   });
 
-  it("fails closed when the repaired response is still only scaffolding", async () => {
+  it("uses a labeled safe repair when every valid AI response is unplayable", async () => {
     const invalid = JSON.stringify({
       lua_generator: {
         server: [
@@ -89,8 +89,12 @@ describe("LuaGeneratorAgent playable runtime contract", () => {
 
     const result = await agent.execute(input);
 
-    expect(result.success).toBe(false);
-    expect(result.error).toContain("Lua generation is not playable");
+    expect(result.success).toBe(true);
+    const generated = (result.data as Record<string, unknown>)
+      .lua_generator as Record<string, unknown>;
+    expect(generated.generationMode).toBe("safe_repair");
+    expect(generated.repairReason).toContain("Lua generation is not playable");
+    expect(JSON.stringify(generated)).toContain("GeneratedAdventure");
     expect(generate).toHaveBeenCalledTimes(3);
   });
 
