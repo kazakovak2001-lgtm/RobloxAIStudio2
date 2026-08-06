@@ -4,6 +4,31 @@ All significant architectural and product decisions are recorded here.
 
 ---
 
+## 2026-08-06 — STUDIO-ACCEPT-1 Closure and Runtime Priority
+
+**Decision**: Accept the real Roblox Studio desktop evidence recorded under
+issue #170 as completion of the canonical generated-artifact delivery gate.
+Preserve static playtest as preflight-only and select authoritative
+Studio-attached Roblox runtime evidence as the next product-critical phase.
+
+**Evidence**: Backend `3230d2368ed781043fe9f3520c0d3de3836ec3bb`,
+plugin bundle SHA-256
+`86e102b663d48925f9e313248761bb2d91d7e0794252f6c04e50496d8ba05696`,
+project `proj-00f43b57-b`, execution `exec-1785976885787`, command
+`cmd-eef6e7bd-a`, eight exact receipts, Roblox Studio `0.733.0.7330989`,
+plugin `Verified`, and backend `artifactVerified=true`.
+
+**Dependency order**: Runtime playtest evidence precedes artifact-applying
+repair and revalidation. Project sync hardening (#168 and Frontend #32) remains
+valid lower-priority backlog and does not replace this product-critical path.
+
+**Boundary**: This decision does not claim native asset upload, autonomous
+repair, external deployment, or resolution of non-blocking Studio diagnostics.
+
+**Status**: Complete evidence closeout; runtime playtest planning next.
+
+---
+
 ## 2026-07-31 — REL-202 DATA-202 Release Evidence Closeout
 
 **Decision**: Treat the already promoted

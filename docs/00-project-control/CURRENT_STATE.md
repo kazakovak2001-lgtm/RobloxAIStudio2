@@ -1,8 +1,8 @@
 # Current Project State
 
-**Last Updated**: August 3, 2026
-**Phase**: DOC-202A in progress — documentation authority inventory and post-merge reconciliation
-**Build Status**: SECURITY-2G complete through squash merge `da55f716c798ec8c6a7f25a8e2a3b7b0a2244416`, paired with `kazakovak2001-lgtm/Frontend@03aa0615ea13e06b08cdce36b993fa94fb07966a`. DOC-202A issue #163 and draft PR #164 establish a tracked documentation-authority inventory, fail-closed validator, deterministic negative fixtures and an explicit reconciliation record. No external production deployment is claimed.
+**Last Updated**: August 6, 2026
+**Phase**: STUDIO-ACCEPT-1 complete — authoritative Roblox runtime playtest evidence is next
+**Build Status**: Current backend release `730f4c5217bd8fd790410c2092dfa88846d4b27f`, paired with protected Frontend release contents `kazakovak2001-lgtm/Frontend@03aa0615ea13e06b08cdce36b993fa94fb07966a`, passes the protected build, test, security, PostgreSQL restart, release-image, composed-release and Merge Gate chain. STUDIO-ACCEPT-1 passed on backend acceptance commit `3230d2368ed781043fe9f3520c0d3de3836ec3bb`. Frontend `e89f93d88a3c181b65769641e1a586c86827a6c5` is the newer audit/implementation baseline, not a promoted release pin. No external production deployment is claimed.
 
 ---
 
@@ -21,6 +21,7 @@
 - **Canonical Studio plugin**: `studio-plugin/` v1.8 reuses the existing connector, lifecycle manager, sync manager, artifact loader, events, and UI. It connects with the exact backend project ID, polls `EXPORT_PROJECT`, acknowledges delivery, materializes structured Lua scripts and non-Lua metadata as Roblox instances, reports one exact ID/hash receipt per pipeline artifact, and shows Verified only after the backend accepts the evidence. Roblox-owned JSON content type is provided through `Enum.HttpContentType.ApplicationJson`; the plugin does not submit a forbidden custom `Content-Type` header.
 - **Studio plugin package**: `npm run studio:package` creates a deterministic installable `.rbxmx`, a source/bundle manifest, and SHA-256 checksums from an explicit active-module allowlist. The dedicated package workflow validates XML structure and checksums before uploading the desktop acceptance artifact.
 - **Verified acceptance package**: workflow run `30277078815`, artifact ID `8657228073`, bundle size `45932` bytes, bundle SHA-256 `a97e6268193f202cb5cc12ef5c174d0a028067c382327dd9432aacbe80f5ced7`, manifest SHA-256 `0655ae43b48f8c3bb90591da1e35170ff122136f8352bad73320c88c0eca3f14`.
+- **Current STUDIO-ACCEPT-1 package**: local deterministic package from backend `3230d2368ed781043fe9f3520c0d3de3836ec3bb`, bundle size `47969` bytes, bundle SHA-256 `86e102b663d48925f9e313248761bb2d91d7e0794252f6c04e50496d8ba05696`, manifest SHA-256 `4a249efdbf12acf440298992435dc74865673fbe8e357df809edae93b2701dfc`.
 - **Real-time**: Socket.io with 50+ event types, project rooms, and storage-backed opaque-session authentication in production
 - **Authentication**: bcrypt password hashing (cost 12), storage-backed opaque sessions/roles, cookie-only browser credential delivery, and production REST/Socket validation. Register/login/refresh JSON is credential-free. High-entropy refresh values are stored only as SHA-256 digests with a bounded digest index, migrated before startup traffic, and consumed before rotation; access cookies cover `/` for Socket.IO, refresh cookies are endpoint-scoped, and production policy is `Secure`, `HttpOnly`, `SameSite=Lax`, host-only.
 
@@ -29,7 +30,7 @@
 - **Repository**: [kazakovak2001-lgtm/Frontend](https://github.com/kazakovak2001-lgtm/Frontend) on `main`
 - **Acceptance commit**: `a8d005d433d48e18d8e64ac176ee63c9c694b644`, independently matched to the ZIP used during the successful STUDIO-1 session.
 - **Initial SSR release commit**: `1036c3ef9705d145cb9700cd14268a33d2abdd58`, merged through Frontend PR #12 after CI run #65 verified the production image, `/health`, SSR `/`, responsive QA, and Merge Gate.
-- **Active release contents**: `022788ace31982e2b08ea099800de784b4dbe482`, merged through Frontend PR #21 after FRONTEND-2C PRs #18–#20 established protected quality checks, formatting/lint cleanup, bundle budgets and import hygiene. Frontend CI #140 passed all 10 protected jobs on validated source head `abf1e846bfa246892b6009fc2f5cde480cac29e2`; the merge commit is the canonical `main` tip.
+- **Active paired release contents**: `03aa0615ea13e06b08cdce36b993fa94fb07966a`, retained by the protected release inventory. Frontend `main@e89f93d88a3c181b65769641e1a586c86827a6c5` includes the newer INTEGRATION-1B browser-recovery proof but is tracked separately as the ROADMAP-AUDIT-1 implementation baseline.
 - **Framework**: React 19 + TypeScript + Vite + Tailwind CSS
 - **Routing and state**: TanStack Router/Query, typed backend adapter, Socket.IO realtime client
 - **Ownership**: All new user-facing web functionality belongs in the standalone repository.
@@ -61,56 +62,61 @@ See [Technical Audit v2.0](../02-audits/technical-v2/EXECUTIVE_AUDIT.md) for the
 
 ## Completed Phases
 
-| Phase             | Description                                              | Date          |
-| ----------------- | -------------------------------------------------------- | ------------- |
-| UX-3              | Initial Implementation                                   | July 2026     |
-| UX-3A             | Forensic Audit                                           | July 2026     |
-| UX-3B             | Architecture Stabilization Planning                      | July 2026     |
-| UX-3C             | Execution Planning                                       | July 2026     |
-| UX-3D Sprint 1    | Duplicate Consolidation                                  | July 15, 2026 |
-| UX-3D Sprint 2    | shared/ui Migration                                      | July 15, 2026 |
-| UX-3D Sprint 3    | Repository Structure Execution                           | July 15, 2026 |
-| UX-3D Sprint 4    | Import & Path Alias Migration                            | July 15, 2026 |
-| UX-3D Sprint 5    | Legacy Cleanup                                           | July 15, 2026 |
-| UX-3D Sprint 6    | Design System Enforcement                                | July 15, 2026 |
-| UX-3D Sprint 7    | Documentation Synchronization                            | July 15, 2026 |
-| UX-3D Sprint 8    | Final Validation & Closure                               | July 15, 2026 |
-| UX-4 Preparation  | Development Readiness                                    | July 15, 2026 |
-| UX-4.0            | Product Roadmap Definition                               | July 15, 2026 |
-| UX-4 Phase 1      | Must Have Features (F-1, F-2, F-3)                       | July 15, 2026 |
-| UX-4 Phase 2A     | Should Have Features (F-4 to F-8)                        | July 15, 2026 |
-| UX-4 Phase 2B     | Infrastructure (F-9, F-10, F-11)                         | July 15, 2026 |
-| CUTOVER-0         | Standalone frontend governance                           | July 24, 2026 |
-| CI-BASELINE-1     | Portable CI and repository hygiene                       | July 24, 2026 |
-| CORE-1a           | Durable identity, projects, and ownership                | July 24, 2026 |
-| CORE-1b           | Durable blueprints, executions, chat, restart E2E        | July 24, 2026 |
-| WORKSPACE-1       | Workflow Workspace, scoped tools, logic and QA           | July 24, 2026 |
-| STUDIO-1a         | Durable canonical generation artifact lineage            | July 24, 2026 |
-| STUDIO-1b         | Shared Studio runtime and real artifact queue            | July 24, 2026 |
-| STUDIO-1c backend | ACK/result state machine and exact evidence verification | July 24, 2026 |
-| STUDIO-1d plugin  | Canonical plugin command/import contract                 | July 24, 2026 |
-| STUDIO-1e package | Deterministic installable plugin and acceptance runbook  | July 25, 2026 |
-| STUDIO-1f fixes   | Real desktop transport, artifact, and routing fixes      | July 27, 2026 |
-| STUDIO-1g         | Real desktop import and backend verification             | July 27, 2026 |
-| CUTOVER-1A        | Backend-only production release artifact                 | July 27, 2026 |
-| CUTOVER-1B        | Standalone Frontend SSR release artifact                 | July 27, 2026 |
-| CUTOVER-1C        | Composed HTTPS release and authenticated transports      | July 27, 2026 |
-| CUTOVER-1D        | Release-baseline readiness and rollback rehearsal        | July 28, 2026 |
-| CUTOVER-1E        | Controlled default-branch promotion                      | July 28, 2026 |
-| CUTOVER-1F        | Promoted baseline CI alignment                           | July 28, 2026 |
-| CLEANUP-1A        | Legacy frontend decommission audit                       | July 28, 2026 |
-| CLEANUP-1B        | Legacy frontend tooling decoupling                       | July 28, 2026 |
-| CLEANUP-1C        | Legacy frontend physical removal                         | July 28, 2026 |
-| CLEANUP-1D        | Post-removal verification and permanent guard            | July 28, 2026 |
-| TECH-AUDIT-2      | Two-repository technical and architecture baseline       | July 28, 2026 |
-| SEC-201           | Cookie-only browser auth and refresh protection          | July 28, 2026 |
-| FE-201            | Real Studio verification in the canonical Workspace      | July 28, 2026 |
-| INT-201           | Reciprocal protected 40-check production contract        | July 28, 2026 |
-| DOC-201           | Active auth/release authority and terminology guard      | July 28, 2026 |
-| DATA-201          | Durable write cutover and compatibility-write removal    | July 31, 2026 |
-| DATA-202A         | Pipeline lifecycle persistence and restart truthfulness  | July 31, 2026 |
-| DATA-202B         | Autonomous session/checkpoint persistence                | July 31, 2026 |
-| DATA-202C         | Studio evidence persistence and runtime ownership audit  | July 31, 2026 |
+| Phase             | Description                                               | Date           |
+| ----------------- | --------------------------------------------------------- | -------------- |
+| UX-3              | Initial Implementation                                    | July 2026      |
+| UX-3A             | Forensic Audit                                            | July 2026      |
+| UX-3B             | Architecture Stabilization Planning                       | July 2026      |
+| UX-3C             | Execution Planning                                        | July 2026      |
+| UX-3D Sprint 1    | Duplicate Consolidation                                   | July 15, 2026  |
+| UX-3D Sprint 2    | shared/ui Migration                                       | July 15, 2026  |
+| UX-3D Sprint 3    | Repository Structure Execution                            | July 15, 2026  |
+| UX-3D Sprint 4    | Import & Path Alias Migration                             | July 15, 2026  |
+| UX-3D Sprint 5    | Legacy Cleanup                                            | July 15, 2026  |
+| UX-3D Sprint 6    | Design System Enforcement                                 | July 15, 2026  |
+| UX-3D Sprint 7    | Documentation Synchronization                             | July 15, 2026  |
+| UX-3D Sprint 8    | Final Validation & Closure                                | July 15, 2026  |
+| UX-4 Preparation  | Development Readiness                                     | July 15, 2026  |
+| UX-4.0            | Product Roadmap Definition                                | July 15, 2026  |
+| UX-4 Phase 1      | Must Have Features (F-1, F-2, F-3)                        | July 15, 2026  |
+| UX-4 Phase 2A     | Should Have Features (F-4 to F-8)                         | July 15, 2026  |
+| UX-4 Phase 2B     | Infrastructure (F-9, F-10, F-11)                          | July 15, 2026  |
+| CUTOVER-0         | Standalone frontend governance                            | July 24, 2026  |
+| CI-BASELINE-1     | Portable CI and repository hygiene                        | July 24, 2026  |
+| CORE-1a           | Durable identity, projects, and ownership                 | July 24, 2026  |
+| CORE-1b           | Durable blueprints, executions, chat, restart E2E         | July 24, 2026  |
+| WORKSPACE-1       | Workflow Workspace, scoped tools, logic and QA            | July 24, 2026  |
+| STUDIO-1a         | Durable canonical generation artifact lineage             | July 24, 2026  |
+| STUDIO-1b         | Shared Studio runtime and real artifact queue             | July 24, 2026  |
+| STUDIO-1c backend | ACK/result state machine and exact evidence verification  | July 24, 2026  |
+| STUDIO-1d plugin  | Canonical plugin command/import contract                  | July 24, 2026  |
+| STUDIO-1e package | Deterministic installable plugin and acceptance runbook   | July 25, 2026  |
+| STUDIO-1f fixes   | Real desktop transport, artifact, and routing fixes       | July 27, 2026  |
+| STUDIO-1g         | Real desktop import and backend verification              | July 27, 2026  |
+| CUTOVER-1A        | Backend-only production release artifact                  | July 27, 2026  |
+| CUTOVER-1B        | Standalone Frontend SSR release artifact                  | July 27, 2026  |
+| CUTOVER-1C        | Composed HTTPS release and authenticated transports       | July 27, 2026  |
+| CUTOVER-1D        | Release-baseline readiness and rollback rehearsal         | July 28, 2026  |
+| CUTOVER-1E        | Controlled default-branch promotion                       | July 28, 2026  |
+| CUTOVER-1F        | Promoted baseline CI alignment                            | July 28, 2026  |
+| CLEANUP-1A        | Legacy frontend decommission audit                        | July 28, 2026  |
+| CLEANUP-1B        | Legacy frontend tooling decoupling                        | July 28, 2026  |
+| CLEANUP-1C        | Legacy frontend physical removal                          | July 28, 2026  |
+| CLEANUP-1D        | Post-removal verification and permanent guard             | July 28, 2026  |
+| TECH-AUDIT-2      | Two-repository technical and architecture baseline        | July 28, 2026  |
+| SEC-201           | Cookie-only browser auth and refresh protection           | July 28, 2026  |
+| FE-201            | Real Studio verification in the canonical Workspace       | July 28, 2026  |
+| INT-201           | Reciprocal protected 40-check production contract         | July 28, 2026  |
+| DOC-201           | Active auth/release authority and terminology guard       | July 28, 2026  |
+| DATA-201          | Durable write cutover and compatibility-write removal     | July 31, 2026  |
+| DATA-202A         | Pipeline lifecycle persistence and restart truthfulness   | July 31, 2026  |
+| DATA-202B         | Autonomous session/checkpoint persistence                 | July 31, 2026  |
+| DATA-202C         | Studio evidence persistence and runtime ownership audit   | July 31, 2026  |
+| DOC-202A          | Documentation authority inventory and deterministic guard | August 3, 2026 |
+| INTEGRATION-1A    | Frontend/backend contract and clean-clone verification    | August 4, 2026 |
+| INTEGRATION-1B    | PostgreSQL restart recovery and lifecycle validation      | August 5, 2026 |
+| ROADMAP-AUDIT-1   | Evidence-based roadmap reconciliation                     | August 5, 2026 |
+| STUDIO-ACCEPT-1   | Real Studio delivery on project-scoped API authority      | August 6, 2026 |
 
 ---
 
@@ -181,29 +187,27 @@ See [Technical Audit v2.0](../02-audits/technical-v2/EXECUTIVE_AUDIT.md) for the
 
 ## Known Problems
 
-1. **Architecture gate (P0)**: 15 subsystems are unmodeled; layer rules/re-exports are not enforced; four cycles yield report status `FAIL` without failing CI.
-2. **Frontend quality gate (P1)**: 640 lint errors, 12 warnings, and 70 unformatted files are not covered by Frontend CI.
-3. **Autonomous pipeline (P1)**: the mounted lifecycle/events exist, but named engine phases are simulated.
-4. **Durability acknowledgement (P1)**: PostgreSQL writes are scheduled after synchronous cache mutation, so request success does not prove database acceptance.
+1. **Runtime playtest authority (P1)**: the current `PlaytestEngine` performs deterministic static analysis and records `runtimeExecuted=false`; it is not a Roblox runtime verdict.
+2. **Repair authority (P1)**: the bounded repair adapter remains unavailable and does not apply findings to artifacts, regenerate hashes, redeliver, or revalidate.
+3. **Native delivery breadth (P2)**: asset generation produces validated definitions/placeholders rather than authoritative uploaded Roblox assets, GUI, and complete place delivery.
+4. **Autonomous collaboration (P2)**: orchestration and durable sessions exist, but the bounded collaboration path reports `executedTaskCount=0` and remains preview-only.
+5. **Studio protocol diagnostics (P2)**: STUDIO-ACCEPT-1 observed one non-blocking startup `/api/studio/protocol/message` 400 response, a missing `rbxassetid://0` toolbar icon, and one post-save `Callbacks cannot yield` message. Each requires independent reproduction before a production change.
 
-Auth response credential exposure is resolved by SEC-201 under issue #45.
-Frontend Studio verification is resolved by FE-201 under Frontend issue #13 and
-PR #14. STUDIO-1 desktop delivery is also no longer a known problem; its
-completed evidence is recorded in `STUDIO-1G_DESKTOP_ACCEPTANCE_RESULT.md` and
-closed issue #15.
+Project-scoped Studio API-key authority is resolved by PR #171. The exhaustive
+architecture build gate is restored by PR #172. Current desktop evidence is
+recorded in `STUDIO-ACCEPT-1_DESKTOP_ACCEPTANCE_RESULT.md`.
 
 ---
 
 ## Technical Debt
 
-TECH-AUDIT-2 records 16 evidence-backed debt items. SEC-201 resolves TAV2-001,
-FE-201 resolves TAV2-002, and reciprocal Frontend PR #16 plus backend PR #48
-resolve TAV2-007. The remaining known problems above are the immediate
-release/architecture priorities. Other material items include
-runtime/provider/memory consolidation, route-level RBAC, dependency/security
-automation, the unused parallel execution contract, Frontend bundle budgets,
-process-local state classification, documentation consolidation, Studio native
-asset/GUI scope, and compiled ESM/dependency hygiene.
+TECH-AUDIT-2 remains historical planning evidence. ROADMAP-AUDIT-1 (#169)
+supersedes its ordering after verifying the current code at exact backend and
+Frontend baselines. The immediate product dependency chain is authoritative
+Roblox runtime playtest evidence, then artifact-applying repair and
+revalidation. Studio sync hardening (#168 and Frontend #32), native asset/GUI
+delivery, broader autonomous agent execution, and production observability
+remain separate backlog items.
 
 See [TECHNICAL_DEBT.md](../02-audits/technical-v2/TECHNICAL_DEBT.md) for definitions of done and [SPRINT_BACKLOG.md](../02-audits/technical-v2/SPRINT_BACKLOG.md) for ordered implementation work.
 
@@ -226,7 +230,7 @@ This template enforces:
 
 - **Backend release image**: `Dockerfile.backend` builds and starts the compiled backend without root `src/`, `public/`, Vite, or Tailwind inputs; CI verifies `GET /health`.
 - **Backend/PostgreSQL composition**: `deploy/docker-compose.backend.yml` provides the independently verified backend and persistent database boundary.
-- **Standalone Frontend release image**: active Frontend contents `022788ace31982e2b08ea099800de784b4dbe482` package `.output` plus one shared worker-to-Node adapter as a non-root SSR process.
+- **Standalone Frontend release image**: active paired Frontend contents `03aa0615ea13e06b08cdce36b993fa94fb07966a` package `.output` plus one shared worker-to-Node adapter as a non-root SSR process.
 - **Historical REL-202 composed HTTPS evidence**: backend source `010532f0b162097c8a645b1dc07c89081d25cb99` and exact Frontend contents `9495b696cf22c84cf61375f7df22e5ac5907cc3c` passed CI Pipeline #1073 (`30667404383`). The promoted backend merge `a33a8c30588f1e4705d27856e61d839c8efd42ac` has the same file tree. This retained evidence proves the prior DATA-202 pair; the active REL-203 pair is defined by the release inventory and its protected PR chain. External deployment remains a separate unchecked operation.
 - **Migration Runner**: `server/src/platform/storage/postgres/migrationRunner.ts` — auto-applies pending migrations on startup (skips when STORAGE_PROVIDER=inmemory).
 - **Rollback inventory**: CUTOVER-1A and CUTOVER-1B remain independently deployable and are unaffected by removal of the non-executable combined stack. The deleted legacy source/configuration/deployment inventory remains recoverable by reverting the focused CLEANUP-1C change from baseline `85a2fa8d512738e6d02ffae42da77af7a27db6fc`. The promoted default and pinned pre-promotion rollback reference remain protected.
