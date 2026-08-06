@@ -46,6 +46,28 @@ export class ArtifactTransferManager {
    * Transfer specific artifacts by ID (with content).
    */
   transfer(artifactIds: string[]): TransferResult {
+    return this.transferMatching(artifactIds, () => true);
+  }
+
+  /**
+   * Transfer artifacts only when they belong to the requested pipeline.
+   * Non-matching identifiers are reported as missing so callers do not leak
+   * cross-project artifact existence.
+   */
+  transferForPipeline(
+    pipelineId: string,
+    artifactIds: string[],
+  ): TransferResult {
+    return this.transferMatching(
+      artifactIds,
+      (artifact) => artifact.pipelineId === pipelineId,
+    );
+  }
+
+  private transferMatching(
+    artifactIds: string[],
+    isAllowed: (artifact: PipelineArtifact) => boolean,
+  ): TransferResult {
     const result: TransferResult = {
       artifacts: [],
       missing: [],
@@ -55,7 +77,7 @@ export class ArtifactTransferManager {
 
     for (const id of artifactIds) {
       const artifact = this.artifactStore.getById(id);
-      if (!artifact) {
+      if (!artifact || !isAllowed(artifact)) {
         result.missing.push(id);
         continue;
       }
