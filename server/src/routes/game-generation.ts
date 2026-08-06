@@ -243,6 +243,7 @@ export function createGameGenerationRouter(
         projectId,
         () => gameService.startGeneration(blueprintId || projectId, userId),
         async (execution) => {
+          studioManager.activateProjectExecution(projectId, execution.id);
           await generationHistory.record({
             id: execution.id,
             projectId,

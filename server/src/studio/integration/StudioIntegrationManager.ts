@@ -80,6 +80,10 @@ export class StudioIntegrationManager {
 
   // ─── Synchronization ──────────────────────────────────────────────────
 
+  activateProjectExecution(projectId: string, executionId: string): void {
+    this.runtime.activateProjectExecution(projectId, executionId);
+  }
+
   /**
    * Compatibility path for callers that already hold a real GenerationPackage.
    * The package is recorded into the canonical ArtifactStore and queued through

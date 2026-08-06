@@ -158,6 +158,13 @@ export class StudioRuntime {
     return session?.status === "active" ? session : null;
   }
 
+  activateProjectExecution(projectId: string, executionId: string): void {
+    if (!projectId.trim() || !executionId.trim()) {
+      throw new Error("projectId and executionId are required");
+    }
+    this.latestExecutionByProject.set(projectId, executionId);
+  }
+
   getProjectSnapshot(projectOrExecutionId: string): ProjectSnapshot | null {
     const executionId = this.resolveExecutionId(projectOrExecutionId);
     if (!executionId) return null;
@@ -253,6 +260,8 @@ export class StudioRuntime {
       };
     }
 
+    this.activateProjectExecution(projectId, executionId);
+
     const signature = this.createSnapshotSignature(snapshot);
     const session = this.sessions.getByClient(clientId);
     const previousEvidence = this.evidence.getLatestByProject(projectId);
@@ -262,8 +271,6 @@ export class StudioRuntime {
       previousEvidence.verificationStatus !== "failed"
         ? previousEvidence.snapshotSignature
         : this.exportSignatureByClient.get(clientId);
-    this.latestExecutionByProject.set(projectId, executionId);
-
     if (previousSignature === signature) {
       if (!previousEvidence) {
         return {

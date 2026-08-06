@@ -196,6 +196,77 @@ describe("Studio sync REST and protocol integration", () => {
     });
   });
 
+  it("resolves a distinct active execution before the first export", async () => {
+    const projectId = "project-distinct";
+    const executionId = "execution-distinct";
+    runtime.activateProjectExecution(projectId, executionId);
+    const artifact = await runtime.artifacts.store(
+      executionId,
+      "LUA_GENERATION",
+      null,
+      "print('before export')",
+    );
+
+    const snapshot = await post("/sync/project", { projectId });
+    expect(snapshot.status).toBe(200);
+    await expect(snapshot.json()).resolves.toMatchObject({
+      success: true,
+      data: {
+        projectId: executionId,
+        artifacts: [{ id: artifact.id }],
+      },
+    });
+
+    const change = {
+      changeId: "change-before-export",
+      artifactId: artifact.id,
+      artifactType: "lua",
+      changeType: "update",
+      content: "print('updated before export')",
+      timestamp: artifact.createdAt + 1,
+    };
+    const validation = await protocol("VALIDATE", {
+      projectId,
+      changes: [change],
+    });
+    await expect(validation.json()).resolves.toMatchObject({
+      success: true,
+      data: { status: "ok", payload: { valid: true } },
+    });
+
+    const sync = await protocol("SYNC_REQUEST", {
+      projectId,
+      changes: [change],
+    });
+    await expect(sync.json()).resolves.toMatchObject({
+      success: true,
+      data: { status: "ok", payload: { status: "applied" } },
+    });
+  });
+
+  it("rejects malformed sync changes before runtime delegation", async () => {
+    await runtime.artifacts.store(
+      "project-a",
+      "LUA_GENERATION",
+      null,
+      "print('before')",
+    );
+
+    for (const type of ["VALIDATE", "SYNC_REQUEST"]) {
+      const response = await protocol(type, {
+        projectId: "project-a",
+        changes: [{ changeId: "incomplete-change" }],
+      });
+      await expect(response.json()).resolves.toMatchObject({
+        success: true,
+        data: {
+          status: "error",
+          error: expect.stringMatching(/artifactId/),
+        },
+      });
+    }
+  });
+
   it("fails closed for unsupported create/delete mutations", async () => {
     const artifact = await runtime.artifacts.store(
       "project-a",

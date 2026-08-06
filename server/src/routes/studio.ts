@@ -12,6 +12,7 @@ import {
   type StudioImportReportInput,
 } from "../studio/v2/StudioRuntime";
 import type { StudioArtifactReceipt } from "../studio/v2/StudioTypes";
+import type { SyncChange } from "../studio/v2/sync/SyncTypes";
 import { STUDIO_PROJECT_ACCESS_CAPABILITY } from "../platform/security/ApiKeyStore";
 import type { ProjectAccessControl } from "./projects";
 import {
@@ -24,6 +25,65 @@ import {
 interface ParsedImportReport {
   data?: StudioImportReportInput;
   error?: string;
+}
+
+type ParsedSyncChanges =
+  { data: SyncChange[]; error?: never } | { data?: never; error: string };
+
+function parseSyncChanges(value: unknown): ParsedSyncChanges {
+  if (!Array.isArray(value)) {
+    return { error: "changes must be an array" };
+  }
+
+  const data: SyncChange[] = [];
+  for (const [index, item] of value.entries()) {
+    if (!item || typeof item !== "object" || Array.isArray(item)) {
+      return { error: `changes[${index}] must be an object` };
+    }
+    const change = item as Record<string, unknown>;
+    if (typeof change.changeId !== "string" || !change.changeId.trim()) {
+      return { error: `changes[${index}].changeId must be a non-empty string` };
+    }
+    if (typeof change.artifactId !== "string" || !change.artifactId.trim()) {
+      return {
+        error: `changes[${index}].artifactId must be a non-empty string`,
+      };
+    }
+    if (
+      typeof change.artifactType !== "string" ||
+      !change.artifactType.trim()
+    ) {
+      return {
+        error: `changes[${index}].artifactType must be a non-empty string`,
+      };
+    }
+    if (
+      change.changeType !== "create" &&
+      change.changeType !== "update" &&
+      change.changeType !== "delete"
+    ) {
+      return {
+        error: `changes[${index}].changeType must be create, update, or delete`,
+      };
+    }
+    if (
+      typeof change.timestamp !== "number" ||
+      !Number.isFinite(change.timestamp) ||
+      change.timestamp <= 0
+    ) {
+      return { error: `changes[${index}].timestamp must be a positive number` };
+    }
+    data.push({
+      changeId: change.changeId,
+      artifactId: change.artifactId,
+      artifactType: change.artifactType,
+      changeType: change.changeType,
+      content: change.content,
+      timestamp: change.timestamp,
+    });
+  }
+
+  return { data };
 }
 
 function parseImportReport(
@@ -321,12 +381,13 @@ export function createStudioRouter(
     if (!projectId || typeof projectId !== "string") {
       return createResponse(msg, "error", {}, "Missing projectId");
     }
-    if (!changes || !Array.isArray(changes)) {
-      return createResponse(msg, "error", {}, "Missing changes array");
+    const parsedChanges = parseSyncChanges(changes);
+    if ("error" in parsedChanges) {
+      return createResponse(msg, "error", {}, parsedChanges.error);
     }
     const result = await runtime.processProjectSyncRequest(
       projectId,
-      changes as Array<Record<string, unknown>> as never,
+      parsedChanges.data,
     );
     if (!result) {
       return createResponse(msg, "error", {}, "Project artifacts not found");
@@ -343,12 +404,13 @@ export function createStudioRouter(
     if (!projectId || typeof projectId !== "string") {
       return createResponse(msg, "error", {}, "Missing projectId");
     }
-    if (!changes || !Array.isArray(changes)) {
-      return createResponse(msg, "error", {}, "Missing changes array");
+    const parsedChanges = parseSyncChanges(changes);
+    if ("error" in parsedChanges) {
+      return createResponse(msg, "error", {}, parsedChanges.error);
     }
     const result = runtime.validateProjectChanges(
       projectId,
-      changes as Array<Record<string, unknown>> as never,
+      parsedChanges.data,
     );
     if (!result) {
       return createResponse(msg, "error", {}, "Project artifacts not found");
