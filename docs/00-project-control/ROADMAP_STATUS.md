@@ -2,8 +2,8 @@
 
 # Roadmap Status
 
-**Last Updated:** August 2, 2026  
-**Current backend release:** `release/cutover-1e-candidate@da55f716c798ec8c6a7f25a8e2a3b7b0a2244416`  
+**Last Updated:** August 6, 2026
+**Current backend release:** `release/cutover-1e-candidate@730f4c5217bd8fd790410c2092dfa88846d4b27f`
 **Current Frontend contents:** `kazakovak2001-lgtm/Frontend@03aa0615ea13e06b08cdce36b993fa94fb07966a`
 
 This file is the ordered current delivery authority. The dated TECH-AUDIT-2 roadmap and sprint backlog are historical planning baselines and do not override the status below. See [DOC-202A reconciliation](./DOC-202A_ROADMAP_AUTHORITY_RECONCILIATION.md) for exact completion evidence.
@@ -25,7 +25,12 @@ This file is the ordered current delivery authority. The dated TECH-AUDIT-2 road
 | `RUNTIME-2D` | Runtime/provider/orchestration/memory ownership | High | ✅ Complete | `ARCH-2B` |
 | `DURABILITY-2E` | Durable writes and operational-state truthfulness | High | ✅ Complete | `RUNTIME-2D` |
 | `SECURITY-2G` | Dependency, SAST, credential, image, SBOM, and RBAC control gate | High | ✅ Complete — `SECURITY-2G-F` | `DURABILITY-2E` |
-| `DOC-202` | Documentation-authority inventory and deterministic guards | Medium | In progress — `DOC-202A` | `SECURITY-2G` |
+| `DOC-202` | Documentation-authority inventory and deterministic guards | Medium | ✅ Complete — `DOC-202A` | `SECURITY-2G` |
+| `ROADMAP-AUDIT-1` | Evidence-based next-phase reconciliation | High | ✅ Complete | `DOC-202` |
+| `STUDIO-ACCEPT-1` | Real Studio acceptance of canonical artifact delivery | Critical | ✅ Complete | `ROADMAP-AUDIT-1` |
+| `RUNTIME-PLAYTEST-1` | Authoritative Studio-attached Roblox runtime evidence | High | Next | `STUDIO-ACCEPT-1` |
+| `REPAIR-1` | Artifact-applying repair, redelivery, and revalidation | High | Deferred | `RUNTIME-PLAYTEST-1` |
+| `STUDIO-SYNC-1A` | Project sync and artifact-transfer contract hardening | Medium | Backlog — issues #168 and Frontend #32 | `STUDIO-ACCEPT-1` |
 | `STUDIO-2F` | Native assets, GUI, runtime, and place delivery | Medium | Deferred | control gates |
 | `AUTONOMY-3A` | Real engine-backed autonomous phases and broader recovery | High | Deferred | control gates |
 | `COLLAB-3B` | Collaborative development | Medium | Deferred | preceding gates |
@@ -74,7 +79,7 @@ Ordered delivery:
 
 Every exception records the control, exact package/advisory/rule/path/fingerprint/component/case, affected repository and release identity, owner, rationale, compensating control, approval reference, creation date and expiry. Expired, ambiguous, wildcard or ownerless exceptions fail validation.
 
-`SECURITY-2G` is complete through merged PR #162 at `da55f716c798ec8c6a7f25a8e2a3b7b0a2244416`. `DOC-202A` is the active documentation-authority delivery; `STUDIO-2F`, `AUTONOMY-3A` and `COLLAB-3B` remain separate subsequent deliveries.
+`SECURITY-2G` is complete through merged PR #162 at `da55f716c798ec8c6a7f25a8e2a3b7b0a2244416`. `DOC-202A`, ROADMAP-AUDIT-1, and STUDIO-ACCEPT-1 are complete. `RUNTIME-PLAYTEST-1` is the next product-critical delivery; repair, native delivery, autonomy, collaboration, and lower-priority sync hardening remain separate subsequent deliveries.
 
 ## Completion evidence
 
@@ -88,7 +93,10 @@ Every exception records the control, exact package/advisory/rule/path/fingerprin
 - `SECURITY-2G-D`: issue #154 and PR #155; merged commit `d55fdb4d7eb920d0271d1ee7affe08666cdb270a`; exact paired runtime-image scanning, digest-bound SPDX SBOM evidence and deterministic image policy validation are complete.
 - `SECURITY-2G-E`: issue #156 and PR #157; merged commit `29bcd8ed53f9e86f41e753f305ad952c0dbc1de5`; generated authorization matrix contains 204 classified operations, all 26 API-key eligible operations enforce explicit capabilities and resource scopes, and Socket.IO `project:join` and `project:leave` have positive and negative parity evidence.
 - `SECURITY-2G-F`: issue #161 and PR #162; squash merge `da55f716c798ec8c6a7f25a8e2a3b7b0a2244416`; deterministic consolidated manifest and validator bind dependency, CodeQL, credential, image, SBOM, RBAC, production-contract and composed-release evidence; negative fixtures reject missing, stale, wildcard, unowned and unbound evidence.
-- Active paired release baseline: backend merge `da55f716c798ec8c6a7f25a8e2a3b7b0a2244416` plus Frontend contents `03aa0615ea13e06b08cdce36b993fa94fb07966a`.
+- `DOC-202A`: issue #163 and PR #164 established the documentation-authority inventory and fail-closed validator.
+- `ROADMAP-AUDIT-1`: issue #169 ranked real Studio acceptance, authoritative runtime playtest, and artifact-applying repair as the remaining product-critical dependency chain.
+- `STUDIO-ACCEPT-1`: issue #170 and [desktop acceptance evidence](./STUDIO-ACCEPT-1_DESKTOP_ACCEPTANCE_RESULT.md) bind backend `3230d2368ed781043fe9f3520c0d3de3836ec3bb`, package SHA-256 `86e102b663d48925f9e313248761bb2d91d7e0794252f6c04e50496d8ba05696`, execution `exec-1785976885787`, command `cmd-eef6e7bd-a`, eight exact receipts, real Studio hierarchy, plugin `Verified`, and backend `artifactVerified=true`.
+- Active paired release baseline: backend merge `730f4c5217bd8fd790410c2092dfa88846d4b27f` plus protected Frontend release contents `03aa0615ea13e06b08cdce36b993fa94fb07966a`. Frontend `e89f93d88a3c181b65769641e1a586c86827a6c5` remains the newer ROADMAP-AUDIT-1 implementation baseline and is not promoted here as a release pin.
 
 ## Runtime truthfulness
 
@@ -102,6 +110,7 @@ The canonical web application is the separate repository [`kazakovak2001-lgtm/Fr
 
 - [Current Project State](./CURRENT_STATE.md)
 - [DOC-202A Roadmap Authority Reconciliation](./DOC-202A_ROADMAP_AUTHORITY_RECONCILIATION.md)
+- [STUDIO-ACCEPT-1 Desktop Acceptance Result](./STUDIO-ACCEPT-1_DESKTOP_ACCEPTANCE_RESULT.md)
 - [Frontend Cutover Contract](./FRONTEND_CUTOVER.md)
 - [CUTOVER-1E Default Promotion](../project/CUTOVER-1E_DEFAULT_PROMOTION.md)
 - [CUTOVER-1F Post-Promotion CI Alignment](../project/CUTOVER-1F_POST_PROMOTION_CI_ALIGNMENT.md)
