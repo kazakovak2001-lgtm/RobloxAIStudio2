@@ -641,7 +641,8 @@ export function createStudioRouter(
       return;
     }
     const client = await requireStudioClientAccess(req, res, clientId);
-    if (!client || client.status !== "connected") {
+    if (!client) return;
+    if (client.status !== "connected") {
       res.status(404).json({ success: false, error: "Client not found" });
       return;
     }
