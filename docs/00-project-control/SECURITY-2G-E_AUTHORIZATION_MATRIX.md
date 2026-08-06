@@ -2,14 +2,15 @@
 
 # SECURITY-2G-E Authorization Matrix
 
-**Status:** Active baseline — incomplete inventory  
+**Status:** Historical planning baseline — superseded by `config/security/authorization-matrix.json`
+
 **Tracker:** issue #156  
 **Backend baseline:** `release/cutover-1e-candidate@d55fdb4d7eb920d0271d1ee7affe08666cdb270a`  
-**Paired Frontend contents:** `kazakovak2001-lgtm/Frontend@022788ace31982e2b08ea099800de784b4dbe482`
+**Current paired Frontend runtime contents:** `kazakovak2001-lgtm/Frontend@e89f93d88a3c181b65769641e1a586c86827a6c5`
 
 ## Purpose
 
-This document is the authoritative authorization inventory for SECURITY-2G-E. An operation is not complete until it has an explicit principal model, resource scope, allow evidence, deny evidence and REST/Socket.IO parity disposition where an equivalent operation exists.
+This document preserves the initial SECURITY-2G-E planning baseline. The authoritative current operation inventory is the generated `config/security/authorization-matrix.json`, validated by the SECURITY-2G control gate. An operation is not complete until it has an explicit principal model, resource scope, allow evidence, deny evidence and REST/Socket.IO parity disposition where an equivalent operation exists.
 
 The initial table records only behavior verified from the current source. It is intentionally incomplete and must not be interpreted as full RBAC coverage.
 

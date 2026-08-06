@@ -9,11 +9,10 @@ fail-closed guard for subsequent roadmap reconciliations.
 
 - Backend repository: `kazakovak2001-lgtm/RobloxAIStudio2`
 - Backend release branch: `release/cutover-1e-candidate`
-- Current backend release: `730f4c5217bd8fd790410c2092dfa88846d4b27f`
+- Current backend runtime release: `23e23c1c6733f0b3c52ff4f90fc6123b74c0cf72`
 - SECURITY-2G-F control baseline: `da55f716c798ec8c6a7f25a8e2a3b7b0a2244416`
 - Paired Frontend repository: `kazakovak2001-lgtm/Frontend`
-- Paired Frontend release contents: `03aa0615ea13e06b08cdce36b993fa94fb07966a`
-- Frontend audit baseline: `e89f93d88a3c181b65769641e1a586c86827a6c5`
+- Paired Frontend runtime contents: `e89f93d88a3c181b65769641e1a586c86827a6c5`
 
 ## Authority order
 
@@ -30,6 +29,11 @@ The August 6 reconciliation records the post-INTEGRATION-1A/1B release pair,
 the project-scoped Studio API-key fix in PR #171, the architecture manifest fix
 in PR #172, and the completed STUDIO-ACCEPT-1 evidence. ROADMAP-AUDIT-1 (#169)
 sets authoritative Roblox runtime playtest evidence as the next product phase.
+
+The pair-freshness reconciliation promotes the post-INTEGRATION-1B Frontend
+runtime and the post-PR-174 backend runtime as one exact executable pair. It
+also distinguishes those runtime identities from later control-only commits,
+avoiding impossible mutual self-reference between two repository commits.
 
 ## Required deterministic behavior
 
