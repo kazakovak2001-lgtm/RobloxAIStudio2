@@ -1,6 +1,14 @@
 import { describe, expect, it, vi } from "vitest";
 import { normalizeLuaArtifactContent } from "../../studio/artifacts/GenerationArtifactRecorder";
-import { LuaGeneratorAgent, extractServiceNames } from "./LuaGeneratorAgent";
+import {
+  getPlayableLuaIssues,
+  normalizeLuaScripts,
+} from "../../types/playableLua";
+import {
+  LuaGeneratorAgent,
+  extractServiceNames,
+  normalizeBacktickLuaCode,
+} from "./LuaGeneratorAgent";
 
 const input = {
   blueprint: {
@@ -65,7 +73,7 @@ describe("LuaGeneratorAgent playable runtime contract", () => {
     expect(generate.mock.calls[1]?.[0]).toContain("REPAIR REQUIRED");
   });
 
-  it("fails closed when the repaired response is still only scaffolding", async () => {
+  it("uses a labeled safe repair when every valid AI response is unplayable", async () => {
     const invalid = JSON.stringify({
       lua_generator: {
         server: [
@@ -81,9 +89,114 @@ describe("LuaGeneratorAgent playable runtime contract", () => {
 
     const result = await agent.execute(input);
 
-    expect(result.success).toBe(false);
-    expect(result.error).toContain("Lua generation is not playable");
-    expect(generate).toHaveBeenCalledTimes(2);
+    expect(result.success).toBe(true);
+    const generated = (result.data as Record<string, unknown>)
+      .lua_generator as Record<string, unknown>;
+    expect(generated.generationMode).toBe("safe_repair");
+    expect(generated.repairReason).toContain("Lua generation is not playable");
+    expect(JSON.stringify(generated)).toContain("GeneratedAdventure");
+    expect(generate).toHaveBeenCalledTimes(3);
+  });
+
+  it("uses a constrained final repair for structurally valid but unplayable Ollama output", async () => {
+    const playable = await new LuaGeneratorAgent().execute(input);
+    const initial = JSON.stringify({
+      lua_generator: {
+        server: [
+          {
+            name: "GameSetup.server.lua",
+            code: "game.Players.PlayerAdded:Connect(function(player) print(player.Name) end)",
+          },
+        ],
+        client: [
+          {
+            name: "HUD.client.lua",
+            code: "local gui = Instance.new('ScreenGui', game.Players.LocalPlayer.PlayerGui)",
+          },
+        ],
+        shared: [],
+      },
+    });
+    const invalidRepair = JSON.stringify({
+      lua_generator: {
+        server: [
+          {
+            name: "WorldInitializer.server.lua",
+            code: "game.Workspace:InsertService('StarterPlayer')\nlocal collectible = Instance.new('Part')\ncollectible.Parent = game.Workspace\ncollectible.Touched:Connect(function(hit) print(hit.Name) end)",
+          },
+        ],
+        client: [
+          {
+            name: "HUD.client.lua",
+            code: "local playerGui = game.Players.LocalPlayer:WaitForChild('PlayerGui')\nlocal gui = Instance.new('ScreenGui')\ngui.Parent = playerGui\nlocal label = Instance.new('TextLabel')\nlabel.Text = 'Score: 0'\nlabel.Parent = gui",
+          },
+        ],
+        shared: [],
+      },
+    });
+    const generate = vi
+      .fn()
+      .mockResolvedValueOnce(initial)
+      .mockResolvedValueOnce(invalidRepair)
+      .mockResolvedValueOnce(JSON.stringify(playable.data));
+    const agent = new LuaGeneratorAgent();
+    agent.setLLM({ generate });
+
+    const result = await agent.execute(input);
+
+    expect(result.success).toBe(true);
+    expect(generate).toHaveBeenCalledTimes(3);
+    expect(generate.mock.calls[2]?.[0]).toContain("gui.Parent = playerGui");
+    expect(generate.mock.calls[2]?.[0]).toContain(
+      "collectible.Touched:Connect",
+    );
+    expect(generate.mock.calls[2]?.[0]).toContain(
+      "runtime code must not call the invalid InsertService API",
+    );
+    expect(generate.mock.calls[2]?.[0]).toContain(
+      "event.OnClientEvent:Connect",
+    );
+  });
+
+  it("rejects disconnected scripts that only pass aggregate token checks", () => {
+    const scripts = normalizeLuaScripts({
+      lua_generator: {
+        server: [
+          {
+            name: "World.server.lua",
+            code: "local world = Instance.new('Folder')\nworld.Parent = workspace\nlocal collectible = Instance.new('Part')\ncollectible.Parent = world\ncollectible.Touched:Connect(function(hit) print(hit.Name) end)",
+          },
+          {
+            name: "Progress.server.lua",
+            code: "local event = Instance.new('RemoteEvent')\nevent.Parent = game:GetService('ReplicatedStorage')\nevent:FireAllClients(1, 1)\nlocal GamePassService = game:GetService('GamePassService')",
+          },
+          {
+            name: "ModuleAsScript.server.lua",
+            code: "return { start = function() print('never executed as a module') end }",
+          },
+        ],
+        client: [
+          {
+            name: "Hud.client.lua",
+            code: "local playerGui = game.Players.LocalPlayer:WaitForChild('PlayerGui')\nlocal gui = Instance.new('ScreenGui')\ngui.Parent = playerGui\nlocal label = Instance.new('TextLabel')\nlabel.Parent = gui",
+          },
+          {
+            name: "Progress.client.lua",
+            code: "game:GetService('ReplicatedStorage'):WaitForChild('Progress').OnClientEvent:Connect(function(score) print(score) end)",
+          },
+        ],
+        shared: [],
+      },
+    });
+
+    expect(getPlayableLuaIssues(scripts)).toEqual(
+      expect.arrayContaining([
+        "server code must not request the nonexistent GamePassService",
+        "server Scripts must not return ModuleScript tables",
+        "one server Script must own the complete world, objective, and progress event",
+        "one client LocalScript must create the HUD before observing progress",
+      ]),
+    );
   });
 
   it("never substitutes the generic stub game for malformed LLM JSON", async () => {
@@ -99,6 +212,26 @@ describe("LuaGeneratorAgent playable runtime contract", () => {
       "GeneratedAdventure",
     );
     expect(generate).toHaveBeenCalledTimes(2);
+  });
+
+  it("normalizes unambiguous backtick-delimited Lua code from local models", () => {
+    const raw =
+      '```json\n{"lua_generator":{"server":[{"name":"Game.server.lua","code": `local world = Instance.new("Folder")\nworld.Parent = workspace`}],"client":[],"shared":[]}}\n```';
+
+    const normalized = normalizeBacktickLuaCode(raw);
+
+    expect(normalized).not.toBeNull();
+    expect(normalized).toContain(
+      '"code": "local world = Instance.new(\\"Folder\\")\\nworld.Parent = workspace"',
+    );
+  });
+
+  it("rejects an unterminated backtick-delimited code value", () => {
+    expect(
+      normalizeBacktickLuaCode(
+        '{"lua_generator":{"server":[{"code": `print("broken")}]}}',
+      ),
+    ).toBeNull();
   });
 
   it("accepts path/content entries through the shared Studio normalizer", async () => {

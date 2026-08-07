@@ -8,21 +8,32 @@ import { ProjectSyncManager } from "../studio/v2/sync/ProjectSyncManager";
 const playableServer = `local world = Instance.new("Folder")
 world.Name = "GeneratedWorld"
 world.Parent = workspace
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local progress = Instance.new("RemoteEvent")
+progress.Name = "ObjectiveProgress"
+progress.Parent = ReplicatedStorage
 local collectible = Instance.new("Part")
 collectible.Name = "Collectible"
 collectible.Parent = world
 collectible.Touched:Connect(function(hit)
-  if hit.Parent then collectible:Destroy() end
+  if hit.Parent then
+    progress:FireAllClients(1, 1)
+    collectible:Destroy()
+  end
 end)`;
 
 const playableClient = `local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local playerGui = Players.LocalPlayer:WaitForChild("PlayerGui")
 local gui = Instance.new("ScreenGui")
 gui.Name = "ObjectiveHud"
 gui.Parent = playerGui
 local label = Instance.new("TextLabel")
 label.Text = "TODO list: collect the item"
-label.Parent = gui`;
+label.Parent = gui
+ReplicatedStorage:WaitForChild("ObjectiveProgress").OnClientEvent:Connect(function(score, target)
+  label.Text = "Collected " .. score .. "/" .. target
+end)`;
 
 function completedNode(
   agent: string,

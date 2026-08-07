@@ -124,19 +124,36 @@ export function getPlayableLuaIssues(
     }
   }
 
-  const serverSource = server
-    .map((script) =>
-      stripLuaStrings(stripLuaComments(script.content), new Set(["Workspace"])),
-    )
-    .join("\n");
-  const clientSource = client
-    .map((script) =>
-      stripLuaStrings(
-        stripLuaComments(script.content),
-        new Set(["ScreenGui", "PlayerGui"]),
-      ),
-    )
-    .join("\n");
+  const serverSources = server.map((script) =>
+    stripLuaStrings(
+      stripLuaComments(script.content),
+      new Set([
+        "Workspace",
+        "RemoteEvent",
+        "leaderstats",
+        "IntValue",
+        "GamePassService",
+      ]),
+    ),
+  );
+  const serverSource = serverSources.join("\n");
+  const clientSources = client.map((script) =>
+    stripLuaStrings(
+      stripLuaComments(script.content),
+      new Set(["ScreenGui", "PlayerGui", "leaderstats"]),
+    ),
+  );
+  const clientSource = clientSources.join("\n");
+
+  if (/:InsertService\s*\(/i.test(`${serverSource}\n${clientSource}`)) {
+    issues.push("runtime code must not call the invalid InsertService API");
+  }
+  if (/GetService\s*\(\s*["']GamePassService["']\s*\)/i.test(serverSource)) {
+    issues.push("server code must not request the nonexistent GamePassService");
+  }
+  if (serverSources.some((source) => /^return\s*\{/m.test(source))) {
+    issues.push("server Scripts must not return ModuleScript tables");
+  }
 
   if (
     !/Instance\.new\s*\(/.test(serverSource) ||
@@ -156,6 +173,53 @@ export function getPlayableLuaIssues(
   }
   if (!/\bplayerGui\b/i.test(clientSource)) {
     issues.push("client code must attach the HUD to PlayerGui");
+  }
+
+  const serverPublishesProgress =
+    (/Instance\.new\s*\(\s*["']RemoteEvent["']/.test(serverSource) &&
+      /\b(?:FireClient|FireAllClients)\s*\(/.test(serverSource)) ||
+    (/\bleaderstats\b/i.test(serverSource) &&
+      /Instance\.new\s*\(\s*["']IntValue["']/.test(serverSource));
+  const clientObservesProgress =
+    /\bOnClientEvent\s*:\s*Connect\s*\(/.test(clientSource) ||
+    (/\bleaderstats\b/i.test(clientSource) &&
+      /\.Changed\s*:\s*Connect\s*\(/.test(clientSource));
+  if (!serverPublishesProgress || !clientObservesProgress) {
+    issues.push(
+      "server and client code must connect objective progress to the HUD",
+    );
+  }
+
+  const hasSelfContainedServerObjective = serverSources.some(
+    (source) =>
+      /Instance\.new\s*\(/.test(source) &&
+      /\b(?:workspace|Workspace)\b/.test(source) &&
+      /(?:Touched|Activated|Triggered|MouseClick)\s*:\s*Connect\s*\(/i.test(
+        source,
+      ) &&
+      /Instance\.new\s*\(\s*["']RemoteEvent["']/.test(source) &&
+      /\b(?:FireClient|FireAllClients)\s*\(/.test(source),
+  );
+  if (!hasSelfContainedServerObjective) {
+    issues.push(
+      "one server Script must own the complete world, objective, and progress event",
+    );
+  }
+
+  const hasSelfContainedClientHud = clientSources.some((source) => {
+    const guiIndex = source.search(/Instance\.new\s*\(\s*["']ScreenGui["']/);
+    const listenerIndex = source.search(/\bOnClientEvent\s*:\s*Connect\s*\(/);
+    return (
+      guiIndex >= 0 &&
+      listenerIndex > guiIndex &&
+      /WaitForChild\s*\(\s*["']PlayerGui["']\s*\)/.test(source) &&
+      /\.Parent\s*=\s*playerGui\b/i.test(source)
+    );
+  });
+  if (!hasSelfContainedClientHud) {
+    issues.push(
+      "one client LocalScript must create the HUD before observing progress",
+    );
   }
 
   return [...new Set(issues)];

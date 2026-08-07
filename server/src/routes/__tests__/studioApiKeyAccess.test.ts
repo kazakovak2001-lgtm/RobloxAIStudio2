@@ -175,6 +175,31 @@ describe("Studio project-scoped API key access", () => {
     expect(generalProjectResponse.status).toBe(403);
   });
 
+  it("returns one 404 for stale command polling and keeps serving requests", async () => {
+    const { keyStore, project, url } = await startServer();
+    const issued = await keyStore.issueDurable(
+      "rai_0000000000000018_18181818181818181818181818181818",
+      {
+        capabilities: [STUDIO_PROJECT_ACCESS_CAPABILITY],
+        resourceScopes: [project.id],
+      },
+    );
+
+    const staleResponse = await fetch(
+      `${url.replace(/\/connect$/, "")}/commands?clientId=stale-client`,
+      { headers: { "x-api-key": issued.key } },
+    );
+
+    expect(staleResponse.status).toBe(404);
+    await expect(staleResponse.json()).resolves.toEqual({
+      success: false,
+      error: "Client not found",
+    });
+
+    const reconnectResponse = await connect(url, project.id, issued.key);
+    expect(reconnectResponse.status).toBe(200);
+  });
+
   it("keeps the browser owner access path unchanged", async () => {
     const storage = new InMemoryStorageProvider();
     const auth = {

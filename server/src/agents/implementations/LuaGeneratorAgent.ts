@@ -124,6 +124,103 @@ end)`,
   };
 }
 
+function safeRepairFallback(
+  name: string,
+  reason: string,
+): Record<string, unknown> {
+  const fallback = playableFallback(name);
+  const generated = fallback.lua_generator as Record<string, unknown>;
+  const patterns = Array.isArray(generated.patterns) ? generated.patterns : [];
+
+  return {
+    ...fallback,
+    lua_generator: {
+      ...generated,
+      patterns: [...patterns, "Deterministic validated safe repair"],
+      generationMode: "safe_repair",
+      repairReason: reason,
+    },
+  };
+}
+
+function isPlayableValidationError(error: unknown): boolean {
+  return (
+    error instanceof Error &&
+    error.message.startsWith("Lua generation is not playable:")
+  );
+}
+
+/**
+ * Some local models emit multiline Lua code as JavaScript-style template
+ * literals inside an otherwise JSON-shaped response. Normalize only an
+ * unambiguous `code` property and leave every other malformed construct
+ * untouched so the response still fails closed.
+ */
+export function normalizeBacktickLuaCode(raw: string): string | null {
+  const codeProperty = /"code"\s*:\s*`/g;
+  let cursor = 0;
+  let normalized = "";
+  let replacements = 0;
+
+  for (
+    let match = codeProperty.exec(raw);
+    match;
+    match = codeProperty.exec(raw)
+  ) {
+    const openingBacktick = codeProperty.lastIndex - 1;
+    let closingBacktick = raw.indexOf("`", openingBacktick + 1);
+
+    while (closingBacktick !== -1) {
+      const suffix = raw.slice(closingBacktick + 1);
+      if (/^\s*[,}]/.test(suffix)) break;
+      closingBacktick = raw.indexOf("`", closingBacktick + 1);
+    }
+
+    if (closingBacktick === -1) return null;
+
+    normalized += raw.slice(cursor, openingBacktick);
+    normalized += JSON.stringify(
+      raw.slice(openingBacktick + 1, closingBacktick),
+    );
+    cursor = closingBacktick + 1;
+    replacements += 1;
+    codeProperty.lastIndex = cursor;
+  }
+
+  if (replacements === 0) return null;
+  return normalized + raw.slice(cursor);
+}
+
+function buildConstrainedPlayableRepairPrompt(
+  name: string,
+  description: string,
+  reason: string,
+): string {
+  return `You are repairing Roblox Luau that failed a strict playability check.
+Return one valid JSON object only, with this exact shape:
+{ "lua_generator": { "server": [{"name":"Game.server.lua","code":"..."}], "client": [{"name":"HUD.client.lua","code":"..."}], "shared": [] } }
+
+Game: ${name}
+Brief: ${description}
+Validation failure: ${reason}
+
+Replace the previous solution completely. Keep the implementation small and use these exact runtime patterns:
+- Output exactly one server entry and exactly one client entry. Keep shared empty. Do not split the playable loop across scripts.
+- Server: create at least one Folder or Part with Instance.new and parent the generated world to workspace.
+- Server: create a collectible Part in workspace and connect collectible.Touched:Connect(function(hit) ... end).
+- Server: create a RemoteEvent in ReplicatedStorage and call event:FireClient(player, score, target) when the player touches the collectible.
+- Client: local playerGui = Players.LocalPlayer:WaitForChild("PlayerGui").
+- Client: local gui = Instance.new("ScreenGui"), then gui.Parent = playerGui.
+- Client: create a visible TextLabel and parent it to gui.
+- Client: connect event.OnClientEvent:Connect(function(score, target) ... end) and update the TextLabel.
+- Create the HUD before connecting OnClientEvent so it is visible immediately when Play starts.
+- Create every runtime dependency yourself. Do not use require or assume Workspace children already exist.
+- Use game:GetService to access services. Never call InsertService or request GamePassService.
+- Use only Roblox Luau APIs. Do not use promises, :andThen, DataStoreService, TODOs, placeholders, or client-side FireClient.
+- Server and client entries must execute directly and must not return modules.
+Return only the JSON object, with complete code strings.`;
+}
+
 export class LuaGeneratorAgent extends BaseAgent {
   public readonly name = "LuaGenerator";
   public readonly description =
@@ -209,11 +306,40 @@ export class LuaGeneratorAgent extends BaseAgent {
       assertPlayableLuaScripts(normalizeLuaScripts(result));
     } catch (error) {
       const reason = error instanceof Error ? error.message : String(error);
-      result = await this.generateLua(
-        `${prompt}\n\nREPAIR REQUIRED: ${reason}. Replace the entire response with complete executable code satisfying every runtime requirement.`,
-        { temperature: 0.1, maxTokens: 4000 },
-      );
-      assertPlayableLuaScripts(normalizeLuaScripts(result));
+      try {
+        result = await this.generateLua(
+          `${prompt}\n\nREPAIR REQUIRED: ${reason}. Replace the entire response with complete executable code satisfying every runtime requirement.`,
+          { temperature: 0.1, maxTokens: 4000 },
+        );
+        assertPlayableLuaScripts(normalizeLuaScripts(result));
+      } catch (repairError) {
+        if (!isPlayableValidationError(repairError)) throw repairError;
+        const repairReason =
+          repairError instanceof Error
+            ? repairError.message
+            : String(repairError);
+        try {
+          result = await this.generateLua(
+            buildConstrainedPlayableRepairPrompt(
+              name,
+              description,
+              repairReason,
+            ),
+            { temperature: 0, maxTokens: 4000 },
+          );
+          assertPlayableLuaScripts(normalizeLuaScripts(result));
+        } catch (finalRepairError) {
+          if (!isPlayableValidationError(finalRepairError)) {
+            throw finalRepairError;
+          }
+          const finalReason =
+            finalRepairError instanceof Error
+              ? finalRepairError.message
+              : String(finalRepairError);
+          result = safeRepairFallback(name, finalReason);
+          assertPlayableLuaScripts(normalizeLuaScripts(result));
+        }
+      }
     }
 
     return result;
@@ -226,7 +352,13 @@ export class LuaGeneratorAgent extends BaseAgent {
     if (!this.llm) throw new Error("Lua LLM provider is unavailable");
     const { LLMOutputParser } = await import("../../ai/outputParser");
     const raw = await this.llm.generate(prompt, options);
-    const parsed = LLMOutputParser.extractJSON(raw);
+    let parsed = LLMOutputParser.extractJSON(raw);
+    if (!parsed) {
+      const normalizedBackticks = normalizeBacktickLuaCode(raw);
+      if (normalizedBackticks) {
+        parsed = LLMOutputParser.extractJSON(normalizedBackticks);
+      }
+    }
     if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
       throw new Error("Lua LLM response is not a valid JSON object");
     }
