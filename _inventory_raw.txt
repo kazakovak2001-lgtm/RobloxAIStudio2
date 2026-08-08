@@ -68,7 +68,6 @@ _inventory_raw.txt
 architecture.layer-debt.json
 architecture.manifest.json
 artifacts/runtime/runtime-ownership-report.json
-commitlint.config.cjs
 commitlint.config.js
 config/cleanup/legacy-frontend-decommission.inventory.json
 config/cutover/promoted-baseline.inventory.json
