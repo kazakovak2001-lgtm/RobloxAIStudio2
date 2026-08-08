@@ -19,6 +19,7 @@
         "`DOC-202` | Documentation-authority inventory and deterministic guards | Medium | ✅ Complete — `DOC-202A`",
         "`STUDIO-ACCEPT-1` | Real Studio acceptance of canonical artifact delivery | Critical | ✅ Complete",
         "`RUNTIME-PLAYTEST-1` | Authoritative Studio-attached Roblox runtime evidence | High | ✅ Complete",
+        "`REPAIR-1` | Artifact-applying repair, redelivery, and revalidation | High | Next",
         "f3b89c9048884528eb8baa4d5a19e406cc1c6315",
         "06203ad0c296892d02467b2b566409fa10201cf6"
       ],
@@ -35,7 +36,8 @@
       "requiredClaims": [
         "f3b89c9048884528eb8baa4d5a19e406cc1c6315",
         "06203ad0c296892d02467b2b566409fa10201cf6",
-        "RUNTIME-PLAYTEST-1 complete"
+        "RUNTIME-PLAYTEST-1 complete",
+        "artifact-applying repair (REPAIR-1) is next"
       ],
       "forbiddenClaims": [
         "pending reviewed merge",
