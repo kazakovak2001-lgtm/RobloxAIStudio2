@@ -1457,11 +1457,14 @@
 │   │   │   └── playableLua.ts
 │   │   ├── ui-gen
 │   │   │   ├── __tests__
-│   │   │   │   └── UIGeneration.test.ts
+│   │   │   │   ├── UIGeneration.test.ts
+│   │   │   │   └── UIInstanceTree.test.ts
 │   │   │   ├── index.ts
 │   │   │   ├── types.ts
 │   │   │   ├── UIGenerationEngine.ts
 │   │   │   ├── UIHierarchyBuilder.ts
+│   │   │   ├── UIInstanceTreeBuilder.ts
+│   │   │   ├── UIInstanceTreeContract.ts
 │   │   │   ├── UILayoutBuilder.ts
 │   │   │   ├── UIStyleBuilder.ts
 │   │   │   └── UIValidationService.ts
