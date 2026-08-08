@@ -43,6 +43,19 @@ re-verified against the merged backend commit before promotion. STUDIO-SYNC-1A
 completion evidence against issue #168's property-test and coverage
 requirements was not re-verified in this reconciliation and remains open.
 
+A follow-up reconciliation the same day independently re-verified STUDIO-SYNC-1A
+against merged backend PR #176: all twelve P1-P12 property tests exist with
+exact spec numbering and `numRuns: 100`, protocol registration for
+`GET_PROJECT`/`GET_ARTIFACTS`/`SYNC_REQUEST`/`VALIDATE` is confirmed, and the
+described test command was run live (98/98 passed). The Frontend side (issue
+#32) was closed against a documented reinterpretation of its literal scope:
+Frontend PR #37 added the P13 property test and real field-level sync/
+connection markers on top of PR #34's two-card model, since
+`studioBridgeApi.ts`/`ProtocolMonitor.tsx` and individual Studio protocol
+messages do not exist in the current canonical Frontend. Both issues are
+closed; `ROADMAP_STATUS.md` and `CURRENT_STATE.md` mark STUDIO-SYNC-1A
+complete.
+
 ## Required deterministic behavior
 
 The DOC-202A validator must reject:
