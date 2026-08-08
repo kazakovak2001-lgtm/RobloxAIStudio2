@@ -17,6 +17,15 @@ function sanitizeForLog(value: string): string {
   return value.replace(/[\r\n]+/g, " ");
 }
 
+/** Reduce a caught error to a sanitized message string before logging.
+ * Error messages can themselves embed request-derived text (e.g.
+ * RepairEngine.recordDelivery's "no repair session" error includes the
+ * raw projectId), so the same sanitization applies here too. */
+function sanitizeErrorForLog(error: unknown): string {
+  const message = error instanceof Error ? error.message : String(error);
+  return sanitizeForLog(message);
+}
+
 export function createRepairRouter(
   access: ProjectAccessControl,
   agentRegistry: AgentRegistry,
@@ -147,9 +156,9 @@ export function createRepairRouter(
           });
         } catch (auditError) {
           console.error(
-            "Failed to record delivery audit for project %s",
+            "Failed to record delivery audit for project %s: %s",
             sanitizeForLog(projectId),
-            auditError,
+            sanitizeErrorForLog(auditError),
           );
         }
         throw error;
@@ -169,9 +178,9 @@ export function createRepairRouter(
         });
       } catch (auditError) {
         console.error(
-          "Failed to record delivery audit for project %s",
+          "Failed to record delivery audit for project %s: %s",
           sanitizeForLog(projectId),
-          auditError,
+          sanitizeErrorForLog(auditError),
         );
       }
 
