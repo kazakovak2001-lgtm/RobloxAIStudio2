@@ -582,6 +582,7 @@ server/src/__tests__/studio1.import-acknowledgement.test.ts
 server/src/__tests__/studio1.plugin-contract.test.ts
 server/src/__tests__/studio1.plugin-package.test.ts
 server/src/__tests__/studio1.runtime-consolidation.test.ts
+server/src/__tests__/studio2fa.allowlist-parity.test.ts
 server/src/__tests__/studioIntegration.test.ts
 server/src/agents/collaboration/AgentCoordinator.ts
 server/src/agents/collaboration/AgentMessageBus.ts
@@ -1222,3 +1223,4 @@ studio-plugin/src/ui/UI_legacy.lua
 studio-plugin/src/utils/ArtifactLoader.lua
 studio-plugin/src/utils/ErrorReporter.lua
 studio-plugin/src/utils/RuntimeValidator.lua
+studio-plugin/src/utils/UITreeMaterializer.lua

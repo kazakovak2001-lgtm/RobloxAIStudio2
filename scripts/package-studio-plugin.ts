@@ -63,6 +63,10 @@ export const ACTIVE_PLUGIN_SOURCES: readonly PluginSourceDefinition[] = [
   { sourcePath: "src/services/SyncManager.lua", className: "ModuleScript" },
   { sourcePath: "src/ui/CommandPanel.lua", className: "ModuleScript" },
   { sourcePath: "src/utils/ArtifactLoader.lua", className: "ModuleScript" },
+  {
+    sourcePath: "src/utils/UITreeMaterializer.lua",
+    className: "ModuleScript",
+  },
   { sourcePath: "src/utils/ErrorReporter.lua", className: "ModuleScript" },
 ] as const;
 
