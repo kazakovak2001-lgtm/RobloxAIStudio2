@@ -30,7 +30,7 @@ This file is the ordered current delivery authority. The dated TECH-AUDIT-2 road
 | `STUDIO-ACCEPT-1` | Real Studio acceptance of canonical artifact delivery | Critical | ✅ Complete | `ROADMAP-AUDIT-1` |
 | `RUNTIME-PLAYTEST-1` | Authoritative Studio-attached Roblox runtime evidence | High | Next | `STUDIO-ACCEPT-1` |
 | `REPAIR-1` | Artifact-applying repair, redelivery, and revalidation | High | Deferred | `RUNTIME-PLAYTEST-1` |
-| `STUDIO-SYNC-1A` | Project sync and artifact-transfer contract hardening | Medium | Backlog — issues #168 and Frontend #32 | `STUDIO-ACCEPT-1` |
+| `STUDIO-SYNC-1A` | Project sync and artifact-transfer contract hardening | Medium | ✅ Complete — backend PR #176, Frontend PR #34/#37 | `STUDIO-ACCEPT-1` |
 | `STUDIO-2F` | Native assets, GUI, runtime, and place delivery | Medium | Deferred | control gates |
 | `AUTONOMY-3A` | Real engine-backed autonomous phases and broader recovery | High | Deferred | control gates |
 | `COLLAB-3B` | Collaborative development | Medium | Deferred | preceding gates |
