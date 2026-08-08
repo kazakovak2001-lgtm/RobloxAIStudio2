@@ -18,7 +18,7 @@
         "`SECURITY-2G` | Dependency, SAST, credential, image, SBOM, and RBAC control gate | High | ✅ Complete — `SECURITY-2G-F`",
         "`DOC-202` | Documentation-authority inventory and deterministic guards | Medium | ✅ Complete — `DOC-202A`",
         "`STUDIO-ACCEPT-1` | Real Studio acceptance of canonical artifact delivery | Critical | ✅ Complete",
-        "`RUNTIME-PLAYTEST-1` | Authoritative Studio-attached Roblox runtime evidence | High | Next",
+        "`RUNTIME-PLAYTEST-1` | Authoritative Studio-attached Roblox runtime evidence | High | ✅ Complete",
         "f3b89c9048884528eb8baa4d5a19e406cc1c6315",
         "06203ad0c296892d02467b2b566409fa10201cf6"
       ],
@@ -35,7 +35,7 @@
       "requiredClaims": [
         "f3b89c9048884528eb8baa4d5a19e406cc1c6315",
         "06203ad0c296892d02467b2b566409fa10201cf6",
-        "STUDIO-ACCEPT-1 complete"
+        "RUNTIME-PLAYTEST-1 complete"
       ],
       "forbiddenClaims": [
         "pending reviewed merge",

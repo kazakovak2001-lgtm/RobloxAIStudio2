@@ -56,6 +56,17 @@ messages do not exist in the current canonical Frontend. Both issues are
 closed; `ROADMAP_STATUS.md` and `CURRENT_STATE.md` mark STUDIO-SYNC-1A
 complete.
 
+RUNTIME-PLAYTEST-1 is also recorded complete the same day. A generated
+vertical-slice project was delivered through the canonical Studio path and
+run in Roblox Studio Play mode on the exact merged pair (`f3b89c90`/
+`06203ad0`): the world rendered, the player spawned correctly, the objective
+was completable, the HUD updated live, and no runtime errors were reported.
+See [RUNTIME-PLAYTEST-1_RESULT.md](./RUNTIME-PLAYTEST-1_RESULT.md) for the
+full record, including its explicitly documented evidence limits — this
+result is operator-observed rather than a fully captured machine-verifiable
+receipt trail the way STUDIO-ACCEPT-1 is, and the record says so plainly
+rather than overstating its rigor.
+
 ## Required deterministic behavior
 
 The DOC-202A validator must reject:

@@ -1,8 +1,8 @@
 # Current Project State
 
 **Last Updated**: August 8, 2026
-**Phase**: STUDIO-ACCEPT-1 complete — authoritative Roblox runtime playtest evidence is next
-**Build Status**: Current runtime pair is backend `f3b89c9048884528eb8baa4d5a19e406cc1c6315` (release/cutover-1e-candidate, merged PR #177) plus protected Frontend contents `kazakovak2001-lgtm/Frontend@06203ad0c296892d02467b2b566409fa10201cf6` (main, merged PR #35). The reciprocal production, clean-clone, PostgreSQL restart, release-image, composed-release, security and Merge Gate chain must remain exact-pair bound. STUDIO-ACCEPT-1 passed on backend acceptance commit `3230d2368ed781043fe9f3520c0d3de3836ec3bb`; a fresh post-PR-174 Roblox runtime playtest remains the next authority gate. No external production deployment is claimed.
+**Phase**: RUNTIME-PLAYTEST-1 complete — artifact-applying repair (REPAIR-1) is next
+**Build Status**: Current runtime pair is backend `f3b89c9048884528eb8baa4d5a19e406cc1c6315` (release/cutover-1e-candidate, merged PR #177) plus protected Frontend contents `kazakovak2001-lgtm/Frontend@06203ad0c296892d02467b2b566409fa10201cf6` (main, merged PR #35). The reciprocal production, clean-clone, PostgreSQL restart, release-image, composed-release, security and Merge Gate chain must remain exact-pair bound. STUDIO-ACCEPT-1 passed on backend acceptance commit `3230d2368ed781043fe9f3520c0d3de3836ec3bb`. A Roblox Studio Play-mode runtime playtest on this exact pair passed with operator-observed evidence recorded in [RUNTIME-PLAYTEST-1_RESULT.md](./RUNTIME-PLAYTEST-1_RESULT.md); REPAIR-1 is the next authority gate. No external production deployment is claimed.
 
 ---
 
@@ -203,12 +203,12 @@ recorded in `STUDIO-ACCEPT-1_DESKTOP_ACCEPTANCE_RESULT.md`.
 
 TECH-AUDIT-2 remains historical planning evidence. ROADMAP-AUDIT-1 (#169)
 supersedes its ordering after verifying the current code at exact backend and
-Frontend baselines. The immediate product dependency chain is authoritative
-Roblox runtime playtest evidence, then artifact-applying repair and
-revalidation. Studio sync hardening (#168 and Frontend #32) is complete,
-verified against backend PR #176 and Frontend PR #34/#37. Native asset/GUI
-delivery, broader autonomous agent execution, and production observability
-remain separate backlog items.
+Frontend baselines. Authoritative Roblox runtime playtest evidence
+(RUNTIME-PLAYTEST-1) is complete; the immediate product dependency is now
+artifact-applying repair and revalidation (REPAIR-1). Studio sync hardening
+(#168 and Frontend #32) is complete, verified against backend PR #176 and
+Frontend PR #34/#37. Native asset/GUI delivery, broader autonomous agent
+execution, and production observability remain separate backlog items.
 
 See [TECHNICAL_DEBT.md](../02-audits/technical-v2/TECHNICAL_DEBT.md) for definitions of done and [SPRINT_BACKLOG.md](../02-audits/technical-v2/SPRINT_BACKLOG.md) for ordered implementation work.
 
