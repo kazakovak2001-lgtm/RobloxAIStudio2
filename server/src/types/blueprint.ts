@@ -216,6 +216,22 @@ export interface GenerationExecution {
   total_duration_ms?: number;
   error_message?: string;
   retry_count: number;
+  /**
+   * How this execution's content was produced.
+   *
+   * `"ai"`      — a real provider generated the artifacts.
+   * `"fallback"`— no provider resolved, or at least one stage returned
+   *               deterministic canned content. `ai_provider` may still be
+   *               set: it records what was configured, not what produced the
+   *               content. Never present this as an AI generation.
+   * `undefined` — recorded before provenance existed; provenance is unknown
+   *               and must not be reported as `"ai"`.
+   */
+  ai_mode?: "ai" | "fallback";
+  /** Resolved provider name, e.g. "ollama". Never a key or endpoint. */
+  ai_provider?: string;
+  /** Resolved model name, e.g. "qwen2.5-coder:7b". */
+  ai_model?: string;
 }
 
 export type CreateBlueprintInput = Omit<

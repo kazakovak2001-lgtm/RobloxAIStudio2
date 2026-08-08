@@ -28,6 +28,12 @@ export interface AgentResult<T = AgentOutput> {
   attempts: number;
   duration: number;
   timestamp: Date;
+  /**
+   * True when no LLM was available to this agent, so its output is
+   * deterministic fallback content rather than model output. Callers must
+   * never present such output as an AI generation.
+   */
+  usedFallback?: boolean;
 }
 
 export interface LLMOptions {
@@ -68,6 +74,18 @@ export abstract class BaseAgent {
 
   /** Per-agent override; falls back to shared default registry. */
   private _templateRegistry?: PromptTemplateRegistry;
+
+  /**
+   * Set when this run produced deterministic fallback content instead of
+   * model output. Reset at the start of every execute() attempt so it always
+   * describes the run being reported.
+   *
+   * Every concrete agent guards its own LLM call with `if (!this.llm) return
+   * fallback` before reaching generateWithRetry, so execute() also derives
+   * this from the absence of a provider. That is deliberately conservative:
+   * it can over-report fallback, never under-report it.
+   */
+  private _usedFallback = false;
 
   constructor(config?: Partial<AgentConfig>) {
     if (config?.maxRetries) this.maxRetries = config.maxRetries;
@@ -164,14 +182,17 @@ export abstract class BaseAgent {
 
     while (attempts < this.maxRetries) {
       attempts++;
+      this._usedFallback = false;
       try {
         const data = await this.process(input);
+        const usedFallback = this._usedFallback || !this.llm;
         return {
           success: true,
           data: data as AgentOutput,
           attempts,
           duration: Date.now() - startTime,
           timestamp: new Date(),
+          ...(usedFallback ? { usedFallback: true } : {}),
         };
       } catch (error) {
         lastError = error instanceof Error ? error : new Error(String(error));
@@ -217,7 +238,10 @@ export abstract class BaseAgent {
     fallback: Record<string, unknown>,
     options?: LLMOptions,
   ): Promise<Record<string, unknown>> {
-    if (!this.llm) return fallback;
+    if (!this.llm) {
+      this._usedFallback = true;
+      return fallback;
+    }
 
     // Lazily import to avoid circular dep at module load time
     const { LLMOutputParser } = await import("../../ai/outputParser");
