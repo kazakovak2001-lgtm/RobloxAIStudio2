@@ -243,7 +243,7 @@ function request(pathname, { method = "GET", headers = {}, body } = {}) {
       {
         method,
         headers,
-        rejectUnauthorized: false,
+        rejectUnauthorized: true,
       },
       (response) => {
         const chunks = [];
