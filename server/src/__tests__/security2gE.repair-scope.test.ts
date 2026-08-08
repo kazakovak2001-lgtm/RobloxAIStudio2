@@ -59,11 +59,47 @@ describe("SECURITY-2G-E repair scope", () => {
     );
   });
 
+  it("only trusts a client-supplied rollback executionId against the project's own history", () => {
+    expect(route).toContain(
+      'error: "executionId is not a known execution for this project"',
+    );
+    expect(route).toContain("knownExecutionIds.has(requestedExecutionId)");
+    const knownIdsDeclaration = route.indexOf("knownExecutionIds");
+    const rollbackCheck = route.indexOf(
+      "knownExecutionIds.has(requestedExecutionId)",
+    );
+    expect(knownIdsDeclaration).toBeGreaterThan(-1);
+    expect(rollbackCheck).toBeGreaterThan(knownIdsDeclaration);
+  });
+
+  it("records both successful and failed delivery attempts", () => {
+    expect(route).toContain("engine.recordDelivery(projectId,");
+    expect(route).toContain("success: syncResult.success");
+    expect(
+      (route.match(/engine\.recordDelivery\(projectId,/g) ?? []).length,
+    ).toBe(2);
+  });
+
+  it("guards the delivery audit read route the same way as the other reads", () => {
+    const deliveriesSection = route.indexOf('get("/:projectId/deliveries"');
+    expect(deliveriesSection).toBeGreaterThan(-1);
+    const nextRouteMarker = route.indexOf("\n  router.", deliveriesSection + 1);
+    const handler = route.slice(deliveriesSection, nextRouteMarker);
+    expect(handler).toContain("access.hasProjectAccess(req, projectId)");
+    expect(handler).toContain(
+      "access.requireProjectAccess(req, res, projectId)",
+    );
+    expect(handler.indexOf("hasProjectAccess")).toBeLessThan(
+      handler.indexOf("engine.getSession(projectId)"),
+    );
+    expect(route).toContain("studioManager.getProjectEvidence(projectId)");
+  });
+
   it("classifies all repair operations as project-owner", () => {
     const operations = matrix.operations.filter(
       (item) => item.source === "server/src/routes/repair.ts",
     );
-    expect(operations).toHaveLength(4);
+    expect(operations).toHaveLength(5);
     expect(operations).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
@@ -90,6 +126,13 @@ describe("SECURITY-2G-E repair scope", () => {
           classification: "project-owner",
           principal: "user-session",
           capability: "project.repair.deliver",
+          resourceScope: "path-project",
+        }),
+        expect.objectContaining({
+          operation: "GET /:projectId/deliveries",
+          classification: "project-owner",
+          principal: "user-session",
+          capability: "project.repair.deliveries.read",
           resourceScope: "path-project",
         }),
       ]),

@@ -343,4 +343,118 @@ describe("RepairEngine", () => {
     const executionIds = finalSession?.history.map((r) => r.newExecutionId);
     expect(new Set(executionIds).size).toBe(2);
   });
+
+  it("carries the delivery audit trail forward across later run() calls", async () => {
+    const registry = new AgentRegistry();
+    const luaAgent = registry.getAgent("lua_generator");
+    if (!luaAgent) throw new Error("lua_generator agent missing");
+
+    const playable = await luaAgent.execute({
+      blueprint: { name: "Repair Engine Test Game", description: "baseline" },
+      architecture: {},
+      gameplay: {},
+    });
+    luaAgent.setLLM({
+      generate: vi.fn().mockResolvedValue(JSON.stringify(playable.data)),
+    });
+
+    const blueprintRepository = new InMemoryBlueprintRepository();
+    await seedBlueprint(blueprintRepository);
+
+    const artifactStore = new ArtifactStore();
+    await artifactStore.store(
+      PARENT_EXECUTION_ID,
+      "LUA_GENERATION",
+      "lua_generator",
+      { scripts: BROKEN_SCRIPTS },
+    );
+
+    const engine = new RepairEngine(
+      registry,
+      blueprintRepository,
+      artifactStore,
+      new InMemoryRepairSessionStore(),
+    );
+
+    await engine.run(PROJECT_ID, PARENT_EXECUTION_ID, {
+      maxIterations: 1,
+      targetScore: 95,
+    });
+    await engine.recordDelivery(PROJECT_ID, {
+      timestamp: 1,
+      executionId: `${PARENT_EXECUTION_ID}-repair-1`,
+      studioId: "studio-1",
+      source: "latest-repair",
+      success: true,
+    });
+
+    // A later run() call must not silently wipe the delivery audit trail —
+    // the same carry-forward bug class already fixed once for history.
+    await engine.run(PROJECT_ID, PARENT_EXECUTION_ID, {
+      maxIterations: 1,
+      targetScore: 95,
+    });
+
+    const session = await engine.getSession(PROJECT_ID);
+    expect(session?.deliveries).toHaveLength(1);
+    expect(session?.deliveries[0]?.studioId).toBe("studio-1");
+  });
+
+  it("does not lose a delivery record or a repair record when they race", async () => {
+    const registry = new AgentRegistry();
+    const luaAgent = registry.getAgent("lua_generator");
+    if (!luaAgent) throw new Error("lua_generator agent missing");
+
+    const playable = await luaAgent.execute({
+      blueprint: { name: "Repair Engine Test Game", description: "baseline" },
+      architecture: {},
+      gameplay: {},
+    });
+    luaAgent.setLLM({
+      generate: vi.fn().mockResolvedValue(JSON.stringify(playable.data)),
+    });
+
+    const blueprintRepository = new InMemoryBlueprintRepository();
+    await seedBlueprint(blueprintRepository);
+
+    const artifactStore = new ArtifactStore();
+    await artifactStore.store(
+      PARENT_EXECUTION_ID,
+      "LUA_GENERATION",
+      "lua_generator",
+      { scripts: BROKEN_SCRIPTS },
+    );
+
+    const engine = new RepairEngine(
+      registry,
+      blueprintRepository,
+      artifactStore,
+      new InMemoryRepairSessionStore(),
+    );
+
+    // Seed a session so recordDelivery has something to attach to.
+    await engine.run(PROJECT_ID, PARENT_EXECUTION_ID, {
+      maxIterations: 1,
+      targetScore: 95,
+    });
+
+    await Promise.all([
+      engine.run(PROJECT_ID, PARENT_EXECUTION_ID, {
+        maxIterations: 1,
+        targetScore: 95,
+      }),
+      engine.recordDelivery(PROJECT_ID, {
+        timestamp: 2,
+        executionId: `${PARENT_EXECUTION_ID}-repair-1`,
+        studioId: "studio-race",
+        source: "latest-repair",
+        success: true,
+      }),
+    ]);
+
+    const session = await engine.getSession(PROJECT_ID);
+    expect(session?.history).toHaveLength(2);
+    expect(session?.deliveries).toHaveLength(1);
+    expect(session?.deliveries[0]?.studioId).toBe("studio-race");
+  });
 });

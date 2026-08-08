@@ -315,4 +315,143 @@ describe("REPAIR-1B delivery route", () => {
     expect(body.success).toBe(false);
     expect(body.error).toContain("synchronize threw");
   });
+
+  it("rolls back to the original parent execution when an explicit executionId is given", async () => {
+    const luaAgent = registry.getAgent("lua_generator");
+    if (!luaAgent) throw new Error("lua_generator agent missing");
+    const playable = await luaAgent.execute({
+      blueprint: { name: "Repair Delivery Test Game", description: "baseline" },
+      architecture: {},
+      gameplay: {},
+    });
+    luaAgent.setLLM({
+      generate: vi.fn().mockResolvedValue(JSON.stringify(playable.data)),
+    });
+    await runRepair(baseUrl);
+
+    studioManager.connect("studio-1", PROJECT_ID);
+
+    const response = await fetch(
+      `${baseUrl}/api/repair/${PROJECT_ID}/deliver`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          studioId: "studio-1",
+          executionId: PARENT_EXECUTION_ID,
+        }),
+      },
+    );
+
+    expect(response.status).toBe(200);
+    const body = (await response.json()) as {
+      success: boolean;
+      data: { executionId: string };
+    };
+    expect(body.success).toBe(true);
+    expect(body.data.executionId).toBe(PARENT_EXECUTION_ID);
+
+    const deliveriesResponse = await fetch(
+      `${baseUrl}/api/repair/${PROJECT_ID}/deliveries`,
+    );
+    const deliveriesBody = (await deliveriesResponse.json()) as {
+      data: {
+        deliveries: Array<{ source: string; executionId: string }>;
+      };
+    };
+    const rollbackRecord = deliveriesBody.data.deliveries.find(
+      (record) => record.source === "explicit-rollback",
+    );
+    expect(rollbackRecord?.executionId).toBe(PARENT_EXECUTION_ID);
+  });
+
+  it("rejects a rollback executionId that isn't part of this project's own history", async () => {
+    const luaAgent = registry.getAgent("lua_generator");
+    if (!luaAgent) throw new Error("lua_generator agent missing");
+    const playable = await luaAgent.execute({
+      blueprint: { name: "Repair Delivery Test Game", description: "baseline" },
+      architecture: {},
+      gameplay: {},
+    });
+    luaAgent.setLLM({
+      generate: vi.fn().mockResolvedValue(JSON.stringify(playable.data)),
+    });
+    await runRepair(baseUrl);
+
+    const synchronizeSpy = vi.spyOn(studioManager, "synchronizeExecution");
+
+    const response = await fetch(
+      `${baseUrl}/api/repair/${PROJECT_ID}/deliver`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          studioId: "studio-1",
+          executionId: "some-unrelated-execution-id",
+        }),
+      },
+    );
+
+    expect(response.status).toBe(400);
+    const body = (await response.json()) as { success: boolean; error: string };
+    expect(body.success).toBe(false);
+    expect(body.error).toContain("not a known execution");
+    expect(synchronizeSpy).not.toHaveBeenCalled();
+  });
+
+  it("GET /deliveries returns the accumulated audit trail and current Studio state", async () => {
+    const luaAgent = registry.getAgent("lua_generator");
+    if (!luaAgent) throw new Error("lua_generator agent missing");
+    const playable = await luaAgent.execute({
+      blueprint: { name: "Repair Delivery Test Game", description: "baseline" },
+      architecture: {},
+      gameplay: {},
+    });
+    luaAgent.setLLM({
+      generate: vi.fn().mockResolvedValue(JSON.stringify(playable.data)),
+    });
+    await runRepair(baseUrl);
+
+    studioManager.connect("studio-1", PROJECT_ID);
+
+    // One successful delivery.
+    await fetch(`${baseUrl}/api/repair/${PROJECT_ID}/deliver`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ studioId: "studio-1" }),
+    });
+
+    // One failed delivery.
+    vi.spyOn(studioManager, "synchronizeExecution").mockResolvedValueOnce({
+      success: false,
+      sessionId: "",
+      payloadId: "",
+      itemsSynced: 0,
+      totalSize: 0,
+      durationMs: 0,
+      error: "simulated queue failure",
+    });
+    await fetch(`${baseUrl}/api/repair/${PROJECT_ID}/deliver`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ studioId: "studio-1" }),
+    });
+
+    const response = await fetch(
+      `${baseUrl}/api/repair/${PROJECT_ID}/deliveries`,
+    );
+    expect(response.status).toBe(200);
+    const body = (await response.json()) as {
+      success: boolean;
+      data: {
+        deliveries: Array<{ success: boolean }>;
+        currentStudioState: unknown;
+      };
+    };
+    expect(body.success).toBe(true);
+    expect(body.data.deliveries).toHaveLength(2);
+    expect(body.data.deliveries.some((d) => d.success)).toBe(true);
+    expect(body.data.deliveries.some((d) => !d.success)).toBe(true);
+    expect(body.data).toHaveProperty("currentStudioState");
+  });
 });
