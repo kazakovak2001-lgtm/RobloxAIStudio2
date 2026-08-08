@@ -3,7 +3,7 @@
 # Roadmap Status
 
 **Last Updated:** August 8, 2026
-**Current backend runtime release:** `release/cutover-1e-candidate@6ec42d55a74bab0a9001d7e66c02795f01b41886`
+**Current backend runtime release:** `release/cutover-1e-candidate@558f9e6f5cc80e3ae9e29cafdd15ce6a33addd0f`
 **Current Frontend runtime contents:** `kazakovak2001-lgtm/Frontend@33cb19310ad15097eac1ff53832ee7d8191bd65e`
 
 This file is the ordered current delivery authority. The dated TECH-AUDIT-2 roadmap and sprint backlog are historical planning baselines and do not override the status below. See [DOC-202A reconciliation](./DOC-202A_ROADMAP_AUTHORITY_RECONCILIATION.md) for exact completion evidence.
@@ -29,7 +29,7 @@ This file is the ordered current delivery authority. The dated TECH-AUDIT-2 road
 | `ROADMAP-AUDIT-1` | Evidence-based next-phase reconciliation | High | ✅ Complete | `DOC-202` |
 | `STUDIO-ACCEPT-1` | Real Studio acceptance of canonical artifact delivery | Critical | ✅ Complete | `ROADMAP-AUDIT-1` |
 | `RUNTIME-PLAYTEST-1` | Authoritative Studio-attached Roblox runtime evidence | High | ✅ Complete — [result](./RUNTIME-PLAYTEST-1_RESULT.md), operator-observed evidence | `STUDIO-ACCEPT-1` |
-| `REPAIR-1` | Artifact-applying repair, redelivery, and revalidation | High | 🔧 In progress — REPAIR-1A/1B landed (backend PR #185/#187, Frontend PR #38); rollback/audit (1C) remains | `RUNTIME-PLAYTEST-1` |
+| `REPAIR-1` | Artifact-applying repair, redelivery, and revalidation | High | ✅ Complete on the backend — 1A/1B/1C landed (backend PR #185/#187/#189, Frontend PR #38); Frontend UI is a separate follow-up | `RUNTIME-PLAYTEST-1` |
 | `STUDIO-SYNC-1A` | Project sync and artifact-transfer contract hardening | Medium | ✅ Complete — backend PR #176, Frontend PR #34/#37 | `STUDIO-ACCEPT-1` |
 | `STUDIO-2F` | Native assets, GUI, runtime, and place delivery | Medium | Deferred | control gates |
 | `AUTONOMY-3A` | Real engine-backed autonomous phases and broader recovery | High | Deferred | control gates |
@@ -79,7 +79,7 @@ Ordered delivery:
 
 Every exception records the control, exact package/advisory/rule/path/fingerprint/component/case, affected repository and release identity, owner, rationale, compensating control, approval reference, creation date and expiry. Expired, ambiguous, wildcard or ownerless exceptions fail validation.
 
-`SECURITY-2G` is complete through merged PR #162 at `da55f716c798ec8c6a7f25a8e2a3b7b0a2244416`. `DOC-202A`, ROADMAP-AUDIT-1, STUDIO-ACCEPT-1, and RUNTIME-PLAYTEST-1 are complete. `REPAIR-1` is the current product-critical delivery, with sub-phase 1A (real artifact-applying single-strategy repair) and sub-phase 1B (Studio redelivery of repaired artifacts) landed; rollback/audit (1C), native delivery, autonomy, collaboration, and lower-priority sync hardening remain separate subsequent deliveries.
+`SECURITY-2G` is complete through merged PR #162 at `da55f716c798ec8c6a7f25a8e2a3b7b0a2244416`. `DOC-202A`, ROADMAP-AUDIT-1, STUDIO-ACCEPT-1, RUNTIME-PLAYTEST-1, and `REPAIR-1` are complete. `REPAIR-1` landed all three backend sub-phases: 1A (real artifact-applying single-strategy repair), 1B (Studio redelivery of repaired artifacts), and 1C (durable delivery/rollback audit trail). A Frontend UI surfacing repair/delivery/rollback, native delivery, autonomy, collaboration, and lower-priority sync hardening remain separate subsequent deliveries.
 
 ## Completion evidence
 
@@ -97,7 +97,8 @@ Every exception records the control, exact package/advisory/rule/path/fingerprin
 - `ROADMAP-AUDIT-1`: issue #169 ranked real Studio acceptance, authoritative runtime playtest, and artifact-applying repair as the remaining product-critical dependency chain.
 - `STUDIO-ACCEPT-1`: issue #170 and [desktop acceptance evidence](./STUDIO-ACCEPT-1_DESKTOP_ACCEPTANCE_RESULT.md) bind backend `3230d2368ed781043fe9f3520c0d3de3836ec3bb`, package SHA-256 `86e102b663d48925f9e313248761bb2d91d7e0794252f6c04e50496d8ba05696`, execution `exec-1785976885787`, command `cmd-eef6e7bd-a`, eight exact receipts, real Studio hierarchy, plugin `Verified`, and backend `artifactVerified=true`.
 - `REPAIR-1B`: backend PR #187 merged `6ec42d55a74bab0a9001d7e66c02795f01b41886`; adds `POST /api/repair/:projectId/deliver`, resolving the latest repaired execution server-side and reusing the existing Studio sync pipeline unchanged. Backend-only — no Frontend or Studio plugin changes required.
-- Active paired runtime baseline: backend `6ec42d55a74bab0a9001d7e66c02795f01b41886` plus protected Frontend contents `33cb19310ad15097eac1ff53832ee7d8191bd65e`. Control-only reconciliation commits may follow these runtime identities; release evidence remains bound to this exact executable pair.
+- `REPAIR-1C`: backend PR #189 merged `558f9e6f5cc80e3ae9e29cafdd15ce6a33addd0f`; adds a durable delivery/rollback audit trail (`RepairDeliveryRecord[]`), an optional project-validated `executionId` on `/deliver` for explicit rollback, and `GET /:projectId/deliveries`. Backend-only.
+- Active paired runtime baseline: backend `558f9e6f5cc80e3ae9e29cafdd15ce6a33addd0f` plus protected Frontend contents `33cb19310ad15097eac1ff53832ee7d8191bd65e`. Control-only reconciliation commits may follow these runtime identities; release evidence remains bound to this exact executable pair.
 
 ## Runtime truthfulness
 
