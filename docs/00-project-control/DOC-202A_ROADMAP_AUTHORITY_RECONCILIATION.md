@@ -133,8 +133,12 @@ promotion changes the recorded identity without changing executable content;
 and the earlier per-phase paragraphs above deliberately retain the merge SHAs
 that were current when each phase landed, since they are historical records
 rather than statements about the present pair. The Frontend change adds an
-Integrate-stage repair panel over the existing REPAIR-1B/1C routes and
-repairs a stale client contract — the previous generic repair call predated
+Integrate-stage repair panel over existing routes from two sub-phases — the
+run action calls the REPAIR-1A route `POST /api/repair/run`, while
+redelivery, rollback and the audit trail call the REPAIR-1B/1C routes
+`POST /api/repair/:projectId/deliver` and
+`GET /api/repair/:projectId/deliveries` — and it repairs a stale client
+contract: the previous generic repair call predated
 REPAIR-1A and omitted the `executionId` the merged route requires, so it
 would have failed closed with HTTP 400 on every invocation. Review found one
 real defect before merge: a mutation begun on one project could resolve after
