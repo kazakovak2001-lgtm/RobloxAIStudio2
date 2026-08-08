@@ -172,4 +172,67 @@ describe("RepairEngine", () => {
     );
     expect(derived).toEqual([]);
   });
+
+  it("keeps an earlier successful repair discoverable after a later run() call", async () => {
+    const registry = new AgentRegistry();
+    const luaAgent = registry.getAgent("lua_generator");
+    if (!luaAgent) throw new Error("lua_generator agent missing");
+
+    const playable = await luaAgent.execute({
+      blueprint: { name: "Repair Engine Test Game", description: "baseline" },
+      architecture: {},
+      gameplay: {},
+    });
+
+    const blueprintRepository = new InMemoryBlueprintRepository();
+    await seedBlueprint(blueprintRepository);
+
+    const artifactStore = new ArtifactStore();
+    await artifactStore.store(
+      PARENT_EXECUTION_ID,
+      "LUA_GENERATION",
+      "lua_generator",
+      { scripts: BROKEN_SCRIPTS },
+    );
+
+    const sessionStore = new InMemoryRepairSessionStore();
+    const engine = new RepairEngine(
+      registry,
+      blueprintRepository,
+      artifactStore,
+      sessionStore,
+    );
+
+    luaAgent.setLLM({
+      generate: vi.fn().mockResolvedValue(JSON.stringify(playable.data)),
+    });
+    const firstSession = await engine.run(PROJECT_ID, PARENT_EXECUTION_ID, {
+      maxIterations: 1,
+      targetScore: 95,
+    });
+    const firstNewExecutionId = firstSession.history[0]?.newExecutionId;
+    expect(firstNewExecutionId).toBeDefined();
+
+    // A second run() call for the same project — e.g. a retry against the
+    // still-broken parent — must not discard the first call's history.
+    luaAgent.setLLM({
+      generate: vi.fn().mockRejectedValue(new Error("provider unavailable")),
+    });
+    const secondSession = await engine.run(PROJECT_ID, PARENT_EXECUTION_ID, {
+      maxIterations: 1,
+      targetScore: 95,
+    });
+
+    expect(secondSession.history).toHaveLength(2);
+    expect(secondSession.history[0]?.newExecutionId).toBe(firstNewExecutionId);
+    expect(secondSession.history[1]?.newExecutionId).toBeUndefined();
+
+    const reloaded = await engine.getSession(PROJECT_ID);
+    expect(reloaded?.history).toHaveLength(2);
+    expect(reloaded?.history[0]?.newExecutionId).toBe(firstNewExecutionId);
+
+    // The first repair's artifacts are still durably intact.
+    const firstArtifacts = artifactStore.getByPipeline(firstNewExecutionId!);
+    expect(firstArtifacts.length).toBeGreaterThan(0);
+  });
 });

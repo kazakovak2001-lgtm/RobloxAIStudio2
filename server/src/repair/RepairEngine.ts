@@ -66,6 +66,12 @@ export class RepairEngine {
     const cfg: RepairConfig = { ...DEFAULT_REPAIR_CONFIG, ...config };
     const startTime = Date.now();
 
+    // Carry forward prior history so an earlier successful repair's
+    // newExecutionId stays discoverable even if this call finds nothing
+    // further to fix — RepairEngine.getSession() is the durable index of
+    // "what was ever repaired" and must not be discarded on every call.
+    const priorSession = await this.sessionStore.get(projectId);
+
     const session: RepairSessionState = {
       projectId,
       status: "running",
@@ -73,7 +79,7 @@ export class RepairEngine {
       maxIterations: cfg.maxIterations,
       targetScore: cfg.targetScore,
       currentScore: 0,
-      history: [],
+      history: priorSession ? [...priorSession.history] : [],
       startedAt: startTime,
       totalRepairs: 0,
     };

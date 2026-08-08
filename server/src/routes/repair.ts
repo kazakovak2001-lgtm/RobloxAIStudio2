@@ -7,12 +7,14 @@ import { RepairEngine } from "../repair";
 import type { AgentRegistry } from "../agents/core/AgentRegistry";
 import type { IBlueprintRepository } from "../projects/repository/blueprint.repository";
 import { ArtifactStore } from "../pipeline/v2";
+import type { StudioIntegrationManager } from "../studio/integration/StudioIntegrationManager";
 import type { ProjectAccessControl } from "./projects";
 
 export function createRepairRouter(
   access: ProjectAccessControl,
   agentRegistry: AgentRegistry,
   blueprintRepository: IBlueprintRepository,
+  studioManager: StudioIntegrationManager,
   artifactStore: ArtifactStore = new ArtifactStore(),
 ): Router {
   const router = Router();
@@ -21,6 +23,18 @@ export function createRepairRouter(
     blueprintRepository,
     artifactStore,
   );
+
+  const findStudioSession = (projectId: string, studioId?: string) => {
+    if (studioId) {
+      const session = studioManager.getSession(studioId);
+      return session && session.projectId === projectId ? session : null;
+    }
+    return (
+      studioManager
+        .getActiveSessions()
+        .find((session) => session.projectId === projectId) ?? null
+    );
+  };
 
   // POST /api/repair/run — attempt a real repair against a specific execution
   router.post("/run", async (req, res) => {
@@ -44,6 +58,47 @@ export function createRepairRouter(
         error: error instanceof Error ? error.message : "Repair failed",
       });
     }
+  });
+
+  // POST /api/repair/:projectId/deliver — push the latest repaired
+  // execution's artifacts to a connected Studio session. The target
+  // execution is always resolved server-side from the repair session's own
+  // history — never client-supplied.
+  router.post("/:projectId/deliver", async (req, res) => {
+    const projectId = req.params.projectId;
+    if (!(await access.requireProjectAccess(req, res, projectId))) return;
+
+    const session = await engine.getSession(projectId);
+    const targetExecutionId = [...(session?.history ?? [])]
+      .reverse()
+      .find((record) => record.newExecutionId)?.newExecutionId;
+    if (!targetExecutionId) {
+      res.status(404).json({
+        success: false,
+        error: "No repaired execution available for this project",
+      });
+      return;
+    }
+
+    const { studioId } = req.body;
+    const studioSession = findStudioSession(projectId, studioId);
+    if (!studioSession) {
+      res.status(404).json({
+        success: false,
+        error: "No connected Studio session available for this project.",
+      });
+      return;
+    }
+
+    const syncResult = await studioManager.synchronizeExecution(
+      studioSession.studioId,
+      projectId,
+      targetExecutionId,
+    );
+    res.json({
+      success: true,
+      data: { executionId: targetExecutionId, syncResult },
+    });
   });
 
   // GET /api/repair/:projectId — get repair session
