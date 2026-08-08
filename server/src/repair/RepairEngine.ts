@@ -33,6 +33,7 @@ export class RepairEngine {
   private readonly executor: RepairExecutor;
   private readonly playtestEngine: PlaytestEngine;
   private readonly sessionStore: RepairSessionStore;
+  private readonly runQueues = new Map<string, Promise<void>>();
 
   constructor(
     agentRegistry: AgentRegistry,
@@ -57,8 +58,36 @@ export class RepairEngine {
    * Attempt to repair the Lua artifacts for one execution. Returns the
    * resulting session state; artifacts are only persisted if the attempt
    * produced and validated a real change.
+   *
+   * Calls for the same projectId are serialized (mirrors ArtifactStore's
+   * per-key mutation queue) so two concurrent runs can't read the same
+   * session snapshot and have one overwrite the other's history.
    */
   async run(
+    projectId: string,
+    executionId: string,
+    config?: Partial<RepairConfig>,
+  ): Promise<RepairSessionState> {
+    const previous = this.runQueues.get(projectId) ?? Promise.resolve();
+    const operation = previous
+      .catch(() => undefined)
+      .then(() => this.runExclusive(projectId, executionId, config));
+    const tracked = operation.then(
+      () => undefined,
+      () => undefined,
+    );
+    this.runQueues.set(projectId, tracked);
+
+    try {
+      return await operation;
+    } finally {
+      if (this.runQueues.get(projectId) === tracked) {
+        this.runQueues.delete(projectId);
+      }
+    }
+  }
+
+  private async runExclusive(
     projectId: string,
     executionId: string,
     config?: Partial<RepairConfig>,
@@ -139,7 +168,15 @@ export class RepairEngine {
         break;
       }
 
-      const newExecutionId = `${executionId}-repair-${session.currentIteration}`;
+      // Suffix from the cumulative count of prior attempts (success or
+      // fail) against this exact parent, not currentIteration alone —
+      // currentIteration resets to 1 on every call, so two separate
+      // successful run() calls against the same parent would otherwise
+      // both produce "-repair-1" and collide in ArtifactStore.
+      const priorAttemptsForParent = session.history.filter(
+        (record) => record.parentExecutionId === executionId,
+      ).length;
+      const newExecutionId = `${executionId}-repair-${priorAttemptsForParent + 1}`;
       await this.persistRepairedExecution(executionId, newExecutionId, scripts);
 
       const newInput = await assembleRepairInput(

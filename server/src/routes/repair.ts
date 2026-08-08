@@ -68,37 +68,53 @@ export function createRepairRouter(
     const projectId = req.params.projectId;
     if (!(await access.requireProjectAccess(req, res, projectId))) return;
 
-    const session = await engine.getSession(projectId);
-    const targetExecutionId = [...(session?.history ?? [])]
-      .reverse()
-      .find((record) => record.newExecutionId)?.newExecutionId;
-    if (!targetExecutionId) {
-      res.status(404).json({
-        success: false,
-        error: "No repaired execution available for this project",
-      });
-      return;
-    }
+    try {
+      const session = await engine.getSession(projectId);
+      const targetExecutionId = [...(session?.history ?? [])]
+        .reverse()
+        .find((record) => record.newExecutionId)?.newExecutionId;
+      if (!targetExecutionId) {
+        res.status(404).json({
+          success: false,
+          error: "No repaired execution available for this project",
+        });
+        return;
+      }
 
-    const { studioId } = req.body;
-    const studioSession = findStudioSession(projectId, studioId);
-    if (!studioSession) {
-      res.status(404).json({
-        success: false,
-        error: "No connected Studio session available for this project.",
-      });
-      return;
-    }
+      const { studioId } = req.body;
+      const studioSession = findStudioSession(projectId, studioId);
+      if (!studioSession) {
+        res.status(404).json({
+          success: false,
+          error: "No connected Studio session available for this project.",
+        });
+        return;
+      }
 
-    const syncResult = await studioManager.synchronizeExecution(
-      studioSession.studioId,
-      projectId,
-      targetExecutionId,
-    );
-    res.json({
-      success: true,
-      data: { executionId: targetExecutionId, syncResult },
-    });
+      const syncResult = await studioManager.synchronizeExecution(
+        studioSession.studioId,
+        projectId,
+        targetExecutionId,
+      );
+      if (!syncResult.success) {
+        res.status(502).json({
+          success: false,
+          error: syncResult.error ?? "Studio delivery failed",
+          data: { executionId: targetExecutionId, syncResult },
+        });
+        return;
+      }
+
+      res.json({
+        success: true,
+        data: { executionId: targetExecutionId, syncResult },
+      });
+    } catch (error) {
+      res.status(400).json({
+        success: false,
+        error: error instanceof Error ? error.message : "Delivery failed",
+      });
+    }
   });
 
   // GET /api/repair/:projectId — get repair session

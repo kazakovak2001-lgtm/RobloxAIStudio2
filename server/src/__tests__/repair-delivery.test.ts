@@ -243,4 +243,76 @@ describe("REPAIR-1B delivery route", () => {
     expect(body.data.executionId).toBe(expectedExecutionId);
     expect(body.data.syncResult.success).toBe(true);
   });
+
+  it("reports failure when Studio synchronization itself fails", async () => {
+    const luaAgent = registry.getAgent("lua_generator");
+    if (!luaAgent) throw new Error("lua_generator agent missing");
+    const playable = await luaAgent.execute({
+      blueprint: { name: "Repair Delivery Test Game", description: "baseline" },
+      architecture: {},
+      gameplay: {},
+    });
+    luaAgent.setLLM({
+      generate: vi.fn().mockResolvedValue(JSON.stringify(playable.data)),
+    });
+    await runRepair(baseUrl);
+
+    studioManager.connect("studio-1", PROJECT_ID);
+    vi.spyOn(studioManager, "synchronizeExecution").mockResolvedValue({
+      success: false,
+      sessionId: "",
+      payloadId: "",
+      itemsSynced: 0,
+      totalSize: 0,
+      durationMs: 0,
+      error: "simulated queue failure",
+    });
+
+    const response = await fetch(
+      `${baseUrl}/api/repair/${PROJECT_ID}/deliver`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ studioId: "studio-1" }),
+      },
+    );
+
+    expect(response.status).toBe(502);
+    const body = (await response.json()) as { success: boolean; error: string };
+    expect(body.success).toBe(false);
+    expect(body.error).toContain("simulated queue failure");
+  });
+
+  it("returns a non-2xx response when Studio synchronization throws", async () => {
+    const luaAgent = registry.getAgent("lua_generator");
+    if (!luaAgent) throw new Error("lua_generator agent missing");
+    const playable = await luaAgent.execute({
+      blueprint: { name: "Repair Delivery Test Game", description: "baseline" },
+      architecture: {},
+      gameplay: {},
+    });
+    luaAgent.setLLM({
+      generate: vi.fn().mockResolvedValue(JSON.stringify(playable.data)),
+    });
+    await runRepair(baseUrl);
+
+    studioManager.connect("studio-1", PROJECT_ID);
+    vi.spyOn(studioManager, "synchronizeExecution").mockRejectedValue(
+      new Error("synchronize threw"),
+    );
+
+    const response = await fetch(
+      `${baseUrl}/api/repair/${PROJECT_ID}/deliver`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ studioId: "studio-1" }),
+      },
+    );
+
+    expect(response.status).toBe(400);
+    const body = (await response.json()) as { success: boolean; error: string };
+    expect(body.success).toBe(false);
+    expect(body.error).toContain("synchronize threw");
+  });
 });
