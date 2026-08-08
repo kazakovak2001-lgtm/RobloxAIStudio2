@@ -1189,10 +1189,13 @@ server/src/types/pipeline-events.ts
 server/src/types/playableLua.ts
 server/src/ui-gen/UIGenerationEngine.ts
 server/src/ui-gen/UIHierarchyBuilder.ts
+server/src/ui-gen/UIInstanceTreeBuilder.ts
+server/src/ui-gen/UIInstanceTreeContract.ts
 server/src/ui-gen/UILayoutBuilder.ts
 server/src/ui-gen/UIStyleBuilder.ts
 server/src/ui-gen/UIValidationService.ts
 server/src/ui-gen/__tests__/UIGeneration.test.ts
+server/src/ui-gen/__tests__/UIInstanceTree.test.ts
 server/src/ui-gen/index.ts
 server/src/ui-gen/types.ts
 server/src/validation/__tests__/commitValidator.test.ts
