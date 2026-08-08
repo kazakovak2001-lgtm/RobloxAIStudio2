@@ -136,6 +136,7 @@
 │   │   ├── STUDIO-1E_DESKTOP_ACCEPTANCE_RUNBOOK.md
 │   │   ├── STUDIO-1F_DESKTOP_FINDINGS_AND_RERUN.md
 │   │   ├── STUDIO-1G_DESKTOP_ACCEPTANCE_RESULT.md
+│   │   ├── STUDIO-2F-A_SCOPE.md
 │   │   └── STUDIO-ACCEPT-1_DESKTOP_ACCEPTANCE_RESULT.md
 │   ├── 01-architecture
 │   │   └── .gitkeep
