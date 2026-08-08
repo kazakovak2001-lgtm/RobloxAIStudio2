@@ -199,6 +199,67 @@ describe("LLMProviderFactory — explicit provider selection", () => {
     expect(result.unsatisfied).toBeUndefined();
     expect(result.requested).toBeUndefined();
   });
+
+  /**
+   * Ollama is a keyless local provider. Forcing it must never be gated on a
+   * credential — the original defect reported it as "no API key found".
+   */
+  it("forces Ollama with no API key of any kind present", () => {
+    for (const key of [
+      "OPENAI_API_KEY",
+      "ANTHROPIC_API_KEY",
+      "GEMINI_API_KEY",
+      "GROQ_API_KEY",
+      "OPENROUTER_API_KEY",
+      "OLLAMA_API_KEY",
+    ]) {
+      delete process.env[key];
+    }
+    process.env.DEFAULT_PROVIDER = "ollama";
+    process.env.OLLAMA_URL = "http://localhost:11434";
+    process.env.OLLAMA_MODEL = "qwen2.5-coder:7b";
+
+    const result = LLMProviderFactory.create();
+
+    expect(result.mode).toBe("ollama");
+    expect(result.provider).not.toBeNull();
+    expect(result.unsatisfied).toBeUndefined();
+    // The exact startup line an operator verifies against.
+    expect(result.info).toBe(
+      "Ollama (forced, url: http://localhost:11434, model: qwen2.5-coder:7b)",
+    );
+    expect(result.info).not.toContain("API key");
+  });
+
+  /**
+   * The keyless Ollama path must not have relaxed credential checking for
+   * anyone else. Every cloud provider still fails closed without its key.
+   */
+  it.each([
+    ["openai", "OPENAI_API_KEY"],
+    ["anthropic", "ANTHROPIC_API_KEY"],
+    ["gemini", "GEMINI_API_KEY"],
+    ["groq", "GROQ_API_KEY"],
+    ["openrouter", "OPENROUTER_API_KEY"],
+  ])("still requires a credential for forced %s", (provider, keyName) => {
+    delete process.env[keyName];
+    process.env.DEFAULT_PROVIDER = provider;
+
+    const withoutKey = LLMProviderFactory.create();
+
+    expect(withoutKey.provider).toBeNull();
+    expect(withoutKey.mode).toBe("none");
+    expect(withoutKey.unsatisfied).toBe(true);
+    expect(withoutKey.requested).toBe(provider);
+
+    process.env[keyName] = "test-credential";
+    const withKey = LLMProviderFactory.create();
+    delete process.env[keyName];
+
+    expect(withKey.mode).toBe(provider);
+    expect(withKey.provider).not.toBeNull();
+    expect(withKey.unsatisfied).toBeUndefined();
+  });
 });
 
 describe("describeAiMode", () => {
