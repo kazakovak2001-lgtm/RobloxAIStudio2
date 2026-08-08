@@ -9,7 +9,7 @@ fail-closed guard for subsequent roadmap reconciliations.
 
 - Backend repository: `kazakovak2001-lgtm/RobloxAIStudio2`
 - Backend release branch: `release/cutover-1e-candidate`
-- Current backend runtime release: `ecae9bb59f1639d2e382e7221a956aa96460b3e9`
+- Current backend runtime release: `d7e444549d324df9df339ff5bda7a75a820e39e3`
 - SECURITY-2G-F control baseline: `da55f716c798ec8c6a7f25a8e2a3b7b0a2244416`
 - Paired Frontend repository: `kazakovak2001-lgtm/Frontend`
 - Paired Frontend runtime contents: `6c1458d836244f2b720f361a78c2ab13f1682f74`
@@ -175,6 +175,38 @@ it because required claims are checked for presence, not for truth. A claim
 that is present but stale passes. Second, the per-phase paragraphs above again
 retain the SHAs current when each phase landed; only the "Exact release
 identity" header, the pin configuration and the active-pair lines advance.
+
+STUDIO-2F-A advances the runtime pair to backend
+`d7e444549d324df9df339ff5bda7a75a820e39e3` and Frontend
+`6c1458d836244f2b720f361a78c2ab13f1682f74`, across three backend pull
+requests: #195 established the wire contract and deterministic builder, #196
+added plugin materialization and moved the plugin to v1.9.0, and #197 added
+backend verification of the reported screen set. The phase is reconciled once
+rather than per pull request, because the pin can only name a merge commit
+that exists, and pinning to an intermediate one would have been stale on
+arrival.
+
+Two limits are recorded rather than smoothed over. The phase is complete in
+code but **not proven in Studio**: `studio-plugin/` has no Lua test harness,
+the plugin assertions are structural checks over source text, and nothing in
+the phase has executed Lua. Operator-observed acceptance, defined by five
+required observations in the scope record, is outstanding. Separately, the
+delivered tree is parented under `ReplicatedStorage` rather than `StarterGui`
+by the scope's binding decision, so it is inspectable and editable but inert
+at Play time; the imperative Lua HUD remains runtime-canonical until
+`STUDIO-2F-E`.
+
+Review across the three pull requests found four real defects, each fixed
+before its merge, and they share one shape worth recording for future phases:
+a field or an instance quietly lost at a boundary. Replacement and sweep
+rescued only the direct children of a screen, so creator-authored instances
+nested below the first level were destroyed with it. `SyncManager` dropped the
+identity-bearing screen receipt, and then `parseImportReport` dropped it again
+at the transport boundary — the second occurrence would have made verification
+reject every real UI export, and the tests missed it because they exercised
+the runtime below that boundary. Verification also read the mutable artifact
+store rather than the content the export actually carried, which
+`ProjectSyncManager.applyChange` can change after queueing.
 
 The DOC-202A validator must reject:
 
