@@ -9,10 +9,10 @@ fail-closed guard for subsequent roadmap reconciliations.
 
 - Backend repository: `kazakovak2001-lgtm/RobloxAIStudio2`
 - Backend release branch: `release/cutover-1e-candidate`
-- Current backend runtime release: `558f9e6f5cc80e3ae9e29cafdd15ce6a33addd0f`
+- Current backend runtime release: `ccd28ef816d1653df0aebd0775f70187aa321564`
 - SECURITY-2G-F control baseline: `da55f716c798ec8c6a7f25a8e2a3b7b0a2244416`
 - Paired Frontend repository: `kazakovak2001-lgtm/Frontend`
-- Paired Frontend runtime contents: `33cb19310ad15097eac1ff53832ee7d8191bd65e`
+- Paired Frontend runtime contents: `6c1458d836244f2b720f361a78c2ab13f1682f74`
 
 ## Authority order
 
@@ -122,6 +122,31 @@ helper function were both invisible to its taint analysis, resolved by
 inlining the sanitizing `.replace()` call directly at each log call site.
 REPAIR-1 (1A/1B/1C) is now complete on the backend. A Frontend UI surfacing
 repair, delivery, and rollback is a separate, not-yet-scoped follow-up.
+
+The REPAIR-1 Frontend UI closes that follow-up and promotes the runtime pair
+to backend `ccd28ef816d1653df0aebd0775f70187aa321564` and Frontend
+`6c1458d836244f2b720f361a78c2ab13f1682f74` (PR #40). Two points of precision
+about that backend identity: it is a documentation-only descendant of the
+REPAIR-1C merge `558f9e6f5cc80e3ae9e29cafdd15ce6a33addd0f`, verified by
+diffing the two commits and finding zero changes under `server/`, so the
+promotion changes the recorded identity without changing executable content;
+and the earlier per-phase paragraphs above deliberately retain the merge SHAs
+that were current when each phase landed, since they are historical records
+rather than statements about the present pair. The Frontend change adds an
+Integrate-stage repair panel over the existing REPAIR-1B/1C routes and
+repairs a stale client contract — the previous generic repair call predated
+REPAIR-1A and omitted the `executionId` the merged route requires, so it
+would have failed closed with HTTP 400 on every invocation. Review found one
+real defect before merge: a mutation begun on one project could resolve after
+a project switch and write the previous project's session and delivery
+history into the panel, since the mutation reused a `reconcile` closure bound
+to the earlier project and superseded the current project's in-flight request
+through the shared latest-request guard; a dedicated mutation guard fixes it.
+Evidence limits are stated rather than smoothed over: the UI is verified by
+contract, parser, type, build and paired-contract CI, but no Studio-attached
+live end-to-end run of the panel was performed, and the repository's workspace
+test runner cannot load `.tsx`, so no component-level regression test backs
+the panel or its guard fix.
 
 ## Required deterministic behavior
 

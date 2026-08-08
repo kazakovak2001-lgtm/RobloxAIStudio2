@@ -4,9 +4,9 @@
   "repository": "kazakovak2001-lgtm/RobloxAIStudio2",
   "releaseIdentity": {
     "backendBranch": "release/cutover-1e-candidate",
-    "backendCommit": "558f9e6f5cc80e3ae9e29cafdd15ce6a33addd0f",
+    "backendCommit": "ccd28ef816d1653df0aebd0775f70187aa321564",
     "frontendRepository": "kazakovak2001-lgtm/Frontend",
-    "frontendCommit": "33cb19310ad15097eac1ff53832ee7d8191bd65e"
+    "frontendCommit": "6c1458d836244f2b720f361a78c2ab13f1682f74"
   },
   "authority": [
     {
@@ -19,9 +19,9 @@
         "`DOC-202` | Documentation-authority inventory and deterministic guards | Medium | ✅ Complete — `DOC-202A`",
         "`STUDIO-ACCEPT-1` | Real Studio acceptance of canonical artifact delivery | Critical | ✅ Complete",
         "`RUNTIME-PLAYTEST-1` | Authoritative Studio-attached Roblox runtime evidence | High | ✅ Complete",
-        "`REPAIR-1` | Artifact-applying repair, redelivery, and revalidation | High | ✅ Complete on the backend — 1A/1B/1C landed",
-        "558f9e6f5cc80e3ae9e29cafdd15ce6a33addd0f",
-        "33cb19310ad15097eac1ff53832ee7d8191bd65e"
+        "`REPAIR-1` | Artifact-applying repair, redelivery, and revalidation | High | ✅ Complete — backend 1A/1B/1C plus the Frontend repair UI",
+        "ccd28ef816d1653df0aebd0775f70187aa321564",
+        "6c1458d836244f2b720f361a78c2ab13f1682f74"
       ],
       "forbiddenClaims": [
         "PR #162 pending reviewed merge",
@@ -34,9 +34,9 @@
       "rank": 2,
       "status": "current",
       "requiredClaims": [
-        "558f9e6f5cc80e3ae9e29cafdd15ce6a33addd0f",
-        "33cb19310ad15097eac1ff53832ee7d8191bd65e",
-        "REPAIR-1 complete on the backend"
+        "ccd28ef816d1653df0aebd0775f70187aa321564",
+        "6c1458d836244f2b720f361a78c2ab13f1682f74",
+        "REPAIR-1 complete across backend and Frontend UI"
       ],
       "forbiddenClaims": [
         "pending reviewed merge",
@@ -50,8 +50,8 @@
       "status": "supporting",
       "requiredClaims": [
         "DOC-202A",
-        "558f9e6f5cc80e3ae9e29cafdd15ce6a33addd0f",
-        "33cb19310ad15097eac1ff53832ee7d8191bd65e"
+        "ccd28ef816d1653df0aebd0775f70187aa321564",
+        "6c1458d836244f2b720f361a78c2ab13f1682f74"
       ],
       "forbiddenClaims": []
     }
