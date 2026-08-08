@@ -29,7 +29,7 @@ The old embedded root `src/` frontend is removed and protected by a permanent in
 
 ## Active paired release
 
-- Backend runtime: `release/cutover-1e-candidate@243116da73808cc4a1202cb007d9bd1f2dad2b69`.
+- Backend runtime: `release/cutover-1e-candidate@6ec42d55a74bab0a9001d7e66c02795f01b41886`.
 - Frontend runtime contents: `kazakovak2001-lgtm/Frontend@33cb19310ad15097eac1ff53832ee7d8191bd65e`.
 - Pairing authority: protected Frontend Production Contract, Composed HTTPS Release, promoted-baseline integrity, and Merge Gate evidence.
 - No external production deployment is claimed by repository release evidence alone.
@@ -44,7 +44,7 @@ The old embedded root `src/` frontend is removed and protected by a permanent in
 - `RUNTIME-2D`: complete through issue #57 and deterministic runtime ownership validation.
 - `DURABILITY-2E`: complete through DATA-201 and DATA-202; issue #135 is closed.
 - `SECURITY-2G`, `DOC-202`, `ROADMAP-AUDIT-1`, `STUDIO-ACCEPT-1`, and `RUNTIME-PLAYTEST-1`: complete.
-- `REPAIR-1`: in progress — sub-phase 1A (real single-strategy repair) landed.
+- `REPAIR-1`: in progress — sub-phase 1A (real single-strategy repair) and 1B (Studio redelivery) landed; rollback/audit (1C) remains.
 - `STUDIO-2F` and `AUTONOMY-3A`: deferred behind artifact-applying repair evidence.
 
 See [Roadmap Status](./00-project-control/ROADMAP_STATUS.md) for exact ordering and evidence.
