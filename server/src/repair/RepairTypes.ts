@@ -73,7 +73,8 @@ export interface RepairSessionState {
   targetScore: number;
   currentScore: number;
   history: RepairIterationRecord[];
-  deliveries: RepairDeliveryRecord[];
+  /** Absent on sessions persisted before REPAIR-1C — always read via `?? []`. */
+  deliveries?: RepairDeliveryRecord[];
   startedAt: number;
   finishedAt?: number;
   totalRepairs: number;

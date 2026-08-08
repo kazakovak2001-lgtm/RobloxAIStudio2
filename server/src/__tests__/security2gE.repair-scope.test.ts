@@ -83,6 +83,15 @@ describe("SECURITY-2G-E repair scope", () => {
   it("guards the delivery audit read route the same way as the other reads", () => {
     const deliveriesSection = route.indexOf('get("/:projectId/deliveries"');
     expect(deliveriesSection).toBeGreaterThan(-1);
+    const nextRouteMarker = route.indexOf("\n  router.", deliveriesSection + 1);
+    const handler = route.slice(deliveriesSection, nextRouteMarker);
+    expect(handler).toContain("access.hasProjectAccess(req, projectId)");
+    expect(handler).toContain(
+      "access.requireProjectAccess(req, res, projectId)",
+    );
+    expect(handler.indexOf("hasProjectAccess")).toBeLessThan(
+      handler.indexOf("engine.getSession(projectId)"),
+    );
     expect(route).toContain("studioManager.getProjectEvidence(projectId)");
   });
 

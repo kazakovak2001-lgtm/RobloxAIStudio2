@@ -128,25 +128,44 @@ export function createRepairRouter(
           targetExecutionId,
         );
       } catch (error) {
+        // An audit-write failure here must never mask the real Studio
+        // error — log it and still rethrow the original `error`.
+        try {
+          await engine.recordDelivery(projectId, {
+            timestamp: Date.now(),
+            executionId: targetExecutionId,
+            studioId: studioSession.studioId,
+            source,
+            success: false,
+            error: error instanceof Error ? error.message : "Delivery failed",
+          });
+        } catch (auditError) {
+          console.error(
+            `Failed to record delivery audit for project ${projectId}`,
+            auditError,
+          );
+        }
+        throw error;
+      }
+
+      // Isolated from the response: an audit-write failure here must not
+      // turn an already-successful Studio delivery into an HTTP failure
+      // (the client could then retry and deliver twice).
+      try {
         await engine.recordDelivery(projectId, {
           timestamp: Date.now(),
           executionId: targetExecutionId,
           studioId: studioSession.studioId,
           source,
-          success: false,
-          error: error instanceof Error ? error.message : "Delivery failed",
+          success: syncResult.success,
+          error: syncResult.error,
         });
-        throw error;
+      } catch (auditError) {
+        console.error(
+          `Failed to record delivery audit for project ${projectId}`,
+          auditError,
+        );
       }
-
-      await engine.recordDelivery(projectId, {
-        timestamp: Date.now(),
-        executionId: targetExecutionId,
-        studioId: studioSession.studioId,
-        source,
-        success: syncResult.success,
-        error: syncResult.error,
-      });
 
       if (!syncResult.success) {
         res.status(502).json({
@@ -175,24 +194,34 @@ export function createRepairRouter(
   // in one place.
   router.get("/:projectId/deliveries", async (req, res) => {
     const projectId = req.params.projectId;
-    if (access.hasProjectAccess) {
-      if (!(await access.hasProjectAccess(req, projectId))) {
-        res
-          .status(404)
-          .json({ success: false, error: "No repair session found" });
+    try {
+      if (access.hasProjectAccess) {
+        if (!(await access.hasProjectAccess(req, projectId))) {
+          res
+            .status(404)
+            .json({ success: false, error: "No repair session found" });
+          return;
+        }
+      } else if (!(await access.requireProjectAccess(req, res, projectId))) {
         return;
       }
-    } else if (!(await access.requireProjectAccess(req, res, projectId))) {
-      return;
-    }
 
-    const session = await engine.getSession(projectId);
-    const currentStudioState =
-      await studioManager.getProjectEvidence(projectId);
-    res.json({
-      success: true,
-      data: { deliveries: session?.deliveries ?? [], currentStudioState },
-    });
+      const session = await engine.getSession(projectId);
+      const currentStudioState =
+        await studioManager.getProjectEvidence(projectId);
+      res.json({
+        success: true,
+        data: { deliveries: session?.deliveries ?? [], currentStudioState },
+      });
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        error:
+          error instanceof Error
+            ? error.message
+            : "Failed to load delivery history",
+      });
+    }
   });
 
   // GET /api/repair/:projectId — get repair session
