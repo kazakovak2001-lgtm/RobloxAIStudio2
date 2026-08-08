@@ -9,7 +9,7 @@ fail-closed guard for subsequent roadmap reconciliations.
 
 - Backend repository: `kazakovak2001-lgtm/RobloxAIStudio2`
 - Backend release branch: `release/cutover-1e-candidate`
-- Current backend runtime release: `243116da73808cc4a1202cb007d9bd1f2dad2b69`
+- Current backend runtime release: `6ec42d55a74bab0a9001d7e66c02795f01b41886`
 - SECURITY-2G-F control baseline: `da55f716c798ec8c6a7f25a8e2a3b7b0a2244416`
 - Paired Frontend repository: `kazakovak2001-lgtm/Frontend`
 - Paired Frontend runtime contents: `33cb19310ad15097eac1ff53832ee7d8191bd65e`
@@ -80,6 +80,26 @@ the E2E contract's repair check to run against a real post-generation
 execution instead of a pre-generation synthetic fixture. Studio redelivery of
 repaired artifacts (REPAIR-1B) and rollback/audit (REPAIR-1C) are not yet
 implemented.
+
+REPAIR-1B promotes the runtime pair to backend `6ec42d55a74bab0a9001d7e66c02795f01b41886`
+(PR #187); Frontend contents are unchanged at `33cb19310ad15097eac1ff53832ee7d8191bd65e`
+since REPAIR-1B is backend-only. `POST /api/repair/:projectId/deliver` resolves
+the most recent successfully-repaired execution server-side from the repair
+session's own history — never client-supplied — and reuses the existing
+`StudioIntegrationManager.synchronizeExecution`/`queueProjectExport` pipeline
+unchanged to push it to a connected Studio client; no Studio plugin (Lua)
+changes were required, since `EXPORT_PROJECT` commands are already handled
+generically regardless of origin. A design review before implementation
+found and fixed a real bug: `RepairEngine.run()` was overwriting the
+persisted session's history on every call instead of appending to it, which
+would have made an earlier successful repair undiscoverable by the new
+delivery route after a later call. CodeRabbit review before merge found and
+a follow-up commit fixed two further real issues: concurrent `run()` calls
+for the same project could race and drop one call's history (now serialized
+per project), and two successful repairs of the same parent execution could
+collide on the same derived execution id and mix artifacts (now derived from
+the cumulative count of prior attempts against that parent). Rollback/audit
+and a canonical-execution UI (REPAIR-1C) are not yet implemented.
 
 ## Required deterministic behavior
 

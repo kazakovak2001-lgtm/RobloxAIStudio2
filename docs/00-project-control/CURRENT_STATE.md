@@ -1,8 +1,8 @@
 # Current Project State
 
 **Last Updated**: August 8, 2026
-**Phase**: REPAIR-1A landed — artifact-applying repair exists for one strategy; Studio redelivery (REPAIR-1B) is next
-**Build Status**: Current runtime pair is backend `243116da73808cc4a1202cb007d9bd1f2dad2b69` (release/cutover-1e-candidate, merged PR #185) plus protected Frontend contents `kazakovak2001-lgtm/Frontend@33cb19310ad15097eac1ff53832ee7d8191bd65e` (main, merged PR #38). The reciprocal production, clean-clone, PostgreSQL restart, release-image, composed-release, security and Merge Gate chain must remain exact-pair bound. STUDIO-ACCEPT-1 passed on backend acceptance commit `3230d2368ed781043fe9f3520c0d3de3836ec3bb`. A Roblox Studio Play-mode runtime playtest on the RUNTIME-PLAYTEST-1 pair passed with operator-observed evidence recorded in [RUNTIME-PLAYTEST-1_RESULT.md](./RUNTIME-PLAYTEST-1_RESULT.md). REPAIR-1A replaced the simulated repair engine with a real, artifact-applying, single-strategy repair (`regenerate_script`, whole-package regeneration validated by the same playability gate as generation); it does not yet redeliver to Studio or support rollback/audit — that is REPAIR-1B/1C. No external production deployment is claimed.
+**Phase**: REPAIR-1A/1B landed — artifact-applying repair exists for one strategy and now redelivers to Studio; rollback/audit (REPAIR-1C) is next
+**Build Status**: Current runtime pair is backend `6ec42d55a74bab0a9001d7e66c02795f01b41886` (release/cutover-1e-candidate, merged PR #187) plus protected Frontend contents `kazakovak2001-lgtm/Frontend@33cb19310ad15097eac1ff53832ee7d8191bd65e` (main, merged PR #38 — unchanged since REPAIR-1B is backend-only). The reciprocal production, clean-clone, PostgreSQL restart, release-image, composed-release, security and Merge Gate chain must remain exact-pair bound. STUDIO-ACCEPT-1 passed on backend acceptance commit `3230d2368ed781043fe9f3520c0d3de3836ec3bb`. A Roblox Studio Play-mode runtime playtest on the RUNTIME-PLAYTEST-1 pair passed with operator-observed evidence recorded in [RUNTIME-PLAYTEST-1_RESULT.md](./RUNTIME-PLAYTEST-1_RESULT.md). REPAIR-1A replaced the simulated repair engine with a real, artifact-applying, single-strategy repair (`regenerate_script`, whole-package regeneration validated by the same playability gate as generation). REPAIR-1B added `POST /api/repair/:projectId/deliver`, which resolves the latest repaired execution server-side and pushes it to a connected Studio client through the existing sync pipeline; it does not yet support rollback/audit or a canonical-execution UI — that is REPAIR-1C. No external production deployment is claimed.
 
 ---
 
@@ -188,7 +188,7 @@ See [Technical Audit v2.0](../02-audits/technical-v2/EXECUTIVE_AUDIT.md) for the
 ## Known Problems
 
 1. **Runtime playtest authority (P1)**: the current `PlaytestEngine` performs deterministic static analysis and records `runtimeExecuted=false`; it is not a Roblox runtime verdict.
-2. **Repair authority (P1)**: the bounded repair adapter remains unavailable and does not apply findings to artifacts, regenerate hashes, redeliver, or revalidate.
+2. **Repair authority (P1)**: manual repair-and-redeliver now works end-to-end via `POST /api/repair/run` then `POST /api/repair/:projectId/deliver` (REPAIR-1A/1B), but the autonomous-phase `RepairAdapter` remains unavailable and is not wired into the autonomous orchestration loop; rollback/audit and a canonical-execution UI (REPAIR-1C) also remain open.
 3. **Native delivery breadth (P2)**: asset generation produces validated definitions/placeholders rather than authoritative uploaded Roblox assets, GUI, and complete place delivery.
 4. **Autonomous collaboration (P2)**: orchestration and durable sessions exist, but the bounded collaboration path reports `executedTaskCount=0` and remains preview-only.
 5. **Studio protocol diagnostics (P2)**: STUDIO-ACCEPT-1 observed one non-blocking startup `/api/studio/protocol/message` 400 response, a missing `rbxassetid://0` toolbar icon, and one post-save `Callbacks cannot yield` message. Each requires independent reproduction before a production change.
@@ -206,8 +206,9 @@ supersedes its ordering after verifying the current code at exact backend and
 Frontend baselines. Authoritative Roblox runtime playtest evidence
 (RUNTIME-PLAYTEST-1) is complete. Artifact-applying repair and revalidation
 (REPAIR-1) is in progress: sub-phase 1A landed a real single-strategy repair
-loop (backend PR #185, Frontend companion PR #38); Studio redelivery (1B) and
-rollback/audit (1C) remain. Studio sync hardening (#168 and Frontend #32) is
+loop (backend PR #185, Frontend companion PR #38) and sub-phase 1B landed
+Studio redelivery of repaired artifacts (backend PR #187); rollback/audit
+(1C) remains. Studio sync hardening (#168 and Frontend #32) is
 complete, verified against backend PR #176 and Frontend PR #34/#37. Native
 asset/GUI delivery, broader autonomous agent execution, and production
 observability remain separate backlog items.
@@ -244,6 +245,7 @@ This template enforces:
 
 ## Last Changes
 
+- August 8, 2026: REPAIR-1B completed — backend PR #187 (`6ec42d55a74bab0a9001d7e66c02795f01b41886`) added `POST /api/repair/:projectId/deliver`, which resolves the latest repaired execution server-side from the repair session's own history and reuses the existing `StudioIntegrationManager` sync pipeline unchanged to deliver it to a connected Studio client; no Studio plugin or Frontend changes were needed. A design review also surfaced and fixed a real bug in `RepairEngine.run()` (session history was overwritten instead of appended across calls), plus two CodeRabbit findings fixed in a follow-up commit before merge: a concurrent-run race and an execution-id collision between two successful repairs of the same parent. Studio redelivery is now real end-to-end; rollback/audit and a canonical-execution UI (REPAIR-1C) remain.
 - July 31, 2026: FRONTEND-2C completed through protected quality and cleanup (PR #18), production bundle budgets (PR #19), Lucide import hygiene and tightened budgets (PR #20), and authentication/realtime recovery coverage (PR #21). Canonical `Frontend/main` is `022788ace31982e2b08ea099800de784b4dbe482`; Frontend CI #140 passed all 10 jobs with 22 workspace tests and the protected 40-check backend contract. REL-203 issue #144 promotes this exact source into the backend release pairing.
 - July 31, 2026: DATA-202 completed through pipeline persistence (PR #137), autonomous session/checkpoint persistence (PR #139), and Studio operational evidence plus runtime ownership classification (PR #141). The final protected source head `010532f0b162097c8a645b1dc07c89081d25cb99` passed CI Pipeline #1073 and merged as `a33a8c30588f1e4705d27856e61d839c8efd42ac`. Compatibility-write inventory remains zero; 23 operational runtime owners are explicitly classified. The exact Frontend contents remain `9495b696cf22c84cf61375f7df22e5ac5907cc3c`.
 - July 31, 2026: REL-202 records the current DATA-202 release candidate, immutable CI artifact digests, preserved rollback reference and the boundary between verified CI composition and an unperformed external deployment. Issue #142 tracks the documentation-only closeout.
