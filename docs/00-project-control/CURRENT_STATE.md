@@ -1,8 +1,8 @@
 # Current Project State
 
 **Last Updated**: August 8, 2026
-**Phase**: RUNTIME-PLAYTEST-1 complete — artifact-applying repair (REPAIR-1) is next
-**Build Status**: Current runtime pair is backend `f3b89c9048884528eb8baa4d5a19e406cc1c6315` (release/cutover-1e-candidate, merged PR #177) plus protected Frontend contents `kazakovak2001-lgtm/Frontend@06203ad0c296892d02467b2b566409fa10201cf6` (main, merged PR #35). The reciprocal production, clean-clone, PostgreSQL restart, release-image, composed-release, security and Merge Gate chain must remain exact-pair bound. STUDIO-ACCEPT-1 passed on backend acceptance commit `3230d2368ed781043fe9f3520c0d3de3836ec3bb`. A Roblox Studio Play-mode runtime playtest on this exact pair passed with operator-observed evidence recorded in [RUNTIME-PLAYTEST-1_RESULT.md](./RUNTIME-PLAYTEST-1_RESULT.md); REPAIR-1 is the next authority gate. No external production deployment is claimed.
+**Phase**: REPAIR-1A landed — artifact-applying repair exists for one strategy; Studio redelivery (REPAIR-1B) is next
+**Build Status**: Current runtime pair is backend `243116da73808cc4a1202cb007d9bd1f2dad2b69` (release/cutover-1e-candidate, merged PR #185) plus protected Frontend contents `kazakovak2001-lgtm/Frontend@33cb19310ad15097eac1ff53832ee7d8191bd65e` (main, merged PR #38). The reciprocal production, clean-clone, PostgreSQL restart, release-image, composed-release, security and Merge Gate chain must remain exact-pair bound. STUDIO-ACCEPT-1 passed on backend acceptance commit `3230d2368ed781043fe9f3520c0d3de3836ec3bb`. A Roblox Studio Play-mode runtime playtest on the RUNTIME-PLAYTEST-1 pair passed with operator-observed evidence recorded in [RUNTIME-PLAYTEST-1_RESULT.md](./RUNTIME-PLAYTEST-1_RESULT.md). REPAIR-1A replaced the simulated repair engine with a real, artifact-applying, single-strategy repair (`regenerate_script`, whole-package regeneration validated by the same playability gate as generation); it does not yet redeliver to Studio or support rollback/audit — that is REPAIR-1B/1C. No external production deployment is claimed.
 
 ---
 
@@ -30,7 +30,7 @@
 - **Repository**: [kazakovak2001-lgtm/Frontend](https://github.com/kazakovak2001-lgtm/Frontend) on `main`
 - **Acceptance commit**: `a8d005d433d48e18d8e64ac176ee63c9c694b644`, independently matched to the ZIP used during the successful STUDIO-1 session.
 - **Initial SSR release commit**: `1036c3ef9705d145cb9700cd14268a33d2abdd58`, merged through Frontend PR #12 after CI run #65 verified the production image, `/health`, SSR `/`, responsive QA, and Merge Gate.
-- **Active paired release contents**: `06203ad0c296892d02467b2b566409fa10201cf6`, including the INTEGRATION-1B browser-recovery proof, retained by the protected release inventory.
+- **Active paired release contents**: `33cb19310ad15097eac1ff53832ee7d8191bd65e`, including the INTEGRATION-1B browser-recovery proof, retained by the protected release inventory.
 - **Framework**: React 19 + TypeScript + Vite + Tailwind CSS
 - **Routing and state**: TanStack Router/Query, typed backend adapter, Socket.IO realtime client
 - **Ownership**: All new user-facing web functionality belongs in the standalone repository.
@@ -204,11 +204,13 @@ recorded in `STUDIO-ACCEPT-1_DESKTOP_ACCEPTANCE_RESULT.md`.
 TECH-AUDIT-2 remains historical planning evidence. ROADMAP-AUDIT-1 (#169)
 supersedes its ordering after verifying the current code at exact backend and
 Frontend baselines. Authoritative Roblox runtime playtest evidence
-(RUNTIME-PLAYTEST-1) is complete; the immediate product dependency is now
-artifact-applying repair and revalidation (REPAIR-1). Studio sync hardening
-(#168 and Frontend #32) is complete, verified against backend PR #176 and
-Frontend PR #34/#37. Native asset/GUI delivery, broader autonomous agent
-execution, and production observability remain separate backlog items.
+(RUNTIME-PLAYTEST-1) is complete. Artifact-applying repair and revalidation
+(REPAIR-1) is in progress: sub-phase 1A landed a real single-strategy repair
+loop (backend PR #185, Frontend companion PR #38); Studio redelivery (1B) and
+rollback/audit (1C) remain. Studio sync hardening (#168 and Frontend #32) is
+complete, verified against backend PR #176 and Frontend PR #34/#37. Native
+asset/GUI delivery, broader autonomous agent execution, and production
+observability remain separate backlog items.
 
 See [TECHNICAL_DEBT.md](../02-audits/technical-v2/TECHNICAL_DEBT.md) for definitions of done and [SPRINT_BACKLOG.md](../02-audits/technical-v2/SPRINT_BACKLOG.md) for ordered implementation work.
 
@@ -231,7 +233,7 @@ This template enforces:
 
 - **Backend release image**: `Dockerfile.backend` builds and starts the compiled backend without root `src/`, `public/`, Vite, or Tailwind inputs; CI verifies `GET /health`.
 - **Backend/PostgreSQL composition**: `deploy/docker-compose.backend.yml` provides the independently verified backend and persistent database boundary.
-- **Standalone Frontend release image**: active paired Frontend contents `06203ad0c296892d02467b2b566409fa10201cf6` package `.output` plus one shared worker-to-Node adapter as a non-root SSR process.
+- **Standalone Frontend release image**: active paired Frontend contents `33cb19310ad15097eac1ff53832ee7d8191bd65e` package `.output` plus one shared worker-to-Node adapter as a non-root SSR process.
 - **Historical REL-202 composed HTTPS evidence**: backend source `010532f0b162097c8a645b1dc07c89081d25cb99` and exact Frontend contents `9495b696cf22c84cf61375f7df22e5ac5907cc3c` passed CI Pipeline #1073 (`30667404383`). The promoted backend merge `a33a8c30588f1e4705d27856e61d839c8efd42ac` has the same file tree. This retained evidence proves the prior DATA-202 pair; the active REL-203 pair is defined by the release inventory and its protected PR chain. External deployment remains a separate unchecked operation.
 - **Migration Runner**: `server/src/platform/storage/postgres/migrationRunner.ts` — auto-applies pending migrations on startup (skips when STORAGE_PROVIDER=inmemory).
 - **Rollback inventory**: CUTOVER-1A and CUTOVER-1B remain independently deployable and are unaffected by removal of the non-executable combined stack. The deleted legacy source/configuration/deployment inventory remains recoverable by reverting the focused CLEANUP-1C change from baseline `85a2fa8d512738e6d02ffae42da77af7a27db6fc`. The promoted default and pinned pre-promotion rollback reference remain protected.
