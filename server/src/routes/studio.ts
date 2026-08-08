@@ -11,7 +11,10 @@ import {
   type StudioCommandActionResult,
   type StudioImportReportInput,
 } from "../studio/v2/StudioRuntime";
-import type { StudioArtifactReceipt } from "../studio/v2/StudioTypes";
+import type {
+  StudioArtifactReceipt,
+  StudioScreenReceipt,
+} from "../studio/v2/StudioTypes";
 import type { SyncChange } from "../studio/v2/sync/SyncTypes";
 import { STUDIO_PROJECT_ACCESS_CAPABILITY } from "../platform/security/ApiKeyStore";
 import type { ProjectAccessControl } from "./projects";
@@ -86,7 +89,12 @@ function parseSyncChanges(value: unknown): ParsedSyncChanges {
   return { data };
 }
 
-function parseImportReport(
+/**
+ * Exported for contract testing. Both the REST result endpoint and the
+ * `COMMAND_RESULT` protocol handler funnel through this parser, so a field it
+ * fails to carry is a field the runtime never sees regardless of transport.
+ */
+export function parseImportReport(
   payload: Record<string, unknown>,
 ): ParsedImportReport {
   const status = payload.status;
@@ -130,10 +138,40 @@ function parseImportReport(
     ) {
       return { error: "artifact instancePath must be a string" };
     }
+
+    // Screen receipts must survive the transport boundary. This parser
+    // reconstructs each receipt field by field, so anything not named here is
+    // silently dropped — which would leave every real UI export arriving with
+    // no screens and failing verification.
+    let screens: StudioScreenReceipt[] | undefined;
+    if (receipt.screens !== undefined) {
+      if (!Array.isArray(receipt.screens)) {
+        return { error: "artifact screens must be an array" };
+      }
+      screens = [];
+      for (const entry of receipt.screens) {
+        if (!entry || typeof entry !== "object") {
+          return { error: "each screen receipt must be an object" };
+        }
+        const screen = entry as Record<string, unknown>;
+        if (typeof screen.screenName !== "string" || !screen.screenName) {
+          return { error: "each screen receipt requires screenName" };
+        }
+        if (typeof screen.instancePath !== "string" || !screen.instancePath) {
+          return { error: "each screen receipt requires instancePath" };
+        }
+        screens.push({
+          screenName: screen.screenName,
+          instancePath: screen.instancePath,
+        });
+      }
+    }
+
     artifacts.push({
       artifactId: receipt.artifactId,
       hash: receipt.hash,
       instancePath: receipt.instancePath as string | undefined,
+      ...(screens ? { screens } : {}),
     });
   }
 

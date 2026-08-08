@@ -19,6 +19,7 @@ import {
 } from "../pipeline/v2/ArtifactStore";
 import { UIInstanceTreeBuilder } from "../ui-gen/UIInstanceTreeBuilder";
 import type { StudioScreenReceipt } from "../studio/v2/StudioTypes";
+import { parseImportReport } from "../routes/studio";
 
 const PROJECT_ID = "proj-receipt-verification";
 
@@ -123,6 +124,75 @@ function createBackingStore() {
     },
   };
 }
+
+/**
+ * Review found the first version of this feature was dead on arrival:
+ * `parseImportReport` rebuilds every receipt field by field, so it dropped
+ * `screens`, and each real UI export would have arrived carrying none and been
+ * rejected. The runtime tests missed it because they call
+ * `reportProjectExport` directly, below the transport boundary. Both the REST
+ * endpoint and the `COMMAND_RESULT` protocol handler funnel through this
+ * parser, so testing it covers both transports.
+ */
+describe("STUDIO-2F-A screen receipts survive the transport parser", () => {
+  const receipt = (screens?: unknown) => ({
+    status: "completed",
+    executionId: "exec-1",
+    artifacts: [
+      {
+        artifactId: "artifact-1",
+        hash: "abc",
+        instancePath: "ReplicatedStorage.AIStudioArtifacts.UI_GENERATION",
+        ...(screens === undefined ? {} : { screens }),
+      },
+    ],
+  });
+
+  it("preserves screenName and instancePath pairs verbatim", () => {
+    const parsed = parseImportReport(
+      receipt([
+        {
+          screenName: "MainHUD",
+          instancePath:
+            "ReplicatedStorage.AIStudioArtifacts.UI_GENERATION.MainHUD",
+        },
+      ]),
+    );
+
+    expect(parsed.error).toBeUndefined();
+    expect(parsed.data?.artifacts[0].screens).toEqual([
+      {
+        screenName: "MainHUD",
+        instancePath:
+          "ReplicatedStorage.AIStudioArtifacts.UI_GENERATION.MainHUD",
+      },
+    ]);
+  });
+
+  it("leaves screens absent when the plugin reported none", () => {
+    const parsed = parseImportReport(receipt());
+
+    expect(parsed.error).toBeUndefined();
+    expect(parsed.data?.artifacts[0].screens).toBeUndefined();
+  });
+
+  it.each([
+    ["a non-array screens field", "not-an-array", /screens must be an array/],
+    ["a non-object entry", ["nope"], /screen receipt must be an object/],
+    [
+      "an entry without screenName",
+      [{ instancePath: "a" }],
+      /requires screenName/,
+    ],
+    [
+      "an entry without instancePath",
+      [{ screenName: "MainHUD" }],
+      /requires instancePath/,
+    ],
+  ])("rejects %s", (_label, screens, expected) => {
+    expect(parseImportReport(receipt(screens)).error).toMatch(expected);
+  });
+});
 
 describe("STUDIO-2F-A screen receipt verification", () => {
   beforeEach(() => {
