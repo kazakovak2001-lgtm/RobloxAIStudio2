@@ -484,6 +484,22 @@ export function isMaterializableUITreeCandidate(content: unknown): boolean {
   return isRecord(content) && content.schemaVersion !== undefined;
 }
 
+/**
+ * The instance path a materialized screen must occupy, as Roblox's
+ * `GetFullName()` renders it.
+ *
+ * Computed by the backend rather than taken from the receipt: a path the
+ * plugin supplied and the backend echoed back would verify nothing. This must
+ * stay in step with `ArtifactLoader:_ensureStageFolder` in the plugin, which
+ * builds `ReplicatedStorage/AIStudioArtifacts/<stage>/`.
+ */
+export function expectedScreenInstancePath(
+  stage: string,
+  screenName: string,
+): string {
+  return `ReplicatedStorage.AIStudioArtifacts.${stage}.${screenName}`;
+}
+
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }

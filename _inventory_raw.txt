@@ -583,6 +583,7 @@ server/src/__tests__/studio1.plugin-contract.test.ts
 server/src/__tests__/studio1.plugin-package.test.ts
 server/src/__tests__/studio1.runtime-consolidation.test.ts
 server/src/__tests__/studio2fa.allowlist-parity.test.ts
+server/src/__tests__/studio2fa.receipt-verification.test.ts
 server/src/__tests__/studioIntegration.test.ts
 server/src/agents/collaboration/AgentCoordinator.ts
 server/src/agents/collaboration/AgentMessageBus.ts
