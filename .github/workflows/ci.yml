@@ -285,6 +285,7 @@ jobs:
           echo "RELEASE_ORIGIN=https://localhost:8443" >> "$GITHUB_ENV"
           echo "RELEASE_PORT=8443" >> "$GITHUB_ENV"
           echo "RELEASE_CERT_DIR=${GITHUB_WORKSPACE}/.cutover-certs" >> "$GITHUB_ENV"
+          echo "NODE_EXTRA_CA_CERTS=${GITHUB_WORKSPACE}/.cutover-certs/release.crt" >> "$GITHUB_ENV"
       - name: Generate CI-only TLS certificate
         run: |
           mkdir -p .cutover-certs
