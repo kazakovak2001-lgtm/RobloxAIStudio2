@@ -11,21 +11,6 @@ import type { StudioIntegrationManager } from "../studio/integration/StudioInteg
 import type { SyncResult } from "../studio/integration/types";
 import type { ProjectAccessControl } from "./projects";
 
-/** Encode a request-derived value before it reaches a log sink, so control
- * characters (e.g. CR/LF) can't be used to forge fake log entries. */
-function sanitizeForLog(value: string): string {
-  return JSON.stringify(value);
-}
-
-/** Reduce a caught error to a sanitized message string before logging.
- * Error messages can themselves embed request-derived text (e.g.
- * RepairEngine.recordDelivery's "no repair session" error includes the
- * raw projectId), so the same sanitization applies here too. */
-function sanitizeErrorForLog(error: unknown): string {
-  const message = error instanceof Error ? error.message : String(error);
-  return sanitizeForLog(message);
-}
-
 export function createRepairRouter(
   access: ProjectAccessControl,
   agentRegistry: AgentRegistry,
@@ -155,10 +140,14 @@ export function createRepairRouter(
             error: error instanceof Error ? error.message : "Delivery failed",
           });
         } catch (auditError) {
+          const auditMessage =
+            auditError instanceof Error
+              ? auditError.message
+              : String(auditError);
           console.error(
             "Failed to record delivery audit for project %s: %s",
-            sanitizeForLog(projectId),
-            sanitizeErrorForLog(auditError),
+            projectId.replace(/[\r\n]/g, ""),
+            auditMessage.replace(/[\r\n]/g, ""),
           );
         }
         throw error;
@@ -177,10 +166,12 @@ export function createRepairRouter(
           error: syncResult.error,
         });
       } catch (auditError) {
+        const auditMessage =
+          auditError instanceof Error ? auditError.message : String(auditError);
         console.error(
           "Failed to record delivery audit for project %s: %s",
-          sanitizeForLog(projectId),
-          sanitizeErrorForLog(auditError),
+          projectId.replace(/[\r\n]/g, ""),
+          auditMessage.replace(/[\r\n]/g, ""),
         );
       }
 
