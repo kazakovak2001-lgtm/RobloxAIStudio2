@@ -73,10 +73,23 @@ export interface RepairSessionState {
   targetScore: number;
   currentScore: number;
   history: RepairIterationRecord[];
+  deliveries: RepairDeliveryRecord[];
   startedAt: number;
   finishedAt?: number;
   totalRepairs: number;
   stopReason?: string;
+}
+
+/** One Studio delivery attempt — a fresh push of the latest repair, or an
+ * explicit rollback to an earlier execution. Recorded whether it succeeded
+ * or failed. */
+export interface RepairDeliveryRecord {
+  timestamp: number;
+  executionId: string;
+  studioId: string;
+  source: "latest-repair" | "explicit-rollback";
+  success: boolean;
+  error?: string;
 }
 
 export interface RepairConfig {

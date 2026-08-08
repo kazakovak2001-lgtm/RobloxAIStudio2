@@ -1929,6 +1929,17 @@
     },
     {
       "transport": "rest",
+      "source": "server/src/routes/repair.ts",
+      "operation": "GET /:projectId/deliveries",
+      "classification": "project-owner",
+      "principal": "user-session",
+      "capability": "project.repair.deliveries.read",
+      "resourceScope": "path-project",
+      "positiveEvidence": "server/src/__tests__/security2gE.repair-scope.test.ts",
+      "negativeEvidence": "server/src/__tests__/security2gE.repair-scope.test.ts"
+    },
+    {
+      "transport": "rest",
       "source": "server/src/routes/simulation.ts",
       "operation": "GET /metrics/:gameId",
       "classification": "project-owner",

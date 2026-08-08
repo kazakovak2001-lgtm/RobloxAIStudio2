@@ -25,6 +25,7 @@ import type {
   RepairConfig,
   RepairSessionState,
   RepairIterationRecord,
+  RepairDeliveryRecord,
 } from "./RepairTypes";
 import { DEFAULT_REPAIR_CONFIG } from "./RepairTypes";
 
@@ -68,10 +69,40 @@ export class RepairEngine {
     executionId: string,
     config?: Partial<RepairConfig>,
   ): Promise<RepairSessionState> {
+    return this.enqueue(projectId, () =>
+      this.runExclusive(projectId, executionId, config),
+    );
+  }
+
+  /**
+   * Record one Studio delivery attempt (success or failure) against the
+   * project's existing repair session. Joins the same per-project queue as
+   * run() — both read-modify-write the whole RepairSessionState document,
+   * and RepairSessionStore has no CAS/versioning, so without sharing the
+   * queue a concurrent run() could silently drop this write (or vice versa).
+   */
+  async recordDelivery(
+    projectId: string,
+    record: RepairDeliveryRecord,
+  ): Promise<void> {
+    await this.enqueue(projectId, async () => {
+      const session = await this.sessionStore.get(projectId);
+      if (!session) {
+        throw new Error(
+          `Cannot record a delivery for project ${projectId}: no repair session exists`,
+        );
+      }
+      session.deliveries = [...(session.deliveries ?? []), record];
+      await this.sessionStore.save(session);
+    });
+  }
+
+  private async enqueue<T>(
+    projectId: string,
+    task: () => Promise<T>,
+  ): Promise<T> {
     const previous = this.runQueues.get(projectId) ?? Promise.resolve();
-    const operation = previous
-      .catch(() => undefined)
-      .then(() => this.runExclusive(projectId, executionId, config));
+    const operation = previous.catch(() => undefined).then(task);
     const tracked = operation.then(
       () => undefined,
       () => undefined,
@@ -109,6 +140,7 @@ export class RepairEngine {
       targetScore: cfg.targetScore,
       currentScore: 0,
       history: priorSession ? [...priorSession.history] : [],
+      deliveries: priorSession?.deliveries ?? [],
       startedAt: startTime,
       totalRepairs: 0,
     };
