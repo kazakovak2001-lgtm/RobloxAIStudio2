@@ -17,6 +17,11 @@ import {
   type StudioOperationalEvidence,
 } from "../../studio/v2/StudioEvidenceStore";
 import {
+  configureRepairSessionStoreFactory,
+  type RepairSessionStore,
+} from "../../repair/RepairSessionStore";
+import type { RepairSessionState } from "../../repair/RepairTypes";
+import {
   DurableStorageConflictError,
   type DurableMutation,
   type StorageProvider,
@@ -30,6 +35,7 @@ const AUTONOMOUS_EXECUTION_CLAIMS = "autonomous_runtime_execution_claims";
 const STUDIO_EVIDENCE = "studio_operational_evidence";
 const STUDIO_PROJECT_EVIDENCE = "studio_project_operational_evidence";
 const STUDIO_TRANSITION_CLAIMS = "studio_operational_transition_claims";
+const REPAIR_SESSIONS = "repair_runtime_sessions";
 
 export function configureOperationalStores(storage: StorageProvider): void {
   configureArtifactStorageFactory(() => storage);
@@ -40,6 +46,39 @@ export function configureOperationalStores(storage: StorageProvider): void {
   configureStudioEvidenceStoreFactory(
     () => new StorageStudioEvidenceStore(storage),
   );
+  configureRepairSessionStoreFactory(
+    () => new StorageRepairSessionStore(storage),
+  );
+}
+
+export class StorageRepairSessionStore implements RepairSessionStore {
+  constructor(private readonly storage: StorageProvider) {}
+
+  async ready(): Promise<void> {
+    await this.storage.ready?.();
+  }
+
+  async save(session: RepairSessionState): Promise<void> {
+    await this.storage.setDurable(
+      REPAIR_SESSIONS,
+      session.projectId,
+      structuredClone(session),
+    );
+  }
+
+  get(projectId: string): RepairSessionState | null {
+    const session = this.storage.get<RepairSessionState>(
+      REPAIR_SESSIONS,
+      projectId,
+    );
+    return session ? structuredClone(session) : null;
+  }
+
+  getAll(): RepairSessionState[] {
+    return this.storage
+      .list<RepairSessionState>(REPAIR_SESSIONS)
+      .map((session) => structuredClone(session));
+  }
 }
 
 export class StorageStudioEvidenceStore implements StudioEvidenceStore {

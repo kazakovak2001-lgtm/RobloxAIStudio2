@@ -563,7 +563,7 @@ class RepairAdapter extends BaseAdapter {
       evidence: "synthetic",
       service: "RepairEngine",
       reason:
-        "RepairEngine currently simulates score improvement and cost instead of modifying and revalidating artifacts.",
+        "RepairEngine now performs a real, artifact-applying single-strategy repair (REPAIR-1A) but is not yet wired into the autonomous phase loop.",
       cancellable: false,
       checkpointable: true,
     };

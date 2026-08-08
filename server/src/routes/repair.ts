@@ -1,44 +1,55 @@
 /**
- * Repair API — AI Self-Repair & Iteration Engine.
+ * Repair API — real, artifact-applying repair (REPAIR-1A).
  */
 
 import { Router } from "express";
 import { RepairEngine } from "../repair";
-import type { PlaytestInput } from "../playtest";
+import type { AgentRegistry } from "../agents/core/AgentRegistry";
+import type { IBlueprintRepository } from "../projects/repository/blueprint.repository";
+import { ArtifactStore } from "../pipeline/v2";
 import type { ProjectAccessControl } from "./projects";
 
-export function createRepairRouter(access: ProjectAccessControl): Router {
+export function createRepairRouter(
+  access: ProjectAccessControl,
+  agentRegistry: AgentRegistry,
+  blueprintRepository: IBlueprintRepository,
+  artifactStore: ArtifactStore = new ArtifactStore(),
+): Router {
   const router = Router();
-  const engine = new RepairEngine();
+  const engine = new RepairEngine(
+    agentRegistry,
+    blueprintRepository,
+    artifactStore,
+  );
 
-  // POST /api/repair/run — run repair iteration loop
+  // POST /api/repair/run — attempt a real repair against a specific execution
   router.post("/run", async (req, res) => {
-    const { projectId, scripts, assets, dependencyGraph, config } = req.body;
+    const { projectId, executionId, config } = req.body;
 
-    if (!projectId || !scripts) {
+    if (!projectId || !executionId) {
       res
         .status(400)
-        .json({ success: false, error: "projectId and scripts required" });
+        .json({ success: false, error: "projectId and executionId required" });
       return;
     }
 
     if (!(await access.requireProjectAccess(req, res, projectId))) return;
 
-    const input: PlaytestInput = {
-      projectId,
-      scripts: scripts ?? [],
-      assets: assets ?? [],
-      dependencyGraph,
-    };
-
-    const session = engine.run(input, config);
-    res.json({ success: true, data: session });
+    try {
+      const session = await engine.run(projectId, executionId, config);
+      res.json({ success: true, data: session });
+    } catch (error) {
+      res.status(400).json({
+        success: false,
+        error: error instanceof Error ? error.message : "Repair failed",
+      });
+    }
   });
 
   // GET /api/repair/:projectId — get repair session
   router.get("/:projectId", async (req, res) => {
     const projectId = req.params.projectId;
-    const session = engine.getSession(projectId);
+    const session = await engine.getSession(projectId);
     if (!session) {
       res
         .status(404)
@@ -61,7 +72,7 @@ export function createRepairRouter(access: ProjectAccessControl): Router {
   // GET /api/repair/history/:projectId — get repair history
   router.get("/history/:projectId", async (req, res) => {
     const projectId = req.params.projectId;
-    const history = engine.getHistory(projectId);
+    const history = await engine.getHistory(projectId);
     if (access.hasProjectAccess) {
       if (!(await access.hasProjectAccess(req, projectId))) {
         res

@@ -12,6 +12,9 @@ import { KnowledgeEngine } from "../knowledge";
 import { DomainEngine } from "../domain";
 import { AutonomousOrchestrator } from "../orchestrator";
 import { GameArchitect } from "../ai/gameArchitect";
+import { AgentRegistry } from "../agents/core/AgentRegistry";
+import { InMemoryBlueprintRepository } from "../projects/repository/blueprint.repository";
+import { ArtifactStore } from "../pipeline/v2";
 
 describe("Integration: Full Pipeline", () => {
   it("generates a complete Lua script package", () => {
@@ -85,26 +88,52 @@ describe("Integration: Full Pipeline", () => {
     expect(report.performance.scriptCount).toBe(scripts.totalScripts);
   });
 
-  it("runs repair loop and improves score", () => {
+  it("runs a real repair attempt against a stored execution", async () => {
     const luaEngine = new LuaGenerationEngine();
-    const repairEngine = new RepairEngine();
-
     const scripts = luaEngine.generateFullPackage("test", "Game", "rpg");
 
-    const session = repairEngine.run(
-      {
-        projectId: "test",
-        scripts: scripts.artifacts.map((a) => ({
-          name: a.name,
-          type: a.scriptType,
-          path: a.path,
-          content: a.content,
-          dependencies: a.dependencies,
-        })),
-        assets: [],
+    const artifactStore = new ArtifactStore();
+    const executionId = "integration-test-exec";
+    await artifactStore.store(executionId, "LUA_GENERATION", "lua_generator", {
+      scripts: scripts.artifacts.map((a) => ({
+        path: a.path,
+        content: a.content,
+      })),
+    });
+
+    const blueprintRepository = new InMemoryBlueprintRepository();
+    await blueprintRepository.createBlueprint("integration-test-user", {
+      project_id: "test",
+      user_id: "integration-test-user",
+      name: "Integration Test Game",
+      description: "A blueprint used only to exercise the repair loop.",
+      game_type: "rpg",
+      genre: ["rpg"],
+      target_audience: "all ages",
+      difficulty: "medium",
+      estimated_players: "small-group",
+      gameplay: { mechanics: [], progression: {}, balance: {} },
+      ui_layouts: [],
+      architecture: {
+        client_architecture: {},
+        server_architecture: {},
+        networking: {},
       },
-      { maxIterations: 3, targetScore: 95 },
+      assets: { models: [], textures: [], sounds: [], animations: [] },
+      code_spec: { modules: [], patterns: [] },
+    });
+
+    const agentRegistry = new AgentRegistry();
+    const repairEngine = new RepairEngine(
+      agentRegistry,
+      blueprintRepository,
+      artifactStore,
     );
+
+    const session = await repairEngine.run("test", executionId, {
+      maxIterations: 1,
+      targetScore: 95,
+    });
 
     expect(session.status).not.toBe("running");
     expect(session.currentScore).toBeGreaterThan(0);

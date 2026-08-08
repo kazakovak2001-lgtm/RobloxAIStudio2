@@ -12,9 +12,12 @@ import { PlaytestEngine } from "../playtest";
 import { RepairEngine } from "../repair";
 import { DomainEngine } from "../domain";
 import { KnowledgeEngine } from "../knowledge";
+import { AgentRegistry } from "../agents/core/AgentRegistry";
+import { InMemoryBlueprintRepository } from "../projects/repository/blueprint.repository";
+import { ArtifactStore } from "../pipeline/v2";
 
 describe("E2E: Real Game Generation", () => {
-  it("generates a complete survival game from a single prompt", () => {
+  it("generates a complete survival game from a single prompt", async () => {
     const prompt =
       "Create a survival game with crafting, building, and multiplayer";
 
@@ -104,26 +107,66 @@ describe("E2E: Real Game Generation", () => {
     expect(playtestReport.overallScore).toBeGreaterThan(0);
     expect(playtestReport.performance.scriptCount).toBe(scripts.totalScripts);
 
-    // Step 7: Repair loop
-    const repairEngine = new RepairEngine();
-    const repairSession = repairEngine.run(
+    // Step 7: Repair loop — persist the generated artifacts for real, then
+    // run a real repair attempt against them (REPAIR-1A).
+    const artifactStore = new ArtifactStore();
+    const repairExecutionId = "e2e-survival-exec";
+    await artifactStore.store(
+      repairExecutionId,
+      "LUA_GENERATION",
+      "lua_generator",
       {
-        projectId: "survival-project",
         scripts: scripts.artifacts.map((a) => ({
-          name: a.name,
-          type: a.scriptType,
           path: a.path,
           content: a.content,
-          dependencies: a.dependencies,
-        })),
-        assets: assets.manifest.assets.map((a) => ({
-          name: a.name,
-          type: a.type,
-          targetService: a.targetService,
-          placeholder: a.placeholder,
         })),
       },
-      { maxIterations: 3, targetScore: 90 },
+    );
+    await artifactStore.store(
+      repairExecutionId,
+      "ASSET_PLANNING",
+      "asset_planner",
+      {
+        assetPlan: {
+          models: assets.manifest.assets
+            .filter((a) => a.type === "MeshMetadata")
+            .map((a) => ({ name: a.name })),
+        },
+      },
+    );
+
+    const blueprintRepository = new InMemoryBlueprintRepository();
+    await blueprintRepository.createBlueprint("e2e-test-user", {
+      project_id: "survival-project",
+      user_id: "e2e-test-user",
+      name: "Wilderness Survival",
+      description: prompt,
+      game_type: "survival",
+      genre: ["survival"],
+      target_audience: "all ages",
+      difficulty: "medium",
+      estimated_players: "small-group",
+      gameplay: { mechanics: [], progression: {}, balance: {} },
+      ui_layouts: [],
+      architecture: {
+        client_architecture: {},
+        server_architecture: {},
+        networking: {},
+      },
+      assets: { models: [], textures: [], sounds: [], animations: [] },
+      code_spec: { modules: [], patterns: [] },
+    });
+
+    const agentRegistry = new AgentRegistry();
+    const repairEngine = new RepairEngine(
+      agentRegistry,
+      blueprintRepository,
+      artifactStore,
+    );
+    const repairSession = await repairEngine.run(
+      "survival-project",
+      repairExecutionId,
+      { maxIterations: 1, targetScore: 90 },
     );
 
     expect(repairSession.currentScore).toBeGreaterThan(0);

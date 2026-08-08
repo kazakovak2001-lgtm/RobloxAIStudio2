@@ -1,13 +1,26 @@
 /**
- * RepairEngine — Orchestrates the AI self-repair iteration loop.
+ * RepairEngine — Orchestrates a real, artifact-applying repair attempt.
  *
- * Flow: Generate → Playtest → Repair → Playtest → Repeat until target score or max iterations.
+ * REPAIR-1A flow: load real artifacts for an execution → baseline playtest →
+ * plan → execute (regenerate + fail-closed validation) → if anything was
+ * applied, persist the repaired Lua under a NEW execution id (parent
+ * execution is never mutated) and re-run the real playtest for the new
+ * score. REPAIR-1A runs a single bounded attempt — no multi-iteration
+ * auto-retry loop — even though RepairConfig.maxIterations exists for
+ * forward compatibility with a future phase.
  */
 
-import type { PlaytestReport, PlaytestInput } from "../playtest";
+import type { AgentRegistry } from "../agents/core/AgentRegistry";
+import type { ArtifactStore } from "../pipeline/v2";
 import { PlaytestEngine } from "../playtest";
 import { RepairPlanner } from "./RepairPlanner";
-import { RepairExecutor } from "./RepairExecutor";
+import { RepairExecutor, type RepairBlueprintLookup } from "./RepairExecutor";
+import { assembleRepairInput } from "./RepairInputAssembler";
+import {
+  createConfiguredRepairSessionStore,
+  InMemoryRepairSessionStore,
+  type RepairSessionStore,
+} from "./RepairSessionStore";
 import type {
   RepairConfig,
   RepairSessionState,
@@ -16,29 +29,45 @@ import type {
 import { DEFAULT_REPAIR_CONFIG } from "./RepairTypes";
 
 export class RepairEngine {
-  private planner: RepairPlanner;
-  private executor: RepairExecutor;
-  private playtestEngine: PlaytestEngine;
-  private sessions: Map<string, RepairSessionState> = new Map();
+  private readonly planner: RepairPlanner;
+  private readonly executor: RepairExecutor;
+  private readonly playtestEngine: PlaytestEngine;
+  private readonly sessionStore: RepairSessionStore;
 
-  constructor() {
+  constructor(
+    agentRegistry: AgentRegistry,
+    blueprintRepository: RepairBlueprintLookup,
+    private readonly artifactStore: ArtifactStore,
+    sessionStore?: RepairSessionStore,
+  ) {
     this.planner = new RepairPlanner();
-    this.executor = new RepairExecutor();
+    this.executor = new RepairExecutor(
+      agentRegistry,
+      blueprintRepository,
+      artifactStore,
+    );
     this.playtestEngine = new PlaytestEngine();
+    this.sessionStore =
+      sessionStore ??
+      createConfiguredRepairSessionStore() ??
+      new InMemoryRepairSessionStore();
   }
 
   /**
-   * Run the full repair loop for a project.
+   * Attempt to repair the Lua artifacts for one execution. Returns the
+   * resulting session state; artifacts are only persisted if the attempt
+   * produced and validated a real change.
    */
-  run(
-    input: PlaytestInput,
+  async run(
+    projectId: string,
+    executionId: string,
     config?: Partial<RepairConfig>,
-  ): RepairSessionState {
+  ): Promise<RepairSessionState> {
     const cfg: RepairConfig = { ...DEFAULT_REPAIR_CONFIG, ...config };
     const startTime = Date.now();
 
     const session: RepairSessionState = {
-      projectId: input.projectId,
+      projectId,
       status: "running",
       currentIteration: 0,
       maxIterations: cfg.maxIterations,
@@ -48,16 +77,23 @@ export class RepairEngine {
       startedAt: startTime,
       totalRepairs: 0,
     };
+    await this.sessionStore.save(session);
 
-    this.sessions.set(input.projectId, session);
-
-    // Initial playtest
-    let report = this.playtestEngine.run(input);
+    const assembled = await assembleRepairInput(
+      this.artifactStore,
+      projectId,
+      executionId,
+    );
+    let report = this.playtestEngine.run(assembled.input);
     session.currentScore = report.overallScore;
 
-    // Iteration loop
+    // REPAIR-1A: exactly one bounded attempt, regardless of maxIterations —
+    // each iteration is now a real LLM call + validation + persistence, not
+    // a free simulation. Multi-iteration auto-retry is deferred.
+    const attemptIterations = Math.min(cfg.maxIterations, 1);
+
     while (
-      session.currentIteration < cfg.maxIterations &&
+      session.currentIteration < attemptIterations &&
       session.currentScore < cfg.targetScore &&
       Date.now() - startTime < cfg.timeoutMs
     ) {
@@ -65,105 +101,122 @@ export class RepairEngine {
       const iterStart = Date.now();
       const scoreBefore = session.currentScore;
 
-      // Plan repairs
       const plan = this.planner.plan(
         report,
         session.currentIteration,
         cfg.targetScore,
       );
 
-      // Execute repairs
-      const results = this.executor.execute(plan);
-      const appliedCount = results.filter((r) => r.applied).length;
-      const changedArtifacts = results
-        .filter((r) => r.applied)
-        .map((r) => r.artifactChanged);
+      const { results, scripts } = await this.executor.execute(plan, {
+        projectId,
+        parentExecutionId: executionId,
+        scripts: assembled.scripts,
+      });
+      const appliedResults = results.filter((r) => r.applied);
+      const changedArtifacts = appliedResults.map((r) => r.artifactChanged);
 
-      // If no repairs applied, stop (nothing more to do)
-      if (appliedCount === 0) {
+      if (appliedResults.length === 0) {
         session.stopReason = "No actionable repairs remaining";
+        session.history.push({
+          iteration: session.currentIteration,
+          changedArtifacts: [],
+          scoreBefore,
+          scoreAfter: scoreBefore,
+          duration: Date.now() - iterStart,
+          tokenUsage: 0,
+          aiCost: 0,
+          repairsApplied: 0,
+          timestamp: Date.now(),
+          parentExecutionId: executionId,
+          strategyResults: results,
+        });
         break;
       }
 
-      // Re-run playtest after repairs
-      // In production this would use updated artifacts; here we simulate improvement
-      report = this.simulateImprovement(report, appliedCount);
-      session.currentScore = report.overallScore;
-      session.totalRepairs += appliedCount;
+      const newExecutionId = `${executionId}-repair-${session.currentIteration}`;
+      await this.persistRepairedExecution(executionId, newExecutionId, scripts);
 
-      // Record iteration
+      const newInput = await assembleRepairInput(
+        this.artifactStore,
+        projectId,
+        newExecutionId,
+      );
+      report = this.playtestEngine.run(newInput.input);
+      session.currentScore = report.overallScore;
+      session.totalRepairs += appliedResults.length;
+
       const record: RepairIterationRecord = {
         iteration: session.currentIteration,
         changedArtifacts,
         scoreBefore,
         scoreAfter: session.currentScore,
         duration: Date.now() - iterStart,
-        tokenUsage: appliedCount * 500,
-        aiCost: appliedCount * 0.001,
-        repairsApplied: appliedCount,
+        // Not tracked yet — the LLM provider interface surfaces no usage metadata.
+        tokenUsage: 0,
+        aiCost: 0,
+        repairsApplied: appliedResults.length,
         timestamp: Date.now(),
+        newExecutionId,
+        parentExecutionId: executionId,
+        strategyResults: results,
       };
       session.history.push(record);
     }
 
-    // Determine final status
     if (session.currentScore >= cfg.targetScore) {
       session.status = "completed";
-      session.stopReason = "Target score reached";
+      session.stopReason = session.stopReason ?? "Target score reached";
     } else if (Date.now() - startTime >= cfg.timeoutMs) {
       session.status = "timeout";
       session.stopReason = "Timeout exceeded";
-    } else if (session.currentIteration >= cfg.maxIterations) {
+    } else if (session.currentIteration >= attemptIterations) {
       session.status = "stopped";
-      session.stopReason = "Maximum iterations reached";
+      session.stopReason =
+        session.stopReason ?? "Bounded repair attempt limit reached";
     } else {
       session.status = "stopped";
     }
 
     session.finishedAt = Date.now();
-    this.sessions.set(input.projectId, session);
+    await this.sessionStore.save(session);
     return session;
   }
 
-  /**
-   * Get repair session state.
-   */
-  getSession(projectId: string): RepairSessionState | null {
-    return this.sessions.get(projectId) ?? null;
+  async getSession(projectId: string): Promise<RepairSessionState | null> {
+    return this.sessionStore.get(projectId);
+  }
+
+  async getHistory(projectId: string): Promise<RepairIterationRecord[]> {
+    return this.sessionStore.get(projectId)?.history ?? [];
   }
 
   /**
-   * Get repair history for a project.
+   * Persists the repaired LUA_GENERATION artifact under a new execution id
+   * and copies every other stage's artifact forward unchanged. The parent
+   * execution's artifacts are never mutated.
    */
-  getHistory(projectId: string): RepairIterationRecord[] {
-    return this.sessions.get(projectId)?.history ?? [];
-  }
+  private async persistRepairedExecution(
+    parentExecutionId: string,
+    newExecutionId: string,
+    repairedScripts: Awaited<ReturnType<typeof assembleRepairInput>>["scripts"],
+  ): Promise<void> {
+    const parentArtifacts = this.artifactStore.getByPipeline(parentExecutionId);
 
-  /**
-   * Simulate score improvement after repairs (approximation).
-   * In production, this re-runs the actual playtest on modified artifacts.
-   */
-  private simulateImprovement(
-    report: PlaytestReport,
-    repairsApplied: number,
-  ): PlaytestReport {
-    const improvement = Math.min(repairsApplied * 5, 20);
-    const newScore = Math.min(100, report.overallScore + improvement);
+    for (const artifact of parentArtifacts) {
+      if (artifact.stage === "LUA_GENERATION") continue;
+      await this.artifactStore.store(
+        newExecutionId,
+        artifact.stage,
+        artifact.agent,
+        artifact.content,
+      );
+    }
 
-    // Remove some issues (simulating fixes)
-    const remainingIssues = report.issues.slice(repairsApplied);
-
-    return {
-      ...report,
-      overallScore: newScore,
-      issues: remainingIssues,
-      classification:
-        newScore >= 80
-          ? "production_ready"
-          : newScore >= 50
-            ? "needs_work"
-            : "critical_issues",
-      summary: `After repair: ${newScore}/100. ${remainingIssues.length} remaining issues.`,
-    };
+    await this.artifactStore.store(
+      newExecutionId,
+      "LUA_GENERATION",
+      "repair-engine",
+      { scripts: repairedScripts },
+    );
   }
 }

@@ -79,6 +79,33 @@
     {
       "sourceLayer": "domains",
       "targetLayer": "infrastructure",
+      "sourceDomain": "repair",
+      "targetDomain": "pipeline",
+      "file": "server/src/repair/RepairEngine.ts",
+      "importPath": "../pipeline/v2",
+      "milestone": "RUNTIME-2D"
+    },
+    {
+      "sourceLayer": "domains",
+      "targetLayer": "infrastructure",
+      "sourceDomain": "repair",
+      "targetDomain": "pipeline",
+      "file": "server/src/repair/RepairExecutor.ts",
+      "importPath": "../pipeline/v2",
+      "milestone": "RUNTIME-2D"
+    },
+    {
+      "sourceLayer": "domains",
+      "targetLayer": "infrastructure",
+      "sourceDomain": "repair",
+      "targetDomain": "pipeline",
+      "file": "server/src/repair/RepairInputAssembler.ts",
+      "importPath": "../pipeline/v2",
+      "milestone": "RUNTIME-2D"
+    },
+    {
+      "sourceLayer": "domains",
+      "targetLayer": "infrastructure",
       "sourceDomain": "studio",
       "targetDomain": "pipeline",
       "file": "server/src/studio/artifacts/GenerationArtifactRecorder.ts",
