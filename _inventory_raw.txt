@@ -95,6 +95,7 @@ docs/00-project-control/DECISION_LOG.md
 docs/00-project-control/DOC-202A_ROADMAP_AUTHORITY_RECONCILIATION.md
 docs/00-project-control/FRONTEND_CUTOVER.md
 docs/00-project-control/ROADMAP_STATUS.md
+docs/00-project-control/RUNTIME-PLAYTEST-1_RESULT.md
 docs/00-project-control/SECURITY-2G-E_AUTHORIZATION_MATRIX.md
 docs/00-project-control/STUDIO-1A_ARTIFACT_LINEAGE.md
 docs/00-project-control/STUDIO-1B_RUNTIME_CONSOLIDATION.md

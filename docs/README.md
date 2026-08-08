@@ -43,9 +43,9 @@ The old embedded root `src/` frontend is removed and protected by a permanent in
 - `FRONTEND-2C`: complete through Frontend PRs #18–#21 and REL-203 release-pair promotion.
 - `RUNTIME-2D`: complete through issue #57 and deterministic runtime ownership validation.
 - `DURABILITY-2E`: complete through DATA-201 and DATA-202; issue #135 is closed.
-- `SECURITY-2G`, `DOC-202`, `ROADMAP-AUDIT-1`, and `STUDIO-ACCEPT-1`: complete.
-- `RUNTIME-PLAYTEST-1`: next product-critical delivery.
-- `REPAIR-1`, `STUDIO-2F`, and `AUTONOMY-3A`: deferred behind runtime playtest evidence.
+- `SECURITY-2G`, `DOC-202`, `ROADMAP-AUDIT-1`, `STUDIO-ACCEPT-1`, and `RUNTIME-PLAYTEST-1`: complete.
+- `REPAIR-1`: next product-critical delivery.
+- `STUDIO-2F` and `AUTONOMY-3A`: deferred behind artifact-applying repair evidence.
 
 See [Roadmap Status](./00-project-control/ROADMAP_STATUS.md) for exact ordering and evidence.
 

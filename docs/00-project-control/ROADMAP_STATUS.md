@@ -28,8 +28,8 @@ This file is the ordered current delivery authority. The dated TECH-AUDIT-2 road
 | `DOC-202` | Documentation-authority inventory and deterministic guards | Medium | ✅ Complete — `DOC-202A` | `SECURITY-2G` |
 | `ROADMAP-AUDIT-1` | Evidence-based next-phase reconciliation | High | ✅ Complete | `DOC-202` |
 | `STUDIO-ACCEPT-1` | Real Studio acceptance of canonical artifact delivery | Critical | ✅ Complete | `ROADMAP-AUDIT-1` |
-| `RUNTIME-PLAYTEST-1` | Authoritative Studio-attached Roblox runtime evidence | High | Next | `STUDIO-ACCEPT-1` |
-| `REPAIR-1` | Artifact-applying repair, redelivery, and revalidation | High | Deferred | `RUNTIME-PLAYTEST-1` |
+| `RUNTIME-PLAYTEST-1` | Authoritative Studio-attached Roblox runtime evidence | High | ✅ Complete — [result](./RUNTIME-PLAYTEST-1_RESULT.md), operator-observed evidence | `STUDIO-ACCEPT-1` |
+| `REPAIR-1` | Artifact-applying repair, redelivery, and revalidation | High | Next | `RUNTIME-PLAYTEST-1` |
 | `STUDIO-SYNC-1A` | Project sync and artifact-transfer contract hardening | Medium | ✅ Complete — backend PR #176, Frontend PR #34/#37 | `STUDIO-ACCEPT-1` |
 | `STUDIO-2F` | Native assets, GUI, runtime, and place delivery | Medium | Deferred | control gates |
 | `AUTONOMY-3A` | Real engine-backed autonomous phases and broader recovery | High | Deferred | control gates |
@@ -79,7 +79,7 @@ Ordered delivery:
 
 Every exception records the control, exact package/advisory/rule/path/fingerprint/component/case, affected repository and release identity, owner, rationale, compensating control, approval reference, creation date and expiry. Expired, ambiguous, wildcard or ownerless exceptions fail validation.
 
-`SECURITY-2G` is complete through merged PR #162 at `da55f716c798ec8c6a7f25a8e2a3b7b0a2244416`. `DOC-202A`, ROADMAP-AUDIT-1, and STUDIO-ACCEPT-1 are complete. `RUNTIME-PLAYTEST-1` is the next product-critical delivery; repair, native delivery, autonomy, collaboration, and lower-priority sync hardening remain separate subsequent deliveries.
+`SECURITY-2G` is complete through merged PR #162 at `da55f716c798ec8c6a7f25a8e2a3b7b0a2244416`. `DOC-202A`, ROADMAP-AUDIT-1, STUDIO-ACCEPT-1, and RUNTIME-PLAYTEST-1 are complete. `REPAIR-1` is the next product-critical delivery; native delivery, autonomy, collaboration, and lower-priority sync hardening remain separate subsequent deliveries.
 
 ## Completion evidence
 
