@@ -521,6 +521,7 @@ server/src/__tests__/pluginProtocol.test.ts
 server/src/__tests__/preservationProperty.test.ts
 server/src/__tests__/productLayer.test.ts
 server/src/__tests__/productionQuality.test.ts
+server/src/__tests__/repair-delivery.test.ts
 server/src/__tests__/saasFoundation.test.ts
 server/src/__tests__/security.test.ts
 server/src/__tests__/security2gE.agent-collaboration-scope.test.ts

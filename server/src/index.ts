@@ -611,7 +611,7 @@ app.use("/api/playtest", createPlaytestRouter(access));
 import { createRepairRouter } from "./routes/repair";
 app.use(
   "/api/repair",
-  createRepairRouter(access, agentRegistry, blueprintRepo),
+  createRepairRouter(access, agentRegistry, blueprintRepo, studioManager),
 );
 
 // Knowledge API

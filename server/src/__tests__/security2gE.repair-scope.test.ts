@@ -37,7 +37,25 @@ describe("SECURITY-2G-E repair scope", () => {
     expect(route).toContain('error: "No repair session found"');
     expect(route).toContain('error: "No repair history found"');
     expect(index).toContain(
-      "createRepairRouter(access, agentRegistry, blueprintRepo)",
+      "createRepairRouter(access, agentRegistry, blueprintRepo, studioManager)",
+    );
+  });
+
+  it("guards repair delivery before touching the Studio sync pipeline", () => {
+    const deliverSection = route.indexOf('post("/:projectId/deliver"');
+    expect(deliverSection).toBeGreaterThan(-1);
+    const deliverAccessCheck = route.indexOf(
+      "requireProjectAccess(req, res, projectId)",
+      deliverSection,
+    );
+    const deliverSync = route.indexOf("synchronizeExecution(", deliverSection);
+    expect(deliverAccessCheck).toBeGreaterThan(deliverSection);
+    expect(deliverAccessCheck).toBeLessThan(deliverSync);
+    expect(route).toContain(
+      'error: "No repaired execution available for this project"',
+    );
+    expect(route).toContain(
+      'error: "No connected Studio session available for this project."',
     );
   });
 
@@ -45,7 +63,7 @@ describe("SECURITY-2G-E repair scope", () => {
     const operations = matrix.operations.filter(
       (item) => item.source === "server/src/routes/repair.ts",
     );
-    expect(operations).toHaveLength(3);
+    expect(operations).toHaveLength(4);
     expect(operations).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
@@ -65,6 +83,13 @@ describe("SECURITY-2G-E repair scope", () => {
           operation: "GET /history/:projectId",
           classification: "project-owner",
           capability: "project.repair.history.read",
+          resourceScope: "path-project",
+        }),
+        expect.objectContaining({
+          operation: "POST /:projectId/deliver",
+          classification: "project-owner",
+          principal: "user-session",
+          capability: "project.repair.deliver",
           resourceScope: "path-project",
         }),
       ]),
