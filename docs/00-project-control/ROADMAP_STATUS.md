@@ -31,7 +31,12 @@ This file is the ordered current delivery authority. The dated TECH-AUDIT-2 road
 | `RUNTIME-PLAYTEST-1` | Authoritative Studio-attached Roblox runtime evidence | High | ✅ Complete — [result](./RUNTIME-PLAYTEST-1_RESULT.md), operator-observed evidence | `STUDIO-ACCEPT-1` |
 | `REPAIR-1` | Artifact-applying repair, redelivery, and revalidation | High | ✅ Complete — backend 1A/1B/1C plus the Frontend repair UI (backend PR #185/#187/#189, Frontend PR #38/#40) | `RUNTIME-PLAYTEST-1` |
 | `STUDIO-SYNC-1A` | Project sync and artifact-transfer contract hardening | Medium | ✅ Complete — backend PR #176, Frontend PR #34/#37 | `STUDIO-ACCEPT-1` |
-| `STUDIO-2F` | Native assets, GUI, runtime, and place delivery | Medium | Deferred | control gates |
+| `STUDIO-2F` | Native assets, GUI, runtime, and place delivery | Medium | Decomposed into `STUDIO-2F-A`…`STUDIO-2F-E`; no unsatisfied control gate remains | `REPAIR-1` |
+| `STUDIO-2F-A` | Generated GUI materialization as real Studio instances | Medium | Scoped, not started — [scope](./STUDIO-2F-A_SCOPE.md) | `STUDIO-SYNC-1A` |
+| `STUDIO-2F-B` | Native asset materialization (mesh, decal, audio) | Medium | Not scoped — requires a Roblox Open Cloud credential surface that does not exist yet | `STUDIO-2F-A` |
+| `STUDIO-2F-C` | Place and `.rbxl` delivery | Medium | Not scoped — begins with a documented delivery-mechanism decision | `STUDIO-2F-A` |
+| `STUDIO-2F-D` | Runtime validator in the canonical plugin package | Low | Not scoped | `STUDIO-2F-A` |
+| `STUDIO-2F-E` | Canonical-HUD flip to the delivered GUI tree | Medium | Not scoped — must be applied atomically | `STUDIO-2F-A` |
 | `AUTONOMY-3A` | Real engine-backed autonomous phases and broader recovery | High | Deferred | control gates |
 | `COLLAB-3B` | Collaborative development | Medium | Deferred | preceding gates |
 
@@ -79,7 +84,7 @@ Ordered delivery:
 
 Every exception records the control, exact package/advisory/rule/path/fingerprint/component/case, affected repository and release identity, owner, rationale, compensating control, approval reference, creation date and expiry. Expired, ambiguous, wildcard or ownerless exceptions fail validation.
 
-`SECURITY-2G` is complete through merged PR #162 at `da55f716c798ec8c6a7f25a8e2a3b7b0a2244416`. `DOC-202A`, ROADMAP-AUDIT-1, STUDIO-ACCEPT-1, RUNTIME-PLAYTEST-1, and `REPAIR-1` are complete. `REPAIR-1` landed all three backend sub-phases — 1A (real artifact-applying single-strategy repair), 1B (Studio redelivery of repaired artifacts), and 1C (durable delivery/rollback audit trail) — plus the Frontend repair UI that surfaces them (Frontend PR #40). Native delivery, autonomy, collaboration, and lower-priority sync hardening remain separate subsequent deliveries.
+`SECURITY-2G` is complete through merged PR #162 at `da55f716c798ec8c6a7f25a8e2a3b7b0a2244416`. `DOC-202A`, ROADMAP-AUDIT-1, STUDIO-ACCEPT-1, RUNTIME-PLAYTEST-1, and `REPAIR-1` are complete. `REPAIR-1` landed all three backend sub-phases — 1A (real artifact-applying single-strategy repair), 1B (Studio redelivery of repaired artifacts), and 1C (durable delivery/rollback audit trail) — plus the Frontend repair UI that surfaces them (Frontend PR #40). Autonomy, collaboration, and lower-priority sync hardening remain separate subsequent deliveries. `STUDIO-2F` is now decomposed rather than deferred: every control gate the historical planning documents named as its precondition is complete, so the phrase "control gates" no longer describes an outstanding blocker. `STUDIO-2F-A` is scoped in [its own record](./STUDIO-2F-A_SCOPE.md); the remaining sub-phases are named for ordering only and are not yet scoped.
 
 ## Completion evidence
 
@@ -114,6 +119,7 @@ The canonical web application is the separate repository [`kazakovak2001-lgtm/Fr
 - [Current Project State](./CURRENT_STATE.md)
 - [DOC-202A Roadmap Authority Reconciliation](./DOC-202A_ROADMAP_AUTHORITY_RECONCILIATION.md)
 - [STUDIO-ACCEPT-1 Desktop Acceptance Result](./STUDIO-ACCEPT-1_DESKTOP_ACCEPTANCE_RESULT.md)
+- [STUDIO-2F-A Scope](./STUDIO-2F-A_SCOPE.md)
 - [Frontend Cutover Contract](./FRONTEND_CUTOVER.md)
 - [CUTOVER-1E Default Promotion](../project/CUTOVER-1E_DEFAULT_PROMOTION.md)
 - [CUTOVER-1F Post-Promotion CI Alignment](../project/CUTOVER-1F_POST_PROMOTION_CI_ALIGNMENT.md)

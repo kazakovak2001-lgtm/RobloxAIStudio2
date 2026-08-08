@@ -45,7 +45,8 @@ The old embedded root `src/` frontend is removed and protected by a permanent in
 - `DURABILITY-2E`: complete through DATA-201 and DATA-202; issue #135 is closed.
 - `SECURITY-2G`, `DOC-202`, `ROADMAP-AUDIT-1`, `STUDIO-ACCEPT-1`, and `RUNTIME-PLAYTEST-1`: complete.
 - `REPAIR-1`: complete — backend 1A (real single-strategy repair), 1B (Studio redelivery), and 1C (delivery/rollback audit), plus the Frontend Integrate-stage repair panel that surfaces them (Frontend PR #40).
-- `STUDIO-2F` and `AUTONOMY-3A`: deferred behind remaining control gates.
+- `STUDIO-2F`: decomposed into `STUDIO-2F-A`…`STUDIO-2F-E`. No unsatisfied control gate remains; `STUDIO-2F-A` (generated GUI materialization) is scoped and not started, the rest are named for ordering only.
+- `AUTONOMY-3A`: deferred and unscoped.
 
 See [Roadmap Status](./00-project-control/ROADMAP_STATUS.md) for exact ordering and evidence.
 
@@ -85,7 +86,7 @@ The architecture boundary program is complete. Current validation must fail clos
 - [Real desktop result](./00-project-control/STUDIO-1G_DESKTOP_ACCEPTANCE_RESULT.md)
 - [Plugin README](../studio-plugin/README.md)
 
-STUDIO-1 proves exact generated-artifact delivery and verification. DATA-202C persists serializable Studio command and verification evidence. Live clients, sockets, timers, and callbacks remain intentionally process-local. Native model, mesh, audio, GUI, runtime, and place generation is separate deferred `STUDIO-2F` scope.
+STUDIO-1 proves exact generated-artifact delivery and verification. DATA-202C persists serializable Studio command and verification evidence. Live clients, sockets, timers, and callbacks remain intentionally process-local. Native model, mesh, audio, GUI, runtime, and place generation is separate `STUDIO-2F` scope, now decomposed into sub-phases; GUI materialization is scoped as `STUDIO-2F-A` and the rest remain unscoped.
 
 ## Development and validation
 
