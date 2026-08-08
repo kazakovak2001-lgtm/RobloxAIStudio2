@@ -673,6 +673,7 @@
 │   │   │   ├── studio1.plugin-package.test.ts
 │   │   │   ├── studio1.runtime-consolidation.test.ts
 │   │   │   ├── studio2fa.allowlist-parity.test.ts
+│   │   │   ├── studio2fa.receipt-verification.test.ts
 │   │   │   └── studioIntegration.test.ts
 │   │   ├── agents
 │   │   │   ├── collaboration

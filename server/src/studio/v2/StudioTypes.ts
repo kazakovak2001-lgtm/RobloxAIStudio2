@@ -26,10 +26,24 @@ export type StudioCommandType =
 export type CommandStatus =
   "pending" | "sent" | "acknowledged" | "completed" | "failed";
 
+/**
+ * Identity-bearing half of a UI receipt.
+ *
+ * A positional array of instance paths cannot prove *which* screen landed
+ * where, so a delivery that materialized the right number of screens under the
+ * wrong names would verify. The pairing is what makes missing, extra,
+ * duplicate and path-mismatched screens detectable.
+ */
+export interface StudioScreenReceipt {
+  screenName: string;
+  instancePath: string;
+}
+
 export interface StudioArtifactReceipt {
   artifactId: string;
   hash: string;
   instancePath?: string;
+  screens?: StudioScreenReceipt[];
 }
 
 export interface StudioCommandResult {

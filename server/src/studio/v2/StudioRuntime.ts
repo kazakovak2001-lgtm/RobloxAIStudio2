@@ -17,6 +17,11 @@ import {
   type StudioCommandResult,
 } from "./StudioTypes";
 import { PROTOCOL_VERSION } from "./protocol";
+import {
+  UI_TREE_SCHEMA_VERSION,
+  expectedScreenInstancePath,
+  isMaterializableUITreeCandidate,
+} from "../../ui-gen/UIInstanceTreeContract";
 import { ProjectSyncManager } from "./sync/ProjectSyncManager";
 import type { TransferResult } from "./sync/ArtifactTransferManager";
 import type {
@@ -742,7 +747,80 @@ export class StudioRuntime {
       if (receipt.hash !== expected.hash) {
         return `Artifact hash mismatch for ${expected.id}.`;
       }
+      const screenError = this.verifyScreenReceipt(expected.id, receipt);
+      if (screenError) return screenError;
     }
+    return null;
+  }
+
+  /**
+   * Verify the `{ screenName, instancePath }` pairs for a materialized UI tree.
+   *
+   * The expected screen set comes from the stored artifact content, which the
+   * backend already knows, so the plugin cannot define its own success
+   * criteria. Missing, extra, duplicate and path-mismatched screens are each
+   * rejected.
+   *
+   * Only artifacts that positively resolve to a versioned UI tree carry this
+   * requirement. An artifact absent from the store imposes none, because the
+   * expectation cannot be computed — its hash was still checked above.
+   */
+  private verifyScreenReceipt(
+    artifactId: string,
+    receipt: StudioArtifactReceipt,
+  ): string | null {
+    const stored = this.artifacts.getById(artifactId);
+    const content = stored?.content;
+    if (!isMaterializableUITreeCandidate(content)) return null;
+
+    const tree = content as { schemaVersion?: unknown; screens?: unknown };
+    if (tree.schemaVersion !== UI_TREE_SCHEMA_VERSION) return null;
+    if (!Array.isArray(tree.screens)) return null;
+
+    const expectedNames = tree.screens
+      .map((screen) =>
+        typeof (screen as { screenName?: unknown })?.screenName === "string"
+          ? (screen as { screenName: string }).screenName
+          : null,
+      )
+      .filter((name): name is string => name !== null);
+
+    if (!Array.isArray(receipt.screens)) {
+      return `Artifact ${artifactId} materialized a UI tree but reported no screen receipts.`;
+    }
+
+    const seen = new Set<string>();
+    for (const screen of receipt.screens) {
+      if (
+        typeof screen?.screenName !== "string" ||
+        typeof screen?.instancePath !== "string"
+      ) {
+        return `Artifact ${artifactId} reported a malformed screen receipt.`;
+      }
+      if (seen.has(screen.screenName)) {
+        return `Artifact ${artifactId} reported duplicate screen receipt ${screen.screenName}.`;
+      }
+      seen.add(screen.screenName);
+
+      if (!expectedNames.includes(screen.screenName)) {
+        return `Artifact ${artifactId} reported an unexpected screen ${screen.screenName}.`;
+      }
+
+      const expectedPath = expectedScreenInstancePath(
+        stored!.stage,
+        screen.screenName,
+      );
+      if (screen.instancePath !== expectedPath) {
+        return `Artifact ${artifactId} reported screen ${screen.screenName} at ${screen.instancePath} instead of ${expectedPath}.`;
+      }
+    }
+
+    for (const name of expectedNames) {
+      if (!seen.has(name)) {
+        return `Artifact ${artifactId} is missing a receipt for screen ${name}.`;
+      }
+    }
+
     return null;
   }
 
