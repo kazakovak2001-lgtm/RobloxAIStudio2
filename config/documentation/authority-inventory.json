@@ -54,6 +54,18 @@
         "6c1458d836244f2b720f361a78c2ab13f1682f74"
       ],
       "forbiddenClaims": []
+    },
+    {
+      "path": "docs/00-project-control/STUDIO-2F-A_SCOPE.md",
+      "owner": "project-control",
+      "rank": 4,
+      "status": "supporting",
+      "requiredClaims": [
+        "STUDIO-2F-A",
+        "the imperative Lua HUD remains runtime-canonical",
+        "There is no Lua test harness"
+      ],
+      "forbiddenClaims": []
     }
   ],
   "historical": [
@@ -81,6 +93,10 @@
     {
       "source": "docs/00-project-control/ROADMAP_STATUS.md",
       "target": "docs/00-project-control/CURRENT_STATE.md"
+    },
+    {
+      "source": "docs/00-project-control/ROADMAP_STATUS.md",
+      "target": "docs/00-project-control/STUDIO-2F-A_SCOPE.md"
     }
   ]
 }
