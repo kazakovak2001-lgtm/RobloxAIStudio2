@@ -105,6 +105,10 @@ describe("generation provenance", () => {
       model: "qwen2.5-coder:7b",
     });
 
+    // The core claim of the slice: a provider-backed run is not labelled
+    // fallback. Without this the suite would pass even if resolveProvenance
+    // classified every run as fallback.
+    expect(execution.ai_mode).toBe("ai");
     expect(execution.ai_provider).toBe("ollama");
     expect(execution.ai_model).toBe("qwen2.5-coder:7b");
   }, 20000);

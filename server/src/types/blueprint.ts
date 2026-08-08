@@ -220,9 +220,10 @@ export interface GenerationExecution {
    * How this execution's content was produced.
    *
    * `"ai"`      — a real provider generated the artifacts.
-   * `"fallback"`— no provider was available and at least one stage returned
-   *               deterministic canned content. Never present this as an AI
-   *               generation.
+   * `"fallback"`— no provider resolved, or at least one stage returned
+   *               deterministic canned content. `ai_provider` may still be
+   *               set: it records what was configured, not what produced the
+   *               content. Never present this as an AI generation.
    * `undefined` — recorded before provenance existed; provenance is unknown
    *               and must not be reported as `"ai"`.
    */

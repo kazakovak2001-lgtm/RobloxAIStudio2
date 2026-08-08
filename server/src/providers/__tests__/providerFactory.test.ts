@@ -7,6 +7,7 @@ import {
   LLMProviderFactory,
   estimateCost,
   describeAiMode,
+  shouldRefuseStartupWithoutProvider,
 } from "../providerFactory";
 
 describe("LLMProviderFactory", () => {
@@ -259,6 +260,55 @@ describe("LLMProviderFactory — explicit provider selection", () => {
     expect(withKey.mode).toBe(provider);
     expect(withKey.provider).not.toBeNull();
     expect(withKey.unsatisfied).toBeUndefined();
+  });
+});
+
+/**
+ * The startup refusal must fire whenever no provider resolved. Gating it on
+ * `unsatisfied` alone would let a release image that lost its provider
+ * configuration entirely start normally and serve deterministic fallbacks —
+ * the exact misconfiguration this control exists to catch.
+ */
+describe("shouldRefuseStartupWithoutProvider", () => {
+  afterEach(() => {
+    delete process.env.DEFAULT_PROVIDER;
+    delete process.env.OLLAMA_URL;
+    delete process.env.OLLAMA_MODEL;
+    delete process.env.OPENAI_API_KEY;
+  });
+
+  it("refuses when nothing at all is configured", () => {
+    const result = LLMProviderFactory.create();
+
+    expect(result.mode).toBe("none");
+    expect(result.unsatisfied).toBeUndefined();
+    expect(shouldRefuseStartupWithoutProvider(result, "true")).toBe(true);
+  });
+
+  it("refuses when an explicit provider could not be constructed", () => {
+    process.env.DEFAULT_PROVIDER = "openai";
+
+    expect(
+      shouldRefuseStartupWithoutProvider(LLMProviderFactory.create(), "true"),
+    ).toBe(true);
+  });
+
+  it("allows startup when a provider resolved", () => {
+    process.env.DEFAULT_PROVIDER = "ollama";
+    process.env.OLLAMA_URL = "http://localhost:11434";
+    process.env.OLLAMA_MODEL = "qwen2.5-coder:7b";
+
+    expect(
+      shouldRefuseStartupWithoutProvider(LLMProviderFactory.create(), "true"),
+    ).toBe(false);
+  });
+
+  it('stays off unless the flag is exactly "true"', () => {
+    const result = LLMProviderFactory.create();
+
+    expect(shouldRefuseStartupWithoutProvider(result, undefined)).toBe(false);
+    expect(shouldRefuseStartupWithoutProvider(result, "false")).toBe(false);
+    expect(shouldRefuseStartupWithoutProvider(result, "1")).toBe(false);
   });
 });
 

@@ -34,6 +34,7 @@ import { AgentRegistry } from "./agents/core/AgentRegistry";
 import {
   LLMProviderFactory,
   describeAiMode,
+  shouldRefuseStartupWithoutProvider,
 } from "./providers/providerFactory";
 import { ExecutionTracer } from "./core/observability/ExecutionTracer";
 import { StudioIntegrationManager } from "./studio/integration/StudioIntegrationManager";
@@ -197,15 +198,22 @@ const pipelineIntegrator = null; // Deprecated: PlanExecutor is now the canonica
 
 // Resolve LLM provider from environment variables.
 //
-// REQUIRE_LLM_PROVIDER=true makes an explicitly requested but unconstructable
-// DEFAULT_PROVIDER a startup failure instead of a silent degrade to stub mode.
-// It defaults to off so tests and local no-key development keep working; the
-// release image is expected to set it.
+// REQUIRE_LLM_PROVIDER=true refuses to start whenever no provider resolved —
+// both an unconstructable explicit DEFAULT_PROVIDER and a wholly empty
+// configuration, since a release image that lost its provider settings would
+// otherwise serve deterministic fallback content. It defaults to off so tests
+// and local no-key development keep working; the release image is expected to
+// set it.
 const llmResult = LLMProviderFactory.create();
 console.log(`[LLM] ${llmResult.info}`);
 
-if (llmResult.unsatisfied) {
-  if (process.env.REQUIRE_LLM_PROVIDER === "true") {
+if (!llmResult.provider) {
+  if (
+    shouldRefuseStartupWithoutProvider(
+      llmResult,
+      process.env.REQUIRE_LLM_PROVIDER,
+    )
+  ) {
     console.error(
       `[LLM] REQUIRE_LLM_PROVIDER is set and no provider could be resolved — refusing to start. ${llmResult.info}`,
     );

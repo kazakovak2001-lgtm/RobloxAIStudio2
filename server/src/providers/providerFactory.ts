@@ -95,6 +95,22 @@ export interface AiModeSummary {
   unsatisfied?: boolean;
 }
 
+/**
+ * Whether startup must be refused because no LLM resolved.
+ *
+ * Gated on the absence of a provider, not on `unsatisfied`. An empty
+ * configuration produces `mode: "none"` with `unsatisfied` unset, and that is
+ * exactly the case an operator setting REQUIRE_LLM_PROVIDER wants caught: a
+ * release image that lost its provider configuration would otherwise start
+ * normally and serve deterministic fallback content.
+ */
+export function shouldRefuseStartupWithoutProvider(
+  result: ProviderFactoryResult,
+  requireProvider: string | undefined,
+): boolean {
+  return result.provider === null && requireProvider === "true";
+}
+
 export function describeAiMode(result: ProviderFactoryResult): AiModeSummary {
   const summary: AiModeSummary = {
     llm: result.mode === "none" ? "stub" : result.mode,
@@ -271,6 +287,7 @@ export class LLMProviderFactory {
           mode: "openai",
           model: m,
           info: `OpenAI (forced, model: ${m})`,
+          requested: name,
         };
       }
       case "anthropic": {
@@ -282,6 +299,7 @@ export class LLMProviderFactory {
           mode: "anthropic",
           model: m,
           info: `Anthropic (forced, model: ${m})`,
+          requested: name,
         };
       }
       case "gemini": {
@@ -293,6 +311,7 @@ export class LLMProviderFactory {
           mode: "gemini",
           model: m,
           info: `Gemini (forced, model: ${m})`,
+          requested: name,
         };
       }
       case "groq": {
@@ -304,6 +323,7 @@ export class LLMProviderFactory {
           mode: "groq",
           model: m,
           info: `Groq (forced, model: ${m})`,
+          requested: name,
         };
       }
       case "openrouter": {
