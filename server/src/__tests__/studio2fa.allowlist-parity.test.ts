@@ -189,6 +189,7 @@ describe("STUDIO-2F-A plugin materialization contract", () => {
 
   it("builds detached and destroys anything built when a build fails", () => {
     expect(MATERIALIZER).toContain("if not buildOk then");
+    expect(MATERIALIZER).toContain("if not attachOk then");
     expect(MATERIALIZER).toContain("entry.root:Destroy()");
     // Roots are parented only after every screen has been constructed.
     expect(
@@ -203,7 +204,7 @@ describe("STUDIO-2F-A plugin materialization contract", () => {
     expect(MATERIALIZER).toContain("is not managed by AI Studio");
   });
 
-  it("marks what it creates and carries hand-added children across", () => {
+  it("marks what it creates", () => {
     expect(MATERIALIZER).toContain(
       "instance:SetAttribute(MANAGED_ATTRIBUTE, true)",
     );
@@ -211,7 +212,57 @@ describe("STUDIO-2F-A plugin materialization contract", () => {
       'local MANAGED_ATTRIBUTE = "AIStudioManaged"',
     );
     expect(MATERIALIZER).toContain('local DELIVERY_MODE = "design-time"');
-    expect(MATERIALIZER).toContain("if not isManaged(child) then");
+  });
+
+  /**
+   * Review found that walking only direct children lost creator work: an
+   * instance added inside a generated container is a grandchild of the screen,
+   * and destroying the screen took it along. Preservation must recurse.
+   */
+  it("rescues creator content at any depth, not only direct children", () => {
+    expect(MATERIALIZER).toContain(
+      "local function collectUnmanagedDescendants(instance, found)",
+    );
+    // Recursion continues through managed nodes and stops at unmanaged ones,
+    // so a creator's own subtree moves as a single piece.
+    expect(MATERIALIZER).toContain("collectUnmanagedDescendants(child, found)");
+    expect(MATERIALIZER).toContain(
+      'local PRESERVED_FOLDER = "AIStudioPreserved"',
+    );
+    // The reserved folder name must be unusable by generated content, or a
+    // delivery could collide with the container protecting creator work.
+    expect(MATERIALIZER).toContain(
+      "if name == PRESERVED_FOLDER then return false end",
+    );
+  });
+
+  it("preserves creator content on both replacement and sweep", () => {
+    const replaceIndex = MATERIALIZER.indexOf(
+      "preserveUnmanagedContent(existing, entry.root)",
+    );
+    const sweepIndex = MATERIALIZER.indexOf(
+      "preserveUnmanagedContent(child, stageFolder)",
+    );
+
+    expect(replaceIndex).toBeGreaterThan(-1);
+    expect(sweepIndex).toBeGreaterThan(-1);
+    // Rescue must happen before the destroy in both paths.
+    expect(MATERIALIZER.indexOf("existing:Destroy()")).toBeGreaterThan(
+      replaceIndex,
+    );
+    expect(MATERIALIZER.indexOf("child:Destroy()")).toBeGreaterThan(sweepIndex);
+  });
+
+  it("guards the attach phase and discards roots that never attached", () => {
+    expect(MATERIALIZER).toContain("local attachOk, attachErr = pcall");
+    expect(MATERIALIZER).toContain("if not attachOk then");
+    expect(MATERIALIZER).toContain("if not entry.attached then");
+  });
+
+  it("binds an enum value to its property and bounds integers", () => {
+    expect(MATERIALIZER).toContain("if value.enumName ~= property then");
+    expect(MATERIALIZER).toContain("local MAX_SAFE_INT = 2147483647");
+    expect(MATERIALIZER).toContain('return "must carry a 32-bit integer"');
   });
 
   it("sweeps only screens it manages", () => {
@@ -237,7 +288,7 @@ describe("STUDIO-2F-A ArtifactLoader routing", () => {
     expect(LOADER).toContain("content.schemaVersion ~= nil");
     // Claimed-but-invalid content must error rather than fall through, so the
     // StringValue path is never reached once a version is claimed.
-    expect(LOADER).toContain("error(err)");
+    expect(LOADER).toContain("error(err, 0)");
   });
 
   it("returns identity-bearing screen receipts", () => {

@@ -209,6 +209,21 @@ export const ALLOWED_UI_ENUM_ITEMS: Readonly<
  */
 const VALID_INSTANCE_NAME = /^[A-Za-z0-9_][A-Za-z0-9_ -]{0,49}$/;
 
+/**
+ * Reserved for the folder the plugin rescues creator-authored instances into
+ * when it replaces a generated screen. A generated node may never claim this
+ * name, or a replacement would collide with the very container protecting the
+ * creator's work.
+ */
+export const PRESERVED_CONTENT_FOLDER = "AIStudioPreserved";
+
+/**
+ * Roblox integer properties are 32-bit. `1e300` satisfies "is a whole number"
+ * but raises on assignment, which would turn a validation problem into a
+ * build-time failure with a much less precise message.
+ */
+const MAX_SAFE_ROBLOX_INT = 2147483647;
+
 export function getMaterializableUITreeIssues(tree: unknown): string[] {
   const issues: string[] = [];
 
@@ -317,6 +332,12 @@ function collectNodeIssues(
     issues.push(`${path} requires a valid instance name`);
     return remaining;
   }
+  if (name === PRESERVED_CONTENT_FOLDER) {
+    issues.push(
+      `${path} may not use the reserved name ${PRESERVED_CONTENT_FOLDER}`,
+    );
+    return remaining;
+  }
 
   remaining = collectPropertyIssues(
     node.properties,
@@ -372,7 +393,11 @@ function collectPropertyIssues(
       issues.push(`${path} has a property outside the allowlist: ${property}`);
       continue;
     }
-    const valueIssue = describePropertyValueIssue(value, expectedKind);
+    const valueIssue = describePropertyValueIssue(
+      value,
+      expectedKind,
+      property,
+    );
     if (valueIssue) {
       issues.push(`${path}.${property} ${valueIssue}`);
     }
@@ -384,6 +409,7 @@ function collectPropertyIssues(
 function describePropertyValueIssue(
   value: unknown,
   expectedKind: UIPropertyKind,
+  property: string,
 ): string | null {
   if (!isRecord(value)) return "must be a typed property value object";
   if (value.kind !== expectedKind) {
@@ -394,9 +420,11 @@ function describePropertyValueIssue(
     case "bool":
       return typeof value.value === "boolean" ? null : "must carry a boolean";
     case "int":
-      return isFiniteNumber(value.value) && Number.isInteger(value.value)
+      return isFiniteNumber(value.value) &&
+        Number.isInteger(value.value) &&
+        Math.abs(value.value) <= MAX_SAFE_ROBLOX_INT
         ? null
-        : "must carry an integer";
+        : "must carry a 32-bit integer";
     case "number":
       return isFiniteNumber(value.value) ? null : "must carry a finite number";
     case "string":
@@ -425,6 +453,13 @@ function describePropertyValueIssue(
         typeof value.item !== "string"
       ) {
         return "must carry string enumName/item";
+      }
+      // In this contract the enum name always equals the property name. A
+      // mismatched-but-allowlisted enum — Font carrying SortOrder.Name —
+      // would otherwise pass validation and then fail at assignment time in
+      // Studio, where the message is far less precise.
+      if (value.enumName !== property) {
+        return `must use enum ${property}, received ${value.enumName}`;
       }
       const items = ALLOWED_UI_ENUM_ITEMS[value.enumName];
       if (!items) return `references an unknown enum ${value.enumName}`;

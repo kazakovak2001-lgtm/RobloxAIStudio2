@@ -105,7 +105,10 @@ function ArtifactLoader:_loadUITreeArtifact(artifact)
 
     local delivered, err = UITreeMaterializer.materialize(artifact.content, stageFolder)
     if not delivered then
-        error(err)
+        -- Level 0: `err` is already a complete operator message, and the outer
+        -- handler wraps it again. A position prefix would point at this
+        -- rethrow rather than at the cause.
+        error(err, 0)
     end
 
     local instancePaths = {}

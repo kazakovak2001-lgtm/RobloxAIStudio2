@@ -11,18 +11,26 @@
      suffix contract that is otherwise the only thing deciding what becomes a
      script. No script class appears here and no class accepts Source.
 
-  2. Materialization is ATOMIC. The whole tree is validated first, then built
-     detached with no parent, and only attached once every instance exists.
-     A failure at any point therefore leaves nothing behind, because nothing
-     was ever in the DataModel. This matters because SyncManager:_processExport
-     reports a failed command WITHOUT rolling back instances already created,
-     so a half-built ScreenGui would simply persist in the place.
+  2. NO PARTIALLY BUILT TREE IS EVER ATTACHED. The whole tree is validated,
+     then built detached with no parent, and only attached once every instance
+     exists. This matters because SyncManager:_processExport reports a failed
+     command WITHOUT rolling back instances already created, so a half-built
+     ScreenGui would simply persist in the place.
+
+     Stated precisely, because the weaker guarantee is the true one: a
+     validation or build failure leaves the DataModel untouched, since nothing
+     was ever attached. A failure during the attach phase may leave some
+     screens replaced and others not; roots that never reached the DataModel
+     are discarded, and the export is reported failed. Attaching every screen
+     as one transaction is not possible through this API.
 
   3. Ownership is respected. Only instances carrying the AIStudioManaged
      attribute are ever destroyed. A generated screen name that collides with
      an instance the creator built by hand fails the export rather than
-     deleting their work, and hand-added children of a managed screen are
-     carried across a replacement instead of being discarded.
+     deleting their work. Creator-authored instances found ANYWHERE inside a
+     screen being replaced or swept — at any depth, not merely as direct
+     children — are moved into a reserved AIStudioPreserved folder first, so a
+     delivery never destroys hand-authored work.
 ]]
 
 local UITreeMaterializer = {}
@@ -35,6 +43,14 @@ UITreeMaterializer.MAX_NODES = 250
 local MANAGED_ATTRIBUTE = "AIStudioManaged"
 local DELIVERY_MODE_ATTRIBUTE = "AIStudioDeliveryMode"
 local DELIVERY_MODE = "design-time"
+
+--[[
+  Creator-authored instances found inside a screen being replaced are moved
+  here rather than destroyed with it. The backend contract rejects this name
+  for generated nodes, so a delivery can never collide with the container that
+  protects the creator's work.
+]]
+local PRESERVED_FOLDER = "AIStudioPreserved"
 
 -- ALLOWED_CLASSES_BEGIN
 local ALLOWED_CLASSES = {
@@ -200,9 +216,12 @@ local ALLOWED_ENUM_ITEMS = {
 }
 -- ALLOWED_ENUM_ITEMS_END
 
+local MAX_SAFE_INT = 2147483647
+
 local function isValidInstanceName(name)
     if type(name) ~= "string" then return false end
     if #name == 0 or #name > 50 then return false end
+    if name == PRESERVED_FOLDER then return false end
     if not name:match("^[A-Za-z0-9_]") then return false end
     return name:match("^[A-Za-z0-9_ %-]+$") ~= nil
 end
@@ -220,7 +239,7 @@ local function isRgbChannel(value)
 end
 
 --[[ Validate a typed property value. Returns nil when valid, else a message. ]]
-local function validatePropertyValue(value, expectedKind)
+local function validatePropertyValue(value, expectedKind, property)
     if type(value) ~= "table" then return "must be a typed property value" end
     if value.kind ~= expectedKind then
         return string.format("must have kind %s, received %s", expectedKind, tostring(value.kind))
@@ -229,7 +248,12 @@ local function validatePropertyValue(value, expectedKind)
     if expectedKind == "bool" then
         if type(value.value) ~= "boolean" then return "must carry a boolean" end
     elseif expectedKind == "int" then
-        if not isInteger(value.value) then return "must carry an integer" end
+        -- Roblox integer properties are 32-bit. 1e300 is a whole number but
+        -- raises on assignment, which would downgrade a precise validation
+        -- message into an opaque build failure.
+        if not isInteger(value.value) or math.abs(value.value) > MAX_SAFE_INT then
+            return "must carry a 32-bit integer"
+        end
     elseif expectedKind == "number" then
         if not isFiniteNumber(value.value) then return "must carry a finite number" end
     elseif expectedKind == "string" then
@@ -254,6 +278,12 @@ local function validatePropertyValue(value, expectedKind)
     elseif expectedKind == "enum" then
         if type(value.enumName) ~= "string" or type(value.item) ~= "string" then
             return "must carry string enumName/item"
+        end
+        -- The enum name always equals the property name in this contract. A
+        -- mismatched-but-allowlisted enum would otherwise pass validation and
+        -- fail at assignment time with a far less precise message.
+        if value.enumName ~= property then
+            return string.format("must use enum %s, received %s", tostring(property), value.enumName)
         end
         local items = ALLOWED_ENUM_ITEMS[value.enumName]
         if not items then return "references an unknown enum " .. value.enumName end
@@ -322,7 +352,7 @@ local function validateNode(node, path, depth, budget)
             if not expectedKind then
                 return nil, string.format("%s has a property outside the allowlist: %s", nodePath, tostring(property))
             end
-            local issue = validatePropertyValue(value, expectedKind)
+            local issue = validatePropertyValue(value, expectedKind, property)
             if issue then
                 return nil, string.format("%s.%s %s", nodePath, property, issue)
             end
@@ -404,6 +434,54 @@ local function isManaged(instance)
     return instance:GetAttribute(MANAGED_ATTRIBUTE) == true
 end
 
+--[[
+  Collect the topmost creator-authored instances inside a managed subtree.
+
+  Walking only direct children is not enough. A creator who adds an instance
+  inside a generated container leaves it as a GRANDCHILD of the screen, and
+  destroying the screen would take it with them. Recursion stops at each
+  unmanaged instance, since everything below it is the creator's own structure
+  and must move as one piece.
+]]
+local function collectUnmanagedDescendants(instance, found)
+    for _, child in ipairs(instance:GetChildren()) do
+        if isManaged(child) then
+            collectUnmanagedDescendants(child, found)
+        else
+            table.insert(found, child)
+        end
+    end
+    return found
+end
+
+--[[
+  Move creator-authored instances out of a screen that is about to be replaced
+  or swept, into a reserved folder under `destination`. Returns the number
+  preserved. Nothing is renamed except on a name collision inside the folder,
+  which cannot silently shadow a generated node because the folder name is
+  reserved against generated content.
+]]
+local function preserveUnmanagedContent(existingScreen, destination)
+    local rescued = collectUnmanagedDescendants(existingScreen, {})
+    if #rescued == 0 then return 0 end
+
+    local folder = destination:FindFirstChild(PRESERVED_FOLDER)
+    if not folder or not folder:IsA("Folder") then
+        folder = Instance.new("Folder")
+        folder.Name = PRESERVED_FOLDER
+        folder.Parent = destination
+    end
+
+    for _, instance in ipairs(rescued) do
+        if folder:FindFirstChild(instance.Name) then
+            instance.Name = instance.Name .. " (preserved)"
+        end
+        instance.Parent = folder
+    end
+
+    return #rescued
+end
+
 --[[ Build one node and its descendants, detached from the DataModel. ]]
 local function buildNode(node)
     local instance = Instance.new(node.className)
@@ -469,36 +547,51 @@ function UITreeMaterializer.materialize(content, stageFolder)
         return nil, "Failed to build the UI tree: " .. tostring(buildErr)
     end
 
-    -- Attach. Hand-added children of a managed screen are carried across so a
-    -- replacement never silently discards them.
+    -- Attach. Creator-authored instances found anywhere inside the screen
+    -- being replaced are rescued first, at any depth, so a replacement never
+    -- destroys hand-authored work.
     local delivered = {}
-    for _, entry in ipairs(built) do
-        local existing = stageFolder:FindFirstChild(entry.screenName)
-        if existing then
-            for _, child in ipairs(existing:GetChildren()) do
-                if not isManaged(child) then
-                    child.Parent = entry.root
-                end
+    local attachOk, attachErr = pcall(function()
+        for _, entry in ipairs(built) do
+            local existing = stageFolder:FindFirstChild(entry.screenName)
+            if existing then
+                preserveUnmanagedContent(existing, entry.root)
+                existing:Destroy()
             end
-            existing:Destroy()
+            entry.root.Parent = stageFolder
+            entry.attached = true
+            table.insert(delivered, {
+                screenName = entry.screenName,
+                instancePath = entry.root:GetFullName(),
+            })
         end
-        entry.root.Parent = stageFolder
-        table.insert(delivered, {
-            screenName = entry.screenName,
-            instancePath = entry.root:GetFullName(),
-        })
-    end
 
-    -- Sweep managed screens that are no longer delivered. Unmanaged siblings
-    -- are never touched.
-    local deliveredNames = {}
-    for _, entry in ipairs(delivered) do
-        deliveredNames[entry.screenName] = true
-    end
-    for _, child in ipairs(stageFolder:GetChildren()) do
-        if isManaged(child) and not deliveredNames[child.Name] then
-            child:Destroy()
+        -- Sweep managed screens that are no longer delivered. A screen holding
+        -- creator content is preserved into the stage folder rather than
+        -- destroyed with it.
+        local deliveredNames = {}
+        for _, entry in ipairs(delivered) do
+            deliveredNames[entry.screenName] = true
         end
+        for _, child in ipairs(stageFolder:GetChildren()) do
+            if isManaged(child) and not deliveredNames[child.Name] then
+                preserveUnmanagedContent(child, stageFolder)
+                child:Destroy()
+            end
+        end
+    end)
+
+    if not attachOk then
+        -- Roots that never reached the DataModel are discarded. Screens
+        -- already attached stay, which is why the guarantee below is stated
+        -- as "no partially built tree is ever attached" rather than "a
+        -- failure leaves nothing behind".
+        for _, entry in ipairs(built) do
+            if not entry.attached then
+                entry.root:Destroy()
+            end
+        end
+        return nil, "Failed to attach the UI tree: " .. tostring(attachErr)
     end
 
     return delivered

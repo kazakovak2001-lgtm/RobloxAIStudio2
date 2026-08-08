@@ -189,10 +189,16 @@ function SyncManager:_processExport(command)
             return false
         end
 
+        -- `screens` is the identity-bearing half of a UI receipt. A positional
+        -- path array cannot prove WHICH screen landed where, so it is
+        -- forwarded verbatim when the loader produced one; dropping it would
+        -- leave the backend unable to detect a missing, extra, duplicate or
+        -- path-mismatched screen.
         table.insert(receipts, {
             artifactId = artifact.id,
             hash = expected.hash,
             instancePath = loaded.instancePath,
+            screens = loaded.screens,
         })
     end
 
