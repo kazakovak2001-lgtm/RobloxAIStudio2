@@ -205,7 +205,8 @@ TECH-AUDIT-2 remains historical planning evidence. ROADMAP-AUDIT-1 (#169)
 supersedes its ordering after verifying the current code at exact backend and
 Frontend baselines. The immediate product dependency chain is authoritative
 Roblox runtime playtest evidence, then artifact-applying repair and
-revalidation. Studio sync hardening (#168 and Frontend #32), native asset/GUI
+revalidation. Studio sync hardening (#168 and Frontend #32) is complete,
+verified against backend PR #176 and Frontend PR #34/#37. Native asset/GUI
 delivery, broader autonomous agent execution, and production observability
 remain separate backlog items.
 
