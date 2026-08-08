@@ -45,7 +45,7 @@ The old embedded root `src/` frontend is removed and protected by a permanent in
 - `DURABILITY-2E`: complete through DATA-201 and DATA-202; issue #135 is closed.
 - `SECURITY-2G`, `DOC-202`, `ROADMAP-AUDIT-1`, `STUDIO-ACCEPT-1`, and `RUNTIME-PLAYTEST-1`: complete.
 - `REPAIR-1`: complete — backend 1A (real single-strategy repair), 1B (Studio redelivery), and 1C (delivery/rollback audit), plus the Frontend Integrate-stage repair panel that surfaces them (Frontend PR #40).
-- `STUDIO-2F`: decomposed into `STUDIO-2F-A`…`STUDIO-2F-E`. No unsatisfied control gate remains; `STUDIO-2F-A` (generated GUI materialization) is scoped and not started, the rest are named for ordering only.
+- `STUDIO-2F`: decomposed into `STUDIO-2F-A`…`STUDIO-2F-E`. No unsatisfied control gate remains. `STUDIO-2F-A` (generated GUI materialization) is code complete through backend PR #195/#196/#197 but not done — runtime validation is outstanding, so it does not yet satisfy the dependency for the rest, which are named for ordering only.
 - `AUTONOMY-3A`: deferred and unscoped.
 
 See [Roadmap Status](./00-project-control/ROADMAP_STATUS.md) for exact ordering and evidence.

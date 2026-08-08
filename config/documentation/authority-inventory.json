@@ -22,7 +22,7 @@
         "`REPAIR-1` | Artifact-applying repair, redelivery, and revalidation | High | ✅ Complete — backend 1A/1B/1C plus the Frontend repair UI",
         "`PROVIDER-1A` | Truthful AI provider configuration and generation provenance | High | ✅ Complete — backend PR #193",
         "`PROVIDER-1A` is complete through merged backend PR #193 at `ecae9bb59f1639d2e382e7221a956aa96460b3e9`",
-        "`STUDIO-2F-A` | Generated GUI materialization as real Studio instances | Medium | ✅ Complete — backend PR #195/#196/#197",
+        "`STUDIO-2F-A` | Generated GUI materialization as real Studio instances | Medium | 🚧 Code complete, not done — backend PR #195/#196/#197 merged; runtime validation outstanding",
         "d7e444549d324df9df339ff5bda7a75a820e39e3",
         "6c1458d836244f2b720f361a78c2ab13f1682f74"
       ],
@@ -41,7 +41,7 @@
         "6c1458d836244f2b720f361a78c2ab13f1682f74",
         "REPAIR-1 complete across backend and Frontend UI",
         "PROVIDER-1A completed through backend PR #193, merged `ecae9bb59f1639d2e382e7221a956aa96460b3e9`",
-        "STUDIO-2F-A completed through backend PR #195, #196 and #197, merged `d7e444549d324df9df339ff5bda7a75a820e39e3`"
+        "STUDIO-2F-A code complete but not done (backend PR #195/#196/#197"
       ],
       "forbiddenClaims": [
         "pending reviewed merge",

@@ -2,7 +2,7 @@
 
 # Roadmap Status
 
-**Last Updated:** August 8, 2026
+**Last Updated:** August 9, 2026
 **Current backend runtime release:** `release/cutover-1e-candidate@d7e444549d324df9df339ff5bda7a75a820e39e3`
 **Current Frontend runtime contents:** `kazakovak2001-lgtm/Frontend@6c1458d836244f2b720f361a78c2ab13f1682f74`
 
@@ -33,7 +33,7 @@ This file is the ordered current delivery authority. The dated TECH-AUDIT-2 road
 | `PROVIDER-1A` | Truthful AI provider configuration and generation provenance | High | ✅ Complete — backend PR #193 | `REPAIR-1` |
 | `STUDIO-SYNC-1A` | Project sync and artifact-transfer contract hardening | Medium | ✅ Complete — backend PR #176, Frontend PR #34/#37 | `STUDIO-ACCEPT-1` |
 | `STUDIO-2F` | Native assets, GUI, runtime, and place delivery | Medium | Decomposed into `STUDIO-2F-A`…`STUDIO-2F-E`; no unsatisfied control gate remains | `REPAIR-1` |
-| `STUDIO-2F-A` | Generated GUI materialization as real Studio instances | Medium | ✅ Complete — backend PR #195/#196/#197; operator-observed Studio acceptance outstanding — [scope](./STUDIO-2F-A_SCOPE.md) | `STUDIO-SYNC-1A` |
+| `STUDIO-2F-A` | Generated GUI materialization as real Studio instances | Medium | 🚧 Code complete, not done — backend PR #195/#196/#197 merged; runtime validation outstanding, so it does not yet satisfy `2F-B`…`2F-E` — [scope](./STUDIO-2F-A_SCOPE.md) | `STUDIO-SYNC-1A` |
 | `STUDIO-2F-B` | Native asset materialization (mesh, decal, audio) | Medium | Not scoped — requires a Roblox Open Cloud credential surface that does not exist yet | `STUDIO-2F-A` |
 | `STUDIO-2F-C` | Place and `.rbxl` delivery | Medium | Not scoped — begins with a documented delivery-mechanism decision | `STUDIO-2F-A` |
 | `STUDIO-2F-D` | Runtime validator in the canonical plugin package | Low | Not scoped | `STUDIO-2F-A` |
@@ -85,7 +85,7 @@ Ordered delivery:
 
 Every exception records the control, exact package/advisory/rule/path/fingerprint/component/case, affected repository and release identity, owner, rationale, compensating control, approval reference, creation date and expiry. Expired, ambiguous, wildcard or ownerless exceptions fail validation.
 
-`SECURITY-2G` is complete through merged PR #162 at `da55f716c798ec8c6a7f25a8e2a3b7b0a2244416`. `DOC-202A`, ROADMAP-AUDIT-1, STUDIO-ACCEPT-1, RUNTIME-PLAYTEST-1, and `REPAIR-1` are complete. `PROVIDER-1A` is complete through merged backend PR #193 at `ecae9bb59f1639d2e382e7221a956aa96460b3e9`, and is the first runtime change to advance the pair since `REPAIR-1`. `REPAIR-1` landed all three backend sub-phases — 1A (real artifact-applying single-strategy repair), 1B (Studio redelivery of repaired artifacts), and 1C (durable delivery/rollback audit trail) — plus the Frontend repair UI that surfaces them (Frontend PR #40). Autonomy, collaboration, and lower-priority sync hardening remain separate subsequent deliveries. `STUDIO-2F` is now decomposed rather than deferred: every control gate the historical planning documents named as its precondition is complete, so the phrase "control gates" no longer describes an outstanding blocker. `STUDIO-2F-A` is scoped in [its own record](./STUDIO-2F-A_SCOPE.md) and is now complete in code through backend PR #195, #196 and #197, with operator-observed Studio acceptance still outstanding; the remaining sub-phases are named for ordering only and are not yet scoped.
+`SECURITY-2G` is complete through merged PR #162 at `da55f716c798ec8c6a7f25a8e2a3b7b0a2244416`. `DOC-202A`, ROADMAP-AUDIT-1, STUDIO-ACCEPT-1, RUNTIME-PLAYTEST-1, and `REPAIR-1` are complete. `PROVIDER-1A` is complete through merged backend PR #193 at `ecae9bb59f1639d2e382e7221a956aa96460b3e9`, and is the first runtime change to advance the pair since `REPAIR-1`. `REPAIR-1` landed all three backend sub-phases — 1A (real artifact-applying single-strategy repair), 1B (Studio redelivery of repaired artifacts), and 1C (durable delivery/rollback audit trail) — plus the Frontend repair UI that surfaces them (Frontend PR #40). Autonomy, collaboration, and lower-priority sync hardening remain separate subsequent deliveries. `STUDIO-2F` is now decomposed rather than deferred: every control gate the historical planning documents named as its precondition is complete, so the phrase "control gates" no longer describes an outstanding blocker. `STUDIO-2F-A` is scoped in [its own record](./STUDIO-2F-A_SCOPE.md) and is code complete through backend PR #195, #196 and #197, but it is **not done**: [DEVELOPMENT_WORKFLOW.md](../governance/DEVELOPMENT_WORKFLOW.md) requires runtime validation, nothing in the phase has executed Lua, and the operator-observed acceptance record does not exist yet. It therefore does not satisfy the dependency for `STUDIO-2F-B`…`STUDIO-2F-E`, which remain named for ordering only and are not yet scoped.
 
 ## Completion evidence
 
