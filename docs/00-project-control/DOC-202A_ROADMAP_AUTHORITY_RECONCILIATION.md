@@ -9,7 +9,7 @@ fail-closed guard for subsequent roadmap reconciliations.
 
 - Backend repository: `kazakovak2001-lgtm/RobloxAIStudio2`
 - Backend release branch: `release/cutover-1e-candidate`
-- Current backend runtime release: `ccd28ef816d1653df0aebd0775f70187aa321564`
+- Current backend runtime release: `ecae9bb59f1639d2e382e7221a956aa96460b3e9`
 - SECURITY-2G-F control baseline: `da55f716c798ec8c6a7f25a8e2a3b7b0a2244416`
 - Paired Frontend repository: `kazakovak2001-lgtm/Frontend`
 - Paired Frontend runtime contents: `6c1458d836244f2b720f361a78c2ab13f1682f74`
@@ -152,7 +152,29 @@ live end-to-end run of the panel was performed, and the repository's workspace
 test runner cannot load `.tsx`, so no component-level regression test backs
 the panel or its guard fix.
 
-## Required deterministic behavior
+PROVIDER-1A advances the runtime pair to backend
+`ecae9bb59f1639d2e382e7221a956aa96460b3e9` and Frontend
+`6c1458d836244f2b720f361a78c2ab13f1682f74` (backend PR #193). Unlike the two
+promotions above, this backend identity is a real executable change rather
+than a documentation-only descendant, and it is backend-only: the Frontend
+identity is unchanged and the paired production contract stayed green against
+the existing pin. The slice closes a truthfulness defect in which
+`LLMProviderFactory.createByName()` handled only four of the six supported
+providers, so an explicit `ollama` or `openrouter` request silently produced
+no provider, every agent fell through to its deterministic fallback, and
+`LuaGeneratorAgent`'s hardcoded fallback game — written to satisfy the
+playability contract — was recorded as a completed execution, delivered to
+Studio with valid receipts and scored, with nothing durable distinguishing it
+from a real generation.
+
+Two facts about this reconciliation are worth recording for future phases.
+First, the authority gate did not catch the drift it exists to prevent: the
+PROVIDER-1A documentation merged while literally asserting "It is not merged,
+so the runtime pair recorded above is unchanged", and the validator accepted
+it because required claims are checked for presence, not for truth. A claim
+that is present but stale passes. Second, the per-phase paragraphs above again
+retain the SHAs current when each phase landed; only the "Exact release
+identity" header, the pin configuration and the active-pair lines advance.
 
 The DOC-202A validator must reject:
 
