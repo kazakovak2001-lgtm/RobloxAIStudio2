@@ -9,7 +9,10 @@
  */
 
 import { describe, it, expect, vi } from "vitest";
-import { GameGenerationService } from "../projects/services/game-generation.service";
+import {
+  GameGenerationService,
+  type GenerationProviderInfo,
+} from "../projects/services/game-generation.service";
 import { InMemoryBlueprintRepository } from "../projects/repository/blueprint.repository";
 import { BlueprintCache } from "../projects/cache/blueprint.cache";
 import {
@@ -44,7 +47,7 @@ function blueprintInput(): CreateBlueprintInput {
     },
     assets: { models: [], textures: [], sounds: [], animations: [] },
     code_spec: { modules: [], patterns: [] },
-  } as CreateBlueprintInput;
+  };
 }
 
 /**
@@ -54,7 +57,7 @@ function blueprintInput(): CreateBlueprintInput {
  */
 async function runGeneration(
   registry: AgentRegistry,
-  providerInfo: { provider: string | null; model?: string },
+  providerInfo: GenerationProviderInfo,
 ): Promise<GenerationExecution> {
   const repository = new InMemoryBlueprintRepository();
   const service = new GameGenerationService(
@@ -114,15 +117,14 @@ describe("generation provenance", () => {
   }, 20000);
 
   it("degrades to fallback if any stage returned canned content", async () => {
+    // Wire every agent except lua_generator, so that one stage genuinely has
+    // no LLM rather than being cast into that state. One canned stage is
+    // enough to make the whole execution untrustworthy as an AI generation.
     const registry = new AgentRegistry();
-    registry.setLLM({ generate: vi.fn().mockResolvedValue("{}") });
-    // Strip the LLM from a single agent — one canned stage is enough to make
-    // the whole execution untrustworthy as an AI generation.
-    registry
-      .getAgent("lua_generator")!
-      .setLLM(
-        undefined as unknown as { generate(prompt: string): Promise<string> },
-      );
+    const llm = { generate: vi.fn().mockResolvedValue("{}") };
+    for (const type of registry.registeredTypes()) {
+      if (type !== "lua_generator") registry.getAgent(type)!.setLLM(llm);
+    }
 
     const execution = await runGeneration(registry, {
       provider: "ollama",

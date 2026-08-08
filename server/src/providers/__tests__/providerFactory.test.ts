@@ -2,13 +2,50 @@
  * ProviderFactory Tests — selection, fallback, cost tracking.
  */
 
-import { describe, it, expect, afterEach } from "vitest";
+import { describe, it, expect, afterEach, beforeEach } from "vitest";
 import {
   LLMProviderFactory,
   estimateCost,
   describeAiMode,
   shouldRefuseStartupWithoutProvider,
 } from "../providerFactory";
+
+/**
+ * Every environment variable provider resolution reads. The PROVIDER-1A suites
+ * clear these before and after each test: before, so a credential exported in
+ * the developer's or runner's shell cannot change a result; after, so a failed
+ * assertion cannot leak state into the next test. Inline cleanup at the end of
+ * a test body is skipped when an expectation throws, so it is not sufficient.
+ */
+const PROVIDER_ENV_KEYS = [
+  "DEFAULT_PROVIDER",
+  "DEFAULT_MODEL",
+  "OPENAI_API_KEY",
+  "OPENAI_MODEL",
+  "OPENAI_BASE_URL",
+  "ANTHROPIC_API_KEY",
+  "ANTHROPIC_MODEL",
+  "GEMINI_API_KEY",
+  "GEMINI_MODEL",
+  "GROQ_API_KEY",
+  "GROQ_MODEL",
+  "OPENROUTER_API_KEY",
+  "OPENROUTER_MODEL",
+  "OLLAMA_URL",
+  "OLLAMA_BASE_URL",
+  "OLLAMA_MODEL",
+  "OLLAMA_LOCAL",
+] as const;
+
+function clearProviderEnv(): void {
+  for (const key of PROVIDER_ENV_KEYS) delete process.env[key];
+}
+
+/** Install deterministic provider-environment isolation for a describe block. */
+function useIsolatedProviderEnv(): void {
+  beforeEach(clearProviderEnv);
+  afterEach(clearProviderEnv);
+}
 
 describe("LLMProviderFactory", () => {
   afterEach(() => {
@@ -88,14 +125,7 @@ describe("LLMProviderFactory", () => {
  * from a real AI generation.
  */
 describe("LLMProviderFactory — explicit provider selection", () => {
-  afterEach(() => {
-    delete process.env.OPENROUTER_API_KEY;
-    delete process.env.DEFAULT_PROVIDER;
-    delete process.env.DEFAULT_MODEL;
-    delete process.env.OLLAMA_URL;
-    delete process.env.OLLAMA_BASE_URL;
-    delete process.env.OLLAMA_MODEL;
-  });
+  useIsolatedProviderEnv();
 
   it("resolves Ollama from DEFAULT_PROVIDER with an explicit URL", () => {
     process.env.DEFAULT_PROVIDER = "ollama";
@@ -206,16 +236,8 @@ describe("LLMProviderFactory — explicit provider selection", () => {
    * credential — the original defect reported it as "no API key found".
    */
   it("forces Ollama with no API key of any kind present", () => {
-    for (const key of [
-      "OPENAI_API_KEY",
-      "ANTHROPIC_API_KEY",
-      "GEMINI_API_KEY",
-      "GROQ_API_KEY",
-      "OPENROUTER_API_KEY",
-      "OLLAMA_API_KEY",
-    ]) {
-      delete process.env[key];
-    }
+    // useIsolatedProviderEnv() has already removed every provider credential,
+    // so nothing below could be satisfying a key requirement.
     process.env.DEFAULT_PROVIDER = "ollama";
     process.env.OLLAMA_URL = "http://localhost:11434";
     process.env.OLLAMA_MODEL = "qwen2.5-coder:7b";
@@ -243,7 +265,6 @@ describe("LLMProviderFactory — explicit provider selection", () => {
     ["groq", "GROQ_API_KEY"],
     ["openrouter", "OPENROUTER_API_KEY"],
   ])("still requires a credential for forced %s", (provider, keyName) => {
-    delete process.env[keyName];
     process.env.DEFAULT_PROVIDER = provider;
 
     const withoutKey = LLMProviderFactory.create();
@@ -255,7 +276,6 @@ describe("LLMProviderFactory — explicit provider selection", () => {
 
     process.env[keyName] = "test-credential";
     const withKey = LLMProviderFactory.create();
-    delete process.env[keyName];
 
     expect(withKey.mode).toBe(provider);
     expect(withKey.provider).not.toBeNull();
@@ -270,12 +290,7 @@ describe("LLMProviderFactory — explicit provider selection", () => {
  * the exact misconfiguration this control exists to catch.
  */
 describe("shouldRefuseStartupWithoutProvider", () => {
-  afterEach(() => {
-    delete process.env.DEFAULT_PROVIDER;
-    delete process.env.OLLAMA_URL;
-    delete process.env.OLLAMA_MODEL;
-    delete process.env.OPENAI_API_KEY;
-  });
+  useIsolatedProviderEnv();
 
   it("refuses when nothing at all is configured", () => {
     const result = LLMProviderFactory.create();
@@ -313,6 +328,8 @@ describe("shouldRefuseStartupWithoutProvider", () => {
 });
 
 describe("describeAiMode", () => {
+  useIsolatedProviderEnv();
+
   it("reports stub for an unconfigured process", () => {
     expect(describeAiMode(LLMProviderFactory.create())).toEqual({
       llm: "stub",
@@ -321,10 +338,8 @@ describe("describeAiMode", () => {
 
   it("reports the unsatisfied request without leaking configuration", () => {
     process.env.DEFAULT_PROVIDER = "openrouter";
-    const summary = describeAiMode(LLMProviderFactory.create());
-    delete process.env.DEFAULT_PROVIDER;
 
-    expect(summary).toEqual({
+    expect(describeAiMode(LLMProviderFactory.create())).toEqual({
       llm: "stub",
       requested: "openrouter",
       unsatisfied: true,
@@ -335,10 +350,8 @@ describe("describeAiMode", () => {
     process.env.DEFAULT_PROVIDER = "ollama";
     process.env.OLLAMA_URL = "http://secret-host.internal:11434";
     process.env.OLLAMA_MODEL = "qwen2.5-coder:7b";
+
     const summary = describeAiMode(LLMProviderFactory.create());
-    delete process.env.DEFAULT_PROVIDER;
-    delete process.env.OLLAMA_URL;
-    delete process.env.OLLAMA_MODEL;
 
     expect(summary).toEqual({
       llm: "ollama",

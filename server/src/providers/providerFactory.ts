@@ -34,7 +34,7 @@ export interface ProviderFactoryResult {
 const OLLAMA_DEFAULT_URL = "http://127.0.0.1:11434";
 
 /** Every provider name DEFAULT_PROVIDER accepts, excluding the "none" stub. */
-const KNOWN_PROVIDER_MODES: ReadonlySet<string> = new Set([
+const KNOWN_PROVIDER_MODES = new Set<ProviderMode>([
   "openai",
   "anthropic",
   "gemini",
@@ -42,6 +42,11 @@ const KNOWN_PROVIDER_MODES: ReadonlySet<string> = new Set([
   "ollama",
   "groq",
 ]);
+
+/** Keeps the runtime membership check and the compile-time type in sync. */
+function isKnownProviderMode(value: string): value is ProviderMode {
+  return (KNOWN_PROVIDER_MODES as ReadonlySet<string>).has(value);
+}
 
 /**
  * Normalized provider response for cost tracking and observability.
@@ -147,7 +152,7 @@ export class LLMProviderFactory {
 
     // Override: force specific provider
     if (explicitProvider && explicitProvider !== "none") {
-      if (!KNOWN_PROVIDER_MODES.has(explicitProvider)) {
+      if (!isKnownProviderMode(explicitProvider)) {
         const reason = `unknown provider name — expected one of ${[...KNOWN_PROVIDER_MODES].join(", ")}`;
         return {
           provider: null,
@@ -158,7 +163,7 @@ export class LLMProviderFactory {
           unsatisfiedReason: reason,
         };
       }
-      return this.createByName(explicitProvider as ProviderMode, defaultModel);
+      return this.createByName(explicitProvider, defaultModel);
     }
 
     // 1. OpenAI
