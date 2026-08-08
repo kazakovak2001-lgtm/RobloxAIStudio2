@@ -243,7 +243,7 @@ function request(pathname, { method = "GET", headers = {}, body } = {}) {
       {
         method,
         headers,
-        rejectUnauthorized: false,
+        rejectUnauthorized: true,
       },
       (response) => {
         const chunks = [];
@@ -426,7 +426,7 @@ function createSocket(cookie) {
     withCredentials: true,
     reconnection: false,
     timeout: 5_000,
-    rejectUnauthorized: false,
+    rejectUnauthorized: true,
     extraHeaders,
     transportOptions: {
       polling: {
