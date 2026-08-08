@@ -601,6 +601,7 @@
 │   │   │   ├── core1b.postgres.integration.test.ts
 │   │   │   ├── cutover1c.origin-policy.test.ts
 │   │   │   ├── e2eGeneration.test.ts
+│   │   │   ├── generation-provenance.test.ts
 │   │   │   ├── harden2a.auth-contract.test.ts
 │   │   │   ├── identityAccess.test.ts
 │   │   │   ├── integration.test.ts

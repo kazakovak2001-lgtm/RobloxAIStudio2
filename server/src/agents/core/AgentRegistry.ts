@@ -74,6 +74,11 @@ export class AgentRegistry {
   /**
    * Execute a named agent with the given input.
    * Returns the agent's output record, or a structured error record on failure.
+   *
+   * Output produced by a deterministic fallback rather than a model is tagged
+   * `_usedFallback: true`, following the same `_`-prefixed marker convention
+   * as `_failed` / `_skipped`. Callers must not present tagged output as an
+   * AI generation.
    */
   async executeAgent(
     agentType: string,
@@ -95,7 +100,8 @@ export class AgentRegistry {
       };
     }
 
-    return (result.data as Record<string, unknown>) ?? {};
+    const data = (result.data as Record<string, unknown>) ?? {};
+    return result.usedFallback ? { ...data, _usedFallback: true } : data;
   }
 
   /**

@@ -21,6 +21,17 @@ import { GenerationArtifactRecorder } from "../../studio/artifacts/GenerationArt
 import { getConfiguredStorageProvider } from "../../platform/storage/StorageFactory";
 import { GenerationOutcomeCoordinator } from "../../platform/projects/ProjectLifecycleCoordinator";
 
+/**
+ * Public-safe description of the AI provider backing this service. Carries
+ * only names — never API keys, endpoints, or prompt content.
+ */
+export interface GenerationProviderInfo {
+  /** Provider name, or null when no provider resolved. */
+  provider: string | null;
+  /** Model name, when a provider resolved. */
+  model?: string;
+}
+
 export class GameGenerationService {
   private agentRegistry: AgentRegistry;
   private executionQueue = new ExecutionQueue();
@@ -32,6 +43,7 @@ export class GameGenerationService {
   private validator: BlueprintValidator;
   private artifactRecorder: GenerationArtifactRecorder;
   private outcomeCoordinator?: GenerationOutcomeCoordinator;
+  private providerInfo: GenerationProviderInfo;
 
   constructor(
     repository: IBlueprintRepository,
@@ -42,7 +54,9 @@ export class GameGenerationService {
     agentRegistry?: AgentRegistry,
     artifactStore: ArtifactStore = new ArtifactStore(),
     outcomeCoordinator?: GenerationOutcomeCoordinator,
+    providerInfo: GenerationProviderInfo = { provider: null },
   ) {
+    this.providerInfo = providerInfo;
     this.repository = repository;
     this.cache = cache;
     this.streaming = streaming;
@@ -200,6 +214,7 @@ export class GameGenerationService {
               completed_at: new Date(),
               pipeline_steps: pipelineSteps,
               total_duration_ms: result.totalDurationMs,
+              ...this.resolveProvenance(result.graph.getAllNodes()),
             });
           } catch (err) {
             console.error(
@@ -212,6 +227,14 @@ export class GameGenerationService {
               error_message:
                 err instanceof Error ? err.message : "Unknown pipeline error",
               total_duration_ms: Date.now() - execution.started_at.getTime(),
+              // Provider identity only. ai_mode stays unset: a failed run
+              // produced no artifacts, so its provenance is genuinely unknown.
+              ...(this.providerInfo.provider
+                ? { ai_provider: this.providerInfo.provider }
+                : {}),
+              ...(this.providerInfo.model
+                ? { ai_model: this.providerInfo.model }
+                : {}),
             });
           }
         }),
@@ -244,6 +267,35 @@ export class GameGenerationService {
 
   getCacheStats() {
     return this.cache.getStats();
+  }
+
+  /**
+   * Decide how this execution's content was actually produced.
+   *
+   * Fails safe: an execution counts as `"ai"` only when a provider resolved
+   * AND no stage fell back to deterministic canned content. Anything else is
+   * `"fallback"`, so a misconfigured deployment can never present a canned
+   * game as an AI generation.
+   */
+  private resolveProvenance(
+    nodes: ReadonlyArray<{ output?: unknown }>,
+  ): Pick<GenerationExecution, "ai_mode" | "ai_provider" | "ai_model"> {
+    const anyFallback = nodes.some(
+      (node) =>
+        typeof node.output === "object" &&
+        node.output !== null &&
+        (node.output as Record<string, unknown>)._usedFallback === true,
+    );
+
+    const usedAi = this.providerInfo.provider !== null && !anyFallback;
+
+    return {
+      ai_mode: usedAi ? "ai" : "fallback",
+      ...(this.providerInfo.provider
+        ? { ai_provider: this.providerInfo.provider }
+        : {}),
+      ...(this.providerInfo.model ? { ai_model: this.providerInfo.model } : {}),
+    };
   }
 
   private async commitExecutionOutcome(

@@ -31,7 +31,10 @@ import {
 import { RealtimeServer } from "./socket/index";
 import { errorHandler } from "./common/middleware/errorHandler";
 import { AgentRegistry } from "./agents/core/AgentRegistry";
-import { LLMProviderFactory } from "./providers/providerFactory";
+import {
+  LLMProviderFactory,
+  describeAiMode,
+} from "./providers/providerFactory";
 import { ExecutionTracer } from "./core/observability/ExecutionTracer";
 import { StudioIntegrationManager } from "./studio/integration/StudioIntegrationManager";
 import {
@@ -180,7 +183,7 @@ app.get("/health", (_req: Request, res: Response) => {
   res.json({
     status: "healthy",
     timestamp: new Date().toISOString(),
-    llm: llmResult.mode === "none" ? "stub" : llmResult.mode,
+    ...describeAiMode(llmResult),
   });
 });
 
@@ -192,9 +195,26 @@ const blueprintRepo = new InMemoryBlueprintRepository();
 
 const pipelineIntegrator = null; // Deprecated: PlanExecutor is now the canonical runtime
 
-// Resolve LLM provider from environment variables
+// Resolve LLM provider from environment variables.
+//
+// REQUIRE_LLM_PROVIDER=true makes an explicitly requested but unconstructable
+// DEFAULT_PROVIDER a startup failure instead of a silent degrade to stub mode.
+// It defaults to off so tests and local no-key development keep working; the
+// release image is expected to set it.
 const llmResult = LLMProviderFactory.create();
 console.log(`[LLM] ${llmResult.info}`);
+
+if (llmResult.unsatisfied) {
+  if (process.env.REQUIRE_LLM_PROVIDER === "true") {
+    console.error(
+      `[LLM] REQUIRE_LLM_PROVIDER is set and no provider could be resolved — refusing to start. ${llmResult.info}`,
+    );
+    process.exit(1);
+  }
+  console.warn(
+    "[LLM] Continuing without an LLM. Generated content will come from deterministic fallbacks and is recorded as such — it is not an AI generation.",
+  );
+}
 
 const agentRegistry = new AgentRegistry(llmResult.provider ?? undefined);
 const studioManager = new StudioIntegrationManager();
@@ -206,6 +226,12 @@ const gameService = new GameGenerationService(
   events,
   pipelineIntegrator,
   agentRegistry,
+  undefined,
+  undefined,
+  {
+    provider: llmResult.provider ? llmResult.mode : null,
+    ...(llmResult.model ? { model: llmResult.model } : {}),
+  },
 );
 
 // Connect event emitter to streaming handler
@@ -707,7 +733,7 @@ app.get("/", (_req: Request, res: Response) => {
     name: "Roblox AI Studio - Game Generation Engine",
     version: "1.0.0",
     status: "running",
-    llm: llmResult.mode === "none" ? "stub" : llmResult.mode,
+    ...describeAiMode(llmResult),
   });
 });
 

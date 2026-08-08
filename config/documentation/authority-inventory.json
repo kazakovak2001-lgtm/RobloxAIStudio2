@@ -20,6 +20,8 @@
         "`STUDIO-ACCEPT-1` | Real Studio acceptance of canonical artifact delivery | Critical | ✅ Complete",
         "`RUNTIME-PLAYTEST-1` | Authoritative Studio-attached Roblox runtime evidence | High | ✅ Complete",
         "`REPAIR-1` | Artifact-applying repair, redelivery, and revalidation | High | ✅ Complete — backend 1A/1B/1C plus the Frontend repair UI",
+        "`PROVIDER-1A` | Truthful AI provider configuration and generation provenance | High | ✅ Implemented — awaiting reviewed merge",
+        "`PROVIDER-1A` is implemented and awaiting reviewed merge; it does not yet advance the runtime pair.",
         "ccd28ef816d1653df0aebd0775f70187aa321564",
         "6c1458d836244f2b720f361a78c2ab13f1682f74"
       ],
@@ -36,7 +38,8 @@
       "requiredClaims": [
         "ccd28ef816d1653df0aebd0775f70187aa321564",
         "6c1458d836244f2b720f361a78c2ab13f1682f74",
-        "REPAIR-1 complete across backend and Frontend UI"
+        "REPAIR-1 complete across backend and Frontend UI",
+        "PROVIDER-1A implemented on branch `claude/robloxaistudio2-audit-ebc9c8`. It is not merged, so the runtime pair recorded above is unchanged."
       ],
       "forbiddenClaims": [
         "pending reviewed merge",

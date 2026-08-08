@@ -511,6 +511,7 @@ server/src/__tests__/core1b.persistence.test.ts
 server/src/__tests__/core1b.postgres.integration.test.ts
 server/src/__tests__/cutover1c.origin-policy.test.ts
 server/src/__tests__/e2eGeneration.test.ts
+server/src/__tests__/generation-provenance.test.ts
 server/src/__tests__/harden2a.auth-contract.test.ts
 server/src/__tests__/identityAccess.test.ts
 server/src/__tests__/integration.test.ts

@@ -2,7 +2,7 @@
 
 # Roadmap Status
 
-**Last Updated:** August 8, 2026
+**Last Updated:** August 8, 2026 (PROVIDER-1A implemented, unmerged)
 **Current backend runtime release:** `release/cutover-1e-candidate@ccd28ef816d1653df0aebd0775f70187aa321564`
 **Current Frontend runtime contents:** `kazakovak2001-lgtm/Frontend@6c1458d836244f2b720f361a78c2ab13f1682f74`
 
@@ -30,6 +30,7 @@ This file is the ordered current delivery authority. The dated TECH-AUDIT-2 road
 | `STUDIO-ACCEPT-1` | Real Studio acceptance of canonical artifact delivery | Critical | ✅ Complete | `ROADMAP-AUDIT-1` |
 | `RUNTIME-PLAYTEST-1` | Authoritative Studio-attached Roblox runtime evidence | High | ✅ Complete — [result](./RUNTIME-PLAYTEST-1_RESULT.md), operator-observed evidence | `STUDIO-ACCEPT-1` |
 | `REPAIR-1` | Artifact-applying repair, redelivery, and revalidation | High | ✅ Complete — backend 1A/1B/1C plus the Frontend repair UI (backend PR #185/#187/#189, Frontend PR #38/#40) | `RUNTIME-PLAYTEST-1` |
+| `PROVIDER-1A` | Truthful AI provider configuration and generation provenance | High | ✅ Implemented — awaiting reviewed merge | `REPAIR-1` |
 | `STUDIO-SYNC-1A` | Project sync and artifact-transfer contract hardening | Medium | ✅ Complete — backend PR #176, Frontend PR #34/#37 | `STUDIO-ACCEPT-1` |
 | `STUDIO-2F` | Native assets, GUI, runtime, and place delivery | Medium | Deferred | control gates |
 | `AUTONOMY-3A` | Real engine-backed autonomous phases and broader recovery | High | Deferred | control gates |
@@ -79,7 +80,7 @@ Ordered delivery:
 
 Every exception records the control, exact package/advisory/rule/path/fingerprint/component/case, affected repository and release identity, owner, rationale, compensating control, approval reference, creation date and expiry. Expired, ambiguous, wildcard or ownerless exceptions fail validation.
 
-`SECURITY-2G` is complete through merged PR #162 at `da55f716c798ec8c6a7f25a8e2a3b7b0a2244416`. `DOC-202A`, ROADMAP-AUDIT-1, STUDIO-ACCEPT-1, RUNTIME-PLAYTEST-1, and `REPAIR-1` are complete. `REPAIR-1` landed all three backend sub-phases — 1A (real artifact-applying single-strategy repair), 1B (Studio redelivery of repaired artifacts), and 1C (durable delivery/rollback audit trail) — plus the Frontend repair UI that surfaces them (Frontend PR #40). Native delivery, autonomy, collaboration, and lower-priority sync hardening remain separate subsequent deliveries.
+`SECURITY-2G` is complete through merged PR #162 at `da55f716c798ec8c6a7f25a8e2a3b7b0a2244416`. `DOC-202A`, ROADMAP-AUDIT-1, STUDIO-ACCEPT-1, RUNTIME-PLAYTEST-1, and `REPAIR-1` are complete. `PROVIDER-1A` is implemented and awaiting reviewed merge; it does not yet advance the runtime pair. `REPAIR-1` landed all three backend sub-phases — 1A (real artifact-applying single-strategy repair), 1B (Studio redelivery of repaired artifacts), and 1C (durable delivery/rollback audit trail) — plus the Frontend repair UI that surfaces them (Frontend PR #40). Native delivery, autonomy, collaboration, and lower-priority sync hardening remain separate subsequent deliveries.
 
 ## Completion evidence
 
@@ -99,6 +100,7 @@ Every exception records the control, exact package/advisory/rule/path/fingerprin
 - `REPAIR-1B`: backend PR #187 merged `6ec42d55a74bab0a9001d7e66c02795f01b41886`; adds `POST /api/repair/:projectId/deliver`, resolving the latest repaired execution server-side and reusing the existing Studio sync pipeline unchanged. Backend-only — no Frontend or Studio plugin changes required.
 - `REPAIR-1C`: backend PR #189 merged `558f9e6f5cc80e3ae9e29cafdd15ce6a33addd0f`; adds a durable delivery/rollback audit trail (`RepairDeliveryRecord[]`), an optional project-validated `executionId` on `/deliver` for explicit rollback, and `GET /:projectId/deliveries`. Backend-only.
 - `REPAIR-1` Frontend UI: Frontend PR #40 merged `6c1458d836244f2b720f361a78c2ab13f1682f74`; adds the Integrate-stage repair panel that runs a repair against the latest execution, redelivers it to a connected Studio session, rolls back to a project-validated earlier execution, and reads the delivery audit trail. It also repaired a stale client contract: the previous generic repair call predated REPAIR-1A and omitted the `executionId` the merged route requires. Verified by contract, parser, type and build checks; no live Studio-attached end-to-end run was performed for the UI itself.
+- `PROVIDER-1A`: implemented on branch `claude/robloxaistudio2-audit-ebc9c8`; not yet merged, so the runtime pair below is unchanged. Closes three composing defects that together let a misconfigured deployment present canned content as an AI generation: `LLMProviderFactory.createByName()` had no `ollama` or `openrouter` branch and silently returned `provider: null`; every agent then fell through to its deterministic fallback; and `LuaGeneratorAgent`'s fallback is a complete hardcoded game written to satisfy the playability contract, so it passed validation, reached Studio and was scored. Explicit provider requests now resolve or fail visibly (`requested` / `unsatisfied`), `REQUIRE_LLM_PROVIDER=true` makes an unsatisfiable request a startup refusal, and every execution durably records `ai_mode` / `ai_provider` / `ai_model`, failing safe to `fallback` unless a provider resolved and no stage returned canned content. Evidence limits, stated plainly: verified by typecheck, architecture and boundary gates, 1051 passing backend tests and 24 provider-selection plus 5 provenance tests; no Studio-attached live run of a provider-backed generation was performed for this slice, and the auto-detection path still defaults to the hardcoded `llama3` model, which is recorded as remaining debt rather than silently changed.
 - Active paired runtime baseline: backend `ccd28ef816d1653df0aebd0775f70187aa321564` plus protected Frontend contents `6c1458d836244f2b720f361a78c2ab13f1682f74`. Control-only reconciliation commits may follow these runtime identities; release evidence remains bound to this exact executable pair.
 
 ## Runtime truthfulness

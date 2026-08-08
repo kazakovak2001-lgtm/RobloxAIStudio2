@@ -14,7 +14,34 @@ export interface ProviderFactoryResult {
   mode: ProviderMode;
   model: string;
   info: string;
+  /**
+   * The provider the operator explicitly requested through DEFAULT_PROVIDER,
+   * when one was requested. Present even if it could not be constructed.
+   */
+  requested?: ProviderMode;
+  /**
+   * True when an explicitly requested provider could not be constructed and
+   * the process therefore has no LLM. This is what separates "the operator
+   * asked for AI and did not get it" from "no provider was configured".
+   * Never let this state be reported as a successful AI generation.
+   */
+  unsatisfied?: boolean;
+  /** Why the requested provider could not be constructed. */
+  unsatisfiedReason?: string;
 }
+
+/** Default localhost endpoint used when Ollama is requested without a URL. */
+const OLLAMA_DEFAULT_URL = "http://127.0.0.1:11434";
+
+/** Every provider name DEFAULT_PROVIDER accepts, excluding the "none" stub. */
+const KNOWN_PROVIDER_MODES: ReadonlySet<string> = new Set([
+  "openai",
+  "anthropic",
+  "gemini",
+  "openrouter",
+  "ollama",
+  "groq",
+]);
 
 /**
  * Normalized provider response for cost tracking and observability.
@@ -50,6 +77,34 @@ const COST_PER_1K: Record<string, number> = {
   default: 0.001,
 };
 
+/**
+ * Public-safe summary of how AI is (or is not) configured.
+ *
+ * Deliberately carries only the provider name, model name and whether an
+ * explicit request went unsatisfied. It never carries API keys, endpoint
+ * URLs, or prompt content, so it is safe on unauthenticated health output.
+ */
+export interface AiModeSummary {
+  /** "stub" whenever no provider is available, otherwise the provider name. */
+  llm: string;
+  /** Model name, when a provider resolved. */
+  model?: string;
+  /** Provider explicitly requested through DEFAULT_PROVIDER, if any. */
+  requested?: string;
+  /** True when a requested provider could not be constructed. */
+  unsatisfied?: boolean;
+}
+
+export function describeAiMode(result: ProviderFactoryResult): AiModeSummary {
+  const summary: AiModeSummary = {
+    llm: result.mode === "none" ? "stub" : result.mode,
+  };
+  if (result.model) summary.model = result.model;
+  if (result.requested) summary.requested = result.requested;
+  if (result.unsatisfied) summary.unsatisfied = true;
+  return summary;
+}
+
 export function estimateCost(model: string, totalTokens: number): number {
   const rate = COST_PER_1K[model] ?? COST_PER_1K.default;
   return Math.round(rate * (totalTokens / 1000) * 100000) / 100000;
@@ -76,6 +131,17 @@ export class LLMProviderFactory {
 
     // Override: force specific provider
     if (explicitProvider && explicitProvider !== "none") {
+      if (!KNOWN_PROVIDER_MODES.has(explicitProvider)) {
+        const reason = `unknown provider name — expected one of ${[...KNOWN_PROVIDER_MODES].join(", ")}`;
+        return {
+          provider: null,
+          mode: "none",
+          model: "",
+          info: `DEFAULT_PROVIDER '${explicitProvider}' is not a supported provider (${reason}) — no LLM is available.`,
+          unsatisfied: true,
+          unsatisfiedReason: reason,
+        };
+      }
       return this.createByName(explicitProvider as ProviderMode, defaultModel);
     }
 
@@ -193,6 +259,8 @@ export class LLMProviderFactory {
     name: ProviderMode,
     model?: string,
   ): ProviderFactoryResult {
+    let reason = `no API key found for provider '${name}'`;
+
     switch (name) {
       case "openai": {
         const key = process.env.OPENAI_API_KEY;
@@ -238,12 +306,57 @@ export class LLMProviderFactory {
           info: `Groq (forced, model: ${m})`,
         };
       }
+      case "openrouter": {
+        const key = process.env.OPENROUTER_API_KEY;
+        if (!key?.trim()) break;
+        const m = model ?? process.env.OPENROUTER_MODEL ?? "openai/gpt-4o-mini";
+        return {
+          provider: new OpenRouterProvider({ apiKey: key.trim(), model: m }),
+          mode: "openrouter",
+          model: m,
+          info: `OpenRouter (forced, model: ${m})`,
+          requested: name,
+        };
+      }
+      case "ollama": {
+        // Ollama is keyless. An explicit request resolves to the configured
+        // endpoint, or the provider's own localhost default.
+        const url =
+          process.env.OLLAMA_URL?.trim() ||
+          process.env.OLLAMA_BASE_URL?.trim() ||
+          OLLAMA_DEFAULT_URL;
+        const m = model ?? process.env.OLLAMA_MODEL?.trim();
+        if (!m) {
+          reason =
+            "Ollama requires an explicit model — set OLLAMA_MODEL or DEFAULT_MODEL";
+          break;
+        }
+        return {
+          provider: new OllamaProvider({ baseURL: url, model: m }),
+          mode: "ollama",
+          model: m,
+          info: `Ollama (forced, url: ${url}, model: ${m})`,
+          requested: name,
+        };
+      }
+      case "none":
+        return {
+          provider: null,
+          mode: "none",
+          model: "",
+          info: "No LLM provider requested — agents running in stub mode.",
+          requested: name,
+        };
     }
+
     return {
       provider: null,
       mode: "none",
       model: "",
-      info: `Provider '${name}' requested but no API key found — falling back to stub mode.`,
+      info: `Provider '${name}' was explicitly requested but could not be constructed (${reason}) — no LLM is available.`,
+      requested: name,
+      unsatisfied: true,
+      unsatisfiedReason: reason,
     };
   }
 }
