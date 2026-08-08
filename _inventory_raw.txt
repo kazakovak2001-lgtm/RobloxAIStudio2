@@ -1070,8 +1070,12 @@ server/src/providers/openrouter.ts
 server/src/providers/providerFactory.ts
 server/src/repair/RepairEngine.ts
 server/src/repair/RepairExecutor.ts
+server/src/repair/RepairInputAssembler.ts
 server/src/repair/RepairPlanner.ts
+server/src/repair/RepairSessionStore.ts
 server/src/repair/RepairTypes.ts
+server/src/repair/__tests__/RepairEngine.test.ts
+server/src/repair/__tests__/RepairExecutor.test.ts
 server/src/repair/index.ts
 server/src/routes/__tests__/game-generation-blueprint.test.ts
 server/src/routes/__tests__/platform.durability.test.ts

@@ -9,10 +9,10 @@ fail-closed guard for subsequent roadmap reconciliations.
 
 - Backend repository: `kazakovak2001-lgtm/RobloxAIStudio2`
 - Backend release branch: `release/cutover-1e-candidate`
-- Current backend runtime release: `f3b89c9048884528eb8baa4d5a19e406cc1c6315`
+- Current backend runtime release: `243116da73808cc4a1202cb007d9bd1f2dad2b69`
 - SECURITY-2G-F control baseline: `da55f716c798ec8c6a7f25a8e2a3b7b0a2244416`
 - Paired Frontend repository: `kazakovak2001-lgtm/Frontend`
-- Paired Frontend runtime contents: `06203ad0c296892d02467b2b566409fa10201cf6`
+- Paired Frontend runtime contents: `33cb19310ad15097eac1ff53832ee7d8191bd65e`
 
 ## Authority order
 
@@ -66,6 +66,20 @@ full record, including its explicitly documented evidence limits — this
 result is operator-observed rather than a fully captured machine-verifiable
 receipt trail the way STUDIO-ACCEPT-1 is, and the record says so plainly
 rather than overstating its rigor.
+
+REPAIR-1A promotes the runtime pair to backend `243116da73808cc4a1202cb007d9bd1f2dad2b69`
+(PR #185) and Frontend `33cb19310ad15097eac1ff53832ee7d8191bd65e` (companion
+PR #38). `RepairEngine`/`RepairExecutor` no longer simulate improvement: one
+real strategy (`regenerate_script`, whole-package regeneration via
+`LuaGeneratorAgent`) is implemented and gated by the same
+`assertPlayableLuaScripts` contract generation uses; every other strategy
+fails closed as not-yet-implemented instead of faking success. Repaired
+artifacts persist under a new execution id — the parent execution is never
+mutated — and session state is now durable. The Frontend companion PR moves
+the E2E contract's repair check to run against a real post-generation
+execution instead of a pre-generation synthetic fixture. Studio redelivery of
+repaired artifacts (REPAIR-1B) and rollback/audit (REPAIR-1C) are not yet
+implemented.
 
 ## Required deterministic behavior
 

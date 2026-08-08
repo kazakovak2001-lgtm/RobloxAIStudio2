@@ -1306,10 +1306,15 @@
 │   │   │   ├── openrouter.ts
 │   │   │   └── providerFactory.ts
 │   │   ├── repair
+│   │   │   ├── __tests__
+│   │   │   │   ├── RepairEngine.test.ts
+│   │   │   │   └── RepairExecutor.test.ts
 │   │   │   ├── index.ts
 │   │   │   ├── RepairEngine.ts
 │   │   │   ├── RepairExecutor.ts
+│   │   │   ├── RepairInputAssembler.ts
 │   │   │   ├── RepairPlanner.ts
+│   │   │   ├── RepairSessionStore.ts
 │   │   │   └── RepairTypes.ts
 │   │   ├── routes
 │   │   │   ├── __tests__
