@@ -672,6 +672,7 @@
 │   │   │   ├── studio1.plugin-contract.test.ts
 │   │   │   ├── studio1.plugin-package.test.ts
 │   │   │   ├── studio1.runtime-consolidation.test.ts
+│   │   │   ├── studio2fa.allowlist-parity.test.ts
 │   │   │   └── studioIntegration.test.ts
 │   │   ├── agents
 │   │   │   ├── collaboration
@@ -1507,5 +1508,6 @@
 │       └── utils
 │           ├── ArtifactLoader.lua
 │           ├── ErrorReporter.lua
-│           └── RuntimeValidator.lua
+│           ├── RuntimeValidator.lua
+│           └── UITreeMaterializer.lua
 └── V1_RELEASE_NOTES.md

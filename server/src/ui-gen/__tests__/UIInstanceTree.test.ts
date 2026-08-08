@@ -14,6 +14,7 @@ import {
   ALLOWED_UI_PROPERTIES,
   MAX_UI_TREE_DEPTH,
   MAX_UI_TREE_NODES,
+  PRESERVED_CONTENT_FOLDER,
   UI_TREE_SCHEMA_VERSION,
   assertMaterializableUITree,
   getMaterializableUITreeIssues,
@@ -259,7 +260,7 @@ describe("assertMaterializableUITree fail-closed table", () => {
     );
   });
 
-  it("rejects an unknown enum name", () => {
+  it("rejects an enum name that does not match its property", () => {
     const tree = validTree();
     const container = tree.screens[1].root.children![0];
     const button = container.children!.find(
@@ -272,7 +273,50 @@ describe("assertMaterializableUITree fail-closed table", () => {
     };
 
     expect(getMaterializableUITreeIssues(tree)).toContainEqual(
-      expect.stringContaining("unknown enum Material"),
+      expect.stringContaining("must use enum Font, received Material"),
+    );
+  });
+
+  /**
+   * Both names are allowlisted here, so only the property binding rejects it.
+   * Without that check this passes validation and then raises on assignment in
+   * Studio, where the message is far less precise. Found in review.
+   */
+  it("rejects a mismatched enum even when both names are allowlisted", () => {
+    const tree = validTree();
+    const container = tree.screens[1].root.children![0];
+    const button = container.children!.find(
+      (c) => c.className === "TextButton",
+    );
+    button!.properties!.Font = {
+      kind: "enum",
+      enumName: "SortOrder",
+      item: "Name",
+    };
+
+    expect(getMaterializableUITreeIssues(tree)).toContainEqual(
+      expect.stringContaining("must use enum Font, received SortOrder"),
+    );
+  });
+
+  it("rejects an integer outside the 32-bit range", () => {
+    const tree = validTree();
+    tree.screens[0].root.children![0].properties!.ZIndex = {
+      kind: "int",
+      value: 1e300,
+    };
+
+    expect(getMaterializableUITreeIssues(tree)).toContainEqual(
+      expect.stringContaining("must carry a 32-bit integer"),
+    );
+  });
+
+  it("rejects the reserved preservation folder name", () => {
+    const tree = validTree();
+    tree.screens[0].root.children![0].name = PRESERVED_CONTENT_FOLDER;
+
+    expect(getMaterializableUITreeIssues(tree)).toContainEqual(
+      expect.stringContaining("reserved name AIStudioPreserved"),
     );
   });
 

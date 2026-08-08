@@ -1,4 +1,4 @@
-# Roblox AI Studio Plugin — v1.8
+# Roblox AI Studio Plugin — v1.9
 
 Canonical Roblox Studio plugin for importing durable generation artifacts from the Roblox AI Studio backend.
 
@@ -33,6 +33,7 @@ studio-plugin/
     │   └── CommandPanel.lua
     └── utils/
         ├── ArtifactLoader.lua
+        ├── UITreeMaterializer.lua
         └── ErrorReporter.lua
 ```
 
@@ -50,9 +51,9 @@ npm run studio:package
 The command creates ignored outputs under `dist/studio-plugin/`:
 
 ```text
-RobloxAIStudioPlugin-v1.8.0.rbxmx
-RobloxAIStudioPlugin-v1.8.0.manifest.json
-RobloxAIStudioPlugin-v1.8.0.SHA256SUMS.txt
+RobloxAIStudioPlugin-v1.9.0.rbxmx
+RobloxAIStudioPlugin-v1.9.0.manifest.json
+RobloxAIStudioPlugin-v1.9.0.SHA256SUMS.txt
 ```
 
 The `.rbxmx` model contains the active source hierarchy with `plugin.lua` represented as a `Script` and the remaining active modules represented as `ModuleScript` instances. The manifest records source and bundle SHA-256 values. Unchanged sources produce byte-identical package outputs.
@@ -115,7 +116,11 @@ ArtifactLoader materializes every artifact
     │    ├─ *.client.lua → LocalScript
     │    └─ *.lua → ModuleScript
     │
-    └─ JSON, manifest, UI, asset, text, and documentation artifacts
+    ├─ UI_GENERATION content carrying schemaVersion
+    │    → UITreeMaterializer builds a real ScreenGui tree under
+    │      ReplicatedStorage/AIStudioArtifacts/UI_GENERATION/<screenName>
+    │
+    └─ every other artifact, and UI content without schemaVersion
          → ReplicatedStorage/AIStudioArtifacts/<STAGE>/<artifactId> StringValue
     ▼
 POST /api/studio/commands/:commandId/result
@@ -125,6 +130,18 @@ Backend verificationStatus = verified
 ```
 
 The plugin reports `completed` only after all queued pipeline artifacts are materialized. Any loader failure is reported as `failed`. Queue delivery and acknowledgement alone never produce a verified state.
+
+## UI Tree Materialization (v1.9.0)
+
+`UITreeMaterializer` turns delivered UI content into real Instances. Three rules govern it:
+
+- **The allowlists are a security control.** Class names, property names, value kinds and Enum items are all closed sets, held here independently of the backend rather than trusted from it, because this is the side that calls `Instance.new`. No script class is allowed and no class accepts `Source`, so a payload can never create executable code through the UI path. A cross-language test asserts these lists stay identical to the backend's.
+- **No partially built tree is ever attached.** The whole tree is validated, then built detached with no parent, and only attached once every instance exists. This matters because `SyncManager` reports a failed command _without_ rolling back instances already created. Stated precisely, because the weaker guarantee is the true one: a validation or build failure leaves the DataModel untouched, since nothing was ever attached; a failure during the attach phase may leave some screens replaced and others not, roots that never reached the DataModel are discarded, and the export is reported failed. Attaching every screen as one transaction is not possible through this API.
+- **Ownership is respected.** Only instances carrying the `AIStudioManaged` attribute are ever destroyed. A generated screen name colliding with a hand-built instance fails the export instead of deleting the creator's work. Creator-authored instances found **anywhere** inside a screen being replaced or swept — at any depth, not merely as direct children — are moved into a reserved `AIStudioPreserved` folder first. Walking only direct children was a real data-loss bug found in review: an instance added inside a generated container is a _grandchild_ of the screen, and destroying the screen took it along.
+
+Delivered screens are keyed by **screen name**, never by artifact id, so regenerating a project replaces its screens instead of accumulating orphaned duplicates. Each root carries `AIStudioDeliveryMode = "design-time"`: the tree lives under `ReplicatedStorage`, not `StarterGui`, so it is inspectable and editable but does not run. The imperative Lua HUD remains the canonical runtime UI.
+
+Content **without** `schemaVersion` falls back to the `StringValue` path, which is what makes this plugin safe against an older backend. Content that _claims_ a schema version must materialize or fail — it never degrades quietly, because that would let an unbuilt tree be recorded as verified.
 
 ## Script Path Mapping
 

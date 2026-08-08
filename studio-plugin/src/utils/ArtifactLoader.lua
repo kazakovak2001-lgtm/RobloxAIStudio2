@@ -2,6 +2,8 @@
   ArtifactLoader — Materializes pipeline artifacts into Roblox Studio instances.
 ]]
 
+local UITreeMaterializer = require(script.Parent.UITreeMaterializer)
+
 local HttpService = game:GetService("HttpService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local ServerScriptService = game:GetService("ServerScriptService")
@@ -32,6 +34,9 @@ function ArtifactLoader:loadArtifact(artifact)
 
         if artifact.type == "lua" then
             return self:_loadLuaArtifact(artifact)
+        end
+        if artifact.type == "ui-layout" and self:_claimsUITreeSchema(artifact.content) then
+            return self:_loadUITreeArtifact(artifact)
         end
         return self:_loadMetadataArtifact(artifact)
     end)
@@ -81,6 +86,73 @@ function ArtifactLoader:_loadLuaArtifact(artifact)
         instancePath = instancePaths[1],
         instancePaths = instancePaths,
     }
+end
+
+--[[
+  Absence of schemaVersion is the ONLY fallback trigger.
+
+  Content that claims a schema version must be materialized or fail; it must
+  never quietly degrade to a StringValue, because the receipt would then be
+  accepted and the export recorded as verified while no tree was ever built.
+  That applies equally to a future version this plugin does not understand.
+]]
+function ArtifactLoader:_claimsUITreeSchema(content)
+    return type(content) == "table" and content.schemaVersion ~= nil
+end
+
+function ArtifactLoader:_loadUITreeArtifact(artifact)
+    local stageFolder = self:_ensureStageFolder(artifact.stage or "UI_GENERATION")
+
+    local delivered, err = UITreeMaterializer.materialize(artifact.content, stageFolder)
+    if not delivered then
+        -- Level 0: `err` is already a complete operator message, and the outer
+        -- handler wraps it again. A position prefix would point at this
+        -- rethrow rather than at the cause.
+        error(err, 0)
+    end
+
+    local instancePaths = {}
+    for _, entry in ipairs(delivered) do
+        table.insert(instancePaths, entry.instancePath)
+    end
+
+    return {
+        name = artifact.name,
+        type = artifact.type,
+        instancePath = instancePaths[1],
+        instancePaths = instancePaths,
+        -- Identity-bearing receipt: a positional array cannot prove WHICH
+        -- screen landed where, so verification needs the pairing.
+        screens = delivered,
+    }
+end
+
+--[[ Shared root/stage folder resolution for every non-Lua artifact. ]]
+function ArtifactLoader:_ensureStageFolder(stage)
+    local root = ReplicatedStorage:FindFirstChild("AIStudioArtifacts")
+    if root and not root:IsA("Folder") then
+        root:Destroy()
+        root = nil
+    end
+    if not root then
+        root = Instance.new("Folder")
+        root.Name = "AIStudioArtifacts"
+        root.Parent = ReplicatedStorage
+    end
+
+    local stageName = tostring(stage or "OTHER")
+    local stageFolder = root:FindFirstChild(stageName)
+    if stageFolder and not stageFolder:IsA("Folder") then
+        stageFolder:Destroy()
+        stageFolder = nil
+    end
+    if not stageFolder then
+        stageFolder = Instance.new("Folder")
+        stageFolder.Name = stageName
+        stageFolder.Parent = root
+    end
+
+    return stageFolder
 end
 
 function ArtifactLoader:_loadMetadataArtifact(artifact)
