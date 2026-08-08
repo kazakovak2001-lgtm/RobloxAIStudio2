@@ -2,7 +2,7 @@
 
 # Roblox AI Studio Documentation
 
-**Last updated:** August 6, 2026
+**Last updated:** August 8, 2026
 
 This directory documents the backend, standalone Frontend boundary, Roblox Studio plugin, release evidence, and current engineering roadmap.
 
