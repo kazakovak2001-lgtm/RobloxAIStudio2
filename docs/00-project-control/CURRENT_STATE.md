@@ -209,12 +209,13 @@ revalidation (REPAIR-1) is complete on the backend: sub-phase 1A landed a
 real single-strategy repair loop (backend PR #185, Frontend companion
 PR #38), sub-phase 1B landed Studio redelivery of repaired artifacts
 (backend PR #187), and sub-phase 1C landed a durable delivery/rollback
-audit trail (backend PR #189). A Frontend UI surfacing repair, delivery,
-and rollback is a separate, not-yet-scoped follow-up. Studio sync
-hardening (#168 and Frontend #32) is
+audit trail (backend PR #189). The Frontend UI surfacing repair, delivery,
+and rollback landed in Frontend PR #40, completing REPAIR-1 end to end.
+Studio sync hardening (#168 and Frontend #32) is
 complete, verified against backend PR #176 and Frontend PR #34/#37. Native
-asset/GUI delivery, broader autonomous agent execution, and production
-observability remain separate backlog items.
+asset and GUI delivery is now decomposed as `STUDIO-2F-A`…`STUDIO-2F-E`,
+with `STUDIO-2F-A` scoped and not started; broader autonomous agent
+execution and production observability remain separate backlog items.
 
 See [TECHNICAL_DEBT.md](../02-audits/technical-v2/TECHNICAL_DEBT.md) for definitions of done and [SPRINT_BACKLOG.md](../02-audits/technical-v2/SPRINT_BACKLOG.md) for ordered implementation work.
 
