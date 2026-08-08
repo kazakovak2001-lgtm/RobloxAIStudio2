@@ -609,7 +609,10 @@ app.use("/api/playtest", createPlaytestRouter(access));
 
 // Repair API
 import { createRepairRouter } from "./routes/repair";
-app.use("/api/repair", createRepairRouter(access));
+app.use(
+  "/api/repair",
+  createRepairRouter(access, agentRegistry, blueprintRepo),
+);
 
 // Knowledge API
 import { createKnowledgeRouter } from "./routes/knowledge";

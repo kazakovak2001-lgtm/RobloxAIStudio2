@@ -9,6 +9,9 @@ import { AssetGenerationEngine } from "../generation/assets";
 import { PlaytestEngine } from "../playtest";
 import { RepairEngine } from "../repair";
 import { AutonomousOrchestrator } from "../orchestrator";
+import { AgentRegistry } from "../agents/core/AgentRegistry";
+import { InMemoryBlueprintRepository } from "../projects/repository/blueprint.repository";
+import { ArtifactStore } from "../pipeline/v2";
 
 describe("Performance Benchmarks", () => {
   describe("Lua Generation Speed", () => {
@@ -96,29 +99,68 @@ describe("Performance Benchmarks", () => {
   });
 
   describe("Repair Loop Speed", () => {
-    it("completes 3 repair iterations under 50ms", () => {
+    // REPAIR-1A replaced the free, synchronous simulateImprovement() with a
+    // real artifact-store round trip, a real LuaGeneratorAgent call, and a
+    // real playtest re-run — repair is deliberately no longer near-instant,
+    // so this no longer asserts a tight millisecond bound. It still proves
+    // a single bounded attempt (REPAIR-1A caps at one iteration) completes
+    // in a reasonable time against the deterministic no-LLM fallback path.
+    it("completes a single bounded repair attempt in a reasonable time", async () => {
       const luaEngine = new LuaGenerationEngine();
-      const repairEngine = new RepairEngine();
       const scripts = luaEngine.generateFullPackage("perf", "Game", "rpg");
 
-      const start = performance.now();
-      repairEngine.run(
+      const artifactStore = new ArtifactStore();
+      const executionId = "perf-test-exec";
+      await artifactStore.store(
+        executionId,
+        "LUA_GENERATION",
+        "lua_generator",
         {
-          projectId: "perf",
           scripts: scripts.artifacts.map((a) => ({
-            name: a.name,
-            type: a.scriptType,
             path: a.path,
             content: a.content,
-            dependencies: a.dependencies,
           })),
-          assets: [],
         },
-        { maxIterations: 3, targetScore: 99, timeoutMs: 5000 },
       );
+
+      const blueprintRepository = new InMemoryBlueprintRepository();
+      await blueprintRepository.createBlueprint("perf-test-user", {
+        project_id: "perf",
+        user_id: "perf-test-user",
+        name: "Perf Game",
+        description: "A blueprint used only to exercise the repair loop.",
+        game_type: "rpg",
+        genre: ["rpg"],
+        target_audience: "all ages",
+        difficulty: "medium",
+        estimated_players: "small-group",
+        gameplay: { mechanics: [], progression: {}, balance: {} },
+        ui_layouts: [],
+        architecture: {
+          client_architecture: {},
+          server_architecture: {},
+          networking: {},
+        },
+        assets: { models: [], textures: [], sounds: [], animations: [] },
+        code_spec: { modules: [], patterns: [] },
+      });
+
+      const agentRegistry = new AgentRegistry();
+      const repairEngine = new RepairEngine(
+        agentRegistry,
+        blueprintRepository,
+        artifactStore,
+      );
+
+      const start = performance.now();
+      await repairEngine.run("perf", executionId, {
+        maxIterations: 3,
+        targetScore: 99,
+        timeoutMs: 5000,
+      });
       const duration = performance.now() - start;
 
-      expect(duration).toBeLessThan(50);
+      expect(duration).toBeLessThan(5000);
     });
   });
 

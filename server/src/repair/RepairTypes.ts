@@ -25,6 +25,9 @@ export interface RepairPlanItem {
   estimatedImpact: number;
   priority: number;
   decision: RepairDecision;
+  /** Carried over from the source PlaytestIssue so executors can target the real finding. */
+  reason: string;
+  recommendedFix: string;
 }
 
 export interface RepairPlan {
@@ -49,10 +52,17 @@ export interface RepairIterationRecord {
   scoreBefore: number;
   scoreAfter: number;
   duration: number;
+  /** Not tracked yet — the LLM provider interface surfaces no usage metadata. */
   tokenUsage: number;
+  /** Not tracked yet — see tokenUsage. */
   aiCost: number;
   repairsApplied: number;
   timestamp: number;
+  /** New execution ID the repaired artifacts were persisted under, if any were applied. */
+  newExecutionId?: string;
+  /** Execution ID the repair was attempted against; artifacts there are never mutated. */
+  parentExecutionId: string;
+  strategyResults: RepairResult[];
 }
 
 export interface RepairSessionState {

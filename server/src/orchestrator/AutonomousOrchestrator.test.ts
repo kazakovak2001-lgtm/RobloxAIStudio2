@@ -206,7 +206,9 @@ describe("AutonomousOrchestrator bounded preview truthfulness", () => {
       capability: "unavailable",
       service: "RepairEngine",
     });
-    expect(repair?.skippedReason).toContain("simulates score improvement");
+    expect(repair?.skippedReason).toContain(
+      "not yet wired into the autonomous phase loop",
+    );
 
     const studioSync = session.phases.find(
       (phase) => phase.phase === "studio_sync",

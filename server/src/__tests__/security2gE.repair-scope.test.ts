@@ -32,11 +32,13 @@ describe("SECURITY-2G-E repair scope", () => {
     );
     expect(
       route.indexOf("requireProjectAccess(req, res, projectId)"),
-    ).toBeLessThan(route.indexOf("engine.run(input, config)"));
+    ).toBeLessThan(route.indexOf("engine.run(projectId, executionId, config)"));
     expect(route).toContain("await access.hasProjectAccess(req, projectId)");
     expect(route).toContain('error: "No repair session found"');
     expect(route).toContain('error: "No repair history found"');
-    expect(index).toContain("createRepairRouter(access)");
+    expect(index).toContain(
+      "createRepairRouter(access, agentRegistry, blueprintRepo)",
+    );
   });
 
   it("classifies all repair operations as project-owner", () => {

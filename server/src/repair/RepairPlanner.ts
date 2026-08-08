@@ -33,6 +33,8 @@ export class RepairPlanner {
         estimatedImpact: this.estimateImpact(issue),
         priority: issue.priority,
         decision,
+        reason: issue.reason,
+        recommendedFix: issue.recommendedFix,
       });
     }
 
