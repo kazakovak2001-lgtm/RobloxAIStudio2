@@ -2,9 +2,9 @@
 
 # Roadmap Status
 
-**Last Updated:** August 6, 2026
-**Current backend runtime release:** `release/cutover-1e-candidate@23e23c1c6733f0b3c52ff4f90fc6123b74c0cf72`
-**Current Frontend runtime contents:** `kazakovak2001-lgtm/Frontend@e89f93d88a3c181b65769641e1a586c86827a6c5`
+**Last Updated:** August 8, 2026
+**Current backend runtime release:** `release/cutover-1e-candidate@f3b89c9048884528eb8baa4d5a19e406cc1c6315`
+**Current Frontend runtime contents:** `kazakovak2001-lgtm/Frontend@06203ad0c296892d02467b2b566409fa10201cf6`
 
 This file is the ordered current delivery authority. The dated TECH-AUDIT-2 roadmap and sprint backlog are historical planning baselines and do not override the status below. See [DOC-202A reconciliation](./DOC-202A_ROADMAP_AUTHORITY_RECONCILIATION.md) for exact completion evidence.
 
