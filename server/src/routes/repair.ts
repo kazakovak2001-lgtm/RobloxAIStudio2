@@ -11,10 +11,10 @@ import type { StudioIntegrationManager } from "../studio/integration/StudioInteg
 import type { SyncResult } from "../studio/integration/types";
 import type { ProjectAccessControl } from "./projects";
 
-/** Strip CR/LF from a request-derived value before it reaches a log sink,
- * so it can't be used to forge fake log entries. */
+/** Encode a request-derived value before it reaches a log sink, so control
+ * characters (e.g. CR/LF) can't be used to forge fake log entries. */
 function sanitizeForLog(value: string): string {
-  return value.replace(/[\r\n]+/g, " ");
+  return JSON.stringify(value);
 }
 
 /** Reduce a caught error to a sanitized message string before logging.
