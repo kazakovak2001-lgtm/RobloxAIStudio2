@@ -9,7 +9,7 @@ fail-closed guard for subsequent roadmap reconciliations.
 
 - Backend repository: `kazakovak2001-lgtm/RobloxAIStudio2`
 - Backend release branch: `release/cutover-1e-candidate`
-- Current backend runtime release: `6ec42d55a74bab0a9001d7e66c02795f01b41886`
+- Current backend runtime release: `558f9e6f5cc80e3ae9e29cafdd15ce6a33addd0f`
 - SECURITY-2G-F control baseline: `da55f716c798ec8c6a7f25a8e2a3b7b0a2244416`
 - Paired Frontend repository: `kazakovak2001-lgtm/Frontend`
 - Paired Frontend runtime contents: `33cb19310ad15097eac1ff53832ee7d8191bd65e`
@@ -98,8 +98,30 @@ a follow-up commit fixed two further real issues: concurrent `run()` calls
 for the same project could race and drop one call's history (now serialized
 per project), and two successful repairs of the same parent execution could
 collide on the same derived execution id and mix artifacts (now derived from
-the cumulative count of prior attempts against that parent). Rollback/audit
-and a canonical-execution UI (REPAIR-1C) are not yet implemented.
+the cumulative count of prior attempts against that parent).
+
+REPAIR-1C promotes the runtime pair to backend
+`558f9e6f5cc80e3ae9e29cafdd15ce6a33addd0f` (PR #189); Frontend contents are
+unchanged since REPAIR-1C is backend-only. It adds a durable delivery/rollback
+audit trail (`RepairDeliveryRecord[]`, a sibling array on the existing
+`RepairSessionState` document — no new storage collection) and lets
+`POST /:projectId/deliver` accept an optional `executionId` to redeliver an
+explicit older execution (the original parent or an earlier repair) instead
+of only the latest repair, with the id validated against that project's own
+repair history before it ever reaches Studio. `GET /:projectId/deliveries`
+combines the audit trail with the existing generic Studio evidence. A design
+review before implementation required two amendments before ship: joining the
+new `recordDelivery` write path to the same per-project serialization queue
+`run()` already uses (otherwise a concurrent write could be silently dropped,
+since `RepairSessionStore` does whole-document overwrites with no CAS), and
+carrying `priorSession.deliveries` forward in `runExclusive` the same way
+`history` already is (otherwise a later `run()` call would silently erase the
+audit trail). Post-merge, CodeQL repeatedly flagged log-injection risk in the
+audit-write-failure logging; two sanitizer approaches routed through a named
+helper function were both invisible to its taint analysis, resolved by
+inlining the sanitizing `.replace()` call directly at each log call site.
+REPAIR-1 (1A/1B/1C) is now complete on the backend. A Frontend UI surfacing
+repair, delivery, and rollback is a separate, not-yet-scoped follow-up.
 
 ## Required deterministic behavior
 
