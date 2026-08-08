@@ -2,9 +2,9 @@
 
 # Roadmap Status
 
-**Last Updated:** August 6, 2026
-**Current backend runtime release:** `release/cutover-1e-candidate@23e23c1c6733f0b3c52ff4f90fc6123b74c0cf72`
-**Current Frontend runtime contents:** `kazakovak2001-lgtm/Frontend@e89f93d88a3c181b65769641e1a586c86827a6c5`
+**Last Updated:** August 8, 2026
+**Current backend runtime release:** `release/cutover-1e-candidate@f3b89c9048884528eb8baa4d5a19e406cc1c6315`
+**Current Frontend runtime contents:** `kazakovak2001-lgtm/Frontend@06203ad0c296892d02467b2b566409fa10201cf6`
 
 This file is the ordered current delivery authority. The dated TECH-AUDIT-2 roadmap and sprint backlog are historical planning baselines and do not override the status below. See [DOC-202A reconciliation](./DOC-202A_ROADMAP_AUTHORITY_RECONCILIATION.md) for exact completion evidence.
 
@@ -96,7 +96,7 @@ Every exception records the control, exact package/advisory/rule/path/fingerprin
 - `DOC-202A`: issue #163 and PR #164 established the documentation-authority inventory and fail-closed validator.
 - `ROADMAP-AUDIT-1`: issue #169 ranked real Studio acceptance, authoritative runtime playtest, and artifact-applying repair as the remaining product-critical dependency chain.
 - `STUDIO-ACCEPT-1`: issue #170 and [desktop acceptance evidence](./STUDIO-ACCEPT-1_DESKTOP_ACCEPTANCE_RESULT.md) bind backend `3230d2368ed781043fe9f3520c0d3de3836ec3bb`, package SHA-256 `86e102b663d48925f9e313248761bb2d91d7e0794252f6c04e50496d8ba05696`, execution `exec-1785976885787`, command `cmd-eef6e7bd-a`, eight exact receipts, real Studio hierarchy, plugin `Verified`, and backend `artifactVerified=true`.
-- Active paired runtime baseline: backend `23e23c1c6733f0b3c52ff4f90fc6123b74c0cf72` plus protected Frontend contents `e89f93d88a3c181b65769641e1a586c86827a6c5`. Control-only reconciliation commits may follow these runtime identities; release evidence remains bound to this exact executable pair.
+- Active paired runtime baseline: backend `f3b89c9048884528eb8baa4d5a19e406cc1c6315` plus protected Frontend contents `06203ad0c296892d02467b2b566409fa10201cf6`. Control-only reconciliation commits may follow these runtime identities; release evidence remains bound to this exact executable pair.
 
 ## Runtime truthfulness
 

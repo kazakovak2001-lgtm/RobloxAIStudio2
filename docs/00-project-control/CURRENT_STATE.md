@@ -1,8 +1,8 @@
 # Current Project State
 
-**Last Updated**: August 6, 2026
+**Last Updated**: August 8, 2026
 **Phase**: STUDIO-ACCEPT-1 complete — authoritative Roblox runtime playtest evidence is next
-**Build Status**: Current runtime pair is backend `23e23c1c6733f0b3c52ff4f90fc6123b74c0cf72` plus protected Frontend contents `kazakovak2001-lgtm/Frontend@e89f93d88a3c181b65769641e1a586c86827a6c5`. The reciprocal production, clean-clone, PostgreSQL restart, release-image, composed-release, security and Merge Gate chain must remain exact-pair bound. STUDIO-ACCEPT-1 passed on backend acceptance commit `3230d2368ed781043fe9f3520c0d3de3836ec3bb`; a fresh post-PR-174 Roblox runtime playtest remains the next authority gate. No external production deployment is claimed.
+**Build Status**: Current runtime pair is backend `f3b89c9048884528eb8baa4d5a19e406cc1c6315` (release/cutover-1e-candidate, merged PR #177) plus protected Frontend contents `kazakovak2001-lgtm/Frontend@06203ad0c296892d02467b2b566409fa10201cf6` (main, merged PR #35). The reciprocal production, clean-clone, PostgreSQL restart, release-image, composed-release, security and Merge Gate chain must remain exact-pair bound. STUDIO-ACCEPT-1 passed on backend acceptance commit `3230d2368ed781043fe9f3520c0d3de3836ec3bb`; a fresh post-PR-174 Roblox runtime playtest remains the next authority gate. No external production deployment is claimed.
 
 ---
 
@@ -30,7 +30,7 @@
 - **Repository**: [kazakovak2001-lgtm/Frontend](https://github.com/kazakovak2001-lgtm/Frontend) on `main`
 - **Acceptance commit**: `a8d005d433d48e18d8e64ac176ee63c9c694b644`, independently matched to the ZIP used during the successful STUDIO-1 session.
 - **Initial SSR release commit**: `1036c3ef9705d145cb9700cd14268a33d2abdd58`, merged through Frontend PR #12 after CI run #65 verified the production image, `/health`, SSR `/`, responsive QA, and Merge Gate.
-- **Active paired release contents**: `e89f93d88a3c181b65769641e1a586c86827a6c5`, including the INTEGRATION-1B browser-recovery proof, retained by the protected release inventory.
+- **Active paired release contents**: `06203ad0c296892d02467b2b566409fa10201cf6`, including the INTEGRATION-1B browser-recovery proof, retained by the protected release inventory.
 - **Framework**: React 19 + TypeScript + Vite + Tailwind CSS
 - **Routing and state**: TanStack Router/Query, typed backend adapter, Socket.IO realtime client
 - **Ownership**: All new user-facing web functionality belongs in the standalone repository.
@@ -230,7 +230,7 @@ This template enforces:
 
 - **Backend release image**: `Dockerfile.backend` builds and starts the compiled backend without root `src/`, `public/`, Vite, or Tailwind inputs; CI verifies `GET /health`.
 - **Backend/PostgreSQL composition**: `deploy/docker-compose.backend.yml` provides the independently verified backend and persistent database boundary.
-- **Standalone Frontend release image**: active paired Frontend contents `e89f93d88a3c181b65769641e1a586c86827a6c5` package `.output` plus one shared worker-to-Node adapter as a non-root SSR process.
+- **Standalone Frontend release image**: active paired Frontend contents `06203ad0c296892d02467b2b566409fa10201cf6` package `.output` plus one shared worker-to-Node adapter as a non-root SSR process.
 - **Historical REL-202 composed HTTPS evidence**: backend source `010532f0b162097c8a645b1dc07c89081d25cb99` and exact Frontend contents `9495b696cf22c84cf61375f7df22e5ac5907cc3c` passed CI Pipeline #1073 (`30667404383`). The promoted backend merge `a33a8c30588f1e4705d27856e61d839c8efd42ac` has the same file tree. This retained evidence proves the prior DATA-202 pair; the active REL-203 pair is defined by the release inventory and its protected PR chain. External deployment remains a separate unchecked operation.
 - **Migration Runner**: `server/src/platform/storage/postgres/migrationRunner.ts` — auto-applies pending migrations on startup (skips when STORAGE_PROVIDER=inmemory).
 - **Rollback inventory**: CUTOVER-1A and CUTOVER-1B remain independently deployable and are unaffected by removal of the non-executable combined stack. The deleted legacy source/configuration/deployment inventory remains recoverable by reverting the focused CLEANUP-1C change from baseline `85a2fa8d512738e6d02ffae42da77af7a27db6fc`. The promoted default and pinned pre-promotion rollback reference remain protected.

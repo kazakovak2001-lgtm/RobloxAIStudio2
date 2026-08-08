@@ -4,9 +4,9 @@
   "repository": "kazakovak2001-lgtm/RobloxAIStudio2",
   "releaseIdentity": {
     "backendBranch": "release/cutover-1e-candidate",
-    "backendCommit": "23e23c1c6733f0b3c52ff4f90fc6123b74c0cf72",
+    "backendCommit": "f3b89c9048884528eb8baa4d5a19e406cc1c6315",
     "frontendRepository": "kazakovak2001-lgtm/Frontend",
-    "frontendCommit": "e89f93d88a3c181b65769641e1a586c86827a6c5"
+    "frontendCommit": "06203ad0c296892d02467b2b566409fa10201cf6"
   },
   "authority": [
     {
@@ -19,8 +19,8 @@
         "`DOC-202` | Documentation-authority inventory and deterministic guards | Medium | ✅ Complete — `DOC-202A`",
         "`STUDIO-ACCEPT-1` | Real Studio acceptance of canonical artifact delivery | Critical | ✅ Complete",
         "`RUNTIME-PLAYTEST-1` | Authoritative Studio-attached Roblox runtime evidence | High | Next",
-        "23e23c1c6733f0b3c52ff4f90fc6123b74c0cf72",
-        "e89f93d88a3c181b65769641e1a586c86827a6c5"
+        "f3b89c9048884528eb8baa4d5a19e406cc1c6315",
+        "06203ad0c296892d02467b2b566409fa10201cf6"
       ],
       "forbiddenClaims": [
         "PR #162 pending reviewed merge",
@@ -33,8 +33,8 @@
       "rank": 2,
       "status": "current",
       "requiredClaims": [
-        "23e23c1c6733f0b3c52ff4f90fc6123b74c0cf72",
-        "e89f93d88a3c181b65769641e1a586c86827a6c5",
+        "f3b89c9048884528eb8baa4d5a19e406cc1c6315",
+        "06203ad0c296892d02467b2b566409fa10201cf6",
         "STUDIO-ACCEPT-1 complete"
       ],
       "forbiddenClaims": [
@@ -49,8 +49,8 @@
       "status": "supporting",
       "requiredClaims": [
         "DOC-202A",
-        "23e23c1c6733f0b3c52ff4f90fc6123b74c0cf72",
-        "e89f93d88a3c181b65769641e1a586c86827a6c5"
+        "f3b89c9048884528eb8baa4d5a19e406cc1c6315",
+        "06203ad0c296892d02467b2b566409fa10201cf6"
       ],
       "forbiddenClaims": []
     }

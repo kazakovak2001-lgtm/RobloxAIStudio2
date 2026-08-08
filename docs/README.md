@@ -2,7 +2,7 @@
 
 # Roblox AI Studio Documentation
 
-**Last updated:** August 6, 2026
+**Last updated:** August 8, 2026
 
 This directory documents the backend, standalone Frontend boundary, Roblox Studio plugin, release evidence, and current engineering roadmap.
 
@@ -29,8 +29,8 @@ The old embedded root `src/` frontend is removed and protected by a permanent in
 
 ## Active paired release
 
-- Backend runtime: `release/cutover-1e-candidate@23e23c1c6733f0b3c52ff4f90fc6123b74c0cf72`.
-- Frontend runtime contents: `kazakovak2001-lgtm/Frontend@e89f93d88a3c181b65769641e1a586c86827a6c5`.
+- Backend runtime: `release/cutover-1e-candidate@f3b89c9048884528eb8baa4d5a19e406cc1c6315`.
+- Frontend runtime contents: `kazakovak2001-lgtm/Frontend@06203ad0c296892d02467b2b566409fa10201cf6`.
 - Pairing authority: protected Frontend Production Contract, Composed HTTPS Release, promoted-baseline integrity, and Merge Gate evidence.
 - No external production deployment is claimed by repository release evidence alone.
 

@@ -9,10 +9,10 @@ fail-closed guard for subsequent roadmap reconciliations.
 
 - Backend repository: `kazakovak2001-lgtm/RobloxAIStudio2`
 - Backend release branch: `release/cutover-1e-candidate`
-- Current backend runtime release: `23e23c1c6733f0b3c52ff4f90fc6123b74c0cf72`
+- Current backend runtime release: `f3b89c9048884528eb8baa4d5a19e406cc1c6315`
 - SECURITY-2G-F control baseline: `da55f716c798ec8c6a7f25a8e2a3b7b0a2244416`
 - Paired Frontend repository: `kazakovak2001-lgtm/Frontend`
-- Paired Frontend runtime contents: `e89f93d88a3c181b65769641e1a586c86827a6c5`
+- Paired Frontend runtime contents: `06203ad0c296892d02467b2b566409fa10201cf6`
 
 ## Authority order
 
@@ -34,6 +34,14 @@ The pair-freshness reconciliation promotes the post-INTEGRATION-1B Frontend
 runtime and the post-PR-174 backend runtime as one exact executable pair. It
 also distinguishes those runtime identities from later control-only commits,
 avoiding impossible mutual self-reference between two repository commits.
+
+The August 8 reconciliation promotes the merged backend PR #177 (`fix: repair
+unplayable ollama lua output`) and the merged Frontend PR #35 (`Use generated
+artifacts for playtest and repair`) as the new exact executable pair. The
+Frontend paired-release manifest and Production Paired Contract were
+re-verified against the merged backend commit before promotion. STUDIO-SYNC-1A
+completion evidence against issue #168's property-test and coverage
+requirements was not re-verified in this reconciliation and remains open.
 
 ## Required deterministic behavior
 
