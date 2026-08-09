@@ -9,7 +9,7 @@ fail-closed guard for subsequent roadmap reconciliations.
 
 - Backend repository: `kazakovak2001-lgtm/RobloxAIStudio2`
 - Backend release branch: `release/cutover-1e-candidate`
-- Current backend runtime release: `d7dc84061dd2045e68b4a38f970fe42e7c25abce`
+- Current backend runtime release: `18bdc2cddd8b80dba5c779e51c5f3947cce9484a`
 - SECURITY-2G-F control baseline: `da55f716c798ec8c6a7f25a8e2a3b7b0a2244416`
 - Paired Frontend repository: `kazakovak2001-lgtm/Frontend`
 - Paired Frontend runtime contents: `6c1458d836244f2b720f361a78c2ab13f1682f74`
@@ -308,6 +308,39 @@ silence.
 Conditional stages remain unbuilt and are recorded as `PIPELINE-1C`. Nothing
 needs to skip a stage yet, and a branching mechanism with no consumer is
 scaffolding rather than capability.
+
+WORLD-1A advances the runtime pair to backend
+`18bdc2cddd8b80dba5c779e51c5f3947cce9484a` and Frontend
+`6c1458d836244f2b720f361a78c2ab13f1682f74`, through backend pull request `#207`.
+The Frontend identity is unchanged.
+
+The slice began as a fork worth recording, because the obvious first step was
+the wrong one. A scene-graph artifact had no producer and no consumer: no agent
+emits geometry, and materializing one would duplicate the world the generated
+server script is required to build, so it would have been groundwork dressed as
+capability. Cross-artifact validation was chosen instead, and it turned out to
+be the piece with immediate value — every gate in this pipeline checked one
+artifact against itself, and none had ever asked whether two agree.
+
+Three properties are the substance of the check and must survive later edits.
+A claim whose role no source-text evidence could settle is reported
+`unverifiable`, never `supported`. The evidence map is exhaustive over the role
+set, so adding a role forces a decision about what would prove it instead of
+letting it default to a pass. And server claims are matched only against server
+source, because client code declaring a `SpawnLocation` must not satisfy a
+claim about what the server owns — that is the case the check exists to catch.
+
+**The world model is non-canonical and unmaterialized.** The runtime world is
+still built imperatively by the generated server `Script` that the playability
+contract requires. Nothing in this slice creates Roblox instances, and no
+ownership switch is proposed; materialization is `WORLD-1B` and is blocked on
+`STUDIO-2F-E`, which is where the canonical flip belongs.
+
+One review finding is worth naming for the record: the v2 pipeline had no
+branch for the new agentless stage, so it would have persisted a passthrough
+marker under the name `worldModel.json`. That is the third time this shape has
+been caught, after the security report and the validation report. The branch
+now carries a note that any future agentless stage needs its own.
 
 ## Scope boundary
 
