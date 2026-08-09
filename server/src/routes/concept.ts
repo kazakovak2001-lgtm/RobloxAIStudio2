@@ -119,13 +119,19 @@ export function createConceptRouter(
       uiPlan: ["Main menu", "HUD", "Settings", "Inventory"],
       technicalPlan: {
         architecture: "Client-Server",
+        // A selection the pipeline can actually run. `planner` and
+        // `orchestrator` are not decoration: `game_designer` depends on the
+        // first and the export stage is the second, so a list without them
+        // describes a graph that could never complete.
         requiredAgents: [
           "requirements",
+          "planner",
           "game_designer",
           "roblox_architect",
           "lua_generator",
           "ui_generator",
           "asset_planner",
+          "orchestrator",
         ],
         estimatedStages: 11,
       },

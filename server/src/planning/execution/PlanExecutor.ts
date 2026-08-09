@@ -26,8 +26,45 @@ export interface PlanExecutionResult {
   success: boolean;
   completedNodes: number;
   failedNodes: number;
+  /** Nodes that never ran because a dependency did not complete. */
+  skippedNodes: number;
   totalDurationMs: number;
   outputs: Record<string, unknown>;
+}
+
+/**
+ * Mark every node that can no longer run, naming what it was waiting for.
+ *
+ * A dependency is unsatisfiable when its node failed, or when the graph has
+ * no such node at all. The second case used to strand the executor silently:
+ * `getReadyNodes()` requires each dependency to exist, so a node pointing at
+ * a task that was never planned could never become ready.
+ */
+function recordBlockedNodes(graph: TaskGraph, unblockedReason: string): void {
+  // Resolve every reason against the graph as it stands now, before marking
+  // anything. Marking as we go would make an earlier node's fresh `skipped`
+  // status count as satisfied for the node after it, and that node would then
+  // be told it was blocked by nothing.
+  const reasons = graph
+    .getAllNodes()
+    .filter((node) => node.status === "pending")
+    .map((node) => {
+      const blockers = node.dependencies.filter((depId) => {
+        const dep = graph.getNode(depId);
+        return !dep || (dep.status !== "done" && dep.status !== "skipped");
+      });
+      return {
+        id: node.id,
+        reason:
+          blockers.length > 0
+            ? `Blocked by unsatisfied dependencies: ${blockers.join(", ")}`
+            : unblockedReason,
+      };
+    });
+
+  for (const { id, reason } of reasons) {
+    graph.markSkipped(id, reason);
+  }
 }
 
 export class PlanExecutor {
@@ -96,7 +133,11 @@ export class PlanExecutor {
     while (!graph.isComplete()) {
       const readyNodes = graph.getReadyNodes();
       if (readyNodes.length === 0) {
-        // Deadlock or all remaining nodes have unsatisfied deps from failed nodes
+        // Every remaining node is waiting on a dependency that did not
+        // complete. Say so on each node instead of leaving them `pending`,
+        // which reads as "still queued" and left the run with no stated
+        // reason: nothing done, nothing failed, and nothing explaining why.
+        recordBlockedNodes(graph, "Blocked before execution");
         break;
       }
 
@@ -114,6 +155,10 @@ export class PlanExecutor {
         if (stopOnFailure && node.status === "failed") {
           console.log(
             `[PLAN-EXEC] Stopped on failure | Node: ${node.id} | agent=${node.agent}`,
+          );
+          recordBlockedNodes(
+            graph,
+            `Not reached: execution stopped after ${node.id} failed`,
           );
           const failResult = this.buildResult(
             planId,
@@ -247,6 +292,17 @@ export class PlanExecutor {
             typeof output._error === "string"
               ? output._error
               : `${activeAgent} returned a failed result`,
+          );
+        }
+        // `_skipped` means no agent ran — the registry returns it for a name
+        // it does not know. Treating that as a completed node reported work
+        // that never happened: a plan naming only agents that do not exist
+        // finished "successfully" with every node marked done.
+        if (output._skipped === true) {
+          throw new Error(
+            typeof output._reason === "string"
+              ? output._reason
+              : `${activeAgent} did not run`,
           );
         }
         const durationMs = Date.now() - start;
@@ -396,6 +452,7 @@ export class PlanExecutor {
       success: !graph.hasFailed() && stats.done === stats.total,
       completedNodes: stats.done,
       failedNodes: stats.failed,
+      skippedNodes: stats.skipped,
       totalDurationMs,
       outputs: graph.getAccumulatedOutputs(),
     };

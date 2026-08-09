@@ -197,6 +197,9 @@ export class GameGenerationService {
               started_at: execution.started_at,
               completed_at: new Date(),
               duration_ms: node.durationMs,
+              // Carries both a failure message and the reason a node never
+              // ran, so a partial pipeline says why rather than just how far.
+              ...(node.error ? { error: node.error } : {}),
               evaluation: node.evaluation
                 ? {
                     qualityScore: node.evaluation.quality,
@@ -214,6 +217,8 @@ export class GameGenerationService {
               completed_at: new Date(),
               pipeline_steps: pipelineSteps,
               total_duration_ms: result.totalDurationMs,
+              pipeline_definition: plan.definitionId,
+              pipeline_version: plan.definitionVersion,
               ...this.resolveProvenance(result.graph.getAllNodes()),
             });
           } catch (err) {

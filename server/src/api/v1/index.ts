@@ -19,7 +19,10 @@
 import { Router } from "express";
 import { ApiGateway, type RequestWithTrace } from "../gateway/ApiGateway";
 import { ResponseFormatter } from "../gateway/ResponseFormatter";
-import { PlannerEngine } from "../../planning/core/PlannerEngine";
+import {
+  PlannerEngine,
+  PlanValidationError,
+} from "../../planning/core/PlannerEngine";
 import { PlanExecutor } from "../../planning/execution/PlanExecutor";
 import { AgentRegistry } from "../../agents/core/AgentRegistry";
 import { GameBlueprintEngine } from "../../generation/blueprint/GameBlueprintEngine";
@@ -258,6 +261,20 @@ export function createV1Router(
         ),
       );
     } catch (err) {
+      // An unbuildable agent selection is a bad request, not a server fault.
+      if (err instanceof PlanValidationError) {
+        res
+          .status(400)
+          .json(
+            formatter.error(
+              "PLAN_NOT_EXECUTABLE",
+              "Requested plan is not executable",
+              { issues: err.issues },
+              { traceId, startTime },
+            ),
+          );
+        return;
+      }
       res
         .status(500)
         .json(

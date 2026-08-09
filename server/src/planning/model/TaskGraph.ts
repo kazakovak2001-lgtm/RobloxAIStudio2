@@ -85,6 +85,22 @@ export class TaskGraph {
   }
 
   /**
+   * Mark a node as skipped, recording why it never ran.
+   *
+   * A node that never ran must not be left `pending` at the end of an
+   * execution: `pending` is indistinguishable from "still queued", so a run
+   * that stopped early looked the same as one still in flight, with no stated
+   * reason anywhere.
+   */
+  markSkipped(id: string, reason: string): void {
+    const node = this.nodes.get(id);
+    if (node) {
+      node.status = "skipped";
+      node.error = reason;
+    }
+  }
+
+  /**
    * Mark a node as failed.
    */
   markFailed(id: string, error: string, durationMs: number): void {
@@ -172,6 +188,7 @@ export class TaskGraph {
       running: nodes.filter((n) => n.status === "running").length,
       done: nodes.filter((n) => n.status === "done").length,
       failed: nodes.filter((n) => n.status === "failed").length,
+      skipped: nodes.filter((n) => n.status === "skipped").length,
     };
   }
 }
