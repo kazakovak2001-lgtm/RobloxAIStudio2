@@ -1203,7 +1203,9 @@ server/src/ui-gen/__tests__/UIInstanceTree.test.ts
 server/src/ui-gen/index.ts
 server/src/ui-gen/types.ts
 server/src/validation/__tests__/commitValidator.test.ts
+server/src/validation/__tests__/luaSecurityReview.test.ts
 server/src/validation/commitValidator.ts
+server/src/validation/luaSecurityReview.ts
 server/src/world/bridge/WorldSimulationBridge.ts
 server/src/world/core/WorldStateEngine.ts
 server/src/world/emergence/EmergentBehaviorEngine.ts

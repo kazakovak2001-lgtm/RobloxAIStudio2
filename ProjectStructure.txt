@@ -1475,8 +1475,10 @@
 │   │   │   └── UIValidationService.ts
 │   │   ├── validation
 │   │   │   ├── __tests__
-│   │   │   │   └── commitValidator.test.ts
-│   │   │   └── commitValidator.ts
+│   │   │   │   ├── commitValidator.test.ts
+│   │   │   │   └── luaSecurityReview.test.ts
+│   │   │   ├── commitValidator.ts
+│   │   │   └── luaSecurityReview.ts
 │   │   └── world
 │   │       ├── bridge
 │   │       │   └── WorldSimulationBridge.ts

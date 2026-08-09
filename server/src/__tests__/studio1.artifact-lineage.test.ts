@@ -85,16 +85,22 @@ describe("STUDIO-1a canonical artifact lineage", () => {
       completedNode("unknown_agent", { ignored: true }),
     ]);
 
+    // SECREVIEW-1 records a trust-boundary review beside the Lua it reviews,
+    // so it is emitted by the recorder rather than by an agent node.
     expect(recorded.map((artifact) => artifact.stage)).toEqual([
       "REQUIREMENTS",
       "LUA_GENERATION",
+      "SECURITY_REVIEW",
       "EXPORT",
     ]);
+    const review = recorded.find((a) => a.stage === "SECURITY_REVIEW");
+    expect(review?.agent).toBeNull();
+    expect(review?.name).toBe("securityReport.json");
     expect(
       recorded.every((artifact) => artifact.pipelineId === executionId),
     ).toBe(true);
     expect(recorded[1]?.content).toEqual(luaOutput);
-    expect(store.count).toBe(3);
+    expect(store.count).toBe(4);
   });
 
   it("normalizes the real LuaGeneratorAgent output into Studio scripts", async () => {
@@ -252,7 +258,9 @@ describe("STUDIO-1a canonical artifact lineage", () => {
     const storeAfterRestart = new ArtifactStore(storage);
     const restored = storeAfterRestart.getByPipeline(executionId);
 
-    expect(restored).toHaveLength(2);
+    // Lua, its security review, and the export manifest all survive restart.
+    expect(restored).toHaveLength(3);
+    expect(restored.map((a) => a.stage)).toContain("SECURITY_REVIEW");
     expect(storeAfterRestart.getById(luaArtifact!.id)?.reviewStatus).toBe(
       "approved",
     );
@@ -260,17 +268,24 @@ describe("STUDIO-1a canonical artifact lineage", () => {
       package: "reviewed",
       artifactCount: 1,
     });
+    // The security review is recorded unreviewed, so an execution is no longer
+    // all-approved until someone approves it. Truthful, and inert: nothing
+    // gates Studio delivery on this summary today.
     expect(storeAfterRestart.getReviewSummary(executionId)).toMatchObject({
-      total: 2,
+      total: 3,
       approved: 1,
       edited: 1,
-      allApproved: true,
+      pending: 1,
+      allApproved: false,
     });
 
     const syncManager = new ProjectSyncManager(storeAfterRestart);
     const snapshot = syncManager.getProjectSnapshot(executionId);
     expect(snapshot?.projectId).toBe(executionId);
-    expect(snapshot?.artifactCount).toBe(2);
+    // The security report travels with the export like every other non-Lua
+    // artifact, so a creator can read the findings in Studio. ARTIFACT-1 names
+    // it by stage, so repeated exports replace rather than accumulate it.
+    expect(snapshot?.artifactCount).toBe(3);
     expect(snapshot?.artifacts.map((artifact) => artifact.id)).toEqual(
       expect.arrayContaining([luaArtifact!.id, exportArtifact!.id]),
     );

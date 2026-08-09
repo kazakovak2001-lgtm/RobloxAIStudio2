@@ -64,6 +64,7 @@ const STAGE_ARTIFACT_CONFIG: Record<
   LUA_GENERATION: { name: "generatedScripts.lua", type: "lua" },
   UI_GENERATION: { name: "uiLayout.json", type: "ui-layout" },
   VALIDATION: { name: "validationReport.json", type: "json" },
+  SECURITY_REVIEW: { name: "securityReport.json", type: "json" },
   OPTIMIZATION: { name: "optimizationReport.json", type: "json" },
   DOCUMENTATION: { name: "documentation.md", type: "markdown" },
   EXPORT: { name: "exportManifest.json", type: "manifest" },

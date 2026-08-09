@@ -9,6 +9,7 @@ import {
   normalizeLuaScripts,
   type PlayableLuaScript,
 } from "../../types/playableLua";
+import { reviewLuaSecurity } from "../../validation/luaSecurityReview";
 import { UIInstanceTreeBuilder } from "../../ui-gen/UIInstanceTreeBuilder";
 import type { MaterializableUITree } from "../../ui-gen/UIInstanceTreeContract";
 
@@ -59,6 +60,25 @@ export class GenerationArtifactRecorder {
       recorded.push(
         await this.artifactStore.store(executionId, stage, node.agent, content),
       );
+
+      // SECREVIEW-1. The playability contract already ran and accepted this
+      // Lua, so the code is known-runnable; what nothing has asked is whether
+      // it is exploitable. Recorded as its own artifact rather than gating
+      // delivery: the review is advisory in this slice, and a reviewer that
+      // could fail a generation on its own false positive would be worse than
+      // the gap it closes.
+      if (stage === "LUA_GENERATION") {
+        recorded.push(
+          await this.artifactStore.store(
+            executionId,
+            "SECURITY_REVIEW",
+            null,
+            reviewLuaSecurity(
+              (content as { scripts: PlayableLuaScript[] }).scripts,
+            ),
+          ),
+        );
+      }
     }
 
     return recorded;
