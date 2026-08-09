@@ -373,6 +373,24 @@ describe("WORLD-1B delivery path is actually wired", () => {
     expect(SYNC_MANAGER).toContain("worldEntities = loaded.worldEntities");
   });
 
+  it("refuses a container name taken by creator content", () => {
+    // Before this, `_ensureStageFolder` destroyed a non-Folder instance named
+    // `AIStudioArtifacts` or `WORLD_MODEL` outright — before any materializer
+    // ownership precheck ran — so a creator who happened to use either name
+    // lost it on the next export.
+    const ensure = LOADER.slice(
+      LOADER.indexOf("function ArtifactLoader:_ensureStageFolder"),
+      LOADER.indexOf("function ArtifactLoader:_metadataInstanceName"),
+    );
+
+    // Both containers, counted rather than merely present: the root and the
+    // stage folder are separate collisions and one refusal does not cover the
+    // other.
+    expect(ensure.match(/Refusing to replace/g)).toHaveLength(2);
+    expect(ensure).not.toContain("root:Destroy()");
+    expect(ensure).not.toContain("stageFolder:Destroy()");
+  });
+
   it("packages the module the loader requires", () => {
     // A missing sibling makes `require` fail before the plugin can process
     // any export at all.

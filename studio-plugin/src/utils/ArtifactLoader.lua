@@ -174,12 +174,23 @@ function ArtifactLoader:_loadWorldSceneArtifact(artifact)
     }
 end
 
---[[ Shared root/stage folder resolution for every non-Lua artifact. ]]
+--[[
+  Shared root/stage folder resolution for every non-Lua artifact.
+
+  A container whose name is taken by something that is not a Folder FAILS the
+  export rather than destroying it. It previously called Destroy on either
+  collision, which meant a creator who happened to have their own instance
+  named AIStudioArtifacts or WORLD_MODEL in ReplicatedStorage lost it on the
+  next export — before any materializer ownership precheck ever ran. An
+  existing Folder is reused, because a container is not content.
+]]
 function ArtifactLoader:_ensureStageFolder(stage)
     local root = ReplicatedStorage:FindFirstChild("AIStudioArtifacts")
     if root and not root:IsA("Folder") then
-        root:Destroy()
-        root = nil
+        error(string.format(
+            "Refusing to replace %s: an instance with that name exists and is not a Folder created by AI Studio",
+            root:GetFullName()
+        ), 0)
     end
     if not root then
         root = Instance.new("Folder")
@@ -190,8 +201,10 @@ function ArtifactLoader:_ensureStageFolder(stage)
     local stageName = tostring(stage or "OTHER")
     local stageFolder = root:FindFirstChild(stageName)
     if stageFolder and not stageFolder:IsA("Folder") then
-        stageFolder:Destroy()
-        stageFolder = nil
+        error(string.format(
+            "Refusing to replace %s: an instance with that name exists and is not a Folder created by AI Studio",
+            stageFolder:GetFullName()
+        ), 0)
     end
     if not stageFolder then
         stageFolder = Instance.new("Folder")
