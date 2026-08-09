@@ -22,6 +22,11 @@ import {
   expectedScreenInstancePath,
   isMaterializableUITreeCandidate,
 } from "../../ui-gen/UIInstanceTreeContract";
+import {
+  carriesMaterializableWorldScene,
+  expectedWorldInstancePath,
+  WORLD_SCENE_STAGE,
+} from "../../validation/worldSceneContract";
 import { ProjectSyncManager } from "./sync/ProjectSyncManager";
 import type { TransferResult } from "./sync/ArtifactTransferManager";
 import type {
@@ -764,6 +769,12 @@ export class StudioRuntime {
         receipt,
       );
       if (screenError) return screenError;
+
+      const worldError = verifyWorldEntityReceipt(
+        transferredById.get(expected.id),
+        receipt,
+      );
+      if (worldError) return worldError;
     }
     return null;
   }
@@ -856,6 +867,78 @@ export function verifyScreenReceipt(
   for (const name of expectedNames) {
     if (!seen.has(name)) {
       return `Artifact ${artifactId} is missing a receipt for screen ${name}.`;
+    }
+  }
+
+  return null;
+}
+
+/**
+ * Verify the `{ entityId, instancePath }` pairs for a materialized world scene.
+ *
+ * WORLD-1B. The expected set is derived from the artifact **as this command
+ * carried it**, never from what the plugin chose to report — a plugin must not
+ * be able to define its own success criteria. Missing, extra, duplicate,
+ * malformed and path-mismatched entities are each rejected.
+ *
+ * An artifact carrying no scene imposes no requirement, which is what lets an
+ * older backend's content reach a newer plugin without either side pretending
+ * a world was materialized. An artifact that *does* carry a scene and comes
+ * back with no entity receipts fails: the peer could not materialize it, and
+ * reporting that as success is the failure this whole contract exists to
+ * prevent.
+ */
+export function verifyWorldEntityReceipt(
+  transferred: Record<string, unknown> | undefined,
+  receipt: StudioArtifactReceipt,
+): string | null {
+  const content = transferred?.content;
+  if (!carriesMaterializableWorldScene(content)) return null;
+
+  const artifactId = receipt.artifactId;
+  const stage = String(transferred?.stage ?? WORLD_SCENE_STAGE);
+
+  const expected = new Map<string, string>();
+  for (const zone of content.scene.zones) {
+    for (const entity of zone.entities) {
+      expected.set(
+        entity.entityId,
+        expectedWorldInstancePath(stage, zone.zoneName, entity.node.name),
+      );
+    }
+  }
+
+  if (expected.size === 0) return null;
+
+  if (!Array.isArray(receipt.worldEntities)) {
+    return `Artifact ${artifactId} carries a world scene but reported no entity receipts; the connected Studio plugin may not support the world scene contract.`;
+  }
+
+  const seen = new Set<string>();
+  for (const entity of receipt.worldEntities) {
+    if (
+      typeof entity?.entityId !== "string" ||
+      typeof entity?.instancePath !== "string"
+    ) {
+      return `Artifact ${artifactId} reported a malformed world entity receipt.`;
+    }
+    if (seen.has(entity.entityId)) {
+      return `Artifact ${artifactId} reported duplicate world entity receipt ${entity.entityId}.`;
+    }
+    seen.add(entity.entityId);
+
+    const expectedPath = expected.get(entity.entityId);
+    if (expectedPath === undefined) {
+      return `Artifact ${artifactId} reported an unexpected world entity ${entity.entityId}.`;
+    }
+    if (entity.instancePath !== expectedPath) {
+      return `Artifact ${artifactId} reported world entity ${entity.entityId} at ${entity.instancePath} instead of ${expectedPath}.`;
+    }
+  }
+
+  for (const entityId of expected.keys()) {
+    if (!seen.has(entityId)) {
+      return `Artifact ${artifactId} is missing a receipt for world entity ${entityId}.`;
     }
   }
 

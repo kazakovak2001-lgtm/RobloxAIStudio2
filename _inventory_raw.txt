@@ -108,6 +108,7 @@ docs/00-project-control/STUDIO-1G_DESKTOP_ACCEPTANCE_RESULT.md
 docs/00-project-control/STUDIO-1_AUDIT.md
 docs/00-project-control/STUDIO-2F-A_SCOPE.md
 docs/00-project-control/STUDIO-ACCEPT-1_DESKTOP_ACCEPTANCE_RESULT.md
+docs/00-project-control/WORLD-1B_SCOPE.md
 docs/00-project-control/decisions/2026-07-24-core-1b-durable-runtime.md
 docs/01-architecture/.gitkeep
 docs/02-audits/FINAL_V1_REALITY_AUDIT.md
@@ -591,6 +592,8 @@ server/src/__tests__/studio2fa.allowlist-parity.test.ts
 server/src/__tests__/studio2fa.receipt-verification.test.ts
 server/src/__tests__/studioIntegration.test.ts
 server/src/__tests__/world1a.cross-artifact-validation.test.ts
+server/src/__tests__/world1b.receipt-verification.test.ts
+server/src/__tests__/world1b.scene-contract.test.ts
 server/src/agents/collaboration/AgentCoordinator.ts
 server/src/agents/collaboration/AgentMessageBus.ts
 server/src/agents/collaboration/CollaborationTypes.ts
@@ -1215,6 +1218,8 @@ server/src/validation/generationValidation.ts
 server/src/validation/luaSecurityReview.ts
 server/src/validation/worldCrossValidation.ts
 server/src/validation/worldModel.ts
+server/src/validation/worldSceneBuilder.ts
+server/src/validation/worldSceneContract.ts
 server/src/world/bridge/WorldSimulationBridge.ts
 server/src/world/core/WorldStateEngine.ts
 server/src/world/emergence/EmergentBehaviorEngine.ts
@@ -1238,3 +1243,4 @@ studio-plugin/src/utils/ArtifactLoader.lua
 studio-plugin/src/utils/ErrorReporter.lua
 studio-plugin/src/utils/RuntimeValidator.lua
 studio-plugin/src/utils/UITreeMaterializer.lua
+studio-plugin/src/utils/WorldSceneMaterializer.lua

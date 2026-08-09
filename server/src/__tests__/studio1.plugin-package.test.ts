@@ -47,14 +47,14 @@ describe("STUDIO-1e deterministic Roblox plugin package", () => {
     const checksums = await readFile(result.checksumsPath, "utf8");
     const manifest = JSON.parse(manifestContent) as StudioPluginPackageManifest;
 
-    expect(result.bundlePath).toMatch(/RobloxAIStudioPlugin-v1\.10\.0\.rbxmx$/);
+    expect(result.bundlePath).toMatch(/RobloxAIStudioPlugin-v1\.11\.0\.rbxmx$/);
     expect(manifest).toMatchObject({
       formatVersion: 1,
       pluginName: "RobloxAIStudioPlugin",
-      pluginVersion: "1.10.0",
+      pluginVersion: "1.11.0",
       protocolVersion: "1.0.0",
       entrypoint: "plugin.lua",
-      bundleFile: "RobloxAIStudioPlugin-v1.10.0.rbxmx",
+      bundleFile: "RobloxAIStudioPlugin-v1.11.0.rbxmx",
     });
     expect(manifest.sources).toHaveLength(ACTIVE_PLUGIN_SOURCES.length);
     expect(manifest.sources.map((source) => source.sourcePath)).toEqual(
@@ -91,7 +91,7 @@ describe("STUDIO-1e deterministic Roblox plugin package", () => {
       `${manifest.bundleSha256}  ${manifest.bundleFile}`,
     );
     expect(checksums).toContain(
-      `${sha256(manifestContent)}  RobloxAIStudioPlugin-v1.10.0.manifest.json`,
+      `${sha256(manifestContent)}  RobloxAIStudioPlugin-v1.11.0.manifest.json`,
     );
   });
 
@@ -135,5 +135,7 @@ describe("STUDIO-1e deterministic Roblox plugin package", () => {
     await expect(readFile(first.checksumsPath, "utf8")).resolves.toBe(
       await readFile(second.checksumsPath, "utf8"),
     );
-  });
+    // Packages the whole plugin twice, and the module list grows with each
+    // materialization slice, so the default 5s is tight under a parallel run.
+  }, 20000);
 });

@@ -39,11 +39,25 @@ export interface StudioScreenReceipt {
   instancePath: string;
 }
 
+/**
+ * WORLD-1B. Which semantic world entity was materialized, and where.
+ *
+ * Keyed on the world model's own identifier rather than on a position, so the
+ * backend can tell a missing entity from a reordered one — and so the plugin
+ * cannot define its own success criteria by reporting whatever it happened to
+ * build.
+ */
+export interface StudioWorldEntityReceipt {
+  entityId: string;
+  instancePath: string;
+}
+
 export interface StudioArtifactReceipt {
   artifactId: string;
   hash: string;
   instancePath?: string;
   screens?: StudioScreenReceipt[];
+  worldEntities?: StudioWorldEntityReceipt[];
 }
 
 export interface StudioCommandResult {

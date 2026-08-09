@@ -3,6 +3,7 @@
 ]]
 
 local UITreeMaterializer = require(script.Parent.UITreeMaterializer)
+local WorldSceneMaterializer = require(script.Parent.WorldSceneMaterializer)
 
 local HttpService = game:GetService("HttpService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -124,6 +125,46 @@ function ArtifactLoader:_loadUITreeArtifact(artifact)
         -- Identity-bearing receipt: a positional array cannot prove WHICH
         -- screen landed where, so verification needs the pairing.
         screens = delivered,
+    }
+end
+
+--[[
+  Whether this artifact carries a scene this plugin can materialize.
+
+  Routing on the scene rather than on the artifact type is what makes an older
+  backend safe: content without a scene takes the metadata path and is recorded
+  as an inert StringValue, exactly as before, and nothing claims a world was
+  built.
+]]
+function ArtifactLoader:_carriesWorldScene(content)
+    return type(content) == "table"
+        and type(content.scene) == "table"
+        and content.scene.sceneVersion == WorldSceneMaterializer.SCENE_VERSION
+end
+
+function ArtifactLoader:_loadWorldSceneArtifact(artifact)
+    local stageFolder = self:_ensureStageFolder(artifact.stage or "WORLD_MODEL")
+
+    local delivered, err = WorldSceneMaterializer.materialize(artifact.content.scene, stageFolder)
+    if not delivered then
+        -- Level 0: `err` is already a complete operator message and the outer
+        -- handler wraps it again.
+        error(err, 0)
+    end
+
+    local instancePaths = {}
+    for _, entry in ipairs(delivered) do
+        table.insert(instancePaths, entry.instancePath)
+    end
+
+    return {
+        name = artifact.name,
+        type = artifact.type,
+        instancePath = instancePaths[1],
+        instancePaths = instancePaths,
+        -- Identity-bearing receipt: a positional array cannot prove WHICH
+        -- semantic entity landed where, so verification needs the pairing.
+        worldEntities = delivered,
     }
 end
 
