@@ -679,7 +679,8 @@
 │   │   │   ├── studio1.runtime-consolidation.test.ts
 │   │   │   ├── studio2fa.allowlist-parity.test.ts
 │   │   │   ├── studio2fa.receipt-verification.test.ts
-│   │   │   └── studioIntegration.test.ts
+│   │   │   ├── studioIntegration.test.ts
+│   │   │   └── world1a.cross-artifact-validation.test.ts
 │   │   ├── agents
 │   │   │   ├── collaboration
 │   │   │   │   ├── AgentCoordinator.ts
@@ -1484,7 +1485,9 @@
 │   │   │   │   └── luaSecurityReview.test.ts
 │   │   │   ├── commitValidator.ts
 │   │   │   ├── generationValidation.ts
-│   │   │   └── luaSecurityReview.ts
+│   │   │   ├── luaSecurityReview.ts
+│   │   │   ├── worldCrossValidation.ts
+│   │   │   └── worldModel.ts
 │   │   └── world
 │   │       ├── bridge
 │   │       │   └── WorldSimulationBridge.ts

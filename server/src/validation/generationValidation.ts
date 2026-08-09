@@ -18,6 +18,8 @@
  * report; it does not run agents, execute Lua, or read the filesystem.
  */
 
+import type { WorldCrossValidation } from "./worldCrossValidation";
+
 /** Contract version of the report body. Bump on any shape change. */
 export const GENERATION_VALIDATION_SCHEMA_VERSION = 1;
 
@@ -98,12 +100,19 @@ export interface GenerationValidationInput {
   /** Playability issues, or an empty array when the contract was satisfied. */
   readonly luaIssues?: readonly string[];
   readonly ui: UIMaterializationOutcome;
+  /**
+   * WORLD-1A cross-artifact comparison, when there was Lua to compare the
+   * world model against. Undefined means the comparison did not run, which the
+   * report states rather than reporting an absent result as agreement.
+   */
+  readonly world?: WorldCrossValidation;
 }
 
 const LIMITS: readonly string[] = [
   "No Lua is executed: this is a static contract check, not a runtime result.",
-  "No cross-artifact consistency is checked — generated code is not compared against the architecture, UI or asset plans.",
+  "UI and asset plans are not compared against the generated code; only the world model is.",
   "No asset referenced by the plan is confirmed to exist.",
+  "Cross-artifact comparison is pattern analysis over source text, and a claim it cannot settle is reported unverifiable rather than passed.",
   "A passing report means the recorded checks found nothing, not that the game is correct or complete.",
 ];
 
@@ -156,6 +165,29 @@ export function buildGenerationValidationReport(
           : "failed",
     enforcement: "advisory",
     details: input.ui.status === "failed" ? [input.ui.reason] : [],
+  });
+
+  // WORLD-1A. Whether the generated code does what the world model claims.
+  // Advisory: the model is non-canonical, derived rather than authored, and a
+  // mismatch is a question about the generation rather than a verdict on it.
+  // Unverifiable claims are not counted as unsupported — a claim nothing could
+  // settle is not evidence of a defect.
+  const world = input.world;
+  checks.push({
+    id: "world-claims-supported",
+    title: "Generated Lua supports what the world model claims",
+    status: !world
+      ? "not-applicable"
+      : world.unsupported === 0
+        ? "passed"
+        : "failed",
+    enforcement: "advisory",
+    details:
+      world && world.unsupported > 0
+        ? world.claims
+            .filter((claim) => claim.status === "unsupported")
+            .map((claim) => `${claim.claimId}: ${claim.expectation}`)
+        : [],
   });
 
   const blockingFailures = checks.filter(

@@ -590,6 +590,7 @@ server/src/__tests__/studio1.runtime-consolidation.test.ts
 server/src/__tests__/studio2fa.allowlist-parity.test.ts
 server/src/__tests__/studio2fa.receipt-verification.test.ts
 server/src/__tests__/studioIntegration.test.ts
+server/src/__tests__/world1a.cross-artifact-validation.test.ts
 server/src/agents/collaboration/AgentCoordinator.ts
 server/src/agents/collaboration/AgentMessageBus.ts
 server/src/agents/collaboration/CollaborationTypes.ts
@@ -1212,6 +1213,8 @@ server/src/validation/__tests__/luaSecurityReview.test.ts
 server/src/validation/commitValidator.ts
 server/src/validation/generationValidation.ts
 server/src/validation/luaSecurityReview.ts
+server/src/validation/worldCrossValidation.ts
+server/src/validation/worldModel.ts
 server/src/world/bridge/WorldSimulationBridge.ts
 server/src/world/core/WorldStateEngine.ts
 server/src/world/emergence/EmergentBehaviorEngine.ts
