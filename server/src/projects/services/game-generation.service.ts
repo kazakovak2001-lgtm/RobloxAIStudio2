@@ -146,6 +146,10 @@ export class GameGenerationService {
             GenerationExecution,
             "pipeline_definition" | "pipeline_version"
           > = {};
+          // Held outside the try for the same reason. A run that fails after
+          // its agents ran still knows how their content was produced, and
+          // that is exactly when mislabelling it would be worst.
+          let executedNodes: ReadonlyArray<{ output?: unknown }> = [];
 
           try {
             const gameDesignSeed = generateGameDesignSeed({
@@ -194,6 +198,17 @@ export class GameGenerationService {
                 }),
               { projectId: enrichedBlueprint.project_id, stopOnFailure: false },
             );
+
+            // Only nodes that actually produced content. `getAllNodes()`
+            // includes failed and skipped ones, so counting those would let a
+            // run whose first agent failed — producing nothing at all — be
+            // labelled `ai` on the strength of a configured provider and the
+            // absence of a fallback marker that nothing was there to set.
+            executedNodes = result.graph
+              .getAllNodes()
+              .filter(
+                (node) => node.status === "done" && node.output !== undefined,
+              );
 
             await this.artifactRecorder.record(
               execution.id,
@@ -246,14 +261,21 @@ export class GameGenerationService {
                 err instanceof Error ? err.message : "Unknown pipeline error",
               total_duration_ms: Date.now() - execution.started_at.getTime(),
               ...pipelineProvenance,
-              // Provider identity only. ai_mode stays unset: a failed run
-              // produced no artifacts, so its provenance is genuinely unknown.
-              ...(this.providerInfo.provider
-                ? { ai_provider: this.providerInfo.provider }
-                : {}),
-              ...(this.providerInfo.model
-                ? { ai_model: this.providerInfo.model }
-                : {}),
+              // How the content was produced is knowable whenever the agents
+              // ran, even though the run failed afterwards — and `ai` still
+              // requires a provider and no fallback anywhere, so this can only
+              // ever under-claim. Before any agent ran there is nothing to
+              // judge, and `ai_mode` stays unset rather than guessing.
+              ...(executedNodes.length > 0
+                ? this.resolveProvenance(executedNodes)
+                : {
+                    ...(this.providerInfo.provider
+                      ? { ai_provider: this.providerInfo.provider }
+                      : {}),
+                    ...(this.providerInfo.model
+                      ? { ai_model: this.providerInfo.model }
+                      : {}),
+                  }),
             });
           }
         }),

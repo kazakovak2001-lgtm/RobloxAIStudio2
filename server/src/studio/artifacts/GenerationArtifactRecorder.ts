@@ -6,10 +6,16 @@ import {
 } from "../../pipeline/v2";
 import {
   assertPlayableLuaScripts,
+  getPlayableLuaIssues,
   normalizeLuaScripts,
   type PlayableLuaScript,
 } from "../../types/playableLua";
 import { reviewLuaSecurity } from "../../validation/luaSecurityReview";
+import {
+  buildGenerationValidationReport,
+  describeBlockingFailures,
+  type UIMaterializationOutcome,
+} from "../../validation/generationValidation";
 import { UIInstanceTreeBuilder } from "../../ui-gen/UIInstanceTreeBuilder";
 import type { MaterializableUITree } from "../../ui-gen/UIInstanceTreeContract";
 
@@ -21,7 +27,10 @@ const AGENT_STAGE_MAP: Readonly<Record<string, StageName>> = {
   asset_planner: "ASSET_PLANNING",
   lua_generator: "LUA_GENERATION",
   ui_generator: "UI_GENERATION",
-  tester: "VALIDATION",
+  // `tester` is deliberately absent. It emits a checklist of tests whose
+  // status is `pending`; stored under `VALIDATION` that reads as a validation
+  // result for work that never ran. The VALIDATION artifact is produced
+  // deterministically below instead — see PIPELINE-1B.
   performance: "OPTIMIZATION",
   documentation: "DOCUMENTATION",
   orchestrator: "EXPORT",
@@ -43,43 +52,125 @@ export class GenerationArtifactRecorder {
     executionId: string,
     nodes: readonly TaskNode[],
   ): Promise<PipelineArtifact[]> {
-    const recorded: PipelineArtifact[] = [];
+    // Staged, not stored. STUDIO-1A holds that a rejected generation persists
+    // no content at all, so nothing may be written until validation has run:
+    // partial artifacts under a failed execution id are exactly what a later
+    // consumer could mistake for a deliverable package.
+    const pending: Array<{
+      stage: StageName;
+      agent: string | null;
+      content: unknown;
+    }> = [];
+    let luaPresent = false;
+    let luaIssues: readonly string[] = [];
+    let ui: UIMaterializationOutcome = { status: "not-attempted" };
 
     for (const node of nodes) {
       const stage = getArtifactStage(node.agent);
       if (!stage || node.status !== "done" || node.output === undefined)
         continue;
 
-      const content =
-        stage === "LUA_GENERATION"
-          ? normalizeLuaArtifactContent(node.output)
-          : stage === "UI_GENERATION"
-            ? normalizeUIArtifactContent(node.output)
-            : node.output;
-
-      recorded.push(
-        await this.artifactStore.store(executionId, stage, node.agent, content),
-      );
-
-      // SECREVIEW-1. The playability contract already ran and accepted this
-      // Lua, so the code is known-runnable; what nothing has asked is whether
-      // it is exploitable. Recorded as its own artifact rather than gating
-      // delivery: the review is advisory in this slice, and a reviewer that
-      // could fail a generation on its own false positive would be worse than
-      // the gap it closes.
       if (stage === "LUA_GENERATION") {
-        recorded.push(
-          await this.artifactStore.store(
-            executionId,
-            "SECURITY_REVIEW",
-            null,
-            reviewLuaSecurity(
-              (content as { scripts: PlayableLuaScript[] }).scripts,
-            ),
-          ),
-        );
+        luaPresent = true;
+        let scripts: PlayableLuaScript[] | undefined;
+        try {
+          scripts = normalizeLuaScripts(node.output);
+        } catch (error) {
+          // Output too malformed to read as scripts at all. The messages are
+          // the contract's own static text, never model content.
+          luaIssues = [
+            error instanceof Error
+              ? error.message
+              : "Lua generation output could not be read",
+          ];
+        }
+        if (!scripts) continue;
+
+        luaIssues = getPlayableLuaIssues(scripts);
+
+        // PIPELINE-1B. The contract used to throw from here. It no longer
+        // does, so the remaining stages are still examined and their findings
+        // reach the report; unplayable Lua is simply never staged, because it
+        // must not reach delivery.
+        if (luaIssues.length > 0) continue;
+
+        const content = normalizeLuaArtifactContent(node.output);
+        pending.push({ stage, agent: node.agent, content });
+
+        // SECREVIEW-1. The playability contract already ran and accepted this
+        // Lua, so the code is known-runnable; what nothing has asked is whether
+        // it is exploitable. Recorded as its own artifact rather than gating
+        // delivery: the review is advisory in this slice, and a reviewer that
+        // could fail a generation on its own false positive would be worse than
+        // the gap it closes.
+        // Reviewed from the normalized scripts, not by re-reading `content`:
+        // when the output already carries a `scripts` array it is returned
+        // unchanged, so casting it back would hand the reviewer the raw array
+        // rather than the normalized one.
+        pending.push({
+          stage: "SECURITY_REVIEW",
+          agent: null,
+          content: reviewLuaSecurity(scripts),
+        });
+        continue;
       }
+
+      if (stage === "UI_GENERATION") {
+        try {
+          const built = buildUIArtifactContent(node.output);
+          ui = built.outcome;
+          pending.push({ stage, agent: node.agent, content: built.content });
+        } catch (error) {
+          // UI materialization is advisory, so output too malformed to read
+          // must not abort the run — that would leave no report at all, which
+          // is the gap this stage exists to close.
+          ui = {
+            status: "failed",
+            reason:
+              error instanceof Error
+                ? error.message.replace(/[\r\n]/g, "")
+                : "UI generation output could not be read",
+          };
+        }
+        continue;
+      }
+
+      pending.push({ stage, agent: node.agent, content: node.output });
     }
+
+    const report = buildGenerationValidationReport({
+      luaPresent,
+      luaIssues,
+      ui,
+    });
+
+    if (!report.passed) {
+      // The report is written even here — that is the whole point, since a
+      // rejected run previously left nothing saying what was wrong. The staged
+      // content is discarded rather than persisted alongside it: a rejected
+      // generation must leave no package a later consumer could deliver.
+      await this.artifactStore.store(executionId, "VALIDATION", null, report);
+      throw new Error(
+        `Generation failed deterministic validation — ${describeBlockingFailures(report)}`,
+      );
+    }
+
+    const recorded: PipelineArtifact[] = [];
+    for (const artifact of pending) {
+      recorded.push(
+        await this.artifactStore.store(
+          executionId,
+          artifact.stage,
+          artifact.agent,
+          artifact.content,
+        ),
+      );
+    }
+
+    // Stored last so the stage artifacts keep the order they were produced in.
+    recorded.push(
+      await this.artifactStore.store(executionId, "VALIDATION", null, report),
+    );
 
     return recorded;
   }
@@ -132,6 +223,21 @@ export function normalizeLuaArtifactContent(
 export function normalizeUIArtifactContent(
   output: unknown,
 ): Record<string, unknown> {
+  return buildUIArtifactContent(output).content;
+}
+
+/**
+ * The same conversion, with the outcome kept rather than discarded.
+ *
+ * PIPELINE-1B. This function always knew whether the design could be built;
+ * before, a failure went to `console.warn` and nowhere else, so the artifact
+ * recorded a silent degrade and nothing durable said the UI had not
+ * materialized. The reason now travels to the validation report.
+ */
+export function buildUIArtifactContent(output: unknown): {
+  content: Record<string, unknown>;
+  outcome: UIMaterializationOutcome;
+} {
   if (!isRecord(output)) {
     throw new Error("UI generator output must be an object");
   }
@@ -142,17 +248,22 @@ export function normalizeUIArtifactContent(
   } catch (error) {
     // Static message only — the design is model-derived and must not be
     // interpolated into a log sink.
+    const reason =
+      error instanceof Error ? error.message.replace(/[\r\n]/g, "") : "unknown";
     console.warn(
       "[GenerationArtifactRecorder] UI design is not materializable; recording it without a schema version so delivery falls back to the legacy path:",
-      error instanceof Error ? error.message.replace(/[\r\n]/g, "") : "unknown",
+      reason,
     );
-    return output;
+    return { content: output, outcome: { status: "failed", reason } };
   }
 
   return {
-    ...output,
-    schemaVersion: tree.schemaVersion,
-    screens: tree.screens,
+    content: {
+      ...output,
+      schemaVersion: tree.schemaVersion,
+      screens: tree.screens,
+    },
+    outcome: { status: "built" },
   };
 }
 

@@ -611,6 +611,7 @@
 │   │   │   ├── performance.test.ts
 │   │   │   ├── persistence.test.ts
 │   │   │   ├── pipeline1a.plan-definition.test.ts
+│   │   │   ├── pipeline1b.validation-report.test.ts
 │   │   │   ├── platform.test.ts
 │   │   │   ├── pluginProtocol.test.ts
 │   │   │   ├── preservationProperty.test.ts
@@ -1482,6 +1483,7 @@
 │   │   │   │   ├── commitValidator.test.ts
 │   │   │   │   └── luaSecurityReview.test.ts
 │   │   │   ├── commitValidator.ts
+│   │   │   ├── generationValidation.ts
 │   │   │   └── luaSecurityReview.ts
 │   │   └── world
 │   │       ├── bridge

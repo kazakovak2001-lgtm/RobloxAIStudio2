@@ -87,11 +87,14 @@ describe("STUDIO-1a canonical artifact lineage", () => {
 
     // SECREVIEW-1 records a trust-boundary review beside the Lua it reviews,
     // so it is emitted by the recorder rather than by an agent node.
+    // PIPELINE-1B records what deterministic validation found, last, for the
+    // same reason: it is produced by the recorder, not by an agent node.
     expect(recorded.map((artifact) => artifact.stage)).toEqual([
       "REQUIREMENTS",
       "LUA_GENERATION",
       "SECURITY_REVIEW",
       "EXPORT",
+      "VALIDATION",
     ]);
     const review = recorded.find((a) => a.stage === "SECURITY_REVIEW");
     expect(review?.agent).toBeNull();
@@ -100,7 +103,7 @@ describe("STUDIO-1a canonical artifact lineage", () => {
       recorded.every((artifact) => artifact.pipelineId === executionId),
     ).toBe(true);
     expect(recorded[1]?.content).toEqual(luaOutput);
-    expect(store.count).toBe(4);
+    expect(store.count).toBe(5);
   });
 
   it("normalizes the real LuaGeneratorAgent output into Studio scripts", async () => {
@@ -171,7 +174,15 @@ describe("STUDIO-1a canonical artifact lineage", () => {
         }),
       ]),
     ).rejects.toThrow("non-empty Studio scripts array");
-    expect(storage.count("pipeline_artifacts")).toBe(0);
+
+    // PIPELINE-1B. The rejection itself is now durable: exactly one artifact
+    // survives, the validation report saying why. No content is persisted, so
+    // the invariant this test exists for — a rejected generation leaves no
+    // package a later consumer could deliver — is unchanged.
+    const stored = await new ArtifactStore(storage).getByPipeline(
+      "exec-empty-lua-output",
+    );
+    expect(stored.map((artifact) => artifact.stage)).toEqual(["VALIDATION"]);
   });
 
   it("rejects comment-only runtime evidence and nested fake service roots", async () => {
@@ -214,7 +225,15 @@ describe("STUDIO-1a canonical artifact lineage", () => {
         }),
       ]),
     ).rejects.toThrow("is too small to implement runtime behavior");
-    expect(storage.count("pipeline_artifacts")).toBe(0);
+
+    // One validation report per rejected run, and no content from either.
+    const store = new ArtifactStore(storage);
+    expect(
+      [
+        ...(await store.getByPipeline("exec-comment-only")),
+        ...(await store.getByPipeline("exec-comment-only-roots")),
+      ].map((artifact) => artifact.stage),
+    ).toEqual(["VALIDATION", "VALIDATION"]);
   });
 
   it("reconstructs artifacts, reviews, snapshots, and transfers from storage", async () => {
@@ -258,8 +277,10 @@ describe("STUDIO-1a canonical artifact lineage", () => {
     const storeAfterRestart = new ArtifactStore(storage);
     const restored = storeAfterRestart.getByPipeline(executionId);
 
-    // Lua, its security review, and the export manifest all survive restart.
-    expect(restored).toHaveLength(3);
+    // Lua, its security review, the export manifest and the validation report
+    // all survive restart.
+    expect(restored).toHaveLength(4);
+    expect(restored.map((a) => a.stage)).toContain("VALIDATION");
     expect(restored.map((a) => a.stage)).toContain("SECURITY_REVIEW");
     expect(storeAfterRestart.getById(luaArtifact!.id)?.reviewStatus).toBe(
       "approved",
@@ -268,14 +289,15 @@ describe("STUDIO-1a canonical artifact lineage", () => {
       package: "reviewed",
       artifactCount: 1,
     });
-    // The security review is recorded unreviewed, so an execution is no longer
-    // all-approved until someone approves it. Truthful, and inert: nothing
-    // gates Studio delivery on this summary today.
+    // The security review and the validation report are both recorded
+    // unreviewed, so an execution is no longer all-approved until someone
+    // approves them. Truthful, and inert: nothing gates Studio delivery on
+    // this summary today.
     expect(storeAfterRestart.getReviewSummary(executionId)).toMatchObject({
-      total: 3,
+      total: 4,
       approved: 1,
       edited: 1,
-      pending: 1,
+      pending: 2,
       allApproved: false,
     });
 
@@ -285,7 +307,7 @@ describe("STUDIO-1a canonical artifact lineage", () => {
     // The security report travels with the export like every other non-Lua
     // artifact, so a creator can read the findings in Studio. ARTIFACT-1 names
     // it by stage, so repeated exports replace rather than accumulate it.
-    expect(snapshot?.artifactCount).toBe(3);
+    expect(snapshot?.artifactCount).toBe(4);
     expect(snapshot?.artifacts.map((artifact) => artifact.id)).toEqual(
       expect.arrayContaining([luaArtifact!.id, exportArtifact!.id]),
     );

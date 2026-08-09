@@ -8,7 +8,11 @@ import { createPipelineState } from "./PipelineStage";
 import { PipelineContext } from "./PipelineContext";
 import { PipelineEventEmitterV2 } from "./PipelineEvents";
 import { reviewLuaSecurity } from "../../validation/luaSecurityReview";
-import { normalizeLuaScripts } from "../../types/playableLua";
+import { buildGenerationValidationReport } from "../../validation/generationValidation";
+import {
+  getPlayableLuaIssues,
+  normalizeLuaScripts,
+} from "../../types/playableLua";
 
 export type AgentExecutorFn = (
   agentId: string,
@@ -82,6 +86,7 @@ export class PipelineExecutor {
           stageRecord,
           sessionId,
           agentExecutor,
+          state,
         );
         stageRecord.status = "completed";
         stageRecord.completedAt = Date.now();
@@ -205,6 +210,7 @@ export class PipelineExecutor {
     stage: StageRecord,
     sessionId: string,
     agentExecutor: AgentExecutorFn,
+    state: PipelineState,
   ): Promise<Record<string, unknown>> {
     // SECREVIEW-1. This stage has no agent because the review is a
     // deterministic service, but it must not take the generic null-agent
@@ -213,6 +219,15 @@ export class PipelineExecutor {
     // report and contains no review, no findings and no enforcement mode.
     if (stage.name === "SECURITY_REVIEW") {
       return this.reviewGeneratedLua(sessionId);
+    }
+
+    // PIPELINE-1B. This stage used to run `tester`, whose output is a checklist
+    // of tests whose status is `pending` alongside `passed: 0, failed: 0`.
+    // Persisted under the name `validationReport.json`, that reads as a clean
+    // validation result while nothing was ever executed — the same defect as
+    // the passthrough security report above, wearing a more convincing shape.
+    if (stage.name === "VALIDATION") {
+      return this.validateGenerated(sessionId, state);
     }
 
     if (!stage.agentId) {
@@ -236,5 +251,63 @@ export class PipelineExecutor {
     } catch {
       return { ...reviewLuaSecurity([]) };
     }
+  }
+
+  /**
+   * Report what deterministic validation found for this pipeline's Lua.
+   *
+   * Unlike the canonical generation path, this executor does not gate delivery
+   * on the report — it records it. The report says which checks are blocking,
+   * so a consumer can tell the difference between "nothing blocked" and
+   * "nothing was checked".
+   */
+  private validateGenerated(
+    sessionId: string,
+    state: PipelineState,
+  ): Record<string, unknown> {
+    // A resumed run starts a fresh context session, so the accumulated output
+    // of stages that already completed is not in it. Reading only the context
+    // would report `lua-generated` as failed for a pipeline that has perfectly
+    // good Lua in its saved state — a durable report asserting the opposite of
+    // what happened, which is precisely what this stage exists to prevent.
+    const luaStage = state.stages.find(
+      (stage) => stage.name === "LUA_GENERATION",
+    );
+    const luaPresent =
+      luaStage?.status === "completed" && luaStage.output !== undefined;
+
+    const sources = [this.context.getAccumulated(sessionId), luaStage?.output];
+
+    let luaIssues: readonly string[] = [];
+    let normalized = false;
+    for (const source of sources) {
+      if (source === undefined) continue;
+      try {
+        luaIssues = getPlayableLuaIssues(normalizeLuaScripts(source));
+        normalized = true;
+        break;
+      } catch (error) {
+        // Keep the first reason. Output the contract cannot even read as
+        // scripts is a different failure from output it read and rejected,
+        // and reporting it as "no Lua" would erase that distinction.
+        if (luaIssues.length === 0) {
+          luaIssues = [
+            error instanceof Error
+              ? error.message
+              : "Lua generation output could not be read",
+          ];
+        }
+      }
+    }
+
+    return {
+      ...buildGenerationValidationReport({
+        luaPresent,
+        luaIssues: normalized || luaPresent ? luaIssues : [],
+        // This executor never builds a UI instance tree, so claiming any
+        // outcome for it would be an invention.
+        ui: { status: "not-attempted" },
+      }),
+    };
   }
 }
