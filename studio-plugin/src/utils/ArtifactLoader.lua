@@ -152,6 +152,13 @@ function ArtifactLoader:_ensureStageFolder(stage)
         stageFolder.Parent = root
     end
 
+    -- Migrate here rather than in the metadata path, because both paths reach
+    -- a stage folder. A UI_GENERATION artifact delivered before schemaVersion
+    -- existed left an id-named StringValue; once the backend starts sending a
+    -- tree, routing goes through the UI path instead, and a metadata-only
+    -- cleanup would leave that value beside the materialized screens forever.
+    self:_removeLegacyIdNamedValues(stageFolder)
+
     return stageFolder
 end
 
@@ -179,14 +186,20 @@ end
 --[[
   Remove StringValues left by the pre-ARTIFACT-1 identity.
 
-  Deliberately narrow: only a StringValue whose Name equals its own ArtifactId
-  attribute qualifies, which is the exact shape this loader used to produce. A
-  hand-added instance does not carry the attribute, and a materialized UI tree
-  is not a StringValue, so neither can be caught by this.
+  Deliberately narrow on two axes. A StringValue qualifies only when its Name
+  equals its own ArtifactId attribute, which is the exact shape the old loader
+  produced, AND when it is not currently managed. Both conditions are needed:
+
+    - Without the name/id match, a hand-added instance could be destroyed.
+    - Without the managed check, a value this loader had just written under the
+      id fallback would match its own migration rule, so a second metadata
+      artifact in the same stage folder would delete the first one.
+
+  A materialized UI tree is not a StringValue, so it can never be caught here.
 ]]
 function ArtifactLoader:_removeLegacyIdNamedValues(stageFolder)
     for _, child in ipairs(stageFolder:GetChildren()) do
-        if child:IsA("StringValue") then
+        if child:IsA("StringValue") and child:GetAttribute("AIStudioManaged") ~= true then
             local recordedId = child:GetAttribute("ArtifactId")
             if type(recordedId) == "string" and recordedId == child.Name then
                 child:Destroy()
@@ -197,8 +210,6 @@ end
 
 function ArtifactLoader:_loadMetadataArtifact(artifact)
     local stageFolder = self:_ensureStageFolder(artifact.stage or "OTHER")
-    self:_removeLegacyIdNamedValues(stageFolder)
-
     local stageName = tostring(artifact.stage or "OTHER")
     local valueName = self:_metadataInstanceName(artifact)
     local value = stageFolder:FindFirstChild(valueName)

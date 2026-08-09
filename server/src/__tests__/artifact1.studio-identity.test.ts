@@ -13,6 +13,7 @@
 import { describe, it, expect } from "vitest";
 import { ArtifactStore } from "../pipeline/v2/ArtifactStore";
 import { STAGE_ORDER, type StageName } from "../pipeline/v2";
+import { GENERATION_ARTIFACT_STAGE_MAP } from "../studio/artifacts/GenerationArtifactRecorder";
 
 async function storeAll(pipelineId: string) {
   const store = new ArtifactStore();
@@ -53,6 +54,18 @@ describe("ARTIFACT-1 Studio identity", () => {
       expect(second.name).toBe(first.name);
     },
   );
+
+  /**
+   * The plugin folder is per stage, so name-based identity is only unambiguous
+   * while one execution cannot produce two artifacts in the same stage. The
+   * recorder's agent-to-stage map is what guarantees that, so pin it here
+   * rather than leaving the assumption implicit.
+   */
+  it("maps no two agents to the same stage", () => {
+    const stages = Object.values(GENERATION_ARTIFACT_STAGE_MAP);
+
+    expect(new Set(stages).size).toBe(stages.length);
+  });
 
   it("mints ids that are not stable, which is what broke delivery", async () => {
     const store = new ArtifactStore();

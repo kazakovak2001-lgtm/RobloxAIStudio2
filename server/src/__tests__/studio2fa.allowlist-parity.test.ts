@@ -324,6 +324,40 @@ describe("STUDIO-2F-A ArtifactLoader routing", () => {
     expect(LOADER).toContain("recordedId == child.Name");
   });
 
+  /**
+   * Review found the sweep would delete a value this loader had just written
+   * under the id fallback, because such a value matches its own migration
+   * rule. A second metadata artifact in the same stage folder would then
+   * destroy the first.
+   */
+  it("never sweeps a value it currently manages", () => {
+    expect(LOADER).toContain(
+      'child:IsA("StringValue") and child:GetAttribute("AIStudioManaged") ~= true',
+    );
+  });
+
+  /**
+   * Review also found the migration was unreachable for the case that needed
+   * it most: a UI artifact delivered before `schemaVersion` existed left an
+   * id-named StringValue, and once the backend starts sending a tree the UI
+   * path runs instead, so a metadata-only cleanup would never see it.
+   */
+  it("runs the migration from shared stage-folder setup, not one path", () => {
+    const ensureIndex = LOADER.indexOf(
+      "function ArtifactLoader:_ensureStageFolder(stage)",
+    );
+    const sweepCall = LOADER.indexOf(
+      "self:_removeLegacyIdNamedValues(stageFolder)",
+    );
+
+    expect(ensureIndex).toBeGreaterThan(-1);
+    expect(sweepCall).toBeGreaterThan(ensureIndex);
+    // Exactly one call site, so neither path can be missed or double-swept.
+    expect(
+      LOADER.split("self:_removeLegacyIdNamedValues(stageFolder)").length - 1,
+    ).toBe(1);
+  });
+
   it("refuses to overwrite a metadata name it does not own", () => {
     expect(LOADER).toContain('value:GetAttribute("AIStudioManaged") ~= true');
     expect(LOADER).toContain('value:SetAttribute("AIStudioManaged", true)');
