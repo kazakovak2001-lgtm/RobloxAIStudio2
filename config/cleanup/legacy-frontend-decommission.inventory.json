@@ -405,7 +405,8 @@
       "studioRelative": [
         "studio-plugin/",
         "scripts/package-studio-plugin.ts",
-        "server/src/__tests__/studio1.plugin"
+        "server/src/__tests__/studio1.plugin",
+        "server/src/__tests__/world1b."
       ],
       "robloxArtifactRelative": [
         "server/src/generation/export/RobloxExportBuilder.ts"
