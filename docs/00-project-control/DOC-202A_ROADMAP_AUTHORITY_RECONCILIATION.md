@@ -9,7 +9,7 @@ fail-closed guard for subsequent roadmap reconciliations.
 
 - Backend repository: `kazakovak2001-lgtm/RobloxAIStudio2`
 - Backend release branch: `release/cutover-1e-candidate`
-- Current backend runtime release: `d3ddcce4408b950dc2ebe1ef2767998f93e83970`
+- Current backend runtime release: `d7dc84061dd2045e68b4a38f970fe42e7c25abce`
 - SECURITY-2G-F control baseline: `da55f716c798ec8c6a7f25a8e2a3b7b0a2244416`
 - Paired Frontend repository: `kazakovak2001-lgtm/Frontend`
 - Paired Frontend runtime contents: `6c1458d836244f2b720f361a78c2ab13f1682f74`
@@ -278,6 +278,36 @@ What this slice deliberately does not do is add a stage. A validation gate and
 conditional nodes are `PIPELINE-1B`. Adding a stage changes what every
 generation runs and costs, so it carries its own evidence rather than riding
 along with the change that makes it safe.
+
+PIPELINE-1B advances the runtime pair to backend
+`d7dc84061dd2045e68b4a38f970fe42e7c25abce` and Frontend
+`6c1458d836244f2b720f361a78c2ab13f1682f74`, through backend pull request `#205`.
+The Frontend identity is unchanged.
+
+Two decisions in this slice are recorded here because a later editor could undo
+either while believing they were completing unfinished work.
+
+**`TesterAgent` is deliberately not the VALIDATION stage.** It emits a checklist
+whose every entry is `pending`, alongside `passed: 0, failed: 0`. Stored under
+the name `validationReport.json` that reads as a clean validation result for
+work that never ran — the same defect as the passthrough security report
+SECREVIEW-1 removed, in a more convincing shape. Wiring it in would look like
+progress and would be a fabricated capability. The stage is deterministic in
+both pipelines instead.
+
+**A rejected generation still persists no content artifacts.** That invariant
+belongs to STUDIO-1A and delivery depends on it: partial content under a failed
+execution id is what a later consumer could mistake for a deliverable package.
+The first implementation of this slice recorded every stage and then failed,
+and four STUDIO-1A tests caught it. Content artifacts are staged and committed
+only once validation passes, so a rejected run leaves exactly one artifact, and
+it carries no generated content: the `VALIDATION` report saying why the run was
+rejected. The gap this slice closes was never the discarding; it was the
+silence.
+
+Conditional stages remain unbuilt and are recorded as `PIPELINE-1C`. Nothing
+needs to skip a stage yet, and a branching mechanism with no consumer is
+scaffolding rather than capability.
 
 ## Scope boundary
 
