@@ -29,7 +29,7 @@ The old embedded root `src/` frontend is removed and protected by a permanent in
 
 ## Active paired release
 
-- Backend runtime: `release/cutover-1e-candidate@12bd4dc6c736aa6af7b3346624152032157d5bd1`.
+- Backend runtime: `release/cutover-1e-candidate@d3ddcce4408b950dc2ebe1ef2767998f93e83970`.
 - Frontend runtime contents: `kazakovak2001-lgtm/Frontend@6c1458d836244f2b720f361a78c2ab13f1682f74`.
 - Pairing authority: protected Frontend Production Contract, Composed HTTPS Release, promoted-baseline integrity, and Merge Gate evidence.
 - No external production deployment is claimed by repository release evidence alone.
@@ -48,6 +48,7 @@ The old embedded root `src/` frontend is removed and protected by a permanent in
 - `PROVIDER-1A` and `PROVIDER-1B`: complete — backend PR #193 and #200. An execution now records which provider and model produced it, and every route that substitutes deterministic canned content declares itself, so an execution is reported as AI-authored only when a model authored all of it.
 - `ARTIFACT-1`: code complete, not done — backend PR #199. Delivered metadata artifacts have a stable Studio identity, so re-exporting a project should replace the previous instance instead of accumulating one per run. The change is plugin Lua and there is no Lua test harness, so runtime evidence from a Studio-attached run is still outstanding.
 - `SECREVIEW-1`: complete — backend PR #201. Deterministic trust-boundary review of generated Luau, recorded as a durable `SECURITY_REVIEW` artifact. It is advisory: a finding never negates generation, delivery or release, and a blocking gate is the separate `SECURITY-REVIEW-B` delivery, gated on seven [documented criteria](./00-project-control/SECURITY-REVIEW-B_PROMOTION_CRITERIA.md).
+- `PIPELINE-1A`: complete — backend PR #203. The generation plan is server-owned versioned data. A request may only narrow the pipeline, never extend it; a selection that cannot run is refused before it runs rather than stranding the executor; and an execution reports as completed only work an agent actually performed, recording which pipeline definition produced it. Adding stages — a validation gate, conditional nodes — is `PIPELINE-1B` and is not yet scoped.
 - `STUDIO-2F`: decomposed into `STUDIO-2F-A`…`STUDIO-2F-E`. No unsatisfied control gate remains. `STUDIO-2F-A` (generated GUI materialization) is code complete through backend PR #195/#196/#197 but not done — runtime validation is outstanding, so it does not yet satisfy the dependency for the rest, which are named for ordering only.
 - `AUTONOMY-3A`: deferred and unscoped.
 

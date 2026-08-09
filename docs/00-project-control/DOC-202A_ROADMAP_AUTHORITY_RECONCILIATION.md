@@ -9,7 +9,7 @@ fail-closed guard for subsequent roadmap reconciliations.
 
 - Backend repository: `kazakovak2001-lgtm/RobloxAIStudio2`
 - Backend release branch: `release/cutover-1e-candidate`
-- Current backend runtime release: `12bd4dc6c736aa6af7b3346624152032157d5bd1`
+- Current backend runtime release: `d3ddcce4408b950dc2ebe1ef2767998f93e83970`
 - SECURITY-2G-F control baseline: `da55f716c798ec8c6a7f25a8e2a3b7b0a2244416`
 - Paired Frontend repository: `kazakovak2001-lgtm/Frontend`
 - Paired Frontend runtime contents: `6c1458d836244f2b720f361a78c2ab13f1682f74`
@@ -257,6 +257,27 @@ deliberately reintroduced, because an unrelated fix suppressed the symptom.
 Both were established by mutating the source, confirming the suite fails, and
 restoring it — which is now the expected way to verify that a regression test
 actually regresses.
+
+PIPELINE-1A advances the runtime pair to backend
+`d3ddcce4408b950dc2ebe1ef2767998f93e83970` and Frontend
+`6c1458d836244f2b720f361a78c2ab13f1682f74`, through backend pull request `#203`.
+The Frontend identity is unchanged.
+
+The slice is recorded here for one reason beyond its own evidence: it started
+as a refactor on the roadmap and turned out to be a trust-boundary fix. The
+pipeline lived as an unexported array inside `PlannerEngine`, and
+`requiredAgents` from the request body selected against it, so a client could
+strand a run with no reason recorded or obtain a reported success from agents
+that do not exist. Both were reproduced before being changed. That order —
+reproduce, then fix — is what distinguishes this record from an assertion, and
+the same discipline applied to review: the two defects reviewers raised were
+each confirmed by building the reviewer's own case as a test and watching the
+current implementation fail it.
+
+What this slice deliberately does not do is add a stage. A validation gate and
+conditional nodes are `PIPELINE-1B`. Adding a stage changes what every
+generation runs and costs, so it carries its own evidence rather than riding
+along with the change that makes it safe.
 
 ## Scope boundary
 
