@@ -9,7 +9,7 @@ fail-closed guard for subsequent roadmap reconciliations.
 
 - Backend repository: `kazakovak2001-lgtm/RobloxAIStudio2`
 - Backend release branch: `release/cutover-1e-candidate`
-- Current backend runtime release: `d7e444549d324df9df339ff5bda7a75a820e39e3`
+- Current backend runtime release: `12bd4dc6c736aa6af7b3346624152032157d5bd1`
 - SECURITY-2G-F control baseline: `da55f716c798ec8c6a7f25a8e2a3b7b0a2244416`
 - Paired Frontend repository: `kazakovak2001-lgtm/Frontend`
 - Paired Frontend runtime contents: `6c1458d836244f2b720f361a78c2ab13f1682f74`
@@ -218,6 +218,45 @@ The DOC-202A validator must reject:
 - stale statements that a merged PR is still pending review or merge;
 - current authority files classified as historical, or historical planning files classified as current authority;
 - missing required current-state claims.
+
+ARTIFACT-1, PROVIDER-1B and SECREVIEW-1 advance the runtime pair to backend
+`12bd4dc6c736aa6af7b3346624152032157d5bd1` and Frontend
+`6c1458d836244f2b720f361a78c2ab13f1682f74`, across backend pull requests `#199`,
+`#200` and `#201`. All three are executable changes, so the pair moves; the
+Frontend identity is unchanged. They are reconciled together rather than one at
+a time, for the same reason STUDIO-2F-A was: a pin can only name a merge commit
+that already exists.
+
+A merged pull request is not by itself a completed phase. PROVIDER-1B and
+SECREVIEW-1 are backend TypeScript with executing tests and are complete.
+ARTIFACT-1 is recorded as code complete but not done, on the same standard
+STUDIO-2F-A is held to: its change is plugin Lua, the repository has no Lua test
+harness, and no Studio-attached run has confirmed that a real re-export replaces
+the previous instance without destroying creator content. The runtime pair
+advances either way, because the pair records what is merged, not what is
+accepted.
+
+One of the three carries a standing policy decision that must not be eroded by
+a later editor. **SECREVIEW-1 is advisory by explicit decision, not by
+omission.** A security finding never negates generation, delivery or release.
+Each `SECURITY_REVIEW` artifact records `analysisMode` and `enforcement` as
+typed values on the durable record precisely so a future blocking regime cannot
+be read backwards onto reports written under this one. Promotion to a blocking
+gate is the separate `SECURITY-REVIEW-B` delivery and may begin only when all
+seven criteria in
+[its promotion record](./SECURITY-REVIEW-B_PROMOTION_CRITERIA.md) hold.
+
+Two defect classes recurred across these three slices often enough to be worth
+recording as patterns rather than incidents. The first is a value quietly lost
+or fabricated at a layer boundary: the metadata sweep destroyed instances it
+had itself just written, and the v2 pipeline persisted a generic passthrough
+object under the name `securityReport.json`, producing a file that claimed to
+be a security report and contained no review. The second is a test that passes
+with and without the fix: two SECREVIEW-1 regressions passed with the defect
+deliberately reintroduced, because an unrelated fix suppressed the symptom.
+Both were established by mutating the source, confirming the suite fails, and
+restoring it — which is now the expected way to verify that a regression test
+actually regresses.
 
 ## Scope boundary
 
