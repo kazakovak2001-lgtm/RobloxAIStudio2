@@ -385,21 +385,24 @@ describe("PIPELINE-1A executor reports only work that happened", () => {
     // a name it does not know, and the executor only inspected `_failed`, so
     // a plan naming agents that do not exist finished "successfully" with
     // every node marked done.
+    // AGENT-CONTRACT-1 now refuses an agent with no definition at plan time,
+    // so the executor is driven directly with the shape the registry returns
+    // for an agent it cannot run. What is under test is the executor's
+    // accounting, not where the marker came from.
     const planner = new PlannerEngine({
-      id: "fictional",
+      id: "two-node",
       version: 1,
       nodes: [
-        { agent: "totally_made_up_agent", type: "custom", deps: [] },
-        { agent: "another_fake_one", type: "custom", deps: [] },
+        { agent: "requirements", type: "analysis", deps: [] },
+        { agent: "planner", type: "planning", deps: [] },
       ],
     });
     const plan = planner.createPlan({ intent: "probe", constraints: [] });
-    const registry = new AgentRegistry();
 
     const result = await new PlanExecutor().executePlan(
       plan.planId,
       plan.graph,
-      (agent, input) => registry.executeAgent(agent, input),
+      () => Promise.resolve({ _skipped: true, _reason: "no agent ran" }),
       { stopOnFailure: false },
     );
 
@@ -413,8 +416,8 @@ describe("PIPELINE-1A executor reports only work that happened", () => {
       id: "blocked",
       version: 1,
       nodes: [
-        { agent: "first", type: "custom", deps: [] },
-        { agent: "second", type: "custom", deps: ["first"] },
+        { agent: "requirements", type: "analysis", deps: [] },
+        { agent: "planner", type: "planning", deps: ["requirements"] },
       ],
     });
     const plan = planner.createPlan({ intent: "probe", constraints: [] });
@@ -423,15 +426,15 @@ describe("PIPELINE-1A executor reports only work that happened", () => {
       plan.planId,
       plan.graph,
       (agent) =>
-        agent === "first"
+        agent === "requirements"
           ? Promise.resolve({ _failed: true, _error: "first blew up" })
           : Promise.resolve({ ok: true }),
       { stopOnFailure: false },
     );
 
-    const second = plan.graph.getNode("task-second");
+    const second = plan.graph.getNode("task-planner");
     expect(second?.status).toBe("skipped");
-    expect(second?.error).toContain("task-first");
+    expect(second?.error).toContain("task-requirements");
     expect(result.skippedNodes).toBe(1);
     expect(result.success).toBe(false);
   });

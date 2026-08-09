@@ -13,6 +13,8 @@
  * always produce the same verdict and it can be exercised directly in tests.
  */
 
+import { getAgentDefinition } from "../../agents/contract/agentContract";
+
 /** A single agent step in a pipeline definition. */
 export interface PipelineNodeDefinition {
   /** Registered agent type that executes this node. */
@@ -50,6 +52,10 @@ export type PipelinePlanIssueCode =
   | "cycle"
   /** A requested agent is not part of this pipeline definition. */
   | "unknown-agent"
+  /** A node names an agent with no authoritative definition. */
+  | "undefined-agent"
+  /** A node names an agent whose definition is not pipeline-reachable. */
+  | "unreachable-agent"
   /** A selected node depends on a node the selection leaves out. */
   | "unsatisfied-dependency";
 
@@ -122,6 +128,29 @@ export function validatePipelineDefinition(
       });
     }
     seen.add(node.agent);
+  }
+
+  // AGENT-CONTRACT-1. A node must name an agent that has an authoritative
+  // definition, and one the pipeline is allowed to run. A string that happens
+  // to match a registry key is not a contract: without a definition nothing
+  // states what the node produces or whether it may fall back.
+  for (const node of definition.nodes) {
+    const agent = getAgentDefinition(node.agent);
+    if (!agent) {
+      issues.push({
+        code: "undefined-agent",
+        agent: node.agent,
+        message: `Agent "${node.agent}" has no authoritative definition`,
+      });
+      continue;
+    }
+    if (agent.reachability !== "pipeline") {
+      issues.push({
+        code: "unreachable-agent",
+        agent: node.agent,
+        message: `Agent "${node.agent}" is defined as ${agent.reachability} and must not appear in a pipeline`,
+      });
+    }
   }
 
   for (const node of definition.nodes) {

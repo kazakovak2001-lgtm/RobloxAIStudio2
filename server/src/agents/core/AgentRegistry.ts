@@ -1,5 +1,6 @@
 import type { LLMProvider } from "../../ai/provider";
 import type { BaseAgent } from "./BaseAgent";
+import { getAgentDefinition } from "../contract/agentContract";
 import { RequirementsAgent } from "../implementations/RequirementsAgent";
 import { PlannerAgent } from "../implementations/PlannerAgent";
 import { GameDesignerAgent } from "../implementations/GameDesignerAgent";
@@ -84,9 +85,32 @@ export class AgentRegistry {
     agentType: string,
     input: Record<string, unknown>,
   ): Promise<Record<string, unknown>> {
+    // AGENT-CONTRACT-1. An agent with no definition is refused before any
+    // provider is invoked: nothing states what it produces, so nothing
+    // downstream could judge what came back.
+    const definition = getAgentDefinition(agentType);
+    if (!definition) {
+      return {
+        _failed: true,
+        _error: `No agent definition for "${agentType}"`,
+        _agent: agentType,
+      };
+    }
+
     const agent = this.agents.get(agentType);
     if (!agent) {
       return { _skipped: true, _reason: `Unknown agent type: ${agentType}` };
+    }
+
+    // A definition that requires a model must not be satisfied by canned
+    // content. Checked before execution so the refusal is about policy rather
+    // than about whatever the fallback happened to produce.
+    if (definition.model.requiresModel && !agent.hasLLM()) {
+      return {
+        _failed: true,
+        _error: `Agent "${agentType}" requires a model provider and none is configured`,
+        _agent: agentType,
+      };
     }
 
     const result = await agent.execute(input);
@@ -101,7 +125,19 @@ export class AgentRegistry {
     }
 
     const data = (result.data as Record<string, unknown>) ?? {};
-    return result.usedFallback ? { ...data, _usedFallback: true } : data;
+    if (!result.usedFallback) return data;
+
+    // A definition that forbids deterministic content must not have it pass
+    // silently. PROVIDER-1B's marker stays on output that is allowed through,
+    // so provenance is unchanged for every agent that permits fallback.
+    if (definition.model.fallback === "forbidden") {
+      return {
+        _failed: true,
+        _error: `Agent "${agentType}" produced deterministic fallback content, which its definition forbids`,
+        _agent: agentType,
+      };
+    }
+    return { ...data, _usedFallback: true };
   }
 
   /**

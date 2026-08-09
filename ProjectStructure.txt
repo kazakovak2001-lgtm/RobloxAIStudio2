@@ -112,6 +112,7 @@
 ├── Dockerfile.frontend.release
 ├── docs
 │   ├── 00-project-control
+│   │   ├── AGENT-CONTRACT-1_SCOPE.md
 │   │   ├── CORE-1A_DURABLE_PROJECTS.md
 │   │   ├── CORE-1B_DURABLE_RUNTIME.md
 │   │   ├── CURRENT_STATE.md
@@ -593,6 +594,8 @@
 │   │   └── schema.prisma
 │   ├── src
 │   │   ├── __tests__
+│   │   │   ├── agentcontract1.definitions.test.ts
+│   │   │   ├── agentcontract1.enforcement.test.ts
 │   │   │   ├── agentDecisionEngine.routing.test.ts
 │   │   │   ├── architecture.ast-import-inventory.test.ts
 │   │   │   ├── architecture.boundary-gate.test.ts
@@ -692,6 +695,8 @@
 │   │   │   │   ├── CollaborationTypes.ts
 │   │   │   │   ├── ConsensusEngine.ts
 │   │   │   │   └── index.ts
+│   │   │   ├── contract
+│   │   │   │   └── agentContract.ts
 │   │   │   ├── core
 │   │   │   │   ├── AgentRegistry.ts
 │   │   │   │   └── BaseAgent.ts

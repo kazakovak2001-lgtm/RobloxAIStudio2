@@ -83,6 +83,7 @@ deploy/docker-compose.backend.yml
 deploy/docker-compose.release.yml
 deploy/release/nginx.conf
 docker-compose.yml
+docs/00-project-control/AGENT-CONTRACT-1_SCOPE.md
 docs/00-project-control/CORE-1A_DURABLE_PROJECTS.md
 docs/00-project-control/CORE-1B_DURABLE_RUNTIME.md
 docs/00-project-control/CURRENT_STATE.md
@@ -504,6 +505,8 @@ scripts/validate-security-consolidated-gate.ts
 scripts/validate.ts
 server/prisma/schema.prisma
 server/src/__tests__/agentDecisionEngine.routing.test.ts
+server/src/__tests__/agentcontract1.definitions.test.ts
+server/src/__tests__/agentcontract1.enforcement.test.ts
 server/src/__tests__/architecture.ast-import-inventory.test.ts
 server/src/__tests__/architecture.boundary-gate.test.ts
 server/src/__tests__/architecture.layer-debt-evidence.test.ts
@@ -600,6 +603,7 @@ server/src/agents/collaboration/AgentMessageBus.ts
 server/src/agents/collaboration/CollaborationTypes.ts
 server/src/agents/collaboration/ConsensusEngine.ts
 server/src/agents/collaboration/index.ts
+server/src/agents/contract/agentContract.ts
 server/src/agents/core/AgentRegistry.ts
 server/src/agents/core/BaseAgent.ts
 server/src/agents/implementations/ArchitectureControllerAgent.ts

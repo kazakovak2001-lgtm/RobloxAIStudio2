@@ -13,6 +13,7 @@ import {
 import { BlueprintValidator } from "./blueprint.validator";
 import { generateGameDesignSeed } from "../../execution/gameDiversityEngine";
 import { AgentRegistry } from "../../agents/core/AgentRegistry";
+import { getAgentDefinition } from "../../agents/contract/agentContract";
 import { ExecutionQueue } from "../../execution/executionQueue";
 import { PlannerEngine } from "../../planning/core/PlannerEngine";
 import { PlanExecutor } from "../../planning/execution/PlanExecutor";
@@ -217,6 +218,11 @@ export class GameGenerationService {
 
             const pipelineSteps = result.graph.getAllNodes().map((node) => ({
               agent: node.agent,
+              // AGENT-CONTRACT-1. Which definition ran, recorded per step so a
+              // later contract change cannot be read backwards onto this run.
+              ...(getAgentDefinition(node.agent)
+                ? { agent_version: getAgentDefinition(node.agent)!.version }
+                : {}),
               status:
                 node.status === "done"
                   ? ("completed" as const)
