@@ -63,6 +63,7 @@ const STAGE_ARTIFACT_CONFIG: Record<
   ASSET_PLANNING: { name: "assetPlan.json", type: "asset-plan" },
   LUA_GENERATION: { name: "generatedScripts.lua", type: "lua" },
   UI_GENERATION: { name: "uiLayout.json", type: "ui-layout" },
+  WORLD_MODEL: { name: "worldModel.json", type: "json" },
   VALIDATION: { name: "validationReport.json", type: "json" },
   SECURITY_REVIEW: { name: "securityReport.json", type: "json" },
   OPTIMIZATION: { name: "optimizationReport.json", type: "json" },

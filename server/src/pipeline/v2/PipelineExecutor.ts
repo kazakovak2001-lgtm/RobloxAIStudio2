@@ -12,7 +12,10 @@ import { buildGenerationValidationReport } from "../../validation/generationVali
 import {
   getPlayableLuaIssues,
   normalizeLuaScripts,
+  type PlayableLuaScript,
 } from "../../types/playableLua";
+import { buildWorldModel, type WorldModel } from "../../validation/worldModel";
+import { crossValidateWorld } from "../../validation/worldCrossValidation";
 
 export type AgentExecutorFn = (
   agentId: string,
@@ -221,6 +224,15 @@ export class PipelineExecutor {
       return this.reviewGeneratedLua(sessionId);
     }
 
+    // WORLD-1A. The third stage to need this, and the reason is always the
+    // same: a stage with no agent falls through to the generic passthrough
+    // below, which would persist `{ _passthrough: true }` under the name
+    // `worldModel.json` — a file claiming to describe a world and describing
+    // nothing. Any future agentless stage needs its own branch here.
+    if (stage.name === "WORLD_MODEL") {
+      return { ...this.deriveWorldModel(sessionId) };
+    }
+
     // PIPELINE-1B. This stage used to run `tester`, whose output is a checklist
     // of tests whose status is `pending` alongside `passed: 0, failed: 0`.
     // Persisted under the name `validationReport.json`, that reads as a clean
@@ -261,6 +273,21 @@ export class PipelineExecutor {
    * so a consumer can tell the difference between "nothing blocked" and
    * "nothing was checked".
    */
+  /**
+   * Derive the world model from what this pipeline's earlier stages claimed.
+   *
+   * The accumulated context is the union of every stage's output, so the
+   * design and architecture claims are read from it directly rather than from
+   * an agent invented to restate them.
+   */
+  private deriveWorldModel(sessionId: string): WorldModel {
+    const accumulated = this.context.getAccumulated(sessionId);
+    return buildWorldModel({
+      gameDesign: accumulated,
+      architecture: accumulated,
+    });
+  }
+
   private validateGenerated(
     sessionId: string,
     state: PipelineState,
@@ -280,10 +307,12 @@ export class PipelineExecutor {
 
     let luaIssues: readonly string[] = [];
     let normalized = false;
+    let scripts: readonly PlayableLuaScript[] = [];
     for (const source of sources) {
       if (source === undefined) continue;
       try {
-        luaIssues = getPlayableLuaIssues(normalizeLuaScripts(source));
+        scripts = normalizeLuaScripts(source);
+        luaIssues = getPlayableLuaIssues(scripts);
         normalized = true;
         break;
       } catch (error) {
@@ -307,6 +336,13 @@ export class PipelineExecutor {
         // This executor never builds a UI instance tree, so claiming any
         // outcome for it would be an invention.
         ui: { status: "not-attempted" },
+        // WORLD-1A. The comparison runs here too, or this pipeline would
+        // publish a world model and never check it — the stage would exist
+        // and mean nothing.
+        world:
+          scripts.length > 0
+            ? crossValidateWorld(this.deriveWorldModel(sessionId), scripts)
+            : undefined,
       }),
     };
   }

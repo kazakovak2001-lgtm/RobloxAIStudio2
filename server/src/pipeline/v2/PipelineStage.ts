@@ -12,6 +12,7 @@ export type StageName =
   | "ASSET_PLANNING"
   | "LUA_GENERATION"
   | "UI_GENERATION"
+  | "WORLD_MODEL"
   | "VALIDATION"
   | "SECURITY_REVIEW"
   | "OPTIMIZATION"
@@ -36,6 +37,7 @@ export const STAGE_ORDER: StageName[] = [
   "ASSET_PLANNING",
   "LUA_GENERATION",
   "UI_GENERATION",
+  "WORLD_MODEL",
   "VALIDATION",
   "SECURITY_REVIEW",
   "OPTIMIZATION",
@@ -51,6 +53,9 @@ export const STAGE_AGENT_MAP: Record<StageName, string | null> = {
   ASSET_PLANNING: "asset_planner",
   LUA_GENERATION: "lua_generator",
   UI_GENERATION: "ui_generator",
+  // Derived from claims earlier stages already made, not produced by an
+  // agent of its own. See WORLD-1A.
+  WORLD_MODEL: null,
   // Deterministic service, not an agent. `tester` produces a plan of tests
   // whose status is `pending`; recorded as `validationReport.json` it reads as
   // a validation result, which is not what it is. See PIPELINE-1B.

@@ -94,6 +94,7 @@ describe("STUDIO-1a canonical artifact lineage", () => {
       "LUA_GENERATION",
       "SECURITY_REVIEW",
       "EXPORT",
+      "WORLD_MODEL",
       "VALIDATION",
     ]);
     const review = recorded.find((a) => a.stage === "SECURITY_REVIEW");
@@ -103,7 +104,7 @@ describe("STUDIO-1a canonical artifact lineage", () => {
       recorded.every((artifact) => artifact.pipelineId === executionId),
     ).toBe(true);
     expect(recorded[1]?.content).toEqual(luaOutput);
-    expect(store.count).toBe(5);
+    expect(store.count).toBe(6);
   });
 
   it("normalizes the real LuaGeneratorAgent output into Studio scripts", async () => {
@@ -277,9 +278,9 @@ describe("STUDIO-1a canonical artifact lineage", () => {
     const storeAfterRestart = new ArtifactStore(storage);
     const restored = storeAfterRestart.getByPipeline(executionId);
 
-    // Lua, its security review, the export manifest and the validation report
-    // all survive restart.
-    expect(restored).toHaveLength(4);
+    // Lua, its security review, the export manifest, the world model and the
+    // validation report all survive restart.
+    expect(restored).toHaveLength(5);
     expect(restored.map((a) => a.stage)).toContain("VALIDATION");
     expect(restored.map((a) => a.stage)).toContain("SECURITY_REVIEW");
     expect(storeAfterRestart.getById(luaArtifact!.id)?.reviewStatus).toBe(
@@ -294,10 +295,10 @@ describe("STUDIO-1a canonical artifact lineage", () => {
     // approves them. Truthful, and inert: nothing gates Studio delivery on
     // this summary today.
     expect(storeAfterRestart.getReviewSummary(executionId)).toMatchObject({
-      total: 4,
+      total: 5,
       approved: 1,
       edited: 1,
-      pending: 2,
+      pending: 3,
       allApproved: false,
     });
 
@@ -307,7 +308,7 @@ describe("STUDIO-1a canonical artifact lineage", () => {
     // The security report travels with the export like every other non-Lua
     // artifact, so a creator can read the findings in Studio. ARTIFACT-1 names
     // it by stage, so repeated exports replace rather than accumulate it.
-    expect(snapshot?.artifactCount).toBe(4);
+    expect(snapshot?.artifactCount).toBe(5);
     expect(snapshot?.artifacts.map((artifact) => artifact.id)).toEqual(
       expect.arrayContaining([luaArtifact!.id, exportArtifact!.id]),
     );

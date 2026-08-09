@@ -11,6 +11,8 @@ import {
   type PlayableLuaScript,
 } from "../../types/playableLua";
 import { reviewLuaSecurity } from "../../validation/luaSecurityReview";
+import { buildWorldModel } from "../../validation/worldModel";
+import { crossValidateWorld } from "../../validation/worldCrossValidation";
 import {
   buildGenerationValidationReport,
   describeBlockingFailures,
@@ -64,11 +66,19 @@ export class GenerationArtifactRecorder {
     let luaPresent = false;
     let luaIssues: readonly string[] = [];
     let ui: UIMaterializationOutcome = { status: "not-attempted" };
+    let luaScripts: readonly PlayableLuaScript[] = [];
+    let gameDesign: unknown;
+    let architecture: unknown;
 
     for (const node of nodes) {
       const stage = getArtifactStage(node.agent);
       if (!stage || node.status !== "done" || node.output === undefined)
         continue;
+
+      // WORLD-1A. Kept so the world model can be derived from claims these
+      // stages already made, rather than from an agent invented to make them.
+      if (stage === "GAME_DESIGN") gameDesign = node.output;
+      if (stage === "ARCHITECTURE") architecture = node.output;
 
       if (stage === "LUA_GENERATION") {
         luaPresent = true;
@@ -95,6 +105,7 @@ export class GenerationArtifactRecorder {
         if (luaIssues.length > 0) continue;
 
         const content = normalizeLuaArtifactContent(node.output);
+        luaScripts = scripts;
         pending.push({ stage, agent: node.agent, content });
 
         // SECREVIEW-1. The playability contract already ran and accepted this
@@ -138,10 +149,20 @@ export class GenerationArtifactRecorder {
       pending.push({ stage, agent: node.agent, content: node.output });
     }
 
+    // WORLD-1A. The model is derived and recorded whether or not the Lua can
+    // be checked against it; the cross-artifact comparison only runs when
+    // there is Lua to compare, and says so when there is not.
+    const world = buildWorldModel({ gameDesign, architecture });
+    pending.push({ stage: "WORLD_MODEL", agent: null, content: world });
+
     const report = buildGenerationValidationReport({
       luaPresent,
       luaIssues,
       ui,
+      world:
+        luaScripts.length > 0
+          ? crossValidateWorld(world, luaScripts)
+          : undefined,
     });
 
     if (!report.passed) {
