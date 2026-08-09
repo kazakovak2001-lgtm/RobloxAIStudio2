@@ -94,6 +94,7 @@ const REVIEW_LIMITS: readonly string[] = [
   "Pattern analysis over source text, not a Luau parser or dataflow analysis.",
   "Rules require positive evidence of a dangerous shape, so absence of findings is not proof of safety.",
   "Only server and client scripts delivered in this artifact are reviewed; runtime behaviour is not executed.",
+  "A client value is followed through at most one direct assignment, so an exploit routed through a helper or a table is not tracked.",
 ];
 
 interface ReviewableScript {
@@ -207,9 +208,17 @@ function extractRemoteHandlers(source: string): RemoteHandler[] {
   return handlers;
 }
 
-/** Read forward to the `end` that closes the handler, tracking nesting. */
+/**
+ * Read forward to the `end` that closes the handler, tracking nesting.
+ *
+ * `for` and `while` are deliberately absent from the opener set: in Luau they
+ * open their block with the `do` that ends the header, so counting the loop
+ * keyword as well would add a level no `end` closes. The body would then run
+ * past the handler and attribute unrelated code to its client arguments.
+ * `repeat` is absent for the opposite reason — it closes with `until`.
+ */
 function matchFunctionBody(source: string, start: number): string {
-  const opener = /\b(function|if|for|while|do)\b/g;
+  const opener = /\b(function|if|do)\b/g;
   const closer = /\bend\b/g;
   let depth = 1;
   let index = start;
@@ -234,9 +243,37 @@ function matchFunctionBody(source: string, start: number): string {
   return source.slice(start, index);
 }
 
+function escapeName(name: string): string {
+  return name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+/**
+ * The unchecked parameters, plus locals assigned directly from one.
+ *
+ * A single alias hop covers the common `local amount = rawAmount` shape
+ * without becoming dataflow analysis. Anything further — a value passed
+ * through a helper, stored in a table and read back — is not tracked, and
+ * `limits` says so.
+ */
+function taintedNames(body: string, unvalidated: string[]): string[] {
+  const names = [...unvalidated];
+
+  for (const source of unvalidated) {
+    const alias = new RegExp(
+      `(?:local\\s+)?([A-Za-z_][A-Za-z0-9_]*)\\s*=\\s*${escapeName(source)}\\s*(?:$|[\\n;])`,
+      "gm",
+    );
+    for (const match of body.matchAll(alias)) {
+      if (!names.includes(match[1])) names.push(match[1]);
+    }
+  }
+
+  return names;
+}
+
 /** Does the handler subject this client value to any server-side test? */
 function validatesParameter(body: string, param: string): boolean {
-  const escaped = param.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const escaped = escapeName(param);
   const guards = [
     // A comparison, range check or membership test against the value.
     new RegExp(`\\b${escaped}\\b\\s*(==|~=|<=|>=|<|>)`),
@@ -245,8 +282,12 @@ function validatesParameter(body: string, param: string): boolean {
     new RegExp(`type\\s*\\(\\s*${escaped}\\s*\\)`),
     new RegExp(`typeof\\s*\\(\\s*${escaped}\\s*\\)`),
     new RegExp(`tonumber\\s*\\(\\s*${escaped}\\s*\\)`),
-    // Clamping or bounding.
-    new RegExp(`math\\.(clamp|min|max|floor|abs)\\s*\\([^)]*\\b${escaped}\\b`),
+    // Bounding, but only where an upper bound is actually imposed.
+    // `math.floor` and `math.abs` reshape a value without limiting it, and
+    // `math.max` only raises a floor, so none of them stops a client asking
+    // for an arbitrarily large reward. Treating them as validation would let
+    // `amount = math.floor(amount)` launder an exploit into a clean report.
+    new RegExp(`math\\.(clamp|min)\\s*\\([^)]*\\b${escaped}\\b`),
     // Explicit rejection.
     new RegExp(`if\\s+not\\s+${escaped}\\b`),
     // Membership in a server-owned table.
@@ -338,16 +379,31 @@ export function reviewLuaSecurity(
         // misuse, so the rules below cannot apply.
         if (unvalidated.length === 0) continue;
 
+        // A dangerous operation only matters if an unchecked client value
+        // actually reaches it. Matching the rule anywhere in the handler
+        // would flag `function(player, requestId) Coins.Value += REWARD end`,
+        // where the client argument never touches the award — a critical
+        // false positive on the most ordinary request-style remote there is.
+        const tainted = taintedNames(handler.body, unvalidated);
         for (const rule of RULES) {
-          if (rule.pattern.test(handler.body)) {
-            findings.push({
-              code: rule.code,
-              severity: rule.severity,
-              path: script.path,
-              message: `${rule.message}. Unvalidated client argument(s): ${unvalidated.join(", ")}.`,
-              remediation: rule.remediation,
-            });
-          }
+          const statement = handler.body
+            .split(/[\n;]/)
+            .find(
+              (line) =>
+                rule.pattern.test(line) &&
+                tainted.some((name) =>
+                  new RegExp(`\\b${escapeName(name)}\\b`).test(line),
+                ),
+            );
+          if (!statement) continue;
+
+          findings.push({
+            code: rule.code,
+            severity: rule.severity,
+            path: script.path,
+            message: `${rule.message}. Unvalidated client argument(s): ${unvalidated.join(", ")}.`,
+            remediation: rule.remediation,
+          });
         }
       }
     }

@@ -185,6 +185,120 @@ describe("does not cry wolf on correct server-authoritative code", () => {
 });
 
 /**
+ * Every case here is a false positive review found in the first version, and
+ * none was visible to the original suite. They are grouped so the gap that
+ * hid them stays documented.
+ */
+describe("regressions from review: dangerous shapes that are not defects", () => {
+  /**
+   * A loop opens its block with the `do` that ends its header, so counting
+   * the loop keyword as well left the body unterminated. Everything after the
+   * handler was then attributed to its client arguments.
+   */
+  it("does not run the handler body past a for loop", () => {
+    // The trailing statement names the handler's own unvalidated parameter,
+    // so it is only clean if the body genuinely stopped at the handler's end.
+    // A weaker fixture passes with the bug present and proves nothing.
+    const report = server(`
+      event.OnServerEvent:Connect(function(player, amount)
+        for index = 1, 3 do
+          print(index)
+        end
+      end)
+
+      leaderboard.Coins.Value += amount
+    `);
+
+    expect(report.clean).toBe(true);
+  });
+
+  it("does not run the handler body past a while loop", () => {
+    const report = server(`
+      event.OnServerEvent:Connect(function(player, amount)
+        while running do
+          wait(1)
+        end
+      end)
+
+      leaderboard.Coins.Value += amount
+    `);
+
+    expect(report.clean).toBe(true);
+  });
+
+  /**
+   * The sink must be reached by an unchecked client value. A request-style
+   * remote whose argument is only an identifier is the most ordinary shape
+   * there is, and flagging it would have made the reviewer unusable.
+   */
+  it("does not flag a server-decided reward beside an unchecked identifier", () => {
+    const report = server(`
+      local SERVER_REWARD = 25
+      event.OnServerEvent:Connect(function(player, requestId)
+        player.leaderstats.Coins.Value += SERVER_REWARD
+      end)
+    `);
+
+    expect(report.clean).toBe(true);
+  });
+
+  it("still flags the same reward when the client value reaches it", () => {
+    const report = server(`
+      event.OnServerEvent:Connect(function(player, requestId, amount)
+        player.leaderstats.Coins.Value += amount
+      end)
+    `);
+
+    expect(codes(report)).toContain("REMOTE_CLIENT_VALUE_AWARDED");
+  });
+
+  it("follows a client value through one direct assignment", () => {
+    const report = server(`
+      event.OnServerEvent:Connect(function(player, rawAmount)
+        local amount = rawAmount
+        player.leaderstats.Coins.Value += amount
+      end)
+    `);
+
+    expect(codes(report)).toContain("REMOTE_CLIENT_VALUE_AWARDED");
+  });
+
+  /**
+   * Reshaping is not bounding. `math.floor` and `math.abs` leave the value
+   * unbounded above, and `math.max` only raises a floor, so none of them
+   * makes a client-chosen reward safe.
+   */
+  it.each([
+    ["math.floor", "amount = math.floor(amount)"],
+    ["math.abs", "amount = math.abs(amount)"],
+    ["math.max", "amount = math.max(amount, 0)"],
+  ])("does not accept %s as validation of a reward", (_label, transform) => {
+    const report = server(`
+      event.OnServerEvent:Connect(function(player, amount)
+        ${transform}
+        player.leaderstats.Coins.Value += amount
+      end)
+    `);
+
+    expect(codes(report)).toContain("REMOTE_CLIENT_VALUE_AWARDED");
+  });
+
+  it.each([
+    ["math.clamp", "math.clamp(amount, 0, 10)"],
+    ["math.min", "math.min(amount, 10)"],
+  ])("accepts %s, which imposes an upper bound", (_label, transform) => {
+    const report = server(`
+      event.OnServerEvent:Connect(function(player, amount)
+        local safe = ${transform}
+        player.leaderstats.Coins.Value += safe
+      end)
+    `);
+
+    expect(report.clean).toBe(true);
+  });
+});
+
+/**
  * The strongest false-positive guard available: the actual Lua the platform
  * ships when no model authors it. If the reviewer fires here it fires on the
  * single most common real output, and would be switched off within a day.
