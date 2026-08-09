@@ -103,20 +103,35 @@ export class GenerationArtifactRecorder {
         // delivery: the review is advisory in this slice, and a reviewer that
         // could fail a generation on its own false positive would be worse than
         // the gap it closes.
+        // Reviewed from the normalized scripts, not by re-reading `content`:
+        // when the output already carries a `scripts` array it is returned
+        // unchanged, so casting it back would hand the reviewer the raw array
+        // rather than the normalized one.
         pending.push({
           stage: "SECURITY_REVIEW",
           agent: null,
-          content: reviewLuaSecurity(
-            (content as { scripts: PlayableLuaScript[] }).scripts,
-          ),
+          content: reviewLuaSecurity(scripts),
         });
         continue;
       }
 
       if (stage === "UI_GENERATION") {
-        const built = buildUIArtifactContent(node.output);
-        ui = built.outcome;
-        pending.push({ stage, agent: node.agent, content: built.content });
+        try {
+          const built = buildUIArtifactContent(node.output);
+          ui = built.outcome;
+          pending.push({ stage, agent: node.agent, content: built.content });
+        } catch (error) {
+          // UI materialization is advisory, so output too malformed to read
+          // must not abort the run — that would leave no report at all, which
+          // is the gap this stage exists to close.
+          ui = {
+            status: "failed",
+            reason:
+              error instanceof Error
+                ? error.message.replace(/[\r\n]/g, "")
+                : "UI generation output could not be read",
+          };
+        }
         continue;
       }
 

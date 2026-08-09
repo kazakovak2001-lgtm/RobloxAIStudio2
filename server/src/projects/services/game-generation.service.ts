@@ -199,7 +199,16 @@ export class GameGenerationService {
               { projectId: enrichedBlueprint.project_id, stopOnFailure: false },
             );
 
-            executedNodes = result.graph.getAllNodes();
+            // Only nodes that actually produced content. `getAllNodes()`
+            // includes failed and skipped ones, so counting those would let a
+            // run whose first agent failed — producing nothing at all — be
+            // labelled `ai` on the strength of a configured provider and the
+            // absence of a fallback marker that nothing was there to set.
+            executedNodes = result.graph
+              .getAllNodes()
+              .filter(
+                (node) => node.status === "done" && node.output !== undefined,
+              );
 
             await this.artifactRecorder.record(
               execution.id,

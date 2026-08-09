@@ -2,7 +2,11 @@ import { describe, it, expect } from "vitest";
 
 import { GenerationArtifactRecorder } from "../studio/artifacts/GenerationArtifactRecorder";
 import { ArtifactStore, type PipelineArtifact } from "../pipeline/v2";
-import { STAGE_AGENT_MAP } from "../pipeline/v2/PipelineStage";
+import {
+  STAGE_AGENT_MAP,
+  createPipelineState,
+  type PipelineState,
+} from "../pipeline/v2/PipelineStage";
 import { PipelineExecutor } from "../pipeline/v2/PipelineExecutor";
 import {
   buildGenerationValidationReport,
@@ -11,6 +15,14 @@ import {
   type GenerationValidationReport,
 } from "../validation/generationValidation";
 import type { TaskNode } from "../planning/model/TaskGraph";
+import { AgentRegistry } from "../agents/core/AgentRegistry";
+import { GameGenerationService } from "../projects/services/game-generation.service";
+import { InMemoryBlueprintRepository } from "../projects/repository/blueprint.repository";
+import { BlueprintCache } from "../projects/cache/blueprint.cache";
+import {
+  StreamingUpdateHandler,
+  PipelineEventEmitter,
+} from "../socket/streaming";
 
 /**
  * PIPELINE-1B. What deterministic validation found is a durable artifact.
@@ -212,12 +224,17 @@ describe("PIPELINE-1B validation report", () => {
   it("does not report a check as passed when it never ran", () => {
     const report = buildGenerationValidationReport({
       luaPresent: false,
+      // Findings from an earlier attempt must not be attached to a check that
+      // did not run — a consumer rendering details would show results for work
+      // that never happened.
+      luaIssues: ["server code must create playable world instances"],
       ui: { status: "not-attempted" },
     });
 
     const playable = report.checks.find((check) => check.id === "lua-playable");
     const ui = report.checks.find((check) => check.id === "ui-materializable");
     expect(playable?.status).toBe("not-applicable");
+    expect(playable?.details).toEqual([]);
     expect(ui?.status).toBe("not-applicable");
     // No Lua at all is itself a blocking failure — there is no game.
     expect(report.passed).toBe(false);
@@ -284,6 +301,26 @@ describe("PIPELINE-1B recorder", () => {
     );
   });
 
+  it("still writes the report when the UI output cannot be read at all", async () => {
+    // UI materialization is advisory, so output too malformed to read must not
+    // abort the run — that would leave no report, the exact gap this closes.
+    const store = new ArtifactStore();
+    const recorder = new GenerationArtifactRecorder(store);
+
+    const recorded = await recorder.record("ui-malformed-exec", [
+      node("lua_generator", playableLuaOutput()),
+      { ...node("ui_generator", {}), output: "not an object" as never },
+    ]);
+
+    const ui = validationReport(recorded).checks.find(
+      (check) => check.id === "ui-materializable",
+    );
+
+    expect(ui?.status).toBe("failed");
+    expect(ui?.details.length).toBeGreaterThan(0);
+    expect(validationReport(recorded).passed).toBe(true);
+  });
+
   it("carries a lost UI materialization failure into the report", async () => {
     // Regression. The reason was written to `console.warn` and nowhere else,
     // so nothing durable recorded that the UI had not materialized.
@@ -304,6 +341,106 @@ describe("PIPELINE-1B recorder", () => {
   });
 });
 
+describe("PIPELINE-1B provenance of a failed run", () => {
+  it("claims nothing when no agent produced content", async () => {
+    // `getAllNodes()` includes failed and skipped nodes, so counting those
+    // would let a run whose agents all failed — producing nothing at all — be
+    // labelled `ai` on the strength of a configured provider and the absence
+    // of a fallback marker that nothing was there to set.
+    const registry = {
+      executeAgent: async () => ({ _failed: true, _error: "no" }),
+    } as unknown as AgentRegistry;
+
+    const service = new GameGenerationService(
+      new InMemoryBlueprintRepository(),
+      new BlueprintCache(),
+      new StreamingUpdateHandler(),
+      new PipelineEventEmitter(),
+      null,
+      registry,
+      new ArtifactStore(),
+      undefined,
+      { provider: "ollama", model: "qwen2.5-coder:7b" },
+    );
+
+    await service.createBlueprint("p1b-user", "p1b-project", {
+      project_id: "p1b-project",
+      user_id: "p1b-user",
+      name: "Provenance Of A Failed Run",
+      description: "A blueprint used only to exercise failed-run provenance.",
+      game_type: "adventure",
+      genre: ["adventure"],
+      target_audience: "all ages",
+      difficulty: "medium",
+      estimated_players: "small-group",
+      gameplay: { mechanics: [], progression: {}, balance: {} },
+      ui_layouts: [],
+      architecture: {
+        client_architecture: {},
+        server_architecture: {},
+        networking: {},
+      },
+      assets: { models: [], textures: [], sounds: [], animations: [] },
+      code_spec: { modules: [], patterns: [] },
+    });
+
+    const started = await service.startGeneration("p1b-project", "p1b-user");
+    let execution = await service.getExecution(started.id);
+    for (
+      let attempt = 0;
+      attempt < 200 && execution?.status === "running";
+      attempt++
+    ) {
+      await new Promise((resolve) => setTimeout(resolve, 25));
+      execution = await service.getExecution(started.id);
+    }
+
+    expect(execution?.status).toBe("failed");
+    expect(execution?.ai_mode).toBeUndefined();
+    // What was configured is still recorded — that is not a claim about
+    // authorship.
+    expect(execution?.ai_provider).toBe("ollama");
+  }, 20000);
+});
+
+/** A saved pipeline state whose Lua stage completed with the given output. */
+function pipelineStateWithLua(output: Record<string, unknown>): PipelineState {
+  const state = createPipelineState("v2-project");
+  const luaStage = state.stages.find(
+    (stage) => stage.name === "LUA_GENERATION",
+  );
+  if (!luaStage) throw new Error("No LUA_GENERATION stage in the state");
+  luaStage.status = "completed";
+  luaStage.output = output;
+  return state;
+}
+
+/** Run the VALIDATION stage the way the executor does, and return its output. */
+function runValidationStage(
+  executor: PipelineExecutor,
+  sessionId: string,
+  state: PipelineState,
+): Promise<Record<string, unknown>> {
+  const stage = state.stages.find((entry) => entry.name === "VALIDATION");
+  if (!stage) throw new Error("No VALIDATION stage in the state");
+
+  return (
+    executor as unknown as {
+      executeStage: (
+        stage: unknown,
+        sessionId: string,
+        agentExecutor: () => Promise<Record<string, unknown>>,
+        state: PipelineState,
+      ) => Promise<Record<string, unknown>>;
+    }
+  ).executeStage(
+    stage,
+    sessionId,
+    () => Promise.reject(new Error("no agent may run for VALIDATION")),
+    state,
+  );
+}
+
 describe("PIPELINE-1B v2 pipeline", () => {
   it("does not run an agent for the validation stage", () => {
     // `tester` emits a checklist whose every entry is `pending`, alongside
@@ -318,22 +455,59 @@ describe("PIPELINE-1B v2 pipeline", () => {
     const sessionId = context.createSession("v2-project", {});
     context.recordAgentOutput(sessionId, "lua_generator", playableLuaOutput());
 
-    const stage = { name: "VALIDATION" as const, agentId: null };
-    const output = await (
-      executor as unknown as {
-        executeStage: (
-          stage: { name: "VALIDATION"; agentId: null },
-          sessionId: string,
-          agentExecutor: () => Promise<Record<string, unknown>>,
-        ) => Promise<Record<string, unknown>>;
-      }
-    ).executeStage(stage, sessionId, () =>
-      Promise.reject(new Error("no agent may run for VALIDATION")),
+    const output = await runValidationStage(
+      executor,
+      sessionId,
+      pipelineStateWithLua(playableLuaOutput()),
     );
 
     expect(output._passthrough).toBeUndefined();
     expect(output.schemaVersion).toBe(GENERATION_VALIDATION_SCHEMA_VERSION);
     expect(output.analysisMode).toBe(GENERATION_VALIDATION_ANALYSIS_MODE);
     expect(output.passed).toBe(true);
+  });
+
+  it("reads the saved stage output when a resumed session has none", async () => {
+    // Regression. `resume()` opens a fresh context session, so a run that
+    // failed after LUA_GENERATION and is retried sees an empty accumulated
+    // context. Reading only that reported `lua-generated` as failed for a
+    // pipeline holding perfectly good Lua — a durable report asserting the
+    // opposite of what happened.
+    const executor = new PipelineExecutor();
+    const emptySession = executor.getContext().createSession("resumed", {});
+
+    const output = await runValidationStage(
+      executor,
+      emptySession,
+      pipelineStateWithLua(playableLuaOutput()),
+    );
+
+    expect(output.passed).toBe(true);
+    const checks = output.checks as GenerationValidationReport["checks"];
+    expect(checks.find((check) => check.id === "lua-generated")?.status).toBe(
+      "passed",
+    );
+  });
+
+  it("separates Lua it could not read from Lua that was never produced", async () => {
+    const executor = new PipelineExecutor();
+    const emptySession = executor.getContext().createSession("malformed", {});
+
+    const output = await runValidationStage(
+      executor,
+      emptySession,
+      pipelineStateWithLua({ scripts: "not an array" }),
+    );
+
+    const checks = output.checks as GenerationValidationReport["checks"];
+    const generated = checks.find((check) => check.id === "lua-generated");
+    const playable = checks.find((check) => check.id === "lua-playable");
+
+    // The stage did produce output, so this is not "no Lua" — it is Lua the
+    // contract could not read, and the reason is on the report.
+    expect(generated?.status).toBe("passed");
+    expect(playable?.status).toBe("failed");
+    expect(playable?.details.length).toBeGreaterThan(0);
+    expect(output.passed).toBe(false);
   });
 });

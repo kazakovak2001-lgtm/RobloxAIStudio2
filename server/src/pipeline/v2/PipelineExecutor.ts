@@ -86,6 +86,7 @@ export class PipelineExecutor {
           stageRecord,
           sessionId,
           agentExecutor,
+          state,
         );
         stageRecord.status = "completed";
         stageRecord.completedAt = Date.now();
@@ -209,6 +210,7 @@ export class PipelineExecutor {
     stage: StageRecord,
     sessionId: string,
     agentExecutor: AgentExecutorFn,
+    state: PipelineState,
   ): Promise<Record<string, unknown>> {
     // SECREVIEW-1. This stage has no agent because the review is a
     // deterministic service, but it must not take the generic null-agent
@@ -225,7 +227,7 @@ export class PipelineExecutor {
     // validation result while nothing was ever executed — the same defect as
     // the passthrough security report above, wearing a more convincing shape.
     if (stage.name === "VALIDATION") {
-      return this.validateGenerated(sessionId);
+      return this.validateGenerated(sessionId, state);
     }
 
     if (!stage.agentId) {
@@ -259,23 +261,49 @@ export class PipelineExecutor {
    * so a consumer can tell the difference between "nothing blocked" and
    * "nothing was checked".
    */
-  private validateGenerated(sessionId: string): Record<string, unknown> {
-    const accumulated = this.context.getAccumulated(sessionId);
+  private validateGenerated(
+    sessionId: string,
+    state: PipelineState,
+  ): Record<string, unknown> {
+    // A resumed run starts a fresh context session, so the accumulated output
+    // of stages that already completed is not in it. Reading only the context
+    // would report `lua-generated` as failed for a pipeline that has perfectly
+    // good Lua in its saved state — a durable report asserting the opposite of
+    // what happened, which is precisely what this stage exists to prevent.
+    const luaStage = state.stages.find(
+      (stage) => stage.name === "LUA_GENERATION",
+    );
+    const luaPresent =
+      luaStage?.status === "completed" && luaStage.output !== undefined;
 
-    let luaIssues: readonly string[];
-    let luaPresent: boolean;
-    try {
-      luaIssues = getPlayableLuaIssues(normalizeLuaScripts(accumulated));
-      luaPresent = true;
-    } catch {
-      luaIssues = [];
-      luaPresent = false;
+    const sources = [this.context.getAccumulated(sessionId), luaStage?.output];
+
+    let luaIssues: readonly string[] = [];
+    let normalized = false;
+    for (const source of sources) {
+      if (source === undefined) continue;
+      try {
+        luaIssues = getPlayableLuaIssues(normalizeLuaScripts(source));
+        normalized = true;
+        break;
+      } catch (error) {
+        // Keep the first reason. Output the contract cannot even read as
+        // scripts is a different failure from output it read and rejected,
+        // and reporting it as "no Lua" would erase that distinction.
+        if (luaIssues.length === 0) {
+          luaIssues = [
+            error instanceof Error
+              ? error.message
+              : "Lua generation output could not be read",
+          ];
+        }
+      }
     }
 
     return {
       ...buildGenerationValidationReport({
         luaPresent,
-        luaIssues,
+        luaIssues: normalized || luaPresent ? luaIssues : [],
         // This executor never builds a UI instance tree, so claiming any
         // outcome for it would be an invention.
         ui: { status: "not-attempted" },

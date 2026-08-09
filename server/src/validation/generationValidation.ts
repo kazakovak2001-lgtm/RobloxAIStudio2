@@ -140,7 +140,9 @@ export function buildGenerationValidationReport(
         ? "passed"
         : "failed",
     enforcement: "blocking",
-    details: luaIssues,
+    // A check that never ran carries no findings. Attaching them would show a
+    // consumer results for work that did not happen.
+    details: input.luaPresent ? luaIssues : [],
   });
 
   checks.push({
