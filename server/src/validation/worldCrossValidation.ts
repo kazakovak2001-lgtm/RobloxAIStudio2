@@ -94,7 +94,12 @@ const ROLE_EVIDENCE: Readonly<
     matches: (source) =>
       /Instance\.new\s*\(\s*["']SpawnLocation["']/.test(source.server) ||
       /\bRespawnLocation\b/.test(source.server) ||
-      /\b(?:LoadCharacter|MoveTo|CFrame\s*=)\b/.test(source.server),
+      /\b(?:LoadCharacter|MoveTo)\b/.test(source.server) ||
+      // The boundary belongs to the identifier, not after the `=`. Trailing it
+      // on the whole alternation required a word character to follow the sign,
+      // so `part.CFrame = CFrame.new(...)` — the idiomatic form — never matched
+      // and a real placement was reported unsupported.
+      /\bCFrame\s*=/.test(source.server),
   },
   "interactive-entity": {
     expectation: "server code connects a player-driven interaction",

@@ -345,6 +345,32 @@ describe("WORLD-1A evidence must be executable code", () => {
     ).toBe("unsupported");
   });
 
+  it("accepts a player placed by assigning CFrame", () => {
+    // Regression. The word boundary sat after the whole alternation, so it
+    // required a word character to follow the `=` sign and the idiomatic form
+    // never matched — a real placement reported as unsupported.
+    const placed: PlayableLuaScript[] = [
+      {
+        path: "ServerScriptService/Grid.server.lua",
+        content: `local Players = game:GetService("Players")
+Players.PlayerAdded:Connect(function(player)
+  player.CharacterAdded:Connect(function(character)
+    character:WaitForChild("HumanoidRootPart").CFrame = CFrame.new(0, 8, 0)
+  end)
+end)
+`,
+      },
+      { path: "StarterPlayerScripts/Hud.client.lua", content: CLIENT_LUA },
+    ];
+
+    const result = crossValidateWorld(buildWorldModel(racingSources()), placed);
+
+    expect(
+      result.claims.find((claim) => claim.claimId === "service-spawnservice")
+        ?.status,
+    ).toBe("supported");
+  });
+
   it("accepts the leaderstats progress path the platform already accepts", () => {
     // `getPlayableLuaIssues` treats a server leaderstats IntValue plus a client
     // `.Changed` connection as a valid progress path. Recognising only remotes
