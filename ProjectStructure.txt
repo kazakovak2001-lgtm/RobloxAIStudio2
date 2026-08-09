@@ -139,7 +139,8 @@
 │   │   ├── STUDIO-1G_DESKTOP_ACCEPTANCE_RESULT.md
 │   │   ├── STUDIO-2F-A_SCOPE.md
 │   │   ├── STUDIO-ACCEPT-1_DESKTOP_ACCEPTANCE_RESULT.md
-│   │   └── WORLD-1B_SCOPE.md
+│   │   ├── WORLD-1B_SCOPE.md
+│   │   └── WORLD-1C_SCOPE.md
 │   ├── 01-architecture
 │   │   └── .gitkeep
 │   ├── 02-audits
