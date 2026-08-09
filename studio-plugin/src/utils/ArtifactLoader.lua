@@ -155,39 +155,68 @@ function ArtifactLoader:_ensureStageFolder(stage)
     return stageFolder
 end
 
+--[[
+  The logical identity of a metadata artifact inside its stage folder.
+
+  ARTIFACT-1. Naming the instance after `artifact.id` made delivery
+  non-idempotent: `ArtifactStore` mints that id with `randomUUID` on every
+  store, so regenerating a project left the previous run's StringValue behind
+  and the folder grew without bound. `artifact.name` is derived from the stage
+  (`requirements.json`, `gameConcept.json`, …) and there is exactly one
+  artifact per stage, so it is stable across regenerations and unique within
+  the folder.
+
+  Falls back to the id when a backend does not supply a name, which preserves
+  the old behaviour rather than inventing an identity.
+]]
+function ArtifactLoader:_metadataInstanceName(artifact)
+    if type(artifact.name) == "string" and artifact.name ~= "" then
+        return artifact.name
+    end
+    return tostring(artifact.id)
+end
+
+--[[
+  Remove StringValues left by the pre-ARTIFACT-1 identity.
+
+  Deliberately narrow: only a StringValue whose Name equals its own ArtifactId
+  attribute qualifies, which is the exact shape this loader used to produce. A
+  hand-added instance does not carry the attribute, and a materialized UI tree
+  is not a StringValue, so neither can be caught by this.
+]]
+function ArtifactLoader:_removeLegacyIdNamedValues(stageFolder)
+    for _, child in ipairs(stageFolder:GetChildren()) do
+        if child:IsA("StringValue") then
+            local recordedId = child:GetAttribute("ArtifactId")
+            if type(recordedId) == "string" and recordedId == child.Name then
+                child:Destroy()
+            end
+        end
+    end
+end
+
 function ArtifactLoader:_loadMetadataArtifact(artifact)
-    local root = ReplicatedStorage:FindFirstChild("AIStudioArtifacts")
-    if root and not root:IsA("Folder") then
-        root:Destroy()
-        root = nil
-    end
-    if not root then
-        root = Instance.new("Folder")
-        root.Name = "AIStudioArtifacts"
-        root.Parent = ReplicatedStorage
-    end
+    local stageFolder = self:_ensureStageFolder(artifact.stage or "OTHER")
+    self:_removeLegacyIdNamedValues(stageFolder)
 
     local stageName = tostring(artifact.stage or "OTHER")
-    local stageFolder = root:FindFirstChild(stageName)
-    if stageFolder and not stageFolder:IsA("Folder") then
-        stageFolder:Destroy()
-        stageFolder = nil
-    end
-    if not stageFolder then
-        stageFolder = Instance.new("Folder")
-        stageFolder.Name = stageName
-        stageFolder.Parent = root
+    local valueName = self:_metadataInstanceName(artifact)
+    local value = stageFolder:FindFirstChild(valueName)
+
+    -- Same ownership rule the UI path follows: never destroy something the
+    -- creator made. A stable name makes a collision plausible in a way the
+    -- old random id never was, so this fails the export instead of guessing.
+    if value and (not value:IsA("StringValue") or value:GetAttribute("AIStudioManaged") ~= true) then
+        error(string.format(
+            "Refusing to replace %s: an instance with that name exists and is not managed by AI Studio",
+            value:GetFullName()
+        ))
     end
 
-    local valueName = tostring(artifact.id)
-    local value = stageFolder:FindFirstChild(valueName)
-    if value and not value:IsA("StringValue") then
-        value:Destroy()
-        value = nil
-    end
     if not value then
         value = Instance.new("StringValue")
         value.Name = valueName
+        value:SetAttribute("AIStudioManaged", true)
         value.Parent = stageFolder
     end
 

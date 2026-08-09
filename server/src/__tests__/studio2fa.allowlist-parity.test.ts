@@ -294,4 +294,38 @@ describe("STUDIO-2F-A ArtifactLoader routing", () => {
   it("returns identity-bearing screen receipts", () => {
     expect(LOADER).toContain("screens = delivered");
   });
+
+  /**
+   * ARTIFACT-1. Naming a metadata instance after `artifact.id` made delivery
+   * non-idempotent, because `ArtifactStore` mints that id with `randomUUID`
+   * on every store. The stage-derived name is the stable identity.
+   */
+  it("names metadata instances by their stable artifact name", () => {
+    expect(LOADER).toContain(
+      "function ArtifactLoader:_metadataInstanceName(artifact)",
+    );
+    expect(LOADER).toContain(
+      "local valueName = self:_metadataInstanceName(artifact)",
+    );
+    // The id remains only as the fallback when a backend sends no name.
+    expect(LOADER).toContain("return tostring(artifact.id)");
+  });
+
+  it("clears instances left by the previous id-based identity", () => {
+    expect(LOADER).toContain(
+      "function ArtifactLoader:_removeLegacyIdNamedValues(stageFolder)",
+    );
+    // Narrow by construction: only a StringValue whose Name equals its own
+    // ArtifactId attribute qualifies, so hand-added instances and
+    // materialized UI trees cannot be caught.
+    expect(LOADER).toContain(
+      'local recordedId = child:GetAttribute("ArtifactId")',
+    );
+    expect(LOADER).toContain("recordedId == child.Name");
+  });
+
+  it("refuses to overwrite a metadata name it does not own", () => {
+    expect(LOADER).toContain('value:GetAttribute("AIStudioManaged") ~= true');
+    expect(LOADER).toContain('value:SetAttribute("AIStudioManaged", true)');
+  });
 });

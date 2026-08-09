@@ -1,4 +1,4 @@
-# Roblox AI Studio Plugin — v1.9
+# Roblox AI Studio Plugin — v1.10
 
 Canonical Roblox Studio plugin for importing durable generation artifacts from the Roblox AI Studio backend.
 
@@ -51,9 +51,9 @@ npm run studio:package
 The command creates ignored outputs under `dist/studio-plugin/`:
 
 ```text
-RobloxAIStudioPlugin-v1.9.0.rbxmx
-RobloxAIStudioPlugin-v1.9.0.manifest.json
-RobloxAIStudioPlugin-v1.9.0.SHA256SUMS.txt
+RobloxAIStudioPlugin-v1.10.0.rbxmx
+RobloxAIStudioPlugin-v1.10.0.manifest.json
+RobloxAIStudioPlugin-v1.10.0.SHA256SUMS.txt
 ```
 
 The `.rbxmx` model contains the active source hierarchy with `plugin.lua` represented as a `Script` and the remaining active modules represented as `ModuleScript` instances. The manifest records source and bundle SHA-256 values. Unchanged sources produce byte-identical package outputs.
@@ -121,7 +121,7 @@ ArtifactLoader materializes every artifact
     │      ReplicatedStorage/AIStudioArtifacts/UI_GENERATION/<screenName>
     │
     └─ every other artifact, and UI content without schemaVersion
-         → ReplicatedStorage/AIStudioArtifacts/<STAGE>/<artifactId> StringValue
+         → ReplicatedStorage/AIStudioArtifacts/<STAGE>/<artifactName> StringValue
     ▼
 POST /api/studio/commands/:commandId/result
     │ exact execution ID + artifact ID/hash receipts
@@ -142,6 +142,17 @@ The plugin reports `completed` only after all queued pipeline artifacts are mate
 Delivered screens are keyed by **screen name**, never by artifact id, so regenerating a project replaces its screens instead of accumulating orphaned duplicates. Each root carries `AIStudioDeliveryMode = "design-time"`: the tree lives under `ReplicatedStorage`, not `StarterGui`, so it is inspectable and editable but does not run. The imperative Lua HUD remains the canonical runtime UI.
 
 Content **without** `schemaVersion` falls back to the `StringValue` path, which is what makes this plugin safe against an older backend. Content that _claims_ a schema version must materialize or fail — it never degrades quietly, because that would let an unbuilt tree be recorded as verified.
+
+## Metadata Instance Identity (v1.10.0)
+
+Every non-Lua artifact materializes as a `StringValue` named after its **artifact name** — `requirements.json`, `gameConcept.json`, `architecture.json` and so on — inside its stage folder.
+
+It used to be named after the artifact **id**, which `ArtifactStore` mints with `randomUUID` on every store. Delivery was therefore not idempotent: regenerating a project left the previous run's instance behind, and `ReplicatedStorage/AIStudioArtifacts/<STAGE>/` grew by a full set on every export. The artifact name is derived from the stage and there is exactly one artifact per stage, so it is stable across regenerations and unique within the folder.
+
+Two consequences worth knowing:
+
+- **Instances left by the old identity are cleared on the next export.** The sweep is narrow by construction — only a `StringValue` whose `Name` equals its own `ArtifactId` attribute qualifies, which is the exact shape the old loader produced. A hand-added instance carries no such attribute, and a materialized UI tree is not a `StringValue`, so neither can be caught by it.
+- **A name collision with an instance the plugin does not own fails the export.** Now that names are stable and human-readable, a creator could plausibly create one by hand; the loader refuses to overwrite it rather than guessing, matching the ownership rule the UI path already follows.
 
 ## Script Path Mapping
 

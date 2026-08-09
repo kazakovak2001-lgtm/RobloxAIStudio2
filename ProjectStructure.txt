@@ -594,6 +594,7 @@
 │   │   │   ├── architecture.ast-import-inventory.test.ts
 │   │   │   ├── architecture.boundary-gate.test.ts
 │   │   │   ├── architecture.layer-debt-evidence.test.ts
+│   │   │   ├── artifact1.studio-identity.test.ts
 │   │   │   ├── autonomousPipelineExploration.test.ts
 │   │   │   ├── autonomousPipelineIntegration.test.ts
 │   │   │   ├── autonomousPipelinePreservation.test.ts

@@ -504,6 +504,7 @@ server/src/__tests__/agentDecisionEngine.routing.test.ts
 server/src/__tests__/architecture.ast-import-inventory.test.ts
 server/src/__tests__/architecture.boundary-gate.test.ts
 server/src/__tests__/architecture.layer-debt-evidence.test.ts
+server/src/__tests__/artifact1.studio-identity.test.ts
 server/src/__tests__/autonomousPipelineExploration.test.ts
 server/src/__tests__/autonomousPipelineIntegration.test.ts
 server/src/__tests__/autonomousPipelinePreservation.test.ts
