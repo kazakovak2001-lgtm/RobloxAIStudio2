@@ -336,6 +336,11 @@ export class LuaGeneratorAgent extends BaseAgent {
             finalRepairError instanceof Error
               ? finalRepairError.message
               : String(finalRepairError);
+          // Deterministic content of this agent's own making, substituted
+          // after the model's output failed the playability contract. It
+          // never passed through the parser, so provenance must be declared
+          // here or the execution would claim the model authored it.
+          this.markDeterministicFallback();
           result = safeRepairFallback(name, finalReason);
           assertPlayableLuaScripts(normalizeLuaScripts(result));
         }

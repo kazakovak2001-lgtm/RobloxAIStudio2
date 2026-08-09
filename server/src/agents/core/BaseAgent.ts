@@ -313,6 +313,20 @@ export abstract class BaseAgent {
     }
   }
 
+  /**
+   * Declare that this run substituted deterministic content of the agent's own
+   * making, rather than content the model authored.
+   *
+   * `generateWithRetry` is not the only route to canned output. An agent that
+   * post-validates the model's work and swaps in a safe replacement — as
+   * LuaGeneratorAgent does when generated Lua fails the playability contract —
+   * bypasses the parser entirely, so it must say so itself or the execution
+   * would be reported as AI-authored.
+   */
+  protected markDeterministicFallback(): void {
+    this._usedFallback = true;
+  }
+
   protected delay(ms: number): Promise<void> {
     return new Promise((resolve) => setTimeout(resolve, ms));
   }
