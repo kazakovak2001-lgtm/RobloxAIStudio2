@@ -13,6 +13,7 @@ export type StageName =
   | "LUA_GENERATION"
   | "UI_GENERATION"
   | "VALIDATION"
+  | "SECURITY_REVIEW"
   | "OPTIMIZATION"
   | "DOCUMENTATION"
   | "EXPORT";
@@ -36,6 +37,7 @@ export const STAGE_ORDER: StageName[] = [
   "LUA_GENERATION",
   "UI_GENERATION",
   "VALIDATION",
+  "SECURITY_REVIEW",
   "OPTIMIZATION",
   "DOCUMENTATION",
   "EXPORT",
@@ -50,6 +52,9 @@ export const STAGE_AGENT_MAP: Record<StageName, string | null> = {
   LUA_GENERATION: "lua_generator",
   UI_GENERATION: "ui_generator",
   VALIDATION: "tester",
+  // Deterministic service, not an agent: the questions it answers are
+  // structural, so a model would add cost and variance without adding truth.
+  SECURITY_REVIEW: null,
   OPTIMIZATION: "performance",
   DOCUMENTATION: "documentation",
   EXPORT: null,

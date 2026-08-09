@@ -7,6 +7,8 @@ import type { PipelineState, StageRecord } from "./PipelineStage";
 import { createPipelineState } from "./PipelineStage";
 import { PipelineContext } from "./PipelineContext";
 import { PipelineEventEmitterV2 } from "./PipelineEvents";
+import { reviewLuaSecurity } from "../../validation/luaSecurityReview";
+import { normalizeLuaScripts } from "../../types/playableLua";
 
 export type AgentExecutorFn = (
   agentId: string,
@@ -204,10 +206,35 @@ export class PipelineExecutor {
     sessionId: string,
     agentExecutor: AgentExecutorFn,
   ): Promise<Record<string, unknown>> {
+    // SECREVIEW-1. This stage has no agent because the review is a
+    // deterministic service, but it must not take the generic null-agent
+    // passthrough: that would persist `{ _passthrough: true }` under the name
+    // `securityReport.json`, producing a file that claims to be a security
+    // report and contains no review, no findings and no enforcement mode.
+    if (stage.name === "SECURITY_REVIEW") {
+      return this.reviewGeneratedLua(sessionId);
+    }
+
     if (!stage.agentId) {
       return { _stage: stage.name, _passthrough: true };
     }
     const input = this.context.getAccumulated(sessionId);
     return agentExecutor(stage.agentId, input);
+  }
+
+  /**
+   * Review whatever Lua this pipeline has produced so far.
+   *
+   * Unreviewable output yields a report over zero scripts rather than an
+   * error: the review is advisory, so it must never fail a pipeline, and
+   * `reviewedScriptCount: 0` states plainly that nothing was examined.
+   */
+  private reviewGeneratedLua(sessionId: string): Record<string, unknown> {
+    const accumulated = this.context.getAccumulated(sessionId);
+    try {
+      return { ...reviewLuaSecurity(normalizeLuaScripts(accumulated)) };
+    } catch {
+      return { ...reviewLuaSecurity([]) };
+    }
   }
 }

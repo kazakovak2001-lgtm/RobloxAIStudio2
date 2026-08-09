@@ -225,7 +225,15 @@ describe("PipelineStage", () => {
   it("has correct stage order", () => {
     expect(STAGE_ORDER[0]).toBe("REQUEST");
     expect(STAGE_ORDER[STAGE_ORDER.length - 1]).toBe("EXPORT");
-    expect(STAGE_ORDER.length).toBe(11);
+    expect(STAGE_ORDER.length).toBe(12);
+    // SECREVIEW-1 reviews generated Lua, so it must sit after the stage that
+    // produces it and before the export that ships it.
+    expect(STAGE_ORDER.indexOf("SECURITY_REVIEW")).toBeGreaterThan(
+      STAGE_ORDER.indexOf("LUA_GENERATION"),
+    );
+    expect(STAGE_ORDER.indexOf("SECURITY_REVIEW")).toBeLessThan(
+      STAGE_ORDER.indexOf("EXPORT"),
+    );
   });
 
   it("maps agents correctly", () => {
@@ -239,7 +247,7 @@ describe("PipelineStage", () => {
     const state = createPipelineState("proj-1");
     expect(state.pipelineId).toMatch(/^pipeline-/);
     expect(state.status).toBe("pending");
-    expect(state.stages.length).toBe(11);
+    expect(state.stages.length).toBe(12);
     expect(state.completedStages).toHaveLength(0);
   });
 });
