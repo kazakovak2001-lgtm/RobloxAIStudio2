@@ -12,6 +12,10 @@ import { describe, it, expect } from "vitest";
 import {
   reviewLuaSecurity,
   SECURITY_REVIEW_SCHEMA_VERSION,
+  SECURITY_ANALYSIS_MODES,
+  SECURITY_ENFORCEMENT_MODES,
+  SECURITY_REVIEW_ANALYSIS_MODE,
+  SECURITY_REVIEW_ENFORCEMENT,
 } from "../luaSecurityReview";
 import { AgentRegistry } from "../../agents/core/AgentRegistry";
 import { normalizeLuaScripts } from "../../types/playableLua";
@@ -198,6 +202,51 @@ describe("the platform's own shipped game", () => {
     expect(report.reviewedScriptCount).toBeGreaterThan(0);
     expect(report.findings).toEqual([]);
   }, 20000);
+});
+
+/**
+ * A historical report must state how it was produced and what it was allowed
+ * to do, so a later blocking regime cannot be read backwards onto records
+ * written under an advisory one.
+ */
+describe("self-describing analysis and enforcement contract", () => {
+  it("declares deterministic-pattern analysis and advisory enforcement", () => {
+    const report = server("-- nothing");
+
+    expect(report.analysisMode).toBe("deterministic-pattern");
+    expect(report.enforcement).toBe("advisory");
+  });
+
+  it("stays advisory when findings exist", () => {
+    const report = server(`
+      event.OnServerEvent:Connect(function(player, amount)
+        player.leaderstats.Coins.Value += amount
+      end)
+    `);
+
+    // Enforcement is a property of the regime, never of what was found.
+    expect(report.findings.length).toBeGreaterThan(0);
+    expect(report.enforcement).toBe("advisory");
+    expect(report.clean).toBe(false);
+  });
+
+  it("uses the declared vocabulary rather than loose strings", () => {
+    const report = server("-- nothing");
+
+    expect(SECURITY_ANALYSIS_MODES).toContain(report.analysisMode);
+    expect(SECURITY_ENFORCEMENT_MODES).toContain(report.enforcement);
+    expect(report.enforcement).toBe(SECURITY_REVIEW_ENFORCEMENT);
+    expect(report.analysisMode).toBe(SECURITY_REVIEW_ANALYSIS_MODE);
+  });
+
+  it("survives JSON serialization, which is how it is persisted and shipped", () => {
+    const report = server("-- nothing");
+    const roundTripped = JSON.parse(JSON.stringify(report));
+
+    expect(roundTripped.analysisMode).toBe("deterministic-pattern");
+    expect(roundTripped.enforcement).toBe("advisory");
+    expect(roundTripped.schemaVersion).toBe(SECURITY_REVIEW_SCHEMA_VERSION);
+  });
 });
 
 describe("analysis hygiene", () => {

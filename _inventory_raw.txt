@@ -97,6 +97,7 @@ docs/00-project-control/FRONTEND_CUTOVER.md
 docs/00-project-control/ROADMAP_STATUS.md
 docs/00-project-control/RUNTIME-PLAYTEST-1_RESULT.md
 docs/00-project-control/SECURITY-2G-E_AUTHORIZATION_MATRIX.md
+docs/00-project-control/SECURITY-REVIEW-B_PROMOTION_CRITERIA.md
 docs/00-project-control/STUDIO-1A_ARTIFACT_LINEAGE.md
 docs/00-project-control/STUDIO-1B_RUNTIME_CONSOLIDATION.md
 docs/00-project-control/STUDIO-1C_IMPORT_ACKNOWLEDGEMENT.md
@@ -526,6 +527,7 @@ server/src/__tests__/productLayer.test.ts
 server/src/__tests__/productionQuality.test.ts
 server/src/__tests__/repair-delivery.test.ts
 server/src/__tests__/saasFoundation.test.ts
+server/src/__tests__/secreview1.advisory-delivery.test.ts
 server/src/__tests__/security.test.ts
 server/src/__tests__/security2gE.agent-collaboration-scope.test.ts
 server/src/__tests__/security2gE.ai-chat-session-boundary.test.ts

@@ -28,6 +28,31 @@
  * rather than implying completeness.
  */
 
+/**
+ * How a report was produced. Recorded on the artifact so a historical report
+ * states its own provenance instead of being read under whatever regime is
+ * current when someone opens it.
+ */
+export const SECURITY_ANALYSIS_MODES = ["deterministic-pattern"] as const;
+export type SecurityAnalysisMode = (typeof SECURITY_ANALYSIS_MODES)[number];
+
+/**
+ * What a report was allowed to do when it was produced.
+ *
+ * The vocabulary names `blocking` so a future report can distinguish itself
+ * from this one, but nothing in this slice consumes that value and no code
+ * path branches on enforcement. Introducing blocking behaviour is
+ * SECURITY-REVIEW-B, gated on the criteria in
+ * `docs/00-project-control/SECURITY-REVIEW-B_PROMOTION_CRITERIA.md`.
+ */
+export const SECURITY_ENFORCEMENT_MODES = ["advisory", "blocking"] as const;
+export type SecurityEnforcement = (typeof SECURITY_ENFORCEMENT_MODES)[number];
+
+/** The only mode this reviewer emits. Findings never negate delivery. */
+export const SECURITY_REVIEW_ANALYSIS_MODE: SecurityAnalysisMode =
+  "deterministic-pattern";
+export const SECURITY_REVIEW_ENFORCEMENT: SecurityEnforcement = "advisory";
+
 export type SecurityFindingSeverity = "critical" | "high" | "medium";
 
 export interface SecurityFinding {
@@ -44,6 +69,17 @@ export interface SecurityFinding {
 
 export interface SecurityReviewReport {
   schemaVersion: number;
+  /**
+   * How this report was produced. Carried on the artifact, not just logged,
+   * so the durable record is self-describing.
+   */
+  analysisMode: SecurityAnalysisMode;
+  /**
+   * What this report was allowed to do when it was written. Always
+   * `"advisory"` here: findings did not and could not negate delivery. A
+   * later blocking regime must not be read backwards onto these records.
+   */
+  enforcement: SecurityEnforcement;
   reviewedScriptCount: number;
   findings: SecurityFinding[];
   /** True when no finding was raised. Not a claim that the game is secure. */
@@ -343,6 +379,11 @@ export function reviewLuaSecurity(
 
   return {
     schemaVersion: SECURITY_REVIEW_SCHEMA_VERSION,
+    // Constants, not computed from the findings. Enforcement is a property of
+    // the regime that produced the report, never of what it happened to find,
+    // so a report with findings is no more blocking than a clean one.
+    analysisMode: SECURITY_REVIEW_ANALYSIS_MODE,
+    enforcement: SECURITY_REVIEW_ENFORCEMENT,
     reviewedScriptCount: reviewed.length,
     findings,
     clean: findings.length === 0,
