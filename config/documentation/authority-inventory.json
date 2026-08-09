@@ -4,7 +4,7 @@
   "repository": "kazakovak2001-lgtm/RobloxAIStudio2",
   "releaseIdentity": {
     "backendBranch": "release/cutover-1e-candidate",
-    "backendCommit": "d7e444549d324df9df339ff5bda7a75a820e39e3",
+    "backendCommit": "12bd4dc6c736aa6af7b3346624152032157d5bd1",
     "frontendRepository": "kazakovak2001-lgtm/Frontend",
     "frontendCommit": "6c1458d836244f2b720f361a78c2ab13f1682f74"
   },
@@ -23,7 +23,12 @@
         "`PROVIDER-1A` | Truthful AI provider configuration and generation provenance | High | ✅ Complete — backend PR #193",
         "`PROVIDER-1A` is complete through merged backend PR #193 at `ecae9bb59f1639d2e382e7221a956aa96460b3e9`",
         "`STUDIO-2F-A` | Generated GUI materialization as real Studio instances | Medium | 🚧 Code complete, not done — backend PR #195/#196/#197 merged; runtime validation outstanding",
-        "d7e444549d324df9df339ff5bda7a75a820e39e3",
+        "`PROVIDER-1B` | Fallback provenance completeness after a provider call | High | ✅ Complete — backend PR #200",
+        "`ARTIFACT-1` | Deterministic Studio identity for delivered artifacts | Medium | ✅ Complete — backend PR #199",
+        "`SECREVIEW-1` | Advisory deterministic Luau trust-boundary review | High | ✅ Complete — backend PR #201;",
+        "`SECURITY-REVIEW-B` | Blocking security gate over a high-confidence subset | Medium | Not scoped",
+        "a security finding never negates generation, delivery or release, and a blocking gate is the separate `SECURITY-REVIEW-B` delivery",
+        "12bd4dc6c736aa6af7b3346624152032157d5bd1",
         "6c1458d836244f2b720f361a78c2ab13f1682f74"
       ],
       "forbiddenClaims": [
@@ -37,11 +42,13 @@
       "rank": 2,
       "status": "current",
       "requiredClaims": [
-        "d7e444549d324df9df339ff5bda7a75a820e39e3",
+        "12bd4dc6c736aa6af7b3346624152032157d5bd1",
         "6c1458d836244f2b720f361a78c2ab13f1682f74",
         "REPAIR-1 complete across backend and Frontend UI",
         "PROVIDER-1A completed through backend PR #193, merged `ecae9bb59f1639d2e382e7221a956aa96460b3e9`",
-        "STUDIO-2F-A code complete but not done (backend PR #195/#196/#197"
+        "STUDIO-2F-A code complete but not done (backend PR #195/#196/#197",
+        "`ARTIFACT-1`, `PROVIDER-1B` and `SECREVIEW-1` complete (backend PR #199/#200/#201",
+        "deterministic Luau trust-boundary review that never negates delivery"
       ],
       "forbiddenClaims": [
         "pending reviewed merge",
@@ -55,8 +62,9 @@
       "status": "supporting",
       "requiredClaims": [
         "DOC-202A",
-        "d7e444549d324df9df339ff5bda7a75a820e39e3",
-        "6c1458d836244f2b720f361a78c2ab13f1682f74"
+        "12bd4dc6c736aa6af7b3346624152032157d5bd1",
+        "6c1458d836244f2b720f361a78c2ab13f1682f74",
+        "ARTIFACT-1, PROVIDER-1B and SECREVIEW-1 advance the runtime pair to backend"
       ],
       "forbiddenClaims": []
     },
@@ -69,6 +77,18 @@
         "STUDIO-2F-A",
         "the imperative Lua HUD remains runtime-canonical",
         "There is no Lua test harness"
+      ],
+      "forbiddenClaims": []
+    },
+    {
+      "path": "docs/00-project-control/SECURITY-REVIEW-B_PROMOTION_CRITERIA.md",
+      "owner": "project-control",
+      "rank": 5,
+      "status": "supporting",
+      "requiredClaims": [
+        "SECURITY-REVIEW-B",
+        "a finding never negates generation, delivery or release",
+        "It must not reinterpret existing reports."
       ],
       "forbiddenClaims": []
     }
@@ -102,6 +122,14 @@
     {
       "source": "docs/00-project-control/ROADMAP_STATUS.md",
       "target": "docs/00-project-control/STUDIO-2F-A_SCOPE.md"
+    },
+    {
+      "source": "docs/00-project-control/ROADMAP_STATUS.md",
+      "target": "docs/00-project-control/SECURITY-REVIEW-B_PROMOTION_CRITERIA.md"
+    },
+    {
+      "source": "docs/00-project-control/DOC-202A_ROADMAP_AUTHORITY_RECONCILIATION.md",
+      "target": "docs/00-project-control/SECURITY-REVIEW-B_PROMOTION_CRITERIA.md"
     }
   ]
 }

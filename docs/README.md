@@ -29,7 +29,7 @@ The old embedded root `src/` frontend is removed and protected by a permanent in
 
 ## Active paired release
 
-- Backend runtime: `release/cutover-1e-candidate@d7e444549d324df9df339ff5bda7a75a820e39e3`.
+- Backend runtime: `release/cutover-1e-candidate@12bd4dc6c736aa6af7b3346624152032157d5bd1`.
 - Frontend runtime contents: `kazakovak2001-lgtm/Frontend@6c1458d836244f2b720f361a78c2ab13f1682f74`.
 - Pairing authority: protected Frontend Production Contract, Composed HTTPS Release, promoted-baseline integrity, and Merge Gate evidence.
 - No external production deployment is claimed by repository release evidence alone.
@@ -45,6 +45,9 @@ The old embedded root `src/` frontend is removed and protected by a permanent in
 - `DURABILITY-2E`: complete through DATA-201 and DATA-202; issue #135 is closed.
 - `SECURITY-2G`, `DOC-202`, `ROADMAP-AUDIT-1`, `STUDIO-ACCEPT-1`, and `RUNTIME-PLAYTEST-1`: complete.
 - `REPAIR-1`: complete — backend 1A (real single-strategy repair), 1B (Studio redelivery), and 1C (delivery/rollback audit), plus the Frontend Integrate-stage repair panel that surfaces them (Frontend PR #40).
+- `PROVIDER-1A` and `PROVIDER-1B`: complete — backend PR #193 and #200. An execution now records which provider and model produced it, and every route that substitutes deterministic canned content declares itself, so an execution is reported as AI-authored only when a model authored all of it.
+- `ARTIFACT-1`: complete — backend PR #199. Delivered metadata artifacts have a stable Studio identity, so re-exporting a project replaces the previous instance instead of accumulating one per run.
+- `SECREVIEW-1`: complete — backend PR #201. Deterministic trust-boundary review of generated Luau, recorded as a durable `SECURITY_REVIEW` artifact. It is advisory: a finding never negates generation, delivery or release, and a blocking gate is the separate `SECURITY-REVIEW-B` delivery, gated on seven [documented criteria](./00-project-control/SECURITY-REVIEW-B_PROMOTION_CRITERIA.md).
 - `STUDIO-2F`: decomposed into `STUDIO-2F-A`…`STUDIO-2F-E`. No unsatisfied control gate remains. `STUDIO-2F-A` (generated GUI materialization) is code complete through backend PR #195/#196/#197 but not done — runtime validation is outstanding, so it does not yet satisfy the dependency for the rest, which are named for ordering only.
 - `AUTONOMY-3A`: deferred and unscoped.
 
