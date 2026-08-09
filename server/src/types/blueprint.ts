@@ -232,6 +232,18 @@ export interface GenerationExecution {
   ai_provider?: string;
   /** Resolved model name, e.g. "qwen2.5-coder:7b". */
   ai_model?: string;
+  /**
+   * Pipeline definition this execution ran, e.g. `"game-generation"`.
+   *
+   * `undefined` on executions recorded before PIPELINE-1A. Their pipeline
+   * shape is genuinely unknown and must not be assumed to be the current one.
+   */
+  pipeline_definition?: string;
+  /**
+   * Version of that definition. Together with `pipeline_definition` this is
+   * what ties an artifact set to the exact set of stages that produced it.
+   */
+  pipeline_version?: number;
 }
 
 export type CreateBlueprintInput = Omit<

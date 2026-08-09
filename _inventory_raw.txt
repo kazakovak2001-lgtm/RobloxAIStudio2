@@ -520,6 +520,7 @@ server/src/__tests__/identityAccess.test.ts
 server/src/__tests__/integration.test.ts
 server/src/__tests__/performance.test.ts
 server/src/__tests__/persistence.test.ts
+server/src/__tests__/pipeline1a.plan-definition.test.ts
 server/src/__tests__/platform.test.ts
 server/src/__tests__/pluginProtocol.test.ts
 server/src/__tests__/preservationProperty.test.ts
@@ -981,6 +982,7 @@ server/src/planning/PlanningRegistry.ts
 server/src/planning/PlanningRules.ts
 server/src/planning/PlanningTypes.ts
 server/src/planning/core/PlannerEngine.ts
+server/src/planning/core/pipelineDefinition.ts
 server/src/planning/execution/PlanExecutor.test.ts
 server/src/planning/execution/PlanExecutor.ts
 server/src/planning/model/TaskGraph.ts

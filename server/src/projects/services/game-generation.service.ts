@@ -138,6 +138,15 @@ export class GameGenerationService {
     setImmediate(
       () =>
         void this.executionQueue.add(async () => {
+          // Held outside the try so a run that fails after planning still
+          // records which pipeline it was running. It stays empty only when
+          // planning itself never produced a plan, where the shape genuinely
+          // is unknown.
+          let pipelineProvenance: Pick<
+            GenerationExecution,
+            "pipeline_definition" | "pipeline_version"
+          > = {};
+
           try {
             const gameDesignSeed = generateGameDesignSeed({
               blueprint,
@@ -169,6 +178,11 @@ export class GameGenerationService {
               context: { blueprint: enrichedBlueprint, gameDesignSeed },
             });
 
+            pipelineProvenance = {
+              pipeline_definition: plan.definitionId,
+              pipeline_version: plan.definitionVersion,
+            };
+
             const result = await executor.executePlan(
               execution.id,
               plan.graph,
@@ -197,6 +211,9 @@ export class GameGenerationService {
               started_at: execution.started_at,
               completed_at: new Date(),
               duration_ms: node.durationMs,
+              // Carries both a failure message and the reason a node never
+              // ran, so a partial pipeline says why rather than just how far.
+              ...(node.error ? { error: node.error } : {}),
               evaluation: node.evaluation
                 ? {
                     qualityScore: node.evaluation.quality,
@@ -214,6 +231,7 @@ export class GameGenerationService {
               completed_at: new Date(),
               pipeline_steps: pipelineSteps,
               total_duration_ms: result.totalDurationMs,
+              ...pipelineProvenance,
               ...this.resolveProvenance(result.graph.getAllNodes()),
             });
           } catch (err) {
@@ -227,6 +245,7 @@ export class GameGenerationService {
               error_message:
                 err instanceof Error ? err.message : "Unknown pipeline error",
               total_duration_ms: Date.now() - execution.started_at.getTime(),
+              ...pipelineProvenance,
               // Provider identity only. ai_mode stays unset: a failed run
               // produced no artifacts, so its provenance is genuinely unknown.
               ...(this.providerInfo.provider

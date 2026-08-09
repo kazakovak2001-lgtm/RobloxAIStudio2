@@ -7,6 +7,12 @@
  */
 
 import { TaskGraph, type TaskNode } from "../model/TaskGraph";
+import {
+  GAME_GENERATION_PIPELINE,
+  selectPipelineNodes,
+  type PipelineDefinition,
+  type PipelinePlanIssue,
+} from "./pipelineDefinition";
 
 export interface PlanGoal {
   intent: string;
@@ -22,33 +28,45 @@ export interface DecomposedPlan {
   graph: TaskGraph;
   createdAt: Date;
   estimatedSteps: number;
+  /** Pipeline definition this plan was built from. */
+  definitionId: string;
+  /** Version of that definition, recorded on the execution. */
+  definitionVersion: number;
 }
 
-/** Default agent pipeline for game generation goals. */
-const DEFAULT_DECOMPOSITION: Array<{
-  agent: string;
-  type: string;
-  deps: string[];
-}> = [
-  { agent: "requirements", type: "analysis", deps: [] },
-  { agent: "planner", type: "planning", deps: ["requirements"] },
-  { agent: "game_designer", type: "design", deps: ["planner"] },
-  { agent: "roblox_architect", type: "architecture", deps: ["game_designer"] },
-  { agent: "lua_generator", type: "generation", deps: ["roblox_architect"] },
-  { agent: "ui_generator", type: "generation", deps: ["game_designer"] },
-  { agent: "asset_planner", type: "generation", deps: ["game_designer"] },
-  {
-    agent: "orchestrator",
-    type: "synthesis",
-    deps: ["lua_generator", "ui_generator", "asset_planner"],
-  },
-];
+/**
+ * A requested plan that cannot be executed.
+ *
+ * Carries the structured issues so a route can answer with what was wrong
+ * instead of a generic failure. `issues` never contains request content
+ * beyond the agent names the caller itself supplied.
+ */
+export class PlanValidationError extends Error {
+  readonly issues: readonly PipelinePlanIssue[];
+
+  constructor(issues: readonly PipelinePlanIssue[]) {
+    super(
+      `Plan is not executable: ${issues.map((issue) => issue.message).join("; ")}`,
+    );
+    this.name = "PlanValidationError";
+    this.issues = issues;
+  }
+}
 
 export class PlannerEngine {
   private planCounter = 0;
+  private readonly definition: PipelineDefinition;
+
+  constructor(definition: PipelineDefinition = GAME_GENERATION_PIPELINE) {
+    this.definition = definition;
+  }
 
   /**
    * Create a full execution plan from a high-level goal.
+   *
+   * Fails closed: a goal that selects a set of agents which cannot run as a
+   * graph raises `PlanValidationError` rather than returning a plan whose
+   * nodes could never become ready.
    */
   createPlan(goal: PlanGoal): DecomposedPlan {
     this.planCounter++;
@@ -70,22 +88,29 @@ export class PlannerEngine {
       graph,
       createdAt: new Date(),
       estimatedSteps: tasks.length,
+      definitionId: this.definition.id,
+      definitionVersion: this.definition.version,
     };
   }
 
   /**
    * Decompose a goal into individual task nodes.
+   *
+   * `goal.requiredAgents` is a *request*, not an instruction. It may only
+   * narrow the pipeline the server defines: a name outside the definition is
+   * rejected instead of becoming an ad-hoc node, and a selection that drops a
+   * dependency is rejected instead of producing an unreachable one.
    */
   decomposeGoal(goal: PlanGoal): TaskNode[] {
     const nodes: TaskNode[] = [];
 
-    // Use required agents if specified, otherwise default pipeline
-    const steps = goal.requiredAgents
-      ? goal.requiredAgents.map((agent) => {
-          const def = DEFAULT_DECOMPOSITION.find((d) => d.agent === agent);
-          return def ?? { agent, type: "custom", deps: [] };
-        })
-      : DEFAULT_DECOMPOSITION;
+    const { nodes: steps, issues } = selectPipelineNodes(
+      this.definition,
+      goal.requiredAgents,
+    );
+    if (issues.length > 0) {
+      throw new PlanValidationError(issues);
+    }
 
     for (const step of steps) {
       nodes.push({

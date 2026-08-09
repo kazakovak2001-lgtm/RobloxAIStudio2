@@ -5,7 +5,11 @@
  */
 
 import { Router } from "express";
-import { PlannerEngine, type PlanGoal } from "../planning/core/PlannerEngine";
+import {
+  PlannerEngine,
+  PlanValidationError,
+  type PlanGoal,
+} from "../planning/core/PlannerEngine";
 import {
   PlanExecutor,
   type ExecutionOptions,
@@ -81,6 +85,17 @@ export function createPlanningRouter(
         },
       });
     } catch (error) {
+      // A rejected agent selection is the caller's request being unbuildable,
+      // not a server fault. Answer with what was wrong: the issue messages
+      // name only agents the caller supplied and the pipeline's own agents.
+      if (error instanceof PlanValidationError) {
+        res.status(400).json({
+          success: false,
+          error: "Requested plan is not executable",
+          issues: error.issues,
+        });
+        return;
+      }
       res.status(500).json({ success: false, error: "Plan creation failed" });
     }
   });
