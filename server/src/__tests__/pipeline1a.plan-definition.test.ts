@@ -115,6 +115,47 @@ describe("PIPELINE-1A pipeline definition", () => {
     expect(cycles.map((issue) => issue.agent).sort()).toEqual(["a", "b"]);
   });
 
+  it("reports every member of two cycles that share a node", () => {
+    // A back-edge walk finds the cycle through `b`, leaves `d` visited, and
+    // then stops at `d` when it walks in through `c` — never noticing that
+    // c → d → a → c puts `c` on a cycle too.
+    const overlapping: PipelineDefinition = {
+      id: "overlapping",
+      version: 1,
+      nodes: [
+        { agent: "a", type: "analysis", deps: ["b", "c"] },
+        { agent: "b", type: "generation", deps: ["d"] },
+        { agent: "c", type: "generation", deps: ["d"] },
+        { agent: "d", type: "synthesis", deps: ["a"] },
+      ],
+    };
+
+    const cycles = validatePipelineDefinition(overlapping).filter(
+      (issue) => issue.code === "cycle",
+    );
+
+    expect(cycles.map((issue) => issue.agent).sort()).toEqual([
+      "a",
+      "b",
+      "c",
+      "d",
+    ]);
+  });
+
+  it("reports an agent that depends on itself", () => {
+    const selfDependent: PipelineDefinition = {
+      id: "self",
+      version: 1,
+      nodes: [{ agent: "loop", type: "generation", deps: ["loop"] }],
+    };
+
+    expect(
+      validatePipelineDefinition(selfDependent).filter(
+        (issue) => issue.code === "cycle",
+      ),
+    ).toEqual([expect.objectContaining({ code: "cycle", agent: "loop" })]);
+  });
+
   it("orders a selection by the definition, not by the request", () => {
     const requested = ["orchestrator", "requirements", "planner"];
     const reversed = [...requested].reverse();
@@ -310,6 +351,34 @@ describe("PIPELINE-1A plan route answers a bad selection with 400", () => {
   });
 });
 
+/**
+ * Drive one generation to a terminal state and return the durable record. The
+ * service runs the pipeline on a detached queue, so poll rather than assuming
+ * completion is synchronous.
+ */
+async function runGeneration(registry: AgentRegistry) {
+  const service = new GameGenerationService(
+    new InMemoryBlueprintRepository(),
+    new BlueprintCache(),
+    new StreamingUpdateHandler(),
+    new PipelineEventEmitter(),
+    null,
+    registry,
+    new ArtifactStore(),
+  );
+
+  await service.createBlueprint(USER_ID, PROJECT_ID, blueprintInput());
+  const started = await service.startGeneration(PROJECT_ID, USER_ID);
+
+  for (let attempt = 0; attempt < 200; attempt++) {
+    const current = await service.getExecution(started.id);
+    if (current && current.status !== "running") return current;
+    await new Promise((resolve) => setTimeout(resolve, 25));
+  }
+
+  throw new Error("Generation did not reach a terminal state in time");
+}
+
 describe("PIPELINE-1A executor reports only work that happened", () => {
   it("does not count an agent that never ran as a completed node", async () => {
     // Regression. `AgentRegistry.executeAgent` answers `{_skipped: true}` for
@@ -371,31 +440,24 @@ describe("PIPELINE-1A executor reports only work that happened", () => {
     // No LLM is wired, so every agent uses its deterministic fallback. That is
     // irrelevant here: which pipeline ran is a property of the plan, not of
     // who authored the content, and PROVIDER-1B already covers authorship.
-    const repository = new InMemoryBlueprintRepository();
-    const service = new GameGenerationService(
-      repository,
-      new BlueprintCache(),
-      new StreamingUpdateHandler(),
-      new PipelineEventEmitter(),
-      null,
-      new AgentRegistry(),
-      new ArtifactStore(),
-    );
-
-    await service.createBlueprint(USER_ID, PROJECT_ID, blueprintInput());
-    const started = await service.startGeneration(PROJECT_ID, USER_ID);
-
-    let execution = await service.getExecution(started.id);
-    for (
-      let attempt = 0;
-      attempt < 200 && execution?.status === "running";
-      attempt++
-    ) {
-      await new Promise((resolve) => setTimeout(resolve, 25));
-      execution = await service.getExecution(started.id);
-    }
+    const execution = await runGeneration(new AgentRegistry());
 
     expect(execution?.status).toBe("completed");
+    expect(execution?.pipeline_definition).toBe(GAME_GENERATION_PIPELINE.id);
+    expect(execution?.pipeline_version).toBe(GAME_GENERATION_PIPELINE.version);
+  }, 20000);
+
+  it("still records the pipeline when the run fails after planning", async () => {
+    // Every agent answers with something the Lua stage cannot accept, so the
+    // artifact recorder throws and the run lands on the failure path. Which
+    // pipeline it was running is known by then and must not be dropped.
+    const registry = {
+      executeAgent: async () => ({ ok: true }),
+    } as unknown as AgentRegistry;
+
+    const execution = await runGeneration(registry);
+
+    expect(execution?.status).toBe("failed");
     expect(execution?.pipeline_definition).toBe(GAME_GENERATION_PIPELINE.id);
     expect(execution?.pipeline_version).toBe(GAME_GENERATION_PIPELINE.version);
   }, 20000);

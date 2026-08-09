@@ -227,53 +227,100 @@ export function selectPipelineNodes(
 /**
  * Return every agent that sits on a dependency cycle.
  *
- * Iterative depth-first search with an explicit stack: a definition is
- * operator-authored data and a cycle is exactly the case where a recursive
- * walk would be least welcome.
+ * Strongly connected components, by Tarjan's algorithm, run iteratively — a
+ * definition is operator-authored data and a cycle is exactly the case where a
+ * recursive walk would be least welcome.
+ *
+ * A back-edge walk is not enough here, and the difference is not academic:
+ * with `A → [B, C]`, `B → D`, `C → D`, `D → A`, the branch through `B` finds
+ * the cycle and leaves `D` visited, so the later branch through `C` walks into
+ * `D`, sees it already visited, and stops — never noticing that
+ * `C → D → A → C` puts `C` on a cycle too. The plan is rejected either way,
+ * but an operator is told to fix a subset of the real edges. An SCC has no
+ * such blind spot: every member of a component larger than one node, and any
+ * node depending on itself, is on a cycle.
  */
 function findCycleMembers(
   nodes: readonly PipelineNodeDefinition[],
 ): readonly string[] {
   const edges = new Map(nodes.map((node) => [node.agent, node.deps]));
-  const visited = new Set<string>();
-  const onStack = new Set<string>();
+  const index = new Map<string, number>();
+  const lowlink = new Map<string, number>();
+  const componentStack: string[] = [];
+  const onComponentStack = new Set<string>();
   const members = new Set<string>();
+  let counter = 0;
+
+  const open = (agent: string): void => {
+    index.set(agent, counter);
+    lowlink.set(agent, counter);
+    counter += 1;
+    componentStack.push(agent);
+    onComponentStack.add(agent);
+  };
 
   for (const start of edges.keys()) {
-    if (visited.has(start)) continue;
+    if (index.has(start)) continue;
 
-    const stack: Array<{ agent: string; nextIndex: number }> = [
+    open(start);
+    const work: Array<{ agent: string; nextIndex: number }> = [
       { agent: start, nextIndex: 0 },
     ];
-    visited.add(start);
-    onStack.add(start);
 
-    while (stack.length > 0) {
-      const frame = stack[stack.length - 1];
+    while (work.length > 0) {
+      const frame = work[work.length - 1];
       const deps = edges.get(frame.agent) ?? [];
 
-      if (frame.nextIndex >= deps.length) {
-        onStack.delete(frame.agent);
-        stack.pop();
+      if (frame.nextIndex < deps.length) {
+        const next = deps[frame.nextIndex];
+        frame.nextIndex += 1;
+
+        // A dependency on an agent the definition does not declare is
+        // reported separately as `unknown-dependency`; it is not an edge.
+        if (!edges.has(next)) continue;
+
+        if (!index.has(next)) {
+          open(next);
+          work.push({ agent: next, nextIndex: 0 });
+        } else if (onComponentStack.has(next)) {
+          lowlink.set(
+            frame.agent,
+            Math.min(lowlink.get(frame.agent) ?? 0, index.get(next) ?? 0),
+          );
+        }
         continue;
       }
 
-      const next = deps[frame.nextIndex];
-      frame.nextIndex += 1;
-
-      if (onStack.has(next)) {
-        // Only the suffix of the stack from `next` onwards is on the cycle.
-        // Nodes that merely lead into it are not members and reporting them
-        // would send an operator to the wrong edge.
-        const start = stack.findIndex((entry) => entry.agent === next);
-        for (const entry of stack.slice(start)) members.add(entry.agent);
-        continue;
+      work.pop();
+      const parent = work[work.length - 1];
+      if (parent) {
+        lowlink.set(
+          parent.agent,
+          Math.min(
+            lowlink.get(parent.agent) ?? 0,
+            lowlink.get(frame.agent) ?? 0,
+          ),
+        );
       }
-      if (visited.has(next) || !edges.has(next)) continue;
 
-      visited.add(next);
-      onStack.add(next);
-      stack.push({ agent: next, nextIndex: 0 });
+      if (lowlink.get(frame.agent) !== index.get(frame.agent)) continue;
+
+      const component: string[] = [];
+      let popped: string | undefined;
+      do {
+        popped = componentStack.pop();
+        if (popped === undefined) break;
+        onComponentStack.delete(popped);
+        component.push(popped);
+      } while (popped !== frame.agent);
+
+      const selfDependent =
+        component.length === 1 &&
+        (edges.get(component[0]) ?? []).includes(component[0]);
+
+      if (component.length > 1 || selfDependent) {
+        for (const agent of component) members.add(agent);
+      }
     }
   }
 

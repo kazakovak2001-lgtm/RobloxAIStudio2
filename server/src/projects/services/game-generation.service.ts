@@ -138,6 +138,15 @@ export class GameGenerationService {
     setImmediate(
       () =>
         void this.executionQueue.add(async () => {
+          // Held outside the try so a run that fails after planning still
+          // records which pipeline it was running. It stays empty only when
+          // planning itself never produced a plan, where the shape genuinely
+          // is unknown.
+          let pipelineProvenance: Pick<
+            GenerationExecution,
+            "pipeline_definition" | "pipeline_version"
+          > = {};
+
           try {
             const gameDesignSeed = generateGameDesignSeed({
               blueprint,
@@ -168,6 +177,11 @@ export class GameGenerationService {
               projectId: enrichedBlueprint.project_id,
               context: { blueprint: enrichedBlueprint, gameDesignSeed },
             });
+
+            pipelineProvenance = {
+              pipeline_definition: plan.definitionId,
+              pipeline_version: plan.definitionVersion,
+            };
 
             const result = await executor.executePlan(
               execution.id,
@@ -217,8 +231,7 @@ export class GameGenerationService {
               completed_at: new Date(),
               pipeline_steps: pipelineSteps,
               total_duration_ms: result.totalDurationMs,
-              pipeline_definition: plan.definitionId,
-              pipeline_version: plan.definitionVersion,
+              ...pipelineProvenance,
               ...this.resolveProvenance(result.graph.getAllNodes()),
             });
           } catch (err) {
@@ -232,6 +245,7 @@ export class GameGenerationService {
               error_message:
                 err instanceof Error ? err.message : "Unknown pipeline error",
               total_duration_ms: Date.now() - execution.started_at.getTime(),
+              ...pipelineProvenance,
               // Provider identity only. ai_mode stays unset: a failed run
               // produced no artifacts, so its provenance is genuinely unknown.
               ...(this.providerInfo.provider
