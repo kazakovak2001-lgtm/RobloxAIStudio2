@@ -221,11 +221,20 @@ The DOC-202A validator must reject:
 
 ARTIFACT-1, PROVIDER-1B and SECREVIEW-1 advance the runtime pair to backend
 `12bd4dc6c736aa6af7b3346624152032157d5bd1` and Frontend
-`6c1458d836244f2b720f361a78c2ab13f1682f74`, across backend pull requests #199,
-#200 and #201. All three are executable changes, so the pair moves; the
+`6c1458d836244f2b720f361a78c2ab13f1682f74`, across backend pull requests `#199`,
+`#200` and `#201`. All three are executable changes, so the pair moves; the
 Frontend identity is unchanged. They are reconciled together rather than one at
 a time, for the same reason STUDIO-2F-A was: a pin can only name a merge commit
 that already exists.
+
+A merged pull request is not by itself a completed phase. PROVIDER-1B and
+SECREVIEW-1 are backend TypeScript with executing tests and are complete.
+ARTIFACT-1 is recorded as code complete but not done, on the same standard
+STUDIO-2F-A is held to: its change is plugin Lua, the repository has no Lua test
+harness, and no Studio-attached run has confirmed that a real re-export replaces
+the previous instance without destroying creator content. The runtime pair
+advances either way, because the pair records what is merged, not what is
+accepted.
 
 One of the three carries a standing policy decision that must not be eroded by
 a later editor. **SECREVIEW-1 is advisory by explicit decision, not by

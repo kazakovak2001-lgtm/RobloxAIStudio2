@@ -24,7 +24,7 @@
         "`PROVIDER-1A` is complete through merged backend PR #193 at `ecae9bb59f1639d2e382e7221a956aa96460b3e9`",
         "`STUDIO-2F-A` | Generated GUI materialization as real Studio instances | Medium | 🚧 Code complete, not done — backend PR #195/#196/#197 merged; runtime validation outstanding",
         "`PROVIDER-1B` | Fallback provenance completeness after a provider call | High | ✅ Complete — backend PR #200",
-        "`ARTIFACT-1` | Deterministic Studio identity for delivered artifacts | Medium | ✅ Complete — backend PR #199",
+        "`ARTIFACT-1` | Deterministic Studio identity for delivered artifacts | Medium | 🚧 Code complete, not done — backend PR #199 merged",
         "`SECREVIEW-1` | Advisory deterministic Luau trust-boundary review | High | ✅ Complete — backend PR #201;",
         "`SECURITY-REVIEW-B` | Blocking security gate over a high-confidence subset | Medium | Not scoped",
         "a security finding never negates generation, delivery or release, and a blocking gate is the separate `SECURITY-REVIEW-B` delivery",
@@ -47,7 +47,8 @@
         "REPAIR-1 complete across backend and Frontend UI",
         "PROVIDER-1A completed through backend PR #193, merged `ecae9bb59f1639d2e382e7221a956aa96460b3e9`",
         "STUDIO-2F-A code complete but not done (backend PR #195/#196/#197",
-        "`ARTIFACT-1`, `PROVIDER-1B` and `SECREVIEW-1` complete (backend PR #199/#200/#201",
+        "`PROVIDER-1B` and `SECREVIEW-1` complete (backend PR #200/#201",
+        "`ARTIFACT-1` code complete but not done (backend PR #199",
         "deterministic Luau trust-boundary review that never negates delivery"
       ],
       "forbiddenClaims": [
@@ -88,7 +89,15 @@
       "requiredClaims": [
         "SECURITY-REVIEW-B",
         "a finding never negates generation, delivery or release",
-        "It must not reinterpret existing reports."
+        "It must not reinterpret existing reports.",
+        "It may begin only when every item below is satisfied and evidenced",
+        "Behaviour on synthetic fixtures says nothing about model output in the field",
+        "A gate whose error rate is unknown cannot have its cost weighed against its benefit",
+        "Blocking on rules with known holes trades real availability for illusory assurance",
+        "Blocking on an unclassified finding set means blocking on everything",
+        "The blocking set must be enumerable and defensible",
+        "A gate with no escape hatch becomes a reason to disable the gate",
+        "The policy is itself a control and must be verifiable like every other one"
       ],
       "forbiddenClaims": []
     }
