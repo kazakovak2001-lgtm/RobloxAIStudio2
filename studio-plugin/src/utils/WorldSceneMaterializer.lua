@@ -342,6 +342,12 @@ function WorldSceneMaterializer.validate(scene)
             if type(entity.node) ~= "table" then
                 return false, entityLabel .. " requires a node"
             end
+            -- Checked before the duplicate test below, which would otherwise
+            -- index a table with nil and raise an internal error in place of
+            -- this message.
+            if not isValidInstanceName(entity.node.name) then
+                return false, entityLabel .. " requires a valid instance name"
+            end
             if seenNamesInZone[entity.node.name] then
                 return false, string.format("%s has duplicate entity name %s", zone.zoneName, tostring(entity.node.name))
             end
@@ -492,7 +498,13 @@ function WorldSceneMaterializer.materialize(scene, stageFolder)
         for _, entry in ipairs(built) do
             local existing = stageFolder:FindFirstChild(entry.zoneName)
             if existing then
-                preserveUnmanagedContent(existing, entry.root)
+                -- Rescued into the STAGE FOLDER, never into the replacement
+                -- root. A throw between the rescue and the attach would leave
+                -- that root unattached, and the rollback below destroys
+                -- unattached roots — taking the creator's work with them.
+                -- The stage folder is already in the DataModel, so content
+                -- moved there survives any outcome.
+                preserveUnmanagedContent(existing, stageFolder)
                 existing:Destroy()
             end
             entry.root.Parent = stageFolder

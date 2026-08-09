@@ -6,8 +6,12 @@ import { verifyWorldEntityReceipt } from "../studio/v2/StudioRuntime";
 import { buildWorldModel } from "../validation/worldModel";
 import { buildWorldScene } from "../validation/worldSceneBuilder";
 import {
+  carriesMaterializableWorldScene,
   expectedWorldInstancePath,
+  isValidWorldInstanceName,
+  MAX_WORLD_ATTRIBUTE_LENGTH,
   validateWorldScene,
+  worldEntityNodeName,
   WORLD_SCENE_STAGE,
 } from "../validation/worldSceneContract";
 import { GenerationArtifactRecorder } from "../studio/artifacts/GenerationArtifactRecorder";
@@ -279,6 +283,43 @@ describe("WORLD-1B scene validation happens before any mutation", () => {
     );
   });
 
+  it("rejects an attribute longer than the plugin will accept", () => {
+    // Relation attributes are joined from the model, so their length grows
+    // with it. Without the same bound on both sides, a large model passes
+    // here and fails the whole export inside Studio.
+    const scene = buildWorldScene(buildWorldModel(sources()));
+    const zones = structuredClone(scene.zones) as Array<{
+      entities: Array<{ node: { attributes: Record<string, unknown> } }>;
+    }>;
+    zones[0].entities[0].node.attributes.AIStudioWorldRelations = {
+      kind: "string",
+      value: "x".repeat(MAX_WORLD_ATTRIBUTE_LENGTH + 1),
+    };
+
+    expect(validateWorldScene({ ...scene, zones }).join(" ")).toMatch(
+      /at most 1024 characters/,
+    );
+  });
+
+  it("does not narrow a scene whose zones are not an array", () => {
+    // Artifact content can be edited through SYNC_REQUEST after an export is
+    // queued, so the guard must not let malformed zones reach an iteration
+    // inside the report handler.
+    const model = buildWorldModel(sources());
+    expect(
+      carriesMaterializableWorldScene({
+        ...model,
+        scene: { sceneVersion: 1, modelSchemaVersion: 1, zones: "nope" },
+      }),
+    ).toBe(false);
+  });
+
+  it("keeps a prefixed entity name inside the length limit", () => {
+    const name = worldEntityNodeName(`-${"a".repeat(80)}`);
+    expect(name.length).toBeLessThanOrEqual(50);
+    expect(isValidWorldInstanceName(name)).toBe(true);
+  });
+
   it("rejects the same semantic entity appearing twice", () => {
     const scene = buildWorldScene(buildWorldModel(sources()));
     const zones = structuredClone(scene.zones) as Array<{
@@ -289,6 +330,54 @@ describe("WORLD-1B scene validation happens before any mutation", () => {
     expect(validateWorldScene({ ...scene, zones }).join(" ")).toMatch(
       /duplicate entityId/,
     );
+  });
+});
+
+describe("WORLD-1B delivery path is actually wired", () => {
+  /**
+   * Every one of these was a real defect at first review. The materializer,
+   * the routing predicate and the receipt shape all existed, and none of them
+   * was reachable: the loader never dispatched, the sync manager dropped the
+   * receipt, and the packager omitted the module. Contract tests passed
+   * throughout, because they tested the parts rather than the path.
+   */
+
+  const LOADER = readFileSync(
+    join(process.cwd(), "studio-plugin/src/utils/ArtifactLoader.lua"),
+    "utf8",
+  );
+  const SYNC_MANAGER = readFileSync(
+    join(process.cwd(), "studio-plugin/src/services/SyncManager.lua"),
+    "utf8",
+  );
+  const PACKAGER = readFileSync(
+    join(process.cwd(), "scripts/package-studio-plugin.ts"),
+    "utf8",
+  );
+
+  it("dispatches a scene-carrying artifact to the world loader", () => {
+    const dispatch = LOADER.slice(
+      LOADER.indexOf("function ArtifactLoader:loadArtifact"),
+      LOADER.indexOf("function ArtifactLoader:_loadLuaArtifact"),
+    );
+
+    expect(dispatch).toContain("self:_carriesWorldScene(artifact.content)");
+    expect(dispatch).toContain("self:_loadWorldSceneArtifact(artifact)");
+    // Before the metadata fallback, or a scene would become a StringValue.
+    expect(dispatch.indexOf("_loadWorldSceneArtifact")).toBeLessThan(
+      dispatch.indexOf("_loadMetadataArtifact"),
+    );
+  });
+
+  it("forwards the entity receipt from the loader to the report", () => {
+    expect(SYNC_MANAGER).toContain("worldEntities = loaded.worldEntities");
+  });
+
+  it("packages the module the loader requires", () => {
+    // A missing sibling makes `require` fail before the plugin can process
+    // any export at all.
+    expect(LOADER).toContain("require(script.Parent.WorldSceneMaterializer)");
+    expect(PACKAGER).toContain("src/utils/WorldSceneMaterializer.lua");
   });
 });
 
@@ -327,11 +416,28 @@ describe("WORLD-1B plugin-side guarantees", () => {
     expect(MATERIALIZER).toContain("not deliveredZones[child.Name]");
   });
 
-  it("rescues creator content at any depth before replacing", () => {
+  it("rescues creator content at any depth, into a container that survives rollback", () => {
+    // Rescuing into the replacement root would put the creator's work inside
+    // an instance the rollback destroys when the attach throws before it is
+    // parented. The stage folder is already in the DataModel.
     expect(MATERIALIZER).toContain("collectUnmanagedDescendants");
     expect(MATERIALIZER).toContain(
+      "preserveUnmanagedContent(existing, stageFolder)",
+    );
+    expect(MATERIALIZER).not.toContain(
       "preserveUnmanagedContent(existing, entry.root)",
     );
+  });
+
+  it("validates an entity name before using it as a table key", () => {
+    const validate = MATERIALIZER.slice(
+      MATERIALIZER.indexOf("function WorldSceneMaterializer.validate"),
+    );
+    const nameCheck = validate.indexOf("isValidInstanceName(entity.node.name)");
+    const keyUse = validate.indexOf("seenNamesInZone[entity.node.name]");
+
+    expect(nameCheck).toBeGreaterThan(-1);
+    expect(nameCheck).toBeLessThan(keyUse);
   });
 });
 

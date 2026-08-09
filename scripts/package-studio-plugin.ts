@@ -67,6 +67,10 @@ export const ACTIVE_PLUGIN_SOURCES: readonly PluginSourceDefinition[] = [
     sourcePath: "src/utils/UITreeMaterializer.lua",
     className: "ModuleScript",
   },
+  {
+    sourcePath: "src/utils/WorldSceneMaterializer.lua",
+    className: "ModuleScript",
+  },
   { sourcePath: "src/utils/ErrorReporter.lua", className: "ModuleScript" },
 ] as const;
 

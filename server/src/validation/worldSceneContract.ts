@@ -34,6 +34,9 @@ export const MAX_WORLD_SCENE_DEPTH = 6;
 export const MAX_WORLD_SCENE_NODES = 400;
 export const MAX_WORLD_INSTANCE_NAME_LENGTH = 50;
 
+/** Longest string an allowlisted attribute may carry. Mirrored in the plugin. */
+export const MAX_WORLD_ATTRIBUTE_LENGTH = 1024;
+
 /** Largest integer a Roblox 32-bit integer property accepts. */
 export const MAX_WORLD_SAFE_INT = 2_147_483_647;
 
@@ -170,10 +173,14 @@ export function expectedWorldInstancePath(
  * `service-spawnservice` from the claim, not from a counter or a random id.
  */
 export function worldEntityNodeName(entityId: string): string {
-  const cleaned = entityId
-    .replace(/[^A-Za-z0-9_ -]/g, "-")
-    .slice(0, MAX_WORLD_INSTANCE_NAME_LENGTH);
-  return /^[A-Za-z0-9_]/.test(cleaned) ? cleaned : `Entity-${cleaned}`;
+  const cleaned = entityId.replace(/[^A-Za-z0-9_ -]/g, "-");
+  const prefixed = /^[A-Za-z0-9_]/.test(cleaned)
+    ? cleaned
+    : `Entity-${cleaned}`;
+  // Trimmed after the prefix, not before: slicing first could leave a name
+  // that the prefix pushes back over the limit, and the backend would then
+  // reject a scene it generated itself.
+  return prefixed.slice(0, MAX_WORLD_INSTANCE_NAME_LENGTH);
 }
 
 /** The zone container name for a role. Deterministic and name-safe. */
@@ -199,15 +206,6 @@ export function isValidWorldInstanceName(value: unknown): value is string {
   );
 }
 
-/**
- * Whether an artifact's content carries a scene this contract can materialize.
- *
- * Used on both sides of the boundary: the plugin routes on it, and the backend
- * decides from it whether entity receipts are required. Content without a
- * scene imposes no requirement, which is what lets an older plugin fall back
- * to recording the model as inert metadata without anyone claiming a world was
- * materialized.
- */
 /**
  * Validate a scene against the same rules the plugin enforces.
  *
@@ -355,8 +353,22 @@ function validateWorldNode(
       );
       continue;
     }
-    if ((value as { kind?: unknown })?.kind !== expectedKind) {
+    const typed = value as { kind?: unknown; value?: unknown };
+    if (typed?.kind !== expectedKind) {
       issues.push(`${nodePath}@${attribute} must have kind ${expectedKind}`);
+      continue;
+    }
+    // The same bound the plugin enforces. Relation and dependency attributes
+    // are joined from the model, so their length grows with it: without this,
+    // a large model would pass here and fail the whole export inside Studio.
+    if (
+      expectedKind === "string" &&
+      typeof typed.value === "string" &&
+      typed.value.length > MAX_WORLD_ATTRIBUTE_LENGTH
+    ) {
+      issues.push(
+        `${nodePath}@${attribute} must carry a string of at most ${MAX_WORLD_ATTRIBUTE_LENGTH} characters`,
+      );
     }
   }
 
@@ -438,14 +450,28 @@ function validateWorldPropertyValue(
   }
 }
 
+/**
+ * Whether an artifact's content carries a scene this contract can materialize.
+ *
+ * Used on both sides of the boundary: the plugin routes on it, and the backend
+ * decides from it whether entity receipts are required. Content without a
+ * scene imposes no requirement, which is what lets an older plugin record the
+ * model as inert metadata without anyone claiming a world was materialized.
+ *
+ * The zone array is checked here rather than assumed by the callers. Artifact
+ * content can be edited through `SYNC_REQUEST` after an export is queued, so a
+ * guard that narrowed the type on the version alone would let a malformed
+ * `zones` reach an iteration inside the export report handler and throw there.
+ */
 export function carriesMaterializableWorldScene(
   content: unknown,
 ): content is WorldArtifactContent {
   if (typeof content !== "object" || content === null) return false;
   const scene = (content as { scene?: unknown }).scene;
   if (typeof scene !== "object" || scene === null) return false;
+  const candidate = scene as { sceneVersion?: unknown; zones?: unknown };
   return (
-    (scene as { sceneVersion?: unknown }).sceneVersion ===
-    WORLD_SCENE_SCHEMA_VERSION
+    candidate.sceneVersion === WORLD_SCENE_SCHEMA_VERSION &&
+    Array.isArray(candidate.zones)
   );
 }

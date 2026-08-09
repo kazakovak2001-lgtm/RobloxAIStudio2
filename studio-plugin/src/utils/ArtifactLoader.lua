@@ -39,6 +39,12 @@ function ArtifactLoader:loadArtifact(artifact)
         if artifact.type == "ui-layout" and self:_claimsUITreeSchema(artifact.content) then
             return self:_loadUITreeArtifact(artifact)
         end
+        -- WORLD-1B. Routed on the scene rather than the artifact type, so an
+        -- older backend's content without a scene still takes the metadata
+        -- path below and nothing claims a world was materialized.
+        if self:_carriesWorldScene(artifact.content) then
+            return self:_loadWorldSceneArtifact(artifact)
+        end
         return self:_loadMetadataArtifact(artifact)
     end)
 
