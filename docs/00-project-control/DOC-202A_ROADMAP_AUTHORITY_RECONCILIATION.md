@@ -9,7 +9,7 @@ fail-closed guard for subsequent roadmap reconciliations.
 
 - Backend repository: `kazakovak2001-lgtm/RobloxAIStudio2`
 - Backend release branch: `release/cutover-1e-candidate`
-- Current backend runtime release: `18bdc2cddd8b80dba5c779e51c5f3947cce9484a`
+- Current backend runtime release: `4fa948b12ebba768ca5e43442dd361d851b905e3`
 - SECURITY-2G-F control baseline: `da55f716c798ec8c6a7f25a8e2a3b7b0a2244416`
 - Paired Frontend repository: `kazakovak2001-lgtm/Frontend`
 - Paired Frontend runtime contents: `6c1458d836244f2b720f361a78c2ab13f1682f74`
@@ -341,6 +341,36 @@ branch for the new agentless stage, so it would have persisted a passthrough
 marker under the name `worldModel.json`. That is the third time this shape has
 been caught, after the security report and the validation report. The branch
 now carries a note that any future agentless stage needs its own.
+
+WORLD-1B advances the runtime pair to backend
+`4fa948b12ebba768ca5e43442dd361d851b905e3` and Frontend
+`6c1458d836244f2b720f361a78c2ab13f1682f74`, through backend pull request `#209`.
+The Frontend identity is unchanged.
+
+**WORLD-1B is design-time materialization, and that is an ownership decision
+rather than a limitation to be lifted casually.** The playability contract
+requires the generated server `Script` to build the world into `workspace` at
+run time. A scene graph placed there would stand beside a second world on Play,
+so the scene is delivered into `ReplicatedStorage.AIStudioArtifacts`, which
+nothing in generated Lua reads. Moving it is `WORLD-1C` and requires
+`STUDIO-2F-E`, where the canonical flip belongs.
+
+The slice is recorded as **code complete, not done**, on the same standard
+ARTIFACT-1 and STUDIO-2F-A are held to. There is no Lua execution harness in
+this repository, so replacement, sweep, collision and partial-attach behaviour
+is asserted against the delivered source rather than observed running. The
+operator session that would close it is specified in
+[its scope record](./WORLD-1B_SCOPE.md) and has not been attempted; the
+still-pending ARTIFACT-1 and STUDIO-2F-A evidence is untouched.
+
+One review finding is worth keeping for the pattern rather than the fix. The
+entire plugin half of this slice was unreachable at first review: the loader
+never dispatched to it, the sync manager dropped its receipt, and the packager
+omitted its module. Three scripted edits had silently matched nothing, and the
+contract tests passed throughout because they tested the parts rather than the
+path between them. Tests now assert the dispatch, the forwarding and the
+packaging directly, and a change that only exercises its own components should
+be assumed unwired until something proves otherwise.
 
 ## Scope boundary
 
