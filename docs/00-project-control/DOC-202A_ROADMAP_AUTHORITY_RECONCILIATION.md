@@ -295,14 +295,15 @@ SECREVIEW-1 removed, in a more convincing shape. Wiring it in would look like
 progress and would be a fabricated capability. The stage is deterministic in
 both pipelines instead.
 
-**A rejected generation still persists no content.** That invariant belongs to
-STUDIO-1A and delivery depends on it: partial artifacts under a failed
-execution id are what a later consumer could mistake for a deliverable package.
+**A rejected generation still persists no content artifacts.** That invariant
+belongs to STUDIO-1A and delivery depends on it: partial content under a failed
+execution id is what a later consumer could mistake for a deliverable package.
 The first implementation of this slice recorded every stage and then failed,
-and four STUDIO-1A tests caught it. Artifacts are staged and committed only
-once validation passes, so a rejected run leaves exactly one artifact — the
-report saying why. The gap this slice closes was never the discarding; it was
-the silence.
+and four STUDIO-1A tests caught it. Content artifacts are staged and committed
+only once validation passes, so a rejected run leaves exactly one artifact, and
+it carries no generated content: the `VALIDATION` report saying why the run was
+rejected. The gap this slice closes was never the discarding; it was the
+silence.
 
 Conditional stages remain unbuilt and are recorded as `PIPELINE-1C`. Nothing
 needs to skip a stage yet, and a branching mechanism with no consumer is

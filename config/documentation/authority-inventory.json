@@ -72,7 +72,7 @@
         "ARTIFACT-1, PROVIDER-1B and SECREVIEW-1 advance the runtime pair to backend",
         "PIPELINE-1A advances the runtime pair to backend",
         "PIPELINE-1B advances the runtime pair to backend",
-        "A rejected generation still persists no content."
+        "A rejected generation still persists no content artifacts."
       ],
       "forbiddenClaims": []
     },
