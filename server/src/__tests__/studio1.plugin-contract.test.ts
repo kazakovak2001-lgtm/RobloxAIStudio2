@@ -116,7 +116,7 @@ describe("STUDIO-1d canonical Roblox plugin contract", () => {
     expect(panel).not.toContain("end:updaeSt");
     expect(panel).not.toContain("self._statusLabel");
     expect(panel).toContain('self:_updateStatus("Verified"');
-    expect(config).toContain('Config.PLUGIN_VERSION = "1.10.0"');
+    expect(config).toContain('Config.PLUGIN_VERSION = "1.11.0"');
     expect(config).toContain("Config.COMMAND_POLL_INTERVAL = 2");
   });
 });

@@ -14,6 +14,7 @@ import {
 import type {
   StudioArtifactReceipt,
   StudioScreenReceipt,
+  StudioWorldEntityReceipt,
 } from "../studio/v2/StudioTypes";
 import type { SyncChange } from "../studio/v2/sync/SyncTypes";
 import { STUDIO_PROJECT_ACCESS_CAPABILITY } from "../platform/security/ApiKeyStore";
@@ -167,11 +168,38 @@ export function parseImportReport(
       }
     }
 
+    // WORLD-1B receipts cross the same boundary and would be dropped by the
+    // same omission, leaving every real world export failing verification.
+    let worldEntities: StudioWorldEntityReceipt[] | undefined;
+    if (receipt.worldEntities !== undefined) {
+      if (!Array.isArray(receipt.worldEntities)) {
+        return { error: "artifact worldEntities must be an array" };
+      }
+      worldEntities = [];
+      for (const entry of receipt.worldEntities) {
+        if (!entry || typeof entry !== "object") {
+          return { error: "each world entity receipt must be an object" };
+        }
+        const entity = entry as Record<string, unknown>;
+        if (typeof entity.entityId !== "string" || !entity.entityId) {
+          return { error: "each world entity receipt requires entityId" };
+        }
+        if (typeof entity.instancePath !== "string" || !entity.instancePath) {
+          return { error: "each world entity receipt requires instancePath" };
+        }
+        worldEntities.push({
+          entityId: entity.entityId,
+          instancePath: entity.instancePath,
+        });
+      }
+    }
+
     artifacts.push({
       artifactId: receipt.artifactId,
       hash: receipt.hash,
       instancePath: receipt.instancePath as string | undefined,
       ...(screens ? { screens } : {}),
+      ...(worldEntities ? { worldEntities } : {}),
     });
   }
 

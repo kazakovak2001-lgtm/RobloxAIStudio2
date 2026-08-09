@@ -13,6 +13,7 @@ import {
 import { reviewLuaSecurity } from "../../validation/luaSecurityReview";
 import { buildWorldModel } from "../../validation/worldModel";
 import { crossValidateWorld } from "../../validation/worldCrossValidation";
+import { buildWorldScene } from "../../validation/worldSceneBuilder";
 import {
   buildGenerationValidationReport,
   describeBlockingFailures,
@@ -153,7 +154,14 @@ export class GenerationArtifactRecorder {
     // be checked against it; the cross-artifact comparison only runs when
     // there is Lua to compare, and says so when there is not.
     const world = buildWorldModel({ gameDesign, architecture });
-    pending.push({ stage: "WORLD_MODEL", agent: null, content: world });
+    // WORLD-1B. The scene travels with the model rather than as a second
+    // artifact, so a plugin that cannot materialize it still records the model
+    // as inert metadata and nobody claims a world was built.
+    pending.push({
+      stage: "WORLD_MODEL",
+      agent: null,
+      content: { ...world, scene: buildWorldScene(world) },
+    });
 
     const report = buildGenerationValidationReport({
       luaPresent,

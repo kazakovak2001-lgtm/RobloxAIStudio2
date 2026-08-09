@@ -199,6 +199,10 @@ function SyncManager:_processExport(command)
             hash = expected.hash,
             instancePath = loaded.instancePath,
             screens = loaded.screens,
+            -- WORLD-1B entity receipts are the same shape for the same reason,
+            -- and are dropped by the same omission: without them the backend
+            -- fails every export that carried a world scene.
+            worldEntities = loaded.worldEntities,
         })
     end
 
