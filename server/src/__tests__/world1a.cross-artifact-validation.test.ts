@@ -13,7 +13,13 @@ import {
 import { buildGenerationValidationReport } from "../validation/generationValidation";
 import { GenerationArtifactRecorder } from "../studio/artifacts/GenerationArtifactRecorder";
 import { ArtifactStore } from "../pipeline/v2";
-import { STAGE_ORDER, STAGE_AGENT_MAP } from "../pipeline/v2/PipelineStage";
+import {
+  STAGE_ORDER,
+  STAGE_AGENT_MAP,
+  createPipelineState,
+  type PipelineState,
+} from "../pipeline/v2/PipelineStage";
+import { PipelineExecutor } from "../pipeline/v2/PipelineExecutor";
 import type { PlayableLuaScript } from "../types/playableLua";
 import type { TaskNode } from "../planning/model/TaskGraph";
 
@@ -296,6 +302,94 @@ describe("WORLD-1A cross-artifact validation", () => {
   });
 });
 
+describe("WORLD-1A evidence must be executable code", () => {
+  it("does not accept a comment as evidence that a system exists", () => {
+    // The direction of error that matters: a comment describing an integration
+    // nobody wrote would turn an unmet claim into a supported one.
+    const commented: PlayableLuaScript[] = [
+      {
+        path: "ServerScriptService/Arena.server.lua",
+        content: `${SERVER_LUA}\n-- TODO: wire DataStoreService for best lap times\n`,
+      },
+      { path: "StarterPlayerScripts/Hud.client.lua", content: CLIENT_LUA },
+    ];
+
+    const result = crossValidateWorld(
+      buildWorldModel(racingSources()),
+      commented,
+    );
+
+    expect(
+      result.claims.find((claim) => claim.claimId === "service-dataservice")
+        ?.status,
+    ).toBe("unsupported");
+  });
+
+  it("does not accept a string literal as evidence either", () => {
+    const stringly: PlayableLuaScript[] = [
+      {
+        path: "ServerScriptService/Arena.server.lua",
+        content: `${SERVER_LUA}\nlocal note = "someday call GetAsync(bestLapKey) here"\n`,
+      },
+      { path: "StarterPlayerScripts/Hud.client.lua", content: CLIENT_LUA },
+    ];
+
+    const result = crossValidateWorld(
+      buildWorldModel(racingSources()),
+      stringly,
+    );
+
+    expect(
+      result.claims.find((claim) => claim.claimId === "service-dataservice")
+        ?.status,
+    ).toBe("unsupported");
+  });
+
+  it("accepts the leaderstats progress path the platform already accepts", () => {
+    // `getPlayableLuaIssues` treats a server leaderstats IntValue plus a client
+    // `.Changed` connection as a valid progress path. Recognising only remotes
+    // would report every progress claim unsupported for a package the platform
+    // itself considers playable.
+    const leaderstats: PlayableLuaScript[] = [
+      {
+        path: "ServerScriptService/Score.server.lua",
+        content: `local Players = game:GetService("Players")
+Players.PlayerAdded:Connect(function(player)
+  local stats = Instance.new("Folder")
+  stats.Name = "leaderstats"
+  stats.Parent = player
+  local score = Instance.new("IntValue")
+  score.Name = "Score"
+  score.Parent = stats
+end)
+`,
+      },
+      {
+        path: "StarterPlayerScripts/Hud.client.lua",
+        content: `local Players = game:GetService("Players")
+local playerGui = Players.LocalPlayer:WaitForChild("PlayerGui")
+local gui = Instance.new("ScreenGui")
+gui.Parent = playerGui
+local stats = Players.LocalPlayer:WaitForChild("leaderstats")
+stats:WaitForChild("Score").Changed:Connect(function(value)
+  gui.Name = tostring(value)
+end)
+`,
+      },
+    ];
+
+    const result = crossValidateWorld(
+      buildWorldModel(racingSources()),
+      leaderstats,
+    );
+
+    expect(
+      result.claims.find((claim) => claim.claimId === "condition-winCondition")
+        ?.status,
+    ).toBe("supported");
+  });
+});
+
 describe("WORLD-1A validation evidence", () => {
   it("records an unsupported claim as advisory, never blocking", () => {
     const report = buildGenerationValidationReport({
@@ -332,6 +426,47 @@ describe("WORLD-1A pipeline wiring", () => {
     expect(STAGE_ORDER).toContain("WORLD_MODEL");
     // No agent produces it: it is derived from claims other stages made.
     expect(STAGE_AGENT_MAP.WORLD_MODEL).toBeNull();
+  });
+
+  it("builds a real model in the v2 pipeline instead of a passthrough", async () => {
+    // Regression, and the third time this shape has appeared: an agentless
+    // stage falls through to the generic passthrough, persisting
+    // `{ _passthrough: true }` under a name that claims to describe a world.
+    const executor = new PipelineExecutor();
+    const context = executor.getContext();
+    const sessionId = context.createSession("v2-world", {});
+    context.recordAgentOutput(
+      sessionId,
+      "roblox_architect",
+      racingSources().architecture as Record<string, unknown>,
+    );
+
+    const state = createPipelineState("v2-world");
+    const stage = state.stages.find((entry) => entry.name === "WORLD_MODEL");
+
+    const output = await (
+      executor as unknown as {
+        executeStage: (
+          stage: unknown,
+          sessionId: string,
+          agentExecutor: () => Promise<Record<string, unknown>>,
+          state: PipelineState,
+        ) => Promise<Record<string, unknown>>;
+      }
+    ).executeStage(
+      stage,
+      sessionId,
+      () => Promise.reject(new Error("no agent may run for WORLD_MODEL")),
+      state,
+    );
+
+    expect(output._passthrough).toBeUndefined();
+    expect(output.schemaVersion).toBe(WORLD_MODEL_SCHEMA_VERSION);
+    expect(
+      (output.systems as WorldModel["systems"]).some(
+        (system) => system.role === "player-entry",
+      ),
+    ).toBe(true);
   });
 
   it("records the model and its cross-artifact evidence together", async () => {

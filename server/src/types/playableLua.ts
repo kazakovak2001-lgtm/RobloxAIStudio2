@@ -234,7 +234,7 @@ export function assertPlayableLuaScripts(
   }
 }
 
-function stripLuaComments(source: string): string {
+export function stripLuaComments(source: string): string {
   let result = "";
   let index = 0;
   let quote: '"' | "'" | null = null;
@@ -273,7 +273,7 @@ function stripLuaComments(source: string): string {
   return result;
 }
 
-function stripLuaStrings(
+export function stripLuaStrings(
   source: string,
   preservedValues: ReadonlySet<string> = new Set(),
 ): string {

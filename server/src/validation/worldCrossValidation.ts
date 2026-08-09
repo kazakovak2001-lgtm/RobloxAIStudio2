@@ -17,7 +17,11 @@
  * Pure module: no I/O, no clock, no model calls.
  */
 
-import type { PlayableLuaScript } from "../types/playableLua";
+import {
+  stripLuaComments,
+  stripLuaStrings,
+  type PlayableLuaScript,
+} from "../types/playableLua";
 import type { WorldModel, WorldRole } from "./worldModel";
 
 export const WORLD_CROSS_VALIDATION_SCHEMA_VERSION = 1;
@@ -105,9 +109,17 @@ const ROLE_EVIDENCE: Readonly<
   "progress-signal": {
     expectation:
       "state crosses the server/client boundary and the client observes it",
+    // Both routes the playability contract already accepts. Recognising only
+    // remotes would report every progress claim unsupported for a leaderstats
+    // package the platform itself considers valid, and a check that cries wolf
+    // on accepted output is one nobody will keep believing.
     matches: (source) =>
-      /\b(?:FireClient|FireAllClients|FireServer)\s*\(/.test(source.server) &&
-      /\bOnClientEvent\s*:\s*Connect\s*\(/.test(source.client),
+      (/\b(?:FireClient|FireAllClients|FireServer)\s*\(/.test(source.server) ||
+        (/\bleaderstats\b/i.test(source.server) &&
+          /Instance\.new\s*\(\s*["']IntValue["']/.test(source.server))) &&
+      (/\bOnClientEvent\s*:\s*Connect\s*\(/.test(source.client) ||
+        (/\bleaderstats\b/i.test(source.client) &&
+          /\.Changed\s*:\s*Connect\s*\(/.test(source.client))),
   },
   presentation: {
     expectation: "client code builds something the player can see",
@@ -138,6 +150,24 @@ interface WorldSources {
   readonly client: string;
   readonly all: string;
 }
+
+/**
+ * String literals that are part of the construct being looked for rather than
+ * incidental text, so they survive normalization.
+ *
+ * Everything else inside comments and strings is removed before matching. A
+ * comment describing a DataStore integration that was never written would
+ * otherwise be read as evidence that it was — which is the direction of error
+ * that matters here, since it turns an unmet claim into a supported one.
+ */
+const PRESERVED_LITERALS: ReadonlySet<string> = new Set([
+  "SpawnLocation",
+  "ClickDetector",
+  "ProximityPrompt",
+  "ScreenGui",
+  "IntValue",
+  "leaderstats",
+]);
 
 /**
  * Compare a world model's claims against the Lua that was generated with it.
@@ -192,18 +222,21 @@ export function crossValidateWorld(
  * source and vice versa — that is the whole reason the two are kept apart.
  */
 function collectSources(scripts: readonly PlayableLuaScript[]): WorldSources {
+  const executable = (script: PlayableLuaScript): string =>
+    stripLuaStrings(stripLuaComments(script.content), PRESERVED_LITERALS);
+
   const server = scripts
     .filter((script) => script.path.startsWith("ServerScriptService/"))
-    .map((script) => script.content)
+    .map(executable)
     .join("\n");
   const client = scripts
     .filter((script) => script.path.startsWith("StarterPlayerScripts/"))
-    .map((script) => script.content)
+    .map(executable)
     .join("\n");
 
   return {
     server,
     client,
-    all: scripts.map((script) => script.content).join("\n"),
+    all: scripts.map(executable).join("\n"),
   };
 }
