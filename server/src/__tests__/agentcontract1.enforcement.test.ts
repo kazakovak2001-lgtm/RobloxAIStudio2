@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from "vitest";
+import { describe, it, expect, vi, afterEach } from "vitest";
 
 import { AgentRegistry } from "../agents/core/AgentRegistry";
 import { BaseAgent } from "../agents/core/BaseAgent";
@@ -112,31 +112,45 @@ describe("AGENT-CONTRACT-1 refuses undefined agents before a provider runs", () 
 });
 
 describe("AGENT-CONTRACT-1 model policy is enforced", () => {
+  // Restored unconditionally: a failing assertion must not leave the spied
+  // binding in place for the provenance tests below, which would bury the
+  // real failure under unrelated ones.
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  /**
+   * Replace one agent's model policy for the duration of a test.
+   *
+   * The original implementation is captured before spying so the pass-through
+   * branch calls it rather than recursing into the spy.
+   */
+  async function withModelPolicy(
+    agentId: string,
+    model: { requiresModel: boolean; fallback: "allowed" | "forbidden" },
+  ): Promise<void> {
+    const contract = await import("../agents/contract/agentContract");
+    const original = contract.getAgentDefinition;
+    const patched = { ...original(agentId)!, model };
+    vi.spyOn(contract, "getAgentDefinition").mockImplementation((id: string) =>
+      id === agentId ? patched : original(id),
+    );
+  }
+
   it("refuses to satisfy a model-requiring agent with canned content", async () => {
     // No definition currently requires a model, so this drives the policy
     // directly rather than waiting for one to. The check must be about the
     // policy, not about what the fallback happened to return.
     const registry = new AgentRegistry();
-    const definition = getAgentDefinition("planner")!;
-    const spy = vi
-      .spyOn(
-        await import("../agents/contract/agentContract"),
-        "getAgentDefinition",
-      )
-      .mockImplementation((id: string) =>
-        id === "planner"
-          ? {
-              ...definition,
-              model: { requiresModel: true, fallback: "allowed" },
-            }
-          : getAgentDefinition(id),
-      );
+    await withModelPolicy("planner", {
+      requiresModel: true,
+      fallback: "allowed",
+    });
 
     const output = await registry.executeAgent("planner", {});
 
     expect(output._failed).toBe(true);
     expect(String(output._error)).toMatch(/requires a model provider/i);
-    spy.mockRestore();
   });
 
   it("keeps truthful provenance when fallback is allowed", async () => {
@@ -150,26 +164,30 @@ describe("AGENT-CONTRACT-1 model policy is enforced", () => {
 
   it("fails an agent whose definition forbids the fallback it produced", async () => {
     const registry = new AgentRegistry();
-    const definition = getAgentDefinition("planner")!;
-    const spy = vi
-      .spyOn(
-        await import("../agents/contract/agentContract"),
-        "getAgentDefinition",
-      )
-      .mockImplementation((id: string) =>
-        id === "planner"
-          ? {
-              ...definition,
-              model: { requiresModel: false, fallback: "forbidden" },
-            }
-          : getAgentDefinition(id),
-      );
+    await withModelPolicy("planner", {
+      requiresModel: false,
+      fallback: "forbidden",
+    });
 
     const output = await registry.executeAgent("planner", {});
 
     expect(output._failed).toBe(true);
     expect(String(output._error)).toMatch(/forbids/i);
-    spy.mockRestore();
+  });
+
+  it("leaves other agents on their real definitions while one is patched", async () => {
+    // The pass-through branch must reach the original lookup. If it re-entered
+    // the spy it would recurse rather than answer.
+    await withModelPolicy("planner", {
+      requiresModel: true,
+      fallback: "allowed",
+    });
+    const contract = await import("../agents/contract/agentContract");
+
+    expect(contract.getAgentDefinition("lua_generator")?.id).toBe(
+      "lua_generator",
+    );
+    expect(contract.getAgentDefinition("no_such_agent")).toBeUndefined();
   });
 });
 
@@ -184,25 +202,68 @@ describe("AGENT-CONTRACT-1 execution provenance", () => {
     }
   }, 20000);
 
-  it("leaves a historical step without a version readable and unclaimed", () => {
-    // Executions recorded before the contract carry no version. They must not
-    // be assumed to have run the current definition.
-    const historical: GenerationExecution["pipeline_steps"] = [
-      { agent: "planner", status: "completed" },
-    ];
+  it("reads a historical step back without assigning it a version", async () => {
+    // Executions recorded before the contract carry no version. Nothing on the
+    // read path may fill one in, because the definition that ran is unknown.
+    const repository = new InMemoryBlueprintRepository();
+    const blueprint = await repository.createBlueprint(USER_ID, {
+      ...blueprintInput(),
+      project_id: PROJECT_ID,
+    });
+    const historical: GenerationExecution = {
+      id: "exec-historical",
+      blueprint_id: blueprint.id,
+      project_id: PROJECT_ID,
+      user_id: USER_ID,
+      status: "completed",
+      started_at: new Date(),
+      pipeline_steps: [{ agent: "planner", status: "completed" }],
+    } as GenerationExecution;
 
-    expect(historical[0].agent_version).toBeUndefined();
+    await repository.recordExecution(historical);
+    const readBack = await repository.getExecution("exec-historical");
+
+    expect(readBack).not.toBeNull();
+    expect(readBack!.pipeline_steps[0].agent).toBe("planner");
+    expect(readBack!.pipeline_steps[0].agent_version).toBeUndefined();
+    // The current definition exists and still does not colour the old row.
     expect(getAgentDefinition("planner")?.version).toBe(1);
   });
 
-  it("does not reinterpret an old step when the current version changes", () => {
-    const historicalVersion = 1;
-    const bumped = { ...getAgentDefinition("planner")!, version: 2 };
+  it("records no version for a step whose agent never ran", async () => {
+    // A skipped node was blocked by an upstream failure, so no definition ran
+    // for it. Claiming one would be provenance about work that did not happen.
+    const registry = new AgentRegistry();
+    const exploding = new (class extends BaseAgent {
+      readonly name = "UIGenerator";
+      readonly description = "Fails so its dependents are stranded";
+      readonly inputSchema = {};
+      readonly outputSchema = {};
+      protected async process(): Promise<Record<string, unknown>> {
+        throw new Error("deliberate ui failure");
+      }
+    })();
+    (registry as unknown as { agents: Map<string, BaseAgent> }).agents.set(
+      "ui_generator",
+      exploding,
+    );
 
-    // The recorded number is the claim; a newer definition cannot rewrite it.
-    expect(historicalVersion).not.toBe(bumped.version);
-    expect(historicalVersion).toBe(1);
-  });
+    const execution = await runGeneration(registry);
+    const steps = execution.pipeline_steps;
+    const skipped = steps.filter((step) => step.status === "skipped");
+    const ran = steps.filter((step) => step.status !== "skipped");
+
+    expect(skipped.length).toBeGreaterThan(0);
+    for (const step of skipped) {
+      expect(step.agent_version).toBeUndefined();
+    }
+    // A failed step did reach its agent, so it keeps its version.
+    expect(ran.some((step) => step.status === "failed")).toBe(true);
+    expect(ran.length).toBeGreaterThan(0);
+    for (const step of ran) {
+      expect(step.agent_version).toBe(getAgentDefinition(step.agent)?.version);
+    }
+  }, 20000);
 });
 
 describe("AGENT-CONTRACT-1 budget claims are limited to what is enforced", () => {
@@ -222,10 +283,14 @@ describe("AGENT-CONTRACT-1 budget claims are limited to what is enforced", () =>
     }
   });
 
-  it("matches the attempt count BaseAgent actually loops", () => {
-    // `BaseAgent.maxRetries` defaults to 3 and drives the real retry loop.
+  it("matches the attempt count each implementation actually loops", () => {
+    // Not the class default: `LuaGeneratorAgent` lowers its own ceiling to 1,
+    // so the declared number is checked against the constructed agent.
+    const ceilings = new AgentRegistry().attemptCeilings();
+
     for (const definition of AGENT_DEFINITIONS) {
-      expect(definition.execution.maxAttempts).toBe(3);
+      expect(ceilings[definition.id]).toBe(definition.execution.maxAttempts);
     }
+    expect(ceilings.lua_generator).toBe(1);
   });
 });

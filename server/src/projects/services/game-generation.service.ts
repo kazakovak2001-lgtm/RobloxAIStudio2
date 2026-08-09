@@ -216,36 +216,43 @@ export class GameGenerationService {
               result.graph.getAllNodes(),
             );
 
-            const pipelineSteps = result.graph.getAllNodes().map((node) => ({
-              agent: node.agent,
-              // AGENT-CONTRACT-1. Which definition ran, recorded per step so a
-              // later contract change cannot be read backwards onto this run.
-              ...(getAgentDefinition(node.agent)
-                ? { agent_version: getAgentDefinition(node.agent)!.version }
-                : {}),
-              status:
+            const pipelineSteps = result.graph.getAllNodes().map((node) => {
+              const status =
                 node.status === "done"
                   ? ("completed" as const)
                   : node.status === "failed"
                     ? ("failed" as const)
-                    : ("skipped" as const),
-              started_at: execution.started_at,
-              completed_at: new Date(),
-              duration_ms: node.durationMs,
-              // Carries both a failure message and the reason a node never
-              // ran, so a partial pipeline says why rather than just how far.
-              ...(node.error ? { error: node.error } : {}),
-              evaluation: node.evaluation
-                ? {
-                    qualityScore: node.evaluation.quality,
-                    status: node.evaluation.passed
-                      ? ("passed" as const)
-                      : ("warning" as const),
-                    issueCount: 0,
-                    durationMs: 0,
-                  }
-                : undefined,
-            }));
+                    : ("skipped" as const);
+              // AGENT-CONTRACT-1. Which definition ran, recorded per step so a
+              // later contract change cannot be read backwards onto this run.
+              // A skipped node never reached its agent, so no definition ran
+              // for it and claiming one would be provenance about nothing.
+              const definition =
+                status === "skipped"
+                  ? undefined
+                  : getAgentDefinition(node.agent);
+              return {
+                agent: node.agent,
+                ...(definition ? { agent_version: definition.version } : {}),
+                status,
+                started_at: execution.started_at,
+                completed_at: new Date(),
+                duration_ms: node.durationMs,
+                // Carries both a failure message and the reason a node never
+                // ran, so a partial pipeline says why rather than just how far.
+                ...(node.error ? { error: node.error } : {}),
+                evaluation: node.evaluation
+                  ? {
+                      qualityScore: node.evaluation.quality,
+                      status: node.evaluation.passed
+                        ? ("passed" as const)
+                        : ("warning" as const),
+                      issueCount: 0,
+                      durationMs: 0,
+                    }
+                  : undefined,
+              };
+            });
 
             await this.commitExecutionOutcome(execution.id, {
               status: result.success ? "completed" : "failed",

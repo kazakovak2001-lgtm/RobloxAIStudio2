@@ -209,10 +209,14 @@ export const AGENT_DEFINITIONS: readonly AgentDefinition[] = [
     // content the parser accepted.
     output: {
       class: "contract-validated",
-      requiredKeys: ["scripts"],
+      requiredKeys: ["lua_generator"],
       validatedBy: "assertPlayableLuaScripts",
     },
-    execution: { maxAttempts: 3, maxOutputTokens: 4000 },
+    // One attempt, not the BaseAgent default of three: LuaGeneratorAgent
+    // constructs its base with `maxRetries: 1`, so a propagated provider or
+    // parser error ends the run immediately. Its own repair pass is inside
+    // `process`, not in the outer loop.
+    execution: { maxAttempts: 1, maxOutputTokens: 4000 },
     model: { requiresModel: false, fallback: "allowed" },
   },
   {
@@ -342,7 +346,8 @@ export type AgentContractIssueCode =
   | "invalid-output-contract"
   | "impossible-model-policy"
   | "definition-without-implementation"
-  | "implementation-without-definition";
+  | "implementation-without-definition"
+  | "execution-policy-mismatch";
 
 export interface AgentContractIssue {
   readonly code: AgentContractIssueCode;
@@ -353,12 +358,19 @@ export interface AgentContractIssue {
 /**
  * Check the registry's own integrity, independent of any request.
  *
- * `registeredIds` is passed in rather than imported so this module stays pure
- * and the registry stays the only thing that constructs agents.
+ * `registeredIds` and `attemptsById` are passed in rather than imported so this
+ * module stays pure and the registry stays the only thing that constructs
+ * agents.
+ *
+ * `attemptsById` is the retry ceiling each constructed agent actually loops.
+ * Supplying it reconciles the declared `maxAttempts` against the running
+ * implementation, so an agent that overrides `maxRetries` cannot leave the
+ * definition claiming a number of attempts the runtime never makes.
  */
 export function validateAgentDefinitions(
   definitions: readonly AgentDefinition[] = AGENT_DEFINITIONS,
   registeredIds?: readonly string[],
+  attemptsById?: Readonly<Record<string, number>>,
 ): AgentContractIssue[] {
   const issues: AgentContractIssue[] = [];
   const seen = new Set<string>();
@@ -486,6 +498,20 @@ export function validateAgentDefinitions(
           code: "implementation-without-definition",
           agentId: id,
           message: `Agent "${id}" is registered but has no definition, so nothing states what it produces`,
+        });
+      }
+    }
+  }
+
+  if (attemptsById) {
+    for (const definition of definitions) {
+      const actual = attemptsById[definition.id];
+      if (actual === undefined) continue;
+      if (actual !== definition.execution.maxAttempts) {
+        issues.push({
+          code: "execution-policy-mismatch",
+          agentId: definition.id,
+          message: `Agent "${definition.id}" declares ${definition.execution.maxAttempts} attempts but its implementation loops ${actual}`,
         });
       }
     }

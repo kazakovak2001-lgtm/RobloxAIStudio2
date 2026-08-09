@@ -153,4 +153,19 @@ export class AgentRegistry {
   registeredTypes(): string[] {
     return Array.from(this.agents.keys());
   }
+
+  /**
+   * The attempt ceiling each constructed agent actually loops, keyed by type.
+   *
+   * AGENT-CONTRACT-1 reconciles this against the declared `maxAttempts`, so an
+   * agent that overrides the BaseAgent default cannot leave its definition
+   * claiming attempts the runtime never makes.
+   */
+  attemptCeilings(): Record<string, number> {
+    const ceilings: Record<string, number> = {};
+    for (const [type, agent] of this.agents) {
+      ceilings[type] = agent.attemptCeiling();
+    }
+    return ceilings;
+  }
 }

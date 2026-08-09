@@ -41,13 +41,30 @@ function withDefinition(
 describe("AGENT-CONTRACT-1 registry integrity", () => {
   it("is internally consistent and matches the running registry", () => {
     // The registry is the only thing that constructs agents, so it is the
-    // authority on which implementations exist.
+    // authority on which implementations exist and how hard each one retries.
+    const registry = new AgentRegistry();
     const issues = validateAgentDefinitions(
       AGENT_DEFINITIONS,
-      new AgentRegistry().registeredTypes(),
+      registry.registeredTypes(),
+      registry.attemptCeilings(),
     );
 
     expect(issues).toEqual([]);
+  });
+
+  it("rejects a declared attempt count the implementation does not loop", () => {
+    const registry = new AgentRegistry();
+    const issues = validateAgentDefinitions(
+      withDefinition("lua_generator", {
+        execution: { maxAttempts: 3, maxOutputTokens: 4000 },
+      }),
+      registry.registeredTypes(),
+      registry.attemptCeilings(),
+    );
+
+    expect(issues.map((issue) => issue.code)).toContain(
+      "execution-policy-mismatch",
+    );
   });
 
   it("gives every canonical runtime agent exactly one definition", () => {
@@ -210,6 +227,12 @@ describe("AGENT-CONTRACT-1 output classification is truthful", () => {
       "world",
       "systems",
       "status",
+    ]);
+    // `LuaGeneratorAgent.generateLua` rejects any response without this key
+    // and returns the normalized object unchanged, so `lua_generator` — not
+    // `scripts` — is what a successful Lua output actually carries.
+    expect(definitionFor("lua_generator").output.requiredKeys).toEqual([
+      "lua_generator",
     ]);
   });
 });

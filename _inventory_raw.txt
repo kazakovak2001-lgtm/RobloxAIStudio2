@@ -491,6 +491,7 @@ scripts/test-architecture-graph.ts
 scripts/test-decision-memory.ts
 scripts/test-json-parser.ts
 scripts/test-pre-check.ts
+scripts/validate-agent-contract.ts
 scripts/validate-architecture.ts
 scripts/validate-boundaries.ts
 scripts/validate-controller.ts
