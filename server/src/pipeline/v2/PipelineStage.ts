@@ -51,7 +51,10 @@ export const STAGE_AGENT_MAP: Record<StageName, string | null> = {
   ASSET_PLANNING: "asset_planner",
   LUA_GENERATION: "lua_generator",
   UI_GENERATION: "ui_generator",
-  VALIDATION: "tester",
+  // Deterministic service, not an agent. `tester` produces a plan of tests
+  // whose status is `pending`; recorded as `validationReport.json` it reads as
+  // a validation result, which is not what it is. See PIPELINE-1B.
+  VALIDATION: null,
   // Deterministic service, not an agent: the questions it answers are
   // structural, so a model would add cost and variance without adding truth.
   SECURITY_REVIEW: null,

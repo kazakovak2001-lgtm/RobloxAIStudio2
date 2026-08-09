@@ -8,7 +8,11 @@ import { createPipelineState } from "./PipelineStage";
 import { PipelineContext } from "./PipelineContext";
 import { PipelineEventEmitterV2 } from "./PipelineEvents";
 import { reviewLuaSecurity } from "../../validation/luaSecurityReview";
-import { normalizeLuaScripts } from "../../types/playableLua";
+import { buildGenerationValidationReport } from "../../validation/generationValidation";
+import {
+  getPlayableLuaIssues,
+  normalizeLuaScripts,
+} from "../../types/playableLua";
 
 export type AgentExecutorFn = (
   agentId: string,
@@ -215,6 +219,15 @@ export class PipelineExecutor {
       return this.reviewGeneratedLua(sessionId);
     }
 
+    // PIPELINE-1B. This stage used to run `tester`, whose output is a checklist
+    // of tests whose status is `pending` alongside `passed: 0, failed: 0`.
+    // Persisted under the name `validationReport.json`, that reads as a clean
+    // validation result while nothing was ever executed — the same defect as
+    // the passthrough security report above, wearing a more convincing shape.
+    if (stage.name === "VALIDATION") {
+      return this.validateGenerated(sessionId);
+    }
+
     if (!stage.agentId) {
       return { _stage: stage.name, _passthrough: true };
     }
@@ -236,5 +249,37 @@ export class PipelineExecutor {
     } catch {
       return { ...reviewLuaSecurity([]) };
     }
+  }
+
+  /**
+   * Report what deterministic validation found for this pipeline's Lua.
+   *
+   * Unlike the canonical generation path, this executor does not gate delivery
+   * on the report — it records it. The report says which checks are blocking,
+   * so a consumer can tell the difference between "nothing blocked" and
+   * "nothing was checked".
+   */
+  private validateGenerated(sessionId: string): Record<string, unknown> {
+    const accumulated = this.context.getAccumulated(sessionId);
+
+    let luaIssues: readonly string[];
+    let luaPresent: boolean;
+    try {
+      luaIssues = getPlayableLuaIssues(normalizeLuaScripts(accumulated));
+      luaPresent = true;
+    } catch {
+      luaIssues = [];
+      luaPresent = false;
+    }
+
+    return {
+      ...buildGenerationValidationReport({
+        luaPresent,
+        luaIssues,
+        // This executor never builds a UI instance tree, so claiming any
+        // outcome for it would be an invention.
+        ui: { status: "not-attempted" },
+      }),
+    };
   }
 }
