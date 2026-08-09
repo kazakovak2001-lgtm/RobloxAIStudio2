@@ -7,6 +7,23 @@
  *
  * All methods are static and pure — no state, deterministic output.
  */
+
+/**
+ * How much of an accepted parse came from deterministic fallback content.
+ *
+ * `none`    — every value came from the model.
+ * `partial` — the model's output parsed, but required keys were repaired.
+ * `full`    — the output was unusable and the whole fallback was substituted.
+ */
+export type FallbackUsage = "none" | "partial" | "full";
+
+export interface ParsedLLMOutput {
+  data: Record<string, unknown>;
+  fallbackUsage: FallbackUsage;
+  /** Keys whose values came from the fallback. Diagnostic, never content. */
+  fallbackKeys: string[];
+}
+
 export class LLMOutputParser {
   /**
    * Extract the first valid JSON object or array from a raw LLM string.
@@ -84,17 +101,52 @@ export class LLMOutputParser {
    * Parse the response and apply a required-key check.
    * If any keys are missing, fallback values fill the gaps and a warning is logged.
    */
-  static parseAndValidate(
+  /**
+   * Parse an LLM response and report, structurally, how much of the accepted
+   * result the model actually authored.
+   *
+   * PROVIDER-1B. "The LLM was called" is not "the LLM authored the artifact".
+   * Deterministic fallback content enters here in two distinct ways and
+   * neither was previously visible to the caller:
+   *
+   *   full    — the response could not be parsed to an object at all, so the
+   *             entire canned fallback is returned. Every required key is then
+   *             present, so nothing downstream notices.
+   *   partial — the response parsed, but a required key was missing and was
+   *             repaired from the fallback.
+   *
+   * Reported as structured metadata rather than inferred from the content,
+   * because canned and generated values are not distinguishable by inspection.
+   */
+  static parseWithProvenance(
     raw: string,
     required: string[],
     fallback: Record<string, unknown>,
     agentName: string,
-  ): Record<string, unknown> {
-    const parsed = LLMOutputParser.parseToRecord(raw, fallback);
+  ): ParsedLLMOutput {
+    const value = LLMOutputParser.extractJSON(raw);
 
-    // Normalize common key aliases before validation
+    // Identity, not equality: parseToRecord hands back the fallback object
+    // itself when the response is unusable, which is the only reliable signal
+    // that nothing in the result came from the model.
+    const unusable =
+      value === null || (typeof value !== "object" && !Array.isArray(value));
+
+    if (unusable) {
+      console.warn(
+        `[${agentName}] LLM output could not be parsed — using deterministic fallback`,
+      );
+      return {
+        data: LLMOutputParser.normalizeKeys(fallback),
+        fallbackUsage: "full",
+        fallbackKeys: Object.keys(fallback),
+      };
+    }
+
+    const parsed = Array.isArray(value)
+      ? { items: value }
+      : (value as Record<string, unknown>);
     const normalized = LLMOutputParser.normalizeKeys(parsed);
-
     const missing = LLMOutputParser.validateKeys(normalized, required);
 
     if (missing.length > 0) {
@@ -105,10 +157,28 @@ export class LLMOutputParser {
       for (const key of missing) {
         merged[key] = fallback[key];
       }
-      return merged;
+      return { data: merged, fallbackUsage: "partial", fallbackKeys: missing };
     }
 
-    return normalized;
+    return { data: normalized, fallbackUsage: "none", fallbackKeys: [] };
+  }
+
+  /**
+   * Behaviour-preserving wrapper over `parseWithProvenance`. Callers that do
+   * not need provenance keep the original contract.
+   */
+  static parseAndValidate(
+    raw: string,
+    required: string[],
+    fallback: Record<string, unknown>,
+    agentName: string,
+  ): Record<string, unknown> {
+    return LLMOutputParser.parseWithProvenance(
+      raw,
+      required,
+      fallback,
+      agentName,
+    ).data;
   }
 
   /**

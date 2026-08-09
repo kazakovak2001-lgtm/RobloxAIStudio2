@@ -248,14 +248,22 @@ export abstract class BaseAgent {
 
     // ── Attempt 1 ──────────────────────────────────────────────────────────
     const raw1 = await this.llm.generate(prompt, options);
-    const result1 = LLMOutputParser.parseAndValidate(
+    const parsed1 = LLMOutputParser.parseWithProvenance(
       raw1,
       required,
       fallback,
       this.name,
     );
+    const result1 = parsed1.data;
     const missing1 = LLMOutputParser.validateKeys(result1, required);
-    if (missing1.length === 0) return result1;
+    if (missing1.length === 0) {
+      // Calling the model is not the same as the model authoring the result.
+      // An unparseable response substitutes the whole fallback, and a missing
+      // required key is repaired from it; either way the accepted artifact
+      // depends on canned content and must not be reported as AI-authored.
+      this.recordFallbackUsage(parsed1.fallbackUsage);
+      return result1;
+    }
 
     // ── Attempt 2: stricter repair prompt ──────────────────────────────────
     console.warn(
@@ -270,12 +278,13 @@ export abstract class BaseAgent {
       ...options,
       temperature: 0.1,
     });
-    const result2 = LLMOutputParser.parseAndValidate(
+    const parsed2 = LLMOutputParser.parseWithProvenance(
       raw2,
       required,
       fallback,
       this.name,
     );
+    const result2 = parsed2.data;
     const missing2 = LLMOutputParser.validateKeys(result2, required);
 
     if (missing2.length > 0) {
@@ -285,7 +294,23 @@ export abstract class BaseAgent {
       );
     }
 
+    // Provenance describes the result actually returned. Attempt 1's output is
+    // discarded, so its fallback usage must not colour a clean retry.
+    this.recordFallbackUsage(parsed2.fallbackUsage);
     return result2;
+  }
+
+  /**
+   * Mark this run as fallback-dependent unless the model authored everything.
+   *
+   * Kept separate so the rule lives in one place: any deterministic fallback
+   * contribution, whole-object or per-key, disqualifies the result from being
+   * reported as AI-authored.
+   */
+  private recordFallbackUsage(usage: "none" | "partial" | "full"): void {
+    if (usage !== "none") {
+      this._usedFallback = true;
+    }
   }
 
   protected delay(ms: number): Promise<void> {

@@ -51,6 +51,36 @@ function blueprintInput(): CreateBlueprintInput {
 }
 
 /**
+ * The union of every required key across the registered agents, so one mocked
+ * response satisfies whichever agent receives it. Values are deliberately not
+ * the agents' own fallback values — a response echoing canned content would
+ * prove nothing about authorship.
+ */
+const FULLY_VALID_OUTPUT: Record<string, unknown> = {
+  requirements: { functional: ["model-authored requirement"] },
+  plan: { steps: ["model-authored step"] },
+  gameplay: { mechanics: [{ name: "model-authored mechanic" }] },
+  architecture: { services: ["ModelAuthoredService"] },
+  roblox_architect: { services: ["ModelAuthoredService"] },
+  assetPlan: { models: ["model-authored asset"] },
+  uiDesign: {
+    screens: [
+      { name: "ModelHUD", type: "hud", elements: [{ id: "a", label: "A" }] },
+    ],
+  },
+  database: { tables: [] },
+  documentation: { sections: [] },
+  testResults: { passed: 1 },
+  optimization: { suggestions: [] },
+  review: { findings: [] },
+  debugReport: { issues: [] },
+  name: "ModelAuthoredGame",
+  world: { regions: [] },
+  systems: ["model-authored system"],
+  status: "ok",
+};
+
+/**
  * Drive one generation to a terminal state and return the durable record.
  * The service runs the pipeline on a detached queue, so poll rather than
  * assuming completion is synchronous.
@@ -99,9 +129,9 @@ describe("generation provenance", () => {
 
   it("records provider and model when a real provider produced the content", async () => {
     const registry = new AgentRegistry();
-    // Return an empty JSON object: the parser falls back per-key, but the LLM
-    // was genuinely consulted, so this is a real AI run.
-    registry.setLLM({ generate: vi.fn().mockResolvedValue("{}") });
+    registry.setLLM({
+      generate: vi.fn().mockResolvedValue(JSON.stringify(FULLY_VALID_OUTPUT)),
+    });
 
     const execution = await runGeneration(registry, {
       provider: "ollama",
@@ -114,6 +144,43 @@ describe("generation provenance", () => {
     expect(execution.ai_mode).toBe("ai");
     expect(execution.ai_provider).toBe("ollama");
     expect(execution.ai_model).toBe("qwen2.5-coder:7b");
+  }, 20000);
+
+  /**
+   * PROVIDER-1B. Calling the model is not the model authoring the artifact.
+   * `{}` parses cleanly, so every required key is repaired from the canned
+   * fallback and the run previously reported `ai`.
+   */
+  it("does not report a run repaired from canned values as ai", async () => {
+    const registry = new AgentRegistry();
+    registry.setLLM({ generate: vi.fn().mockResolvedValue("{}") });
+
+    const execution = await runGeneration(registry, {
+      provider: "ollama",
+      model: "qwen2.5-coder:7b",
+    });
+
+    expect(execution.ai_mode).toBe("fallback");
+    // Provider identity still records what was configured.
+    expect(execution.ai_provider).toBe("ollama");
+  }, 20000);
+
+  /**
+   * The more dangerous case: an unparseable response substitutes the entire
+   * fallback, so every required key is present and nothing downstream noticed.
+   */
+  it("does not report a run built from an unparseable response as ai", async () => {
+    const registry = new AgentRegistry();
+    registry.setLLM({
+      generate: vi.fn().mockResolvedValue("I'm sorry, I can't help with that."),
+    });
+
+    const execution = await runGeneration(registry, {
+      provider: "ollama",
+      model: "qwen2.5-coder:7b",
+    });
+
+    expect(execution.ai_mode).toBe("fallback");
   }, 20000);
 
   it("degrades to fallback if any stage returned canned content", async () => {
@@ -149,7 +216,21 @@ describe("fallback labelling", () => {
     expect(output._usedFallback).toBe(true);
   });
 
-  it("does not tag output produced through a real LLM", async () => {
+  it("does not tag output the model actually authored", async () => {
+    const registry = new AgentRegistry();
+    registry.setLLM({
+      generate: vi.fn().mockResolvedValue(JSON.stringify(FULLY_VALID_OUTPUT)),
+    });
+
+    const output = await registry.executeAgent("requirements", {
+      goal: "Build a small obby",
+      constraints: [],
+    });
+
+    expect(output._usedFallback).toBeUndefined();
+  });
+
+  it("tags output whose required keys were repaired from canned values", async () => {
     const registry = new AgentRegistry();
     registry.setLLM({ generate: vi.fn().mockResolvedValue("{}") });
 
@@ -158,6 +239,18 @@ describe("fallback labelling", () => {
       constraints: [],
     });
 
-    expect(output._usedFallback).toBeUndefined();
+    expect(output._usedFallback).toBe(true);
+  });
+
+  it("tags output substituted wholesale after an unparseable response", async () => {
+    const registry = new AgentRegistry();
+    registry.setLLM({ generate: vi.fn().mockResolvedValue("no json here") });
+
+    const output = await registry.executeAgent("requirements", {
+      goal: "Build a small obby",
+      constraints: [],
+    });
+
+    expect(output._usedFallback).toBe(true);
   });
 });
