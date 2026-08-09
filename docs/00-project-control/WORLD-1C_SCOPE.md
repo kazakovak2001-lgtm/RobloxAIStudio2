@@ -4,6 +4,7 @@
 
 **Status:** Scoped and **blocked**. Implementation is not started, and must not start until the prerequisite below is satisfied.
 **Depends on:** `WORLD-1A`, `WORLD-1B` (both merged), and — as a hard prerequisite — **operator-observed Studio acceptance of `WORLD-1B`**.
+**Does not depend on:** `STUDIO-2F-E`. WORLD-1C moves world structure only and leaves the HUD contract untouched.
 
 ## Objective
 
@@ -32,15 +33,17 @@ That session should also close the outstanding `ARTIFACT-1` and `STUDIO-2F-A` ev
 
 ### 1. The playability contract
 
-Fifteen rules. Five are world-ownership rules and all five assume Lua builds the world:
+Fifteen rules. **Three** assume Lua builds the world, and those are the only ones WORLD-1C may touch:
 
-| Rule | Assumes |
-|---|---|
-| `server code must create playable world instances` | `Instance.new` **and** `workspace` in server source |
-| `server code must implement a gameplay interaction` | a `Touched`/`Activated`/`Triggered`/`MouseClick`/`OnServerEvent` connection |
-| `one server Script must own the complete world, objective, and progress event` | **one** script containing world creation, an interaction, a `RemoteEvent` and a fire call |
-| `client code must create a visible ScreenGui` / `must attach the HUD to PlayerGui` | client builds its own HUD |
-| `server and client code must connect objective progress to the HUD` | remote or `leaderstats` path |
+| Rule | Assumes | WORLD-1C |
+|---|---|---|
+| `server code must create playable world instances` | `Instance.new` **and** `workspace` in server source | replaced by a binding rule |
+| `one server Script must own the complete world, objective, and progress event` | **one** script containing world creation, an interaction, a `RemoteEvent` and a fire call | replaced: world creation drops out, the rest stays |
+| `server code must implement a gameplay interaction` | a `Touched`/`Activated`/`Triggered`/`MouseClick`/`OnServerEvent` connection | kept, and re-expressed against bound entities |
+
+The HUD rules — `client code must create a visible ScreenGui`, `must attach the HUD to PlayerGui`, `one client LocalScript must create the HUD before observing progress` — and `server and client code must connect objective progress to the HUD` **are not world-ownership rules**. They constrain the client HUD and the progress channel, neither of which changes when world structure moves. WORLD-1C preserves them unchanged in both modes; flipping HUD ownership is `STUDIO-2F-E` and is not part of this delivery.
+
+**Dependency, stated precisely:** WORLD-1C requires observed `WORLD-1B` evidence. It does **not** require `STUDIO-2F-E`, because it leaves the HUD contract alone. Earlier records said otherwise and have been corrected.
 
 Callers: `LuaGeneratorAgent` (four post-validation sites), `GenerationArtifactRecorder` (blocking), `PipelineExecutor` (v2 report), `RepairExecutor` (repair acceptance). **Changing these rules changes what every one of those paths accepts.**
 
@@ -100,7 +103,11 @@ The contract becomes mode-aware rather than relaxed. For `lua-owned`, current se
 
 ## Artifact atomicity
 
-WORLD, LUA_GENERATION and VALIDATION must be committed as one package. The staging mechanism PIPELINE-1B introduced already does this — the recorder stages content and commits only after validation passes — so WORLD-1C should extend it rather than invent a second transaction model.
+WORLD, LUA_GENERATION and VALIDATION must be committed as one package.
+
+**The existing staging mechanism is not sufficient, and saying otherwise would have been wrong.** What PIPELINE-1B introduced defers writing until validation passes; it does not make the writes atomic. `GenerationArtifactRecorder.record()` then calls `ArtifactStore.store()` once per staged artifact and once for `VALIDATION`, and each call persists immediately. A failure partway through that loop leaves an execution holding WORLD or Lua without the validation and mode information that says whether they belong together — the incoherent package this section exists to forbid.
+
+WORLD-1C therefore needs a real commit boundary: a durable marker written last that makes a package readable, with unmarked packages ignored by delivery, or an equivalent transaction in the storage provider. That is additional work this record does not hand-wave, and it is a prerequisite for the ownership switch rather than a detail of it.
 
 ## Studio evidence ceiling
 
