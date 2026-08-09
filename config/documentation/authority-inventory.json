@@ -4,7 +4,7 @@
   "repository": "kazakovak2001-lgtm/RobloxAIStudio2",
   "releaseIdentity": {
     "backendBranch": "release/cutover-1e-candidate",
-    "backendCommit": "18bdc2cddd8b80dba5c779e51c5f3947cce9484a",
+    "backendCommit": "4fa948b12ebba768ca5e43442dd361d851b905e3",
     "frontendRepository": "kazakovak2001-lgtm/Frontend",
     "frontendCommit": "6c1458d836244f2b720f361a78c2ab13f1682f74"
   },
@@ -31,10 +31,11 @@
         "`PIPELINE-1B` | Deterministic validation recorded as a durable artifact | High | ✅ Complete — backend PR #205",
         "`PIPELINE-1C` | Conditional stages inside the pipeline | Low | Not scoped",
         "a security finding never negates generation, delivery or release, and a blocking gate is the separate `SECURITY-REVIEW-B` delivery",
-        "18bdc2cddd8b80dba5c779e51c5f3947cce9484a",
+        "4fa948b12ebba768ca5e43442dd361d851b905e3",
         "6c1458d836244f2b720f361a78c2ab13f1682f74",
         "`WORLD-1A` | Semantic world model and cross-artifact validation against generated Lua | High | ✅ Complete — backend PR #207",
-        "`WORLD-1B` | Studio materialization of the world model | Medium | Not scoped"
+        "`WORLD-1B` | Design-time Studio materialization of the world model | Medium | 🚧 Code complete, not done — backend PR #209 merged",
+        "`WORLD-1C` | Canonical ownership of the world by the materialized scene | Medium | Not scoped"
       ],
       "forbiddenClaims": [
         "PR #162 pending reviewed merge",
@@ -47,7 +48,7 @@
       "rank": 2,
       "status": "current",
       "requiredClaims": [
-        "18bdc2cddd8b80dba5c779e51c5f3947cce9484a",
+        "4fa948b12ebba768ca5e43442dd361d851b905e3",
         "6c1458d836244f2b720f361a78c2ab13f1682f74",
         "REPAIR-1 complete across backend and Frontend UI",
         "PROVIDER-1A completed through backend PR #193, merged `ecae9bb59f1639d2e382e7221a956aa96460b3e9`",
@@ -56,7 +57,8 @@
         "`PROVIDER-1B` and `SECREVIEW-1` complete (backend PR #200/#201",
         "`ARTIFACT-1` code complete but not done (backend PR #199",
         "deterministic Luau trust-boundary review that never negates delivery",
-        "`WORLD-1A` complete (backend PR #207"
+        "`WORLD-1A` complete (backend PR #207",
+        "`WORLD-1B` code complete but not done (backend PR #209"
       ],
       "forbiddenClaims": [
         "pending reviewed merge",
@@ -70,14 +72,16 @@
       "status": "supporting",
       "requiredClaims": [
         "DOC-202A",
-        "18bdc2cddd8b80dba5c779e51c5f3947cce9484a",
+        "4fa948b12ebba768ca5e43442dd361d851b905e3",
         "6c1458d836244f2b720f361a78c2ab13f1682f74",
         "ARTIFACT-1, PROVIDER-1B and SECREVIEW-1 advance the runtime pair to backend",
         "PIPELINE-1A advances the runtime pair to backend",
         "PIPELINE-1B advances the runtime pair to backend",
         "A rejected generation still persists no content artifacts.",
         "WORLD-1A advances the runtime pair to backend",
-        "The world model is non-canonical and unmaterialized."
+        "The world model is non-canonical and unmaterialized.",
+        "WORLD-1B advances the runtime pair to backend",
+        "WORLD-1B is design-time materialization, and that is an ownership decision"
       ],
       "forbiddenClaims": []
     },
@@ -110,6 +114,19 @@
         "The blocking set must be enumerable and defensible",
         "A gate with no escape hatch becomes a reason to disable the gate",
         "The policy is itself a control and must be verifiable like every other one"
+      ],
+      "forbiddenClaims": []
+    },
+    {
+      "path": "docs/00-project-control/WORLD-1B_SCOPE.md",
+      "owner": "project-control",
+      "rank": 6,
+      "status": "supporting",
+      "requiredClaims": [
+        "WORLD-1B",
+        "The live world is therefore built imperatively into",
+        "Operator-observed Studio acceptance is outstanding",
+        "No script class, and no"
       ],
       "forbiddenClaims": []
     }
@@ -151,6 +168,10 @@
     {
       "source": "docs/00-project-control/DOC-202A_ROADMAP_AUTHORITY_RECONCILIATION.md",
       "target": "docs/00-project-control/SECURITY-REVIEW-B_PROMOTION_CRITERIA.md"
+    },
+    {
+      "source": "docs/00-project-control/ROADMAP_STATUS.md",
+      "target": "docs/00-project-control/WORLD-1B_SCOPE.md"
     }
   ]
 }
