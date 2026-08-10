@@ -3,7 +3,14 @@
 # ROADMAP-RECONCILIATION-1 — Roadmap reconciled against merged reality
 
 **Status:** Complete. Documentation and control-plane only; no runtime code was changed.
-**Reconciled at:** backend `release/cutover-1e-candidate@e05f34a68e9a62042d2bf4f82531552ac8f61341`, canonical Frontend `kazakovak2001-lgtm/Frontend@94736069e049b9614c4012775677c78777f5060d`.
+**Reconciled against**, and these are three different things:
+
+| | Commit | What it is |
+|---|---|---|
+| Control-plane snapshot | backend `e05f34a68e9a62042d2bf4f82531552ac8f61341` | The release-branch head this pass read. Documentation-only descendants of the runtime pair |
+| **Runtime pair** | backend `3e18460c394b03c2d373c7d1a2e9cd0b74b6f984` + Frontend `6c1458d836244f2b720f361a78c2ab13f1682f74` | The verified executable pair. Unchanged by this pass |
+| Frontend reconciliation snapshot | Frontend `94736069e049b9614c4012775677c78777f5060d` | Canonical `main`, read to establish how far it has moved past the pair |
+
 
 This record is the evidence for the statuses in [ROADMAP_STATUS.md](./ROADMAP_STATUS.md). The roadmap remains the ordered delivery authority; this document explains how each status was reached and names every conflict found. Where the two disagree, the roadmap is authoritative for *what is next* and this record is authoritative for *why a status is what it is*.
 

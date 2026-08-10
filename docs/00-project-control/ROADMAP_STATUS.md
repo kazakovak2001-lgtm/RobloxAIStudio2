@@ -2,7 +2,7 @@
 
 # Roadmap Status
 
-**Last Updated:** August 11, 2026
+**Last Updated:** August 10, 2026
 **Current backend runtime release:** `release/cutover-1e-candidate@3e18460c394b03c2d373c7d1a2e9cd0b74b6f984`
 **Current Frontend runtime contents:** `kazakovak2001-lgtm/Frontend@6c1458d836244f2b720f361a78c2ab13f1682f74`
 **Canonical Frontend `main`:** `94736069e049b9614c4012775677c78777f5060d` — **four merged PRs ahead of the pinned pair** (#42, #43, #44, #45). The pinned pair is genuinely verified; `main` has simply moved beyond it, and advancing the pin needs its own paired-release run. See [ROADMAP-RECONCILIATION-1_RESULT.md](./ROADMAP-RECONCILIATION-1_RESULT.md).
