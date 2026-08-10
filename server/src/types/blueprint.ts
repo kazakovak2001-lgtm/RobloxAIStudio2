@@ -201,6 +201,14 @@ export interface GenerationExecution {
   status: "running" | "completed" | "failed" | "cancelled";
   pipeline_steps: Array<{
     agent: string;
+    /**
+     * AGENT-CONTRACT-1. Version of the agent definition that ran this step.
+     *
+     * `undefined` on steps recorded before the contract existed: their agent
+     * definition is genuinely unknown and must not be assumed to be the
+     * current one.
+     */
+    agent_version?: number;
     status: "pending" | "running" | "completed" | "failed" | "skipped";
     started_at?: Date;
     completed_at?: Date;

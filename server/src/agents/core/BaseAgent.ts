@@ -103,6 +103,28 @@ export abstract class BaseAgent {
   }
 
   /**
+   * Whether a provider is wired into this agent.
+   *
+   * AGENT-CONTRACT-1 needs this before execution, so a definition that
+   * requires a model can refuse rather than discover the absence afterwards by
+   * inspecting whatever the fallback produced.
+   */
+  hasLLM(): boolean {
+    return this.llm !== undefined;
+  }
+
+  /**
+   * How many times `execute` will run `process` before giving up.
+   *
+   * Subclasses may lower this through the constructor, so the declared
+   * `maxAttempts` in AGENT-CONTRACT-1 is reconciled against this rather than
+   * against the class default.
+   */
+  attemptCeiling(): number {
+    return this.maxRetries;
+  }
+
+  /**
    * Override the prompt template registry for this agent.
    * If not set, uses the shared default registry.
    */
