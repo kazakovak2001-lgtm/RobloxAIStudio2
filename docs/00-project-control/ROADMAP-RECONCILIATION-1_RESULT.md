@@ -119,7 +119,7 @@ Renaming merged slices would break pinned claims and merged-PR references for no
 
 ## Dependency and blocker graph
 
-One operator session is the only thing gating the Studio chain.
+One operator session gates **one path** through the Studio work — `ARTIFACT-1`, `STUDIO-2F-A` and `WORLD-1B`, and through `WORLD-1B` the blocked `WORLD-1C`. It does **not** unblock the rest: `STUDIO-2F-B` is independently blocked by the absence of a Roblox Open Cloud credential surface, and `STUDIO-2F-C`, `-D` and `-E` are unscoped. Completing the session is necessary for that path and sufficient for nothing else.
 
 ```
                     ┌─ ARTIFACT-1 ──────────┐

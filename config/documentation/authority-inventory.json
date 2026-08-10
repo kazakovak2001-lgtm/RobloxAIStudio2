@@ -206,7 +206,8 @@
         "The distinctions are load-bearing and are not collapsed.",
         "do not appear anywhere in either repository",
         "the pair is current as a pair, and `main` has moved beyond it.",
-        "Studio acceptance is paused by the operator."
+        "Studio acceptance is paused by the operator.",
+        "Completing the session is necessary for that path and sufficient for nothing else."
       ],
       "forbiddenClaims": []
     }
