@@ -33,7 +33,7 @@ The order is a dependency claim, not a preference. Each stage needs the one befo
 8. **Add the analytics and experiment closed loop** — `ANALYTICS-2`, `EXPERIMENT-1`.
 9. **Expand multi-place and remote operations** — `MULTIPLACE-1`, `REMOTE-OPS-1`.
 
-`UI-QUALITY-1`, `PERF-AGENT-1`, `STORE-INTEL-1` and `AGENT-SAFETY-1` are cross-cutting and attach where their inputs exist rather than occupying a stage of their own. `AGENT-SAFETY-1` is the exception worth naming early: it governs every other item, and the later it lands the more it has to retrofit.
+`UI-QUALITY-1`, `PERF-AGENT-1`, `STORE-INTEL-1` and `AGENT-SAFETY-1` are cross-cutting and attach where their inputs exist rather than occupying a stage of their own. `AGENT-SAFETY-1` is the exception worth naming early: it governs every other item, and the later it lands the more it has to retrofit. It is therefore listed **before** `REMOTE-OPS-1`, which declares it as a dependency — an ordered table that lists a dependant above its prerequisite is telling a reader to start in the wrong place.
 
 ## The extensions
 
@@ -86,8 +86,8 @@ The order is a dependency claim, not a preference. Each stage needs the one befo
 |---|---|---|---|
 | `STORE-INTEL-1` | Creator Store semantic retrieval, compatibility and security scoring | `ASSET-FABRIC-1`, `SECREVIEW-1` | Third-party content is untrusted input. Scoring it is a security surface, not a search feature |
 | `MULTIPLACE-1` | Whole-universe and multi-place orchestration | `STUDIO-2F-C` | Needs place delivery, which is unscoped |
-| `REMOTE-OPS-1` | Web and mobile agent control plane | `AGENT-SAFETY-1` | Remote control without a permission model is remote control of an unbounded agent |
 | `AGENT-SAFETY-1` | Observe / Plan / Propose / Execute permission model | `AGENT-CONTRACT-1` | The one to bring forward. `AGENT-CONTRACT-1` gave agents versioned definitions; this gives them bounded authority, and everything above becomes safer for existing |
+| `REMOTE-OPS-1` | Web and mobile agent control plane | `AGENT-SAFETY-1` | Remote control without a permission model is remote control of an unbounded agent |
 
 ## What this does not change
 

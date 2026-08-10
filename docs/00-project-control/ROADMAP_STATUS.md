@@ -90,8 +90,8 @@ the direction is legible, not so it can be picked up out of order.
 | `PERF-AGENT-1` | Profiler-driven optimization | Medium | `unscoped` — strategic direction, not started — [ROADMAP-EXTENSION-1](./ROADMAP-EXTENSION-1_STRATEGIC_DIRECTION.md) | `PLAYTEST-3` |
 | `STORE-INTEL-1` | Creator Store semantic retrieval and compatibility/security scoring | Medium | `unscoped` — strategic direction, not started — [ROADMAP-EXTENSION-1](./ROADMAP-EXTENSION-1_STRATEGIC_DIRECTION.md) | `ASSET-FABRIC-1`, `SECREVIEW-1` |
 | `MULTIPLACE-1` | Whole-universe and multi-place orchestration | Low | `unscoped` — strategic direction, not started — [ROADMAP-EXTENSION-1](./ROADMAP-EXTENSION-1_STRATEGIC_DIRECTION.md) | `STUDIO-2F-C` |
-| `REMOTE-OPS-1` | Web and mobile agent control plane | Low | `unscoped` — strategic direction, not started — [ROADMAP-EXTENSION-1](./ROADMAP-EXTENSION-1_STRATEGIC_DIRECTION.md) | `AGENT-SAFETY-1` |
 | `AGENT-SAFETY-1` | Observe / Plan / Propose / Execute permission model | High | `unscoped` — strategic direction, not started — [ROADMAP-EXTENSION-1](./ROADMAP-EXTENSION-1_STRATEGIC_DIRECTION.md) | `AGENT-CONTRACT-1` |
+| `REMOTE-OPS-1` | Web and mobile agent control plane | Low | `unscoped` — strategic direction, not started — [ROADMAP-EXTENSION-1](./ROADMAP-EXTENSION-1_STRATEGIC_DIRECTION.md) | `AGENT-SAFETY-1` |
 
 ## SECURITY-2G control baseline
 
