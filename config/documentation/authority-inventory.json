@@ -15,34 +15,36 @@
       "rank": 1,
       "status": "current",
       "requiredClaims": [
-        "`SECURITY-2G` | Dependency, SAST, credential, image, SBOM, and RBAC control gate | High | ✅ Complete — `SECURITY-2G-F`",
-        "`DOC-202` | Documentation-authority inventory and deterministic guards | Medium | ✅ Complete — `DOC-202A`",
-        "`STUDIO-ACCEPT-1` | Real Studio acceptance of canonical artifact delivery | Critical | ✅ Complete",
-        "`RUNTIME-PLAYTEST-1` | Authoritative Studio-attached Roblox runtime evidence | High | ✅ Complete",
-        "`REPAIR-1` | Artifact-applying repair, redelivery, and revalidation | High | ✅ Complete — backend 1A/1B/1C plus the Frontend repair UI",
-        "`PROVIDER-1A` | Truthful AI provider configuration and generation provenance | High | ✅ Complete — backend PR #193",
+        "`SECURITY-2G` | Dependency, SAST, credential, image, SBOM, and RBAC control gate | High | `complete` — `SECURITY-2G-F`",
+        "`DOC-202` | Documentation-authority inventory and deterministic guards | Medium | `complete` — `DOC-202A`",
+        "`STUDIO-ACCEPT-1` | Real Studio acceptance of canonical artifact delivery | Critical | `complete`",
+        "`RUNTIME-PLAYTEST-1` | Authoritative Studio-attached Roblox runtime evidence | High | `complete`",
+        "`REPAIR-1` | Artifact-applying repair, redelivery, and revalidation | High | `complete` — backend 1A/1B/1C plus the Frontend repair UI",
+        "`PROVIDER-1A` | Truthful AI provider configuration and generation provenance | High | `complete` — backend PR #193",
         "`PROVIDER-1A` is complete through merged backend PR #193 at `ecae9bb59f1639d2e382e7221a956aa96460b3e9`",
-        "`STUDIO-2F-A` | Generated GUI materialization as real Studio instances | Medium | 🚧 Code complete, not done — backend PR #195/#196/#197 merged; runtime validation outstanding",
-        "`PROVIDER-1B` | Fallback provenance completeness after a provider call | High | ✅ Complete — backend PR #200",
-        "`ARTIFACT-1` | Deterministic Studio identity for delivered artifacts | Medium | 🚧 Code complete, not done — backend PR #199 merged",
-        "`SECREVIEW-1` | Advisory deterministic Luau trust-boundary review | High | ✅ Complete — backend PR #201;",
-        "`SECURITY-REVIEW-B` | Blocking security gate over a high-confidence subset | Medium | Not scoped",
-        "`PIPELINE-1A` | Generation plan as server-owned validated data | High | ✅ Complete — backend PR #203",
-        "`PIPELINE-1B` | Deterministic validation recorded as a durable artifact | High | ✅ Complete — backend PR #205",
-        "`PIPELINE-1C` | Conditional stages inside the pipeline | Low | Not scoped",
+        "`STUDIO-2F-A` | Generated GUI materialization as real Studio instances | Medium | `code_complete_evidence_pending` — backend PR #195/#196/#197 merged; runtime validation outstanding",
+        "`PROVIDER-1B` | Fallback provenance completeness after a provider call | High | `complete` — backend PR #200",
+        "`ARTIFACT-1` | Deterministic Studio identity for delivered artifacts | Medium | `code_complete_evidence_pending` — backend PR #199 merged",
+        "`SECREVIEW-1` | Advisory deterministic Luau trust-boundary review | High | `complete` — backend PR #201;",
+        "`SECURITY-REVIEW-B` | Blocking security gate over a high-confidence subset | Medium | `blocked` — and not scoped",
+        "`PIPELINE-1A` | Generation plan as server-owned validated data | High | `complete` — backend PR #203",
+        "`PIPELINE-1B` | Deterministic validation recorded as a durable artifact | High | `complete` — backend PR #205",
+        "`PIPELINE-1C` | Conditional stages inside the pipeline | Low | `unscoped`",
         "a security finding never negates generation, delivery or release, and a blocking gate is the separate `SECURITY-REVIEW-B` delivery",
         "3e18460c394b03c2d373c7d1a2e9cd0b74b6f984",
         "6c1458d836244f2b720f361a78c2ab13f1682f74",
-        "`WORLD-1A` | Semantic world model and cross-artifact validation against generated Lua | High | ✅ Complete — backend PR #207",
-        "`WORLD-1B` | Design-time Studio materialization of the world model | Medium | 🚧 Code complete, not done — backend PR #209 merged",
-        "`WORLD-1C` | Canonical ownership of the world by the materialized scene | Medium | ⛔ Scoped and blocked",
-        "`AGENT-CONTRACT-1` | Versioned server-owned definitions for every runtime agent | Medium | ✅ Complete — backend PR #212; foundation only, and every policy field is enforced",
+        "`WORLD-1A` | Semantic world model and cross-artifact validation against generated Lua | High | `complete` — backend PR #207",
+        "`WORLD-1B` | Design-time Studio materialization of the world model | Medium | `code_complete_evidence_pending` — backend PR #209 merged",
+        "`WORLD-1C` | Canonical ownership of the world by the materialized scene | Medium | `blocked` — scoped, and blocked",
+        "`AGENT-CONTRACT-1` | Versioned server-owned definitions for every runtime agent | Medium | `complete` — backend PR #212; foundation only, and every policy field is enforced",
         "Wall-clock timeout, monetary cost and input-token ceilings are deliberately absent because nothing enforces them today",
         "release/cutover-1e-candidate@3e18460c394b03c2d373c7d1a2e9cd0b74b6f984",
-        "`ARTIFACT-CONTRACT-2` | Durable artifact envelope, content identity and lineage | High | ✅ Complete — backend PR #214",
+        "`ARTIFACT-CONTRACT-2` | Durable artifact envelope, content identity and lineage | High | `complete` — backend PR #214",
         "a report can name the exact bytes it read instead of being assumed to still apply",
-        "`SECURITY-REVIEW-A2` | Hardening of the advisory Luau reviewer | Medium | ✅ Complete — backend PR #216",
-        "no `SECURITY-REVIEW-B` promotion criterion is satisfied by it"
+        "`SECURITY-REVIEW-A2` | Hardening of the advisory Luau reviewer | Medium | `complete` — backend PR #216",
+        "no `SECURITY-REVIEW-B` promotion criterion is satisfied by it",
+        "four merged PRs ahead of the pinned pair",
+        "only the first means the evidence a slice's own scope\nrequired actually exists"
       ],
       "forbiddenClaims": [
         "PR #162 pending reviewed merge",
@@ -73,7 +75,8 @@
         "`AGENT-CONTRACT-1` complete (backend PR #212",
         "`title` carried as a human-readable label that nothing reads",
         "`ARTIFACT-CONTRACT-2` complete (backend PR #214",
-        "`SECURITY-REVIEW-A2` complete (backend PR #216"
+        "`SECURITY-REVIEW-A2` complete (backend PR #216",
+        "That is the pinned pair, not the tip of `main`:"
       ],
       "forbiddenClaims": [
         "pending reviewed merge",
@@ -192,6 +195,20 @@
         "an empty array would assert a relationship rather than record one"
       ],
       "forbiddenClaims": []
+    },
+    {
+      "path": "docs/00-project-control/ROADMAP-RECONCILIATION-1_RESULT.md",
+      "owner": "project-control",
+      "rank": 10,
+      "status": "supporting",
+      "requiredClaims": [
+        "ROADMAP-RECONCILIATION-1",
+        "The distinctions are load-bearing and are not collapsed.",
+        "do not appear anywhere in either repository",
+        "the pair is current as a pair, and `main` has moved beyond it.",
+        "Studio acceptance is paused by the operator."
+      ],
+      "forbiddenClaims": []
     }
   ],
   "historical": [
@@ -247,6 +264,10 @@
     {
       "source": "docs/00-project-control/ROADMAP_STATUS.md",
       "target": "docs/00-project-control/ARTIFACT-CONTRACT-2_SCOPE.md"
+    },
+    {
+      "source": "docs/00-project-control/ROADMAP_STATUS.md",
+      "target": "docs/00-project-control/ROADMAP-RECONCILIATION-1_RESULT.md"
     }
   ]
 }
