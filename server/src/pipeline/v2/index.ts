@@ -22,12 +22,15 @@ export {
   type ReviewSummary,
 } from "./ArtifactStore";
 export {
+  AGENTLESS_STAGE_PRODUCERS,
   ARTIFACT_ENVELOPE_SCHEMA_VERSION,
   ARTIFACT_DEPENDENCY_RULES,
   CONTENT_HASH_ALGORITHM,
   DETERMINISTIC_PRODUCERS,
+  HUMAN_EDIT_PRODUCER_VERSION,
   ArtifactContentError,
   agentProducer,
+  humanEditProducer,
   canonicalJson,
   computeContentHash,
   deterministicProducer,

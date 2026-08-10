@@ -28,8 +28,8 @@ Four, and only one of them was attributed truthfully:
 |---|---|
 | `GenerationArtifactRecorder` | The generation package. Agent stages carried a real agent id; `VALIDATION`, `SECURITY_REVIEW` and `WORLD_MODEL` carried `agent: null`, so three different deterministic producers were indistinguishable |
 | `RepairEngine` | The repaired Lua under `agent: "repair-engine"`, plus every other stage copied forward unchanged |
-| `PipelineEngine` (v2, reachable only from `routes/concept.ts`) | Stage output keyed by `stage.agentId` |
-| `StudioIntegrationManager` | A legacy package under `agent: "legacy-package-adapter"` |
+| `PipelineEngine` (v2, reachable only from `routes/concept.ts`) | Stage output keyed by `stage.agentId`, with no lineage at all — and five of its stages have no agent |
+| `StudioIntegrationManager` | A legacy package under `agent: "legacy-package-adapter"`, keyed by package id even though the package carries its own `projectId` |
 
 ### The defect this slice exists to close
 
@@ -51,7 +51,7 @@ Four, and only one of them was attributed truthfully:
 schemaVersion   envelope version, not payload version
 projectId       owning project, from server-held execution context
 contentHash     "sha256:<hex>" over the canonical serialization of content
-producer        { type: agent | deterministic, id, version }
+producer        { type: agent | deterministic | human, id, version }
 dependencies    [{ artifactId, stage, contentHash }]
 ```
 
@@ -73,7 +73,9 @@ SHA-256 over the canonical serialization, labelled `sha256-canonical-json-v1` an
 
 ### Producer identity
 
-Recorded at creation and never re-resolved from the current registry. For agent-produced artifacts the version is looked up from AGENT-CONTRACT-1 and reconciled: an artifact claiming a version the current definition does not have is refused. Deterministic producers are a registry — `generation-validation`, `lua-security-review`, `world-model`, `repair-carry-forward`, `legacy-package-adapter` — so `agent: null` no longer collapses three producers into one.
+Recorded at creation and never re-resolved from the current registry. For agent-produced artifacts the version is looked up from AGENT-CONTRACT-1 and reconciled: an artifact claiming a version the current definition does not have is refused. Deterministic producers are a registry — `generation-validation`, `lua-security-review`, `world-model`, `repair-carry-forward`, `legacy-package-adapter`, `pipeline-stage-passthrough` — so `agent: null` no longer collapses several producers into one. `AGENTLESS_STAGE_PRODUCERS` maps each of the five agentless stages to the producer that actually made it, because attributing all of them to the validation pass would be false for four.
+
+A third producer type, `human`, records content a reviewer replaced by hand. `edit()` moves both the content hash **and** the producer, since edited bytes are the reviewer's and leaving the original producer in place would attribute a person's content to an agent.
 
 A caller may name a deterministic producer by id string rather than importing the envelope module, which keeps `StudioIntegrationManager` from adding a cross-layer edge.
 
@@ -81,7 +83,7 @@ A caller may name a deterministic producer by id string rather than importing th
 
 An edge means: **if this upstream content changes, this artifact may no longer describe the same generation state.** Pipeline ordering alone is not that relationship, so `ARTIFACT_DEPENDENCY_RULES` enumerates the real ones and rejects anything else as `impossible-stage-lineage`.
 
-Validation covers duplicate, self-referential, unknown, cross-project, hash-mismatched and rejected-upstream dependencies, plus malformed and unknown producers. Issues are raised **on write**, so a lineage edge that does not hold is never persisted — a broken edge reads as verified provenance, which is worse than no edge.
+Validation covers duplicate, self-referential, unknown, cross-project, hash-mismatched, stage-misnamed and rejected-upstream dependencies, plus malformed and unknown producers. An edge to a pre-envelope artifact is refused outright: it has no durable identity, so nothing can claim an exact binding to it. Issues are raised **on write**, so a lineage edge that does not hold is never persisted — a broken edge reads as verified provenance, which is worse than no edge.
 
 Lineage is resolved during the commit loop, never while staging, so an edge can only name an artifact that is already durably accepted. On the rejected path the `VALIDATION` report is written with **no** dependencies, because nothing was committed for it to point at.
 
@@ -113,7 +115,6 @@ Unchanged. The transfer fingerprint in `ArtifactRef.hash` is a **different const
 
 - `reviewStatus`/`allApproved` remain **unenforced before delivery**; this slice records dependencies on rejected artifacts as an error but does not add a human-review gate.
 - Dependency validation resolves upstream artifacts through the store, so an edge to an artifact in a different store instance reports `unknown-dependency`.
-- Ownership for a legacy `GenerationPackage` is its own package id, because that path carries no separate project context.
 - `contentHash` is not indexed and there is no content-addressed lookup; identity is per artifact, not global.
 - The v2 `PipelineEngine` path is reachable only from `routes/concept.ts` and is brought into the envelope without being otherwise revisited.
 

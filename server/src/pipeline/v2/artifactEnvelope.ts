@@ -36,15 +36,47 @@ export const CONTENT_HASH_ALGORITHM = "sha256-canonical-json-v1";
 const CONTENT_HASH_PREFIX = "sha256:";
 
 /** How the content came to exist. */
-export type ArtifactProducerType = "agent" | "deterministic";
+export type ArtifactProducerType = "agent" | "deterministic" | "human";
 
 export interface ArtifactProducer {
-  /** `agent` when a model authored it, `deterministic` when code derived it. */
+  /**
+   * `agent` when a model authored it, `deterministic` when code derived it,
+   * `human` when a reviewer replaced the content by hand.
+   */
   readonly type: ArtifactProducerType;
-  /** Agent id from AGENT-CONTRACT-1, or a deterministic producer id below. */
+  /**
+   * Agent id from AGENT-CONTRACT-1, a deterministic producer id below, or the
+   * identifier of the reviewer who edited the content.
+   */
   readonly id: string;
-  /** The producer contract version that ran. Never resolved later. */
+  /**
+   * The producer contract version that ran — the agent definition version, or
+   * the version of the code path that recorded the content. Never resolved
+   * later from whatever the current registry happens to say.
+   */
   readonly version: number;
+}
+
+/** The edit path's own contract version, used as the `human` producer version. */
+export const HUMAN_EDIT_PRODUCER_VERSION = 1;
+
+/**
+ * Producer identity for content a reviewer replaced by hand.
+ *
+ * An edited artifact is not what its original producer made, so keeping the
+ * original producer would attribute a person's bytes to an agent.
+ */
+export function humanEditProducer(editedBy: string): ArtifactProducer {
+  if (!editedBy) {
+    throw new ArtifactContentError(
+      "An edited artifact must record who edited it",
+    );
+  }
+  return {
+    type: "human",
+    id: editedBy,
+    version: HUMAN_EDIT_PRODUCER_VERSION,
+  };
 }
 
 export interface ArtifactDependency {
@@ -74,6 +106,27 @@ export const DETERMINISTIC_PRODUCERS: Readonly<Record<string, number>> = {
   "repair-carry-forward": 1,
   /** `StudioIntegrationManager` adapting a legacy package into artifacts. */
   "legacy-package-adapter": 1,
+  /**
+   * A stage the v2 `PipelineExecutor` passes through without an agent and
+   * without deriving anything — `REQUEST` and `EXPORT`.
+   */
+  "pipeline-stage-passthrough": 1,
+};
+
+/**
+ * Which deterministic producer owns each agentless stage.
+ *
+ * Without this, every `agent: null` stage would be attributed to one producer,
+ * which is false for four of the five stages that have no agent.
+ */
+export const AGENTLESS_STAGE_PRODUCERS: Readonly<
+  Partial<Record<StageName, string>>
+> = {
+  REQUEST: "pipeline-stage-passthrough",
+  WORLD_MODEL: "world-model",
+  SECURITY_REVIEW: "lua-security-review",
+  VALIDATION: "generation-validation",
+  EXPORT: "pipeline-stage-passthrough",
 };
 
 export type DeterministicProducerId = keyof typeof DETERMINISTIC_PRODUCERS;
@@ -238,6 +291,8 @@ export type ArtifactEnvelopeIssueCode =
   | "unknown-dependency"
   | "dependency-project-mismatch"
   | "dependency-hash-mismatch"
+  | "dependency-stage-mismatch"
+  | "dependency-without-identity"
   | "dependency-not-committed"
   | "impossible-stage-lineage";
 
@@ -342,7 +397,9 @@ function producerIssues(artifact: ArtifactEnvelope): ArtifactEnvelopeIssue[] {
     producer.id.length === 0 ||
     !Number.isInteger(producer.version) ||
     producer.version < 1 ||
-    (producer.type !== "agent" && producer.type !== "deterministic")
+    (producer.type !== "agent" &&
+      producer.type !== "deterministic" &&
+      producer.type !== "human")
   ) {
     fail(
       "malformed-producer",
@@ -369,6 +426,9 @@ function producerIssues(artifact: ArtifactEnvelope): ArtifactEnvelopeIssue[] {
     }
     return issues;
   }
+
+  // A human editor is identified by who they are, not by a registry entry.
+  if (producer.type === "human") return issues;
 
   const registered = DETERMINISTIC_PRODUCERS[producer.id];
   if (registered === undefined) {
@@ -440,10 +500,25 @@ function dependencyIssues(
       );
     }
 
-    if (
-      upstream.contentHash !== undefined &&
-      upstream.contentHash !== dependency.contentHash
-    ) {
+    if (upstream.stage !== dependency.stage) {
+      // The declared stage is what makes lineage readable without resolving
+      // the artifact, so a literal that misnames it records false lineage that
+      // the allowed-stage and hash checks would both let through.
+      fail(
+        "dependency-stage-mismatch",
+        `Artifact "${artifact.id}" declares "${dependency.artifactId}" as stage ${dependency.stage}, but it is ${upstream.stage}`,
+      );
+    }
+
+    if (upstream.contentHash === undefined) {
+      // A pre-envelope artifact has no durable identity, so nothing can claim
+      // an exact binding to it. Accepting the caller's hash here would let a
+      // new artifact assert provenance that was never recorded.
+      fail(
+        "dependency-without-identity",
+        `Artifact "${artifact.id}" depends on "${dependency.artifactId}", which carries no content hash to bind to`,
+      );
+    } else if (upstream.contentHash !== dependency.contentHash) {
       // The upstream this artifact describes is not the upstream that exists
       // now. That is the whole point of recording the hash.
       fail(

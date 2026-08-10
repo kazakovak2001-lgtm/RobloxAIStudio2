@@ -8,6 +8,7 @@ import {
   ARTIFACT_ENVELOPE_SCHEMA_VERSION,
   ArtifactContentError,
   computeContentHash,
+  humanEditProducer,
   resolveProducer,
   validateArtifactEnvelope,
   type ArtifactDependency,
@@ -325,9 +326,16 @@ export class ArtifactStore {
       // different thing, and anything that bound to the old bytes must be able
       // to tell — silently keeping the old hash would make a stale dependency
       // read as current.
+      //
+      // Provenance follows it too: the edited bytes are the reviewer's, not
+      // the original producer's, so keeping that producer would attribute a
+      // person's content to an agent or to a deterministic service.
       ...(current.schemaVersion === undefined
         ? {}
-        : { contentHash: computeContentHash(newContent) }),
+        : {
+            contentHash: computeContentHash(newContent),
+            producer: humanEditProducer(editedBy),
+          }),
       reviewStatus: "edited",
       reviewedAt: Date.now(),
       reviewedBy: editedBy,

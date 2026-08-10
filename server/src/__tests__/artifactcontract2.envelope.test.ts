@@ -4,6 +4,7 @@ import {
   ARTIFACT_ENVELOPE_SCHEMA_VERSION,
   ArtifactContentError,
   ArtifactStore,
+  HUMAN_EDIT_PRODUCER_VERSION,
   agentProducer,
   canonicalJson,
   computeContentHash,
@@ -229,6 +230,14 @@ describe("ARTIFACT-CONTRACT-2 envelope on newly produced artifacts", () => {
     const edited = await store.edit(artifact.id, { scripts: [] }, "reviewer");
 
     expect(edited?.contentHash).not.toBe(artifact.contentHash);
+    // The edited bytes are the reviewer's, so the original producer must not
+    // be left claiming them.
+    expect(edited?.producer).toEqual({
+      type: "human",
+      id: "reviewer",
+      version: HUMAN_EDIT_PRODUCER_VERSION,
+    });
+    expect(validateArtifactEnvelope(edited!)).toEqual([]);
     expect(edited?.contentHash).toBe(computeContentHash({ scripts: [] }));
   });
 });
@@ -319,6 +328,82 @@ describe("ARTIFACT-CONTRACT-2 dependency lineage", () => {
         },
       ),
     ).rejects.toThrow(/more than once/i);
+  });
+
+  it("rejects a dependency that misnames the upstream's stage", async () => {
+    // The declared stage is what makes lineage readable without resolving the
+    // artifact. A literal that misnames it would otherwise pass both the
+    // allowed-stage rule and the hash check.
+    const store = new ArtifactStore();
+    const design = await store.store(
+      EXECUTION,
+      "GAME_DESIGN",
+      "game_designer",
+      { concept: "anything" },
+      { projectId: PROJECT },
+    );
+
+    await expect(
+      store.store(
+        EXECUTION,
+        "SECURITY_REVIEW",
+        null,
+        { findings: [] },
+        {
+          projectId: PROJECT,
+          producer: deterministicProducer("lua-security-review"),
+          dependencies: [
+            {
+              artifactId: design.id,
+              stage: "LUA_GENERATION",
+              contentHash: design.contentHash!,
+            },
+          ],
+        },
+      ),
+    ).rejects.toThrow(/but it is GAME_DESIGN/i);
+  });
+
+  it("refuses to bind to a historical artifact that has no content identity", async () => {
+    // A pre-envelope artifact has nothing to bind to, so accepting the
+    // caller's hash would assert provenance that was never recorded.
+    const store = new ArtifactStore();
+    const legacy: PipelineArtifact = {
+      id: "artifact-legacy-upstream",
+      pipelineId: EXECUTION,
+      stage: "LUA_GENERATION",
+      agent: "lua_generator",
+      type: "lua",
+      name: "generatedScripts.lua",
+      createdAt: 1,
+      content: LUA,
+      sizeBytes: 10,
+      validated: true,
+      reviewStatus: "approved",
+    };
+    (
+      store as unknown as { artifacts: Map<string, PipelineArtifact> }
+    ).artifacts.set(legacy.id, legacy);
+
+    await expect(
+      store.store(
+        EXECUTION,
+        "SECURITY_REVIEW",
+        null,
+        { findings: [] },
+        {
+          projectId: PROJECT,
+          producer: deterministicProducer("lua-security-review"),
+          dependencies: [
+            {
+              artifactId: legacy.id,
+              stage: "LUA_GENERATION",
+              contentHash: computeContentHash(LUA),
+            },
+          ],
+        },
+      ),
+    ).rejects.toThrow(/no content hash to bind to/i);
   });
 
   it("rejects a dependency on an artifact that does not exist", async () => {

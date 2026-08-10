@@ -116,10 +116,11 @@ export class StudioIntegrationManager {
           "legacy-package-adapter",
           { scripts: pkg.scripts },
           {
-            // A legacy package is identified by its own id and carries no
-            // separate project context here, so ownership is that id rather
-            // than a project invented for it.
-            projectId: pkg.packageId,
+            // The package carries the project it belongs to, and the same
+            // value is what this method synchronizes against below. Owning the
+            // artifacts by package id instead would make ownership disagree
+            // with the project actually being synchronized.
+            projectId: pkg.projectId,
             producer: "legacy-package-adapter",
           },
         );
@@ -134,7 +135,7 @@ export class StudioIntegrationManager {
           validationReport: pkg.validationReport,
         },
         {
-          projectId: pkg.packageId,
+          projectId: pkg.projectId,
           producer: "legacy-package-adapter",
         },
       );
