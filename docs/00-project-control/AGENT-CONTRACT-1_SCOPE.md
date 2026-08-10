@@ -54,7 +54,7 @@ AgentDefinition {
 }
 ```
 
-**Every field is consulted by something.** `requiresModel` and `fallback` are enforced in `AgentRegistry.executeAgent`; `reachability` is enforced by pipeline validation; `maxOutputTokens` is the ceiling passed to the provider call that already exists; `maxAttempts` is reconciled against `AgentRegistry.attemptCeilings()`, the ceiling each constructed agent actually loops, so an agent that overrides the default cannot leave its definition claiming attempts the runtime never makes; `output` is asserted against the real parser call sites.
+**Every policy field is consulted by something.** `id` and `version` are identity, and `title` is a human-readable label that nothing reads — it is not a policy and is not claimed as one. Every field that states a policy is enforced: `requiresModel` and `fallback` are enforced in `AgentRegistry.executeAgent`; `reachability` is enforced by pipeline validation; `maxOutputTokens` is the ceiling passed to the provider call that already exists; `maxAttempts` is reconciled against `AgentRegistry.attemptCeilings()`, the ceiling each constructed agent actually loops, so an agent that overrides the default cannot leave its definition claiming attempts the runtime never makes; `output` is asserted against the real parser call sites.
 
 `validateAgentDefinitions(definitions, registeredIds, attemptsById)` runs outside the test suite: `npm run validate` invokes [validate-agent-contract.ts](../../scripts/validate-agent-contract.ts), which fails on a definition with no implementation, an implementation with no definition, or any declared attempt count the implementation does not loop.
 

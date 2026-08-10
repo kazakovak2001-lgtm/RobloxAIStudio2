@@ -36,12 +36,14 @@
         "`WORLD-1A` | Semantic world model and cross-artifact validation against generated Lua | High | ✅ Complete — backend PR #207",
         "`WORLD-1B` | Design-time Studio materialization of the world model | Medium | 🚧 Code complete, not done — backend PR #209 merged",
         "`WORLD-1C` | Canonical ownership of the world by the materialized scene | Medium | ⛔ Scoped and blocked",
-        "`AGENT-CONTRACT-1` | Versioned server-owned definitions for every runtime agent | Medium | ✅ Complete — backend PR #212",
-        "Wall-clock timeout, monetary cost and input-token ceilings are deliberately absent because nothing enforces them today"
+        "`AGENT-CONTRACT-1` | Versioned server-owned definitions for every runtime agent | Medium | ✅ Complete — backend PR #212; foundation only, and every policy field is enforced",
+        "Wall-clock timeout, monetary cost and input-token ceilings are deliberately absent because nothing enforces them today",
+        "release/cutover-1e-candidate@ddfa10453d9e2f48bc9e57045d40a8792d3cc297"
       ],
       "forbiddenClaims": [
         "PR #162 pending reviewed merge",
-        "PR #162 remains subject to reviewed exact-head merge approval"
+        "PR #162 remains subject to reviewed exact-head merge approval",
+        "release/cutover-1e-candidate@c42a9b19f2d58fe728e3b978edffb8acd8621c72"
       ]
     },
     {
@@ -62,7 +64,8 @@
         "`WORLD-1A` complete (backend PR #207",
         "`WORLD-1B` code complete but not done (backend PR #209",
         "`WORLD-1C` scoped and blocked",
-        "`AGENT-CONTRACT-1` complete (backend PR #212"
+        "`AGENT-CONTRACT-1` complete (backend PR #212",
+        "`title` carried as a human-readable label that nothing reads"
       ],
       "forbiddenClaims": [
         "pending reviewed merge",
@@ -87,7 +90,7 @@
         "WORLD-1B advances the runtime pair to backend",
         "WORLD-1B is design-time materialization, and that is an ownership decision",
         "AGENT-CONTRACT-1 advances the runtime pair to backend",
-        "A field that nothing reads is not a contract, so each one had to earn its"
+        "A policy that nothing reads is not a contract, so each one had to earn its"
       ],
       "forbiddenClaims": []
     },
@@ -156,7 +159,7 @@
       "status": "supporting",
       "requiredClaims": [
         "AGENT-CONTRACT-1",
-        "Every field is consulted by something.",
+        "it is not a policy and is not claimed as one",
         "A class name is not a version",
         "runs outside the test suite",
         "the default is not the contract"

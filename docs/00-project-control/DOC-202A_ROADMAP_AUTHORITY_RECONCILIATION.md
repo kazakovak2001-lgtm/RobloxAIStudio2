@@ -390,8 +390,9 @@ content, or how many times it retries. An unknown name returned
 `{ _skipped: true }`. Each agent now carries one versioned, server-owned
 definition.
 
-**A field that nothing reads is not a contract, so each one had to earn its
-place.** `requiresModel` and `fallback` gate `AgentRegistry.executeAgent` before
+**A policy that nothing reads is not a contract, so each one had to earn its
+place.** `id` and `version` are identity and `title` is a human-readable label
+that nothing reads; neither is claimed as a policy. Of the rest: `requiresModel` and `fallback` gate `AgentRegistry.executeAgent` before
 and after the provider call; `reachability` is enforced by pipeline validation;
 `requiredKeys` is asserted against the real parser call sites; `maxAttempts` is
 reconciled against the ceiling each constructed agent actually loops. Wall-clock
