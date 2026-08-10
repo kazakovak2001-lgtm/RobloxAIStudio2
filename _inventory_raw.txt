@@ -594,6 +594,7 @@ server/src/__tests__/security2gE.studio-protocol-scope.test.ts
 server/src/__tests__/security2gE.system-metadata-scope.test.ts
 server/src/__tests__/security2gE.world-scope.test.ts
 server/src/__tests__/securityHardening.test.ts
+server/src/__tests__/securityreviewa2.hardening.test.ts
 server/src/__tests__/studio1.artifact-lineage.test.ts
 server/src/__tests__/studio1.import-acknowledgement.test.ts
 server/src/__tests__/studio1.plugin-contract.test.ts

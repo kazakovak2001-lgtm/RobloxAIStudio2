@@ -684,6 +684,7 @@
 │   │   │   ├── security2gE.system-metadata-scope.test.ts
 │   │   │   ├── security2gE.world-scope.test.ts
 │   │   │   ├── securityHardening.test.ts
+│   │   │   ├── securityreviewa2.hardening.test.ts
 │   │   │   ├── studio1.artifact-lineage.test.ts
 │   │   │   ├── studio1.import-acknowledgement.test.ts
 │   │   │   ├── studio1.plugin-contract.test.ts
