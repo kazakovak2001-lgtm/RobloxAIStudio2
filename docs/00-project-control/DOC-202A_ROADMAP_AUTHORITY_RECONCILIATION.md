@@ -432,7 +432,10 @@ be identified. `pipelineId` named the execution, not the project. `agent` held
 a real agent id for some stages, `null` for three different deterministic
 producers, and invented strings such as `repair-engine` for others. No schema
 version, no content hash, no lineage. Every newly produced artifact now carries
-all five fields, and the store refuses to write one that is missing any.
+a schema version, an owning project, a content hash and a producer, and the
+store refuses to write one that is missing any of those. Lineage is the
+exception: it is recorded only where an upstream actually exists, because an
+empty dependency list would assert a relationship rather than record one.
 
 **The defect this closes was live, not theoretical.** A repaired execution
 copied the parent's `SECURITY_REVIEW` and `VALIDATION` forward unchanged, so

@@ -182,7 +182,8 @@
         "integrity identity, not authorization, and not a safety claim",
         "no database migration is required",
         "Absence is the truthful shape",
-        "order is meaning there"
+        "order is meaning there",
+        "an empty array would assert a relationship rather than record one"
       ],
       "forbiddenClaims": []
     }
