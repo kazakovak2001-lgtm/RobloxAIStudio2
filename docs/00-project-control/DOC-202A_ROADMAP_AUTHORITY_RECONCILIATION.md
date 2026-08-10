@@ -9,7 +9,7 @@ fail-closed guard for subsequent roadmap reconciliations.
 
 - Backend repository: `kazakovak2001-lgtm/RobloxAIStudio2`
 - Backend release branch: `release/cutover-1e-candidate`
-- Current backend runtime release: `79b1ecfd137dff71e17fcc57e45078a47137fcdf`
+- Current backend runtime release: `3e18460c394b03c2d373c7d1a2e9cd0b74b6f984`
 - SECURITY-2G-F control baseline: `da55f716c798ec8c6a7f25a8e2a3b7b0a2244416`
 - Paired Frontend repository: `kazakovak2001-lgtm/Frontend`
 - Paired Frontend runtime contents: `6c1458d836244f2b720f361a78c2ab13f1682f74`
@@ -470,6 +470,60 @@ class of defect this contract was written against.
 Historical artifacts carry no envelope and are held to none. Nothing infers a
 schema version, project, hash or producer for them, and nothing may bind to
 one. `kv_store.data` is already `JSONB`, so no database migration was required.
+
+SECURITY-REVIEW-A2 advances the runtime pair to backend
+`3e18460c394b03c2d373c7d1a2e9cd0b74b6f984` and Frontend
+`6c1458d836244f2b720f361a78c2ab13f1682f74`, through backend pull request `#216`.
+The Frontend identity is unchanged.
+
+**A reviewer that cannot say whether it looked is not advisory, it is
+misleading.** `clean` was `findings.length === 0`, so a review over nothing
+reported the same thing as a review that examined a package and found it
+sound. Three paths reached that: the v2 pipeline reviews an empty script list
+when Lua cannot be normalized and persists the result, the repair path reviews
+whatever normalizes regardless of location, and any script outside a server or
+client folder was skipped in silence while the remainder still read as a
+complete review. An existing test asserted the last of those as correct
+behaviour, which is how it survived SECREVIEW-1 review.
+
+A report now carries an outcome of `pass`, `finding`, `not_applicable` or
+`not_inspected`. `pass` is the narrowest and requires **at least one** script
+to have been analysed _and_ every supplied script to have been analysed —
+stated as two conditions because the second alone is vacuously true of an
+empty list, which is exactly the case that used to report clean. An empty or
+unnormalizable input reports `not_inspected`; an input whose every script sits
+where no rule applies reports `not_applicable`. `finding` deliberately takes precedence over coverage,
+because a real defect is never a misleading pass and demoting it to a coverage
+status would hide the more important signal — so coverage is stated separately
+instead of being inferred.
+
+Each reviewed script records the content hash of the exact bytes read, built as
+the ARTIFACT-CONTRACT-2 construction for a string payload. It is computed in the
+validation layer rather than imported from the pipeline layer, so no dependency
+is added in that direction, and a test pins the two constructions against each
+other so they cannot drift apart in silence.
+
+Four coverage gaps were closed. `OnServerInvoke` had never been scanned, so
+every rule was blind to the RemoteFunction half of the trust boundary — the
+same boundary reached through a different assignment. Runtime code compilation
+had no rule. Resolving a player from a client-supplied value was read as
+_validation_ by the general guard, which is correct for a reward table and
+exactly wrong for a player registry. An outbound request whose target the
+client chose had no rule.
+
+One review finding is worth keeping for the pattern. A package holding an
+analysed script beside an unreviewable one still reported `pass`, because one
+script had passed. Correcting a misleading result at the report level had
+simply moved the blind spot into a file inside it, which is the same defect one
+level down and would have shipped as a fix.
+
+**The review remains advisory.** Enforcement is still a constant rather than a
+function of what was found, no code path branches on it, and no
+`SECURITY-REVIEW-B` promotion criterion is satisfied by this slice. Evidence
+advances toward criterion 3 — three high-severity false negatives were found
+and closed, which is also evidence that the covered pattern set had holes — and
+toward criterion 4, where findings now carry a code, severity, line and
+evidence but still no confidence. Criteria 1, 2, 5, 6 and 7 are untouched.
 
 ## Scope boundary
 

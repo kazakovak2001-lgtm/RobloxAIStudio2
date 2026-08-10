@@ -2,7 +2,7 @@
 
 # Roblox AI Studio Documentation
 
-**Last updated:** August 9, 2026
+**Last updated:** August 10, 2026
 
 This directory documents the backend, standalone Frontend boundary, Roblox Studio plugin, release evidence, and current engineering roadmap.
 
@@ -29,7 +29,7 @@ The old embedded root `src/` frontend is removed and protected by a permanent in
 
 ## Active paired release
 
-- Backend runtime: `release/cutover-1e-candidate@79b1ecfd137dff71e17fcc57e45078a47137fcdf`.
+- Backend runtime: `release/cutover-1e-candidate@3e18460c394b03c2d373c7d1a2e9cd0b74b6f984`.
 - Frontend runtime contents: `kazakovak2001-lgtm/Frontend@6c1458d836244f2b720f361a78c2ab13f1682f74`.
 - Pairing authority: protected Frontend Production Contract, Composed HTTPS Release, promoted-baseline integrity, and Merge Gate evidence.
 - No external production deployment is claimed by repository release evidence alone.
@@ -54,6 +54,7 @@ The old embedded root `src/` frontend is removed and protected by a permanent in
 - `WORLD-1B`: code complete, not done — backend PR #209. The world model is materialized into Studio as real instances under `ReplicatedStorage.AIStudioArtifacts`, deliberately not `Workspace`: the playability contract makes the generated server script the owner of the runtime world, so a scene graph placed there would be a second world. No script class or Source property can be expressed through the contract. Contract tested; operator-observed Studio acceptance is outstanding. Canonical ownership is `WORLD-1C`, which requires observed `WORLD-1B` evidence rather than `STUDIO-2F-E` — the HUD contract is a separate concern that `WORLD-1C` leaves untouched.
 - `AGENT-CONTRACT-1`: complete — backend PR #212. Every runtime agent has one versioned, server-owned definition stating what it produces, whether deterministic fallback content may satisfy it, and how many attempts it makes. No policy field was added that nothing reads — `title` is carried as a human-readable label and is not claimed otherwise: a definition that requires a model refuses to run without one, an agent that forbids fallback fails rather than passing canned content on, the pipeline rejects a node naming an agent that is undefined or not pipeline-reachable, and `npm run validate` fails on any drift between the definitions and the running registry. Timeout, monetary cost and input-token ceilings are recorded as gaps rather than declared, because nothing enforces them today. Foundation only — no new agents, no substitution, no model routing.
 - `ARTIFACT-CONTRACT-2`: complete — backend PR #214. Every durable artifact a run produces now carries its own schema version, owning project, canonical content hash and producer identity, plus dependency lineage wherever it was derived from an upstream artifact, so a validation or security report identifies the exact content it read instead of being assumed to still describe whatever is there now. Repairing a game no longer carries a review of the old Lua onto the new Lua. Historical artifacts carry no envelope, are held to none, and are never assigned metadata they never had; no database migration was required.
+- `SECURITY-REVIEW-A2`: complete — backend PR #216. The advisory Luau reviewer can no longer report a pass over code it never read: it distinguishes `pass`, `finding`, `not_applicable` and `not_inspected`, records the content hash of every script it reviewed so a stale report is detectable, and reports a line and the matching source on every finding. Rules were added for RemoteFunction handlers, runtime code compilation, client-chosen player identity and client-chosen HTTP targets. It stays advisory — a finding still never negates generation, delivery or release.
 - `STUDIO-2F`: decomposed into `STUDIO-2F-A`…`STUDIO-2F-E`. No unsatisfied control gate remains. `STUDIO-2F-A` (generated GUI materialization) is code complete through backend PR #195/#196/#197 but not done — runtime validation is outstanding, so it does not yet satisfy the dependency for the rest, which are named for ordering only.
 - `AUTONOMY-3A`: deferred and unscoped.
 

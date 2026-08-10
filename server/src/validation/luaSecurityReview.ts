@@ -133,9 +133,11 @@ export interface SecurityReviewReport {
   /**
    * What this review concluded overall.
    *
-   * `pass` requires that something was actually analysed and that nothing was
-   * left unread. A review over zero scripts, or one that could not read part
-   * of its input, reports `not_inspected` or `not_applicable` — never `pass`.
+   * `pass` requires two things, not one: at least one script analysed, *and*
+   * nothing left unread. The second alone is vacuously true of an empty list,
+   * which is the case that used to report clean. A review over zero scripts
+   * reports `not_inspected`; one whose every script sits where no rule applies
+   * reports `not_applicable`. Neither is ever `pass`.
    */
   outcome: SecurityReviewOutcome;
   /** Scripts the rules were actually run against. */
