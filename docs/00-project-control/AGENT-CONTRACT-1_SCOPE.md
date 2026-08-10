@@ -2,7 +2,7 @@
 
 # AGENT-CONTRACT-1 — Versioned Agent Definitions
 
-**Status:** Code complete and contract tested. Backend-only; no Roblox Studio evidence is required or claimed.
+**Status:** ✅ Complete — backend PR #212 merged `ddfa10453d9e2f48bc9e57045d40a8792d3cc297`. Contract tested; backend-only, so no Roblox Studio evidence is required or claimed.
 **Depends on:** `PIPELINE-1A` (the pipeline as validated data), `PROVIDER-1B` (fallback provenance).
 
 ## Objective
@@ -26,7 +26,7 @@ Give every runtime agent one authoritative, versioned, server-owned definition, 
 
 ### Execution policy as found
 
-- `BaseAgent.maxRetries = 3` — **real**, drives the loop in `generateWithRetry`.
+- `BaseAgent.maxRetries` — **real**, drives the `execute` loop. It defaults to 3, but is a constructor option and `LuaGeneratorAgent` lowers itself to 1, so the default is not the contract.
 - `BaseAgent.timeout = 30000` — **assigned and never read**. No timeout is enforced anywhere on the agent path.
 - `PlanExecutor` has its own node-level `maxRetries`, default 1 — a second, unrelated retry dimension.
 - Per-agent `maxTokens` at each `generateWithRetry` call site — **real**, passed to the provider.
@@ -54,7 +54,9 @@ AgentDefinition {
 }
 ```
 
-**Every field is consulted by something.** `requiresModel` and `fallback` are enforced in `AgentRegistry.executeAgent`; `reachability` is enforced by pipeline validation; `maxAttempts` and `maxOutputTokens` describe the loop and the provider call that already exist; `output` is asserted against the real parser call sites.
+**Every policy field is consulted by something.** `id` and `version` are identity, and `title` is a human-readable label that nothing reads — it is not a policy and is not claimed as one. Every field that states a policy is enforced: `requiresModel` and `fallback` are enforced in `AgentRegistry.executeAgent`; `reachability` is enforced by pipeline validation; `maxOutputTokens` is the ceiling passed to the provider call that already exists; `maxAttempts` is reconciled against `AgentRegistry.attemptCeilings()`, the ceiling each constructed agent actually loops, so an agent that overrides the default cannot leave its definition claiming attempts the runtime never makes; `output` is asserted against the real parser call sites.
+
+`validateAgentDefinitions(definitions, registeredIds, attemptsById)` runs outside the test suite: `npm run validate` invokes [validate-agent-contract.ts](../../scripts/validate-agent-contract.ts), which fails on a definition with no implementation, an implementation with no definition, or any declared attempt count the implementation does not loop.
 
 ### Deliberately absent
 
@@ -69,7 +71,7 @@ AgentDefinition {
 
 `id` is stable identity; `version` is an integer bumped when capabilities, output contract, execution or model policy change. **A class name is not a version** — renaming `PlannerAgent` changes nothing, changing what it must return changes everything.
 
-Provenance lands on `pipeline_steps[].agent_version`, recorded per step at commit time. Steps written before this slice carry no version; their definition is genuinely unknown and must not be assumed to be the current one. Nothing rewrites historical rows.
+Provenance lands on `pipeline_steps[].agent_version`, recorded at commit time for every step whose agent ran. A node blocked by an upstream failure records none, because no definition governed work that never started. Steps written before this slice carry no version; their definition is genuinely unknown and must not be assumed to be the current one. Nothing rewrites historical rows.
 
 ## Server ownership
 
@@ -77,7 +79,7 @@ Definitions live in server code. Clients already may only *narrow* the pipeline 
 
 ## Registry ownership
 
-One registry, not three. `AgentRegistry` remains the only thing that constructs agents; the contract is the only thing that describes them; `validateAgentDefinitions(definitions, registeredIds)` reconciles the two and fails on either direction of mismatch. `PlanningRegistry` is untouched dead code and is not reconciled here — that would be unrelated cleanup.
+One registry, not three. `AgentRegistry` remains the only thing that constructs agents; the contract is the only thing that describes them; `validateAgentDefinitions` reconciles the two and fails on either direction of mismatch. `PlanningRegistry` is untouched dead code and is not reconciled here — that would be unrelated cleanup.
 
 ## Known gaps
 
