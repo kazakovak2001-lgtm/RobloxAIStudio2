@@ -12,6 +12,7 @@ import {
   type PipelineEventHandler,
 } from "./PipelineEvents";
 import { ArtifactStore, type PipelineArtifact } from "./ArtifactStore";
+import { deterministicProducer } from "./artifactEnvelope";
 import { createPipelineState, type PipelineState } from "./PipelineStage";
 import {
   createConfiguredPipelineStore,
@@ -278,6 +279,15 @@ export class PipelineEngine {
             stage.name,
             stage.agentId,
             stage.output,
+            {
+              projectId: state.projectId,
+              // Stages the v2 pipeline runs without an agent are the
+              // deterministic validation pass. Any other agentless stage is
+              // refused by the store rather than written unattributed.
+              ...(stage.agentId
+                ? {}
+                : { producer: deterministicProducer("generation-validation") }),
+            },
           );
         }
       }

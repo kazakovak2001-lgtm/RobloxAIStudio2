@@ -3,6 +3,10 @@ import type { Server } from "node:http";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { StudioRuntime } from "../../studio/v2/StudioRuntime";
 import { createStudioRouter } from "../studio";
+import { deterministicProducer } from "../../pipeline/v2";
+
+/** ARTIFACT-CONTRACT-2 requires an owning project on every new artifact. */
+const ARTIFACT_TEST_PROJECT = "artifact-contract-test-project";
 
 describe("Studio sync REST and protocol integration", () => {
   let runtime: StudioRuntime;
@@ -58,6 +62,10 @@ describe("Studio sync REST and protocol integration", () => {
       "LUA_GENERATION",
       null,
       "print('a')",
+      {
+        projectId: ARTIFACT_TEST_PROJECT,
+        producer: deterministicProducer("generation-validation"),
+      },
     );
 
     const snapshotResponse = await post("/sync/project", {
@@ -99,12 +107,20 @@ describe("Studio sync REST and protocol integration", () => {
       "LUA_GENERATION",
       null,
       "print('own')",
+      {
+        projectId: ARTIFACT_TEST_PROJECT,
+        producer: deterministicProducer("generation-validation"),
+      },
     );
     const foreign = await runtime.artifacts.store(
       "project-b",
       "LUA_GENERATION",
       null,
       "print('foreign')",
+      {
+        projectId: ARTIFACT_TEST_PROJECT,
+        producer: deterministicProducer("generation-validation"),
+      },
     );
 
     const response = await post("/sync/artifacts", {
@@ -136,6 +152,10 @@ describe("Studio sync REST and protocol integration", () => {
       "LUA_GENERATION",
       null,
       "x".repeat(1_048_576),
+      {
+        projectId: ARTIFACT_TEST_PROJECT,
+        producer: deterministicProducer("generation-validation"),
+      },
     );
     const oversized = await post("/sync/artifacts", {
       projectId: "project-a",
@@ -150,6 +170,10 @@ describe("Studio sync REST and protocol integration", () => {
       "LUA_GENERATION",
       null,
       "print('before')",
+      {
+        projectId: ARTIFACT_TEST_PROJECT,
+        producer: deterministicProducer("generation-validation"),
+      },
     );
 
     const getProject = await protocol("GET_PROJECT", {
@@ -205,6 +229,10 @@ describe("Studio sync REST and protocol integration", () => {
       "LUA_GENERATION",
       null,
       "print('before export')",
+      {
+        projectId: ARTIFACT_TEST_PROJECT,
+        producer: deterministicProducer("generation-validation"),
+      },
     );
 
     const snapshot = await post("/sync/project", { projectId });
@@ -250,6 +278,10 @@ describe("Studio sync REST and protocol integration", () => {
       "LUA_GENERATION",
       null,
       "print('before')",
+      {
+        projectId: ARTIFACT_TEST_PROJECT,
+        producer: deterministicProducer("generation-validation"),
+      },
     );
 
     for (const type of ["VALIDATE", "SYNC_REQUEST"]) {
@@ -273,6 +305,10 @@ describe("Studio sync REST and protocol integration", () => {
       "LUA_GENERATION",
       null,
       "print('before')",
+      {
+        projectId: ARTIFACT_TEST_PROJECT,
+        producer: deterministicProducer("generation-validation"),
+      },
     );
     const response = await protocol("SYNC_REQUEST", {
       projectId: "project-a",

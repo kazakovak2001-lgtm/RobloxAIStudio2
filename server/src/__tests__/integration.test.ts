@@ -16,6 +16,9 @@ import { AgentRegistry } from "../agents/core/AgentRegistry";
 import { InMemoryBlueprintRepository } from "../projects/repository/blueprint.repository";
 import { ArtifactStore } from "../pipeline/v2";
 
+/** ARTIFACT-CONTRACT-2 requires an owning project on every new artifact. */
+const ARTIFACT_TEST_PROJECT = "artifact-contract-test-project";
+
 describe("Integration: Full Pipeline", () => {
   it("generates a complete Lua script package", () => {
     const engine = new LuaGenerationEngine();
@@ -94,12 +97,18 @@ describe("Integration: Full Pipeline", () => {
 
     const artifactStore = new ArtifactStore();
     const executionId = "integration-test-exec";
-    await artifactStore.store(executionId, "LUA_GENERATION", "lua_generator", {
-      scripts: scripts.artifacts.map((a) => ({
-        path: a.path,
-        content: a.content,
-      })),
-    });
+    await artifactStore.store(
+      executionId,
+      "LUA_GENERATION",
+      "lua_generator",
+      {
+        scripts: scripts.artifacts.map((a) => ({
+          path: a.path,
+          content: a.content,
+        })),
+      },
+      { projectId: ARTIFACT_TEST_PROJECT },
+    );
 
     const blueprintRepository = new InMemoryBlueprintRepository();
     await blueprintRepository.createBlueprint("integration-test-user", {

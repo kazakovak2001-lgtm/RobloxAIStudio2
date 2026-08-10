@@ -115,6 +115,13 @@ export class StudioIntegrationManager {
           "LUA_GENERATION",
           "legacy-package-adapter",
           { scripts: pkg.scripts },
+          {
+            // A legacy package is identified by its own id and carries no
+            // separate project context here, so ownership is that id rather
+            // than a project invented for it.
+            projectId: pkg.packageId,
+            producer: "legacy-package-adapter",
+          },
         );
       }
       await this.runtime.artifacts.store(
@@ -125,6 +132,10 @@ export class StudioIntegrationManager {
           configs: pkg.configs,
           metadata: pkg.metadata,
           validationReport: pkg.validationReport,
+        },
+        {
+          projectId: pkg.packageId,
+          producer: "legacy-package-adapter",
         },
       );
     }

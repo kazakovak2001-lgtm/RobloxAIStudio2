@@ -113,6 +113,7 @@
 ├── docs
 │   ├── 00-project-control
 │   │   ├── AGENT-CONTRACT-1_SCOPE.md
+│   │   ├── ARTIFACT-CONTRACT-2_SCOPE.md
 │   │   ├── CORE-1A_DURABLE_PROJECTS.md
 │   │   ├── CORE-1B_DURABLE_RUNTIME.md
 │   │   ├── CURRENT_STATE.md
@@ -579,6 +580,7 @@
 │   ├── test-pre-check.ts
 │   ├── validate-agent-contract.ts
 │   ├── validate-architecture.ts
+│   ├── validate-artifact-contract.ts
 │   ├── validate-boundaries.ts
 │   ├── validate-controller.ts
 │   ├── validate-documentation-authority.ts
@@ -602,6 +604,9 @@
 │   │   │   ├── architecture.boundary-gate.test.ts
 │   │   │   ├── architecture.layer-debt-evidence.test.ts
 │   │   │   ├── artifact1.studio-identity.test.ts
+│   │   │   ├── artifactcontract2.envelope.test.ts
+│   │   │   ├── artifactcontract2.lineage.test.ts
+│   │   │   ├── artifactcontract2.repair-lineage.test.ts
 │   │   │   ├── autonomousPipelineExploration.test.ts
 │   │   │   ├── autonomousPipelineIntegration.test.ts
 │   │   │   ├── autonomousPipelinePreservation.test.ts
@@ -1180,6 +1185,7 @@
 │   │   │       │   ├── ArtifactStore.durability.test.ts
 │   │   │       │   ├── Pipeline.test.ts
 │   │   │       │   └── PipelineStore.test.ts
+│   │   │       ├── artifactEnvelope.ts
 │   │   │       ├── ArtifactStore.ts
 │   │   │       ├── index.ts
 │   │   │       ├── PipelineContext.ts

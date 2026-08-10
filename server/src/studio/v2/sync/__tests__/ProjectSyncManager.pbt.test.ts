@@ -3,6 +3,10 @@ import { describe, expect, it } from "vitest";
 import { ArtifactStore } from "../../../../pipeline/v2/ArtifactStore";
 import { ProjectSyncManager } from "../ProjectSyncManager";
 import type { SyncChange } from "../SyncTypes";
+import { deterministicProducer } from "../../../../pipeline/v2";
+
+/** ARTIFACT-CONTRACT-2 requires an owning project on every new artifact. */
+const ARTIFACT_TEST_PROJECT = "artifact-contract-test-project";
 
 const nonNullJson = fc.jsonValue().filter((value) => value !== null);
 
@@ -30,7 +34,10 @@ describe("ProjectSyncManager properties", () => {
           const stored = [];
           for (const content of contents) {
             stored.push(
-              await store.store("pipeline", "LUA_GENERATION", null, content),
+              await store.store("pipeline", "LUA_GENERATION", null, content, {
+                projectId: ARTIFACT_TEST_PROJECT,
+                producer: deterministicProducer("generation-validation"),
+              }),
             );
           }
           const snapshot = new ProjectSyncManager(store).getProjectSnapshot(
@@ -71,6 +78,10 @@ describe("ProjectSyncManager properties", () => {
             "LUA_GENERATION",
             null,
             before,
+            {
+              projectId: ARTIFACT_TEST_PROJECT,
+              producer: deterministicProducer("generation-validation"),
+            },
           );
           const manager = new ProjectSyncManager(store);
           const first = manager.getProjectSnapshot("pipeline")?.version;
@@ -93,6 +104,10 @@ describe("ProjectSyncManager properties", () => {
           "LUA_GENERATION",
           null,
           "before",
+          {
+            projectId: ARTIFACT_TEST_PROJECT,
+            producer: deterministicProducer("generation-validation"),
+          },
         );
         const change = updateChange(
           artifact.id,
@@ -121,6 +136,10 @@ describe("ProjectSyncManager properties", () => {
           "LUA_GENERATION",
           null,
           "before",
+          {
+            projectId: ARTIFACT_TEST_PROJECT,
+            producer: deterministicProducer("generation-validation"),
+          },
         );
         const change = updateChange(
           artifact.id,
@@ -150,6 +169,10 @@ describe("ProjectSyncManager properties", () => {
           "LUA_GENERATION",
           null,
           "before",
+          {
+            projectId: ARTIFACT_TEST_PROJECT,
+            producer: deterministicProducer("generation-validation"),
+          },
         );
         const before = structuredClone(store.getById(artifact.id));
         new ProjectSyncManager(store).validateOnly("pipeline", [

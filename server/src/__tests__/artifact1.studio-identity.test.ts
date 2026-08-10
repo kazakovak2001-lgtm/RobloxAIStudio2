@@ -15,11 +15,22 @@ import { ArtifactStore } from "../pipeline/v2/ArtifactStore";
 import { STAGE_ORDER, type StageName } from "../pipeline/v2";
 import { GENERATION_ARTIFACT_STAGE_MAP } from "../studio/artifacts/GenerationArtifactRecorder";
 
+/** ARTIFACT-CONTRACT-2 requires an owning project on every new artifact. */
+const ARTIFACT_TEST_PROJECT = "artifact-contract-test-project";
+
 async function storeAll(pipelineId: string) {
   const store = new ArtifactStore();
   const stored = [];
   for (const stage of STAGE_ORDER) {
-    stored.push(await store.store(pipelineId, stage, "agent", { stage }));
+    stored.push(
+      await store.store(
+        pipelineId,
+        stage,
+        "lua_generator",
+        { stage },
+        { projectId: ARTIFACT_TEST_PROJECT },
+      ),
+    );
   }
   return stored;
 }
@@ -47,8 +58,20 @@ describe("ARTIFACT-1 Studio identity", () => {
     "regenerating %s changes the id but not the name",
     async (stage: StageName) => {
       const store = new ArtifactStore();
-      const first = await store.store("exec-1", stage, "agent", { v: 1 });
-      const second = await store.store("exec-2", stage, "agent", { v: 2 });
+      const first = await store.store(
+        "exec-1",
+        stage,
+        "lua_generator",
+        { v: 1 },
+        { projectId: ARTIFACT_TEST_PROJECT },
+      );
+      const second = await store.store(
+        "exec-2",
+        stage,
+        "lua_generator",
+        { v: 2 },
+        { projectId: ARTIFACT_TEST_PROJECT },
+      );
 
       expect(second.id).not.toBe(first.id);
       expect(second.name).toBe(first.name);
@@ -69,8 +92,20 @@ describe("ARTIFACT-1 Studio identity", () => {
 
   it("mints ids that are not stable, which is what broke delivery", async () => {
     const store = new ArtifactStore();
-    const a = await store.store("exec-a", "REQUIREMENTS", "agent", { v: 1 });
-    const b = await store.store("exec-a", "REQUIREMENTS", "agent", { v: 1 });
+    const a = await store.store(
+      "exec-a",
+      "REQUIREMENTS",
+      "lua_generator",
+      { v: 1 },
+      { projectId: ARTIFACT_TEST_PROJECT },
+    );
+    const b = await store.store(
+      "exec-a",
+      "REQUIREMENTS",
+      "lua_generator",
+      { v: 1 },
+      { projectId: ARTIFACT_TEST_PROJECT },
+    );
 
     // Identical stage, pipeline and content still yield different ids. An
     // instance named after this value can never be idempotent.

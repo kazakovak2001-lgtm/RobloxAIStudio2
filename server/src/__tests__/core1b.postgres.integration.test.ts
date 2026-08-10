@@ -20,6 +20,9 @@ import { createAutonomousPhaseContext } from "../orchestrator/AutonomousPhaseReg
 import type { AutonomousSessionRecord } from "../orchestrator/store/AutonomousSessionStore";
 import type { StudioOperationalEvidence } from "../studio/v2/StudioEvidenceStore";
 
+/** ARTIFACT-CONTRACT-2 requires an owning project on every new artifact. */
+const ARTIFACT_TEST_PROJECT = "artifact-contract-test-project";
+
 const describePostgres =
   process.env.RUN_POSTGRES_E2E === "true" ? describe : describe.skip;
 
@@ -261,6 +264,7 @@ describePostgres("CORE-1b PostgreSQL restart acceptance", () => {
           },
         ],
       },
+      { projectId: ARTIFACT_TEST_PROJECT },
     );
 
     const chatBeforeRestart = new ChatPersistenceService(firstProvider);

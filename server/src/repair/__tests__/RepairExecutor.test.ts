@@ -6,6 +6,9 @@ import { getPlayableLuaIssues } from "../../types/playableLua";
 import { RepairExecutor } from "../RepairExecutor";
 import type { RepairPlan, RepairPlanItem } from "../RepairTypes";
 
+/** ARTIFACT-CONTRACT-2 requires an owning project on every new artifact. */
+const ARTIFACT_TEST_PROJECT = "repair-test-project";
+
 async function seedBlueprint(
   repository: InMemoryBlueprintRepository,
   projectId: string,
@@ -133,10 +136,17 @@ describe("RepairExecutor", () => {
       "ARCHITECTURE",
       "roblox_architect",
       { services: ["WorldService"] },
+      { projectId: ARTIFACT_TEST_PROJECT },
     );
-    await artifactStore.store("parent-exec", "GAME_DESIGN", "game_designer", {
-      gameplay: { mechanics: [{ name: "Collecting" }] },
-    });
+    await artifactStore.store(
+      "parent-exec",
+      "GAME_DESIGN",
+      "game_designer",
+      {
+        gameplay: { mechanics: [{ name: "Collecting" }] },
+      },
+      { projectId: ARTIFACT_TEST_PROJECT },
+    );
 
     const executor = new RepairExecutor(
       registry,

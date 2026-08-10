@@ -2,6 +2,9 @@ import { describe, expect, it } from "vitest";
 import { InMemoryStorageProvider } from "../platform/storage/StorageProvider";
 import { StudioRuntime } from "../studio/v2/StudioRuntime";
 
+/** ARTIFACT-CONTRACT-2 requires an owning project on every new artifact. */
+const ARTIFACT_TEST_PROJECT = "artifact-contract-test-project";
+
 async function createQueuedExport() {
   const runtime = new StudioRuntime({
     storage: new InMemoryStorageProvider(),
@@ -9,17 +12,29 @@ async function createQueuedExport() {
   const projectId = "project-import-ack";
   const executionId = "execution-import-ack";
 
-  runtime.artifacts.store(executionId, "LUA_GENERATION", "lua_generator", {
-    scripts: [
-      {
-        path: "ServerScriptService/Main.server.lua",
-        content: "return { imported = true }",
-      },
-    ],
-  });
-  runtime.artifacts.store(executionId, "EXPORT", "orchestrator", {
-    manifest: { scripts: 1 },
-  });
+  runtime.artifacts.store(
+    executionId,
+    "LUA_GENERATION",
+    "lua_generator",
+    {
+      scripts: [
+        {
+          path: "ServerScriptService/Main.server.lua",
+          content: "return { imported = true }",
+        },
+      ],
+    },
+    { projectId: ARTIFACT_TEST_PROJECT },
+  );
+  runtime.artifacts.store(
+    executionId,
+    "EXPORT",
+    "orchestrator",
+    {
+      manifest: { scripts: 1 },
+    },
+    { projectId: ARTIFACT_TEST_PROJECT },
+  );
 
   const client = runtime.bridge.connect("0.650", projectId);
   runtime.sessions.create(client);

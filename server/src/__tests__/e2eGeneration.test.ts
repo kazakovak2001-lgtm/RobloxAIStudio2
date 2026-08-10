@@ -16,6 +16,9 @@ import { AgentRegistry } from "../agents/core/AgentRegistry";
 import { InMemoryBlueprintRepository } from "../projects/repository/blueprint.repository";
 import { ArtifactStore } from "../pipeline/v2";
 
+/** ARTIFACT-CONTRACT-2 requires an owning project on every new artifact. */
+const ARTIFACT_TEST_PROJECT = "artifact-contract-test-project";
+
 describe("E2E: Real Game Generation", () => {
   it("generates a complete survival game from a single prompt", async () => {
     const prompt =
@@ -121,6 +124,7 @@ describe("E2E: Real Game Generation", () => {
           content: a.content,
         })),
       },
+      { projectId: ARTIFACT_TEST_PROJECT },
     );
     await artifactStore.store(
       repairExecutionId,
@@ -133,6 +137,7 @@ describe("E2E: Real Game Generation", () => {
             .map((a) => ({ name: a.name })),
         },
       },
+      { projectId: ARTIFACT_TEST_PROJECT },
     );
 
     const blueprintRepository = new InMemoryBlueprintRepository();

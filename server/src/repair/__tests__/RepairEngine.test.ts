@@ -6,6 +6,9 @@ import { getPlayableLuaIssues } from "../../types/playableLua";
 import { RepairEngine } from "../RepairEngine";
 import { InMemoryRepairSessionStore } from "../RepairSessionStore";
 
+/** ARTIFACT-CONTRACT-2 requires an owning project on every new artifact. */
+const ARTIFACT_TEST_PROJECT = "repair-engine-test-project";
+
 const PROJECT_ID = "repair-engine-test-project";
 const PARENT_EXECUTION_ID = "repair-engine-test-exec";
 
@@ -74,12 +77,14 @@ describe("RepairEngine", () => {
       "LUA_GENERATION",
       "lua_generator",
       { scripts: BROKEN_SCRIPTS },
+      { projectId: ARTIFACT_TEST_PROJECT },
     );
     await artifactStore.store(
       PARENT_EXECUTION_ID,
       "ARCHITECTURE",
       "roblox_architect",
       { services: ["WorldService"] },
+      { projectId: ARTIFACT_TEST_PROJECT },
     );
 
     const engine = new RepairEngine(
@@ -149,6 +154,7 @@ describe("RepairEngine", () => {
       "LUA_GENERATION",
       "lua_generator",
       { scripts: BROKEN_SCRIPTS },
+      { projectId: ARTIFACT_TEST_PROJECT },
     );
 
     const engine = new RepairEngine(
@@ -193,6 +199,7 @@ describe("RepairEngine", () => {
       "LUA_GENERATION",
       "lua_generator",
       { scripts: BROKEN_SCRIPTS },
+      { projectId: ARTIFACT_TEST_PROJECT },
     );
 
     const sessionStore = new InMemoryRepairSessionStore();
@@ -259,6 +266,7 @@ describe("RepairEngine", () => {
       "LUA_GENERATION",
       "lua_generator",
       { scripts: BROKEN_SCRIPTS },
+      { projectId: ARTIFACT_TEST_PROJECT },
     );
 
     const engine = new RepairEngine(
@@ -284,9 +292,15 @@ describe("RepairEngine", () => {
     expect(secondId).not.toBe(firstId);
 
     // Each repair's artifacts must live under its own execution id, not be
-    // mixed into one pipeline id by a collided suffix.
-    expect(artifactStore.getByPipeline(firstId!)).toHaveLength(1);
-    expect(artifactStore.getByPipeline(secondId!)).toHaveLength(1);
+    // mixed into one pipeline id by a collided suffix. Each carries the
+    // repaired Lua and the security review re-derived from it.
+    for (const executionId of [firstId!, secondId!]) {
+      const stages = artifactStore
+        .getByPipeline(executionId)
+        .map((artifact) => artifact.stage)
+        .sort();
+      expect(stages).toEqual(["LUA_GENERATION", "SECURITY_REVIEW"]);
+    }
   });
 
   it("preserves both repair records when two run() calls race for the same project", async () => {
@@ -312,6 +326,7 @@ describe("RepairEngine", () => {
       "LUA_GENERATION",
       "lua_generator",
       { scripts: BROKEN_SCRIPTS },
+      { projectId: ARTIFACT_TEST_PROJECT },
     );
 
     const engine = new RepairEngine(
@@ -367,6 +382,7 @@ describe("RepairEngine", () => {
       "LUA_GENERATION",
       "lua_generator",
       { scripts: BROKEN_SCRIPTS },
+      { projectId: ARTIFACT_TEST_PROJECT },
     );
 
     const engine = new RepairEngine(
@@ -423,6 +439,7 @@ describe("RepairEngine", () => {
       "LUA_GENERATION",
       "lua_generator",
       { scripts: BROKEN_SCRIPTS },
+      { projectId: ARTIFACT_TEST_PROJECT },
     );
 
     const engine = new RepairEngine(

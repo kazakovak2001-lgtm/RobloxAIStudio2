@@ -7,6 +7,10 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import { ArtifactStore } from "../../../../pipeline/v2/ArtifactStore";
 import { ArtifactTransferManager } from "../ArtifactTransferManager";
+import { deterministicProducer } from "../../../../pipeline/v2";
+
+/** ARTIFACT-CONTRACT-2 requires an owning project on every new artifact. */
+const ARTIFACT_TEST_PROJECT = "artifact-contract-test-project";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -18,7 +22,13 @@ async function seedArtifact(
   pipelineId: string,
   content: unknown = { hello: "world" },
 ) {
-  return await store.store(pipelineId, "LUA_GENERATION", "test-agent", content);
+  return await store.store(
+    pipelineId,
+    "LUA_GENERATION",
+    "lua_generator",
+    content,
+    { projectId: ARTIFACT_TEST_PROJECT },
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -83,15 +93,42 @@ describe("ArtifactTransferManager — transfer()", () => {
   // Requirement 2.1, 2.3, 2.4 — multiple known IDs all returned
   it("returns all known artifacts when multiple IDs are requested", async () => {
     const pipelineId = "pipe-multi";
-    const a1 = await store.store(pipelineId, "LUA_GENERATION", null, {
-      script: "a",
-    });
-    const a2 = await store.store(pipelineId, "DOCUMENTATION", null, {
-      text: "docs",
-    });
-    const a3 = await store.store(pipelineId, "REQUIREMENTS", null, {
-      items: [1, 2, 3],
-    });
+    const a1 = await store.store(
+      pipelineId,
+      "LUA_GENERATION",
+      null,
+      {
+        script: "a",
+      },
+      {
+        projectId: ARTIFACT_TEST_PROJECT,
+        producer: deterministicProducer("generation-validation"),
+      },
+    );
+    const a2 = await store.store(
+      pipelineId,
+      "DOCUMENTATION",
+      null,
+      {
+        text: "docs",
+      },
+      {
+        projectId: ARTIFACT_TEST_PROJECT,
+        producer: deterministicProducer("generation-validation"),
+      },
+    );
+    const a3 = await store.store(
+      pipelineId,
+      "REQUIREMENTS",
+      null,
+      {
+        items: [1, 2, 3],
+      },
+      {
+        projectId: ARTIFACT_TEST_PROJECT,
+        producer: deterministicProducer("generation-validation"),
+      },
+    );
 
     const result = manager.transfer([a1.id, a2.id, a3.id]);
 
@@ -108,12 +145,30 @@ describe("ArtifactTransferManager — transfer()", () => {
   // Requirement 2.1, 2.2 — mix of known and unknown IDs
   it("correctly splits known and unknown IDs into artifacts and missing", async () => {
     const pipelineId = "pipe-mixed";
-    const known1 = await store.store(pipelineId, "GAME_DESIGN", null, {
-      genre: "RPG",
-    });
-    const known2 = await store.store(pipelineId, "ARCHITECTURE", null, {
-      modules: 5,
-    });
+    const known1 = await store.store(
+      pipelineId,
+      "GAME_DESIGN",
+      null,
+      {
+        genre: "RPG",
+      },
+      {
+        projectId: ARTIFACT_TEST_PROJECT,
+        producer: deterministicProducer("generation-validation"),
+      },
+    );
+    const known2 = await store.store(
+      pipelineId,
+      "ARCHITECTURE",
+      null,
+      {
+        modules: 5,
+      },
+      {
+        projectId: ARTIFACT_TEST_PROJECT,
+        producer: deterministicProducer("generation-validation"),
+      },
+    );
     const unknownId1 = "ghost-id-aaa";
     const unknownId2 = "ghost-id-bbb";
 

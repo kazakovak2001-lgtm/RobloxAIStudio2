@@ -2,6 +2,10 @@ import fc from "fast-check";
 import { describe, expect, it } from "vitest";
 import { ArtifactStore } from "../../../../pipeline/v2/ArtifactStore";
 import { ArtifactTransferManager } from "../ArtifactTransferManager";
+import { deterministicProducer } from "../../../../pipeline/v2";
+
+/** ARTIFACT-CONTRACT-2 requires an owning project on every new artifact. */
+const ARTIFACT_TEST_PROJECT = "artifact-contract-test-project";
 
 describe("ArtifactTransferManager properties", () => {
   // Feature: project-sync-artifact-transfer, Property 3: Artifact transfer round-trip
@@ -12,8 +16,9 @@ describe("ArtifactTransferManager properties", () => {
         const artifact = await store.store(
           "pipeline",
           "LUA_GENERATION",
-          "property-agent",
+          "lua_generator",
           content,
+          { projectId: ARTIFACT_TEST_PROJECT },
         );
         const result = new ArtifactTransferManager(store).transfer([
           artifact.id,
@@ -62,6 +67,10 @@ describe("ArtifactTransferManager properties", () => {
             "LUA_GENERATION",
             null,
             "x".repeat(length),
+            {
+              projectId: ARTIFACT_TEST_PROJECT,
+              producer: deterministicProducer("generation-validation"),
+            },
           );
           const result = new ArtifactTransferManager(store).transfer([
             artifact.id,

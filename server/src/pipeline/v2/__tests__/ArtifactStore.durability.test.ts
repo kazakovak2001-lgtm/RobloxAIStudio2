@@ -5,6 +5,9 @@ import {
   InMemoryStorageProvider,
 } from "../../../platform/storage/StorageProvider";
 
+/** ARTIFACT-CONTRACT-2 requires an owning project on every new artifact. */
+const ARTIFACT_TEST_PROJECT = "artifact-contract-test-project";
+
 class ControlledMutationStorage extends InMemoryStorageProvider {
   rejectSet = false;
   private nextSetGate?: Promise<void>;
@@ -40,9 +43,15 @@ describe("ArtifactStore durable mutation boundaries", () => {
     storage.rejectSet = true;
 
     await expect(
-      store.store("pipeline-rejected", "REQUIREMENTS", "requirements", {
-        requirements: ["durable"],
-      }),
+      store.store(
+        "pipeline-rejected",
+        "REQUIREMENTS",
+        "requirements",
+        {
+          requirements: ["durable"],
+        },
+        { projectId: ARTIFACT_TEST_PROJECT },
+      ),
     ).rejects.toMatchObject({
       code: "DURABLE_STORAGE_MUTATION_FAILED",
       operation: "set",
@@ -63,6 +72,7 @@ describe("ArtifactStore durable mutation boundaries", () => {
       "REQUIREMENTS",
       "requirements",
       { requirements: ["acknowledged"] },
+      { projectId: ARTIFACT_TEST_PROJECT },
     );
     await Promise.resolve();
 
@@ -83,8 +93,9 @@ describe("ArtifactStore durable mutation boundaries", () => {
     const artifact = await store.store(
       "pipeline-approval-rejected",
       "VALIDATION",
-      "validator",
+      "tester",
       { passed: true },
+      { projectId: ARTIFACT_TEST_PROJECT },
     );
     const visibleBefore = structuredClone(store.getById(artifact.id));
     const persistedBefore = structuredClone(
@@ -109,8 +120,9 @@ describe("ArtifactStore durable mutation boundaries", () => {
     const artifact = await store.store(
       "pipeline-approval-pending",
       "VALIDATION",
-      "validator",
+      "tester",
       { passed: true },
+      { projectId: ARTIFACT_TEST_PROJECT },
     );
     const visibleBefore = structuredClone(store.getById(artifact.id));
     const release = storage.deferNextSet();
@@ -139,8 +151,9 @@ describe("ArtifactStore durable mutation boundaries", () => {
     const artifact = await store.store(
       "pipeline-concurrent-review",
       "VALIDATION",
-      "validator",
+      "tester",
       { passed: true },
+      { projectId: ARTIFACT_TEST_PROJECT },
     );
     const visibleBefore = structuredClone(store.getById(artifact.id));
     const releaseApproval = storage.deferNextSet();

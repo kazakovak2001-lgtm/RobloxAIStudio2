@@ -24,6 +24,9 @@ import {
   PipelineEventEmitter,
 } from "../socket/streaming";
 
+/** ARTIFACT-CONTRACT-2 requires an owning project on every new artifact. */
+const ARTIFACT_TEST_PROJECT = "artifact-contract-test-project";
+
 /**
  * PIPELINE-1B. What deterministic validation found is a durable artifact.
  *
@@ -251,14 +254,18 @@ describe("PIPELINE-1B recorder", () => {
     const recorder = new GenerationArtifactRecorder(store);
 
     await expect(
-      recorder.record("failing-exec", [
-        node("requirements", { requirements: { ok: true } }),
-        node("game_designer", { gameDesign: { ok: true } }),
-        node("lua_generator", unplayableLuaOutput()),
-        node("ui_generator", { uiDesign: { screens: [] } }),
-        node("asset_planner", { assetPlan: { ok: true } }),
-        node("orchestrator", { exportPackage: { ok: true } }),
-      ]),
+      recorder.record(
+        "failing-exec",
+        [
+          node("requirements", { requirements: { ok: true } }),
+          node("game_designer", { gameDesign: { ok: true } }),
+          node("lua_generator", unplayableLuaOutput()),
+          node("ui_generator", { uiDesign: { screens: [] } }),
+          node("asset_planner", { assetPlan: { ok: true } }),
+          node("orchestrator", { exportPackage: { ok: true } }),
+        ],
+        ARTIFACT_TEST_PROJECT,
+      ),
     ).rejects.toThrow(/deterministic validation/);
 
     const stages = (await store.getByPipeline("failing-exec")).map(
@@ -273,7 +280,11 @@ describe("PIPELINE-1B recorder", () => {
     const recorder = new GenerationArtifactRecorder(store);
 
     await expect(
-      recorder.record("blocked-exec", [node("lua_generator", { scripts: [] })]),
+      recorder.record(
+        "blocked-exec",
+        [node("lua_generator", { scripts: [] })],
+        ARTIFACT_TEST_PROJECT,
+      ),
     ).rejects.toThrow();
 
     const report = validationReport(await store.getByPipeline("blocked-exec"));
@@ -288,10 +299,14 @@ describe("PIPELINE-1B recorder", () => {
     const store = new ArtifactStore();
     const recorder = new GenerationArtifactRecorder(store);
 
-    const recorded = await recorder.record("good-exec", [
-      node("requirements", { requirements: { ok: true } }),
-      node("lua_generator", playableLuaOutput()),
-    ]);
+    const recorded = await recorder.record(
+      "good-exec",
+      [
+        node("requirements", { requirements: { ok: true } }),
+        node("lua_generator", playableLuaOutput()),
+      ],
+      ARTIFACT_TEST_PROJECT,
+    );
 
     const report = validationReport(recorded);
     expect(report.passed).toBe(true);
@@ -307,10 +322,14 @@ describe("PIPELINE-1B recorder", () => {
     const store = new ArtifactStore();
     const recorder = new GenerationArtifactRecorder(store);
 
-    const recorded = await recorder.record("ui-malformed-exec", [
-      node("lua_generator", playableLuaOutput()),
-      { ...node("ui_generator", {}), output: "not an object" as never },
-    ]);
+    const recorded = await recorder.record(
+      "ui-malformed-exec",
+      [
+        node("lua_generator", playableLuaOutput()),
+        { ...node("ui_generator", {}), output: "not an object" as never },
+      ],
+      ARTIFACT_TEST_PROJECT,
+    );
 
     const ui = validationReport(recorded).checks.find(
       (check) => check.id === "ui-materializable",
@@ -327,10 +346,14 @@ describe("PIPELINE-1B recorder", () => {
     const store = new ArtifactStore();
     const recorder = new GenerationArtifactRecorder(store);
 
-    const recorded = await recorder.record("ui-exec", [
-      node("lua_generator", playableLuaOutput()),
-      node("ui_generator", { uiDesign: { screens: [] } }),
-    ]);
+    const recorded = await recorder.record(
+      "ui-exec",
+      [
+        node("lua_generator", playableLuaOutput()),
+        node("ui_generator", { uiDesign: { screens: [] } }),
+      ],
+      ARTIFACT_TEST_PROJECT,
+    );
 
     const ui = validationReport(recorded).checks.find(
       (check) => check.id === "ui-materializable",

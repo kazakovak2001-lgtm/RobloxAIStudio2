@@ -13,6 +13,9 @@ import {
 import { ProjectSyncManager } from "../studio/v2/sync/ProjectSyncManager";
 import { ArtifactStore } from "../pipeline/v2/ArtifactStore";
 
+/** ARTIFACT-CONTRACT-2 requires an owning project on every new artifact. */
+const ARTIFACT_TEST_PROJECT = "artifact-contract-test-project";
+
 describe("Plugin Protocol", () => {
   describe("pluginHandshake", () => {
     let bridge: StudioBridge;
@@ -70,9 +73,15 @@ describe("Plugin Protocol", () => {
     });
 
     it("artifact transfer succeeds", async () => {
-      const art = await store.store("pipe-1", "LUA_GENERATION", "lua_gen", {
-        code: "print('hi')",
-      });
+      const art = await store.store(
+        "pipe-1",
+        "LUA_GENERATION",
+        "lua_generator",
+        {
+          code: "print('hi')",
+        },
+        { projectId: ARTIFACT_TEST_PROJECT },
+      );
       const transfer = syncManager.getTransferManager().transfer([art.id]);
 
       expect(transfer.artifacts).toHaveLength(1);
@@ -80,9 +89,27 @@ describe("Plugin Protocol", () => {
     });
 
     it("hierarchy creation from snapshot", async () => {
-      await store.store("pipe-1", "REQUIREMENTS", "req", { req: "data" });
-      await store.store("pipe-1", "LUA_GENERATION", "lua", { script: "..." });
-      await store.store("pipe-1", "UI_GENERATION", "ui", { layout: "..." });
+      await store.store(
+        "pipe-1",
+        "REQUIREMENTS",
+        "requirements",
+        { req: "data" },
+        { projectId: ARTIFACT_TEST_PROJECT },
+      );
+      await store.store(
+        "pipe-1",
+        "LUA_GENERATION",
+        "lua_generator",
+        { script: "..." },
+        { projectId: ARTIFACT_TEST_PROJECT },
+      );
+      await store.store(
+        "pipe-1",
+        "UI_GENERATION",
+        "ui_generator",
+        { layout: "..." },
+        { projectId: ARTIFACT_TEST_PROJECT },
+      );
 
       const snapshot = syncManager.getProjectSnapshot("pipe-1");
       expect(snapshot!.artifacts).toHaveLength(3);
@@ -101,9 +128,15 @@ describe("Plugin Protocol", () => {
   describe("rollback", () => {
     it("failed sync change is not applied", async () => {
       const store = new ArtifactStore();
-      await store.store("pipe-1", "LUA_GENERATION", "lua", {
-        code: "original",
-      });
+      await store.store(
+        "pipe-1",
+        "LUA_GENERATION",
+        "lua_generator",
+        {
+          code: "original",
+        },
+        { projectId: ARTIFACT_TEST_PROJECT },
+      );
 
       const syncManager = new ProjectSyncManager(store);
 
@@ -125,9 +158,15 @@ describe("Plugin Protocol", () => {
 
     it("valid change is applied", async () => {
       const store = new ArtifactStore();
-      const art = await store.store("pipe-1", "LUA_GENERATION", "lua", {
-        code: "original",
-      });
+      const art = await store.store(
+        "pipe-1",
+        "LUA_GENERATION",
+        "lua_generator",
+        {
+          code: "original",
+        },
+        { projectId: ARTIFACT_TEST_PROJECT },
+      );
 
       const syncManager = new ProjectSyncManager(store);
       const result = await syncManager.processSyncRequest("pipe-1", [
