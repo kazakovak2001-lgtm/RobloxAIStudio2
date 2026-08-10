@@ -98,8 +98,14 @@ export interface ArtifactDependency {
 export const DETERMINISTIC_PRODUCERS: Readonly<Record<string, number>> = {
   /** `buildGenerationValidationReport` — the VALIDATION report. */
   "generation-validation": 1,
-  /** `reviewLuaSecurity` — the SECURITY_REVIEW report. */
-  "lua-security-review": 1,
+  /**
+   * `reviewLuaSecurity` — the SECURITY_REVIEW report.
+   *
+   * 2 — SECURITY-REVIEW-A2 changed the payload shape and the meaning of
+   * `clean`. Reports written before and after that must not claim the same
+   * producer contract, which is the whole point of this number.
+   */
+  "lua-security-review": 2,
   /** `buildWorldModel` + `buildWorldScene` — the WORLD_MODEL artifact. */
   "world-model": 1,
   /** `RepairEngine` carrying an unchanged stage forward to a repaired run. */

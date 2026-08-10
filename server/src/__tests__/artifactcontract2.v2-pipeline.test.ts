@@ -7,6 +7,7 @@ import {
   STAGE_AGENT_MAP,
   STAGE_ORDER,
   createPipelineState,
+  deterministicProducer,
   type PipelineArtifact,
   type PipelineState,
 } from "../pipeline/v2";
@@ -84,11 +85,12 @@ describe("ARTIFACT-CONTRACT-2 on the v2 concept pipeline", () => {
     expect(agentless.length).toBeGreaterThan(1);
 
     for (const stage of agentless) {
-      expect(producerFor.get(stage)).toEqual({
-        type: "deterministic",
-        id: AGENTLESS_STAGE_PRODUCERS[stage],
-        version: 1,
-      });
+      // Resolved through the registry rather than pinned as a literal: a
+      // producer's version moves when its payload shape does, and asserting
+      // the number here would turn that into an unrelated test failure.
+      expect(producerFor.get(stage)).toEqual(
+        deterministicProducer(AGENTLESS_STAGE_PRODUCERS[stage]!),
+      );
     }
     // And they are genuinely different producers, not one repeated.
     const distinct = new Set(

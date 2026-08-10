@@ -144,6 +144,15 @@ export interface SecurityReviewReport {
   suppliedScriptCount: number;
   /** Every supplied script, its reviewed bytes, and what became of it. */
   scripts: ReviewedScript[];
+  /**
+   * True when every supplied script was actually analysed.
+   *
+   * Stated separately from `outcome` because a report can carry a finding and
+   * still have missed something, and a consumer checking for an incomplete
+   * review should not have to infer that from an outcome that legitimately
+   * prioritises the defect it did find.
+   */
+  coverageComplete: boolean;
   findings: SecurityFinding[];
   /**
    * True only when `outcome` is `pass`. Still not a claim that the game is
@@ -614,7 +623,9 @@ export function reviewLuaSecurity(
         path: path || "(unnamed script)",
         contentHash: null,
         outcome: "not_inspected",
-        reason: "Script content is not readable source text.",
+        reason: !path
+          ? "Script has no path, so no location rule can be applied to it."
+          : "Script content is not readable source text.",
       });
       continue;
     }
@@ -774,6 +785,11 @@ export function reviewLuaSecurity(
     ).length,
     suppliedScriptCount: reviewedScripts.length,
     scripts: reviewedScripts,
+    coverageComplete:
+      reviewedScripts.length > 0 &&
+      reviewedScripts.every(
+        (script) => script.outcome === "pass" || script.outcome === "finding",
+      ),
     findings: deduped,
     clean: reportOutcome(reviewedScripts, deduped) === "pass",
     limits: [...REVIEW_LIMITS],
@@ -794,17 +810,23 @@ function dedupeFindings(
   const seen = new Map<string, SecurityFinding>();
 
   for (const finding of findings) {
-    const key = `${finding.path} ${finding.line ?? -1} ${finding.code} ${finding.evidence}`;
+    const key = `${finding.path}|${finding.line ?? -1}|${finding.code}|${finding.evidence}`;
     if (!seen.has(key)) seen.set(key, finding);
   }
 
+  // Compared by code unit rather than `localeCompare`, which depends on the
+  // host's ICU build and default locale. A persisted report has to be
+  // byte-identical across machines, not merely sorted on the one that wrote it.
+  const byCodeUnit = (left: string, right: string): number =>
+    left < right ? -1 : left > right ? 1 : 0;
+
   return [...seen.values()].sort(
     (left, right) =>
-      left.path.localeCompare(right.path) ||
+      byCodeUnit(left.path, right.path) ||
       (left.line ?? Number.MAX_SAFE_INTEGER) -
         (right.line ?? Number.MAX_SAFE_INTEGER) ||
-      left.code.localeCompare(right.code) ||
-      left.evidence.localeCompare(right.evidence),
+      byCodeUnit(left.code, right.code) ||
+      byCodeUnit(left.evidence, right.evidence),
   );
 }
 
@@ -820,12 +842,23 @@ function reportOutcome(
   scripts: readonly ReviewedScript[],
   findings: readonly SecurityFinding[],
 ): SecurityReviewOutcome {
+  // `finding` first, deliberately. A finding is never a misleading pass, and
+  // burying a real defect under a coverage status would be the worse error.
+  // Coverage is not lost by this: `coverageComplete` states it directly, and
+  // every script carries its own outcome.
   if (findings.length > 0) return "finding";
   if (scripts.some((script) => script.outcome === "not_inspected")) {
     return "not_inspected";
   }
+  // A script no rule could apply to was not analysed, so a package containing
+  // one has not been fully reviewed. Reporting `pass` because the *other*
+  // scripts passed is exactly the misleading clean result this slice exists
+  // to remove — it just moves the blind spot from the whole report to one
+  // file inside it.
+  if (scripts.some((script) => script.outcome === "not_applicable")) {
+    return "not_applicable";
+  }
   if (scripts.some((script) => script.outcome === "pass")) return "pass";
-  if (scripts.length > 0) return "not_applicable";
   // Nothing was supplied at all. This is the path a failed or missing Lua
   // artifact reaches, and it must never look like a clean review.
   return "not_inspected";
@@ -842,14 +875,21 @@ export function securityReviewMatchesScripts(
   report: Pick<SecurityReviewReport, "scripts">,
   scripts: readonly ReviewableScript[],
 ): boolean {
+  const entries = report.scripts ?? [];
   const reviewed = new Map(
-    (report.scripts ?? []).map((script) => [script.path, script.contentHash]),
+    entries.map((script) => [script.path, script.contentHash]),
   );
-  if (reviewed.size !== (scripts?.length ?? 0)) return false;
+  // A `Map` collapses repeated paths, so compare against the entry count as
+  // well. A report holding one path twice does not describe a set holding it
+  // once, and a duplicated path makes the mapping ambiguous either way.
+  if (reviewed.size !== entries.length) return false;
+  if (entries.length !== (scripts?.length ?? 0)) return false;
 
-  return (scripts ?? []).every(
-    (script) =>
-      typeof script?.content === "string" &&
-      reviewed.get(script.path) === scriptContentHash(script.content),
-  );
+  const seen = new Set<string>();
+  return (scripts ?? []).every((script) => {
+    if (typeof script?.content !== "string") return false;
+    if (seen.has(script.path)) return false;
+    seen.add(script.path);
+    return reviewed.get(script.path) === scriptContentHash(script.content);
+  });
 }

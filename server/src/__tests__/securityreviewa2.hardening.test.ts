@@ -5,7 +5,7 @@ import {
   reviewLuaSecurity,
   securityReviewMatchesScripts,
 } from "../validation/luaSecurityReview";
-import { computeContentHash } from "../pipeline/v2";
+import { computeContentHash, deterministicProducer } from "../pipeline/v2";
 
 /**
  * SECURITY-REVIEW-A2 — hardening of the deterministic reviewer.
@@ -60,6 +60,52 @@ describe("SECURITY-REVIEW-A2 refuses to report a pass over what it did not read"
     expect(report.scripts[0].reason).toMatch(/not readable/i);
   });
 
+  it("does not pass a package that also carries a script no rule applies to", () => {
+    // Review found this: passing because the *other* scripts passed only
+    // moves the blind spot from the whole report into one file inside it.
+    const report = reviewLuaSecurity([
+      { path: SERVER, content: "local total = 0" },
+      { path: "ReplicatedStorage/Shared.lua", content: "return {}" },
+    ]);
+
+    expect(report.scripts.find((s) => s.path === SERVER)?.outcome).toBe("pass");
+    expect(report.outcome).toBe("not_applicable");
+    expect(report.clean).toBe(false);
+    expect(report.coverageComplete).toBe(false);
+  });
+
+  it("reports incomplete coverage even when it did find something", () => {
+    // `outcome` names the defect, because a finding is never a misleading
+    // pass. Coverage is stated separately so it cannot be lost.
+    const report = reviewLuaSecurity([
+      {
+        path: SERVER,
+        content: [
+          "remote.OnServerEvent:Connect(function(player, amount)",
+          "  player.leaderstats.Coins.Value += amount",
+          "end)",
+        ].join("\n"),
+      },
+      { path: CLIENT, content: undefined as unknown as string },
+    ]);
+
+    expect(report.outcome).toBe("finding");
+    expect(report.coverageComplete).toBe(false);
+    expect(report.scripts.find((s) => s.path === CLIENT)?.outcome).toBe(
+      "not_inspected",
+    );
+  });
+
+  it("names the actual reason a script could not be read", () => {
+    const report = reviewLuaSecurity([
+      { path: "", content: "local a = 1" },
+      { path: SERVER, content: 7 as unknown as string },
+    ]);
+
+    expect(report.scripts[0].reason).toMatch(/no path/i);
+    expect(report.scripts[1].reason).toMatch(/not readable source text/i);
+  });
+
   it("passes only when everything supplied was analysed and nothing fired", () => {
     const report = reviewLuaSecurity([
       { path: SERVER, content: "local total = 0" },
@@ -95,6 +141,28 @@ describe("SECURITY-REVIEW-A2 ties a report to the bytes it reviewed", () => {
     ).toBe(false);
   });
 
+  it("does not match a set that merely happens to share a path count", () => {
+    // A report holding one path twice does not describe a set holding it once.
+    const report = {
+      scripts: [
+        {
+          path: SERVER,
+          contentHash: computeContentHash("a"),
+          outcome: "pass" as const,
+        },
+        {
+          path: SERVER,
+          contentHash: computeContentHash("b"),
+          outcome: "pass" as const,
+        },
+      ],
+    };
+
+    expect(
+      securityReviewMatchesScripts(report, [{ path: SERVER, content: "a" }]),
+    ).toBe(false);
+  });
+
   it("detects a changed script set, not only changed content", () => {
     const report = reviewLuaSecurity([
       { path: SERVER, content: "local a = 1" },
@@ -106,6 +174,15 @@ describe("SECURITY-REVIEW-A2 ties a report to the bytes it reviewed", () => {
         { path: CLIENT, content: "local b = 2" },
       ]),
     ).toBe(false);
+  });
+
+  it("keeps the producer version in step with the report shape", () => {
+    // The producer version exists to tell durable reports of different shapes
+    // apart. If the payload changes and the version does not, artifacts from
+    // either side of the change claim the same contract.
+    expect(deterministicProducer("lua-security-review").version).toBe(
+      SECURITY_REVIEW_SCHEMA_VERSION,
+    );
   });
 
   it("survives the JSON round trip it is persisted through", () => {

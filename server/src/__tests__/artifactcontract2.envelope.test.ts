@@ -166,11 +166,13 @@ describe("ARTIFACT-CONTRACT-2 envelope on newly produced artifacts", () => {
       },
     );
 
-    expect(review.producer).toEqual({
-      type: "deterministic",
-      id: "lua-security-review",
-      version: 1,
-    });
+    // The version is the producer's own contract version, looked up from the
+    // registry rather than asserted here — SECURITY-REVIEW-A2 bumped it when
+    // the report shape changed, and pinning a literal would have hidden that.
+    expect(review.producer).toEqual(
+      deterministicProducer("lua-security-review"),
+    );
+    expect(review.producer?.type).toBe("deterministic");
   });
 
   it("refuses an artifact whose producer cannot be identified", async () => {
