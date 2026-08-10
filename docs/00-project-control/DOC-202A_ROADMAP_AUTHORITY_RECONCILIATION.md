@@ -9,7 +9,7 @@ fail-closed guard for subsequent roadmap reconciliations.
 
 - Backend repository: `kazakovak2001-lgtm/RobloxAIStudio2`
 - Backend release branch: `release/cutover-1e-candidate`
-- Current backend runtime release: `c42a9b19f2d58fe728e3b978edffb8acd8621c72`
+- Current backend runtime release: `ddfa10453d9e2f48bc9e57045d40a8792d3cc297`
 - SECURITY-2G-F control baseline: `da55f716c798ec8c6a7f25a8e2a3b7b0a2244416`
 - Paired Frontend repository: `kazakovak2001-lgtm/Frontend`
 - Paired Frontend runtime contents: `6c1458d836244f2b720f361a78c2ab13f1682f74`
@@ -333,8 +333,12 @@ claim about what the server owns — that is the case the check exists to catch.
 **The world model is non-canonical and unmaterialized.** The runtime world is
 still built imperatively by the generated server `Script` that the playability
 contract requires. Nothing in this slice creates Roblox instances, and no
-ownership switch is proposed; materialization is `WORLD-1B` and is blocked on
-`STUDIO-2F-E`, which is where the canonical flip belongs.
+ownership switch is proposed; materialization is `WORLD-1B`. This section
+recorded that as blocked on `STUDIO-2F-E` when WORLD-1A merged, which was
+wrong on the same point corrected in the WORLD-1B section below: the HUD flip
+is a separate concern. `WORLD-1B` shipped as design-time materialization, and
+the canonical world switch is `WORLD-1C`, gated on operator-observed
+`WORLD-1B` evidence.
 
 One review finding is worth naming for the record: the v2 pipeline had no
 branch for the new agentless stage, so it would have persisted a passthrough
@@ -352,8 +356,11 @@ rather than a limitation to be lifted casually.** The playability contract
 requires the generated server `Script` to build the world into `workspace` at
 run time. A scene graph placed there would stand beside a second world on Play,
 so the scene is delivered into `ReplicatedStorage.AIStudioArtifacts`, which
-nothing in generated Lua reads. Moving it is `WORLD-1C` and requires
-`STUDIO-2F-E`, where the canonical flip belongs.
+nothing in generated Lua reads. Moving it is `WORLD-1C`. The dependency recorded here when WORLD-1B merged
+was `STUDIO-2F-E`, and that was wrong: the HUD flip is a separate concern that
+`WORLD-1C` leaves untouched. `WORLD-1C` requires operator-observed `WORLD-1B`
+evidence instead, as [ROADMAP_STATUS.md](./ROADMAP_STATUS.md) and
+[WORLD-1C_SCOPE.md](./WORLD-1C_SCOPE.md) already state.
 
 The slice is recorded as **code complete, not done**, on the same standard
 ARTIFACT-1 and STUDIO-2F-A are held to. There is no Lua execution harness in
@@ -371,6 +378,48 @@ contract tests passed throughout because they tested the parts rather than the
 path between them. Tests now assert the dispatch, the forwarding and the
 packaging directly, and a change that only exercises its own components should
 be assumed unwired until something proves otherwise.
+
+AGENT-CONTRACT-1 advances the runtime pair to backend
+`ddfa10453d9e2f48bc9e57045d40a8792d3cc297` and Frontend
+`6c1458d836244f2b720f361a78c2ab13f1682f74`, through backend pull request `#212`.
+The Frontend identity is unchanged.
+
+`AgentRegistry` constructed sixteen agents keyed by string, and no document or
+type stated what any of them produces, whether it may substitute deterministic
+content, or how many times it retries. An unknown name returned
+`{ _skipped: true }`. Each agent now carries one versioned, server-owned
+definition.
+
+**A field that nothing reads is not a contract, so each one had to earn its
+place.** `requiresModel` and `fallback` gate `AgentRegistry.executeAgent` before
+and after the provider call; `reachability` is enforced by pipeline validation;
+`requiredKeys` is asserted against the real parser call sites; `maxAttempts` is
+reconciled against the ceiling each constructed agent actually loops. Wall-clock
+timeout, monetary cost and input-token ceilings were left out and recorded as
+gaps: `BaseAgent.timeout` is assigned and never read, and `estimateCost` is
+never called on the generation path, so declaring either would have described a
+guarantee the runtime does not make.
+
+Provenance lands on `pipeline_steps[].agent_version`, recorded only for steps
+whose agent ran. A node blocked by an upstream failure records none, because no
+definition governed work that never happened, and executions written before this
+slice carry no version that anything rewrites.
+
+Two review findings are worth keeping for the pattern. Four of the six defects
+were the contract asserting something the runtime does not do — a required
+output key that never appears in a successful response, three retries where the
+implementation loops one, and a version stamped on nodes that never reached
+their agent. A contract derived from reading code is still a claim, and it
+drifts the same way documentation does. The answer was not only to correct the
+values but to reconcile them mechanically: `npm run validate` now fails on
+definition/registry mismatch in either direction and on any declared attempt
+count the implementation does not loop. The other: two provenance tests
+asserted only over locally declared constants and could not fail in any
+circumstance, which is the same failure mode as a durable record that says
+something did not happen when nothing checked.
+
+Dynamic orchestration, agent substitution, model routing, cost optimisation and
+new agents are outside this slice and remain unbuilt.
 
 ## Scope boundary
 
