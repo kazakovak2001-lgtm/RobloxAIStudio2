@@ -5,54 +5,70 @@
 **Last Updated:** August 10, 2026
 **Current backend runtime release:** `release/cutover-1e-candidate@3e18460c394b03c2d373c7d1a2e9cd0b74b6f984`
 **Current Frontend runtime contents:** `kazakovak2001-lgtm/Frontend@6c1458d836244f2b720f361a78c2ab13f1682f74`
+**Canonical Frontend `main`:** `94736069e049b9614c4012775677c78777f5060d` — **four merged PRs ahead of the pinned pair** (#42, #43, #44, #45). The pinned pair is genuinely verified; `main` has simply moved beyond it, and advancing the pin needs its own paired-release run. See [ROADMAP-RECONCILIATION-1_RESULT.md](./ROADMAP-RECONCILIATION-1_RESULT.md).
 
 This file is the ordered current delivery authority. The dated TECH-AUDIT-2 roadmap and sprint backlog are historical planning baselines and do not override the status below. See [DOC-202A reconciliation](./DOC-202A_ROADMAP_AUTHORITY_RECONCILIATION.md) for exact completion evidence.
+
+## Status vocabulary
+
+Every row carries exactly one status token. The categories are deliberately not
+collapsed — in particular, `complete` and `code_complete_evidence_pending` are
+different claims, and only the first means the evidence a slice's own scope
+required actually exists.
+
+`complete` · `partial` · `code_complete_evidence_pending` · `scoped` ·
+`blocked` · `deferred` · `unscoped` · `obsolete` · `superseded` · `unverified`
+
+Each status was reached from merged evidence rather than assumption. The
+derivation, the conflicts found between documents, and the dependency graph are
+recorded in
+[ROADMAP-RECONCILIATION-1_RESULT.md](./ROADMAP-RECONCILIATION-1_RESULT.md).
 
 ## Current delivery sequence
 
 | ID | Delivery item | Priority | Status | Dependency |
 | --- | --- | --- | --- | --- |
-| `CUTOVER-0` | Standalone Frontend governance and CI alignment | Critical | ✅ Complete | — |
-| `CI-BASELINE-1` | Portable backend CI and repository hygiene | Critical | ✅ Complete | `CUTOVER-0` |
-| `CORE-1` | Durable project data and API contract stabilization | Critical | ✅ Complete | `CI-BASELINE-1` |
-| `WORKSPACE-1` | Workflow-oriented standalone Frontend Workspace | High | ✅ Complete | `CORE-1` |
-| `STUDIO-1` | Generated artifact to Roblox Studio verification | High | ✅ Complete | `CORE-1`, `WORKSPACE-1` |
-| `CUTOVER-1` | Release promotion and embedded frontend removal | High | ✅ Complete | `WORKSPACE-1`, `STUDIO-1` |
-| `TECH-AUDIT-2` | Two-repository evidence baseline | Critical | ✅ Complete — historical baseline | `CUTOVER-1` |
-| `HARDEN-2A` | Auth, Studio-state, and cross-repository contract correctness | Critical | ✅ Complete | `TECH-AUDIT-2` |
-| `ARCH-2B` | Exhaustive truthful architecture boundary gate | Critical | ✅ Complete | `HARDEN-2A` |
-| `FRONTEND-2C` | Protected Frontend quality and bundle baseline | High | ✅ Complete | `HARDEN-2A` |
-| `RUNTIME-2D` | Runtime/provider/orchestration/memory ownership | High | ✅ Complete | `ARCH-2B` |
-| `DURABILITY-2E` | Durable writes and operational-state truthfulness | High | ✅ Complete | `RUNTIME-2D` |
-| `SECURITY-2G` | Dependency, SAST, credential, image, SBOM, and RBAC control gate | High | ✅ Complete — `SECURITY-2G-F` | `DURABILITY-2E` |
-| `DOC-202` | Documentation-authority inventory and deterministic guards | Medium | ✅ Complete — `DOC-202A` | `SECURITY-2G` |
-| `ROADMAP-AUDIT-1` | Evidence-based next-phase reconciliation | High | ✅ Complete | `DOC-202` |
-| `STUDIO-ACCEPT-1` | Real Studio acceptance of canonical artifact delivery | Critical | ✅ Complete | `ROADMAP-AUDIT-1` |
-| `RUNTIME-PLAYTEST-1` | Authoritative Studio-attached Roblox runtime evidence | High | ✅ Complete — [result](./RUNTIME-PLAYTEST-1_RESULT.md), operator-observed evidence | `STUDIO-ACCEPT-1` |
-| `REPAIR-1` | Artifact-applying repair, redelivery, and revalidation | High | ✅ Complete — backend 1A/1B/1C plus the Frontend repair UI (backend PR #185/#187/#189, Frontend PR #38/#40) | `RUNTIME-PLAYTEST-1` |
-| `PROVIDER-1A` | Truthful AI provider configuration and generation provenance | High | ✅ Complete — backend PR #193 | `REPAIR-1` |
-| `PROVIDER-1B` | Fallback provenance completeness after a provider call | High | ✅ Complete — backend PR #200 | `PROVIDER-1A` |
-| `ARTIFACT-1` | Deterministic Studio identity for delivered artifacts | Medium | 🚧 Code complete, not done — backend PR #199 merged; the change is plugin Lua and no Studio-attached run has confirmed it | `STUDIO-ACCEPT-1` |
-| `SECREVIEW-1` | Advisory deterministic Luau trust-boundary review | High | ✅ Complete — backend PR #201; **advisory only**, blocking is `SECURITY-REVIEW-B` — [criteria](./SECURITY-REVIEW-B_PROMOTION_CRITERIA.md) | `REPAIR-1` |
-| `SECURITY-REVIEW-B` | Blocking security gate over a high-confidence subset | Medium | Not scoped — seven [promotion criteria](./SECURITY-REVIEW-B_PROMOTION_CRITERIA.md) must all hold first | `SECREVIEW-1` |
-| `PIPELINE-1A` | Generation plan as server-owned validated data | High | ✅ Complete — backend PR #203 | `PROVIDER-1B` |
-| `PIPELINE-1B` | Deterministic validation recorded as a durable artifact | High | ✅ Complete — backend PR #205; the playability contract stays blocking, UI materializability is advisory | `PIPELINE-1A` |
-| `PIPELINE-1C` | Conditional stages inside the pipeline | Low | Not scoped — nothing needs to skip a stage yet, and a branching mechanism with no consumer is scaffolding | `PIPELINE-1B` |
-| `WORLD-1A` | Semantic world model and cross-artifact validation against generated Lua | High | ✅ Complete — backend PR #207; non-canonical and unmaterialized, findings are advisory | `PIPELINE-1B` |
-| `WORLD-1B` | Design-time Studio materialization of the world model | Medium | 🚧 Code complete, not done — backend PR #209 merged; contract tested, operator-observed Studio acceptance outstanding — [scope](./WORLD-1B_SCOPE.md) | `WORLD-1A` |
-| `WORLD-1C` | Canonical ownership of the world by the materialized scene | Medium | ⛔ Scoped and blocked — [scope](./WORLD-1C_SCOPE.md); implementation must not start until operator-observed Studio acceptance of `WORLD-1B` exists, because the switch would make an unobserved materializer the only world source | `WORLD-1B` |
-| `AGENT-CONTRACT-1` | Versioned server-owned definitions for every runtime agent | Medium | ✅ Complete — backend PR #212; foundation only, and every policy field is enforced by execution, pipeline validation or reconciliation — [scope](./AGENT-CONTRACT-1_SCOPE.md) | `PIPELINE-1A` |
-| `ARTIFACT-CONTRACT-2` | Durable artifact envelope, content identity and lineage | High | ✅ Complete — backend PR #214; every new artifact carries schema version, owning project, content hash and producer, plus lineage wherever an upstream exists — [scope](./ARTIFACT-CONTRACT-2_SCOPE.md) | `AGENT-CONTRACT-1` |
-| `SECURITY-REVIEW-A2` | Hardening of the advisory Luau reviewer | Medium | ✅ Complete — backend PR #216; still **advisory**, and a review over unread code can no longer report a pass | `SECREVIEW-1`, `ARTIFACT-CONTRACT-2` |
-| `STUDIO-SYNC-1A` | Project sync and artifact-transfer contract hardening | Medium | ✅ Complete — backend PR #176, Frontend PR #34/#37 | `STUDIO-ACCEPT-1` |
-| `STUDIO-2F` | Native assets, GUI, runtime, and place delivery | Medium | Decomposed into `STUDIO-2F-A`…`STUDIO-2F-E`; no unsatisfied control gate remains | `REPAIR-1` |
-| `STUDIO-2F-A` | Generated GUI materialization as real Studio instances | Medium | 🚧 Code complete, not done — backend PR #195/#196/#197 merged; runtime validation outstanding, so it does not yet satisfy `2F-B`…`2F-E` — [scope](./STUDIO-2F-A_SCOPE.md) | `STUDIO-SYNC-1A` |
-| `STUDIO-2F-B` | Native asset materialization (mesh, decal, audio) | Medium | Not scoped — requires a Roblox Open Cloud credential surface that does not exist yet | `STUDIO-2F-A` |
-| `STUDIO-2F-C` | Place and `.rbxl` delivery | Medium | Not scoped — begins with a documented delivery-mechanism decision | `STUDIO-2F-A` |
-| `STUDIO-2F-D` | Runtime validator in the canonical plugin package | Low | Not scoped | `STUDIO-2F-A` |
-| `STUDIO-2F-E` | Canonical-HUD flip to the delivered GUI tree | Medium | Not scoped — must be applied atomically | `STUDIO-2F-A` |
-| `AUTONOMY-3A` | Real engine-backed autonomous phases and broader recovery | High | Deferred | control gates |
-| `COLLAB-3B` | Collaborative development | Medium | Deferred | preceding gates |
+| `CUTOVER-0` | Standalone Frontend governance and CI alignment | Critical | `complete` | — |
+| `CI-BASELINE-1` | Portable backend CI and repository hygiene | Critical | `complete` | `CUTOVER-0` |
+| `CORE-1` | Durable project data and API contract stabilization | Critical | `complete` | `CI-BASELINE-1` |
+| `WORKSPACE-1` | Workflow-oriented standalone Frontend Workspace | High | `complete` | `CORE-1` |
+| `STUDIO-1` | Generated artifact to Roblox Studio verification | High | `complete` | `CORE-1`, `WORKSPACE-1` |
+| `CUTOVER-1` | Release promotion and embedded frontend removal | High | `complete` | `WORKSPACE-1`, `STUDIO-1` |
+| `TECH-AUDIT-2` | Two-repository evidence baseline | Critical | `complete` — historical baseline | `CUTOVER-1` |
+| `HARDEN-2A` | Auth, Studio-state, and cross-repository contract correctness | Critical | `complete` | `TECH-AUDIT-2` |
+| `ARCH-2B` | Exhaustive truthful architecture boundary gate | Critical | `complete` | `HARDEN-2A` |
+| `FRONTEND-2C` | Protected Frontend quality and bundle baseline | High | `complete` | `HARDEN-2A` |
+| `RUNTIME-2D` | Runtime/provider/orchestration/memory ownership | High | `complete` | `ARCH-2B` |
+| `DURABILITY-2E` | Durable writes and operational-state truthfulness | High | `complete` | `RUNTIME-2D` |
+| `SECURITY-2G` | Dependency, SAST, credential, image, SBOM, and RBAC control gate | High | `complete` — `SECURITY-2G-F` | `DURABILITY-2E` |
+| `DOC-202` | Documentation-authority inventory and deterministic guards | Medium | `complete` — `DOC-202A` | `SECURITY-2G` |
+| `ROADMAP-AUDIT-1` | Evidence-based next-phase reconciliation | High | `complete` | `DOC-202` |
+| `STUDIO-ACCEPT-1` | Real Studio acceptance of canonical artifact delivery | Critical | `complete` | `ROADMAP-AUDIT-1` |
+| `RUNTIME-PLAYTEST-1` | Authoritative Studio-attached Roblox runtime evidence | High | `complete` — [result](./RUNTIME-PLAYTEST-1_RESULT.md), operator-observed evidence | `STUDIO-ACCEPT-1` |
+| `REPAIR-1` | Artifact-applying repair, redelivery, and revalidation | High | `complete` — backend 1A/1B/1C plus the Frontend repair UI (backend PR #185/#187/#189, Frontend PR #38/#40) | `RUNTIME-PLAYTEST-1` |
+| `PROVIDER-1A` | Truthful AI provider configuration and generation provenance | High | `complete` — backend PR #193 | `REPAIR-1` |
+| `PROVIDER-1B` | Fallback provenance completeness after a provider call | High | `complete` — backend PR #200 | `PROVIDER-1A` |
+| `ARTIFACT-1` | Deterministic Studio identity for delivered artifacts | Medium | `code_complete_evidence_pending` — backend PR #199 merged; the change is plugin Lua and no Studio-attached run has confirmed it | `STUDIO-ACCEPT-1` |
+| `SECREVIEW-1` | Advisory deterministic Luau trust-boundary review | High | `complete` — backend PR #201; **advisory only**, blocking is `SECURITY-REVIEW-B` — [criteria](./SECURITY-REVIEW-B_PROMOTION_CRITERIA.md) | `REPAIR-1` |
+| `SECURITY-REVIEW-B` | Blocking security gate over a high-confidence subset | Medium | `blocked` — and not scoped: seven [promotion criteria](./SECURITY-REVIEW-B_PROMOTION_CRITERIA.md) must all hold first | `SECREVIEW-1` |
+| `PIPELINE-1A` | Generation plan as server-owned validated data | High | `complete` — backend PR #203 | `PROVIDER-1B` |
+| `PIPELINE-1B` | Deterministic validation recorded as a durable artifact | High | `complete` — backend PR #205; the playability contract stays blocking, UI materializability is advisory | `PIPELINE-1A` |
+| `PIPELINE-1C` | Conditional stages inside the pipeline | Low | `unscoped` — nothing needs to skip a stage yet, and a branching mechanism with no consumer is scaffolding | `PIPELINE-1B` |
+| `WORLD-1A` | Semantic world model and cross-artifact validation against generated Lua | High | `complete` — backend PR #207; non-canonical and unmaterialized, findings are advisory | `PIPELINE-1B` |
+| `WORLD-1B` | Design-time Studio materialization of the world model | Medium | `code_complete_evidence_pending` — backend PR #209 merged; contract tested, operator-observed Studio acceptance outstanding — [scope](./WORLD-1B_SCOPE.md) | `WORLD-1A` |
+| `WORLD-1C` | Canonical ownership of the world by the materialized scene | Medium | `blocked` — scoped, and blocked: [scope](./WORLD-1C_SCOPE.md); implementation must not start until operator-observed Studio acceptance of `WORLD-1B` exists, because the switch would make an unobserved materializer the only world source | `WORLD-1B` |
+| `AGENT-CONTRACT-1` | Versioned server-owned definitions for every runtime agent | Medium | `complete` — backend PR #212; foundation only, and every policy field is enforced by execution, pipeline validation or reconciliation — [scope](./AGENT-CONTRACT-1_SCOPE.md) | `PIPELINE-1A` |
+| `ARTIFACT-CONTRACT-2` | Durable artifact envelope, content identity and lineage | High | `complete` — backend PR #214; every new artifact carries schema version, owning project, content hash and producer, plus lineage wherever an upstream exists — [scope](./ARTIFACT-CONTRACT-2_SCOPE.md) | `AGENT-CONTRACT-1` |
+| `SECURITY-REVIEW-A2` | Hardening of the advisory Luau reviewer | Medium | `complete` — backend PR #216; still **advisory**, and a review over unread code can no longer report a pass | `SECREVIEW-1`, `ARTIFACT-CONTRACT-2` |
+| `STUDIO-SYNC-1A` | Project sync and artifact-transfer contract hardening | Medium | `complete` — backend PR #176, Frontend PR #34/#37 | `STUDIO-ACCEPT-1` |
+| `STUDIO-2F` | Native assets, GUI, runtime, and place delivery | Medium | `superseded` — decomposed into `STUDIO-2F-A`…`STUDIO-2F-E`; no unsatisfied control gate remains | `REPAIR-1` |
+| `STUDIO-2F-A` | Generated GUI materialization as real Studio instances | Medium | `code_complete_evidence_pending` — backend PR #195/#196/#197 merged; runtime validation outstanding, so it does not yet satisfy `2F-B`…`2F-E` — [scope](./STUDIO-2F-A_SCOPE.md) | `STUDIO-SYNC-1A` |
+| `STUDIO-2F-B` | Native asset materialization (mesh, decal, audio) | Medium | `blocked` — and not scoped: requires a Roblox Open Cloud credential surface that does not exist yet | `STUDIO-2F-A` |
+| `STUDIO-2F-C` | Place and `.rbxl` delivery | Medium | `unscoped` — begins with a documented delivery-mechanism decision | `STUDIO-2F-A` |
+| `STUDIO-2F-D` | Runtime validator in the canonical plugin package | Low | `unscoped` | `STUDIO-2F-A` |
+| `STUDIO-2F-E` | Canonical-HUD flip to the delivered GUI tree | Medium | `unscoped` — must be applied atomically | `STUDIO-2F-A` |
+| `AUTONOMY-3A` | Real engine-backed autonomous phases and broader recovery | High | `deferred` | control gates |
+| `COLLAB-3B` | Collaborative development | Medium | `deferred` | preceding gates |
 
 ## SECURITY-2G control baseline
 
