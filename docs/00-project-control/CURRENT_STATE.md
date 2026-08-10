@@ -30,7 +30,7 @@
 - **Repository**: [kazakovak2001-lgtm/Frontend](https://github.com/kazakovak2001-lgtm/Frontend) on `main`
 - **Acceptance commit**: `a8d005d433d48e18d8e64ac176ee63c9c694b644`, independently matched to the ZIP used during the successful STUDIO-1 session.
 - **Initial SSR release commit**: `1036c3ef9705d145cb9700cd14268a33d2abdd58`, merged through Frontend PR #12 after CI run #65 verified the production image, `/health`, SSR `/`, responsive QA, and Merge Gate.
-- **Active paired release contents**: `6c1458d836244f2b720f361a78c2ab13f1682f74`, including the INTEGRATION-1B browser-recovery proof, retained by the protected release inventory.
+- **Active paired release contents**: `94736069e049b9614c4012775677c78777f5060d`, including the INTEGRATION-1B browser-recovery proof, retained by the protected release inventory.
 - **Framework**: React 19 + TypeScript + Vite + Tailwind CSS
 - **Routing and state**: TanStack Router/Query, typed backend adapter, Socket.IO realtime client
 - **Ownership**: All new user-facing web functionality belongs in the standalone repository.
@@ -252,7 +252,7 @@ This template enforces:
 
 - **Backend release image**: `Dockerfile.backend` builds and starts the compiled backend without root `src/`, `public/`, Vite, or Tailwind inputs; CI verifies `GET /health`.
 - **Backend/PostgreSQL composition**: `deploy/docker-compose.backend.yml` provides the independently verified backend and persistent database boundary.
-- **Standalone Frontend release image**: active paired Frontend contents `6c1458d836244f2b720f361a78c2ab13f1682f74` package `.output` plus one shared worker-to-Node adapter as a non-root SSR process.
+- **Standalone Frontend release image**: active paired Frontend contents `94736069e049b9614c4012775677c78777f5060d` package `.output` plus one shared worker-to-Node adapter as a non-root SSR process.
 - **Historical REL-202 composed HTTPS evidence**: backend source `010532f0b162097c8a645b1dc07c89081d25cb99` and exact Frontend contents `9495b696cf22c84cf61375f7df22e5ac5907cc3c` passed CI Pipeline #1073 (`30667404383`). The promoted backend merge `a33a8c30588f1e4705d27856e61d839c8efd42ac` has the same file tree. This retained evidence proves the prior DATA-202 pair; the active REL-203 pair is defined by the release inventory and its protected PR chain. External deployment remains a separate unchecked operation.
 - **Migration Runner**: `server/src/platform/storage/postgres/migrationRunner.ts` — auto-applies pending migrations on startup (skips when STORAGE_PROVIDER=inmemory).
 - **Rollback inventory**: CUTOVER-1A and CUTOVER-1B remain independently deployable and are unaffected by removal of the non-executable combined stack. The deleted legacy source/configuration/deployment inventory remains recoverable by reverting the focused CLEANUP-1C change from baseline `85a2fa8d512738e6d02ffae42da77af7a27db6fc`. The promoted default and pinned pre-promotion rollback reference remain protected.
