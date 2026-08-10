@@ -9,7 +9,7 @@ fail-closed guard for subsequent roadmap reconciliations.
 
 - Backend repository: `kazakovak2001-lgtm/RobloxAIStudio2`
 - Backend release branch: `release/cutover-1e-candidate`
-- Current backend runtime release: `ddfa10453d9e2f48bc9e57045d40a8792d3cc297`
+- Current backend runtime release: `79b1ecfd137dff71e17fcc57e45078a47137fcdf`
 - SECURITY-2G-F control baseline: `da55f716c798ec8c6a7f25a8e2a3b7b0a2244416`
 - Paired Frontend repository: `kazakovak2001-lgtm/Frontend`
 - Paired Frontend runtime contents: `6c1458d836244f2b720f361a78c2ab13f1682f74`
@@ -421,6 +421,55 @@ something did not happen when nothing checked.
 
 Dynamic orchestration, agent substitution, model routing, cost optimisation and
 new agents are outside this slice and remain unbuilt.
+
+ARTIFACT-CONTRACT-2 advances the runtime pair to backend
+`79b1ecfd137dff71e17fcc57e45078a47137fcdf` and Frontend
+`6c1458d836244f2b720f361a78c2ab13f1682f74`, through backend pull request `#214`.
+The Frontend identity is unchanged.
+
+A durable artifact carried enough to be stored and delivered and not enough to
+be identified. `pipelineId` named the execution, not the project. `agent` held
+a real agent id for some stages, `null` for three different deterministic
+producers, and invented strings such as `repair-engine` for others. No schema
+version, no content hash, no lineage. Every newly produced artifact now carries
+a schema version, an owning project, a content hash and a producer, and the
+store refuses to write one that is missing any of those. Lineage is the
+exception: it is recorded only where an upstream actually exists, because an
+empty dependency list would assert a relationship rather than record one.
+
+**The defect this closes was live, not theoretical.** A repaired execution
+copied the parent's `SECURITY_REVIEW` and `VALIDATION` forward unchanged, so
+regenerated Lua sat beside a security report of the Lua it replaced, under one
+execution id, with nothing marking either as stale. The review is now
+re-derived from the repaired scripts by the same pure function the generation
+path uses, and the repaired Lua records a lineage edge to the Lua it replaces.
+No validation report is emitted for a repair, because rebuilding one needs the
+UI materialization outcome and world cross-validation that a repair does not
+re-run, and a report naming checks that did not happen is the failure this
+whole slice exists to prevent.
+
+Content identity is SHA-256 over a canonical serialization, computed once at
+creation. Object keys are sorted at every depth because the data model treats
+objects as unordered and a JSONB round trip does not preserve insertion order;
+arrays are left alone because order is meaning there. Values that cannot be
+given a deterministic identity are rejected rather than dropped. It is
+integrity identity only: it says what the bytes were, never that they are safe,
+and project authorization remains entirely separate.
+
+Two review findings are worth keeping for the pattern. `canonicalJson` rejected
+`undefined`, functions, symbols and bigints but not `Map`, `Set` or class
+instances — `Object.keys` sees nothing inside those, so every one of them
+serialized to `{}` and shared a single hash with every other. A guard that
+enumerates the cases it knows about will always miss the cases it does not;
+the fix inverts it to reject anything that is not plain data. And a test
+asserted that a storage round trip reorders keys while its fixture did no
+reordering at all, so the property it named was never exercised — the same
+shape as a durable record asserting something nothing checked, which is the
+class of defect this contract was written against.
+
+Historical artifacts carry no envelope and are held to none. Nothing infers a
+schema version, project, hash or producer for them, and nothing may bind to
+one. `kv_store.data` is already `JSONB`, so no database migration was required.
 
 ## Scope boundary
 

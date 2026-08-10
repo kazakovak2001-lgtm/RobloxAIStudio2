@@ -45,7 +45,7 @@ Four, and only one of them was attributed truthfully:
 
 ## The envelope
 
-`server/src/pipeline/v2/artifactEnvelope.ts`, pure. Five fields added to `PipelineArtifact`, all optional **on the type only** so historical rows stay readable — the store refuses to write a new artifact missing any of them.
+`server/src/pipeline/v2/artifactEnvelope.ts`, pure. Five fields added to `PipelineArtifact`, all optional **on the type only** so historical rows stay readable. The store refuses to write a new artifact without a schema version, an owning project, a content hash or a producer. `dependencies` is the exception and is omitted when there are none: an artifact derived from nothing has no lineage, and an empty array would assert a relationship rather than record one.
 
 ```
 schemaVersion   envelope version, not payload version
