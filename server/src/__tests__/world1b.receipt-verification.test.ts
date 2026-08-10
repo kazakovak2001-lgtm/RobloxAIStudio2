@@ -19,6 +19,9 @@ import { ArtifactStore } from "../pipeline/v2";
 import type { StudioArtifactReceipt } from "../studio/v2/StudioTypes";
 import type { TaskNode } from "../planning/model/TaskGraph";
 
+/** ARTIFACT-CONTRACT-2 requires an owning project on every new artifact. */
+const ARTIFACT_TEST_PROJECT = "artifact-contract-test-project";
+
 /**
  * WORLD-1B — receipt verification and scene validation.
  *
@@ -477,16 +480,20 @@ describe("WORLD-1B end-to-end recording", () => {
       output,
     });
 
-    const recorded = await recorder.record("world-scene-exec", [
-      node("game_designer", sources().gameDesign as Record<string, unknown>),
-      node(
-        "roblox_architect",
-        sources().architecture as Record<string, unknown>,
-      ),
-      // Playable Lua, because the recorder refuses to persist anything for a
-      // run that fails the playability contract — including this scene.
-      node("lua_generator", { scripts: playableScripts() }),
-    ]);
+    const recorded = await recorder.record(
+      "world-scene-exec",
+      [
+        node("game_designer", sources().gameDesign as Record<string, unknown>),
+        node(
+          "roblox_architect",
+          sources().architecture as Record<string, unknown>,
+        ),
+        // Playable Lua, because the recorder refuses to persist anything for a
+        // run that fails the playability contract — including this scene.
+        node("lua_generator", { scripts: playableScripts() }),
+      ],
+      ARTIFACT_TEST_PROJECT,
+    );
 
     const artifact = recorded.find((entry) => entry.stage === "WORLD_MODEL");
     const content = artifact?.content as { scene?: unknown };

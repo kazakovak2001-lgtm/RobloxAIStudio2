@@ -12,6 +12,31 @@ import {
   type PipelineEventHandler,
 } from "./PipelineEvents";
 import { ArtifactStore, type PipelineArtifact } from "./ArtifactStore";
+import {
+  AGENTLESS_STAGE_PRODUCERS,
+  ARTIFACT_DEPENDENCY_RULES,
+  deterministicProducer,
+  type ArtifactDependency,
+} from "./artifactEnvelope";
+
+/**
+ * Lineage edges for a stage, drawn from artifacts this pipeline already
+ * committed.
+ *
+ * Only stages with a declared rule get edges, and only to upstreams that
+ * actually exist — an edge to something uncommitted would name content a
+ * consumer could not resolve.
+ */
+function lineageFor(
+  stage: PipelineArtifact["stage"],
+  committed: readonly PipelineArtifact[],
+): ArtifactDependency[] {
+  const upstream = ARTIFACT_DEPENDENCY_RULES[stage] ?? [];
+  return upstream
+    .map((name) => committed.find((artifact) => artifact.stage === name))
+    .filter((artifact): artifact is PipelineArtifact => !!artifact?.contentHash)
+    .map((artifact) => ArtifactStore.dependencyOn(artifact));
+}
 import { createPipelineState, type PipelineState } from "./PipelineStage";
 import {
   createConfiguredPipelineStore,
@@ -273,11 +298,26 @@ export class PipelineEngine {
         const existing = this.artifactStore.getByPipeline(state.pipelineId);
         const alreadyStored = existing.some((a) => a.stage === stage.name);
         if (!alreadyStored) {
+          // ARTIFACT-CONTRACT-2. Five stages here run without an agent, and
+          // they are four different producers — attributing all of them to the
+          // validation pass would record provenance that is simply false.
+          const producerId = AGENTLESS_STAGE_PRODUCERS[stage.name];
           await this.artifactStore.store(
             state.pipelineId,
             stage.name,
             stage.agentId,
             stage.output,
+            {
+              projectId: state.projectId,
+              ...(stage.agentId
+                ? {}
+                : { producer: deterministicProducer(producerId ?? "") }),
+              // Lineage is resolved from what this pipeline has already
+              // committed, so a derived report binds to the exact upstream it
+              // was computed from and a later edit to that upstream is
+              // detectable rather than silent.
+              dependencies: lineageFor(stage.name, existing),
+            },
           );
         }
       }

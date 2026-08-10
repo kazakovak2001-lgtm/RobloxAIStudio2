@@ -17,6 +17,9 @@ import { ArtifactStore } from "../pipeline/v2/ArtifactStore";
 import { LuaGenerationEngine } from "../generation/lua";
 import { ExperienceAssembler } from "../generation/experience";
 
+/** ARTIFACT-CONTRACT-2 requires an owning project on every new artifact. */
+const ARTIFACT_TEST_PROJECT = "artifact-contract-test-project";
+
 describe("Studio Integration", () => {
   let bridge: StudioBridge;
   let sessions: StudioSessionManager;
@@ -191,12 +194,24 @@ describe("Studio Integration", () => {
 
     it("returns snapshot with artifacts after generation", async () => {
       const store = new ArtifactStore();
-      await store.store("pipe-1", "REQUIREMENTS", "requirements", {
-        data: "test",
-      });
-      await store.store("pipe-1", "GAME_DESIGN", "game_designer", {
-        design: "rpg",
-      });
+      await store.store(
+        "pipe-1",
+        "REQUIREMENTS",
+        "requirements",
+        {
+          data: "test",
+        },
+        { projectId: ARTIFACT_TEST_PROJECT },
+      );
+      await store.store(
+        "pipe-1",
+        "GAME_DESIGN",
+        "game_designer",
+        {
+          design: "rpg",
+        },
+        { projectId: ARTIFACT_TEST_PROJECT },
+      );
 
       const syncManager = new ProjectSyncManager(store);
       const snapshot = syncManager.getProjectSnapshot("pipe-1");
@@ -215,6 +230,7 @@ describe("Studio Integration", () => {
         {
           script: "print('hello')",
         },
+        { projectId: ARTIFACT_TEST_PROJECT },
       );
 
       const syncManager = new ProjectSyncManager(store);
@@ -268,6 +284,7 @@ describe("Studio Integration", () => {
             content: artifact.content,
             path: artifact.path,
           },
+          { projectId: ARTIFACT_TEST_PROJECT },
         );
       }
 

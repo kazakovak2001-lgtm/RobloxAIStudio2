@@ -12,6 +12,9 @@ import type {
 } from "./StudioEvidenceStore";
 import { StudioRuntime } from "./StudioRuntime";
 
+/** ARTIFACT-CONTRACT-2 requires an owning project on every new artifact. */
+const ARTIFACT_TEST_PROJECT = "artifact-contract-test-project";
+
 function evidence(commandId: string, version = 1): StudioOperationalEvidence {
   return {
     command: {
@@ -172,6 +175,7 @@ describe("Studio operational evidence store", () => {
       "LUA_GENERATION",
       "lua_generator",
       { scripts: [{ path: "Main.server.lua", content: "return true" }] },
+      { projectId: ARTIFACT_TEST_PROJECT },
     );
     const client = first.bridge.connect("0.650", "project-runtime-restart");
     first.sessions.create(client);

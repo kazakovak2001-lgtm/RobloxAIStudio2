@@ -72,11 +72,12 @@
     "test": "node node_modules/vitest/vitest.mjs --config config/testing/vitest.backend.config.ts run",
     "test:watch": "node node_modules/vitest/vitest.mjs --config config/testing/vitest.backend.config.ts",
     "test:postgres": "node node_modules/vitest/vitest.mjs --config config/testing/vitest.backend.config.ts run server/src/__tests__/core1b.postgres.integration.test.ts",
-    "validate": "npm run validate:layer-debt && npm run validate:runtime && npm run validate:memory && npm run validate:durable-writes && npm run validate:operational-state && npm run validate:documentation-authority && npm run validate:agent-contract && node --import tsx scripts/validate.ts",
+    "validate": "npm run validate:layer-debt && npm run validate:runtime && npm run validate:memory && npm run validate:durable-writes && npm run validate:operational-state && npm run validate:documentation-authority && npm run validate:agent-contract && npm run validate:artifact-contract && node --import tsx scripts/validate.ts",
     "ci": "npm run typecheck && npm run validate:arch && npm run validate:boundaries && npm run lint && npm run format:check && npm run test && npm run validate",
     "prepare": "husky",
     "validate:documentation-authority": "node --import tsx scripts/validate-documentation-authority.ts",
-    "validate:agent-contract": "node --import tsx scripts/validate-agent-contract.ts"
+    "validate:agent-contract": "node --import tsx scripts/validate-agent-contract.ts",
+    "validate:artifact-contract": "node --import tsx scripts/validate-artifact-contract.ts"
   },
   "lint-staged": {
     "*.{ts,tsx}": [

@@ -32,10 +32,17 @@ describe("STUDIO-1b shared Studio runtime", () => {
       "LUA_GENERATION",
       "lua_generator",
       luaOutput,
+      { projectId },
     );
-    runtime.artifacts.store(executionId, "EXPORT", "orchestrator", {
-      manifest: { scripts: 1 },
-    });
+    runtime.artifacts.store(
+      executionId,
+      "EXPORT",
+      "orchestrator",
+      {
+        manifest: { scripts: 1 },
+      },
+      { projectId },
+    );
 
     const client = runtime.bridge.connect("0.650", projectId);
     runtime.sessions.create(client);
@@ -143,14 +150,20 @@ describe("STUDIO-1b shared Studio runtime", () => {
     const executionId = "exec-shared-facade";
 
     manager.connect("studio-shared", projectId);
-    runtime.artifacts.store(executionId, "LUA_GENERATION", "lua_generator", {
-      scripts: [
-        {
-          path: "ReplicatedStorage/Shared/Config.lua",
-          content: "return { shared = true }",
-        },
-      ],
-    });
+    runtime.artifacts.store(
+      executionId,
+      "LUA_GENERATION",
+      "lua_generator",
+      {
+        scripts: [
+          {
+            path: "ReplicatedStorage/Shared/Config.lua",
+            content: "return { shared = true }",
+          },
+        ],
+      },
+      { projectId },
+    );
 
     const result = await manager.synchronizeExecution(
       "studio-shared",

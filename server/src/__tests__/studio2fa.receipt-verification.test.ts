@@ -60,6 +60,7 @@ async function reportDelivery(
     "UI_GENERATION",
     "ui_generator",
     uiTreeContent(),
+    { projectId: PROJECT_ID },
   );
 
   const client = runtime.bridge.connect("0.600.0", PROJECT_ID);

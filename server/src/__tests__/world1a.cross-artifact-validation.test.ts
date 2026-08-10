@@ -23,6 +23,9 @@ import { PipelineExecutor } from "../pipeline/v2/PipelineExecutor";
 import type { PlayableLuaScript } from "../types/playableLua";
 import type { TaskNode } from "../planning/model/TaskGraph";
 
+/** ARTIFACT-CONTRACT-2 requires an owning project on every new artifact. */
+const ARTIFACT_TEST_PROJECT = "artifact-contract-test-project";
+
 /**
  * WORLD-1A. The world model is semantic, non-canonical and unmaterialized, and
  * the first check in this platform that compares two artifacts to each other.
@@ -500,11 +503,18 @@ describe("WORLD-1A pipeline wiring", () => {
     const recorder = new GenerationArtifactRecorder(store);
     const sources = racingSources();
 
-    const recorded = await recorder.record("world-exec", [
-      node("game_designer", sources.gameDesign as Record<string, unknown>),
-      node("roblox_architect", sources.architecture as Record<string, unknown>),
-      node("lua_generator", { scripts: luaPackage() }),
-    ]);
+    const recorded = await recorder.record(
+      "world-exec",
+      [
+        node("game_designer", sources.gameDesign as Record<string, unknown>),
+        node(
+          "roblox_architect",
+          sources.architecture as Record<string, unknown>,
+        ),
+        node("lua_generator", { scripts: luaPackage() }),
+      ],
+      ARTIFACT_TEST_PROJECT,
+    );
 
     const worldArtifact = recorded.find(
       (artifact) => artifact.stage === "WORLD_MODEL",

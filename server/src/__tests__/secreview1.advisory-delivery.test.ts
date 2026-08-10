@@ -17,6 +17,9 @@ import { ProjectSyncManager } from "../studio/v2/sync/ProjectSyncManager";
 import type { TaskNode } from "../planning/model/TaskGraph";
 import type { SecurityReviewReport } from "../validation/luaSecurityReview";
 
+/** ARTIFACT-CONTRACT-2 requires an owning project on every new artifact. */
+const ARTIFACT_TEST_PROJECT = "artifact-contract-test-project";
+
 /**
  * Playable Lua that is also exploitable: it satisfies every playability rule
  * while handing a client-supplied amount straight to a score. This is exactly
@@ -95,6 +98,7 @@ async function recordExploitableGeneration(executionId: string) {
   const recorded = await new GenerationArtifactRecorder(store).record(
     executionId,
     [luaNode()],
+    ARTIFACT_TEST_PROJECT,
   );
   return { storage, store, recorded };
 }

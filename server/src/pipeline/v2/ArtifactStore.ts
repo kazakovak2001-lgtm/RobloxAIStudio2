@@ -4,6 +4,16 @@
 
 import { randomUUID } from "crypto";
 import type { StageName } from "./PipelineStage";
+import {
+  ARTIFACT_ENVELOPE_SCHEMA_VERSION,
+  ArtifactContentError,
+  computeContentHash,
+  humanEditProducer,
+  resolveProducer,
+  validateArtifactEnvelope,
+  type ArtifactDependency,
+  type ArtifactProducer,
+} from "./artifactEnvelope";
 
 export interface ArtifactStorageProvider {
   get<T>(collection: string, id: string): T | null;
@@ -37,6 +47,40 @@ export interface PipelineArtifact {
   reviewComment?: string;
   reviewedAt?: number;
   reviewedBy?: string;
+
+  // ── ARTIFACT-CONTRACT-2 envelope ──────────────────────────────────────────
+  // Optional on the type, and only because artifacts written before this slice
+  // exist and must stay readable. Every new artifact carries all of them; the
+  // store refuses to write one that does not.
+  /** Envelope version, not payload version. Absent on historical artifacts. */
+  schemaVersion?: number;
+  /** Owning project, from server-held execution context. */
+  projectId?: string;
+  /** `sha256:<hex>` over the canonical serialization of `content`. */
+  contentHash?: string;
+  /** Who produced this content, recorded at creation and never re-resolved. */
+  producer?: ArtifactProducer;
+  /** Upstream artifacts this content was derived from, bound by hash. */
+  dependencies?: readonly ArtifactDependency[];
+}
+
+/**
+ * Server-held context a new artifact is written under.
+ *
+ * `projectId` is required and comes from the execution the server already
+ * resolved. It is never taken from artifact content, and never from a request.
+ */
+export interface ArtifactWriteContext {
+  readonly projectId: string;
+  /**
+   * Required whenever `agent` does not name a defined agent — `agent: null` is
+   * shared by every deterministic stage, so it cannot identify a producer.
+   *
+   * A string names a registered deterministic producer, which lets a caller in
+   * a layer that must not import the envelope module identify itself.
+   */
+  readonly producer?: ArtifactProducer | string;
+  readonly dependencies?: readonly ArtifactDependency[];
 }
 
 export type ReviewStatus = "pending" | "approved" | "rejected" | "edited";
@@ -87,12 +131,21 @@ export class ArtifactStore {
     stage: StageName,
     agent: string | null,
     content: unknown,
+    context: ArtifactWriteContext,
   ): Promise<PipelineArtifact> {
     const config = STAGE_ARTIFACT_CONFIG[stage];
     const artifactName = config?.name ?? `${stage.toLowerCase()}.json`;
     const artifactType = config?.type ?? "json";
 
-    const serialized = JSON.stringify(content);
+    if (!context?.projectId) {
+      throw new ArtifactContentError(
+        `Artifact for stage ${stage} must be written with an owning project`,
+      );
+    }
+
+    // ARTIFACT-CONTRACT-2. Hashed once, here, from the content as given.
+    // Nothing downstream recomputes it in a loop, and nothing after this point
+    // may change `content` without changing the hash with it.
     const artifact: PipelineArtifact = {
       id: `artifact-${randomUUID().slice(0, 12)}`,
       pipelineId,
@@ -102,13 +155,55 @@ export class ArtifactStore {
       name: artifactName,
       createdAt: Date.now(),
       content,
-      sizeBytes: Buffer.byteLength(serialized, "utf8"),
+      sizeBytes: Buffer.byteLength(JSON.stringify(content) ?? "", "utf8"),
       validated: false,
       reviewStatus: "pending",
+      schemaVersion: ARTIFACT_ENVELOPE_SCHEMA_VERSION,
+      projectId: context.projectId,
+      contentHash: computeContentHash(content),
+      producer: resolveProducer(agent, context.producer),
+      ...(context.dependencies?.length
+        ? { dependencies: context.dependencies }
+        : {}),
     };
+
+    // Fail on write rather than leaving a malformed envelope to be discovered
+    // by whatever reads it next. A lineage edge that does not hold is worse
+    // than no edge, because it reads as verified provenance.
+    const issues = validateArtifactEnvelope(artifact, (id) => {
+      const upstream = this.getById(id);
+      return upstream
+        ? {
+            id: upstream.id,
+            stage: upstream.stage,
+            projectId: upstream.projectId,
+            contentHash: upstream.contentHash,
+            reviewStatus: upstream.reviewStatus,
+          }
+        : null;
+    });
+    if (issues.length > 0) {
+      throw new ArtifactContentError(
+        `Refusing to store ${stage} artifact: ${issues.map((issue) => issue.message).join("; ")}`,
+      );
+    }
 
     await this.persist(artifact);
     return artifact;
+  }
+
+  /** A dependency reference to an artifact this store already committed. */
+  static dependencyOn(artifact: PipelineArtifact): ArtifactDependency {
+    if (!artifact.contentHash) {
+      throw new ArtifactContentError(
+        `Artifact "${artifact.id}" has no content hash, so nothing can bind to its exact content`,
+      );
+    }
+    return {
+      artifactId: artifact.id,
+      stage: artifact.stage,
+      contentHash: artifact.contentHash,
+    };
   }
 
   /**
@@ -226,7 +321,21 @@ export class ArtifactStore {
     return this.mutate(artifactId, (current) => ({
       ...current,
       content: newContent,
-      sizeBytes: Buffer.byteLength(JSON.stringify(newContent), "utf8"),
+      sizeBytes: Buffer.byteLength(JSON.stringify(newContent) ?? "", "utf8"),
+      // The hash follows the content, always. An edited artifact is a
+      // different thing, and anything that bound to the old bytes must be able
+      // to tell — silently keeping the old hash would make a stale dependency
+      // read as current.
+      //
+      // Provenance follows it too: the edited bytes are the reviewer's, not
+      // the original producer's, so keeping that producer would attribute a
+      // person's content to an agent or to a deterministic service.
+      ...(current.schemaVersion === undefined
+        ? {}
+        : {
+            contentHash: computeContentHash(newContent),
+            producer: humanEditProducer(editedBy),
+          }),
       reviewStatus: "edited",
       reviewedAt: Date.now(),
       reviewedBy: editedBy,

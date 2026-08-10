@@ -14,6 +14,9 @@ import {
 import { StudioIntegrationManager } from "../studio/integration/StudioIntegrationManager";
 import { resetSharedStudioRuntimeForTests } from "../studio/v2/StudioRuntime";
 
+/** ARTIFACT-CONTRACT-2 requires an owning project on every new artifact. */
+const ARTIFACT_TEST_PROJECT = "repair-delivery-test-project";
+
 // StudioIntegrationManager always resolves artifacts through the
 // process-wide shared StudioRuntime's own ArtifactStore instance, separate
 // from any ArtifactStore constructed directly in a test. In production both
@@ -127,6 +130,7 @@ describe("REPAIR-1B delivery route", () => {
       "LUA_GENERATION",
       "lua_generator",
       { scripts: BROKEN_SCRIPTS },
+      { projectId: ARTIFACT_TEST_PROJECT },
     );
 
     studioManager = new StudioIntegrationManager();

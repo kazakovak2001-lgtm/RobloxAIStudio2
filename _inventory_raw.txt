@@ -84,6 +84,7 @@ deploy/docker-compose.release.yml
 deploy/release/nginx.conf
 docker-compose.yml
 docs/00-project-control/AGENT-CONTRACT-1_SCOPE.md
+docs/00-project-control/ARTIFACT-CONTRACT-2_SCOPE.md
 docs/00-project-control/CORE-1A_DURABLE_PROJECTS.md
 docs/00-project-control/CORE-1B_DURABLE_RUNTIME.md
 docs/00-project-control/CURRENT_STATE.md
@@ -493,6 +494,7 @@ scripts/test-json-parser.ts
 scripts/test-pre-check.ts
 scripts/validate-agent-contract.ts
 scripts/validate-architecture.ts
+scripts/validate-artifact-contract.ts
 scripts/validate-boundaries.ts
 scripts/validate-controller.ts
 scripts/validate-documentation-authority.ts
@@ -512,6 +514,10 @@ server/src/__tests__/architecture.ast-import-inventory.test.ts
 server/src/__tests__/architecture.boundary-gate.test.ts
 server/src/__tests__/architecture.layer-debt-evidence.test.ts
 server/src/__tests__/artifact1.studio-identity.test.ts
+server/src/__tests__/artifactcontract2.envelope.test.ts
+server/src/__tests__/artifactcontract2.lineage.test.ts
+server/src/__tests__/artifactcontract2.repair-lineage.test.ts
+server/src/__tests__/artifactcontract2.v2-pipeline.test.ts
 server/src/__tests__/autonomousPipelineExploration.test.ts
 server/src/__tests__/autonomousPipelineIntegration.test.ts
 server/src/__tests__/autonomousPipelinePreservation.test.ts
@@ -980,6 +986,7 @@ server/src/pipeline/v2/PipelineStage.ts
 server/src/pipeline/v2/__tests__/ArtifactStore.durability.test.ts
 server/src/pipeline/v2/__tests__/Pipeline.test.ts
 server/src/pipeline/v2/__tests__/PipelineStore.test.ts
+server/src/pipeline/v2/artifactEnvelope.ts
 server/src/pipeline/v2/index.ts
 server/src/pipeline/v2/store/FilePipelineStore.ts
 server/src/pipeline/v2/store/InMemoryPipelineStore.ts

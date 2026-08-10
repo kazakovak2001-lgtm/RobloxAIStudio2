@@ -211,9 +211,13 @@ export class GameGenerationService {
                 (node) => node.status === "done" && node.output !== undefined,
               );
 
+            // ARTIFACT-CONTRACT-2. Ownership comes from the blueprint the
+            // server already resolved, never from generated content and never
+            // from the request.
             await this.artifactRecorder.record(
               execution.id,
               result.graph.getAllNodes(),
+              enrichedBlueprint.project_id,
             );
 
             const pipelineSteps = result.graph.getAllNodes().map((node) => {

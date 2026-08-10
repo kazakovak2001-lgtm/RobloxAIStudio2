@@ -9,17 +9,29 @@ async function createQueuedExport() {
   const projectId = "project-import-ack";
   const executionId = "execution-import-ack";
 
-  runtime.artifacts.store(executionId, "LUA_GENERATION", "lua_generator", {
-    scripts: [
-      {
-        path: "ServerScriptService/Main.server.lua",
-        content: "return { imported = true }",
-      },
-    ],
-  });
-  runtime.artifacts.store(executionId, "EXPORT", "orchestrator", {
-    manifest: { scripts: 1 },
-  });
+  runtime.artifacts.store(
+    executionId,
+    "LUA_GENERATION",
+    "lua_generator",
+    {
+      scripts: [
+        {
+          path: "ServerScriptService/Main.server.lua",
+          content: "return { imported = true }",
+        },
+      ],
+    },
+    { projectId },
+  );
+  runtime.artifacts.store(
+    executionId,
+    "EXPORT",
+    "orchestrator",
+    {
+      manifest: { scripts: 1 },
+    },
+    { projectId },
+  );
 
   const client = runtime.bridge.connect("0.650", projectId);
   runtime.sessions.create(client);

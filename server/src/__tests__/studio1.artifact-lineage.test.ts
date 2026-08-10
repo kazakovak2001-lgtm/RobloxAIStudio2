@@ -5,6 +5,9 @@ import type { TaskNode } from "../planning/model/TaskGraph";
 import { GenerationArtifactRecorder } from "../studio/artifacts/GenerationArtifactRecorder";
 import { ProjectSyncManager } from "../studio/v2/sync/ProjectSyncManager";
 
+/** ARTIFACT-CONTRACT-2 requires an owning project on every new artifact. */
+const ARTIFACT_TEST_PROJECT = "artifact-contract-test-project";
+
 const playableServer = `local world = Instance.new("Folder")
 world.Name = "GeneratedWorld"
 world.Parent = workspace
@@ -72,18 +75,22 @@ describe("STUDIO-1a canonical artifact lineage", () => {
       ],
     };
 
-    const recorded = await recorder.record(executionId, [
-      completedNode("requirements", { requirements: ["durable", "typed"] }),
-      completedNode("lua_generator", luaOutput),
-      completedNode("orchestrator", { manifest: { scripts: 1 } }),
-      {
-        ...completedNode("ui_generator", { layout: "should-not-persist" }),
-        status: "failed",
-        output: undefined,
-        error: "UI generation failed",
-      },
-      completedNode("unknown_agent", { ignored: true }),
-    ]);
+    const recorded = await recorder.record(
+      executionId,
+      [
+        completedNode("requirements", { requirements: ["durable", "typed"] }),
+        completedNode("lua_generator", luaOutput),
+        completedNode("orchestrator", { manifest: { scripts: 1 } }),
+        {
+          ...completedNode("ui_generator", { layout: "should-not-persist" }),
+          status: "failed",
+          output: undefined,
+          error: "UI generation failed",
+        },
+        completedNode("unknown_agent", { ignored: true }),
+      ],
+      ARTIFACT_TEST_PROJECT,
+    );
 
     // SECREVIEW-1 records a trust-boundary review beside the Lua it reviews,
     // so it is emitted by the recorder rather than by an agent node.
@@ -112,32 +119,36 @@ describe("STUDIO-1a canonical artifact lineage", () => {
     const store = new ArtifactStore(storage);
     const recorder = new GenerationArtifactRecorder(store);
 
-    const [artifact] = await recorder.record("exec-real-lua-output", [
-      completedNode("lua_generator", {
-        generatedCode: { scripts: [], modules: {} },
-        lua_generator: {
-          server: [
-            {
-              name: "GameManager.server.lua",
-              code: playableServer,
-            },
-          ],
-          client: [
-            {
-              name: "LocalController.client.lua",
-              code: playableClient,
-            },
-          ],
-          shared: [
-            {
-              name: "GameConfig.lua",
-              code: "return { version = 1 }",
-            },
-          ],
-          modules: [],
-        },
-      }),
-    ]);
+    const [artifact] = await recorder.record(
+      "exec-real-lua-output",
+      [
+        completedNode("lua_generator", {
+          generatedCode: { scripts: [], modules: {} },
+          lua_generator: {
+            server: [
+              {
+                name: "GameManager.server.lua",
+                code: playableServer,
+              },
+            ],
+            client: [
+              {
+                name: "LocalController.client.lua",
+                code: playableClient,
+              },
+            ],
+            shared: [
+              {
+                name: "GameConfig.lua",
+                code: "return { version = 1 }",
+              },
+            ],
+            modules: [],
+          },
+        }),
+      ],
+      ARTIFACT_TEST_PROJECT,
+    );
 
     expect(artifact?.type).toBe("lua");
     expect(artifact?.content).toEqual({
@@ -163,17 +174,21 @@ describe("STUDIO-1a canonical artifact lineage", () => {
     const recorder = new GenerationArtifactRecorder(new ArtifactStore(storage));
 
     await expect(
-      recorder.record("exec-empty-lua-output", [
-        completedNode("lua_generator", {
-          generatedCode: { scripts: [], modules: {} },
-          lua_generator: {
-            server: [],
-            client: [],
-            shared: [],
-            modules: [],
-          },
-        }),
-      ]),
+      recorder.record(
+        "exec-empty-lua-output",
+        [
+          completedNode("lua_generator", {
+            generatedCode: { scripts: [], modules: {} },
+            lua_generator: {
+              server: [],
+              client: [],
+              shared: [],
+              modules: [],
+            },
+          }),
+        ],
+        ARTIFACT_TEST_PROJECT,
+      ),
     ).rejects.toThrow("non-empty Studio scripts array");
 
     // PIPELINE-1B. The rejection itself is now durable: exactly one artifact
@@ -194,37 +209,45 @@ describe("STUDIO-1a canonical artifact lineage", () => {
 -- padding padding padding padding padding padding padding padding padding padding padding`;
 
     await expect(
-      recorder.record("exec-comment-only", [
-        completedNode("lua_generator", {
-          scripts: [
-            {
-              path: "ReplicatedStorage/Fake/ServerScriptService/Main.server.lua",
-              content: commentOnly,
-            },
-            {
-              path: "ReplicatedStorage/Fake/StarterPlayerScripts/Hud.client.lua",
-              content: `${commentOnly}\n-- Instance.new("ScreenGui") PlayerGui`,
-            },
-          ],
-        }),
-      ]),
+      recorder.record(
+        "exec-comment-only",
+        [
+          completedNode("lua_generator", {
+            scripts: [
+              {
+                path: "ReplicatedStorage/Fake/ServerScriptService/Main.server.lua",
+                content: commentOnly,
+              },
+              {
+                path: "ReplicatedStorage/Fake/StarterPlayerScripts/Hud.client.lua",
+                content: `${commentOnly}\n-- Instance.new("ScreenGui") PlayerGui`,
+              },
+            ],
+          }),
+        ],
+        ARTIFACT_TEST_PROJECT,
+      ),
     ).rejects.toThrow("at least one server Script is required");
 
     await expect(
-      recorder.record("exec-comment-only-roots", [
-        completedNode("lua_generator", {
-          scripts: [
-            {
-              path: "ServerScriptService/Main.server.lua",
-              content: `${commentOnly}\nlocal example = [[Instance.new("Part") workspace Touched:Connect(function() end)]]`,
-            },
-            {
-              path: "StarterPlayerScripts/Hud.client.lua",
-              content: `${commentOnly}\nlocal example = 'Instance.new("ScreenGui") PlayerGui'`,
-            },
-          ],
-        }),
-      ]),
+      recorder.record(
+        "exec-comment-only-roots",
+        [
+          completedNode("lua_generator", {
+            scripts: [
+              {
+                path: "ServerScriptService/Main.server.lua",
+                content: `${commentOnly}\nlocal example = [[Instance.new("Part") workspace Touched:Connect(function() end)]]`,
+              },
+              {
+                path: "StarterPlayerScripts/Hud.client.lua",
+                content: `${commentOnly}\nlocal example = 'Instance.new("ScreenGui") PlayerGui'`,
+              },
+            ],
+          }),
+        ],
+        ARTIFACT_TEST_PROJECT,
+      ),
     ).rejects.toThrow("is too small to implement runtime behavior");
 
     // One validation report per rejected run, and no content from either.
@@ -243,28 +266,32 @@ describe("STUDIO-1a canonical artifact lineage", () => {
     const storeBeforeRestart = new ArtifactStore(storage);
     const recorder = new GenerationArtifactRecorder(storeBeforeRestart);
 
-    const [luaArtifact, exportArtifact] = await recorder.record(executionId, [
-      completedNode("lua_generator", {
-        scripts: [
-          {
-            path: "ServerScriptService/Main.server.lua",
-            content: playableServer,
-          },
-          {
-            path: "StarterPlayerScripts/Main.client.lua",
-            content: playableClient,
-          },
-          {
-            path: "ReplicatedStorage/Shared/Config.lua",
-            content: "return { version = 3 }",
-          },
-        ],
-      }),
-      completedNode("orchestrator", {
-        package: "production-ready",
-        artifactCount: 1,
-      }),
-    ]);
+    const [luaArtifact, exportArtifact] = await recorder.record(
+      executionId,
+      [
+        completedNode("lua_generator", {
+          scripts: [
+            {
+              path: "ServerScriptService/Main.server.lua",
+              content: playableServer,
+            },
+            {
+              path: "StarterPlayerScripts/Main.client.lua",
+              content: playableClient,
+            },
+            {
+              path: "ReplicatedStorage/Shared/Config.lua",
+              content: "return { version = 3 }",
+            },
+          ],
+        }),
+        completedNode("orchestrator", {
+          package: "production-ready",
+          artifactCount: 1,
+        }),
+      ],
+      ARTIFACT_TEST_PROJECT,
+    );
 
     expect(luaArtifact).toBeDefined();
     expect(exportArtifact).toBeDefined();

@@ -8,6 +8,10 @@ import { describe, it, expect, beforeEach } from "vitest";
 import { ArtifactStore } from "../../../../pipeline/v2/ArtifactStore";
 import { ProjectSyncManager } from "../ProjectSyncManager";
 import type { SyncChange } from "../SyncTypes";
+import { deterministicProducer } from "../../../../pipeline/v2";
+
+/** ARTIFACT-CONTRACT-2 requires an owning project on every new artifact. */
+const ARTIFACT_TEST_PROJECT = "artifact-contract-test-project";
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
@@ -17,7 +21,13 @@ async function seedArtifact(
   pipelineId: string,
   content: unknown = { value: "data" },
 ) {
-  return await store.store(pipelineId, "LUA_GENERATION", "test-agent", content);
+  return await store.store(
+    pipelineId,
+    "LUA_GENERATION",
+    "lua_generator",
+    content,
+    { projectId: ARTIFACT_TEST_PROJECT },
+  );
 }
 
 /** Build a minimal valid SyncChange. */
@@ -65,9 +75,18 @@ describe("ProjectSyncManager", () => {
     it("includes an ArtifactRef for each artifact in the store", async () => {
       const pipelineId = "pipe-with-artifacts";
       const a1 = await seedArtifact(store, pipelineId, { script: "a" });
-      const a2 = await store.store(pipelineId, "DOCUMENTATION", null, {
-        text: "docs",
-      });
+      const a2 = await store.store(
+        pipelineId,
+        "DOCUMENTATION",
+        null,
+        {
+          text: "docs",
+        },
+        {
+          projectId: ARTIFACT_TEST_PROJECT,
+          producer: deterministicProducer("generation-validation"),
+        },
+      );
 
       const snapshot = manager.getProjectSnapshot(pipelineId);
 
@@ -226,7 +245,16 @@ describe("ProjectSyncManager", () => {
     it("lists all change IDs in appliedChanges for multiple non-conflicting changes", async () => {
       const pipelineId = "pipe-multi-apply";
       const a1 = await seedArtifact(store, pipelineId, { n: 1 });
-      const a2 = await store.store(pipelineId, "DOCUMENTATION", null, { n: 2 });
+      const a2 = await store.store(
+        pipelineId,
+        "DOCUMENTATION",
+        null,
+        { n: 2 },
+        {
+          projectId: ARTIFACT_TEST_PROJECT,
+          producer: deterministicProducer("generation-validation"),
+        },
+      );
       const now = Date.now() + 10_000;
 
       const changes = [
@@ -343,6 +371,10 @@ describe("ProjectSyncManager", () => {
         null,
         {
           stale: true,
+        },
+        {
+          projectId: ARTIFACT_TEST_PROJECT,
+          producer: deterministicProducer("generation-validation"),
         },
       );
 

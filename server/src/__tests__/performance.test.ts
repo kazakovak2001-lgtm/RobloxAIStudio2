@@ -13,6 +13,9 @@ import { AgentRegistry } from "../agents/core/AgentRegistry";
 import { InMemoryBlueprintRepository } from "../projects/repository/blueprint.repository";
 import { ArtifactStore } from "../pipeline/v2";
 
+/** ARTIFACT-CONTRACT-2 requires an owning project on every new artifact. */
+const ARTIFACT_TEST_PROJECT = "artifact-contract-test-project";
+
 describe("Performance Benchmarks", () => {
   describe("Lua Generation Speed", () => {
     it("generates full package under 50ms", () => {
@@ -121,6 +124,7 @@ describe("Performance Benchmarks", () => {
             content: a.content,
           })),
         },
+        { projectId: ARTIFACT_TEST_PROJECT },
       );
 
       const blueprintRepository = new InMemoryBlueprintRepository();

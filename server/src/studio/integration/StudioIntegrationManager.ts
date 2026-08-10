@@ -115,6 +115,14 @@ export class StudioIntegrationManager {
           "LUA_GENERATION",
           "legacy-package-adapter",
           { scripts: pkg.scripts },
+          {
+            // The package carries the project it belongs to, and the same
+            // value is what this method synchronizes against below. Owning the
+            // artifacts by package id instead would make ownership disagree
+            // with the project actually being synchronized.
+            projectId: pkg.projectId,
+            producer: "legacy-package-adapter",
+          },
         );
       }
       await this.runtime.artifacts.store(
@@ -125,6 +133,10 @@ export class StudioIntegrationManager {
           configs: pkg.configs,
           metadata: pkg.metadata,
           validationReport: pkg.validationReport,
+        },
+        {
+          projectId: pkg.projectId,
+          producer: "legacy-package-adapter",
         },
       );
     }

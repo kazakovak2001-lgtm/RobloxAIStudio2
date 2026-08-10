@@ -1,6 +1,9 @@
 import type { TaskNode } from "../../planning/model/TaskGraph";
 import {
   ArtifactStore,
+  deterministicProducer,
+  type ArtifactDependency,
+  type ArtifactProducer,
   type PipelineArtifact,
   type StageName,
 } from "../../pipeline/v2";
@@ -54,15 +57,24 @@ export class GenerationArtifactRecorder {
   async record(
     executionId: string,
     nodes: readonly TaskNode[],
+    projectId: string,
   ): Promise<PipelineArtifact[]> {
     // Staged, not stored. STUDIO-1A holds that a rejected generation persists
     // no content at all, so nothing may be written until validation has run:
     // partial artifacts under a failed execution id are exactly what a later
     // consumer could mistake for a deliverable package.
+    //
+    // ARTIFACT-CONTRACT-2. Lineage is resolved during the commit loop rather
+    // than while staging, because a dependency must name an artifact that is
+    // already durably accepted. `dependsOn` lists the upstream stages this
+    // entry was derived from; the ids and hashes are filled in from what has
+    // actually been stored by the time it is written.
     const pending: Array<{
       stage: StageName;
       agent: string | null;
       content: unknown;
+      producer?: ArtifactProducer;
+      dependsOn?: readonly StageName[];
     }> = [];
     let luaPresent = false;
     let luaIssues: readonly string[] = [];
@@ -123,6 +135,10 @@ export class GenerationArtifactRecorder {
           stage: "SECURITY_REVIEW",
           agent: null,
           content: reviewLuaSecurity(scripts),
+          producer: deterministicProducer("lua-security-review"),
+          // Binds to the exact Lua it read. A report that outlives the code it
+          // describes must be distinguishable from one that still applies.
+          dependsOn: ["LUA_GENERATION"],
         });
         continue;
       }
@@ -161,6 +177,8 @@ export class GenerationArtifactRecorder {
       stage: "WORLD_MODEL",
       agent: null,
       content: { ...world, scene: buildWorldScene(world) },
+      producer: deterministicProducer("world-model"),
+      dependsOn: ["GAME_DESIGN", "ARCHITECTURE"],
     });
 
     const report = buildGenerationValidationReport({
@@ -178,27 +196,55 @@ export class GenerationArtifactRecorder {
       // rejected run previously left nothing saying what was wrong. The staged
       // content is discarded rather than persisted alongside it: a rejected
       // generation must leave no package a later consumer could deliver.
-      await this.artifactStore.store(executionId, "VALIDATION", null, report);
+      //
+      // It carries no dependencies, and that is the truthful shape: nothing
+      // was committed, so there is no artifact for the report to bind to. A
+      // lineage edge here would point at content that does not exist.
+      await this.artifactStore.store(executionId, "VALIDATION", null, report, {
+        projectId,
+        producer: deterministicProducer("generation-validation"),
+      });
       throw new Error(
         `Generation failed deterministic validation — ${describeBlockingFailures(report)}`,
       );
     }
 
     const recorded: PipelineArtifact[] = [];
+    const committed = new Map<StageName, PipelineArtifact>();
+    const lineage = (stages?: readonly StageName[]): ArtifactDependency[] =>
+      (stages ?? [])
+        .map((stage) => committed.get(stage))
+        .filter((artifact): artifact is PipelineArtifact => !!artifact)
+        .map((artifact) => ArtifactStore.dependencyOn(artifact));
+
     for (const artifact of pending) {
-      recorded.push(
-        await this.artifactStore.store(
-          executionId,
-          artifact.stage,
-          artifact.agent,
-          artifact.content,
-        ),
+      const stored = await this.artifactStore.store(
+        executionId,
+        artifact.stage,
+        artifact.agent,
+        artifact.content,
+        {
+          projectId,
+          producer: artifact.producer,
+          dependencies: lineage(artifact.dependsOn),
+        },
       );
+      recorded.push(stored);
+      committed.set(artifact.stage, stored);
     }
 
-    // Stored last so the stage artifacts keep the order they were produced in.
+    // Stored last so the stage artifacts keep the order they were produced in,
+    // and so the report can bind to every artifact it actually checked.
     recorded.push(
-      await this.artifactStore.store(executionId, "VALIDATION", null, report),
+      await this.artifactStore.store(executionId, "VALIDATION", null, report, {
+        projectId,
+        producer: deterministicProducer("generation-validation"),
+        dependencies: lineage([
+          "LUA_GENERATION",
+          "UI_GENERATION",
+          "WORLD_MODEL",
+        ]),
+      }),
     );
 
     return recorded;
