@@ -30,7 +30,7 @@ The old embedded root `src/` frontend is removed and protected by a permanent in
 ## Active paired release
 
 - Backend runtime: `release/cutover-1e-candidate@3e18460c394b03c2d373c7d1a2e9cd0b74b6f984`.
-- Frontend runtime contents: `kazakovak2001-lgtm/Frontend@6c1458d836244f2b720f361a78c2ab13f1682f74`.
+- Frontend runtime contents: `kazakovak2001-lgtm/Frontend@94736069e049b9614c4012775677c78777f5060d`.
 - Pairing authority: protected Frontend Production Contract, Composed HTTPS Release, promoted-baseline integrity, and Merge Gate evidence.
 - No external production deployment is claimed by repository release evidence alone.
 
