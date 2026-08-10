@@ -487,8 +487,12 @@ complete review. An existing test asserted the last of those as correct
 behaviour, which is how it survived SECREVIEW-1 review.
 
 A report now carries an outcome of `pass`, `finding`, `not_applicable` or
-`not_inspected`. `pass` is the narrowest and requires that every supplied
-script was analysed. `finding` deliberately takes precedence over coverage,
+`not_inspected`. `pass` is the narrowest and requires **at least one** script
+to have been analysed _and_ every supplied script to have been analysed —
+stated as two conditions because the second alone is vacuously true of an
+empty list, which is exactly the case that used to report clean. An empty or
+unnormalizable input reports `not_inspected`; an input whose every script sits
+where no rule applies reports `not_applicable`. `finding` deliberately takes precedence over coverage,
 because a real defect is never a misleading pass and demoting it to a coverage
 status would hide the more important signal — so coverage is stated separately
 instead of being inferred.
