@@ -376,13 +376,20 @@ describe("analysis hygiene", () => {
     expect(report.clean).toBe(true);
   });
 
-  it("reviews only server and client scripts", () => {
+  it("reviews only server and client scripts, and says so instead of passing", () => {
+    // SECURITY-REVIEW-A2 corrected this expectation. A shared module carries
+    // no trust boundary, so no rule can apply to it — but reporting that as
+    // `clean` said the reviewer had checked something it never looked at.
     const report = reviewLuaSecurity([
       { path: "ReplicatedStorage/Shared/Config.lua", content: "return {}" },
     ]);
 
     expect(report.reviewedScriptCount).toBe(0);
-    expect(report.clean).toBe(true);
+    expect(report.suppliedScriptCount).toBe(1);
+    expect(report.outcome).toBe("not_applicable");
+    expect(report.clean).toBe(false);
+    expect(report.scripts[0].outcome).toBe("not_applicable");
+    expect(report.scripts[0].reason).toMatch(/no rule applies/i);
   });
 
   it("scopes each finding to the script that raised it", () => {
