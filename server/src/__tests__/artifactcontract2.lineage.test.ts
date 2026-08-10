@@ -148,6 +148,22 @@ async function recordGeneration(
   );
 }
 
+/**
+ * Rebuild a value with every object's keys in reverse insertion order.
+ *
+ * Stands in for a store that does not preserve key order. Arrays keep their
+ * order, because reordering those would change the data rather than just its
+ * representation.
+ */
+function reverseKeys<T>(value: T): T {
+  if (Array.isArray(value)) return value.map(reverseKeys) as unknown as T;
+  if (value === null || typeof value !== "object") return value;
+  const entries = Object.entries(value as Record<string, unknown>).reverse();
+  return Object.fromEntries(
+    entries.map(([key, entry]) => [key, reverseKeys(entry)]),
+  ) as T;
+}
+
 function byStage(
   artifacts: PipelineArtifact[],
   stage: string,
@@ -293,9 +309,11 @@ describe("ARTIFACT-CONTRACT-2 persistence", () => {
         id: string,
         data: T,
       ): Promise<void> => {
-        // Key order is deliberately reversed on the way in, the way a JSONB
-        // round trip is free to do. Canonical hashing is what makes that safe.
-        rows.set(`${collection}:${id}`, JSON.stringify(data));
+        // Keys really are reordered on the way in — JSON.stringify preserves
+        // whatever insertion order it is handed, so proving the property needs
+        // the order actually changed, the way a JSONB round trip is free to.
+        // Canonical hashing is what makes that safe.
+        rows.set(`${collection}:${id}`, JSON.stringify(reverseKeys(data)));
       },
     };
 
@@ -313,6 +331,13 @@ describe("ARTIFACT-CONTRACT-2 persistence", () => {
       expect(readBack?.contentHash).toBe(lua.contentHash);
       // The recorded hash still describes the content that came back.
       expect(computeContentHash(readBack?.content)).toBe(lua.contentHash);
+
+      // The fixture has to have actually reordered something, or the property
+      // above is proved by a store that never reorders — which is not the
+      // store this defends against.
+      const persistedBytes = rows.get(`pipeline_artifacts:${lua.id}`)!;
+      expect(persistedBytes).not.toBe(JSON.stringify(lua));
+      expect(JSON.parse(persistedBytes)).toEqual(lua);
 
       const validation = reopened.find(
         (artifact) => artifact.stage === "VALIDATION",

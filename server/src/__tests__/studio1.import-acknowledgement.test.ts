@@ -2,9 +2,6 @@ import { describe, expect, it } from "vitest";
 import { InMemoryStorageProvider } from "../platform/storage/StorageProvider";
 import { StudioRuntime } from "../studio/v2/StudioRuntime";
 
-/** ARTIFACT-CONTRACT-2 requires an owning project on every new artifact. */
-const ARTIFACT_TEST_PROJECT = "artifact-contract-test-project";
-
 async function createQueuedExport() {
   const runtime = new StudioRuntime({
     storage: new InMemoryStorageProvider(),
@@ -24,7 +21,7 @@ async function createQueuedExport() {
         },
       ],
     },
-    { projectId: ARTIFACT_TEST_PROJECT },
+    { projectId },
   );
   runtime.artifacts.store(
     executionId,
@@ -33,7 +30,7 @@ async function createQueuedExport() {
     {
       manifest: { scripts: 1 },
     },
-    { projectId: ARTIFACT_TEST_PROJECT },
+    { projectId },
   );
 
   const client = runtime.bridge.connect("0.650", projectId);

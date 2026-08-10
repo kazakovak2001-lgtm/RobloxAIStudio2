@@ -140,10 +140,18 @@ describe("ARTIFACT-CONTRACT-2 on the v2 concept pipeline", () => {
     );
 
     expect(edited!.contentHash).not.toBe(lua.contentHash);
+
+    // Read back through the store rather than asserting on the snapshot taken
+    // before the edit — a snapshot cannot change, so it could not catch a
+    // future change that rewrote dependency hashes on downstream artifacts.
+    const persistedReview = artifactStore.getById(review.id);
+    const bound = persistedReview?.dependencies ?? [];
+
+    expect(bound).toHaveLength(1);
     // The review still names the bytes it read, which is what makes the drift
     // visible rather than silent.
-    expect(review.dependencies?.[0].contentHash).toBe(lua.contentHash);
-    expect(review.dependencies?.[0].contentHash).not.toBe(edited!.contentHash);
+    expect(bound[0].contentHash).toBe(lua.contentHash);
+    expect(bound[0].contentHash).not.toBe(edited!.contentHash);
   });
 });
 

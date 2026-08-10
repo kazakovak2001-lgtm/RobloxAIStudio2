@@ -7,9 +7,6 @@ import {
   StudioRuntime,
 } from "../studio/v2/StudioRuntime";
 
-/** ARTIFACT-CONTRACT-2 requires an owning project on every new artifact. */
-const ARTIFACT_TEST_PROJECT = "artifact-contract-test-project";
-
 afterEach(() => {
   resetSharedStudioRuntimeForTests();
 });
@@ -35,7 +32,7 @@ describe("STUDIO-1b shared Studio runtime", () => {
       "LUA_GENERATION",
       "lua_generator",
       luaOutput,
-      { projectId: ARTIFACT_TEST_PROJECT },
+      { projectId },
     );
     runtime.artifacts.store(
       executionId,
@@ -44,7 +41,7 @@ describe("STUDIO-1b shared Studio runtime", () => {
       {
         manifest: { scripts: 1 },
       },
-      { projectId: ARTIFACT_TEST_PROJECT },
+      { projectId },
     );
 
     const client = runtime.bridge.connect("0.650", projectId);
@@ -165,7 +162,7 @@ describe("STUDIO-1b shared Studio runtime", () => {
           },
         ],
       },
-      { projectId: ARTIFACT_TEST_PROJECT },
+      { projectId },
     );
 
     const result = await manager.synchronizeExecution(

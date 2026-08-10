@@ -21,9 +21,6 @@ import { UIInstanceTreeBuilder } from "../ui-gen/UIInstanceTreeBuilder";
 import type { StudioScreenReceipt } from "../studio/v2/StudioTypes";
 import { parseImportReport } from "../routes/studio";
 
-/** ARTIFACT-CONTRACT-2 requires an owning project on every new artifact. */
-const ARTIFACT_TEST_PROJECT = "artifact-contract-test-project";
-
 const PROJECT_ID = "proj-receipt-verification";
 
 function uiDesign(): Record<string, unknown> {
@@ -63,7 +60,7 @@ async function reportDelivery(
     "UI_GENERATION",
     "ui_generator",
     uiTreeContent(),
-    { projectId: ARTIFACT_TEST_PROJECT },
+    { projectId: PROJECT_ID },
   );
 
   const client = runtime.bridge.connect("0.600.0", PROJECT_ID);

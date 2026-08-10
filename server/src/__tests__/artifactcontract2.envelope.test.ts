@@ -88,6 +88,24 @@ describe("ARTIFACT-CONTRACT-2 canonical content identity", () => {
     expect(() => computeContentHash({ a: 1n })).toThrow(ArtifactContentError);
   });
 
+  it("rejects containers whose contents are invisible to key enumeration", () => {
+    // `Object.keys` returns nothing for these, so they would all serialize to
+    // `{}` — different payloads sharing one identity.
+    expect(() => computeContentHash(new Map([["a", 1]]))).toThrow(
+      ArtifactContentError,
+    );
+    expect(() => computeContentHash({ items: new Set([1, 2]) })).toThrow(
+      ArtifactContentError,
+    );
+    expect(() => computeContentHash({ pattern: /x/ })).toThrow(
+      ArtifactContentError,
+    );
+    // Objects with no prototype are still plain data and stay supported.
+    expect(
+      computeContentHash(Object.assign(Object.create(null), { a: 1 })),
+    ).toBe(computeContentHash({ a: 1 }));
+  });
+
   it("names the algorithm that produced it", () => {
     expect(computeContentHash({ a: 1 })).toMatch(/^sha256:[0-9a-f]{64}$/);
   });

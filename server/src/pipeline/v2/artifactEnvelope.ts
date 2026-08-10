@@ -161,9 +161,10 @@ export const ARTIFACT_DEPENDENCY_RULES: Readonly<
  * Arrays keep their order because order is meaning there — a different script
  * order is a different package.
  *
- * Unsupported values are rejected rather than dropped. `JSON.stringify` erases
- * `undefined`, functions and symbols from objects silently, which would let two
- * different payloads hash identically.
+ * Unsupported values are rejected rather than dropped, in both directions that
+ * matter. `JSON.stringify` erases `undefined`, functions and symbols from
+ * objects silently, and `Object.keys` sees nothing inside a `Map`, a `Set` or a
+ * class instance — either way two different payloads would hash identically.
  */
 export function canonicalJson(value: unknown, path = "$"): string {
   if (value === null) return "null";
@@ -202,6 +203,17 @@ export function canonicalJson(value: unknown, path = "$"): string {
     // Stable and lossless enough for identity; the alternative is rejecting
     // dates, which several stage payloads legitimately carry.
     return JSON.stringify(value.toISOString());
+  }
+
+  // Only plain objects survive here. `Object.keys` returns nothing for a Map,
+  // a Set, or most class instances, so they would all serialize to `{}` and
+  // share one hash — two different payloads with one identity, which is the
+  // failure this whole field exists to prevent.
+  const prototype = Object.getPrototypeOf(value);
+  if (prototype !== Object.prototype && prototype !== null) {
+    throw new ArtifactContentError(
+      `Artifact content holds a non-plain ${(value as object).constructor?.name ?? "object"} at ${path}; convert it to plain data before storing`,
+    );
   }
 
   const record = value as Record<string, unknown>;
