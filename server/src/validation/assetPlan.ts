@@ -340,6 +340,58 @@ function orderIssues(issues: AssetPlanIssue[]): AssetPlanIssue[] {
  * those artifacts were written before this contract and are never rewritten or
  * assigned a version they never had.
  */
+/**
+ * Decode the stored attributes of one asset against its kind.
+ *
+ * The same closed sets `buildAssetPlan` writes, checked again on the way back
+ * out, because durable content can be edited or written by a version that no
+ * longer exists. Returns `null` rather than a partially-read record.
+ */
+function decodeStoredAttributes(
+  kind: AssetKind,
+  stored: unknown,
+): Record<string, string | number> | null {
+  const raw = asRecord(stored);
+  if (!raw) return null;
+
+  const expected: ReadonlyArray<
+    readonly [string, "number" | readonly string[] | "string"]
+  > =
+    kind === "model"
+      ? [
+          ["complexity", MODEL_COMPLEXITIES],
+          ["source", MODEL_SOURCES],
+        ]
+      : kind === "sound"
+        ? [["soundKind", SOUND_KINDS]]
+        : kind === "texture"
+          ? [["resolution", "string"]]
+          : [["frames", "number"]];
+
+  const decoded: Record<string, string | number> = {};
+  for (const [field, rule] of expected) {
+    const value = raw[field];
+    if (rule === "number") {
+      if (typeof value !== "number" || !Number.isInteger(value) || value <= 0) {
+        return null;
+      }
+      decoded[field] = value;
+      continue;
+    }
+    const text = readString(value);
+    if (text === null) return null;
+    if (rule !== "string" && !rule.includes(text)) return null;
+    decoded[field] = text;
+  }
+
+  // An unrecognised key is not silently carried: version 1 cannot interpret a
+  // field it does not define, which is the same policy the version check
+  // itself applies.
+  if (Object.keys(raw).length !== expected.length) return null;
+
+  return decoded;
+}
+
 export function decodeAssetPlan(stored: unknown): AssetPlan | null {
   const record = asRecord(stored);
   if (!record) return null;
@@ -361,10 +413,24 @@ export function decodeAssetPlan(stored: unknown): AssetPlan | null {
 
     const references = entry.references;
     if (!Array.isArray(references)) return null;
-    if (references.some((reference) => readString(reference) === null)) {
-      return null;
+    // Trimmed on the way in, the way `buildAssetPlan` trims ids, so a stored
+    // reference and the id it names cannot differ by whitespace alone.
+    const decodedReferences: string[] = [];
+    for (const reference of references) {
+      const value = readString(reference);
+      if (value === null) return null;
+      decodedReferences.push(value);
     }
-    const attributes = asRecord(entry.attributes);
+
+    // `asRecord` proves only that this is an object; its values are still
+    // unknown. A stored `{ frames: false }` would otherwise decode into a
+    // `PlannedAsset` whose attributes contradict the declared type, and a
+    // consumer reading `frames` as a number would receive a boolean. This
+    // module calls itself a decoder, so it decodes.
+    const attributes = decodeStoredAttributes(
+      kind as AssetKind,
+      entry.attributes,
+    );
     if (!attributes) return null;
 
     const purpose = readString(entry.purpose);
@@ -376,8 +442,8 @@ export function decodeAssetPlan(stored: unknown): AssetPlan | null {
       ...(typeof entry.required === "boolean"
         ? { required: entry.required }
         : {}),
-      references: references as string[],
-      attributes: attributes as Record<string, string | number>,
+      references: decodedReferences,
+      attributes,
     });
   }
 

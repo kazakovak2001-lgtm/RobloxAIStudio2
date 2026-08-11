@@ -73,6 +73,20 @@ Unknown fields follow the repository's existing schema-version policy, the one `
 5. An advisory `assets-planned` check in the generation validation report, alongside `ui-materializable` and `world-claims-supported`.
 6. Legacy compatibility: an untyped stored payload decodes to the not-typed state and is never rewritten or assigned a version it never had.
 
+### What review changed
+
+Seven findings, all valid, and one of them meant the contract was unreachable in production.
+
+**The registered prompt asked for a different shape.** `defaultPrompts.ts` requested `models: {name, description}` with no ids at all, and `BaseAgent.buildPrompt` prefers the registered prompt over the agent's inline one. So with a provider configured, every plan would have been `invalid` and only the no-LLM fallback could ever have satisfied the contract — and my tests used the fallback shape, so nothing caught it. Both the registered prompt and the legacy template now request the contract's shape.
+
+**Repair broke.** `persistRepairedExecution` copies artifacts with no dependencies, so the required rule threw and a successful repair of a normal generation failed before the repaired Lua was persisted. The plan is now rebound to the design carried into the same execution, and the carry loop copies design-first rather than trusting the parent's storage order.
+
+**The repair playtest stopped seeing assets.** `RepairInputAssembler.parseAssetPlan` read only the legacy `content.assetPlan` wrapper, so a typed plan reported zero assets and changed repair scoring. It now decodes the typed plan and keeps legacy support.
+
+**The decoder cast where it claimed to decode.** `attributes` was accepted as any object and asserted to `Record<string, string | number>`, so a stored `{ frames: false }` produced a `PlannedAsset` contradicting its own type. Values are now decoded against the same closed sets on the way back out, unrecognised keys are refused, and references are trimmed the way ids are.
+
+**Staging depended on node order.** Lineage resolves only from committed stages, and `pending` followed whatever order the plan executor returned. A run listing the asset stage first would have thrown and lost a generation that had already passed validation. Staged artifacts are now ordered by the canonical stage sequence.
+
 ## Out of scope
 
 Open Cloud credentials, Roblox asset upload, materialization, 3D or image or audio generation, marketplace search, licensing policy beyond existing security requirements, `ASSET-FABRIC-2`, Frontend UI, Studio acceptance work, and any change to a paused Studio status. `PIPELINE-1C` and `REMOTE-OPS-1` are not started.
@@ -82,6 +96,10 @@ Cross-artifact checks stay within what the current contracts can establish: refe
 ## Testing strategy
 
 A valid plan across all four kinds; a malformed top-level contract; a malformed individual entry; duplicate ids; missing required fields; an unsupported schema version; an absent plan; a legacy untyped stored artifact; lineage present and correct; missing required lineage; wrong upstream lineage; deterministic validation ordering; decode after a restart; and Studio transfer of a valid plan that claims no materialization. Each verified by mutation.
+
+### Prerequisite for ASSET-FABRIC-2
+
+Yes. `ASSET-FABRIC-2` now has a typed, versioned plan with stable ids to resolve and upload against, rather than an untyped payload whose references are display names. It stays blocked on the same missing Open Cloud credential surface that blocks `STUDIO-2F-B`; nothing here changes that.
 
 ## Rollback strategy
 

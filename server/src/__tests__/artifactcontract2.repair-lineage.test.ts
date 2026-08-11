@@ -432,3 +432,164 @@ describe("NOVELTY-2 the repaired execution gets a reachable verdict", () => {
     ).toEqual([PARENT_EXECUTION_ID]);
   }, 20000);
 });
+
+describe("ASSET-FABRIC-1 repair carries the asset plan with its lineage", () => {
+  async function runRepairWithAssets() {
+    const registry = new AgentRegistry();
+    const luaAgent = registry.getAgent("lua_generator");
+    if (!luaAgent) throw new Error("lua_generator agent missing");
+    const playable = await luaAgent.execute({
+      blueprint: { name: "Repair Lineage Game", description: "baseline" },
+      architecture: {},
+      gameplay: {},
+    });
+    luaAgent.setLLM({
+      generate: vi.fn().mockResolvedValue(JSON.stringify(playable.data)),
+    });
+
+    const repository = new InMemoryBlueprintRepository();
+    await seedBlueprint(repository);
+    const store = new ArtifactStore();
+
+    await store.store(
+      PARENT_EXECUTION_ID,
+      "LUA_GENERATION",
+      "lua_generator",
+      { scripts: BROKEN_SCRIPTS },
+      { projectId: PROJECT_ID },
+    );
+    const parentDesign = await store.store(
+      PARENT_EXECUTION_ID,
+      "GAME_DESIGN",
+      "game_designer",
+      REPAIR_SOURCES.gameDesign,
+      { projectId: PROJECT_ID },
+    );
+    await store.store(
+      PARENT_EXECUTION_ID,
+      "ASSET_PLANNING",
+      "asset_planner",
+      { schemaVersion: 1, assets: [] },
+      {
+        projectId: PROJECT_ID,
+        dependencies: [ArtifactStore.dependencyOn(parentDesign)],
+      },
+    );
+
+    const engine = new RepairEngine(
+      registry,
+      repository,
+      store,
+      new InMemoryRepairSessionStore(),
+    );
+    const session = await engine.run(PROJECT_ID, PARENT_EXECUTION_ID, {
+      maxIterations: 1,
+      targetScore: 95,
+    });
+    const newExecutionId = session.history[0]?.newExecutionId;
+    if (!newExecutionId) throw new Error("Repair produced no new execution");
+
+    return { repaired: store.getByPipeline(newExecutionId), parentDesign };
+  }
+
+  it("does not abort the repair on the required lineage rule", async () => {
+    // Before this, the carry-forward loop stored the plan with no
+    // dependencies, so the rule threw and the repair failed before the
+    // repaired Lua was ever persisted — a successful repair of a normal
+    // generation, lost.
+    const { repaired } = await runRepairWithAssets();
+
+    expect(repaired.map((a) => a.stage)).toContain("ASSET_PLANNING");
+    expect(repaired.map((a) => a.stage)).toContain("LUA_GENERATION");
+  }, 20000);
+
+  it("carries the design first whatever order the parent stored things in", async () => {
+    // The carry loop resolves the plan's lineage from the design it has
+    // already copied, so it must not depend on the parent's storage order.
+    // Reachable because a lineage edge may name an artifact in another
+    // execution — which is how the repaired Lua binds to its parent — so a
+    // parent can hold an asset plan written before its own design.
+    const registry = new AgentRegistry();
+    const luaAgent = registry.getAgent("lua_generator");
+    if (!luaAgent) throw new Error("lua_generator agent missing");
+    const playable = await luaAgent.execute({
+      blueprint: { name: "Repair Lineage Game", description: "baseline" },
+      architecture: {},
+      gameplay: {},
+    });
+    luaAgent.setLLM({
+      generate: vi.fn().mockResolvedValue(JSON.stringify(playable.data)),
+    });
+    const repository = new InMemoryBlueprintRepository();
+    await seedBlueprint(repository);
+
+    const store = new ArtifactStore();
+    const earlierDesign = await store.store(
+      "earlier-execution",
+      "GAME_DESIGN",
+      "game_designer",
+      REPAIR_SOURCES.gameDesign,
+      { projectId: PROJECT_ID },
+    );
+    await store.store(
+      PARENT_EXECUTION_ID,
+      "LUA_GENERATION",
+      "lua_generator",
+      { scripts: BROKEN_SCRIPTS },
+      { projectId: PROJECT_ID },
+    );
+    // Plan first, then the parent's own design — the order the sort exists for.
+    await store.store(
+      PARENT_EXECUTION_ID,
+      "ASSET_PLANNING",
+      "asset_planner",
+      { schemaVersion: 1, assets: [] },
+      {
+        projectId: PROJECT_ID,
+        dependencies: [ArtifactStore.dependencyOn(earlierDesign)],
+      },
+    );
+    await store.store(
+      PARENT_EXECUTION_ID,
+      "GAME_DESIGN",
+      "game_designer",
+      REPAIR_SOURCES.gameDesign,
+      { projectId: PROJECT_ID },
+    );
+
+    const session = await new RepairEngine(
+      registry,
+      repository,
+      store,
+      new InMemoryRepairSessionStore(),
+    ).run(PROJECT_ID, PARENT_EXECUTION_ID, {
+      maxIterations: 1,
+      targetScore: 95,
+    });
+    const newExecutionId = session.history[0]?.newExecutionId;
+    if (!newExecutionId) throw new Error("Repair produced no new execution");
+
+    const repaired = store.getByPipeline(newExecutionId);
+    const asset = repaired.find((a) => a.stage === "ASSET_PLANNING")!;
+    const carriedDesign = repaired.find((a) => a.stage === "GAME_DESIGN")!;
+
+    expect(asset.dependencies?.[0]?.artifactId).toBe(carriedDesign.id);
+  }, 20000);
+
+  it("binds the carried plan to the design carried into the same execution", async () => {
+    const { repaired, parentDesign } = await runRepairWithAssets();
+
+    const asset = repaired.find((a) => a.stage === "ASSET_PLANNING")!;
+    const carriedDesign = repaired.find((a) => a.stage === "GAME_DESIGN")!;
+
+    expect(asset.dependencies).toEqual([
+      {
+        artifactId: carriedDesign.id,
+        stage: "GAME_DESIGN",
+        contentHash: carriedDesign.contentHash,
+      },
+    ]);
+    // Not the parent's design: a lineage edge names an artifact in this run.
+    expect(asset.dependencies?.[0]?.artifactId).not.toBe(parentDesign.id);
+  }, 20000);
+});

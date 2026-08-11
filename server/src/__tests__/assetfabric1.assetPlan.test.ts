@@ -15,6 +15,8 @@ import {
   REQUIRED_ARTIFACT_DEPENDENCIES,
 } from "../pipeline/v2/artifactEnvelope";
 import { ProjectSyncManager } from "../studio/v2/sync/ProjectSyncManager";
+import { createDefaultPromptEngine } from "../ai/prompts";
+import { assembleRepairInput } from "../repair/RepairInputAssembler";
 import { InMemoryStorageProvider } from "../platform/storage/StorageProvider";
 import type { PlayableLuaScript } from "../types/playableLua";
 import type { TaskNode } from "../planning/model/TaskGraph";
@@ -412,6 +414,138 @@ describe("ASSET-FABRIC-1 decoding stored plans", () => {
         assets: [{ ...first, kind: "hologram" }],
       }),
     ).toBeNull();
+  });
+});
+
+describe("ASSET-FABRIC-1 review findings", () => {
+  it("asks the model for the shape the contract requires", () => {
+    // The registered production prompt is what a configured provider is sent.
+    // It asked for `{name, description}` models with no ids, so every
+    // real-provider plan would have been invalid and only the no-LLM fallback
+    // could ever have satisfied the contract — which is precisely the trap of
+    // testing a contract against its own fallback.
+    const rendered = createDefaultPromptEngine().render("asset_planner", {
+      name: "Game",
+      theme: "neon",
+      locations: "hub",
+      systems_summary: "collect",
+    });
+
+    expect(rendered.success).toBe(true);
+    const text = `${rendered.system ?? ""} ${rendered.prompt ?? ""}`;
+    expect(text).toContain("unique id");
+    for (const field of [
+      "id",
+      "complexity",
+      "source",
+      "resolution",
+      "frames",
+    ]) {
+      expect(text).toContain(field);
+    }
+  });
+
+  it("reads a typed plan back for the repair playtest", async () => {
+    // The stored shape changed, and this consumer read only the legacy
+    // wrapper — so a typed plan reported zero assets and changed repair
+    // scoring on runs with nothing wrong with them.
+    const store = new ArtifactStore();
+    await record(store, "exec-repair-input", agentOutput());
+
+    const { input } = await assembleRepairInput(
+      store,
+      PROJECT,
+      "exec-repair-input",
+    );
+
+    expect(input.assets.map((a) => a.type).sort()).toEqual([
+      "animation",
+      "model",
+      "model",
+      "sound",
+      "texture",
+    ]);
+    // Still a plan, never evidence that a binary asset exists.
+    expect(input.assets.every((a) => a.placeholder)).toBe(true);
+  });
+
+  it("still reads a legacy untyped plan for the repair playtest", async () => {
+    const store = new ArtifactStore();
+    const design = await store.store(
+      "exec-legacy-input",
+      "GAME_DESIGN",
+      "game_designer",
+      gameDesign(),
+      { projectId: PROJECT },
+    );
+    await store.store(
+      "exec-legacy-input",
+      "LUA_GENERATION",
+      "lua_generator",
+      { scripts: luaPackage() },
+      { projectId: PROJECT },
+    );
+    await store.store(
+      "exec-legacy-input",
+      "ASSET_PLANNING",
+      "asset_planner",
+      agentOutput(),
+      {
+        projectId: PROJECT,
+        dependencies: [ArtifactStore.dependencyOn(design)],
+      },
+    );
+
+    const { input } = await assembleRepairInput(
+      store,
+      PROJECT,
+      "exec-legacy-input",
+    );
+
+    expect(input.assets).toHaveLength(5);
+  });
+
+  it("refuses stored attributes whose values contradict the type", () => {
+    const plan = buildAssetPlan(agentOutput()).plan!;
+    const animation = plan.assets.find((a) => a.kind === "animation")!;
+    const swap = (attributes: Record<string, unknown>) =>
+      decodeAssetPlan({
+        ...plan,
+        assets: [{ ...animation, attributes }],
+      });
+
+    // `frames: false` would otherwise decode into a PlannedAsset whose
+    // attributes contradict the declared type.
+    expect(swap({ frames: false })).toBeNull();
+    expect(swap({ frames: { nested: true } })).toBeNull();
+    expect(swap({ frames: -1 })).toBeNull();
+    // A value outside a closed set, and an unrecognised extra key.
+    expect(swap({ frames: 10, extra: "x" })).toBeNull();
+    expect(swap({ frames: 10 })).not.toBeNull();
+  });
+
+  it("orders staged artifacts so a dependency is always committed first", async () => {
+    // Lineage resolves only from stages already committed, and `pending`
+    // followed the order the plan executor happened to return nodes in. A run
+    // that listed the asset stage before the design would have thrown and lost
+    // a generation that had already passed validation.
+    const store = new ArtifactStore();
+    const recorded = await new GenerationArtifactRecorder(store).record(
+      "exec-reordered",
+      [
+        node("asset_planner", agentOutput()),
+        node("lua_generator", { scripts: luaPackage() }),
+        node("game_designer", gameDesign()),
+      ],
+      PROJECT,
+    );
+
+    const order = recorded.map((a) => a.stage);
+    expect(order.indexOf("GAME_DESIGN")).toBeLessThan(
+      order.indexOf("ASSET_PLANNING"),
+    );
+    const asset = recorded.find((a) => a.stage === "ASSET_PLANNING");
+    expect(asset?.dependencies?.[0]?.stage).toBe("GAME_DESIGN");
   });
 });
 

@@ -1,6 +1,7 @@
 import type { TaskNode } from "../../planning/model/TaskGraph";
 import {
   ArtifactStore,
+  STAGE_ORDER,
   deterministicProducer,
   type ArtifactDependency,
   type ArtifactProducer,
@@ -252,6 +253,23 @@ export class GenerationArtifactRecorder {
         `Generation failed deterministic validation — ${describeBlockingFailures(report)}`,
       );
     }
+
+    // ASSET-FABRIC-1. `ASSET_PLANNING` must name the `GAME_DESIGN` it derives
+    // from, and lineage resolves only from stages already committed — so the
+    // design has to be written first. `pending` follows the order the plan
+    // executor returned its nodes in, which nothing constrains, so a run that
+    // listed the asset stage first would have thrown here and lost a
+    // generation that had already passed validation. Ordered by the stage
+    // sequence instead, which is the order the dependency rules are written
+    // against. Stable, so stages the sequence does not rank keep their
+    // relative order.
+    const stageRank = (stage: StageName): number => {
+      const index = STAGE_ORDER.indexOf(stage);
+      return index === -1 ? STAGE_ORDER.length : index;
+    };
+    pending.sort(
+      (left, right) => stageRank(left.stage) - stageRank(right.stage),
+    );
 
     const recorded: PipelineArtifact[] = [];
     const committed = new Map<StageName, PipelineArtifact>();
