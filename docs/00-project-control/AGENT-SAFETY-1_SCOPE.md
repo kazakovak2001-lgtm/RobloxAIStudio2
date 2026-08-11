@@ -40,6 +40,15 @@ Concretely reachable through it: the three development-tooling agents, which ana
 | `propose` | Produces candidate content the platform may persist after validation | `game_designer`, `roblox_architect`, `lua_generator`, `ui_generator`, `asset_planner`, `orchestrator` |
 | `execute` | May cause a durable side effect directly | **none** |
 
+### Every definition version moved to 2
+
+`authority` is a new policy dimension, so the contract version is bumped for
+all sixteen definitions rather than only the orchestrator's. A consumer
+reading `agent_version: 1` cannot know whether an authority tier was declared,
+and `pipeline_steps[].agent_version` rows from either side of this change have
+to stay distinguishable. The version's own doc comment now names authority as a
+trigger, so the next change to it is not missed the same way.
+
 ### `execute` is named and refused
 
 No runtime path grants it, so `validateAgentDefinitions` **rejects any definition that claims it**. The tier cannot be granted by editing a table; a later slice that introduces a real execute path has to remove that guard deliberately. This is the same reasoning `SECURITY-REVIEW-B` gets: naming a capability is not the same as having it.

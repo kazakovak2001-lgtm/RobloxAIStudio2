@@ -176,9 +176,14 @@ export interface AgentDefinition {
   /** Stable identity. The registry key, not the class name. */
   readonly id: string;
   /**
-   * Contract version. Bumped when capabilities, output contract, execution or
-   * model policy change — a class rename is not a version change, and a
-   * version is not a class name.
+   * Contract version. Bumped when capabilities, output contract, execution,
+   * model policy **or authority** change — a class rename is not a version
+   * change, and a version is not a class name.
+   *
+   * 2 — AGENT-SAFETY-1 added `authority`. Every definition declares something
+   * it did not before, so a consumer reading version 1 cannot know whether an
+   * authority tier was declared, and `pipeline_steps[].agent_version` rows
+   * from either side of the change must stay distinguishable.
    */
   readonly version: number;
   readonly title: string;
@@ -200,7 +205,7 @@ export interface AgentDefinition {
 export const AGENT_DEFINITIONS: readonly AgentDefinition[] = [
   {
     id: "requirements",
-    version: 1,
+    version: 2,
     title: "Turns a blueprint into structured requirements",
     capabilities: ["requirements-analysis"],
     reachability: "pipeline",
@@ -211,7 +216,7 @@ export const AGENT_DEFINITIONS: readonly AgentDefinition[] = [
   },
   {
     id: "planner",
-    version: 1,
+    version: 2,
     title: "Produces the delivery plan for a generation",
     capabilities: ["planning"],
     reachability: "pipeline",
@@ -222,7 +227,7 @@ export const AGENT_DEFINITIONS: readonly AgentDefinition[] = [
   },
   {
     id: "game_designer",
-    version: 1,
+    version: 2,
     title: "Designs mechanics, progression and balance",
     capabilities: ["game-design"],
     reachability: "pipeline",
@@ -233,7 +238,7 @@ export const AGENT_DEFINITIONS: readonly AgentDefinition[] = [
   },
   {
     id: "roblox_architect",
-    version: 1,
+    version: 2,
     title: "Designs services, data models and API contracts",
     capabilities: ["architecture-design"],
     reachability: "pipeline",
@@ -247,7 +252,7 @@ export const AGENT_DEFINITIONS: readonly AgentDefinition[] = [
   },
   {
     id: "lua_generator",
-    version: 1,
+    version: 2,
     title: "Generates the runnable Luau package",
     capabilities: ["lua-generation"],
     reachability: "pipeline",
@@ -268,7 +273,7 @@ export const AGENT_DEFINITIONS: readonly AgentDefinition[] = [
   },
   {
     id: "ui_generator",
-    version: 1,
+    version: 2,
     title: "Designs the interface the client builds",
     capabilities: ["ui-generation"],
     reachability: "pipeline",
@@ -279,7 +284,7 @@ export const AGENT_DEFINITIONS: readonly AgentDefinition[] = [
   },
   {
     id: "asset_planner",
-    version: 1,
+    version: 2,
     title: "Plans the assets a generation expects to need",
     capabilities: ["asset-planning"],
     reachability: "pipeline",
@@ -290,7 +295,7 @@ export const AGENT_DEFINITIONS: readonly AgentDefinition[] = [
   },
   {
     id: "orchestrator",
-    version: 1,
+    version: 2,
     title: "Assembles the export package from prior stages",
     capabilities: ["orchestration"],
     reachability: "pipeline",
@@ -304,7 +309,7 @@ export const AGENT_DEFINITIONS: readonly AgentDefinition[] = [
   },
   {
     id: "tester",
-    version: 1,
+    version: 2,
     title: "Produces a test plan — not a validation result",
     capabilities: ["validation-reporting"],
     // Deliberately not on the pipeline. Its output is a checklist of pending
@@ -318,7 +323,7 @@ export const AGENT_DEFINITIONS: readonly AgentDefinition[] = [
   },
   {
     id: "performance",
-    version: 1,
+    version: 2,
     title: "Suggests optimizations for generated content",
     capabilities: ["performance-analysis"],
     reachability: "registered-only",
@@ -329,7 +334,7 @@ export const AGENT_DEFINITIONS: readonly AgentDefinition[] = [
   },
   {
     id: "documentation",
-    version: 1,
+    version: 2,
     title: "Writes documentation for a generated project",
     capabilities: ["documentation"],
     reachability: "registered-only",
@@ -340,7 +345,7 @@ export const AGENT_DEFINITIONS: readonly AgentDefinition[] = [
   },
   {
     id: "database_designer",
-    version: 1,
+    version: 2,
     title: "Designs persistence structures",
     capabilities: ["data-modeling"],
     reachability: "registered-only",
@@ -351,7 +356,7 @@ export const AGENT_DEFINITIONS: readonly AgentDefinition[] = [
   },
   {
     id: "debugger",
-    version: 1,
+    version: 2,
     title: "Analyses reported faults in generated content",
     capabilities: ["debugging"],
     reachability: "registered-only",
@@ -362,7 +367,7 @@ export const AGENT_DEFINITIONS: readonly AgentDefinition[] = [
   },
   {
     id: "architecture_controller",
-    version: 1,
+    version: 2,
     title: "Reviews this repository's architecture boundaries",
     capabilities: ["repository-review"],
     reachability: "development-tool",
@@ -373,7 +378,7 @@ export const AGENT_DEFINITIONS: readonly AgentDefinition[] = [
   },
   {
     id: "code_review_controller",
-    version: 1,
+    version: 2,
     title: "Reviews this repository's source changes",
     capabilities: ["repository-review"],
     reachability: "development-tool",
@@ -384,7 +389,7 @@ export const AGENT_DEFINITIONS: readonly AgentDefinition[] = [
   },
   {
     id: "duplication_detector",
-    version: 1,
+    version: 2,
     title: "Finds duplicated implementations in this repository",
     capabilities: ["repository-review"],
     reachability: "development-tool",

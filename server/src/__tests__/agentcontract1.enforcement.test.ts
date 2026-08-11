@@ -227,7 +227,9 @@ describe("AGENT-CONTRACT-1 execution provenance", () => {
     expect(readBack!.pipeline_steps[0].agent).toBe("planner");
     expect(readBack!.pipeline_steps[0].agent_version).toBeUndefined();
     // The current definition exists and still does not colour the old row.
-    expect(getAgentDefinition("planner")?.version).toBe(1);
+    // The current version is whatever the registry says; what matters is
+    // that the historical row did not acquire it.
+    expect(getAgentDefinition("planner")?.version).toBeGreaterThan(0);
   });
 
   it("records no version for a step whose agent never ran", async () => {
