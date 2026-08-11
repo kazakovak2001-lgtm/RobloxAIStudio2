@@ -4,7 +4,7 @@
   "repository": "kazakovak2001-lgtm/RobloxAIStudio2",
   "releaseIdentity": {
     "backendBranch": "release/cutover-1e-candidate",
-    "backendCommit": "f1adac4b9312aa987502c43fd5e32fe47f535ae4",
+    "backendCommit": "514c321d794a66e0f6f5d407ba906ab3e45087d1",
     "frontendRepository": "kazakovak2001-lgtm/Frontend",
     "frontendCommit": "94736069e049b9614c4012775677c78777f5060d"
   },
@@ -31,14 +31,14 @@
         "`PIPELINE-1B` | Deterministic validation recorded as a durable artifact | High | `complete` — backend PR #205",
         "`PIPELINE-1C` | Conditional stages inside the pipeline | Low | `unscoped`",
         "a security finding never negates generation, delivery or release, and a blocking gate is the separate `SECURITY-REVIEW-B` delivery",
-        "f1adac4b9312aa987502c43fd5e32fe47f535ae4",
+        "514c321d794a66e0f6f5d407ba906ab3e45087d1",
         "94736069e049b9614c4012775677c78777f5060d",
         "`WORLD-1A` | Semantic world model and cross-artifact validation against generated Lua | High | `complete` — backend PR #207",
         "`WORLD-1B` | Design-time Studio materialization of the world model | Medium | `code_complete_evidence_pending` — backend PR #209 merged",
         "`WORLD-1C` | Canonical ownership of the world by the materialized scene | Medium | `blocked` — scoped, and blocked",
         "`AGENT-CONTRACT-1` | Versioned server-owned definitions for every runtime agent | Medium | `complete` — backend PR #212; foundation only, and every policy field is enforced",
         "Wall-clock timeout, monetary cost and input-token ceilings are deliberately absent because nothing enforces them today",
-        "release/cutover-1e-candidate@f1adac4b9312aa987502c43fd5e32fe47f535ae4",
+        "release/cutover-1e-candidate@514c321d794a66e0f6f5d407ba906ab3e45087d1",
         "`ARTIFACT-CONTRACT-2` | Durable artifact envelope, content identity and lineage | High | `complete` — backend PR #214",
         "a report can name the exact bytes it read instead of being assumed to still apply",
         "`SECURITY-REVIEW-A2` | Hardening of the advisory Luau reviewer | Medium | `complete` — backend PR #216",
@@ -47,7 +47,10 @@
         "The pinned pair is level with canonical Frontend `main`",
         "is started, and none may begin before the stage it sits in.",
         "| `AGENT-SAFETY-1` | Observe / Plan / Propose / Execute permission model | High | `complete`",
-        "The sixteen `unscoped` strategic items"
+        "| `NOVELTY-1` | GameDNA and structural similarity fingerprint | High | `complete`",
+        "The fifteen `unscoped` strategic items",
+        "`unscoped` — not started; its dependency is now complete, so it is startable rather than blocked",
+        "understates a history nothing can attribute to it"
       ],
       "forbiddenClaims": [
         "PR #162 pending reviewed merge",
@@ -55,7 +58,8 @@
         "release/cutover-1e-candidate@c42a9b19f2d58fe728e3b978edffb8acd8621c72",
         "release/cutover-1e-candidate@ddfa10453d9e2f48bc9e57045d40a8792d3cc297",
         "release/cutover-1e-candidate@79b1ecfd137dff71e17fcc57e45078a47137fcdf",
-        "release/cutover-1e-candidate@3e18460c394b03c2d373c7d1a2e9cd0b74b6f984"
+        "release/cutover-1e-candidate@3e18460c394b03c2d373c7d1a2e9cd0b74b6f984",
+        "release/cutover-1e-candidate@f1adac4b9312aa987502c43fd5e32fe47f535ae4"
       ]
     },
     {
@@ -64,7 +68,7 @@
       "rank": 2,
       "status": "current",
       "requiredClaims": [
-        "f1adac4b9312aa987502c43fd5e32fe47f535ae4",
+        "514c321d794a66e0f6f5d407ba906ab3e45087d1",
         "94736069e049b9614c4012775677c78777f5060d",
         "REPAIR-1 complete across backend and Frontend UI",
         "PROVIDER-1A completed through backend PR #193, merged `ecae9bb59f1639d2e382e7221a956aa96460b3e9`",
@@ -81,7 +85,8 @@
         "`ARTIFACT-CONTRACT-2` complete (backend PR #214",
         "`SECURITY-REVIEW-A2` complete (backend PR #216",
         "The pinned pair is level with canonical `main`",
-        "`AGENT-SAFETY-1` complete (backend PR #221"
+        "`AGENT-SAFETY-1` complete (backend PR #221",
+        "`NOVELTY-1` complete (backend PR #223"
       ],
       "forbiddenClaims": [
         "pending reviewed merge",
@@ -95,7 +100,7 @@
       "status": "supporting",
       "requiredClaims": [
         "DOC-202A",
-        "f1adac4b9312aa987502c43fd5e32fe47f535ae4",
+        "514c321d794a66e0f6f5d407ba906ab3e45087d1",
         "94736069e049b9614c4012775677c78777f5060d",
         "ARTIFACT-1, PROVIDER-1B and SECREVIEW-1 advance the runtime pair to backend",
         "PIPELINE-1A advances the runtime pair to backend",
@@ -114,7 +119,9 @@
         "PAIR-ADVANCE-1 advances the Frontend member of the runtime pair to",
         "The pin was not simply rewritten.",
         "AGENT-SAFETY-1 advances the runtime pair to backend",
-        "model.** Only delegation is bounded, because only delegation is an agent"
+        "model.** Only delegation is bounded, because only delegation is an agent",
+        "NOVELTY-1 advances the runtime pair to backend",
+        "The fingerprint is advisory."
       ],
       "forbiddenClaims": []
     },
@@ -233,7 +240,9 @@
         "Unknown is a valid state.",
         "a scope written before its prerequisites exist would be fiction",
         "The order is a dependency claim, not a preference.",
-        "Everything here is unstarted except `AGENT-SAFETY-1`"
+        "Everything here is unstarted except `AGENT-SAFETY-1` and `NOVELTY-1`",
+        "`NOVELTY-2` is startable and not started.",
+        "`NOVELTY-2` is now startable rather than blocked, which is not the same as started."
       ],
       "forbiddenClaims": []
     },
@@ -249,6 +258,23 @@
         "no violator in the current table",
         "Every definition version moved to 2",
         "It does *not* prevent construction"
+      ],
+      "forbiddenClaims": []
+    },
+    {
+      "path": "docs/00-project-control/NOVELTY-1_SCOPE.md",
+      "owner": "project-control",
+      "rank": 13,
+      "status": "supporting",
+      "requiredClaims": [
+        "It compares seeds, not generations.",
+        "The graph is not a graph yet.",
+        "Progression and economy are present but are not structure.",
+        "Absence of a comparison is never reported as novelty.",
+        "`NOVELTY-2` is the gate",
+        "NOVELTY-1",
+        "`compared`, `no-prior-generations`, `prior-without-dna`, `comparison-failed`",
+        "Older generations are unreachable, and that shows up as the wrong-looking outcome."
       ],
       "forbiddenClaims": []
     }
@@ -318,6 +344,10 @@
     {
       "source": "docs/00-project-control/ROADMAP_STATUS.md",
       "target": "docs/00-project-control/AGENT-SAFETY-1_SCOPE.md"
+    },
+    {
+      "source": "docs/00-project-control/ROADMAP_STATUS.md",
+      "target": "docs/00-project-control/NOVELTY-1_SCOPE.md"
     }
   ]
 }

@@ -9,7 +9,7 @@ fail-closed guard for subsequent roadmap reconciliations.
 
 - Backend repository: `kazakovak2001-lgtm/RobloxAIStudio2`
 - Backend release branch: `release/cutover-1e-candidate`
-- Current backend runtime release: `f1adac4b9312aa987502c43fd5e32fe47f535ae4`
+- Current backend runtime release: `514c321d794a66e0f6f5d407ba906ab3e45087d1`
 - SECURITY-2G-F control baseline: `da55f716c798ec8c6a7f25a8e2a3b7b0a2244416`
 - Paired Frontend repository: `kazakovak2001-lgtm/Frontend`
 - Paired Frontend runtime contents: `94736069e049b9614c4012775677c78777f5060d`
@@ -594,6 +594,57 @@ root cause was the version's own doc comment, which listed four triggers and
 not authority. And the safety tests accepted any non-`execute` tier, so a
 silent promotion from `observe` to `propose` would have passed — in a safety
 test the assignment is the property, not its type.
+
+NOVELTY-1 advances the runtime pair to backend
+`514c321d794a66e0f6f5d407ba906ab3e45087d1` and Frontend
+`94736069e049b9614c4012775677c78777f5060d`, through backend pull request
+`#223`. The Frontend identity is unchanged.
+
+Stage four of the strategic set, taken because stages one to three are
+complete or waiting on operator-observed Studio evidence that remains paused.
+
+The audit behind it found something worth stating plainly: the platform
+already had a diversity mechanism, and it measured the wrong thing.
+`gameDiversityEngine` runs on the real generation path and scores the _seed_
+the platform invents for itself before any agent runs. Two structurally
+identical games built from different seeds read as different to it, and two
+different games from adjacent seeds read as similar. Its history is a
+module-level map that no restart survives, so after one every generation looks
+new again; the similarity it computes never leaves its own retry loop; and
+after eight attempts it returns a seed that failed its own target with nothing
+distinguishing that from one that passed.
+
+None of that was rewritten. Seed diversity and output novelty are different
+questions, and replacing a live generation input is a larger change than
+measuring output. The silent fallback is recorded as carried work rather than
+fixed quietly, which is the same treatment `SECURITY-REVIEW-B` receives.
+
+**Two components were deliberately not built.** The world model has exactly
+one dependency push site, so its graph is always a star into a single
+presentation node, and its node count, edge count and degree profile are all a
+function of one role count; a graph component would have been three fields
+carrying nothing the role distribution already holds. Progression and economy
+exist in the model only as one free-text sentence each, so they are
+fingerprinted as presence rather than shape, because digesting the sentence
+would move the digest on a reword and hold it still on a redesign. Both
+absences are stated in the scope record and pinned by tests, so the components
+return when the model earns them rather than shipping as decoration.
+
+**The fingerprint is advisory.** Nothing blocks, warns or alters a generation
+on similarity, and a test asserts the validation report contains no check that
+reads it. `NOVELTY-2` is where a gate belongs, and it is advisory before
+blocking for the same reason `SECREVIEW-1` was: a gate calibrated on
+fingerprints nobody has measured would reject real work on unmeasured
+confidence.
+
+Two review findings are worth recording. A null-agent stage falls through to
+the generic passthrough, so adding this stage without an executor branch would
+have persisted a passthrough marker as `gameDna.json` under the `game-dna`
+producer, a durable record claiming a comparison that never ran, and the
+fourth time that shape has appeared despite the comment above the third one
+naming the rule. And a repaired execution would have carried its parent's
+comparison history forward, so a repaired first run would still have claimed
+no prior generations while its own parent sat in the same project.
 
 ## Scope boundary
 

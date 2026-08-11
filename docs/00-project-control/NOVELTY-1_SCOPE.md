@@ -2,7 +2,7 @@
 
 # NOVELTY-1 — GameDNA and structural similarity fingerprint
 
-**Status:** Scoped. Backend-only; no Roblox Studio evidence is required or claimed.
+**Status:** ✅ Complete — backend PR #223. Backend-only; no Roblox Studio evidence is required or claimed.
 **Depends on:** `WORLD-1A` (semantic world model), `ARTIFACT-CONTRACT-2` (durable envelope, content identity, lineage). Both complete.
 **Complexity:** M. **Risk:** Low — the output is advisory and nothing consumes it to make a decision.
 
@@ -44,6 +44,8 @@ So they are fingerprinted as **presence**, which is what the model actually know
 ### Prior generations are durably retrievable, within a project
 
 `ArtifactStore.getByPipeline` reads through the configured `ArtifactStorageProvider` when one is present, so artifacts survive a restart. Every artifact written since `ARTIFACT-CONTRACT-2` carries `projectId`.
+
+**Older generations are unreachable, and that shows up as the wrong-looking outcome.** Artifacts written before `ARTIFACT-CONTRACT-2` carry no owning project, and runs before `WORLD-1A` produced no world model at all, so neither can be attributed to a project. A project made entirely of such runs therefore reports `no-prior-generations` rather than `prior-without-dna` — the history exists but nothing can retrieve it. Guessing an owner for an unattributed artifact would be worse than omitting it, so this is recorded as a limitation of what was stored rather than repaired by inference.
 
 Cross-**project** comparison is a different matter: there is no index over projects, and `ArtifactStorageProvider.list` takes a predicate and scans the collection. Comparing every generation to every other generation across the installation is not something this slice can do honestly at that cost.
 

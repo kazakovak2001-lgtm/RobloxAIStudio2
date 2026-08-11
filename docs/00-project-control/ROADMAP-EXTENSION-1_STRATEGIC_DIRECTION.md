@@ -2,10 +2,10 @@
 
 # ROADMAP-EXTENSION-1 — Autonomous Roblox Development Platform
 
-**Status:** Roadmap extension. **Everything here is unstarted except `AGENT-SAFETY-1`**, which was taken as the first implementation slice and is complete through backend PR #221 — see [its scope record](./AGENT-SAFETY-1_SCOPE.md). Nothing else is implemented, scoped, or started.
+**Status:** Roadmap extension. **Everything here is unstarted except `AGENT-SAFETY-1` and `NOVELTY-1`**, complete through backend PR #221 and PR #223 — see their scope records, [AGENT-SAFETY-1](./AGENT-SAFETY-1_SCOPE.md) and [NOVELTY-1](./NOVELTY-1_SCOPE.md). Nothing else is implemented, scoped, or started.
 **Baseline:** the reconciled roadmap from [ROADMAP-RECONCILIATION-1](./ROADMAP-RECONCILIATION-1_RESULT.md), which is the authority for what exists today.
 
-Every item below except `AGENT-SAFETY-1` is `unscoped` — named and ordered so the direction is legible, and deliberately without a scope record, because a scope written before its prerequisites exist would be fiction. Each becomes `scoped` only when the work in front of it is done and someone writes its scope against the platform as it then is. `AGENT-SAFETY-1` went first precisely because its prerequisite was already complete, which is the rule working rather than an exception to it.
+Every item below except `AGENT-SAFETY-1` and `NOVELTY-1` is `unscoped` — named and ordered so the direction is legible, and deliberately without a scope record, because a scope written before its prerequisites exist would be fiction. Each becomes `scoped` only when the work in front of it is done and someone writes its scope against the platform as it then is. Both of the taken items went when they did precisely because their prerequisites were already complete, which is the rule working rather than an exception to it.
 
 ## Principles these extensions inherit
 
@@ -26,7 +26,7 @@ The order is a dependency claim, not a preference. Each stage needs the one befo
 1. **Finish the trustworthy core generation lifecycle** — largely done: `PROVIDER-1A/1B`, `PIPELINE-1A/1B`, `AGENT-CONTRACT-1`, `ARTIFACT-CONTRACT-2`.
 2. **Finish validation and security truthfulness** — `SECREVIEW-1` and `SECURITY-REVIEW-A2` are advisory; `SECURITY-REVIEW-B` is blocked on seven criteria, none satisfied.
 3. **Finish the real playtest → diagnose → repair loop** — `REPAIR-1` is complete; runtime playtest evidence is operator-observed and narrow.
-4. **Add the GameDNA and originality foundation** — `NOVELTY-1`, `NOVELTY-2`.
+4. **Add the GameDNA and originality foundation** — `NOVELTY-1` is complete; `NOVELTY-2` is startable and not started.
 5. **Expand runtime and multiplayer playtesting** — `PLAYTEST-2`, `PLAYTEST-3`, `PLAYTEST-4`.
 6. **Establish multimodal asset contracts** — `ASSET-FABRIC-1`, `ASSET-FABRIC-2`.
 7. **Add synthetic player and economy simulation** — `PLAYER-SIM-1`, `ECONOMY-SIM-1`.
@@ -41,7 +41,7 @@ The order is a dependency claim, not a preference. Each stage needs the one befo
 
 | ID | Item | Depends on | Note |
 |---|---|---|---|
-| `NOVELTY-1` | GameDNA and structural similarity fingerprint | `WORLD-1A`, `ARTIFACT-CONTRACT-2` | A fingerprint over mechanics, system graph, progression and economy structure. The world model already derives semantic roles from generated output; this is the first consumer that compares two generations to each other rather than to their own spec |
+| `NOVELTY-1` | GameDNA and structural similarity fingerprint | `WORLD-1A`, `ARTIFACT-CONTRACT-2` | **Delivered** — backend PR #223, [scope](./NOVELTY-1_SCOPE.md). The first consumer that compares two generations to each other rather than to their own spec. Of the four dimensions named here, mechanics and composition are structural and were built; the system graph is a star in the model today, and progression and economy are one sentence each, so those are recorded as gaps rather than fingerprinted as prose |
 | `NOVELTY-2` | Cross-generation novelty gate | `NOVELTY-1` | Advisory before blocking, as `SECREVIEW-1` was. A novelty gate that blocks on a fingerprint nobody has measured would reject real work on unmeasured confidence |
 
 ### Playtesting
@@ -91,6 +91,6 @@ The order is a dependency claim, not a preference. Each stage needs the one befo
 
 ## What this does not change
 
-`ARTIFACT-1`, `STUDIO-2F-A` and `WORLD-1B` remain `code_complete_evidence_pending`; `WORLD-1C` and `SECURITY-REVIEW-B` remain `blocked`; Studio acceptance remains paused. No extension above other than `AGENT-SAFETY-1` is scoped, and none may begin before the stage it sits in.
+`ARTIFACT-1`, `STUDIO-2F-A` and `WORLD-1B` remain `code_complete_evidence_pending`; `WORLD-1C` and `SECURITY-REVIEW-B` remain `blocked`; Studio acceptance remains paused. No extension above other than `AGENT-SAFETY-1` and `NOVELTY-1` is scoped, and none may begin before the stage it sits in. `NOVELTY-2` is now startable rather than blocked, which is not the same as started.
 
 <!-- prettier-ignore-end -->
