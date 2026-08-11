@@ -108,6 +108,8 @@ export const DETERMINISTIC_PRODUCERS: Readonly<Record<string, number>> = {
   "lua-security-review": 2,
   /** `buildWorldModel` + `buildWorldScene` — the WORLD_MODEL artifact. */
   "world-model": 1,
+  /** `buildGameDna` plus the cross-generation comparison — the GAME_DNA artifact. */
+  "game-dna": 1,
   /** `RepairEngine` carrying an unchanged stage forward to a repaired run. */
   "repair-carry-forward": 1,
   /** `StudioIntegrationManager` adapting a legacy package into artifacts. */
@@ -130,6 +132,7 @@ export const AGENTLESS_STAGE_PRODUCERS: Readonly<
 > = {
   REQUEST: "pipeline-stage-passthrough",
   WORLD_MODEL: "world-model",
+  GAME_DNA: "game-dna",
   SECURITY_REVIEW: "lua-security-review",
   VALIDATION: "generation-validation",
   EXPORT: "pipeline-stage-passthrough",
@@ -154,8 +157,32 @@ export const ARTIFACT_DEPENDENCY_RULES: Readonly<
   LUA_GENERATION: ["ARCHITECTURE", "GAME_DESIGN", "LUA_GENERATION"],
   UI_GENERATION: ["GAME_DESIGN"],
   WORLD_MODEL: ["GAME_DESIGN", "ARCHITECTURE"],
+  // The DNA is a pure function of the world model, so an edge to anything else
+  // would claim a derivation that does not exist.
+  GAME_DNA: ["WORLD_MODEL"],
   SECURITY_REVIEW: ["LUA_GENERATION"],
   VALIDATION: ["LUA_GENERATION", "UI_GENERATION", "WORLD_MODEL"],
+};
+
+/**
+ * Stages that may not be stored without the upstream they are derived from.
+ *
+ * The rules above only say what an edge *may* point at, so until this existed
+ * an artifact could be written with no lineage at all and pass. That is the
+ * right default for most stages — `VALIDATION` is deliberately stored with no
+ * dependencies on the rejection path, because nothing was committed for it to
+ * bind to, and asserting an edge there would be the lie rather than the fix.
+ *
+ * `GAME_DNA` is different in kind: it is a pure function of exactly one
+ * upstream artifact, so one without that edge is a fingerprint of nothing in
+ * particular. Required lineage for the other derived stages is deliberately
+ * not decided here — each needs its own argument, and this slice only owns
+ * the stage it added.
+ */
+export const REQUIRED_ARTIFACT_DEPENDENCIES: Readonly<
+  Partial<Record<StageName, StageName>>
+> = {
+  GAME_DNA: "WORLD_MODEL",
 };
 
 /**
@@ -312,6 +339,7 @@ export type ArtifactEnvelopeIssueCode =
   | "dependency-stage-mismatch"
   | "dependency-without-identity"
   | "dependency-not-committed"
+  | "missing-required-dependency"
   | "impossible-stage-lineage";
 
 export interface ArtifactEnvelopeIssue {
@@ -470,6 +498,22 @@ function dependencyIssues(
   const dependencies = artifact.dependencies ?? [];
   const allowed = ARTIFACT_DEPENDENCY_RULES[artifact.stage] ?? [];
   const seen = new Set<string>();
+
+  const required = REQUIRED_ARTIFACT_DEPENDENCIES[artifact.stage];
+  if (required) {
+    const matching = dependencies.filter(
+      (dependency) => dependency.stage === required,
+    );
+    // Exactly one: none makes the artifact describe nothing in particular,
+    // and several would mean it claims to be derived from two different
+    // states of the same stage at once.
+    if (matching.length !== 1) {
+      fail(
+        "missing-required-dependency",
+        `Artifact "${artifact.id}" at stage ${artifact.stage} must declare exactly one ${required} dependency, and declares ${matching.length}`,
+      );
+    }
+  }
 
   for (const dependency of dependencies) {
     if (seen.has(dependency.artifactId)) {

@@ -225,7 +225,14 @@ describe("PipelineStage", () => {
   it("has correct stage order", () => {
     expect(STAGE_ORDER[0]).toBe("REQUEST");
     expect(STAGE_ORDER[STAGE_ORDER.length - 1]).toBe("EXPORT");
-    expect(STAGE_ORDER.length).toBe(13);
+    expect(STAGE_ORDER.length).toBe(14);
+    // NOVELTY-1 derives a structural fingerprint from the world model, so it
+    // must sit after it. Nothing downstream reads it — it is advisory — but a
+    // stage that ran before its own input would produce a fingerprint of
+    // whatever the previous run left behind.
+    expect(STAGE_ORDER.indexOf("GAME_DNA")).toBeGreaterThan(
+      STAGE_ORDER.indexOf("WORLD_MODEL"),
+    );
     // WORLD-1A derives a world model from earlier claims, so it must sit after
     // the stages that make them and before the validation that checks them.
     expect(STAGE_ORDER.indexOf("WORLD_MODEL")).toBeGreaterThan(
@@ -255,7 +262,7 @@ describe("PipelineStage", () => {
     const state = createPipelineState("proj-1");
     expect(state.pipelineId).toMatch(/^pipeline-/);
     expect(state.status).toBe("pending");
-    expect(state.stages.length).toBe(13);
+    expect(state.stages.length).toBe(14);
     expect(state.completedStages).toHaveLength(0);
   });
 });

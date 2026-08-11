@@ -13,10 +13,46 @@
 import { describe, it, expect } from "vitest";
 import { ArtifactStore } from "../pipeline/v2/ArtifactStore";
 import { STAGE_ORDER, type StageName } from "../pipeline/v2";
+import {
+  REQUIRED_ARTIFACT_DEPENDENCIES,
+  type ArtifactDependency,
+} from "../pipeline/v2/artifactEnvelope";
 import { GENERATION_ARTIFACT_STAGE_MAP } from "../studio/artifacts/GenerationArtifactRecorder";
 
 /** ARTIFACT-CONTRACT-2 requires an owning project on every new artifact. */
 const ARTIFACT_TEST_PROJECT = "artifact-contract-test-project";
+
+/**
+ * Satisfy any required lineage so this file keeps testing naming.
+ *
+ * NOVELTY-1 made `GAME_DNA` refuse to store without its `WORLD_MODEL` edge.
+ * Driven off the rule rather than special-casing that stage, so a later
+ * required edge is satisfied here too instead of failing these tests for a
+ * reason that has nothing to do with names.
+ */
+async function requiredLineage(
+  store: ArtifactStore,
+  pipelineId: string,
+  stage: StageName,
+): Promise<ArtifactDependency[]> {
+  const required = REQUIRED_ARTIFACT_DEPENDENCIES[stage];
+  if (!required) return [];
+  const existing = store
+    .getByPipeline(pipelineId)
+    .find((artifact) => artifact.stage === required);
+  const upstream =
+    existing ??
+    (await store.store(
+      pipelineId,
+      required,
+      "lua_generator",
+      { stage: required },
+      {
+        projectId: ARTIFACT_TEST_PROJECT,
+      },
+    ));
+  return [ArtifactStore.dependencyOn(upstream)];
+}
 
 async function storeAll(pipelineId: string) {
   const store = new ArtifactStore();
@@ -28,7 +64,10 @@ async function storeAll(pipelineId: string) {
         stage,
         "lua_generator",
         { stage },
-        { projectId: ARTIFACT_TEST_PROJECT },
+        {
+          projectId: ARTIFACT_TEST_PROJECT,
+          dependencies: await requiredLineage(store, pipelineId, stage),
+        },
       ),
     );
   }
@@ -63,14 +102,20 @@ describe("ARTIFACT-1 Studio identity", () => {
         stage,
         "lua_generator",
         { v: 1 },
-        { projectId: ARTIFACT_TEST_PROJECT },
+        {
+          projectId: ARTIFACT_TEST_PROJECT,
+          dependencies: await requiredLineage(store, "exec-1", stage),
+        },
       );
       const second = await store.store(
         "exec-2",
         stage,
         "lua_generator",
         { v: 2 },
-        { projectId: ARTIFACT_TEST_PROJECT },
+        {
+          projectId: ARTIFACT_TEST_PROJECT,
+          dependencies: await requiredLineage(store, "exec-2", stage),
+        },
       );
 
       expect(second.id).not.toBe(first.id);

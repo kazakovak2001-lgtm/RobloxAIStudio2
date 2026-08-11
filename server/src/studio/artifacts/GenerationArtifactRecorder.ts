@@ -14,7 +14,14 @@ import {
   type PlayableLuaScript,
 } from "../../types/playableLua";
 import { reviewLuaSecurity } from "../../validation/luaSecurityReview";
-import { buildWorldModel } from "../../validation/worldModel";
+import { buildWorldModel, type WorldModel } from "../../validation/worldModel";
+import {
+  buildGameDna,
+  buildGameDnaReport,
+  decodeGameDna,
+  type GameDnaReport,
+  type PriorGeneration,
+} from "../../validation/gameDna";
 import { crossValidateWorld } from "../../validation/worldCrossValidation";
 import { buildWorldScene } from "../../validation/worldSceneBuilder";
 import {
@@ -181,6 +188,18 @@ export class GenerationArtifactRecorder {
       dependsOn: ["GAME_DESIGN", "ARCHITECTURE"],
     });
 
+    // NOVELTY-1. The first thing that compares this generation to the ones
+    // before it rather than to its own spec. Advisory: nothing below reads it
+    // to make a decision, and a generation is never failed or altered for
+    // resembling an earlier one — that is NOVELTY-2's question.
+    pending.push({
+      stage: "GAME_DNA",
+      agent: null,
+      content: this.buildDnaReport(executionId, projectId, world),
+      producer: deterministicProducer("game-dna"),
+      dependsOn: ["WORLD_MODEL"],
+    });
+
     const report = buildGenerationValidationReport({
       luaPresent,
       luaIssues,
@@ -249,6 +268,96 @@ export class GenerationArtifactRecorder {
 
     return recorded;
   }
+
+  /**
+   * Compare this generation's structure against the project's earlier ones.
+   *
+   * Prior generations are read from the artifact store, which reads through
+   * the storage provider, so this survives a restart. The mechanism it sits
+   * beside — `gameDiversityEngine` — keeps its history in a module-level
+   * `Map`, so after a restart every generation looks new to it again; that is
+   * exactly the shape this must not repeat.
+   *
+   * Never throws. The report is advisory, and a generation that already passed
+   * deterministic validation must not be lost because a comparison failed.
+   */
+  private buildDnaReport(
+    executionId: string,
+    projectId: string,
+    world: WorldModel,
+  ): GameDnaReport {
+    const dna = buildGameDna(world);
+    try {
+      // Counted from world models rather than from DNA artifacts: a project
+      // generated before this stage existed has real prior generations and
+      // must report `prior-without-dna`, not read as having no history.
+      const priorsFound = new Set(
+        this.artifactStore
+          .getProjectStageArtifacts(projectId, "WORLD_MODEL")
+          .map((artifact) => artifact.pipelineId)
+          .filter((pipelineId) => pipelineId !== executionId),
+      ).size;
+
+      // One DNA per prior execution. A re-recorded execution — which is what
+      // repair does — stores a second GAME_DNA artifact under the same
+      // pipeline id, and counting both would make `priorsCompared` exceed
+      // `priorsFound` and compare one generation twice. The newest wins,
+      // because it describes the state that execution ended in.
+      const latestByExecution = new Map<string, PipelineArtifact>();
+      for (const artifact of this.artifactStore.getProjectStageArtifacts(
+        projectId,
+        "GAME_DNA",
+      )) {
+        if (artifact.pipelineId === executionId) continue;
+        const held = latestByExecution.get(artifact.pipelineId);
+        if (!held || held.createdAt <= artifact.createdAt) {
+          latestByExecution.set(artifact.pipelineId, artifact);
+        }
+      }
+
+      const priors = [...latestByExecution.values()]
+        .map(readPriorGeneration)
+        .filter((prior): prior is PriorGeneration => prior !== null);
+
+      return buildGameDnaReport({ dna, priorsFound, priors });
+    } catch {
+      // A comparison that could not run says so. Reporting it as
+      // `no-prior-generations` would assert this project has no history,
+      // which is a stronger claim than the failure supports.
+      return buildGameDnaReport({
+        dna,
+        priorsFound: 0,
+        priors: [],
+        failed: true,
+      });
+    }
+  }
+}
+
+/**
+ * Read one prior generation's DNA out of a stored artifact.
+ *
+ * Defensive because the content is durable data that may have been written by
+ * an older schema version. A prior that cannot be read is not silently
+ * dropped: it stays counted in `priorsFound` and is simply not comparable,
+ * which is what keeps `prior-without-dna` reachable rather than decorative.
+ */
+function readPriorGeneration(
+  artifact: PipelineArtifact,
+): PriorGeneration | null {
+  const content = artifact.content as Partial<GameDnaReport> | null;
+  if (!content || typeof content !== "object") return null;
+  if (typeof content.fingerprint !== "string") return null;
+  // Fully decoded rather than shape-checked. A durable record can be edited or
+  // written by a version that no longer exists, and a partially-read DNA
+  // compares to `NaN` distances that look like measurements.
+  const dna = decodeGameDna(content.dna);
+  if (!dna) return null;
+  return {
+    executionId: artifact.pipelineId,
+    fingerprint: content.fingerprint,
+    dna,
+  };
 }
 
 export function getArtifactStage(agent: string): StageName | undefined {

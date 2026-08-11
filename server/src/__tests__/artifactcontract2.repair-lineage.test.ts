@@ -10,6 +10,11 @@ import {
 } from "../pipeline/v2";
 import { RepairEngine } from "../repair/RepairEngine";
 import { InMemoryRepairSessionStore } from "../repair/RepairSessionStore";
+import { buildWorldModel } from "../validation/worldModel";
+import {
+  buildGameDnaFromStoredWorld,
+  buildGameDnaReport,
+} from "../validation/gameDna";
 
 /**
  * ARTIFACT-CONTRACT-2 — repair lineage.
@@ -210,5 +215,119 @@ describe("ARTIFACT-CONTRACT-2 repair lineage", () => {
     // cross-validation, neither of which a repair re-runs. Absence is
     // truthful; a copied or partial report would not be.
     expect(repaired.some((a) => a.stage === "VALIDATION")).toBe(false);
+  }, 20000);
+});
+
+describe("NOVELTY-1 repair rebuilds the structural fingerprint", () => {
+  async function runRepairWithWorld() {
+    const registry = new AgentRegistry();
+    const luaAgent = registry.getAgent("lua_generator");
+    if (!luaAgent) throw new Error("lua_generator agent missing");
+    const playable = await luaAgent.execute({
+      blueprint: { name: "Repair Lineage Game", description: "baseline" },
+      architecture: {},
+      gameplay: {},
+    });
+    luaAgent.setLLM({
+      generate: vi.fn().mockResolvedValue(JSON.stringify(playable.data)),
+    });
+
+    const repository = new InMemoryBlueprintRepository();
+    await seedBlueprint(repository);
+
+    const store = new ArtifactStore();
+    await store.store(
+      PARENT_EXECUTION_ID,
+      "LUA_GENERATION",
+      "lua_generator",
+      { scripts: BROKEN_SCRIPTS },
+      { projectId: PROJECT_ID },
+    );
+    const parentWorld = await store.store(
+      PARENT_EXECUTION_ID,
+      "WORLD_MODEL",
+      null,
+      buildWorldModel({
+        gameDesign: {
+          gameplay: {
+            mechanics: [{ name: "collect" }],
+            balance: { winCondition: "Collect them all" },
+          },
+        },
+        architecture: {
+          architecture: { services: { SpawnService: "spawns" } },
+        },
+      }),
+      { projectId: PROJECT_ID, producer: deterministicProducer("world-model") },
+    );
+    // The parent's own fingerprint, which correctly says it had no history.
+    await store.store(
+      PARENT_EXECUTION_ID,
+      "GAME_DNA",
+      null,
+      buildGameDnaReport({
+        dna: buildGameDnaFromStoredWorld(parentWorld.content)!,
+        priorsFound: 0,
+        priors: [],
+      }),
+      {
+        projectId: PROJECT_ID,
+        producer: deterministicProducer("game-dna"),
+        dependencies: [ArtifactStore.dependencyOn(parentWorld)],
+      },
+    );
+
+    const engine = new RepairEngine(
+      registry,
+      repository,
+      store,
+      new InMemoryRepairSessionStore(),
+    );
+    const session = await engine.run(PROJECT_ID, PARENT_EXECUTION_ID, {
+      maxIterations: 1,
+      targetScore: 95,
+    });
+    const newExecutionId = session.history[0]?.newExecutionId;
+    if (!newExecutionId) throw new Error("Repair produced no new execution");
+
+    return { repaired: store.getByPipeline(newExecutionId), parentWorld };
+  }
+
+  it("does not carry the parent's comparison history forward", async () => {
+    const { repaired, parentWorld } = await runRepairWithWorld();
+
+    const dna = repaired.find((a) => a.stage === "GAME_DNA");
+    expect(dna).toBeDefined();
+    // Re-derived, not copied: a carried report would still claim this run had
+    // no prior generations while its own parent sits in the same project.
+    expect(dna!.producer).toEqual(deterministicProducer("game-dna"));
+    const report = dna!.content as {
+      outcome: string;
+      priorsFound: number;
+      priorsCompared: number;
+      nearest?: { executionId: string; identical: boolean };
+    };
+    expect(report.outcome).toBe("compared");
+    expect(report.priorsFound).toBe(1);
+    expect(report.priorsCompared).toBe(1);
+    expect(report.nearest?.executionId).toBe(PARENT_EXECUTION_ID);
+    // A repair regenerates Lua and carries the design across, so the structure
+    // is unchanged — and saying so is the honest result, not a defect.
+    expect(report.nearest?.identical).toBe(true);
+  }, 20000);
+
+  it("binds the rebuilt fingerprint to the world model this run carried", async () => {
+    const { repaired } = await runRepairWithWorld();
+
+    const dna = repaired.find((a) => a.stage === "GAME_DNA")!;
+    const carriedWorld = repaired.find((a) => a.stage === "WORLD_MODEL")!;
+
+    expect(dna.dependencies).toEqual([
+      {
+        artifactId: carriedWorld.id,
+        stage: "WORLD_MODEL",
+        contentHash: carriedWorld.contentHash,
+      },
+    ]);
   }, 20000);
 });
