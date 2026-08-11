@@ -17,6 +17,8 @@ export type RepairStrategy =
 
 export type RepairDecision = "repair" | "regenerate" | "ignore" | "escalate";
 
+import type { NoveltyVerdictRecord } from "../types/novelty";
+
 export interface RepairPlanItem {
   issueId: string;
   severity: string;
@@ -62,6 +64,20 @@ export interface RepairIterationRecord {
   newExecutionId?: string;
   /** Execution ID the repair was attempted against; artifacts there are never mutated. */
   parentExecutionId: string;
+  /**
+   * NOVELTY-2. Whether the repaired execution repeats a structure the project
+   * has produced before.
+   *
+   * Recorded here because a repaired execution has no `GenerationExecution`
+   * row to carry it — `RepairEngine` writes artifacts and this session record,
+   * and nothing else. Without it the `repair-preserved` verdict could never be
+   * reached in production, which review caught.
+   *
+   * `undefined` when no fingerprint was produced or the verdict could not be
+   * formed. Absence means the question was not answered, never that the
+   * repaired run was found distinct.
+   */
+  novelty?: NoveltyVerdictRecord;
   strategyResults: RepairResult[];
 }
 

@@ -27,6 +27,19 @@ import {
 const PROJECT_ID = "repair-lineage-project";
 const PARENT_EXECUTION_ID = "repair-lineage-parent";
 
+/** One design, shared, so every generation below fingerprints identically. */
+const REPAIR_SOURCES = {
+  gameDesign: {
+    gameplay: {
+      mechanics: [{ name: "collect" }],
+      balance: { winCondition: "Collect them all" },
+    },
+  },
+  architecture: {
+    architecture: { services: { SpawnService: "spawns" } },
+  },
+};
+
 const BROKEN_SCRIPTS = [
   {
     path: "ServerScriptService/World.server.lua",
@@ -247,17 +260,7 @@ describe("NOVELTY-1 repair rebuilds the structural fingerprint", () => {
       PARENT_EXECUTION_ID,
       "WORLD_MODEL",
       null,
-      buildWorldModel({
-        gameDesign: {
-          gameplay: {
-            mechanics: [{ name: "collect" }],
-            balance: { winCondition: "Collect them all" },
-          },
-        },
-        architecture: {
-          architecture: { services: { SpawnService: "spawns" } },
-        },
-      }),
+      buildWorldModel(REPAIR_SOURCES),
       { projectId: PROJECT_ID, producer: deterministicProducer("world-model") },
     );
     // The parent's own fingerprint, which correctly says it had no history.
@@ -329,5 +332,103 @@ describe("NOVELTY-1 repair rebuilds the structural fingerprint", () => {
         contentHash: carriedWorld.contentHash,
       },
     ]);
+  }, 20000);
+});
+
+describe("NOVELTY-2 the repaired execution gets a reachable verdict", () => {
+  async function runRepairWithHistory(extraIdenticalPrior: boolean) {
+    const registry = new AgentRegistry();
+    const luaAgent = registry.getAgent("lua_generator");
+    if (!luaAgent) throw new Error("lua_generator agent missing");
+    const playable = await luaAgent.execute({
+      blueprint: { name: "Repair Lineage Game", description: "baseline" },
+      architecture: {},
+      gameplay: {},
+    });
+    luaAgent.setLLM({
+      generate: vi.fn().mockResolvedValue(JSON.stringify(playable.data)),
+    });
+
+    const repository = new InMemoryBlueprintRepository();
+    await seedBlueprint(repository);
+    const store = new ArtifactStore();
+
+    const seedGeneration = async (executionId: string) => {
+      const world = await store.store(
+        executionId,
+        "WORLD_MODEL",
+        null,
+        buildWorldModel(REPAIR_SOURCES),
+        {
+          projectId: PROJECT_ID,
+          producer: deterministicProducer("world-model"),
+        },
+      );
+      await store.store(
+        executionId,
+        "GAME_DNA",
+        null,
+        buildGameDnaReport({
+          dna: buildGameDnaFromStoredWorld(world.content)!,
+          priorsFound: 0,
+          priors: [],
+        }),
+        {
+          projectId: PROJECT_ID,
+          producer: deterministicProducer("game-dna"),
+          dependencies: [ArtifactStore.dependencyOn(world)],
+        },
+      );
+    };
+
+    if (extraIdenticalPrior) await seedGeneration("exec-unrelated-twin");
+
+    await store.store(
+      PARENT_EXECUTION_ID,
+      "LUA_GENERATION",
+      "lua_generator",
+      { scripts: BROKEN_SCRIPTS },
+      { projectId: PROJECT_ID },
+    );
+    await seedGeneration(PARENT_EXECUTION_ID);
+
+    const engine = new RepairEngine(
+      registry,
+      repository,
+      store,
+      new InMemoryRepairSessionStore(),
+    );
+    const session = await engine.run(PROJECT_ID, PARENT_EXECUTION_ID, {
+      maxIterations: 1,
+      targetScore: 95,
+    });
+    return session.history[0];
+  }
+
+  it("records the verdict on the repair session, the only durable record it has", async () => {
+    // `RepairEngine` never writes a `GenerationExecution`, so without this the
+    // `repair-preserved` verdict would exist in code and be unreachable in
+    // production. Review caught exactly that.
+    const record = await runRepairWithHistory(false);
+
+    expect(record?.novelty).toBeDefined();
+    expect(record?.novelty?.verdict).toBe("repair-preserved");
+    expect(record?.novelty?.duplicateOf).toEqual([]);
+    expect(
+      record?.novelty?.repairAncestorMatches.map((m) => m.executionId),
+    ).toEqual([PARENT_EXECUTION_ID]);
+    expect(record?.novelty?.ancestryResolved).toBe(true);
+  }, 20000);
+
+  it("still calls out an unrelated identical prior on the repair path", async () => {
+    const record = await runRepairWithHistory(true);
+
+    expect(record?.novelty?.verdict).toBe("duplicate");
+    expect(record?.novelty?.duplicateOf.map((m) => m.executionId)).toEqual([
+      "exec-unrelated-twin",
+    ]);
+    expect(
+      record?.novelty?.repairAncestorMatches.map((m) => m.executionId),
+    ).toEqual([PARENT_EXECUTION_ID]);
   }, 20000);
 });

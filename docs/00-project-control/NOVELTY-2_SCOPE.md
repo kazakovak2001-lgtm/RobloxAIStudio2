@@ -59,7 +59,8 @@ Four states, not three. Three cannot be told truthfully:
 2. Repair ancestry resolved by walking `LUA_GENERATION` lineage edges across executions, with a cycle guard, never from the execution id.
 3. Duplicate evidence naming the exact prior execution ids and fingerprints that support the verdict, deterministically ordered and deduplicated.
 4. The record surfaced on `GenerationExecution` as one optional additive field, and therefore through the existing status endpoint unchanged.
-5. `NOVELTY-2_PROMOTION_CRITERIA.md`, stating what evidence must exist before any non-zero similarity threshold or blocking gate may be introduced.
+5. The same record on `RepairIterationRecord`, because a repaired execution has no `GenerationExecution` row and would otherwise have no verdict at all.
+6. `NOVELTY-2_PROMOTION_CRITERIA.md`, stating what evidence must exist before any non-zero similarity threshold or blocking gate may be introduced.
 
 ## Out of scope
 
@@ -69,6 +70,14 @@ Four states, not three. Three cannot be told truthfully:
 - Frontend UI. The field is surfaced; presenting it is that repository's work.
 - Rewriting `gameDiversityEngine`, including its restart-volatile history and its silent eight-attempt fallback — still carried from `NOVELTY-1`.
 - `NOVELTY-3` or any later roadmap item.
+
+### What review changed
+
+Two findings, both real.
+
+**`repair-preserved` was unreachable in production.** `RepairEngine` writes artifacts and a `RepairIterationRecord` and never touches `GenerationExecution`, so the only production caller of the derivation was the generation path — where an execution has no repair ancestors by construction. The verdict existed in code and nothing could ever produce it. The repair path now derives and records its own verdict on the session record, which is the durable surface a repaired execution actually has.
+
+**Ancestry read only the first Lua artifact.** `ArtifactStore` permits several `LUA_GENERATION` artifacts under one pipeline id — a re-record produces exactly that — so an edge written by a later artifact was invisible and the repaired run would have been reported as an unrelated duplicate. Every Lua artifact is now scanned, newest first, the same policy the DNA comparison uses for a re-recorded prior.
 
 ## Known limitations
 

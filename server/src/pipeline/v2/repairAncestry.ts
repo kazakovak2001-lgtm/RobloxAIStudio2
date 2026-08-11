@@ -41,18 +41,24 @@ export function resolveRepairAncestry(
   let current = executionId;
 
   for (let depth = 0; depth < MAX_ANCESTRY_DEPTH; depth++) {
-    const lua = store
+    // Every Lua artifact for this execution, newest first. `store` permits
+    // more than one under a single pipeline id — a re-record produces exactly
+    // that — so reading only the first would miss a repair edge written by a
+    // later one and report a repaired run as an unrelated duplicate. Newest
+    // wins, the same policy the DNA comparison uses for a re-recorded prior.
+    const luaArtifacts = store
       .getByPipeline(current)
-      .find((artifact) => artifact.stage === "LUA_GENERATION");
-    if (!lua) {
+      .filter((artifact) => artifact.stage === "LUA_GENERATION")
+      .sort((left, right) => right.createdAt - left.createdAt);
+    if (luaArtifacts.length === 0) {
       // No Lua for this execution at all. Nothing was repaired into it and
       // nothing can be, so the chain ends here and it ended truthfully.
       return { ancestors, resolved: true };
     }
 
-    const parentEdge = (lua.dependencies ?? []).find(
-      (dependency) => dependency.stage === "LUA_GENERATION",
-    );
+    const parentEdge = luaArtifacts
+      .flatMap((artifact) => artifact.dependencies ?? [])
+      .find((dependency) => dependency.stage === "LUA_GENERATION");
     if (!parentEdge) return { ancestors, resolved: true };
 
     const parentLua = store.getById(parentEdge.artifactId);

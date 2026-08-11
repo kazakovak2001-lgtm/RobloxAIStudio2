@@ -549,6 +549,93 @@ describe("NOVELTY-2 repair ancestry", () => {
     expect(verdict.repairAncestorMatches).toEqual([]);
   });
 
+  it("finds the repair edge on a later Lua artifact, not only the first", async () => {
+    // `store` permits several LUA_GENERATION artifacts under one pipeline id,
+    // and a re-record produces exactly that. Reading only the first would miss
+    // an edge written by a later one and report a repaired run as an
+    // unrelated duplicate.
+    const store = new ArtifactStore();
+    await record(store, "exec-parent", racingSources());
+    const parentLua = store
+      .getByPipeline("exec-parent")
+      .find((artifact) => artifact.stage === "LUA_GENERATION")!;
+
+    // A first Lua for the child carrying no lineage at all, then the repaired
+    // one that does.
+    await store.store(
+      "exec-child",
+      "LUA_GENERATION",
+      "lua_generator",
+      { scripts: luaPackage() },
+      { projectId: PROJECT },
+    );
+    await store.store(
+      "exec-child",
+      "LUA_GENERATION",
+      "lua_generator",
+      { scripts: luaPackage() },
+      {
+        projectId: PROJECT,
+        dependencies: [ArtifactStore.dependencyOn(parentLua)],
+      },
+    );
+
+    const ancestry = resolveRepairAncestry(store, "exec-child");
+
+    expect(ancestry.resolved).toBe(true);
+    expect([...ancestry.ancestors]).toEqual(["exec-parent"]);
+  });
+
+  it("takes the newest Lua artifact when two name different parents", async () => {
+    // Only observable when more than one artifact carries an edge, which is
+    // why the previous test could not pin it. Newest wins, the same policy the
+    // DNA comparison uses for a re-recorded prior: the latest describes the
+    // state the execution ended in.
+    const store = new ArtifactStore();
+    await record(store, "exec-older-parent", racingSources());
+    await record(store, "exec-newer-parent", racingSources());
+    const luaOf = (executionId: string) =>
+      store
+        .getByPipeline(executionId)
+        .find((artifact) => artifact.stage === "LUA_GENERATION")!;
+
+    const clock = vi.spyOn(Date, "now");
+    try {
+      clock.mockReturnValue(1_000);
+      await store.store(
+        "exec-child",
+        "LUA_GENERATION",
+        "lua_generator",
+        { scripts: luaPackage() },
+        {
+          projectId: PROJECT,
+          dependencies: [
+            ArtifactStore.dependencyOn(luaOf("exec-older-parent")),
+          ],
+        },
+      );
+      clock.mockReturnValue(2_000);
+      await store.store(
+        "exec-child",
+        "LUA_GENERATION",
+        "lua_generator",
+        { scripts: luaPackage() },
+        {
+          projectId: PROJECT,
+          dependencies: [
+            ArtifactStore.dependencyOn(luaOf("exec-newer-parent")),
+          ],
+        },
+      );
+    } finally {
+      clock.mockRestore();
+    }
+
+    const ancestry = resolveRepairAncestry(store, "exec-child");
+
+    expect([...ancestry.ancestors]).toEqual(["exec-newer-parent"]);
+  });
+
   it("says so when ancestry cannot be established", async () => {
     // A lineage edge naming an artifact this store cannot resolve. There is a
     // parent and nobody can say which, which is not the same as no parent.

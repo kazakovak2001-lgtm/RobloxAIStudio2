@@ -20,6 +20,9 @@ import {
   type PipelineArtifact,
 } from "../pipeline/v2";
 import { reviewLuaSecurity } from "../validation/luaSecurityReview";
+import { resolveRepairAncestry } from "../pipeline/v2";
+import { deriveNoveltyVerdict } from "../validation/noveltyVerdict";
+import type { NoveltyVerdictRecord } from "../types/novelty";
 import {
   buildGameDnaFromStoredWorld,
   buildGameDnaReport,
@@ -223,7 +226,7 @@ export class RepairEngine {
         (record) => record.parentExecutionId === executionId,
       ).length;
       const newExecutionId = `${executionId}-repair-${priorAttemptsForParent + 1}`;
-      await this.persistRepairedExecution(
+      const novelty = await this.persistRepairedExecution(
         executionId,
         newExecutionId,
         projectId,
@@ -252,6 +255,9 @@ export class RepairEngine {
         timestamp: Date.now(),
         newExecutionId,
         parentExecutionId: executionId,
+        // NOVELTY-2. The repaired execution's own verdict, which knows this
+        // repair's parent is an ancestor rather than an unrelated repeat.
+        ...(novelty ? { novelty } : {}),
         strategyResults: results,
       };
       session.history.push(record);
@@ -308,7 +314,7 @@ export class RepairEngine {
     newExecutionId: string,
     projectId: string,
     repairedScripts: Awaited<ReturnType<typeof assembleRepairInput>>["scripts"],
-  ): Promise<void> {
+  ): Promise<NoveltyVerdictRecord | undefined> {
     const parentArtifacts = this.artifactStore.getByPipeline(parentExecutionId);
     const parentLua = parentArtifacts.find(
       (artifact) => artifact.stage === "LUA_GENERATION",
@@ -373,7 +379,7 @@ export class RepairEngine {
       projectId,
       repairedLua,
     );
-    await this.storeRepairedGameDna(newExecutionId, projectId, carriedWorld);
+    return this.storeRepairedGameDna(newExecutionId, projectId, carriedWorld);
   }
 
   /**
@@ -394,11 +400,11 @@ export class RepairEngine {
     newExecutionId: string,
     projectId: string,
     carriedWorld: PipelineArtifact | null,
-  ): Promise<void> {
-    if (!carriedWorld) return;
+  ): Promise<NoveltyVerdictRecord | undefined> {
+    if (!carriedWorld) return undefined;
 
     const dna = buildGameDnaFromStoredWorld(carriedWorld.content);
-    if (!dna) return;
+    if (!dna) return undefined;
 
     const priorsFound = new Set(
       this.artifactStore
@@ -435,17 +441,23 @@ export class RepairEngine {
       })
       .filter((prior): prior is NonNullable<typeof prior> => prior !== null);
 
-    await this.artifactStore.store(
-      newExecutionId,
-      "GAME_DNA",
-      null,
-      buildGameDnaReport({ dna, priorsFound, priors }),
-      {
-        projectId,
-        producer: deterministicProducer("game-dna"),
-        dependencies: [ArtifactStoreClass.dependencyOn(carriedWorld)],
-      },
-    );
+    const report = buildGameDnaReport({ dna, priorsFound, priors });
+    await this.artifactStore.store(newExecutionId, "GAME_DNA", null, report, {
+      projectId,
+      producer: deterministicProducer("game-dna"),
+      dependencies: [ArtifactStoreClass.dependencyOn(carriedWorld)],
+    });
+
+    // NOVELTY-2. Derived after the repaired Lua is stored, so the ancestry
+    // walk has the lineage edge to follow. A repaired execution has no
+    // `GenerationExecution` row, so without this the `repair-preserved`
+    // verdict would exist in code and be unreachable in production.
+    const ancestry = resolveRepairAncestry(this.artifactStore, newExecutionId);
+    return deriveNoveltyVerdict({
+      report,
+      ancestors: ancestry.ancestors,
+      ancestryResolved: ancestry.resolved,
+    });
   }
 
   /** Re-review the repaired Lua so no report outlives the code it describes. */
