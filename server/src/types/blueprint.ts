@@ -252,6 +252,19 @@ export interface GenerationExecution {
    * what ties an artifact set to the exact set of stages that produced it.
    */
   pipeline_version?: number;
+  /**
+   * NOVELTY-2. Whether this generation repeats a structure the project has
+   * produced before, and the evidence for that answer.
+   *
+   * `undefined` on executions recorded before this existed, and on any run
+   * that produced no `GAME_DNA` artifact. Absence means the question was never
+   * asked — it is not a `distinct` verdict, and must never be read as one.
+   *
+   * Advisory. Nothing blocks, retries or regenerates on it, and only exact
+   * fingerprint equality counts as a repeat. See
+   * `docs/00-project-control/NOVELTY-2_PROMOTION_CRITERIA.md`.
+   */
+  novelty?: import("./novelty").NoveltyVerdictRecord;
 }
 
 export type CreateBlueprintInput = Omit<

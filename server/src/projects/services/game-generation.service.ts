@@ -17,7 +17,9 @@ import { getAgentDefinition } from "../../agents/contract/agentContract";
 import { ExecutionQueue } from "../../execution/executionQueue";
 import { PlannerEngine } from "../../planning/core/PlannerEngine";
 import { PlanExecutor } from "../../planning/execution/PlanExecutor";
-import { ArtifactStore } from "../../pipeline/v2";
+import { ArtifactStore, resolveRepairAncestry } from "../../pipeline/v2";
+import { deriveNoveltyVerdict } from "../../validation/noveltyVerdict";
+import type { GameDnaReport } from "../../validation/gameDna";
 import { GenerationArtifactRecorder } from "../../studio/artifacts/GenerationArtifactRecorder";
 import { getConfiguredStorageProvider } from "../../platform/storage/StorageFactory";
 import { GenerationOutcomeCoordinator } from "../../platform/projects/ProjectLifecycleCoordinator";
@@ -43,6 +45,7 @@ export class GameGenerationService {
   private events: PipelineEventEmitter;
   private validator: BlueprintValidator;
   private artifactRecorder: GenerationArtifactRecorder;
+  private artifactStore: ArtifactStore;
   private outcomeCoordinator?: GenerationOutcomeCoordinator;
   private providerInfo: GenerationProviderInfo;
 
@@ -64,6 +67,7 @@ export class GameGenerationService {
     this.events = events;
     this.validator = new BlueprintValidator();
     this.agentRegistry = agentRegistry ?? new AgentRegistry();
+    this.artifactStore = artifactStore;
     this.artifactRecorder = new GenerationArtifactRecorder(artifactStore);
     this.outcomeCoordinator = outcomeCoordinator;
   }
@@ -214,7 +218,7 @@ export class GameGenerationService {
             // ARTIFACT-CONTRACT-2. Ownership comes from the blueprint the
             // server already resolved, never from generated content and never
             // from the request.
-            await this.artifactRecorder.record(
+            const recordedArtifacts = await this.artifactRecorder.record(
               execution.id,
               result.graph.getAllNodes(),
               enrichedBlueprint.project_id,
@@ -265,6 +269,7 @@ export class GameGenerationService {
               total_duration_ms: result.totalDurationMs,
               ...pipelineProvenance,
               ...this.resolveProvenance(result.graph.getAllNodes()),
+              ...this.resolveNovelty(execution.id, recordedArtifacts),
             });
           } catch (err) {
             console.error(
@@ -354,6 +359,47 @@ export class GameGenerationService {
         : {}),
       ...(this.providerInfo.model ? { ai_model: this.providerInfo.model } : {}),
     };
+  }
+
+  /**
+   * NOVELTY-2. Turn this run's structural evidence into one verdict.
+   *
+   * Returns nothing at all when no `GAME_DNA` artifact was recorded — a run
+   * that produced no fingerprint has not been found distinct, it has not been
+   * asked, and an absent field says that where a `distinct` verdict would lie.
+   *
+   * Never throws. The verdict is advisory, and a generation that already
+   * passed deterministic validation must not fail because a judgement about
+   * its structure could not be formed.
+   */
+  private resolveNovelty(
+    executionId: string,
+    artifacts: readonly { stage: string; content: unknown }[],
+  ): Pick<GenerationExecution, "novelty"> {
+    try {
+      const dna = artifacts.find((artifact) => artifact.stage === "GAME_DNA");
+      if (!dna) return {};
+
+      const report = dna.content as GameDnaReport;
+      if (!report || typeof report.fingerprint !== "string") return {};
+
+      // Ancestry from durable lineage, never from the execution id: a
+      // repaired run legitimately shares its parent's structure, and reading
+      // the `-repair-` naming convention would make that judgement depend on
+      // a string nothing enforces.
+      const ancestry = resolveRepairAncestry(this.artifactStore, executionId);
+
+      return {
+        novelty: deriveNoveltyVerdict({
+          report,
+          ancestors: ancestry.ancestors,
+          ancestryResolved: ancestry.resolved,
+        }),
+      };
+    } catch {
+      // No verdict rather than a guessed one.
+      return {};
+    }
   }
 
   private async commitExecutionOutcome(
