@@ -97,6 +97,7 @@ docs/00-project-control/DATA-202_ROLE_MUTATION_SLICE.md
 docs/00-project-control/DECISION_LOG.md
 docs/00-project-control/DOC-202A_ROADMAP_AUTHORITY_RECONCILIATION.md
 docs/00-project-control/FRONTEND_CUTOVER.md
+docs/00-project-control/NOVELTY-1_SCOPE.md
 docs/00-project-control/ROADMAP-EXTENSION-1_STRATEGIC_DIRECTION.md
 docs/00-project-control/ROADMAP-RECONCILIATION-1_RESULT.md
 docs/00-project-control/ROADMAP_STATUS.md
@@ -534,6 +535,7 @@ server/src/__tests__/generation-provenance.test.ts
 server/src/__tests__/harden2a.auth-contract.test.ts
 server/src/__tests__/identityAccess.test.ts
 server/src/__tests__/integration.test.ts
+server/src/__tests__/novelty1.gameDna.test.ts
 server/src/__tests__/performance.test.ts
 server/src/__tests__/persistence.test.ts
 server/src/__tests__/pipeline1a.plan-definition.test.ts
@@ -1232,6 +1234,7 @@ server/src/ui-gen/types.ts
 server/src/validation/__tests__/commitValidator.test.ts
 server/src/validation/__tests__/luaSecurityReview.test.ts
 server/src/validation/commitValidator.ts
+server/src/validation/gameDna.ts
 server/src/validation/generationValidation.ts
 server/src/validation/luaSecurityReview.ts
 server/src/validation/worldCrossValidation.ts

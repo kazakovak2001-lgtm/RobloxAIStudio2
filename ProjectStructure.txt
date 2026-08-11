@@ -128,6 +128,7 @@
 │   │   │   └── 2026-07-24-core-1b-durable-runtime.md
 │   │   ├── DOC-202A_ROADMAP_AUTHORITY_RECONCILIATION.md
 │   │   ├── FRONTEND_CUTOVER.md
+│   │   ├── NOVELTY-1_SCOPE.md
 │   │   ├── ROADMAP_STATUS.md
 │   │   ├── ROADMAP-EXTENSION-1_STRATEGIC_DIRECTION.md
 │   │   ├── ROADMAP-RECONCILIATION-1_RESULT.md
@@ -624,6 +625,7 @@
 │   │   │   ├── harden2a.auth-contract.test.ts
 │   │   │   ├── identityAccess.test.ts
 │   │   │   ├── integration.test.ts
+│   │   │   ├── novelty1.gameDna.test.ts
 │   │   │   ├── performance.test.ts
 │   │   │   ├── persistence.test.ts
 │   │   │   ├── pipeline1a.plan-definition.test.ts
@@ -1506,6 +1508,7 @@
 │   │   │   │   ├── commitValidator.test.ts
 │   │   │   │   └── luaSecurityReview.test.ts
 │   │   │   ├── commitValidator.ts
+│   │   │   ├── gameDna.ts
 │   │   │   ├── generationValidation.ts
 │   │   │   ├── luaSecurityReview.ts
 │   │   │   ├── worldCrossValidation.ts

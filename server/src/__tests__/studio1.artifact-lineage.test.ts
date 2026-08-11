@@ -102,6 +102,7 @@ describe("STUDIO-1a canonical artifact lineage", () => {
       "SECURITY_REVIEW",
       "EXPORT",
       "WORLD_MODEL",
+      "GAME_DNA",
       "VALIDATION",
     ]);
     const review = recorded.find((a) => a.stage === "SECURITY_REVIEW");
@@ -111,7 +112,7 @@ describe("STUDIO-1a canonical artifact lineage", () => {
       recorded.every((artifact) => artifact.pipelineId === executionId),
     ).toBe(true);
     expect(recorded[1]?.content).toEqual(luaOutput);
-    expect(store.count).toBe(6);
+    expect(store.count).toBe(7);
   });
 
   it("normalizes the real LuaGeneratorAgent output into Studio scripts", async () => {
@@ -305,11 +306,12 @@ describe("STUDIO-1a canonical artifact lineage", () => {
     const storeAfterRestart = new ArtifactStore(storage);
     const restored = storeAfterRestart.getByPipeline(executionId);
 
-    // Lua, its security review, the export manifest, the world model and the
-    // validation report all survive restart.
-    expect(restored).toHaveLength(5);
+    // Lua, its security review, the export manifest, the world model, its
+    // structural fingerprint and the validation report all survive restart.
+    expect(restored).toHaveLength(6);
     expect(restored.map((a) => a.stage)).toContain("VALIDATION");
     expect(restored.map((a) => a.stage)).toContain("SECURITY_REVIEW");
+    expect(restored.map((a) => a.stage)).toContain("GAME_DNA");
     expect(storeAfterRestart.getById(luaArtifact!.id)?.reviewStatus).toBe(
       "approved",
     );
@@ -317,25 +319,26 @@ describe("STUDIO-1a canonical artifact lineage", () => {
       package: "reviewed",
       artifactCount: 1,
     });
-    // The security review and the validation report are both recorded
-    // unreviewed, so an execution is no longer all-approved until someone
-    // approves them. Truthful, and inert: nothing gates Studio delivery on
-    // this summary today.
+    // The security review, the structural fingerprint and the validation
+    // report are all recorded unreviewed, so an execution is no longer
+    // all-approved until someone approves them. Truthful, and inert: nothing
+    // gates Studio delivery on this summary today.
     expect(storeAfterRestart.getReviewSummary(executionId)).toMatchObject({
-      total: 5,
+      total: 6,
       approved: 1,
       edited: 1,
-      pending: 3,
+      pending: 4,
       allApproved: false,
     });
 
     const syncManager = new ProjectSyncManager(storeAfterRestart);
     const snapshot = syncManager.getProjectSnapshot(executionId);
     expect(snapshot?.projectId).toBe(executionId);
-    // The security report travels with the export like every other non-Lua
-    // artifact, so a creator can read the findings in Studio. ARTIFACT-1 names
-    // it by stage, so repeated exports replace rather than accumulate it.
-    expect(snapshot?.artifactCount).toBe(5);
+    // The security report and the structural fingerprint travel with the
+    // export like every other non-Lua artifact, so a creator can read them in
+    // Studio. ARTIFACT-1 names them by stage, so repeated exports replace
+    // rather than accumulate them.
+    expect(snapshot?.artifactCount).toBe(6);
     expect(snapshot?.artifacts.map((artifact) => artifact.id)).toEqual(
       expect.arrayContaining([luaArtifact!.id, exportArtifact!.id]),
     );

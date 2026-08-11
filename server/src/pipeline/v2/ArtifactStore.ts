@@ -108,6 +108,7 @@ const STAGE_ARTIFACT_CONFIG: Record<
   LUA_GENERATION: { name: "generatedScripts.lua", type: "lua" },
   UI_GENERATION: { name: "uiLayout.json", type: "ui-layout" },
   WORLD_MODEL: { name: "worldModel.json", type: "json" },
+  GAME_DNA: { name: "gameDna.json", type: "json" },
   VALIDATION: { name: "validationReport.json", type: "json" },
   SECURITY_REVIEW: { name: "securityReport.json", type: "json" },
   OPTIMIZATION: { name: "optimizationReport.json", type: "json" },
@@ -228,6 +229,37 @@ export class ArtifactStore {
       .filter(
         (artifact): artifact is PipelineArtifact => artifact !== undefined,
       );
+  }
+
+  /**
+   * Artifacts of one stage belonging to one project, oldest first.
+   *
+   * NOVELTY-1 needs to compare a generation against the ones before it, and
+   * the mechanism that already existed for that — `gameDiversityEngine` — kept
+   * its history in a module-level `Map`, so after a restart every generation
+   * looked new again. This reads through the storage provider instead.
+   *
+   * Artifacts written before ARTIFACT-CONTRACT-2 carry no `projectId` and are
+   * therefore never returned. That is the truthful result: nothing recorded
+   * which project they belong to, and guessing would be worse than omitting.
+   *
+   * Without a storage provider this sees only what this instance wrote, which
+   * is the same limitation `getByPipeline` has and is why the caller reports
+   * how many prior generations it actually found rather than assuming.
+   */
+  getProjectStageArtifacts(
+    projectId: string,
+    stage: StageName,
+  ): PipelineArtifact[] {
+    const matches = (artifact: PipelineArtifact): boolean =>
+      artifact.projectId === projectId && artifact.stage === stage;
+
+    const storage = this.storage;
+    const found = storage
+      ? storage.list<PipelineArtifact>(ARTIFACT_COLLECTION, matches)
+      : [...this.artifacts.values()].filter(matches);
+
+    return found.sort((left, right) => left.createdAt - right.createdAt);
   }
 
   /**

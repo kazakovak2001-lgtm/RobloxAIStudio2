@@ -108,6 +108,8 @@ export const DETERMINISTIC_PRODUCERS: Readonly<Record<string, number>> = {
   "lua-security-review": 2,
   /** `buildWorldModel` + `buildWorldScene` — the WORLD_MODEL artifact. */
   "world-model": 1,
+  /** `buildGameDna` plus the cross-generation comparison — the GAME_DNA artifact. */
+  "game-dna": 1,
   /** `RepairEngine` carrying an unchanged stage forward to a repaired run. */
   "repair-carry-forward": 1,
   /** `StudioIntegrationManager` adapting a legacy package into artifacts. */
@@ -130,6 +132,7 @@ export const AGENTLESS_STAGE_PRODUCERS: Readonly<
 > = {
   REQUEST: "pipeline-stage-passthrough",
   WORLD_MODEL: "world-model",
+  GAME_DNA: "game-dna",
   SECURITY_REVIEW: "lua-security-review",
   VALIDATION: "generation-validation",
   EXPORT: "pipeline-stage-passthrough",
@@ -154,6 +157,9 @@ export const ARTIFACT_DEPENDENCY_RULES: Readonly<
   LUA_GENERATION: ["ARCHITECTURE", "GAME_DESIGN", "LUA_GENERATION"],
   UI_GENERATION: ["GAME_DESIGN"],
   WORLD_MODEL: ["GAME_DESIGN", "ARCHITECTURE"],
+  // The DNA is a pure function of the world model, so an edge to anything else
+  // would claim a derivation that does not exist.
+  GAME_DNA: ["WORLD_MODEL"],
   SECURITY_REVIEW: ["LUA_GENERATION"],
   VALIDATION: ["LUA_GENERATION", "UI_GENERATION", "WORLD_MODEL"],
 };

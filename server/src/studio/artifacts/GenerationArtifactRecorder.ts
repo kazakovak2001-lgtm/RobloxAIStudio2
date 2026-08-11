@@ -14,7 +14,14 @@ import {
   type PlayableLuaScript,
 } from "../../types/playableLua";
 import { reviewLuaSecurity } from "../../validation/luaSecurityReview";
-import { buildWorldModel } from "../../validation/worldModel";
+import { buildWorldModel, type WorldModel } from "../../validation/worldModel";
+import {
+  buildGameDna,
+  buildGameDnaReport,
+  GAME_DNA_SCHEMA_VERSION,
+  type GameDnaReport,
+  type PriorGeneration,
+} from "../../validation/gameDna";
 import { crossValidateWorld } from "../../validation/worldCrossValidation";
 import { buildWorldScene } from "../../validation/worldSceneBuilder";
 import {
@@ -181,6 +188,18 @@ export class GenerationArtifactRecorder {
       dependsOn: ["GAME_DESIGN", "ARCHITECTURE"],
     });
 
+    // NOVELTY-1. The first thing that compares this generation to the ones
+    // before it rather than to its own spec. Advisory: nothing below reads it
+    // to make a decision, and a generation is never failed or altered for
+    // resembling an earlier one — that is NOVELTY-2's question.
+    pending.push({
+      stage: "GAME_DNA",
+      agent: null,
+      content: this.buildDnaReport(executionId, projectId, world),
+      producer: deterministicProducer("game-dna"),
+      dependsOn: ["WORLD_MODEL"],
+    });
+
     const report = buildGenerationValidationReport({
       luaPresent,
       luaIssues,
@@ -249,6 +268,71 @@ export class GenerationArtifactRecorder {
 
     return recorded;
   }
+
+  /**
+   * Compare this generation's structure against the project's earlier ones.
+   *
+   * Prior generations are read from the artifact store, which reads through
+   * the storage provider, so this survives a restart. The mechanism it sits
+   * beside — `gameDiversityEngine` — keeps its history in a module-level
+   * `Map`, so after a restart every generation looks new to it again; that is
+   * exactly the shape this must not repeat.
+   *
+   * Never throws. The report is advisory, and a generation that already passed
+   * deterministic validation must not be lost because a comparison failed.
+   */
+  private buildDnaReport(
+    executionId: string,
+    projectId: string,
+    world: WorldModel,
+  ): GameDnaReport {
+    const dna = buildGameDna(world);
+    try {
+      // Counted from world models rather than from DNA artifacts: a project
+      // generated before this stage existed has real prior generations and
+      // must report `prior-without-dna`, not read as having no history.
+      const priorsFound = new Set(
+        this.artifactStore
+          .getProjectStageArtifacts(projectId, "WORLD_MODEL")
+          .map((artifact) => artifact.pipelineId)
+          .filter((pipelineId) => pipelineId !== executionId),
+      ).size;
+
+      const priors = this.artifactStore
+        .getProjectStageArtifacts(projectId, "GAME_DNA")
+        .filter((artifact) => artifact.pipelineId !== executionId)
+        .map(readPriorGeneration)
+        .filter((prior): prior is PriorGeneration => prior !== null);
+
+      return buildGameDnaReport({ dna, priorsFound, priors });
+    } catch {
+      // A comparison that could not run reports as one that did not run.
+      return buildGameDnaReport({ dna, priorsFound: 0, priors: [] });
+    }
+  }
+}
+
+/**
+ * Read one prior generation's DNA out of a stored artifact.
+ *
+ * Defensive because the content is durable data that may have been written by
+ * an older schema version. A prior that cannot be read is not silently
+ * dropped: it stays counted in `priorsFound` and is simply not comparable,
+ * which is what keeps `prior-without-dna` reachable rather than decorative.
+ */
+function readPriorGeneration(
+  artifact: PipelineArtifact,
+): PriorGeneration | null {
+  const content = artifact.content as Partial<GameDnaReport> | null;
+  if (!content || typeof content !== "object") return null;
+  if (typeof content.fingerprint !== "string") return null;
+  if (!content.dna || typeof content.dna !== "object") return null;
+  if (content.dna.schemaVersion !== GAME_DNA_SCHEMA_VERSION) return null;
+  return {
+    executionId: artifact.pipelineId,
+    fingerprint: content.fingerprint,
+    dna: content.dna,
+  };
 }
 
 export function getArtifactStage(agent: string): StageName | undefined {
