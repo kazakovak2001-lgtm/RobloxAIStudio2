@@ -24,6 +24,12 @@ derivation, the conflicts found between documents, and the dependency graph are
 recorded in
 [ROADMAP-RECONCILIATION-1_RESULT.md](./ROADMAP-RECONCILIATION-1_RESULT.md).
 
+The seventeen `unscoped` strategic items at the end of the table are the
+long-term direction recorded by
+[ROADMAP-EXTENSION-1](./ROADMAP-EXTENSION-1_STRATEGIC_DIRECTION.md). **None of them
+is started, and none may begin before the stage it sits in.** They are listed so
+the direction is legible, not so it can be picked up out of order.
+
 ## Current delivery sequence
 
 | ID | Delivery item | Priority | Status | Dependency |
@@ -69,6 +75,23 @@ recorded in
 | `STUDIO-2F-E` | Canonical-HUD flip to the delivered GUI tree | Medium | `unscoped` — must be applied atomically | `STUDIO-2F-A` |
 | `AUTONOMY-3A` | Real engine-backed autonomous phases and broader recovery | High | `deferred` | control gates |
 | `COLLAB-3B` | Collaborative development | Medium | `deferred` | preceding gates |
+| `NOVELTY-1` | GameDNA and structural similarity fingerprint | High | `unscoped` — strategic direction, not started — [ROADMAP-EXTENSION-1](./ROADMAP-EXTENSION-1_STRATEGIC_DIRECTION.md) | `WORLD-1A`, `ARTIFACT-CONTRACT-2` |
+| `NOVELTY-2` | Cross-generation novelty gate | Medium | `unscoped` — strategic direction, not started — [ROADMAP-EXTENSION-1](./ROADMAP-EXTENSION-1_STRATEGIC_DIRECTION.md) | `NOVELTY-1` |
+| `PLAYTEST-2` | Visual and input-aware autonomous player | High | `unscoped` — strategic direction, not started — [ROADMAP-EXTENSION-1](./ROADMAP-EXTENSION-1_STRATEGIC_DIRECTION.md) | operator-observed Studio evidence |
+| `PLAYTEST-3` | Runtime server/client and multi-client testing | High | `unscoped` — strategic direction, not started — [ROADMAP-EXTENSION-1](./ROADMAP-EXTENSION-1_STRATEGIC_DIRECTION.md) | `PLAYTEST-2` |
+| `PLAYTEST-4` | Player persona swarm | Medium | `unscoped` — strategic direction, not started — [ROADMAP-EXTENSION-1](./ROADMAP-EXTENSION-1_STRATEGIC_DIRECTION.md) | `PLAYTEST-3` |
+| `ASSET-FABRIC-1` | Unified multimodal asset contract | High | `unscoped` — strategic direction, not started — [ROADMAP-EXTENSION-1](./ROADMAP-EXTENSION-1_STRATEGIC_DIRECTION.md) | `ARTIFACT-CONTRACT-2` |
+| `ASSET-FABRIC-2` | Mesh, texture, rig, animation, VFX and SFX pipeline | Medium | `unscoped` — strategic direction, not started — [ROADMAP-EXTENSION-1](./ROADMAP-EXTENSION-1_STRATEGIC_DIRECTION.md) | `ASSET-FABRIC-1`, `STUDIO-2F-B` |
+| `PLAYER-SIM-1` | Synthetic player population | Medium | `unscoped` — strategic direction, not started — [ROADMAP-EXTENSION-1](./ROADMAP-EXTENSION-1_STRATEGIC_DIRECTION.md) | `PLAYTEST-4` |
+| `ECONOMY-SIM-1` | Synthetic economy simulation | Medium | `unscoped` — strategic direction, not started — [ROADMAP-EXTENSION-1](./ROADMAP-EXTENSION-1_STRATEGIC_DIRECTION.md) | `PLAYER-SIM-1` |
+| `ANALYTICS-2` | Diagnostic analytics | Medium | `unscoped` — strategic direction, not started — [ROADMAP-EXTENSION-1](./ROADMAP-EXTENSION-1_STRATEGIC_DIRECTION.md) | `PLAYTEST-3` |
+| `EXPERIMENT-1` | Controlled AI-assisted experimentation | Medium | `unscoped` — strategic direction, not started — [ROADMAP-EXTENSION-1](./ROADMAP-EXTENSION-1_STRATEGIC_DIRECTION.md) | `ANALYTICS-2`, `NOVELTY-1` |
+| `UI-QUALITY-1` | Responsive, accessibility and localization validation | Medium | `unscoped` — strategic direction, not started — [ROADMAP-EXTENSION-1](./ROADMAP-EXTENSION-1_STRATEGIC_DIRECTION.md) | `STUDIO-2F-A` operator evidence |
+| `PERF-AGENT-1` | Profiler-driven optimization | Medium | `unscoped` — strategic direction, not started — [ROADMAP-EXTENSION-1](./ROADMAP-EXTENSION-1_STRATEGIC_DIRECTION.md) | `PLAYTEST-3` |
+| `STORE-INTEL-1` | Creator Store semantic retrieval and compatibility/security scoring | Medium | `unscoped` — strategic direction, not started — [ROADMAP-EXTENSION-1](./ROADMAP-EXTENSION-1_STRATEGIC_DIRECTION.md) | `ASSET-FABRIC-1`, `SECREVIEW-1` |
+| `MULTIPLACE-1` | Whole-universe and multi-place orchestration | Low | `unscoped` — strategic direction, not started — [ROADMAP-EXTENSION-1](./ROADMAP-EXTENSION-1_STRATEGIC_DIRECTION.md) | `STUDIO-2F-C` |
+| `AGENT-SAFETY-1` | Observe / Plan / Propose / Execute permission model | High | `unscoped` — strategic direction, not started — [ROADMAP-EXTENSION-1](./ROADMAP-EXTENSION-1_STRATEGIC_DIRECTION.md) | `AGENT-CONTRACT-1` |
+| `REMOTE-OPS-1` | Web and mobile agent control plane | Low | `unscoped` — strategic direction, not started — [ROADMAP-EXTENSION-1](./ROADMAP-EXTENSION-1_STRATEGIC_DIRECTION.md) | `AGENT-SAFETY-1` |
 
 ## SECURITY-2G control baseline
 

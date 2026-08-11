@@ -43,8 +43,10 @@
         "a report can name the exact bytes it read instead of being assumed to still apply",
         "`SECURITY-REVIEW-A2` | Hardening of the advisory Luau reviewer | Medium | `complete` — backend PR #216",
         "no `SECURITY-REVIEW-B` promotion criterion is satisfied by it",
-        "only the first means the evidence a slice's own scope\nrequired actually exists",
-        "The pinned pair is level with canonical Frontend `main`"
+        "only the first means the evidence a slice's own scope",
+        "The pinned pair is level with canonical Frontend `main`",
+        "is started, and none may begin before the stage it sits in.",
+        "| `AGENT-SAFETY-1` | Observe / Plan / Propose / Execute permission model | High | `unscoped`"
       ],
       "forbiddenClaims": [
         "PR #162 pending reviewed merge",
@@ -212,6 +214,23 @@
         "rewrites its own findings once they are fixed cannot be audited"
       ],
       "forbiddenClaims": []
+    },
+    {
+      "path": "docs/00-project-control/ROADMAP-EXTENSION-1_STRATEGIC_DIRECTION.md",
+      "owner": "project-control",
+      "rank": 11,
+      "status": "supporting",
+      "requiredClaims": [
+        "ROADMAP-EXTENSION-1",
+        "Nothing here is implemented, scoped, or started.",
+        "PLATFORM FIRST. AGENTS SECOND.",
+        "No template-driven creative engine.",
+        "Everything durable carries identity.",
+        "Unknown is a valid state.",
+        "a scope written before its prerequisites exist would be fiction",
+        "The order is a dependency claim, not a preference."
+      ],
+      "forbiddenClaims": []
     }
   ],
   "historical": [
@@ -271,6 +290,10 @@
     {
       "source": "docs/00-project-control/ROADMAP_STATUS.md",
       "target": "docs/00-project-control/ROADMAP-RECONCILIATION-1_RESULT.md"
+    },
+    {
+      "source": "docs/00-project-control/ROADMAP_STATUS.md",
+      "target": "docs/00-project-control/ROADMAP-EXTENSION-1_STRATEGIC_DIRECTION.md"
     }
   ]
 }
