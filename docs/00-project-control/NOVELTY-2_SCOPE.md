@@ -2,7 +2,7 @@
 
 # NOVELTY-2 — cross-generation novelty verdict
 
-**Status:** Scoped. Backend-only; no Roblox Studio evidence is required or claimed.
+**Status:** ✅ Complete — backend PR #225. Backend-only; no Roblox Studio evidence is required or claimed.
 **Depends on:** `NOVELTY-1` (structural fingerprint and durable comparison). Complete, backend PR #223.
 **Complexity:** M. **Risk:** Low — the verdict is advisory and nothing consumes it to make a decision.
 

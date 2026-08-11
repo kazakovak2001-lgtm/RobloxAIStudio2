@@ -9,7 +9,7 @@ fail-closed guard for subsequent roadmap reconciliations.
 
 - Backend repository: `kazakovak2001-lgtm/RobloxAIStudio2`
 - Backend release branch: `release/cutover-1e-candidate`
-- Current backend runtime release: `514c321d794a66e0f6f5d407ba906ab3e45087d1`
+- Current backend runtime release: `78c316db594795fa361330301e30933cbbcef2c3`
 - SECURITY-2G-F control baseline: `da55f716c798ec8c6a7f25a8e2a3b7b0a2244416`
 - Paired Frontend repository: `kazakovak2001-lgtm/Frontend`
 - Paired Frontend runtime contents: `94736069e049b9614c4012775677c78777f5060d`
@@ -645,6 +645,55 @@ fourth time that shape has appeared despite the comment above the third one
 naming the rule. And a repaired execution would have carried its parent's
 comparison history forward, so a repaired first run would still have claimed
 no prior generations while its own parent sat in the same project.
+
+NOVELTY-2 advances the runtime pair to backend
+`78c316db594795fa361330301e30933cbbcef2c3` and Frontend
+`94736069e049b9614c4012775677c78777f5060d`, through backend pull request
+`#225`. The Frontend identity is unchanged.
+
+`NOVELTY-1` measured the structure of each generation and recorded it durably,
+and nothing read the result. The evidence existed and no consumer could answer
+the question it had been gathered for.
+
+**Only exact fingerprint equality counts as a repeat.** Two generations with
+the same digest have the same canonical structure, so calling them the same is
+a measurement rather than a judgement. Everything below that is a tuned number
+and nothing has measured one, which is why a threshold would repeat the defect
+the platform audit named in `PlaytestEngine`, whose scoring awards five points
+because the source contains `pcall`.
+
+**Four verdicts, because three cannot be told truthfully.** A repaired
+execution carries its parent's design forward unchanged, so its fingerprint is
+legitimately identical: calling that a duplicate asserts an unrelated repeat,
+and calling it distinct asserts that no prior shares its structure when one
+does and the reason is known. `repair-preserved` names it. Repair ancestry is
+resolved by walking artifact lineage rather than by reading the execution id,
+because that id is a naming convention nothing enforces and a renamed scheme
+would silently start reporting repaired runs as unrelated duplicates.
+
+The `NOVELTY-1` outcome travels on the record and is never collapsed into the
+verdict, so an empty project, priors carrying no fingerprint and a failed
+comparison remain three distinguishable facts rather than one.
+
+**The verdict is advisory.** Nothing blocks, warns, retries or regenerates on
+it, a duplicate generation still passes deterministic validation, and a test
+asserts the validation report contains no check that reads it. The eight
+promotion criteria that would have to hold before any non-zero similarity
+threshold or blocking gate may exist are recorded in
+`NOVELTY-2_PROMOTION_CRITERIA.md` and **none of them is satisfied**. That
+document also states that an advisory threshold is not a safe halfway step: a
+number in a durable record is read as a measurement whether or not anything
+acts on it.
+
+Two review findings are worth recording. The `repair-preserved` verdict was
+unreachable in production, because `RepairEngine` writes no
+`GenerationExecution` and the only production caller of the derivation was the
+generation path, where an execution has no repair ancestors by construction —
+and every test drove the ancestry walk directly, so none of them caught that
+the state they were written for could not occur. The repair session record now
+carries its own verdict. Separately, ancestry read only the first Lua artifact
+for an execution while the store permits several, so an edge written by a
+later one was invisible.
 
 ## Scope boundary
 

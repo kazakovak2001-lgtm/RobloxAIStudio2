@@ -4,7 +4,7 @@
 
 **What this document is for.** `NOVELTY-2` reports an advisory verdict and calls two generations the same only when their structural fingerprints are byte-identical. This states what must be true before that may become a *similarity threshold* — a non-zero distance below which two generations are treated as the same — and before any novelty judgement may block, warn, or trigger regeneration.
 
-**Nothing here is satisfied today.** `NOVELTY-1` merged on August 11, 2026 and no deployment has yet produced a fingerprint distribution, so every criterion below is open.
+**All eight criteria are unsatisfied.** `NOVELTY-1` and `NOVELTY-2` both merged on August 11, 2026 and no deployment has yet produced a fingerprint distribution, so no criterion below has any evidence against it. This is a statement of measured fact, not a default: each is open because nothing has been collected, and each may only be closed by evidence recorded here.
 
 ## Why exact identity needs no criteria and similarity does
 
@@ -14,16 +14,18 @@ A distance of `0.18` is a different kind of claim. It says two games are similar
 
 ## Criteria
 
-| # | Criterion | Why it gates |
-|---|---|---|
-| 1 | A **fingerprint distribution over real generations** has been collected, not over test fixtures | The fixtures in this repository were written to exercise the code. What real prompts produce is an empirical question with an empirical answer |
-| 2 | The distribution is **large enough and varied enough to describe**, with the sample size and the spread of prompts recorded | A threshold drawn from a handful of runs of the same prompt describes that prompt, not the platform |
-| 3 | **Human judgements of "too similar" exist for a labelled subset**, gathered independently of the distance the platform computed | Without a ground truth the threshold can only be fitted to itself |
-| 4 | The **false-positive and false-negative rates** of a candidate threshold are measured against that subset | A threshold whose error rates are unknown cannot have its cost weighed against its benefit |
-| 5 | The **components driving a distance are known**, so a finding says which dimension made two games similar | An unexplained score is unactionable, and the current comparison is an unweighted mean chosen precisely because nothing has measured which dimension matters |
-| 6 | The **known structural gaps are closed or explicitly accepted** — the world model's star dependency graph and progression and economy existing only as prose | A threshold over a fingerprint that measures composition but not wiring may be measuring the wrong thing, and that must be a stated decision rather than an oversight |
-| 7 | If the verdict is to **block**, an explicit override and human-approval path exists | A gate with no escape hatch becomes a reason to disable the gate |
-| 8 | The threshold and the blocking policy have their **own contract tests and release evidence** | The policy is itself a control and must be verifiable like every other one |
+| # | Criterion | Status | Evidence recorded | Why it gates |
+|---|---|---|---|---|
+| 1 | A **fingerprint distribution over real generations** has been collected, not over test fixtures | **Unsatisfied** | None | The fixtures in this repository were written to exercise the code. What real prompts produce is an empirical question with an empirical answer |
+| 2 | The distribution is **large enough and varied enough to describe**, with the sample size and the spread of prompts recorded | **Unsatisfied** | None | A threshold drawn from a handful of runs of the same prompt describes that prompt, not the platform |
+| 3 | **Human judgements of "too similar" exist for a labelled subset**, gathered independently of the distance the platform computed | **Unsatisfied** | None | Without a ground truth the threshold can only be fitted to itself |
+| 4 | The **false-positive and false-negative rates** of a candidate threshold are measured against that subset | **Unsatisfied** | None | A threshold whose error rates are unknown cannot have its cost weighed against its benefit |
+| 5 | The **components driving a distance are known**, so a finding says which dimension made two games similar | **Unsatisfied** | None | An unexplained score is unactionable, and the current comparison is an unweighted mean chosen precisely because nothing has measured which dimension matters |
+| 6 | The **known structural gaps are closed or explicitly accepted** — the world model's star dependency graph and progression and economy existing only as prose | **Unsatisfied** | None | A threshold over a fingerprint that measures composition but not wiring may be measuring the wrong thing, and that must be a stated decision rather than an oversight |
+| 7 | If the verdict is to **block**, an explicit override and human-approval path exists | **Unsatisfied** | None | A gate with no escape hatch becomes a reason to disable the gate |
+| 8 | The threshold and the blocking policy have their **own contract tests and release evidence** | **Unsatisfied** | None | The policy is itself a control and must be verifiable like every other one |
+
+Every row reads **Unsatisfied** with no evidence recorded, and that is a measured statement: nothing has been collected against any of them. A row may only change when the evidence that closes it is recorded in this table.
 
 ## What may change without satisfying these
 
