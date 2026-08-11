@@ -12,7 +12,7 @@ fail-closed guard for subsequent roadmap reconciliations.
 - Current backend runtime release: `3e18460c394b03c2d373c7d1a2e9cd0b74b6f984`
 - SECURITY-2G-F control baseline: `da55f716c798ec8c6a7f25a8e2a3b7b0a2244416`
 - Paired Frontend repository: `kazakovak2001-lgtm/Frontend`
-- Paired Frontend runtime contents: `6c1458d836244f2b720f361a78c2ab13f1682f74`
+- Paired Frontend runtime contents: `94736069e049b9614c4012775677c78777f5060d`
 
 ## Authority order
 
@@ -524,6 +524,33 @@ advances toward criterion 3 — three high-severity false negatives were found
 and closed, which is also evidence that the covered pattern set had holes — and
 toward criterion 4, where findings now carry a code, severity, line and
 evidence but still no confidence. Criteria 1, 2, 5, 6 and 7 are untouched.
+
+PAIR-ADVANCE-1 advances the Frontend member of the runtime pair to
+`94736069e049b9614c4012775677c78777f5060d`, through backend pull request
+`#219` and the companion Frontend pull request. The backend member is
+unchanged at `3e18460c394b03c2d373c7d1a2e9cd0b74b6f984`: no backend runtime
+code moved, only which Frontend commit the pair names.
+
+`ROADMAP-RECONCILIATION-1` found the pin four merged Frontend PRs behind
+canonical `main`, and the Frontend's own manifest naming a backend eighty-five
+commits behind. Each repository was current about itself and stale about the
+other.
+
+**The pin was not simply rewritten.** The declared cross-repository contract —
+`server/src/contracts/integration/api.ts` and
+`server/src/contracts/integration/events.ts`, the exact paths the Frontend
+manifest names — is byte-identical across the whole eighty-five-commit span,
+which is why the drift never broke anything and is the evidence that the two
+revisions are compatible in the only dimension the pair declares. Compatibility
+is then _verified_ rather than argued: the four paired CI jobs that consume this
+pin check out Frontend `94736069…` and run the production contract, the composed
+HTTPS release, the PostgreSQL restart E2E and the image/SBOM gate against it.
+
+The two sides are changed in separate pull requests because they are separate
+repositories with separate gates. Neither depends on the other to be correct:
+the backend names a Frontend commit already on `main`, and the Frontend names a
+backend commit already on the release branch. Merging the backend first is
+preferred only because its jobs exercise the fuller composed-release path.
 
 ## Scope boundary
 

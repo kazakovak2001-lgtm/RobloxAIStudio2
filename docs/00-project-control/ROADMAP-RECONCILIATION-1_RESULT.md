@@ -101,7 +101,12 @@ Canonical Frontend is the separate `kazakovak2001-lgtm/Frontend` repository.
 
 `config/cutover/release-baseline.inventory.json` pins Frontend `6c1458d8…`, and backend CI checks out **that exact commit** for the Frontend Production Contract and composed-release jobs. Canonical Frontend `main` is `94736069…`, four merged PRs ahead (#42, #43, #44, #45).
 
-This is not documentation drift. The pinned pair is genuinely verified — against a Frontend that no longer matches `main`. Both facts are true and must be stated together: **the pair is current as a pair, and `main` has moved beyond it.** Advancing the pin requires a paired-release run, which is a separate slice.
+This was not documentation drift. The pinned pair was genuinely verified — against a Frontend that no longer matched `main`. Both facts were true and had to be stated together: **the pair was current as a pair, and `main` had moved beyond it.** `PAIR-ADVANCE-1` closed the gap by advancing the pin and letting the paired CI verify the new pair, rather than by editing the SHA and asserting compatibility. Advancing the pin requires a paired-release run, which is a separate slice.
+
+> **Resolved by `PAIR-ADVANCE-1`.** Conflict 1 is closed on the backend side: the operational pin now names
+> Frontend `94736069…`, and the paired CI verifies against it. Conflict 2 is closed by the companion Frontend
+> pull request. The findings below are left exactly as they were recorded — a reconciliation record that
+> rewrites its own findings once they are fixed cannot be audited.
 
 ### 2. The Frontend's own pin names a backend 85 commits behind — material
 
@@ -157,7 +162,7 @@ Likewise, the remaining `FRONTEND-AUDIT-2` findings could not be inventoried as 
 
 Ordered, each independently reviewable, none requiring Studio.
 
-1. **`PAIR-ADVANCE-1`** — run the paired-release verification against Frontend `94736069…` and advance both pin authorities, resolving conflicts 1 and 2. The highest-value item, because every later claim about the pair inherits this staleness.
+1. ~~**`PAIR-ADVANCE-1`**~~ — **delivered.** The paired-release verification ran against Frontend `94736069…` and both pin authorities were advanced, resolving conflicts 1 and 2.
 2. **`FRONTEND-PIN-1`** — make the Frontend's `paired-release.json` backend SHA reconcile against the backend's release branch in CI, so the two repositories cannot silently disagree again.
 3. **`SECREVIEW-CONFIDENCE-1`** — add a confidence classification to security findings. Promotion criterion 4 names it explicitly, and it is the only one of the seven that is a bounded code change rather than a data-gathering exercise.
 4. **`SECREVIEW-SAMPLE-1`** — measure the reviewer's false-positive rate over real generations, satisfying criteria 1 and 2. Data gathering, no product code.
