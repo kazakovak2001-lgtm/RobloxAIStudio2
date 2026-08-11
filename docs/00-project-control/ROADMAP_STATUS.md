@@ -44,6 +44,17 @@ so they can be picked up out of order.
 
 ## Current delivery sequence
 
+`PLAYTEST-TRUTH-1` is the first item here that did not come from the roadmap. It was
+found by auditing running code once every remaining roadmap item was blocked on either
+the paused operator Studio session or the absent Roblox Open Cloud credential surface.
+It is recorded as a delivery item rather than a strategic extension because it corrects
+behaviour that already ships: `PlaytestEngine` averaged six numbers into an
+`overallScore`, labelled anything above eighty `production_ready`, and one of those six
+added five points when the generated source contained the substring `pcall`. The repair
+loop decided whether to run, and declared itself complete, by comparing that number to a
+target. **It does not complete `PLAYTEST-2`**, which remains the future real runtime,
+input and visual playtest capability and remains blocked on its existing dependencies.
+
 | ID | Delivery item | Priority | Status | Dependency |
 | --- | --- | --- | --- | --- |
 | `CUTOVER-0` | Standalone Frontend governance and CI alignment | Critical | `complete` | — |
@@ -64,6 +75,7 @@ so they can be picked up out of order.
 | `STUDIO-ACCEPT-1` | Real Studio acceptance of canonical artifact delivery | Critical | `complete` | `ROADMAP-AUDIT-1` |
 | `RUNTIME-PLAYTEST-1` | Authoritative Studio-attached Roblox runtime evidence | High | `complete` — [result](./RUNTIME-PLAYTEST-1_RESULT.md), operator-observed evidence | `STUDIO-ACCEPT-1` |
 | `REPAIR-1` | Artifact-applying repair, redelivery, and revalidation | High | `complete` — backend 1A/1B/1C plus the Frontend repair UI (backend PR #185/#187/#189, Frontend PR #38/#40) | `RUNTIME-PLAYTEST-1` |
+| `PLAYTEST-TRUTH-1` | Stop presenting heuristic static analysis as measured playtest quality | High | `scoped` — discovered by runtime audit after the roadmap became blocked; corrects an active untruth and **does not complete `PLAYTEST-2`** — [scope](./PLAYTEST-TRUTH-1_SCOPE.md) | — |
 | `PROVIDER-1A` | Truthful AI provider configuration and generation provenance | High | `complete` — backend PR #193 | `REPAIR-1` |
 | `PROVIDER-1B` | Fallback provenance completeness after a provider call | High | `complete` — backend PR #200 | `PROVIDER-1A` |
 | `ARTIFACT-1` | Deterministic Studio identity for delivered artifacts | Medium | `code_complete_evidence_pending` — backend PR #199 merged; the change is plugin Lua and no Studio-attached run has confirmed it | `STUDIO-ACCEPT-1` |

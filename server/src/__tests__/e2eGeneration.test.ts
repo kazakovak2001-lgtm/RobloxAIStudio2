@@ -107,7 +107,8 @@ describe("E2E: Real Game Generation", () => {
       dependencyGraph: assembly.manifest.dependencyGraph,
     });
 
-    expect(playtestReport.overallScore).toBeGreaterThan(0);
+    expect(playtestReport.evidenceKind).toBe("static-analysis");
+    expect(playtestReport.runtime.status).toBe("not-measured");
     expect(playtestReport.performance.scriptCount).toBe(scripts.totalScripts);
 
     // Step 7: Repair loop — persist the generated artifacts for real, then
@@ -187,7 +188,7 @@ describe("E2E: Real Game Generation", () => {
       { maxIterations: 1, targetScore: 90 },
     );
 
-    expect(repairSession.currentScore).toBeGreaterThan(0);
+    expect(repairSession.findingCounts).toBeDefined();
 
     // Step 8: Knowledge learning
     const knowledge = new KnowledgeEngine();
@@ -199,8 +200,8 @@ describe("E2E: Real Game Generation", () => {
       mechanics: ["crafting", "building", "combat"],
       scriptCount: scripts.totalScripts,
       assetCount: assets.manifest.totalAssets,
-      playtestScore: playtestReport.overallScore,
-      finalScore: repairSession.currentScore,
+      playtestFindings: playtestReport.findingCounts.total,
+      repairFindingsRemaining: repairSession.findingCounts.total,
       repairIterations: repairSession.currentIteration,
       totalTokens: 5000,
       totalCost: 0.01,

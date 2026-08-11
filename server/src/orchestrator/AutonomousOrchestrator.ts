@@ -60,6 +60,15 @@ export interface AutonomousOrchestratorOptions {
 interface CheckpointSnapshot {
   context: AutonomousPhaseContext;
   phases: ExecutionNode[];
+  /**
+   * Quality of the previewed run, when a phase measured one.
+   *
+   * PLAYTEST-TRUTH-1. `null` on every session today. It used to be filled by
+   * the playtest phase, whose number averaged an invented Lua score that
+   * added five points when the source contained `pcall`. Nothing measures
+   * quality now, so nothing sets this, and `null` means unmeasured rather
+   * than zero or failed.
+   */
   qualityScore: number | null;
   genre?: string;
   cost: CostTracker;

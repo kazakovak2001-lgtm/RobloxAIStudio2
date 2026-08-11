@@ -101,6 +101,7 @@ docs/00-project-control/FRONTEND_CUTOVER.md
 docs/00-project-control/NOVELTY-1_SCOPE.md
 docs/00-project-control/NOVELTY-2_PROMOTION_CRITERIA.md
 docs/00-project-control/NOVELTY-2_SCOPE.md
+docs/00-project-control/PLAYTEST-TRUTH-1_SCOPE.md
 docs/00-project-control/ROADMAP-EXTENSION-1_STRATEGIC_DIRECTION.md
 docs/00-project-control/ROADMAP-RECONCILIATION-1_RESULT.md
 docs/00-project-control/ROADMAP_STATUS.md
@@ -546,6 +547,7 @@ server/src/__tests__/persistence.test.ts
 server/src/__tests__/pipeline1a.plan-definition.test.ts
 server/src/__tests__/pipeline1b.validation-report.test.ts
 server/src/__tests__/platform.test.ts
+server/src/__tests__/playtesttruth1.evidence.test.ts
 server/src/__tests__/pluginProtocol.test.ts
 server/src/__tests__/preservationProperty.test.ts
 server/src/__tests__/productLayer.test.ts

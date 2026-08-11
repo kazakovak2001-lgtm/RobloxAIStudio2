@@ -160,9 +160,10 @@ describe("AutonomousOrchestrator bounded preview truthfulness", () => {
     expect(session.resultAuthority).toBe("preview-only");
     expect(session.status).toBe("preview_completed");
     expect(session.currentPhase).toBe("preview_completed");
-    expect(session.qualityScore).toEqual(expect.any(Number));
-    expect(session.qualityScore).toBeGreaterThanOrEqual(0);
-    expect(session.qualityScore).toBeLessThanOrEqual(100);
+    // PLAYTEST-TRUTH-1. No phase measures quality, so the session reports
+    // none. `null` says unmeasured; a number here was the playtest heuristic
+    // wearing a different name.
+    expect(session.qualityScore).toBeNull();
     expect(session.cost).toMatchObject({
       totalTokens: 0,
       totalCost: 0,
@@ -195,10 +196,17 @@ describe("AutonomousOrchestrator bounded preview truthfulness", () => {
       capability: "degraded",
       service: "PlaytestEngine",
     });
+    // PLAYTEST-TRUTH-1. The phase reported an `overallScore` and passed the
+    // same number as its quality score. It now reports counts and states that
+    // runtime was not measured.
     expect(playtest?.output).toMatchObject({
-      overallScore: expect.any(Number),
+      evidenceKind: "static-analysis",
+      runtimeStatus: "not-measured",
       runtimeExecuted: false,
     });
+    expect(playtest?.output).not.toHaveProperty("overallScore");
+    expect(playtest?.output).not.toHaveProperty("classification");
+    expect(playtest?.qualityScore).toBeUndefined();
 
     const repair = session.phases.find((phase) => phase.phase === "repair");
     expect(repair).toMatchObject({
@@ -238,7 +246,7 @@ describe("AutonomousOrchestrator bounded preview truthfulness", () => {
       executionMode: "bounded",
       resultAuthority: "preview-only",
       productionCompleted: false,
-      qualityScore: expect.any(Number),
+      qualityScore: null,
       totalCost: 0,
       unavailablePhases: 2,
     });
@@ -261,7 +269,7 @@ describe("AutonomousOrchestrator bounded preview truthfulness", () => {
     expect(first.genre).toBe("survival");
     expect(second.genre).toBe(first.genre);
     expect(first.qualityScore).toBe(second.qualityScore);
-    expect(first.qualityScore).toEqual(expect.any(Number));
+    expect(first.qualityScore).toBeNull();
     expect(first.cost).toMatchObject({
       totalTokens: 0,
       totalCost: 0,

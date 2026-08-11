@@ -111,7 +111,7 @@ describe("Integration - Successful Pipeline Run", () => {
               executionMode: "bounded",
               resultAuthority: "preview-only",
               productionCompleted: false,
-              qualityScore: expect.any(Number),
+              qualityScore: null,
               totalCost: 0,
             });
           }

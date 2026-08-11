@@ -86,8 +86,13 @@ describe("Integration: Full Pipeline", () => {
       assets: [],
     });
 
-    expect(report.overallScore).toBeGreaterThan(0);
-    expect(report.scores.lua).toBeGreaterThan(50);
+    // PLAYTEST-TRUTH-1. `scores.lua` was 80 plus five for containing `pcall`;
+    // asserting it exceeded 50 asserted nothing. What the engine actually
+    // produces is findings and an explicit not-measured runtime state.
+    expect(report.evidenceKind).toBe("static-analysis");
+    expect(report.runtime.status).toBe("not-measured");
+    expect(report.findingCounts.total).toBe(report.issues.length);
+    expect(report.summary).toContain("not measured");
     expect(report.performance.scriptCount).toBe(scripts.totalScripts);
   });
 
@@ -145,7 +150,14 @@ describe("Integration: Full Pipeline", () => {
     });
 
     expect(session.status).not.toBe("running");
-    expect(session.currentScore).toBeGreaterThan(0);
+    // Findings, not a grade. A session records what remains outstanding.
+    expect(session.findingCounts.total).toBe(
+      session.findingCounts.critical +
+        session.findingCounts.warning +
+        session.findingCounts.suggestion +
+        session.findingCounts.optimization,
+    );
+    expect(session.currentScore).toBeUndefined();
     expect(session.totalRepairs).toBeGreaterThanOrEqual(0);
   });
 

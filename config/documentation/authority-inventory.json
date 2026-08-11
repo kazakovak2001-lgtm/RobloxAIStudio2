@@ -56,7 +56,10 @@
         "`blocked` — its contract dependency is met, and it remains blocked on the Roblox Open Cloud credential surface that does not exist",
         "The twelve `unscoped` strategic items",
         "split four `complete`, one `blocked` and twelve `unscoped`",
-        "`purpose` is populated for model entries from the producer's `description`"
+        "`purpose` is populated for model entries from the producer's `description`",
+        "| `PLAYTEST-TRUTH-1` | Stop presenting heuristic static analysis as measured playtest quality | High | `scoped`",
+        "It does not complete `PLAYTEST-2`",
+        "the first item here that did not come from the roadmap"
       ],
       "forbiddenClaims": [
         "PR #162 pending reviewed merge",
@@ -345,6 +348,21 @@
         "`purpose` is populated for models only; `required` is unpopulated everywhere."
       ],
       "forbiddenClaims": ["`purpose` and `required` are unpopulated."]
+    },
+    {
+      "path": "docs/00-project-control/PLAYTEST-TRUTH-1_SCOPE.md",
+      "owner": "project-control",
+      "rank": 17,
+      "status": "supporting",
+      "requiredClaims": [
+        "PLAYTEST-TRUTH-1",
+        "This does not complete `PLAYTEST-2`.",
+        "Entirely invented. Reads no findings at all",
+        "A generated game is called production-ready because its source contains a `pcall` and a block comment.",
+        "The attempt ceiling is unchanged and independent.",
+        "legacy heuristic values, never measurements"
+      ],
+      "forbiddenClaims": []
     }
   ],
   "historical": [
@@ -428,6 +446,10 @@
     {
       "source": "docs/00-project-control/ROADMAP_STATUS.md",
       "target": "docs/00-project-control/ASSET-FABRIC-1_SCOPE.md"
+    },
+    {
+      "source": "docs/00-project-control/ROADMAP_STATUS.md",
+      "target": "docs/00-project-control/PLAYTEST-TRUTH-1_SCOPE.md"
     }
   ]
 }

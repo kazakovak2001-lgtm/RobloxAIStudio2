@@ -19,6 +19,17 @@ export type RepairDecision = "repair" | "regenerate" | "ignore" | "escalate";
 
 import type { NoveltyVerdictRecord } from "../types/novelty";
 
+import type { FindingCounts } from "../playtest";
+
+/** No findings at all — the starting point before anything has been analysed. */
+export const EMPTY_FINDING_COUNTS: FindingCounts = {
+  critical: 0,
+  warning: 0,
+  suggestion: 0,
+  optimization: 0,
+  total: 0,
+};
+
 export interface RepairPlanItem {
   issueId: string;
   severity: string;
@@ -36,8 +47,8 @@ export interface RepairPlan {
   projectId: string;
   iteration: number;
   items: RepairPlanItem[];
-  targetScore: number;
-  currentScore: number;
+  /** Findings the plan was built from. Counts, never a grade. */
+  findingCounts: FindingCounts;
   createdAt: number;
 }
 
@@ -48,11 +59,30 @@ export interface RepairResult {
   description: string;
 }
 
+/**
+ * Version of the repair evidence contract a record was written under.
+ *
+ * PLAYTEST-TRUTH-1. A record without it predates this slice and carries
+ * `scoreBefore` and `scoreAfter` from the old heuristic. Those numbers are
+ * readable and are never a measurement of anything.
+ */
+export const REPAIR_EVIDENCE_VERSION = 2;
+
 export interface RepairIterationRecord {
   iteration: number;
   changedArtifacts: string[];
-  scoreBefore: number;
-  scoreAfter: number;
+  /**
+   * Legacy heuristic totals, present only on records written before
+   * PLAYTEST-TRUTH-1. They came from an average that added five points when
+   * the source contained `pcall`, so a repair could appear to improve a game
+   * without resolving a single finding. **Never read as a measurement, and
+   * never compared to decide anything.**
+   */
+  scoreBefore?: number;
+  scoreAfter?: number;
+  /** Findings before and after this iteration. Absent on legacy records. */
+  findingsBefore?: FindingCounts;
+  findingsAfter?: FindingCounts;
   duration: number;
   /** Not tracked yet — the LLM provider interface surfaces no usage metadata. */
   tokenUsage: number;
@@ -86,8 +116,18 @@ export interface RepairSessionState {
   status: "running" | "completed" | "stopped" | "timeout";
   currentIteration: number;
   maxIterations: number;
-  targetScore: number;
-  currentScore: number;
+  /**
+   * Legacy heuristic values, present only on sessions written before
+   * PLAYTEST-TRUTH-1. `targetScore` was compared against `currentScore` to
+   * decide whether to repair and to declare a session complete; neither
+   * measured anything. Kept readable, never written by new sessions.
+   */
+  targetScore?: number;
+  currentScore?: number;
+  /** Findings outstanding, which is what new sessions decide on. */
+  findingCounts: FindingCounts;
+  /** Absent on legacy sessions, which is how the two are told apart. */
+  evidenceVersion?: number;
   history: RepairIterationRecord[];
   /** Absent on sessions persisted before REPAIR-1C — always read via `?? []`. */
   deliveries?: RepairDeliveryRecord[];
@@ -110,13 +150,21 @@ export interface RepairDeliveryRecord {
 }
 
 export interface RepairConfig {
+  /** Hard ceiling on iterations. Independent of any quality judgement. */
   maxIterations: number;
-  targetScore: number;
+  /**
+   * Accepted and ignored.
+   *
+   * PLAYTEST-TRUTH-1 removed the comparison this drove. Callers already pass
+   * it — the repair routes and existing tests — so it stays accepted rather
+   * than breaking them, and it decides nothing. A session stops on findings,
+   * the attempt ceiling, or the timeout.
+   */
+  targetScore?: number;
   timeoutMs: number;
 }
 
 export const DEFAULT_REPAIR_CONFIG: RepairConfig = {
   maxIterations: 5,
-  targetScore: 80,
   timeoutMs: 120_000,
 };

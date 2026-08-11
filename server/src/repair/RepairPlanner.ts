@@ -14,16 +14,12 @@ export class RepairPlanner {
   /**
    * Create a repair plan from a playtest report.
    */
-  plan(
-    report: PlaytestReport,
-    iteration: number,
-    targetScore: number,
-  ): RepairPlan {
+  plan(report: PlaytestReport, iteration: number): RepairPlan {
     const items: RepairPlanItem[] = [];
 
     for (const issue of report.issues) {
       const strategy = this.selectStrategy(issue);
-      const decision = this.decide(issue, report.overallScore, targetScore);
+      const decision = this.decide(issue);
 
       items.push({
         issueId: issue.id,
@@ -45,8 +41,7 @@ export class RepairPlanner {
       projectId: report.projectId,
       iteration,
       items,
-      targetScore,
-      currentScore: report.overallScore,
+      findingCounts: report.findingCounts,
       createdAt: Date.now(),
     };
   }
@@ -72,25 +67,22 @@ export class RepairPlanner {
     return "regenerate_script";
   }
 
-  private decide(
-    issue: PlaytestIssue,
-    currentScore: number,
-    targetScore: number,
-  ): RepairDecision {
-    // Critical issues always get repaired
-    if (issue.severity === "critical") return "repair";
-
-    // If we're close to target, skip low-priority items
-    if (currentScore >= targetScore - 5 && issue.severity === "suggestion")
-      return "ignore";
-
-    // Warnings get repaired
-    if (issue.severity === "warning") return "repair";
-
-    // Suggestions and optimizations depend on score gap
-    if (targetScore - currentScore > 15) return "repair";
-
-    return "ignore";
+  /**
+   * What to do about one finding, decided by the finding alone.
+   *
+   * PLAYTEST-TRUTH-1. This used to read the heuristic total: a suggestion was
+   * dropped when the score sat within five of the target, and suggestions were
+   * repaired when the gap exceeded fifteen. Both thresholds ranged over a
+   * number that counted `pcall` occurrences, so what got repaired depended on
+   * whether the generated source happened to contain a substring.
+   *
+   * Severity is the only signal here that means anything, so it is the only
+   * one used. Suggestions and optimizations are advice and are not repaired.
+   */
+  private decide(issue: PlaytestIssue): RepairDecision {
+    return issue.severity === "critical" || issue.severity === "warning"
+      ? "repair"
+      : "ignore";
   }
 
   private estimateImpact(issue: PlaytestIssue): number {
