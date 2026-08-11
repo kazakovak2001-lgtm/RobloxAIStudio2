@@ -14,6 +14,10 @@ import {
   type PlayableLuaScript,
 } from "../../types/playableLua";
 import { reviewLuaSecurity } from "../../validation/luaSecurityReview";
+import {
+  buildAssetPlan,
+  type AssetPlanResult,
+} from "../../validation/assetPlan";
 import { buildWorldModel, type WorldModel } from "../../validation/worldModel";
 import {
   buildGameDna,
@@ -86,6 +90,10 @@ export class GenerationArtifactRecorder {
     let luaPresent = false;
     let luaIssues: readonly string[] = [];
     let ui: UIMaterializationOutcome = { status: "not-attempted" };
+    // Undefined until the asset stage produces something. A run whose
+    // asset stage never ran has no plan to judge, which the report states
+    // rather than reporting as a clean one.
+    let assets: AssetPlanResult | undefined;
     let luaScripts: readonly PlayableLuaScript[] = [];
     let gameDesign: unknown;
     let architecture: unknown;
@@ -150,6 +158,22 @@ export class GenerationArtifactRecorder {
         continue;
       }
 
+      if (stage === "ASSET_PLANNING") {
+        // ASSET-FABRIC-1. The typed plan is stored when the output reads as
+        // one, the same way STUDIO-2F-A stores the built UI tree. When it does
+        // not, the original output is stored exactly as before with no
+        // `schemaVersion`, so a malformed plan is preserved for inspection
+        // rather than replaced by a tidier record of nothing.
+        assets = buildAssetPlan(node.output);
+        pending.push({
+          stage,
+          agent: node.agent,
+          content: assets.outcome === "planned" ? assets.plan : node.output,
+          dependsOn: ["GAME_DESIGN"],
+        });
+        continue;
+      }
+
       if (stage === "UI_GENERATION") {
         try {
           const built = buildUIArtifactContent(node.output);
@@ -208,6 +232,7 @@ export class GenerationArtifactRecorder {
         luaScripts.length > 0
           ? crossValidateWorld(world, luaScripts)
           : undefined,
+      assets,
     });
 
     if (!report.passed) {

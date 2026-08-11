@@ -154,6 +154,9 @@ export const ARTIFACT_DEPENDENCY_RULES: Readonly<
   Partial<Record<StageName, readonly StageName[]>>
 > = {
   ARCHITECTURE: ["GAME_DESIGN"],
+  // `pipelineDefinition` declares asset_planner with deps ["game_designer"],
+  // so the plan derives from the design and from nothing else.
+  ASSET_PLANNING: ["GAME_DESIGN"],
   LUA_GENERATION: ["ARCHITECTURE", "GAME_DESIGN", "LUA_GENERATION"],
   UI_GENERATION: ["GAME_DESIGN"],
   WORLD_MODEL: ["GAME_DESIGN", "ARCHITECTURE"],
@@ -183,6 +186,9 @@ export const REQUIRED_ARTIFACT_DEPENDENCIES: Readonly<
   Partial<Record<StageName, StageName>>
 > = {
   GAME_DNA: "WORLD_MODEL",
+  // ASSET-FABRIC-1. A plan that names no design is a plan for nothing in
+  // particular, and the stage cannot run without one.
+  ASSET_PLANNING: "GAME_DESIGN",
 };
 
 /**
