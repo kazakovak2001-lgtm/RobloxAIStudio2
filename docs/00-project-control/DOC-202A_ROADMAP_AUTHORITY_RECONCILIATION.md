@@ -711,9 +711,9 @@ typed model. Assets had neither while shipping on every run.
 the entry rather than implied by the array it sat in. Ids are unique across
 the whole plan, and an animation's model is referenced by id rather than by
 the display name the producer used, because a reference that depends on a
-label is not a reference. `purpose` and `required` are representable and left
-unpopulated: only models carry a description today and nothing signals
-required-ness at all, so filling either in would have been fabrication.
+label is not a reference. `purpose` and `required` are recorded honestly rather
+than filled in. `purpose` is populated for model entries from the producer's `description` and is absent for textures, sounds and animations, whose current producer shape exposes no equivalent field. `required` is representable and unpopulated for every kind, because nothing the producer emits signals required-ness at all. Filling either in where the
+producer says nothing would have been fabrication.
 
 **Complete to the contract only.** Nothing resolves, uploads or materializes
 an asset. `source: "marketplace"` is recorded as a claim with no search or

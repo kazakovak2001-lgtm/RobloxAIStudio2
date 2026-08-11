@@ -91,7 +91,7 @@ Seven findings, all valid, and one of them meant the contract was unreachable in
 
 Carried forward explicitly, because each is a thing the contract can express and the platform does not yet state:
 
-- **`purpose` and `required` are unpopulated.** Only models carry a description, and nothing the producer emits signals required-ness. The fields exist so a producer can state them; nothing does yet.
+- **`purpose` is populated for models only; `required` is unpopulated everywhere.** `purpose` is populated for model entries from the producer's `description` and is absent for textures, sounds and animations, whose current producer shape exposes no equivalent field. `required` is representable and unpopulated for every kind, because nothing the producer emits signals required-ness at all. Both fields exist so a producer can state them; only the model description does today.
 - **`source: "marketplace"` is a claim with nothing behind it.** No search, no resolution, no upload. The contract records the claim as a claim.
 - **Rigs and VFX are not covered**, because nothing produces them. The roadmap entry names them for `ASSET-FABRIC-2`.
 - **Cross-artifact checks are limited to references within the plan.** Whether a planned asset corresponds to something the game design named is not checkable, because the design contract exposes no asset vocabulary, and inventing that check would assert a comparison nothing can make.

@@ -53,8 +53,10 @@
         "carries an explicit verdict **when the run produced enough evidence to form one**",
         "Absence means the question was not resolved, never that the generation was found `distinct`.",
         "| `ASSET-FABRIC-1` | Unified multimodal asset contract | High | `complete`",
-        "The thirteen `unscoped` strategic items",
-        "`blocked` — its contract dependency is met, and it remains blocked on the Roblox Open Cloud credential surface that does not exist"
+        "`blocked` — its contract dependency is met, and it remains blocked on the Roblox Open Cloud credential surface that does not exist",
+        "The twelve `unscoped` strategic items",
+        "split four `complete`, one `blocked` and twelve `unscoped`",
+        "`purpose` is populated for model entries from the producer's `description`"
       ],
       "forbiddenClaims": [
         "PR #162 pending reviewed merge",
@@ -66,7 +68,9 @@
         "release/cutover-1e-candidate@f1adac4b9312aa987502c43fd5e32fe47f535ae4",
         "release/cutover-1e-candidate@514c321d794a66e0f6f5d407ba906ab3e45087d1",
         "Each generation now carries an explicit verdict",
-        "release/cutover-1e-candidate@78c316db594795fa361330301e30933cbbcef2c3"
+        "release/cutover-1e-candidate@78c316db594795fa361330301e30933cbbcef2c3",
+        "The thirteen `unscoped` strategic items",
+        "`purpose` and `required` are representable and deliberately unpopulated"
       ]
     },
     {
@@ -97,12 +101,14 @@
         "`NOVELTY-2` complete (backend PR #225",
         "carries an explicit verdict **when the run produced enough evidence to form one**",
         "Absence means the question was not resolved, never that the generation was found `distinct`.",
-        "`ASSET-FABRIC-1` complete (backend PR #227"
+        "`ASSET-FABRIC-1` complete (backend PR #227",
+        "`purpose` is populated for model entries from the producer's `description`"
       ],
       "forbiddenClaims": [
         "pending reviewed merge",
         "still requires reviewed exact-head merge approval",
-        "Each generation now carries an explicit verdict"
+        "Each generation now carries an explicit verdict",
+        "`purpose` and `required` are representable and deliberately left unpopulated"
       ]
     },
     {
@@ -139,7 +145,8 @@
         "The verdict is advisory.",
         "ASSET-FABRIC-1 advances the runtime pair to backend",
         "Complete to the contract only.",
-        "Validation is advisory."
+        "Validation is advisory.",
+        "`purpose` and `required` are recorded honestly rather"
       ],
       "forbiddenClaims": []
     },
@@ -259,7 +266,8 @@
         "a scope written before its prerequisites exist would be fiction",
         "The order is a dependency claim, not a preference.",
         "Everything here is unstarted except `AGENT-SAFETY-1`, `NOVELTY-1`, `NOVELTY-2` and `ASSET-FABRIC-1`",
-        "**Still blocked.**"
+        "**Still blocked.**",
+        "`blocked` rather than unscoped because only the missing Open Cloud credential surface holds it"
       ],
       "forbiddenClaims": []
     },
@@ -332,11 +340,11 @@
         "ASSET-FABRIC-1",
         "The asset plan already ships on every generation, unchecked",
         "Animations reference models by display name.",
-        "`purpose` and `required` are unpopulated.",
         "Nothing resolves, uploads or materializes an asset.",
-        "The registered prompt asked for a different shape."
+        "The registered prompt asked for a different shape.",
+        "`purpose` is populated for models only; `required` is unpopulated everywhere."
       ],
-      "forbiddenClaims": []
+      "forbiddenClaims": ["`purpose` and `required` are unpopulated."]
     }
   ],
   "historical": [
