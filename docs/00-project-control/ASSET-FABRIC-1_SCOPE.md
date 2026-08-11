@@ -2,7 +2,7 @@
 
 # ASSET-FABRIC-1 — unified multimodal asset contract
 
-**Status:** Scoped. Backend-only; no Roblox Studio evidence is required or claimed.
+**Status:** ✅ Complete — backend PR #227, **to the contract only**. Backend-only; no Roblox Studio evidence is required or claimed.
 **Depends on:** `ARTIFACT-CONTRACT-2` (durable envelope, content identity, lineage). Complete.
 **Complexity:** M. **Risk:** Low — the check is advisory and no delivery behaviour changes.
 
@@ -86,6 +86,16 @@ Seven findings, all valid, and one of them meant the contract was unreachable in
 **The decoder cast where it claimed to decode.** `attributes` was accepted as any object and asserted to `Record<string, string | number>`, so a stored `{ frames: false }` produced a `PlannedAsset` contradicting its own type. Values are now decoded against the same closed sets on the way back out, unrecognised keys are refused, and references are trimmed the way ids are.
 
 **Staging depended on node order.** Lineage resolves only from committed stages, and `pending` followed whatever order the plan executor returned. A run listing the asset stage first would have thrown and lost a generation that had already passed validation. Staged artifacts are now ordered by the canonical stage sequence.
+
+## Known limitations
+
+Carried forward explicitly, because each is a thing the contract can express and the platform does not yet state:
+
+- **`purpose` is populated for models only; `required` is unpopulated everywhere.** `purpose` is populated for model entries from the producer's `description` and is absent for textures, sounds and animations, whose current producer shape exposes no equivalent field. `required` is representable and unpopulated for every kind, because nothing the producer emits signals required-ness at all. Both fields exist so a producer can state them; only the model description does today.
+- **`source: "marketplace"` is a claim with nothing behind it.** No search, no resolution, no upload. The contract records the claim as a claim.
+- **Rigs and VFX are not covered**, because nothing produces them. The roadmap entry names them for `ASSET-FABRIC-2`.
+- **Cross-artifact checks are limited to references within the plan.** Whether a planned asset corresponds to something the game design named is not checkable, because the design contract exposes no asset vocabulary, and inventing that check would assert a comparison nothing can make.
+- **Nothing resolves, uploads or materializes an asset.** The plan stays a plan.
 
 ## Out of scope
 

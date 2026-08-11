@@ -2,10 +2,10 @@
 
 # ROADMAP-EXTENSION-1 — Autonomous Roblox Development Platform
 
-**Status:** Roadmap extension. **Everything here is unstarted except `AGENT-SAFETY-1`, `NOVELTY-1` and `NOVELTY-2`**, complete through backend PR #221, PR #223 and PR #225 — see their scope records, [AGENT-SAFETY-1](./AGENT-SAFETY-1_SCOPE.md), [NOVELTY-1](./NOVELTY-1_SCOPE.md) and [NOVELTY-2](./NOVELTY-2_SCOPE.md). Nothing else is implemented, scoped, or started.
+**Status:** Roadmap extension. **Everything here is unstarted except `AGENT-SAFETY-1`, `NOVELTY-1`, `NOVELTY-2` and `ASSET-FABRIC-1`**, complete through backend PR #221, PR #223, PR #225 and PR #227 — see their scope records, [AGENT-SAFETY-1](./AGENT-SAFETY-1_SCOPE.md), [NOVELTY-1](./NOVELTY-1_SCOPE.md), [NOVELTY-2](./NOVELTY-2_SCOPE.md) and [ASSET-FABRIC-1](./ASSET-FABRIC-1_SCOPE.md). Nothing else is implemented, scoped, or started.
 **Baseline:** the reconciled roadmap from [ROADMAP-RECONCILIATION-1](./ROADMAP-RECONCILIATION-1_RESULT.md), which is the authority for what exists today.
 
-Every item below except `AGENT-SAFETY-1`, `NOVELTY-1` and `NOVELTY-2` is `unscoped` — named and ordered so the direction is legible, and deliberately without a scope record, because a scope written before its prerequisites exist would be fiction. Each becomes `scoped` only when the work in front of it is done and someone writes its scope against the platform as it then is. Both of the taken items went when they did precisely because their prerequisites were already complete, which is the rule working rather than an exception to it.
+Every item below except `AGENT-SAFETY-1`, `NOVELTY-1`, `NOVELTY-2` and `ASSET-FABRIC-1`, which are complete, and `ASSET-FABRIC-2`, which is `blocked` rather than unscoped because only the missing Open Cloud credential surface holds it, is `unscoped` — named and ordered so the direction is legible, and deliberately without a scope record, because a scope written before its prerequisites exist would be fiction. Each becomes `scoped` only when the work in front of it is done and someone writes its scope against the platform as it then is. Both of the taken items went when they did precisely because their prerequisites were already complete, which is the rule working rather than an exception to it.
 
 ## Principles these extensions inherit
 
@@ -28,7 +28,7 @@ The order is a dependency claim, not a preference. Each stage needs the one befo
 3. **Finish the real playtest → diagnose → repair loop** — `REPAIR-1` is complete; runtime playtest evidence is operator-observed and narrow.
 4. **Add the GameDNA and originality foundation** — `NOVELTY-1` and `NOVELTY-2` are both complete. The originality foundation exists and measures only exact structural identity; a similarity threshold is gated on evidence nobody has collected.
 5. **Expand runtime and multiplayer playtesting** — `PLAYTEST-2`, `PLAYTEST-3`, `PLAYTEST-4`.
-6. **Establish multimodal asset contracts** — `ASSET-FABRIC-1`, `ASSET-FABRIC-2`.
+6. **Establish multimodal asset contracts** — `ASSET-FABRIC-1` is complete, contract only. `ASSET-FABRIC-2` is blocked on the Open Cloud credential surface, exactly as this stage's ordering anticipated: contract first, pipeline second.
 7. **Add synthetic player and economy simulation** — `PLAYER-SIM-1`, `ECONOMY-SIM-1`.
 8. **Add the analytics and experiment closed loop** — `ANALYTICS-2`, `EXPERIMENT-1`.
 9. **Expand multi-place and remote operations** — `MULTIPLACE-1`, `REMOTE-OPS-1`.
@@ -56,8 +56,8 @@ The order is a dependency claim, not a preference. Each stage needs the one befo
 
 | ID | Item | Depends on | Note |
 |---|---|---|---|
-| `ASSET-FABRIC-1` | Unified multimodal asset contract | `ARTIFACT-CONTRACT-2` | The envelope generalised to meshes, textures, rigs, animation, VFX and SFX. Contract first, pipeline second, deliberately |
-| `ASSET-FABRIC-2` | Mesh, texture, rig, animation, VFX and SFX pipeline | `ASSET-FABRIC-1`, `STUDIO-2F-B` | Blocked in practice by the same missing Open Cloud credential surface that blocks `STUDIO-2F-B` |
+| `ASSET-FABRIC-1` | Unified multimodal asset contract | `ARTIFACT-CONTRACT-2` | **Delivered** — backend PR #227, [scope](./ASSET-FABRIC-1_SCOPE.md). Contract first, pipeline second, exactly as this row required: the four asset kinds the producer emits are typed, validated and bound to their design, and nothing is resolved or uploaded. Rigs and VFX are not covered, because nothing produces them |
+| `ASSET-FABRIC-2` | Mesh, texture, rig, animation, VFX and SFX pipeline | `ASSET-FABRIC-1`, `STUDIO-2F-B` | **Still blocked.** Its contract dependency is now met — there is a typed plan with stable ids to resolve against — but the missing Open Cloud credential surface that blocks `STUDIO-2F-B` blocks it too, and nothing in `ASSET-FABRIC-1` changed that |
 
 ### Simulation
 
@@ -91,6 +91,6 @@ The order is a dependency claim, not a preference. Each stage needs the one befo
 
 ## What this does not change
 
-`ARTIFACT-1`, `STUDIO-2F-A` and `WORLD-1B` remain `code_complete_evidence_pending`; `WORLD-1C` and `SECURITY-REVIEW-B` remain `blocked`; Studio acceptance remains paused. No extension above other than `AGENT-SAFETY-1`, `NOVELTY-1` and `NOVELTY-2` is scoped, and none may begin before the stage it sits in.
+`ARTIFACT-1`, `STUDIO-2F-A` and `WORLD-1B` remain `code_complete_evidence_pending`; `WORLD-1C` and `SECURITY-REVIEW-B` remain `blocked`; Studio acceptance remains paused. No extension above other than `AGENT-SAFETY-1`, `NOVELTY-1`, `NOVELTY-2` and `ASSET-FABRIC-1` is scoped, and none may begin before the stage it sits in.
 
 <!-- prettier-ignore-end -->

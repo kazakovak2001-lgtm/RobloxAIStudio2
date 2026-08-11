@@ -9,7 +9,7 @@ fail-closed guard for subsequent roadmap reconciliations.
 
 - Backend repository: `kazakovak2001-lgtm/RobloxAIStudio2`
 - Backend release branch: `release/cutover-1e-candidate`
-- Current backend runtime release: `78c316db594795fa361330301e30933cbbcef2c3`
+- Current backend runtime release: `042ca72d2b6f34af05779bcf8601f441ae93c0c9`
 - SECURITY-2G-F control baseline: `da55f716c798ec8c6a7f25a8e2a3b7b0a2244416`
 - Paired Frontend repository: `kazakovak2001-lgtm/Frontend`
 - Paired Frontend runtime contents: `94736069e049b9614c4012775677c78777f5060d`
@@ -694,6 +694,48 @@ the state they were written for could not occur. The repair session record now
 carries its own verdict. Separately, ancestry read only the first Lua artifact
 for an execution while the store permits several, so an edge written by a
 later one was invisible.
+
+ASSET-FABRIC-1 advances the runtime pair to backend
+`042ca72d2b6f34af05779bcf8601f441ae93c0c9` and Frontend
+`94736069e049b9614c4012775677c78777f5060d`, through backend pull request
+`#227`. The Frontend identity is unchanged.
+
+`asset_planner` runs on every generation. Its output was stored durably,
+delivered to Roblox Studio and never checked: no schema, no decoder, no
+validation, and no entry in the artifact dependency rules, so the plan
+asserted no derivation from the design it exists to serve. `STUDIO-2F-A` had
+given UI a typed materializable tree and `WORLD-1A` had given the world a
+typed model. Assets had neither while shipping on every run.
+
+**The contract records only what the producer actually states.** Kind is on
+the entry rather than implied by the array it sat in. Ids are unique across
+the whole plan, and an animation's model is referenced by id rather than by
+the display name the producer used, because a reference that depends on a
+label is not a reference. `purpose` and `required` are recorded honestly rather
+than filled in. `purpose` is populated for model entries from the producer's `description` and is absent for textures, sounds and animations, whose current producer shape exposes no equivalent field. `required` is representable and unpopulated for every kind, because nothing the producer emits signals required-ness at all. Filling either in where the
+producer says nothing would have been fabrication.
+
+**Complete to the contract only.** Nothing resolves, uploads or materializes
+an asset. `source: "marketplace"` is recorded as a claim with no search or
+resolution behind it, and a test asserts the Studio-bound artifact carries no
+asset id, content URL or upload receipt. `ASSET-FABRIC-2` remains blocked on
+the Roblox Open Cloud credential surface that does not exist — the same one
+blocking `STUDIO-2F-B` — and this slice changed nothing about that.
+
+**Validation is advisory.** A malformed plan is stored exactly as the agent
+produced it, with no schema version so nothing reads it as valid, and the
+generation still passes: a malformed manifest is not a broken game. Absent,
+unreadable and valid remain three distinguishable states.
+
+Review found seven defects and one of them mattered more than the rest. The
+registered production prompt asked for a shape the contract rejects, so with
+any provider configured every plan would have been invalid and only the
+no-LLM fallback could ever have satisfied it. The contract had been validated
+against its own fallback and would have shipped unreachable in production.
+Repair also broke outright on the new required lineage rule, failing before
+the repaired Lua was persisted, and the repair playtest stopped seeing assets
+entirely, which would have changed repair scoring on runs with nothing wrong
+with them.
 
 ## Scope boundary
 
