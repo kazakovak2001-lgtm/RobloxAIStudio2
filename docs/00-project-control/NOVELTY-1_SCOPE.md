@@ -2,7 +2,7 @@
 
 # NOVELTY-1 — GameDNA and structural similarity fingerprint
 
-**Status:** Scoped. Backend-only; no Roblox Studio evidence is required or claimed.
+**Status:** ✅ Complete — backend PR #223. Backend-only; no Roblox Studio evidence is required or claimed.
 **Depends on:** `WORLD-1A` (semantic world model), `ARTIFACT-CONTRACT-2` (durable envelope, content identity, lineage). Both complete.
 **Complexity:** M. **Risk:** Low — the output is advisory and nothing consumes it to make a decision.
 
