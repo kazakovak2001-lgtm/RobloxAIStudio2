@@ -50,7 +50,9 @@
         "| `NOVELTY-1` | GameDNA and structural similarity fingerprint | High | `complete`",
         "understates a history nothing can attribute to it",
         "| `NOVELTY-2` | Cross-generation novelty verdict | Medium | `complete`",
-        "The fourteen `unscoped` strategic items"
+        "The fourteen `unscoped` strategic items",
+        "carries an explicit verdict **when the run produced enough evidence to form one**",
+        "Absence means the question was not resolved, never that the generation was found `distinct`."
       ],
       "forbiddenClaims": [
         "PR #162 pending reviewed merge",
@@ -60,7 +62,8 @@
         "release/cutover-1e-candidate@79b1ecfd137dff71e17fcc57e45078a47137fcdf",
         "release/cutover-1e-candidate@3e18460c394b03c2d373c7d1a2e9cd0b74b6f984",
         "release/cutover-1e-candidate@f1adac4b9312aa987502c43fd5e32fe47f535ae4",
-        "release/cutover-1e-candidate@514c321d794a66e0f6f5d407ba906ab3e45087d1"
+        "release/cutover-1e-candidate@514c321d794a66e0f6f5d407ba906ab3e45087d1",
+        "Each generation now carries an explicit verdict"
       ]
     },
     {
@@ -88,11 +91,14 @@
         "The pinned pair is level with canonical `main`",
         "`AGENT-SAFETY-1` complete (backend PR #221",
         "`NOVELTY-1` complete (backend PR #223",
-        "`NOVELTY-2` complete (backend PR #225"
+        "`NOVELTY-2` complete (backend PR #225",
+        "carries an explicit verdict **when the run produced enough evidence to form one**",
+        "Absence means the question was not resolved, never that the generation was found `distinct`."
       ],
       "forbiddenClaims": [
         "pending reviewed merge",
-        "still requires reviewed exact-head merge approval"
+        "still requires reviewed exact-head merge approval",
+        "Each generation now carries an explicit verdict"
       ]
     },
     {
