@@ -30,8 +30,41 @@ function withDefinition(
   );
 }
 
+/**
+ * The tier every agent is expected to hold.
+ *
+ * Pinned by id rather than checked for validity: the assignment *is* the
+ * security property, and a silent promotion from `observe` to `propose` would
+ * pass any weaker assertion while changing what an agent is trusted to do.
+ */
+const EXPECTED_TIERS: Readonly<Record<string, string>> = {
+  requirements: "plan",
+  planner: "plan",
+  database_designer: "plan",
+  game_designer: "propose",
+  roblox_architect: "propose",
+  lua_generator: "propose",
+  ui_generator: "propose",
+  asset_planner: "propose",
+  orchestrator: "propose",
+  tester: "observe",
+  performance: "observe",
+  documentation: "observe",
+  debugger: "observe",
+  architecture_controller: "observe",
+  code_review_controller: "observe",
+  duplication_detector: "observe",
+};
 describe("AGENT-SAFETY-1 authority is declared truthfully", () => {
-  it("gives every agent exactly one tier from the ladder", () => {
+  it("holds the exact tier assigned to it, not merely a valid one", () => {
+    const actual = Object.fromEntries(
+      AGENT_DEFINITIONS.map((definition) => [
+        definition.id,
+        definition.authority.tier,
+      ]),
+    );
+
+    expect(actual).toEqual(EXPECTED_TIERS);
     for (const definition of AGENT_DEFINITIONS) {
       expect(AGENT_AUTHORITY_TIERS).toContain(definition.authority.tier);
       expect(typeof definition.authority.mayDelegate).toBe("boolean");
@@ -203,20 +236,30 @@ describe("AGENT-SAFETY-1 the registry enforces it", () => {
 });
 
 describe("AGENT-SAFETY-1 the orchestrator delegates under its own authority", () => {
-  it("cannot reach a development-tooling agent through its input pipeline", async () => {
+  it("names itself when delegating, so the registry can bound the call", async () => {
+    // `runCoordination` discards the registry's `_error`, so a step status
+    // alone cannot say *why* it failed. Spying on the call proves the
+    // delegation context is passed, which is the part this agent controls.
     const registry = new AgentRegistry();
     const orchestrator = registry.getAgent("orchestrator");
     if (!orchestrator) throw new Error("orchestrator missing");
+    const spy = vi.spyOn(registry, "executeAgent");
 
-    // Mode B: the pipeline is taken from input, which is the whole point.
-    const result = await orchestrator.execute({
+    await orchestrator.execute({
       mode: "coordinate",
       pipeline: ["architecture_controller"],
       input: {},
     });
 
-    const steps = (result.data as { steps?: Array<{ status: string }> })?.steps;
-    expect(steps?.[0]?.status).toBe("failed");
+    expect(spy).toHaveBeenCalledWith(
+      "architecture_controller",
+      expect.anything(),
+      { onBehalfOf: "orchestrator" },
+    );
+    // And the registry refused it rather than running the agent.
+    const refusal = await spy.mock.results[0].value;
+    expect(refusal._failed).toBe(true);
+    expect(String(refusal._error)).toMatch(/not pipeline-reachable/i);
   }, 20000);
 
   it("still coordinates the agents it is allowed to", async () => {
