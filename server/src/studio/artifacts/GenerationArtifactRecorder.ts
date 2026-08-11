@@ -1,6 +1,7 @@
 import type { TaskNode } from "../../planning/model/TaskGraph";
 import {
   ArtifactStore,
+  STAGE_ORDER,
   deterministicProducer,
   type ArtifactDependency,
   type ArtifactProducer,
@@ -14,6 +15,10 @@ import {
   type PlayableLuaScript,
 } from "../../types/playableLua";
 import { reviewLuaSecurity } from "../../validation/luaSecurityReview";
+import {
+  buildAssetPlan,
+  type AssetPlanResult,
+} from "../../validation/assetPlan";
 import { buildWorldModel, type WorldModel } from "../../validation/worldModel";
 import {
   buildGameDna,
@@ -86,6 +91,10 @@ export class GenerationArtifactRecorder {
     let luaPresent = false;
     let luaIssues: readonly string[] = [];
     let ui: UIMaterializationOutcome = { status: "not-attempted" };
+    // Undefined until the asset stage produces something. A run whose
+    // asset stage never ran has no plan to judge, which the report states
+    // rather than reporting as a clean one.
+    let assets: AssetPlanResult | undefined;
     let luaScripts: readonly PlayableLuaScript[] = [];
     let gameDesign: unknown;
     let architecture: unknown;
@@ -150,6 +159,22 @@ export class GenerationArtifactRecorder {
         continue;
       }
 
+      if (stage === "ASSET_PLANNING") {
+        // ASSET-FABRIC-1. The typed plan is stored when the output reads as
+        // one, the same way STUDIO-2F-A stores the built UI tree. When it does
+        // not, the original output is stored exactly as before with no
+        // `schemaVersion`, so a malformed plan is preserved for inspection
+        // rather than replaced by a tidier record of nothing.
+        assets = buildAssetPlan(node.output);
+        pending.push({
+          stage,
+          agent: node.agent,
+          content: assets.outcome === "planned" ? assets.plan : node.output,
+          dependsOn: ["GAME_DESIGN"],
+        });
+        continue;
+      }
+
       if (stage === "UI_GENERATION") {
         try {
           const built = buildUIArtifactContent(node.output);
@@ -208,6 +233,7 @@ export class GenerationArtifactRecorder {
         luaScripts.length > 0
           ? crossValidateWorld(world, luaScripts)
           : undefined,
+      assets,
     });
 
     if (!report.passed) {
@@ -227,6 +253,23 @@ export class GenerationArtifactRecorder {
         `Generation failed deterministic validation — ${describeBlockingFailures(report)}`,
       );
     }
+
+    // ASSET-FABRIC-1. `ASSET_PLANNING` must name the `GAME_DESIGN` it derives
+    // from, and lineage resolves only from stages already committed — so the
+    // design has to be written first. `pending` follows the order the plan
+    // executor returned its nodes in, which nothing constrains, so a run that
+    // listed the asset stage first would have thrown here and lost a
+    // generation that had already passed validation. Ordered by the stage
+    // sequence instead, which is the order the dependency rules are written
+    // against. Stable, so stages the sequence does not rank keep their
+    // relative order.
+    const stageRank = (stage: StageName): number => {
+      const index = STAGE_ORDER.indexOf(stage);
+      return index === -1 ? STAGE_ORDER.length : index;
+    };
+    pending.sort(
+      (left, right) => stageRank(left.stage) - stageRank(right.stage),
+    );
 
     const recorded: PipelineArtifact[] = [];
     const committed = new Map<StageName, PipelineArtifact>();

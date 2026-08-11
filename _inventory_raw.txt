@@ -86,6 +86,7 @@ docker-compose.yml
 docs/00-project-control/AGENT-CONTRACT-1_SCOPE.md
 docs/00-project-control/AGENT-SAFETY-1_SCOPE.md
 docs/00-project-control/ARTIFACT-CONTRACT-2_SCOPE.md
+docs/00-project-control/ASSET-FABRIC-1_SCOPE.md
 docs/00-project-control/CORE-1A_DURABLE_PROJECTS.md
 docs/00-project-control/CORE-1B_DURABLE_RUNTIME.md
 docs/00-project-control/CURRENT_STATE.md
@@ -525,6 +526,7 @@ server/src/__tests__/artifactcontract2.envelope.test.ts
 server/src/__tests__/artifactcontract2.lineage.test.ts
 server/src/__tests__/artifactcontract2.repair-lineage.test.ts
 server/src/__tests__/artifactcontract2.v2-pipeline.test.ts
+server/src/__tests__/assetfabric1.assetPlan.test.ts
 server/src/__tests__/autonomousPipelineExploration.test.ts
 server/src/__tests__/autonomousPipelineIntegration.test.ts
 server/src/__tests__/autonomousPipelinePreservation.test.ts
@@ -1238,6 +1240,7 @@ server/src/ui-gen/index.ts
 server/src/ui-gen/types.ts
 server/src/validation/__tests__/commitValidator.test.ts
 server/src/validation/__tests__/luaSecurityReview.test.ts
+server/src/validation/assetPlan.ts
 server/src/validation/commitValidator.ts
 server/src/validation/gameDna.ts
 server/src/validation/generationValidation.ts

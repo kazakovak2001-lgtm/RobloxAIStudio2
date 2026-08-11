@@ -126,6 +126,16 @@ describe("E2E: Real Game Generation", () => {
       },
       { projectId: ARTIFACT_TEST_PROJECT },
     );
+    // ASSET-FABRIC-1. The asset plan derives from the game design, and the
+    // artifact contract now requires it to say so, matching what
+    // `pipelineDefinition` already declares for `asset_planner`.
+    const e2eDesign = await artifactStore.store(
+      repairExecutionId,
+      "GAME_DESIGN",
+      "game_designer",
+      { gameplay: { mechanics: [{ name: "survive" }] } },
+      { projectId: ARTIFACT_TEST_PROJECT },
+    );
     await artifactStore.store(
       repairExecutionId,
       "ASSET_PLANNING",
@@ -137,7 +147,10 @@ describe("E2E: Real Game Generation", () => {
             .map((a) => ({ name: a.name })),
         },
       },
-      { projectId: ARTIFACT_TEST_PROJECT },
+      {
+        projectId: ARTIFACT_TEST_PROJECT,
+        dependencies: [ArtifactStore.dependencyOn(e2eDesign)],
+      },
     );
 
     const blueprintRepository = new InMemoryBlueprintRepository();

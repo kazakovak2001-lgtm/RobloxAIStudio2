@@ -96,15 +96,29 @@ describe("STUDIO-1a canonical artifact lineage", () => {
     // so it is emitted by the recorder rather than by an agent node.
     // PIPELINE-1B records what deterministic validation found, last, for the
     // same reason: it is produced by the recorder, not by an agent node.
+    // ASSET-FABRIC-1 orders staged artifacts by the canonical stage sequence
+    // rather than by the order the plan executor returned its nodes in, so a
+    // stage that must name an upstream is always written after it. The set is
+    // unchanged; only the order is, and it is now the order the dependency
+    // rules are written against instead of an emergent one.
     expect(recorded.map((artifact) => artifact.stage)).toEqual([
       "REQUIREMENTS",
       "LUA_GENERATION",
-      "SECURITY_REVIEW",
-      "EXPORT",
       "WORLD_MODEL",
       "GAME_DNA",
+      "SECURITY_REVIEW",
+      "EXPORT",
       "VALIDATION",
     ]);
+    // The property that matters: every dependency precedes its dependent.
+    const order = recorded.map((artifact) => artifact.stage);
+    for (const artifact of recorded) {
+      for (const dependency of artifact.dependencies ?? []) {
+        expect(order.indexOf(dependency.stage)).toBeLessThan(
+          order.indexOf(artifact.stage),
+        );
+      }
+    }
     const review = recorded.find((a) => a.stage === "SECURITY_REVIEW");
     expect(review?.agent).toBeNull();
     expect(review?.name).toBe("securityReport.json");

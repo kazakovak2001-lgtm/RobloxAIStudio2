@@ -141,7 +141,7 @@ export const DEFAULT_PROMPTS: ManagedPrompt[] = [
     },
     system:
       "You are a Roblox asset planner. List all required 3D models, textures, sounds, and animations with their properties. Respond with a JSON object only.",
-    user: 'Plan assets for:\n\nGame: {{name}}\nTheme: {{theme}}\nKey Locations: {{locations}}\nGameplay Systems: {{systems_summary}}\n\nRespond with: { "assetPlan": { "models": Array<{name, description}>, "textures": Array<{name, size}>, "sounds": Array<{name, type}>, "animations": Array<{name, target}> } }',
+    user: 'Plan assets for:\n\nGame: {{name}}\nTheme: {{theme}}\nKey Locations: {{locations}}\nGameplay Systems: {{systems_summary}}\n\nRespond with: { "assetPlan": { "models": Array<{id, name, description, complexity: "simple"|"medium"|"complex", source: "builtin"|"marketplace"|"custom"}>, "textures": Array<{id, name, resolution}>, "sounds": Array<{id, name, type: "sfx"|"music"|"ambient"}>, "animations": Array<{id, name, target, frames}> } }\n\nEvery entry needs a unique id. An animation target must be the exact name of a planned model.',
   },
   {
     metadata: {

@@ -115,6 +115,7 @@
 │   │   ├── AGENT-CONTRACT-1_SCOPE.md
 │   │   ├── AGENT-SAFETY-1_SCOPE.md
 │   │   ├── ARTIFACT-CONTRACT-2_SCOPE.md
+│   │   ├── ASSET-FABRIC-1_SCOPE.md
 │   │   ├── CORE-1A_DURABLE_PROJECTS.md
 │   │   ├── CORE-1B_DURABLE_RUNTIME.md
 │   │   ├── CURRENT_STATE.md
@@ -615,6 +616,7 @@
 │   │   │   ├── artifactcontract2.lineage.test.ts
 │   │   │   ├── artifactcontract2.repair-lineage.test.ts
 │   │   │   ├── artifactcontract2.v2-pipeline.test.ts
+│   │   │   ├── assetfabric1.assetPlan.test.ts
 │   │   │   ├── autonomousPipelineExploration.test.ts
 │   │   │   ├── autonomousPipelineIntegration.test.ts
 │   │   │   ├── autonomousPipelinePreservation.test.ts
@@ -1512,6 +1514,7 @@
 │   │   │   ├── __tests__
 │   │   │   │   ├── commitValidator.test.ts
 │   │   │   │   └── luaSecurityReview.test.ts
+│   │   │   ├── assetPlan.ts
 │   │   │   ├── commitValidator.ts
 │   │   │   ├── gameDna.ts
 │   │   │   ├── generationValidation.ts

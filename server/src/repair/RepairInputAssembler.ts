@@ -7,6 +7,7 @@
 
 import type { ArtifactStore, PipelineArtifact } from "../pipeline/v2";
 import type { PlaytestInput } from "../playtest";
+import { decodeAssetPlan } from "../validation/assetPlan";
 import {
   normalizeLuaScripts,
   type PlayableLuaScript,
@@ -62,8 +63,33 @@ export async function assembleRepairInput(
   return { input, luaArtifact, scripts };
 }
 
+/** Where each asset kind is expected to live in a Roblox place. */
+const ASSET_SERVICE: Readonly<Record<string, string>> = {
+  model: "Workspace",
+  texture: "ReplicatedStorage",
+  sound: "SoundService",
+  animation: "ReplicatedStorage",
+};
+
 function parseAssetPlan(value: unknown): PlaytestInput["assets"] {
   const content = asRecord(value, "asset planning artifact");
+
+  // ASSET-FABRIC-1 stores a typed plan. Read it first, and keep the legacy
+  // wrapper working: executions recorded before that contract still hold it,
+  // and reporting zero assets for them would change repair scoring on runs
+  // nothing is wrong with.
+  const typed = decodeAssetPlan(content);
+  if (typed) {
+    return typed.assets.map((asset) => ({
+      name: asset.name,
+      type: asset.kind,
+      targetService: ASSET_SERVICE[asset.kind] ?? "ReplicatedStorage",
+      // Still a plan, not evidence that a binary asset exists — unchanged by
+      // the plan gaining a type.
+      placeholder: true,
+    }));
+  }
+
   const planValue = content.assetPlan;
   if (planValue === undefined) return [];
   const plan = asRecord(planValue, "asset plan");

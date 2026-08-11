@@ -19,6 +19,7 @@
  */
 
 import type { WorldCrossValidation } from "./worldCrossValidation";
+import type { AssetPlanResult } from "./assetPlan";
 
 /** Contract version of the report body. Bump on any shape change. */
 export const GENERATION_VALIDATION_SCHEMA_VERSION = 1;
@@ -101,6 +102,11 @@ export interface GenerationValidationInput {
   readonly luaIssues?: readonly string[];
   readonly ui: UIMaterializationOutcome;
   /**
+   * ASSET-FABRIC-1 outcome. Undefined means the asset stage produced nothing
+   * to read, which the report states rather than treating as a clean plan.
+   */
+  readonly assets?: AssetPlanResult;
+  /**
    * WORLD-1A cross-artifact comparison, when there was Lua to compare the
    * world model against. Undefined means the comparison did not run, which the
    * report states rather than reporting an absent result as agreement.
@@ -165,6 +171,29 @@ export function buildGenerationValidationReport(
           : "failed",
     enforcement: "advisory",
     details: input.ui.status === "failed" ? [input.ui.reason] : [],
+  });
+
+  // ASSET-FABRIC-1. The asset plan shipped on every generation and nothing
+  // ever checked it. Advisory: a malformed plan is a defect in a document
+  // nothing consumes yet, and failing a playable generation over it would
+  // trade a working game for a tidier manifest.
+  const assets = input.assets;
+  checks.push({
+    id: "assets-planned",
+    title: "Asset plan is readable and internally consistent",
+    status:
+      assets === undefined || assets.outcome === "not-planned"
+        ? "not-applicable"
+        : assets.outcome === "planned"
+          ? "passed"
+          : "failed",
+    enforcement: "advisory",
+    // Every issue names the entry and field that caused it, so a reader can
+    // act without re-deriving the plan.
+    details:
+      assets?.outcome === "invalid"
+        ? assets.issues.map((issue) => `${issue.path}: ${issue.message}`)
+        : [],
   });
 
   // WORLD-1A. Whether the generated code does what the world model claims.
