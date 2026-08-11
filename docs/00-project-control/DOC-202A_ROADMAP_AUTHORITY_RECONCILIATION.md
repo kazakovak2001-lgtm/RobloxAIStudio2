@@ -9,7 +9,7 @@ fail-closed guard for subsequent roadmap reconciliations.
 
 - Backend repository: `kazakovak2001-lgtm/RobloxAIStudio2`
 - Backend release branch: `release/cutover-1e-candidate`
-- Current backend runtime release: `3e18460c394b03c2d373c7d1a2e9cd0b74b6f984`
+- Current backend runtime release: `f1adac4b9312aa987502c43fd5e32fe47f535ae4`
 - SECURITY-2G-F control baseline: `da55f716c798ec8c6a7f25a8e2a3b7b0a2244416`
 - Paired Frontend repository: `kazakovak2001-lgtm/Frontend`
 - Paired Frontend runtime contents: `94736069e049b9614c4012775677c78777f5060d`
@@ -551,6 +551,49 @@ repositories with separate gates. Neither depends on the other to be correct:
 the backend names a Frontend commit already on `main`, and the Frontend names a
 backend commit already on the release branch. Merging the backend first is
 preferred only because its jobs exercise the fuller composed-release path.
+
+AGENT-SAFETY-1 advances the runtime pair to backend
+`f1adac4b9312aa987502c43fd5e32fe47f535ae4` and Frontend
+`94736069e049b9614c4012775677c78777f5060d`, through backend pull request
+`#221`. The Frontend identity is unchanged.
+
+The first implementation slice taken from the strategic roadmap set, and its
+audit produced two findings that are worth keeping apart because collapsing
+them would have produced the wrong slice.
+
+**No agent can cause a durable side effect.** Nothing under the agents tree
+imports the artifact store, a storage provider, the Studio runtime or the
+database. Agents are pure input to output; the recorder, the executor and the
+services decide what is persisted or delivered. The platform was already
+operating at `propose` throughout and had simply never said so, which is why
+this slice mostly _names_ an existing property rather than adding a
+restriction.
+
+**One path was genuinely unbounded.** `OrchestratorAgent` read the agents to
+run from its own input and ran them in turn, so whoever shaped that input
+chose which agents ran. `PIPELINE-1A` made the generation pipeline
+server-owned and validated; this was the remaining place where the set of
+agents to run was taken on trust, and the three development-tooling agents —
+which analyse this repository rather than a generated game — were reachable
+through it.
+
+**The platform's own calls stay unrestricted, and that asymmetry is the
+model.** Only delegation is bounded, because only delegation is an agent
+choosing what runs. A permission system that also constrained the platform
+would be constraining the authority it exists to protect.
+
+`execute` is named in the ladder and refused by validation, so the tier cannot
+be granted by editing a table. That is the same treatment `SECURITY-REVIEW-B`
+receives: naming a capability is not the same as having it, and the guard has
+to be removed deliberately by whoever introduces a real execute path.
+
+Two review findings are worth recording. Every definition was left at version
+1 despite gaining a policy dimension, so executions either side of the change
+would have been indistinguishable in `pipeline_steps[].agent_version`; the
+root cause was the version's own doc comment, which listed four triggers and
+not authority. And the safety tests accepted any non-`execute` tier, so a
+silent promotion from `observe` to `propose` would have passed — in a safety
+test the assignment is the property, not its type.
 
 ## Scope boundary
 
