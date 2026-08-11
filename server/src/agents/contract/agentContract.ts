@@ -131,13 +131,59 @@ export interface AgentModelPolicy {
   readonly fallback: AgentFallbackPolicy;
 }
 
+/**
+ * AGENT-SAFETY-1. How much authority an agent holds, as a ladder.
+ *
+ * The audit that produced this found something worth stating plainly: no
+ * agent in this platform can cause a durable side effect. Agents are pure
+ * input to output; the recorder, the executor and the services decide what is
+ * persisted or delivered. Every agent therefore sits at `propose` or below,
+ * and nothing claims `execute`.
+ *
+ * `execute` is named anyway, and `validateAgentDefinitions` **refuses** any
+ * definition that claims it, so the tier cannot be granted by editing a table.
+ * Introducing a real execute path is a later slice that has to remove that
+ * guard deliberately rather than by accident.
+ */
+export const AGENT_AUTHORITY_TIERS = [
+  "observe",
+  "plan",
+  "propose",
+  "execute",
+] as const;
+export type AgentAuthorityTier = (typeof AGENT_AUTHORITY_TIERS)[number];
+
+/** Ordering, so one tier can be compared against another. */
+const AUTHORITY_RANK: Readonly<Record<AgentAuthorityTier, number>> = {
+  observe: 0,
+  plan: 1,
+  propose: 2,
+  execute: 3,
+};
+
+export interface AgentAuthority {
+  readonly tier: AgentAuthorityTier;
+  /**
+   * Whether this agent may cause another agent to run.
+   *
+   * Enforced in `AgentRegistry.executeAgent`: a delegated call from an agent
+   * whose definition says `false` is refused before the callee is even
+   * constructed.
+   */
+  readonly mayDelegate: boolean;
+}
 export interface AgentDefinition {
   /** Stable identity. The registry key, not the class name. */
   readonly id: string;
   /**
-   * Contract version. Bumped when capabilities, output contract, execution or
-   * model policy change — a class rename is not a version change, and a
-   * version is not a class name.
+   * Contract version. Bumped when capabilities, output contract, execution,
+   * model policy **or authority** change — a class rename is not a version
+   * change, and a version is not a class name.
+   *
+   * 2 — AGENT-SAFETY-1 added `authority`. Every definition declares something
+   * it did not before, so a consumer reading version 1 cannot know whether an
+   * authority tier was declared, and `pipeline_steps[].agent_version` rows
+   * from either side of the change must stay distinguishable.
    */
   readonly version: number;
   readonly title: string;
@@ -146,6 +192,7 @@ export interface AgentDefinition {
   readonly output: AgentOutputContract;
   readonly execution: AgentExecutionPolicy;
   readonly model: AgentModelPolicy;
+  readonly authority: AgentAuthority;
 }
 
 /**
@@ -158,37 +205,40 @@ export interface AgentDefinition {
 export const AGENT_DEFINITIONS: readonly AgentDefinition[] = [
   {
     id: "requirements",
-    version: 1,
+    version: 2,
     title: "Turns a blueprint into structured requirements",
     capabilities: ["requirements-analysis"],
     reachability: "pipeline",
     output: { class: "parsed-required-keys", requiredKeys: ["requirements"] },
     execution: { maxAttempts: 3, maxOutputTokens: 1200 },
     model: { requiresModel: false, fallback: "allowed" },
+    authority: { tier: "plan", mayDelegate: false },
   },
   {
     id: "planner",
-    version: 1,
+    version: 2,
     title: "Produces the delivery plan for a generation",
     capabilities: ["planning"],
     reachability: "pipeline",
     output: { class: "parsed-required-keys", requiredKeys: ["plan"] },
     execution: { maxAttempts: 3, maxOutputTokens: 1000 },
     model: { requiresModel: false, fallback: "allowed" },
+    authority: { tier: "plan", mayDelegate: false },
   },
   {
     id: "game_designer",
-    version: 1,
+    version: 2,
     title: "Designs mechanics, progression and balance",
     capabilities: ["game-design"],
     reachability: "pipeline",
     output: { class: "parsed-required-keys", requiredKeys: ["gameplay"] },
     execution: { maxAttempts: 3, maxOutputTokens: 1800 },
     model: { requiresModel: false, fallback: "allowed" },
+    authority: { tier: "propose", mayDelegate: false },
   },
   {
     id: "roblox_architect",
-    version: 1,
+    version: 2,
     title: "Designs services, data models and API contracts",
     capabilities: ["architecture-design"],
     reachability: "pipeline",
@@ -198,10 +248,11 @@ export const AGENT_DEFINITIONS: readonly AgentDefinition[] = [
     },
     execution: { maxAttempts: 3, maxOutputTokens: 2000 },
     model: { requiresModel: false, fallback: "allowed" },
+    authority: { tier: "propose", mayDelegate: false },
   },
   {
     id: "lua_generator",
-    version: 1,
+    version: 2,
     title: "Generates the runnable Luau package",
     capabilities: ["lua-generation"],
     reachability: "pipeline",
@@ -218,30 +269,33 @@ export const AGENT_DEFINITIONS: readonly AgentDefinition[] = [
     // `process`, not in the outer loop.
     execution: { maxAttempts: 1, maxOutputTokens: 4000 },
     model: { requiresModel: false, fallback: "allowed" },
+    authority: { tier: "propose", mayDelegate: false },
   },
   {
     id: "ui_generator",
-    version: 1,
+    version: 2,
     title: "Designs the interface the client builds",
     capabilities: ["ui-generation"],
     reachability: "pipeline",
     output: { class: "parsed-required-keys", requiredKeys: ["uiDesign"] },
     execution: { maxAttempts: 3, maxOutputTokens: 1500 },
     model: { requiresModel: false, fallback: "allowed" },
+    authority: { tier: "propose", mayDelegate: false },
   },
   {
     id: "asset_planner",
-    version: 1,
+    version: 2,
     title: "Plans the assets a generation expects to need",
     capabilities: ["asset-planning"],
     reachability: "pipeline",
     output: { class: "parsed-required-keys", requiredKeys: ["assetPlan"] },
     execution: { maxAttempts: 3, maxOutputTokens: 1500 },
     model: { requiresModel: false, fallback: "allowed" },
+    authority: { tier: "propose", mayDelegate: false },
   },
   {
     id: "orchestrator",
-    version: 1,
+    version: 2,
     title: "Assembles the export package from prior stages",
     capabilities: ["orchestration"],
     reachability: "pipeline",
@@ -251,10 +305,11 @@ export const AGENT_DEFINITIONS: readonly AgentDefinition[] = [
     },
     execution: { maxAttempts: 3, maxOutputTokens: 2000 },
     model: { requiresModel: false, fallback: "allowed" },
+    authority: { tier: "propose", mayDelegate: true },
   },
   {
     id: "tester",
-    version: 1,
+    version: 2,
     title: "Produces a test plan — not a validation result",
     capabilities: ["validation-reporting"],
     // Deliberately not on the pipeline. Its output is a checklist of pending
@@ -264,76 +319,84 @@ export const AGENT_DEFINITIONS: readonly AgentDefinition[] = [
     output: { class: "parsed-required-keys", requiredKeys: ["testResults"] },
     execution: { maxAttempts: 3, maxOutputTokens: 800 },
     model: { requiresModel: false, fallback: "allowed" },
+    authority: { tier: "observe", mayDelegate: false },
   },
   {
     id: "performance",
-    version: 1,
+    version: 2,
     title: "Suggests optimizations for generated content",
     capabilities: ["performance-analysis"],
     reachability: "registered-only",
     output: { class: "parsed-required-keys", requiredKeys: ["optimization"] },
     execution: { maxAttempts: 3, maxOutputTokens: 800 },
     model: { requiresModel: false, fallback: "allowed" },
+    authority: { tier: "observe", mayDelegate: false },
   },
   {
     id: "documentation",
-    version: 1,
+    version: 2,
     title: "Writes documentation for a generated project",
     capabilities: ["documentation"],
     reachability: "registered-only",
     output: { class: "parsed-required-keys", requiredKeys: ["documentation"] },
     execution: { maxAttempts: 3, maxOutputTokens: 1000 },
     model: { requiresModel: false, fallback: "allowed" },
+    authority: { tier: "observe", mayDelegate: false },
   },
   {
     id: "database_designer",
-    version: 1,
+    version: 2,
     title: "Designs persistence structures",
     capabilities: ["data-modeling"],
     reachability: "registered-only",
     output: { class: "parsed-required-keys", requiredKeys: ["database"] },
     execution: { maxAttempts: 3, maxOutputTokens: 800 },
     model: { requiresModel: false, fallback: "allowed" },
+    authority: { tier: "plan", mayDelegate: false },
   },
   {
     id: "debugger",
-    version: 1,
+    version: 2,
     title: "Analyses reported faults in generated content",
     capabilities: ["debugging"],
     reachability: "registered-only",
     output: { class: "parsed-required-keys", requiredKeys: ["debugReport"] },
     execution: { maxAttempts: 3, maxOutputTokens: 800 },
     model: { requiresModel: false, fallback: "allowed" },
+    authority: { tier: "observe", mayDelegate: false },
   },
   {
     id: "architecture_controller",
-    version: 1,
+    version: 2,
     title: "Reviews this repository's architecture boundaries",
     capabilities: ["repository-review"],
     reachability: "development-tool",
     output: { class: "parsed-required-keys", requiredKeys: ["architecture"] },
     execution: { maxAttempts: 3, maxOutputTokens: 2000 },
     model: { requiresModel: false, fallback: "allowed" },
+    authority: { tier: "observe", mayDelegate: false },
   },
   {
     id: "code_review_controller",
-    version: 1,
+    version: 2,
     title: "Reviews this repository's source changes",
     capabilities: ["repository-review"],
     reachability: "development-tool",
     output: { class: "parsed-required-keys", requiredKeys: ["review"] },
     execution: { maxAttempts: 3, maxOutputTokens: 2000 },
     model: { requiresModel: false, fallback: "allowed" },
+    authority: { tier: "observe", mayDelegate: false },
   },
   {
     id: "duplication_detector",
-    version: 1,
+    version: 2,
     title: "Finds duplicated implementations in this repository",
     capabilities: ["repository-review"],
     reachability: "development-tool",
     output: { class: "parsed-required-keys", requiredKeys: ["duplication"] },
     execution: { maxAttempts: 3, maxOutputTokens: 2000 },
     model: { requiresModel: false, fallback: "allowed" },
+    authority: { tier: "observe", mayDelegate: false },
   },
 ];
 
@@ -347,7 +410,10 @@ export type AgentContractIssueCode =
   | "impossible-model-policy"
   | "definition-without-implementation"
   | "implementation-without-definition"
-  | "execution-policy-mismatch";
+  | "execution-policy-mismatch"
+  | "unknown-authority-tier"
+  | "unsupported-execute-authority"
+  | "delegation-without-authority";
 
 export interface AgentContractIssue {
   readonly code: AgentContractIssueCode;
@@ -393,6 +459,38 @@ export function validateAgentDefinitions(
       });
     }
 
+    const authority = definition.authority;
+    if (
+      !authority ||
+      !AGENT_AUTHORITY_TIERS.includes(authority.tier) ||
+      typeof authority.mayDelegate !== "boolean"
+    ) {
+      issues.push({
+        code: "unknown-authority-tier",
+        agentId: definition.id,
+        message: `Agent "${definition.id}" declares no well-formed authority tier`,
+      });
+    } else {
+      // Nothing in this platform can cause a durable side effect from inside
+      // an agent, so nothing may claim it can. Granting `execute` has to be a
+      // deliberate later slice that removes this check, not a table edit.
+      if (authority.tier === "execute") {
+        issues.push({
+          code: "unsupported-execute-authority",
+          agentId: definition.id,
+          message: `Agent "${definition.id}" claims execute authority, which no runtime path grants`,
+        });
+      }
+      // Delegation is causing other work to run. An agent that only observes
+      // has no standing to do that.
+      if (authority.mayDelegate && authority.tier === "observe") {
+        issues.push({
+          code: "delegation-without-authority",
+          agentId: definition.id,
+          message: `Agent "${definition.id}" observes only, so it may not invoke other agents`,
+        });
+      }
+    }
     if (definition.capabilities.length === 0) {
       issues.push({
         code: "empty-capabilities",
@@ -529,6 +627,63 @@ export function getAgentDefinition(id: string): AgentDefinition | undefined {
   return DEFINITIONS_BY_ID.get(id);
 }
 
+/**
+ * Whether a caller at one tier may invoke a callee at another.
+ *
+ * Exported because it is the one rule with no violator in the current table —
+ * every delegating agent sits at the top of the ladder that exists today. It
+ * is still evaluated on every delegated call, and testing it directly is
+ * honest about that: the rule is enforced, it simply has nothing to refuse yet.
+ */
+export function mayDelegateAcrossTiers(
+  callerTier: AgentAuthorityTier,
+  calleeTier: AgentAuthorityTier,
+): boolean {
+  return AUTHORITY_RANK[calleeTier] <= AUTHORITY_RANK[callerTier];
+}
+/**
+ * Why a delegated call was refused, or `null` when it is permitted.
+ *
+ * AGENT-SAFETY-1. `OrchestratorAgent` reads the agents to run straight from
+ * its own input — `const pipeline = input.pipeline as AgentType[]` — and runs
+ * them one by one. PIPELINE-1A made the *generation* pipeline server-owned and
+ * validated; this was the remaining path where the set of agents to run was
+ * taken on trust. Whoever shapes that input chose which agents ran.
+ *
+ * The rules are deliberately few, and each refuses something reachable today.
+ */
+export function delegationRefusal(
+  callerId: string,
+  calleeId: string,
+): string | null {
+  const caller = getAgentDefinition(callerId);
+  if (!caller) {
+    return `No agent definition for delegating agent "${callerId}"`;
+  }
+  if (!caller.authority.mayDelegate) {
+    return `Agent "${callerId}" is not permitted to invoke other agents`;
+  }
+
+  const callee = getAgentDefinition(calleeId);
+  if (!callee) {
+    return `No agent definition for delegated agent "${calleeId}"`;
+  }
+
+  // A delegating agent must not reach outside the pipeline. The
+  // development-tooling agents review *this repository* rather than a
+  // generated game, so a game-generation orchestrator invoking one is an
+  // escalation across a boundary the reachability field already names.
+  if (callee.reachability !== "pipeline") {
+    return `Agent "${callerId}" may not invoke "${calleeId}", which is not pipeline-reachable`;
+  }
+
+  // And it must not reach above itself.
+  if (!mayDelegateAcrossTiers(caller.authority.tier, callee.authority.tier)) {
+    return `Agent "${callerId}" (${caller.authority.tier}) may not invoke "${calleeId}" (${callee.authority.tier}), which holds more authority`;
+  }
+
+  return null;
+}
 /** Agents the canonical pipeline may reference. */
 export function pipelineAgentIds(): readonly string[] {
   return AGENT_DEFINITIONS.filter(

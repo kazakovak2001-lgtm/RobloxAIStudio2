@@ -113,6 +113,7 @@
 ├── docs
 │   ├── 00-project-control
 │   │   ├── AGENT-CONTRACT-1_SCOPE.md
+│   │   ├── AGENT-SAFETY-1_SCOPE.md
 │   │   ├── ARTIFACT-CONTRACT-2_SCOPE.md
 │   │   ├── CORE-1A_DURABLE_PROJECTS.md
 │   │   ├── CORE-1B_DURABLE_RUNTIME.md
@@ -602,6 +603,7 @@
 │   │   │   ├── agentcontract1.definitions.test.ts
 │   │   │   ├── agentcontract1.enforcement.test.ts
 │   │   │   ├── agentDecisionEngine.routing.test.ts
+│   │   │   ├── agentsafety1.authority.test.ts
 │   │   │   ├── architecture.ast-import-inventory.test.ts
 │   │   │   ├── architecture.boundary-gate.test.ts
 │   │   │   ├── architecture.layer-debt-evidence.test.ts

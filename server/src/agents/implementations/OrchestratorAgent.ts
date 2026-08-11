@@ -46,6 +46,7 @@ export class OrchestratorAgent extends BaseAgent {
     executeAgent(
       type: string,
       input: Record<string, unknown>,
+      options?: { onBehalfOf?: string },
     ): Promise<Record<string, unknown>>;
   };
 
@@ -57,6 +58,7 @@ export class OrchestratorAgent extends BaseAgent {
     executeAgent(
       type: string,
       input: Record<string, unknown>,
+      options?: { onBehalfOf?: string },
     ): Promise<Record<string, unknown>>;
   }): void {
     this.registry = registry;
@@ -189,9 +191,13 @@ export class OrchestratorAgent extends BaseAgent {
         break;
       }
       try {
+        // AGENT-SAFETY-1. `pipeline` comes straight from this agent's input,
+        // so the registry has to know the call is a delegation and hold it to
+        // this agent's authority rather than the platform's.
         const output = await this.registry.executeAgent(
           agentType,
           currentInput,
+          { onBehalfOf: "orchestrator" },
         );
         const failed = (output as any)._failed === true;
         steps.push({

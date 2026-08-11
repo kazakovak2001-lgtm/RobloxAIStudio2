@@ -4,6 +4,7 @@ import { AgentRegistry } from "../agents/core/AgentRegistry";
 import { InMemoryBlueprintRepository } from "../projects/repository/blueprint.repository";
 import {
   ArtifactStore,
+  agentProducer,
   deterministicProducer,
   type PipelineArtifact,
 } from "../pipeline/v2";
@@ -199,7 +200,7 @@ describe("ARTIFACT-CONTRACT-2 repair lineage", () => {
     });
     expect(
       repaired.find((a) => a.stage === "LUA_GENERATION")!.producer,
-    ).toEqual({ type: "agent", id: "lua_generator", version: 1 });
+    ).toEqual(agentProducer("lua_generator"));
   }, 20000);
 
   it("does not emit a validation report it did not compute", async () => {

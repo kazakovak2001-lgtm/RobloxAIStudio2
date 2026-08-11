@@ -84,6 +84,7 @@ deploy/docker-compose.release.yml
 deploy/release/nginx.conf
 docker-compose.yml
 docs/00-project-control/AGENT-CONTRACT-1_SCOPE.md
+docs/00-project-control/AGENT-SAFETY-1_SCOPE.md
 docs/00-project-control/ARTIFACT-CONTRACT-2_SCOPE.md
 docs/00-project-control/CORE-1A_DURABLE_PROJECTS.md
 docs/00-project-control/CORE-1B_DURABLE_RUNTIME.md
@@ -512,6 +513,7 @@ server/prisma/schema.prisma
 server/src/__tests__/agentDecisionEngine.routing.test.ts
 server/src/__tests__/agentcontract1.definitions.test.ts
 server/src/__tests__/agentcontract1.enforcement.test.ts
+server/src/__tests__/agentsafety1.authority.test.ts
 server/src/__tests__/architecture.ast-import-inventory.test.ts
 server/src/__tests__/architecture.boundary-gate.test.ts
 server/src/__tests__/architecture.layer-debt-evidence.test.ts
