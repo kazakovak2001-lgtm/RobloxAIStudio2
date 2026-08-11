@@ -129,6 +129,8 @@
 │   │   ├── DOC-202A_ROADMAP_AUTHORITY_RECONCILIATION.md
 │   │   ├── FRONTEND_CUTOVER.md
 │   │   ├── NOVELTY-1_SCOPE.md
+│   │   ├── NOVELTY-2_PROMOTION_CRITERIA.md
+│   │   ├── NOVELTY-2_SCOPE.md
 │   │   ├── ROADMAP_STATUS.md
 │   │   ├── ROADMAP-EXTENSION-1_STRATEGIC_DIRECTION.md
 │   │   ├── ROADMAP-RECONCILIATION-1_RESULT.md
@@ -626,6 +628,7 @@
 │   │   │   ├── identityAccess.test.ts
 │   │   │   ├── integration.test.ts
 │   │   │   ├── novelty1.gameDna.test.ts
+│   │   │   ├── novelty2.verdict.test.ts
 │   │   │   ├── performance.test.ts
 │   │   │   ├── persistence.test.ts
 │   │   │   ├── pipeline1a.plan-definition.test.ts
@@ -1201,6 +1204,7 @@
 │   │   │       ├── PipelineEvents.ts
 │   │   │       ├── PipelineExecutor.ts
 │   │   │       ├── PipelineStage.ts
+│   │   │       ├── repairAncestry.ts
 │   │   │       └── store
 │   │   │           ├── FilePipelineStore.ts
 │   │   │           ├── index.ts
@@ -1488,6 +1492,7 @@
 │   │   │   ├── gameDesignSeed.ts
 │   │   │   ├── index.ts
 │   │   │   ├── llm.ts
+│   │   │   ├── novelty.ts
 │   │   │   ├── pipeline-events.ts
 │   │   │   └── playableLua.ts
 │   │   ├── ui-gen
@@ -1511,6 +1516,7 @@
 │   │   │   ├── gameDna.ts
 │   │   │   ├── generationValidation.ts
 │   │   │   ├── luaSecurityReview.ts
+│   │   │   ├── noveltyVerdict.ts
 │   │   │   ├── worldCrossValidation.ts
 │   │   │   ├── worldModel.ts
 │   │   │   ├── worldSceneBuilder.ts

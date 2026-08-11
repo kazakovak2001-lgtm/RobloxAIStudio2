@@ -59,3 +59,4 @@ export {
   InMemoryPipelineStore,
   FilePipelineStore,
 } from "./store";
+export { resolveRepairAncestry, type RepairAncestry } from "./repairAncestry";
