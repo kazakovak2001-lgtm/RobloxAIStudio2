@@ -1,6 +1,9 @@
 import type { LLMProvider } from "../../ai/provider";
 import type { BaseAgent } from "./BaseAgent";
-import { getAgentDefinition } from "../contract/agentContract";
+import {
+  delegationRefusal,
+  getAgentDefinition,
+} from "../contract/agentContract";
 import { RequirementsAgent } from "../implementations/RequirementsAgent";
 import { PlannerAgent } from "../implementations/PlannerAgent";
 import { GameDesignerAgent } from "../implementations/GameDesignerAgent";
@@ -17,6 +20,18 @@ import { OrchestratorAgent } from "../implementations/OrchestratorAgent";
 import { ArchitectureControllerAgent } from "../implementations/ArchitectureControllerAgent";
 import { CodeReviewControllerAgent } from "../implementations/CodeReviewControllerAgent";
 import { DuplicationDetectionAgent } from "../implementations/DuplicationDetectionAgent";
+
+/**
+ * How a call into the registry was made.
+ *
+ * AGENT-SAFETY-1. The platform calls with no options and holds full authority
+ * to choose what runs. An agent delegating to another agent must name itself,
+ * and is then held to its own definition's authority.
+ */
+export interface AgentExecutionOptions {
+  /** The agent id on whose behalf this call is being made, when delegating. */
+  readonly onBehalfOf?: string;
+}
 
 /**
  * AgentRegistry
@@ -84,7 +99,25 @@ export class AgentRegistry {
   async executeAgent(
     agentType: string,
     input: Record<string, unknown>,
+    options?: AgentExecutionOptions,
   ): Promise<Record<string, unknown>> {
+    // AGENT-SAFETY-1. A call made *by an agent* is a different thing from a
+    // call made by the platform, and only the platform holds unbounded
+    // authority to choose what runs. Checked first, so a refused delegation
+    // never reaches a provider or constructs the callee.
+    const onBehalfOf = options?.onBehalfOf;
+    if (onBehalfOf !== undefined) {
+      const refusal = delegationRefusal(onBehalfOf, agentType);
+      if (refusal) {
+        return {
+          _failed: true,
+          _error: refusal,
+          _agent: agentType,
+          _delegatedBy: onBehalfOf,
+        };
+      }
+    }
+
     // AGENT-CONTRACT-1. An agent with no definition is refused before any
     // provider is invoked: nothing states what it produces, so nothing
     // downstream could judge what came back.
