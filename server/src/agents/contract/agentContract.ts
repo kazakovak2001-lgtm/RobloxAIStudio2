@@ -167,8 +167,9 @@ export interface AgentAuthority {
    * Whether this agent may cause another agent to run.
    *
    * Enforced in `AgentRegistry.executeAgent`: a delegated call from an agent
-   * whose definition says `false` is refused before the callee is even
-   * constructed.
+   * whose definition says `false` is refused before the callee runs and before
+   * any provider is reached. Construction is not prevented — the registry
+   * builds every agent up front.
    */
   readonly mayDelegate: boolean;
 }

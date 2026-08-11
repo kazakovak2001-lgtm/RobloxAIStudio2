@@ -46,7 +46,8 @@
         "only the first means the evidence a slice's own scope",
         "The pinned pair is level with canonical Frontend `main`",
         "is started, and none may begin before the stage it sits in.",
-        "| `AGENT-SAFETY-1` | Observe / Plan / Propose / Execute permission model | High | `complete`"
+        "| `AGENT-SAFETY-1` | Observe / Plan / Propose / Execute permission model | High | `complete`",
+        "The sixteen `unscoped` strategic items"
       ],
       "forbiddenClaims": [
         "PR #162 pending reviewed merge",
@@ -246,7 +247,8 @@
         "No agent can cause a durable side effect.",
         "The platform's own calls are unrestricted.",
         "no violator in the current table",
-        "Every definition version moved to 2"
+        "Every definition version moved to 2",
+        "It does *not* prevent construction"
       ],
       "forbiddenClaims": []
     }

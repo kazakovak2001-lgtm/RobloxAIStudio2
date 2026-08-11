@@ -173,10 +173,15 @@ describe("AGENT-SAFETY-1 delegation boundary", () => {
 });
 
 describe("AGENT-SAFETY-1 the registry enforces it", () => {
-  it("refuses a delegated call before constructing the callee", async () => {
+  it("refuses a delegated call before it runs or reaches a provider", async () => {
     const registry = new AgentRegistry();
     const generate = vi.fn().mockResolvedValue("{}");
     registry.setLLM({ generate });
+    // The registry builds every agent in its own constructor, so the callee
+    // already exists. What the refusal must prevent is it running at all.
+    const callee = registry.getAgent("architecture_controller");
+    if (!callee) throw new Error("architecture_controller missing");
+    const execute = vi.spyOn(callee, "execute");
 
     const output = await registry.executeAgent(
       "architecture_controller",
@@ -188,6 +193,7 @@ describe("AGENT-SAFETY-1 the registry enforces it", () => {
     expect(String(output._error)).toMatch(/not pipeline-reachable/i);
     expect(output._delegatedBy).toBe("orchestrator");
     // Refused on policy, not after seeing what came back.
+    expect(execute).not.toHaveBeenCalled();
     expect(generate).not.toHaveBeenCalled();
   });
 
