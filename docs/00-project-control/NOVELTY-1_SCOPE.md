@@ -54,9 +54,21 @@ Cross-**project** comparison is a different matter: there is no index over proje
 3. **A comparison** — `compareGameDna(a, b)` returning a typed distance with per-component parts. Deterministic, symmetric, and independent of the order of the inputs it reads.
 4. **A durable `GAME_DNA` artifact** — a new stage with a `game-dna` deterministic producer and a lineage rule binding it to `WORLD_MODEL`, recorded after that artifact commits.
 5. **Cross-generation comparison from durable storage** — prior `GAME_DNA` artifacts for the same project, read through the store rather than from process memory, excluding the current execution.
-6. **Three explicit states** — `compared`, `no-prior-generations`, `prior-without-dna`. Absence of a comparison is never reported as novelty. A first generation in a project is not novel; it is uncompared.
+6. **Four explicit states** — `compared`, `no-prior-generations`, `prior-without-dna`, `comparison-failed`. Absence of a comparison is never reported as novelty. A first generation in a project is not novel; it is uncompared, and a comparison that threw is not a project without history.
+7. **Required lineage** — `GAME_DNA` is refused on write unless it declares exactly one `WORLD_MODEL` dependency. The envelope rules only said what an edge *may* point at, so a fingerprint bound to nothing would have passed.
 
 The fingerprint covers the DNA only, never the comparison — otherwise the same structure generated twice would fingerprint differently, which is the one property the whole slice exists to provide.
+
+### What review changed
+
+Six findings, all valid, all fixed before merge:
+
+- **The v2 executor would have persisted a passthrough as a fingerprint.** A null-agent stage falls through to `{ _passthrough: true }`, stored as `gameDna.json` under the `game-dna` producer — a durable claim that a comparison ran. This is the fourth stage to need its own branch, and the comment above the third one already said so. Reported by Codex as P1.
+- **The repair path carried the parent's report forward**, so a repaired first run would still say `no-prior-generations` while its own parent sat in the same project. The DNA is now excluded from carry-forward and re-derived from the world model the repair carries unchanged — which, unlike `VALIDATION`, it honestly can be, because the DNA is a pure function of exactly that artifact.
+- **A failed comparison reported `no-prior-generations`**, asserting a project has no history rather than admitting the comparison did not run. Now `comparison-failed`.
+- **A stored DNA was shape-checked, not decoded.** A malformed record with the right `schemaVersion` produced `NaN` distances, which in a report read as a measurement. `decodeGameDna` now validates every closed distribution, count and flag; an undecodable prior lands in `prior-without-dna`.
+- **A re-recorded execution counted twice.** `priorsFound` counts executions and `priorsCompared` counted artifacts, so a re-record made the second exceed the first. One DNA per prior execution now, newest wins.
+- **`GAME_DNA` could be stored with no lineage at all**, since the envelope rules only permit edges rather than requiring them.
 
 ## Out of scope
 

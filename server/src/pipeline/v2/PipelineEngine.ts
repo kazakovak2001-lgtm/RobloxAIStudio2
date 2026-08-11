@@ -14,6 +14,7 @@ import {
 import { ArtifactStore, type PipelineArtifact } from "./ArtifactStore";
 import {
   AGENTLESS_STAGE_PRODUCERS,
+  REQUIRED_ARTIFACT_DEPENDENCIES,
   ARTIFACT_DEPENDENCY_RULES,
   deterministicProducer,
   type ArtifactDependency,
@@ -297,7 +298,16 @@ export class PipelineEngine {
       if (stage.status === "completed" && stage.output) {
         const existing = this.artifactStore.getByPipeline(state.pipelineId);
         const alreadyStored = existing.some((a) => a.stage === stage.name);
-        if (!alreadyStored) {
+        // A stage whose required upstream is not committed cannot be stored
+        // without claiming a derivation it does not have. Skipped rather than
+        // thrown: NOVELTY-1's fingerprint is advisory, and failing the whole
+        // artifact write for it would lose the Lua too. No artifact is the
+        // truthful record — an unbound fingerprint describes nothing.
+        const required = REQUIRED_ARTIFACT_DEPENDENCIES[stage.name];
+        const requirementMet =
+          !required || existing.some((a) => a.stage === required);
+
+        if (!alreadyStored && requirementMet) {
           // ARTIFACT-CONTRACT-2. Five stages here run without an agent, and
           // they are four different producers — attributing all of them to the
           // validation pass would record provenance that is simply false.

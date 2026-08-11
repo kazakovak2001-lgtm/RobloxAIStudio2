@@ -18,7 +18,7 @@ import { buildWorldModel, type WorldModel } from "../../validation/worldModel";
 import {
   buildGameDna,
   buildGameDnaReport,
-  GAME_DNA_SCHEMA_VERSION,
+  decodeGameDna,
   type GameDnaReport,
   type PriorGeneration,
 } from "../../validation/gameDna";
@@ -298,16 +298,38 @@ export class GenerationArtifactRecorder {
           .filter((pipelineId) => pipelineId !== executionId),
       ).size;
 
-      const priors = this.artifactStore
-        .getProjectStageArtifacts(projectId, "GAME_DNA")
-        .filter((artifact) => artifact.pipelineId !== executionId)
+      // One DNA per prior execution. A re-recorded execution — which is what
+      // repair does — stores a second GAME_DNA artifact under the same
+      // pipeline id, and counting both would make `priorsCompared` exceed
+      // `priorsFound` and compare one generation twice. The newest wins,
+      // because it describes the state that execution ended in.
+      const latestByExecution = new Map<string, PipelineArtifact>();
+      for (const artifact of this.artifactStore.getProjectStageArtifacts(
+        projectId,
+        "GAME_DNA",
+      )) {
+        if (artifact.pipelineId === executionId) continue;
+        const held = latestByExecution.get(artifact.pipelineId);
+        if (!held || held.createdAt <= artifact.createdAt) {
+          latestByExecution.set(artifact.pipelineId, artifact);
+        }
+      }
+
+      const priors = [...latestByExecution.values()]
         .map(readPriorGeneration)
         .filter((prior): prior is PriorGeneration => prior !== null);
 
       return buildGameDnaReport({ dna, priorsFound, priors });
     } catch {
-      // A comparison that could not run reports as one that did not run.
-      return buildGameDnaReport({ dna, priorsFound: 0, priors: [] });
+      // A comparison that could not run says so. Reporting it as
+      // `no-prior-generations` would assert this project has no history,
+      // which is a stronger claim than the failure supports.
+      return buildGameDnaReport({
+        dna,
+        priorsFound: 0,
+        priors: [],
+        failed: true,
+      });
     }
   }
 }
@@ -326,12 +348,15 @@ function readPriorGeneration(
   const content = artifact.content as Partial<GameDnaReport> | null;
   if (!content || typeof content !== "object") return null;
   if (typeof content.fingerprint !== "string") return null;
-  if (!content.dna || typeof content.dna !== "object") return null;
-  if (content.dna.schemaVersion !== GAME_DNA_SCHEMA_VERSION) return null;
+  // Fully decoded rather than shape-checked. A durable record can be edited or
+  // written by a version that no longer exists, and a partially-read DNA
+  // compares to `NaN` distances that look like measurements.
+  const dna = decodeGameDna(content.dna);
+  if (!dna) return null;
   return {
     executionId: artifact.pipelineId,
     fingerprint: content.fingerprint,
-    dna: content.dna,
+    dna,
   };
 }
 

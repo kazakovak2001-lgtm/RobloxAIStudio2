@@ -1,6 +1,7 @@
 import { createHash } from "crypto";
 
 import {
+  WORLD_MODEL_SCHEMA_VERSION,
   WORLD_CONSTRAINT_KINDS,
   WORLD_RELATION_KINDS,
   WORLD_ROLES,
@@ -34,11 +35,17 @@ export const GAME_DNA_SCHEMA_VERSION = 1;
  * purpose. Both mean "no comparison happened", and collapsing either into a
  * novelty claim is the failure `SECURITY-REVIEW-A2` had to correct: a first
  * generation in a project is not novel, it is uncompared.
+ *
+ * `comparison-failed` is separate again, added after review pointed out that
+ * reporting an error as `no-prior-generations` asserts a project has no
+ * history — a stronger and quite possibly false claim than admitting the
+ * comparison did not run.
  */
 export const DNA_COMPARISON_OUTCOMES = [
   "compared",
   "no-prior-generations",
   "prior-without-dna",
+  "comparison-failed",
 ] as const;
 export type DnaComparisonOutcome = (typeof DNA_COMPARISON_OUTCOMES)[number];
 
@@ -141,6 +148,51 @@ export function buildGameDna(world: WorldModel): GameDna {
       scoring: world.systems.some((system) => system.id === "scoring"),
     },
   };
+}
+
+/**
+ * Derive a DNA from a world model that was read back out of storage.
+ *
+ * The repair path carries the parent's world model forward and re-derives the
+ * fingerprint from it, so the structure it describes is the one that was
+ * actually delivered. The content is durable data rather than a value this
+ * process built, so the arrays are checked before they are read; anything
+ * unreadable yields `null` and no fingerprint is recorded, rather than one
+ * taken over whatever happened to parse.
+ */
+export function buildGameDnaFromStoredWorld(content: unknown): GameDna | null {
+  if (typeof content !== "object" || content === null) return null;
+  const record = content as Record<string, unknown>;
+
+  const list = (value: unknown): unknown[] | null =>
+    Array.isArray(value) ? value : null;
+  const systems = list(record.systems);
+  const entities = list(record.entities);
+  const relationships = list(record.relationships);
+  const constraints = list(record.constraints);
+  const dependencies = list(record.dependencies);
+  if (
+    !systems ||
+    !entities ||
+    !relationships ||
+    !constraints ||
+    !dependencies
+  ) {
+    return null;
+  }
+
+  // Cast once, here, and only after the shapes are checked. `buildGameDna`
+  // already ignores a role or kind outside its closed set, so an unknown
+  // member is counted nowhere rather than counted wrongly.
+  return buildGameDna({
+    schemaVersion: WORLD_MODEL_SCHEMA_VERSION,
+    systems,
+    entities,
+    relationships,
+    constraints,
+    dependencies,
+    limits: [],
+  } as unknown as WorldModel);
 }
 
 /**
@@ -279,6 +331,74 @@ export interface PriorGeneration {
   readonly dna: GameDna;
 }
 
+function readDistribution<K extends string>(
+  value: unknown,
+  keys: readonly K[],
+): Distribution<K> | null {
+  if (typeof value !== "object" || value === null) return null;
+  const record = value as Record<string, unknown>;
+  const result = {} as Record<K, number>;
+  for (const key of keys) {
+    const count = record[key];
+    // Every member of a closed set must be present and finite. A missing key
+    // would read as zero, and a non-number makes every distance `NaN` — which
+    // in a report looks like a measurement rather than the absence of one.
+    if (typeof count !== "number" || !Number.isFinite(count)) return null;
+    result[key] = count;
+  }
+  return result;
+}
+
+function readCount(value: unknown): number | null {
+  return typeof value === "number" && Number.isFinite(value) ? value : null;
+}
+
+/**
+ * Decode a DNA read back out of durable storage.
+ *
+ * Every field is checked, because a stored artifact is data this process did
+ * not produce: it can be edited, half-migrated, or written by a version that
+ * no longer exists. A record that cannot be fully decoded is refused rather
+ * than compared, so an unreadable prior lands in `prior-without-dna` instead
+ * of producing distances over missing numbers.
+ */
+export function decodeGameDna(value: unknown): GameDna | null {
+  if (typeof value !== "object" || value === null) return null;
+  const record = value as Record<string, unknown>;
+  if (record.schemaVersion !== GAME_DNA_SCHEMA_VERSION) return null;
+
+  const roles = readDistribution(record.roles, WORLD_ROLES);
+  const relationKinds = readDistribution(
+    record.relationKinds,
+    WORLD_RELATION_KINDS,
+  );
+  const constraintKinds = readDistribution(
+    record.constraintKinds,
+    WORLD_CONSTRAINT_KINDS,
+  );
+  const systemCount = readCount(record.systemCount);
+  const entityCount = readCount(record.entityCount);
+  const declares = record.declares as Record<string, unknown> | undefined;
+
+  if (!roles || !relationKinds || !constraintKinds) return null;
+  if (systemCount === null || entityCount === null) return null;
+  if (typeof declares?.progression !== "boolean") return null;
+  if (typeof declares?.scoring !== "boolean") return null;
+
+  return {
+    schemaVersion: GAME_DNA_SCHEMA_VERSION,
+    roles,
+    relationKinds,
+    constraintKinds,
+    systemCount,
+    entityCount,
+    declares: {
+      progression: declares.progression,
+      scoring: declares.scoring,
+    },
+  };
+}
+
 export interface DnaPriorComparison {
   readonly executionId: string;
   readonly fingerprint: string;
@@ -334,6 +454,8 @@ export function buildGameDnaReport(input: {
   readonly dna: GameDna;
   readonly priorsFound: number;
   readonly priors: readonly PriorGeneration[];
+  /** Set when prior generations could not be read at all. */
+  readonly failed?: boolean;
 }): GameDnaReport {
   const fingerprint = fingerprintGameDna(input.dna);
 
@@ -357,8 +479,9 @@ export function buildGameDnaReport(input: {
             : 0),
     );
 
-  const outcome: DnaComparisonOutcome =
-    input.priorsFound === 0
+  const outcome: DnaComparisonOutcome = input.failed
+    ? "comparison-failed"
+    : input.priorsFound === 0
       ? "no-prior-generations"
       : comparisons.length === 0
         ? "prior-without-dna"

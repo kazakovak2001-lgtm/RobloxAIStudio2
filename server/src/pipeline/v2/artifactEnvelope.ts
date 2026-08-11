@@ -165,6 +165,27 @@ export const ARTIFACT_DEPENDENCY_RULES: Readonly<
 };
 
 /**
+ * Stages that may not be stored without the upstream they are derived from.
+ *
+ * The rules above only say what an edge *may* point at, so until this existed
+ * an artifact could be written with no lineage at all and pass. That is the
+ * right default for most stages — `VALIDATION` is deliberately stored with no
+ * dependencies on the rejection path, because nothing was committed for it to
+ * bind to, and asserting an edge there would be the lie rather than the fix.
+ *
+ * `GAME_DNA` is different in kind: it is a pure function of exactly one
+ * upstream artifact, so one without that edge is a fingerprint of nothing in
+ * particular. Required lineage for the other derived stages is deliberately
+ * not decided here — each needs its own argument, and this slice only owns
+ * the stage it added.
+ */
+export const REQUIRED_ARTIFACT_DEPENDENCIES: Readonly<
+  Partial<Record<StageName, StageName>>
+> = {
+  GAME_DNA: "WORLD_MODEL",
+};
+
+/**
  * Canonical JSON for hashing.
  *
  * Object keys are sorted because the data model treats objects as unordered:
@@ -318,6 +339,7 @@ export type ArtifactEnvelopeIssueCode =
   | "dependency-stage-mismatch"
   | "dependency-without-identity"
   | "dependency-not-committed"
+  | "missing-required-dependency"
   | "impossible-stage-lineage";
 
 export interface ArtifactEnvelopeIssue {
@@ -476,6 +498,22 @@ function dependencyIssues(
   const dependencies = artifact.dependencies ?? [];
   const allowed = ARTIFACT_DEPENDENCY_RULES[artifact.stage] ?? [];
   const seen = new Set<string>();
+
+  const required = REQUIRED_ARTIFACT_DEPENDENCIES[artifact.stage];
+  if (required) {
+    const matching = dependencies.filter(
+      (dependency) => dependency.stage === required,
+    );
+    // Exactly one: none makes the artifact describe nothing in particular,
+    // and several would mean it claims to be derived from two different
+    // states of the same stage at once.
+    if (matching.length !== 1) {
+      fail(
+        "missing-required-dependency",
+        `Artifact "${artifact.id}" at stage ${artifact.stage} must declare exactly one ${required} dependency, and declares ${matching.length}`,
+      );
+    }
+  }
 
   for (const dependency of dependencies) {
     if (seen.has(dependency.artifactId)) {

@@ -5,6 +5,7 @@ import {
   buildGameDna,
   buildGameDnaReport,
   compareGameDna,
+  decodeGameDna,
   encodeGameDna,
   fingerprintGameDna,
   DNA_COMPARISON_OUTCOMES,
@@ -19,8 +20,15 @@ import {
   ARTIFACT_DEPENDENCY_RULES,
   canonicalJson,
   DETERMINISTIC_PRODUCERS,
+  REQUIRED_ARTIFACT_DEPENDENCIES,
 } from "../pipeline/v2/artifactEnvelope";
-import { STAGE_AGENT_MAP, STAGE_ORDER } from "../pipeline/v2/PipelineStage";
+import {
+  createPipelineState,
+  STAGE_AGENT_MAP,
+  STAGE_ORDER,
+  type PipelineState,
+} from "../pipeline/v2/PipelineStage";
+import { PipelineExecutor } from "../pipeline/v2/PipelineExecutor";
 import type { PlayableLuaScript } from "../types/playableLua";
 import type { TaskNode } from "../planning/model/TaskGraph";
 
@@ -459,10 +467,13 @@ describe("NOVELTY-1 comparison against prior generations", () => {
     // missing filter would look correct.
     const store = new ArtifactStore();
     const world = buildWorldModel(racingSources());
-    await store.store("exec-solo", "WORLD_MODEL", null, world, {
-      projectId: PROJECT,
-      producer: "world-model",
-    });
+    const worldArtifact = await store.store(
+      "exec-solo",
+      "WORLD_MODEL",
+      null,
+      world,
+      { projectId: PROJECT, producer: "world-model" },
+    );
     await store.store(
       "exec-solo",
       "GAME_DNA",
@@ -472,7 +483,11 @@ describe("NOVELTY-1 comparison against prior generations", () => {
         priorsFound: 0,
         priors: [],
       }),
-      { projectId: PROJECT, producer: "game-dna" },
+      {
+        projectId: PROJECT,
+        producer: "game-dna",
+        dependencies: [ArtifactStore.dependencyOn(worldArtifact)],
+      },
     );
 
     const report = dnaReportOf(
@@ -596,6 +611,165 @@ describe("NOVELTY-1 the artifact", () => {
 
     expect(report.schemaVersion).toBe(GAME_DNA_SCHEMA_VERSION);
     expect(report.dna.schemaVersion).toBe(GAME_DNA_SCHEMA_VERSION);
+  });
+});
+
+describe("NOVELTY-1 review findings", () => {
+  it("derives a real fingerprint in the v2 executor instead of a passthrough", async () => {
+    // The fourth agentless stage to need its own branch, and the executor's
+    // own comment had already named the rule. Without it this persists
+    // `{ _passthrough: true }` as gameDna.json under the game-dna producer —
+    // a durable claim that a comparison ran.
+    const executor = new PipelineExecutor();
+    const context = executor.getContext();
+    const sessionId = context.createSession("v2-dna", {});
+    context.recordAgentOutput(
+      sessionId,
+      "roblox_architect",
+      racingSources().architecture as Record<string, unknown>,
+    );
+    context.recordAgentOutput(
+      sessionId,
+      "game_designer",
+      racingSources().gameDesign as Record<string, unknown>,
+    );
+
+    const state = createPipelineState("v2-dna");
+    const stage = state.stages.find((entry) => entry.name === "GAME_DNA");
+    const output = await (
+      executor as unknown as {
+        executeStage: (
+          stage: unknown,
+          sessionId: string,
+          agentExecutor: () => Promise<Record<string, unknown>>,
+          state: PipelineState,
+        ) => Promise<Record<string, unknown>>;
+      }
+    ).executeStage(
+      stage,
+      sessionId,
+      () => Promise.reject(new Error("no agent may run for GAME_DNA")),
+      state,
+    );
+
+    expect(output._passthrough).toBeUndefined();
+    expect(output.schemaVersion).toBe(GAME_DNA_SCHEMA_VERSION);
+    expect(String(output.fingerprint)).toMatch(/^sha256:[0-9a-f]{64}$/);
+    // No project scopes that pipeline, so it says so rather than reaching
+    // across projects to manufacture a history.
+    expect(output.outcome).toBe("no-prior-generations");
+  });
+
+  it("refuses a fingerprint that names no world model", async () => {
+    const store = new ArtifactStore();
+
+    await expect(
+      store.store(
+        "exec-unbound",
+        "GAME_DNA",
+        null,
+        buildGameDnaReport({
+          dna: buildGameDna(buildWorldModel(racingSources())),
+          priorsFound: 0,
+          priors: [],
+        }),
+        { projectId: PROJECT, producer: "game-dna" },
+      ),
+    ).rejects.toThrow(/exactly one WORLD_MODEL dependency/);
+
+    expect(REQUIRED_ARTIFACT_DEPENDENCIES.GAME_DNA).toBe("WORLD_MODEL");
+  });
+
+  it("says the comparison failed rather than that there is no history", async () => {
+    const store = new ArtifactStore();
+    // A store that cannot answer is not a project without generations.
+    store.getProjectStageArtifacts = () => {
+      throw new Error("storage unavailable");
+    };
+
+    const report = dnaReportOf(
+      await record(store, "exec-broken", racingSources()),
+    );
+
+    expect(report.outcome).toBe("comparison-failed");
+    expect(report.outcome).not.toBe("no-prior-generations");
+  });
+
+  it("counts a re-recorded execution once, not twice", async () => {
+    // Repair re-records under a new id, but a re-record under the same id
+    // stores a second GAME_DNA artifact. Counting both would make
+    // `priorsCompared` exceed `priorsFound` and compare one generation twice.
+    const store = new ArtifactStore();
+    await record(store, "exec-twice", racingSources());
+    await record(store, "exec-twice", racingSources());
+
+    const report = dnaReportOf(
+      await record(store, "exec-after", racingSources()),
+    );
+
+    expect(report.priorsFound).toBe(1);
+    expect(report.priorsCompared).toBe(1);
+    expect(report.comparisons).toHaveLength(1);
+  });
+
+  it("refuses a stored DNA it cannot fully decode", () => {
+    const dna = buildGameDna(buildWorldModel(racingSources()));
+
+    expect(decodeGameDna(dna)).toEqual(dna);
+    // A missing member of a closed set would read as zero, and a non-number
+    // makes every distance NaN — which in a report looks like a measurement.
+    expect(decodeGameDna({ ...dna, roles: {} })).toBeNull();
+    expect(
+      decodeGameDna({
+        ...dna,
+        relationKinds: { ...dna.relationKinds, owns: "1" },
+      }),
+    ).toBeNull();
+    expect(decodeGameDna({ ...dna, systemCount: Number.NaN })).toBeNull();
+    expect(
+      decodeGameDna({ ...dna, declares: { progression: true } }),
+    ).toBeNull();
+    expect(decodeGameDna({ ...dna, schemaVersion: 99 })).toBeNull();
+    expect(decodeGameDna(null)).toBeNull();
+  });
+
+  it("treats an undecodable prior as uncompared, not as absent", async () => {
+    const store = new ArtifactStore();
+    const world = buildWorldModel(racingSources());
+    const worldArtifact = await store.store(
+      "exec-corrupt",
+      "WORLD_MODEL",
+      null,
+      world,
+      { projectId: PROJECT, producer: "world-model" },
+    );
+    const dna = buildGameDna(world);
+    await store.store(
+      "exec-corrupt",
+      "GAME_DNA",
+      null,
+      {
+        ...buildGameDnaReport({ dna, priorsFound: 0, priors: [] }),
+        // Same schema version, missing a distribution member.
+        dna: { ...dna, roles: {} },
+      },
+      {
+        projectId: PROJECT,
+        producer: "game-dna",
+        dependencies: [ArtifactStore.dependencyOn(worldArtifact)],
+      },
+    );
+
+    const report = dnaReportOf(
+      await record(store, "exec-reader", racingSources()),
+    );
+
+    expect(report.outcome).toBe("prior-without-dna");
+    expect(report.priorsFound).toBe(1);
+    expect(report.priorsCompared).toBe(0);
+    expect(
+      report.comparisons.every((entry) => Number.isFinite(entry.distance)),
+    ).toBe(true);
   });
 });
 

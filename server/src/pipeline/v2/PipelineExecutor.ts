@@ -14,6 +14,7 @@ import {
   normalizeLuaScripts,
   type PlayableLuaScript,
 } from "../../types/playableLua";
+import { buildGameDna, buildGameDnaReport } from "../../validation/gameDna";
 import { buildWorldModel, type WorldModel } from "../../validation/worldModel";
 import { crossValidateWorld } from "../../validation/worldCrossValidation";
 
@@ -231,6 +232,26 @@ export class PipelineExecutor {
     // nothing. Any future agentless stage needs its own branch here.
     if (stage.name === "WORLD_MODEL") {
       return { ...this.deriveWorldModel(sessionId) };
+    }
+
+    // NOVELTY-1. The fourth stage to need this branch, caught by review after
+    // the comment above had already named the rule. Without it the fingerprint
+    // is `{ _passthrough: true }` stored as `gameDna.json` under the
+    // `game-dna` producer — a durable record claiming a structural comparison
+    // that never ran, which is worse than having no fingerprint at all.
+    //
+    // Prior generations are not compared here. This executor serves the v2
+    // concept pipeline, which has no project context to scope a history to,
+    // so the report states `no-prior-generations` truthfully rather than
+    // reaching across projects to manufacture one.
+    if (stage.name === "GAME_DNA") {
+      return {
+        ...buildGameDnaReport({
+          dna: buildGameDna(this.deriveWorldModel(sessionId)),
+          priorsFound: 0,
+          priors: [],
+        }),
+      };
     }
 
     // PIPELINE-1B. This stage used to run `tester`, whose output is a checklist
