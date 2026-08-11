@@ -104,7 +104,8 @@ export class AgentRegistry {
     // AGENT-SAFETY-1. A call made *by an agent* is a different thing from a
     // call made by the platform, and only the platform holds unbounded
     // authority to choose what runs. Checked first, so a refused delegation
-    // never reaches a provider or constructs the callee.
+    // never runs the callee and never reaches a provider. It does not prevent
+    // construction — every agent is built in this class's constructor.
     const onBehalfOf = options?.onBehalfOf;
     if (onBehalfOf !== undefined) {
       const refusal = delegationRefusal(onBehalfOf, agentType);

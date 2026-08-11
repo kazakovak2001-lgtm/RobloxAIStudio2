@@ -2,10 +2,10 @@
 
 # ROADMAP-EXTENSION-1 — Autonomous Roblox Development Platform
 
-**Status:** Roadmap extension only. **Nothing here is implemented, scoped, or started.**
+**Status:** Roadmap extension. **Everything here is unstarted except `AGENT-SAFETY-1`**, which was taken as the first implementation slice and is complete through backend PR #221 — see [its scope record](./AGENT-SAFETY-1_SCOPE.md). Nothing else is implemented, scoped, or started.
 **Baseline:** the reconciled roadmap from [ROADMAP-RECONCILIATION-1](./ROADMAP-RECONCILIATION-1_RESULT.md), which is the authority for what exists today.
 
-Every item below is `unscoped` — named and ordered so the direction is legible, and deliberately without a scope record, because a scope written before its prerequisites exist would be fiction. Each becomes `scoped` only when the work in front of it is done and someone writes its scope against the platform as it then is.
+Every item below except `AGENT-SAFETY-1` is `unscoped` — named and ordered so the direction is legible, and deliberately without a scope record, because a scope written before its prerequisites exist would be fiction. Each becomes `scoped` only when the work in front of it is done and someone writes its scope against the platform as it then is. `AGENT-SAFETY-1` went first precisely because its prerequisite was already complete, which is the rule working rather than an exception to it.
 
 ## Principles these extensions inherit
 
@@ -86,11 +86,11 @@ The order is a dependency claim, not a preference. Each stage needs the one befo
 |---|---|---|---|
 | `STORE-INTEL-1` | Creator Store semantic retrieval, compatibility and security scoring | `ASSET-FABRIC-1`, `SECREVIEW-1` | Third-party content is untrusted input. Scoring it is a security surface, not a search feature |
 | `MULTIPLACE-1` | Whole-universe and multi-place orchestration | `STUDIO-2F-C` | Needs place delivery, which is unscoped |
-| `AGENT-SAFETY-1` | Observe / Plan / Propose / Execute permission model | `AGENT-CONTRACT-1` | The one to bring forward. `AGENT-CONTRACT-1` gave agents versioned definitions; this gives them bounded authority, and everything above becomes safer for existing |
+| `AGENT-SAFETY-1` | Observe / Plan / Propose / Execute permission model | `AGENT-CONTRACT-1` | **Delivered** — backend PR #221, [scope](./AGENT-SAFETY-1_SCOPE.md). `AGENT-CONTRACT-1` gave agents versioned definitions; this gave them bounded authority, and everything above is safer for it existing first |
 | `REMOTE-OPS-1` | Web and mobile agent control plane | `AGENT-SAFETY-1` | Remote control without a permission model is remote control of an unbounded agent |
 
 ## What this does not change
 
-No existing status moved. `ARTIFACT-1`, `STUDIO-2F-A` and `WORLD-1B` remain `code_complete_evidence_pending`; `WORLD-1C` and `SECURITY-REVIEW-B` remain `blocked`; Studio acceptance remains paused. No extension above is scoped, and none may begin before the stage it sits in.
+`ARTIFACT-1`, `STUDIO-2F-A` and `WORLD-1B` remain `code_complete_evidence_pending`; `WORLD-1C` and `SECURITY-REVIEW-B` remain `blocked`; Studio acceptance remains paused. No extension above other than `AGENT-SAFETY-1` is scoped, and none may begin before the stage it sits in.
 
 <!-- prettier-ignore-end -->

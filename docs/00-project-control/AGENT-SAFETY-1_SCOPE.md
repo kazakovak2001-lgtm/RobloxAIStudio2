@@ -57,7 +57,7 @@ No runtime path grants it, so `validateAgentDefinitions` **rejects any definitio
 
 `mayDelegate` is `true` for exactly one agent — `orchestrator` — because it is the only implementation holding a registry reference. A test asserts that set, so an agent that gains one has to justify it.
 
-`delegationRefusal(callerId, calleeId)` is evaluated in `AgentRegistry.executeAgent` whenever a call names `onBehalfOf`, **before** the callee is constructed or a provider is reached. It refuses:
+`delegationRefusal(callerId, calleeId)` is evaluated in `AgentRegistry.executeAgent` whenever a call names `onBehalfOf`, **before the callee runs and before any provider is reached**. It does *not* prevent construction: the registry builds all sixteen agents in its own constructor, so every callee already exists by the time a call arrives. What the guard stops is execution and the provider call — a stronger claim would hide constructor-time work added later. It refuses:
 
 - a caller with no definition;
 - a caller whose definition does not permit delegation;
