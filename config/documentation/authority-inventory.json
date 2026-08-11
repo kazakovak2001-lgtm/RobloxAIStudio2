@@ -48,7 +48,9 @@
         "is started, and none may begin before the stage it sits in.",
         "| `AGENT-SAFETY-1` | Observe / Plan / Propose / Execute permission model | High | `complete`",
         "| `NOVELTY-1` | GameDNA and structural similarity fingerprint | High | `complete`",
-        "The fifteen `unscoped` strategic items"
+        "The fifteen `unscoped` strategic items",
+        "`unscoped` — not started; its dependency is now complete, so it is startable rather than blocked",
+        "understates a history nothing can attribute to it"
       ],
       "forbiddenClaims": [
         "PR #162 pending reviewed merge",
@@ -238,7 +240,9 @@
         "Unknown is a valid state.",
         "a scope written before its prerequisites exist would be fiction",
         "The order is a dependency claim, not a preference.",
-        "Everything here is unstarted except `AGENT-SAFETY-1` and `NOVELTY-1`"
+        "Everything here is unstarted except `AGENT-SAFETY-1` and `NOVELTY-1`",
+        "`NOVELTY-2` is startable and not started.",
+        "`NOVELTY-2` is now startable rather than blocked, which is not the same as started."
       ],
       "forbiddenClaims": []
     },
@@ -267,7 +271,10 @@
         "The graph is not a graph yet.",
         "Progression and economy are present but are not structure.",
         "Absence of a comparison is never reported as novelty.",
-        "`NOVELTY-2` is the gate"
+        "`NOVELTY-2` is the gate",
+        "NOVELTY-1",
+        "`compared`, `no-prior-generations`, `prior-without-dna`, `comparison-failed`",
+        "Older generations are unreachable, and that shows up as the wrong-looking outcome."
       ],
       "forbiddenClaims": []
     }
