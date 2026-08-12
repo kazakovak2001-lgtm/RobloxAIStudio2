@@ -548,6 +548,7 @@ server/src/__tests__/pipeline1a.plan-definition.test.ts
 server/src/__tests__/pipeline1b.validation-report.test.ts
 server/src/__tests__/platform.test.ts
 server/src/__tests__/playtesttruth1.evidence.test.ts
+server/src/__tests__/playtesttruth1.review.test.ts
 server/src/__tests__/pluginProtocol.test.ts
 server/src/__tests__/preservationProperty.test.ts
 server/src/__tests__/productLayer.test.ts

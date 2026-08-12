@@ -96,7 +96,11 @@ export const RUNTIME_NOT_MEASURED: RuntimeMeasurement = {
 };
 
 export interface PlaytestReport {
-  readonly schemaVersion: number;
+  /**
+   * Exactly the current version. Typed as the literal so an unsupported
+   * version is refused at compile time and not only by the decoder.
+   */
+  readonly schemaVersion: typeof PLAYTEST_REPORT_SCHEMA_VERSION;
   /** What produced this. Never inferred by a consumer. */
   readonly evidenceKind: PlaytestEvidenceKind;
   projectId: string;
@@ -160,6 +164,93 @@ export function actionableFindingCount(counts: FindingCounts): number {
   return counts.critical + counts.warning;
 }
 
+const ISSUE_SEVERITIES: readonly string[] = [
+  "critical",
+  "warning",
+  "suggestion",
+  "optimization",
+];
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function isFiniteNumber(value: unknown): value is number {
+  return typeof value === "number" && Number.isFinite(value);
+}
+
+/** Counts are whole and cannot be negative; anything else is a corrupt row. */
+function isCount(value: unknown): value is number {
+  return typeof value === "number" && Number.isInteger(value) && value >= 0;
+}
+
+function isFindingCounts(value: unknown): value is FindingCounts {
+  return (
+    isRecord(value) &&
+    isCount(value.critical) &&
+    isCount(value.warning) &&
+    isCount(value.suggestion) &&
+    isCount(value.optimization) &&
+    isCount(value.total)
+  );
+}
+
+function isPlaytestIssue(value: unknown): value is PlaytestIssue {
+  return (
+    isRecord(value) &&
+    typeof value.id === "string" &&
+    typeof value.severity === "string" &&
+    ISSUE_SEVERITIES.includes(value.severity) &&
+    typeof value.category === "string" &&
+    typeof value.affectedArtifact === "string" &&
+    typeof value.reason === "string" &&
+    typeof value.recommendedFix === "string" &&
+    isFiniteNumber(value.priority)
+  );
+}
+
+function isSystemFindings(value: unknown): value is SystemFindings {
+  return (
+    isRecord(value) &&
+    typeof value.system === "string" &&
+    isFindingCounts(value.counts) &&
+    (value.status === "pass" ||
+      value.status === "warn" ||
+      value.status === "fail")
+  );
+}
+
+function isPerformanceEstimate(value: unknown): value is PerformanceEstimate {
+  return (
+    isRecord(value) &&
+    isCount(value.scriptCount) &&
+    isCount(value.assetCount) &&
+    isCount(value.dependencyDepth) &&
+    isCount(value.remoteEventCount) &&
+    isFiniteNumber(value.estimatedInitTimeMs) &&
+    Array.isArray(value.riskAreas) &&
+    value.riskAreas.every((area) => typeof area === "string")
+  );
+}
+
+/**
+ * The evidence contract itself: runtime is present, explicitly not measured,
+ * and says why. An empty reason would leave the strongest claim in the report
+ * unsupported, so it is refused rather than defaulted.
+ */
+function isRuntimeMeasurement(value: unknown): value is RuntimeMeasurement {
+  return (
+    isRecord(value) &&
+    value.status === "not-measured" &&
+    typeof value.reason === "string" &&
+    value.reason.length > 0
+  );
+}
+
+function isIssueList(value: unknown): value is PlaytestIssue[] {
+  return Array.isArray(value) && value.every(isPlaytestIssue);
+}
+
 /**
  * Decode a report read back out of storage.
  *
@@ -167,21 +258,42 @@ export function actionableFindingCount(counts: FindingCounts): number {
  * predates this contract: it is a legacy heuristic record, and returning it as
  * a report would let a number produced by counting `pcall` occurrences be read
  * as a measurement.
+ *
+ * Strict about the rest of the shape for a different reason. This takes
+ * `unknown` because it reads storage, where a row can be truncated or
+ * half-written. Checking only the version, the evidence kind and the presence
+ * of an `issues` array let such a row through as a whole `PlaytestReport`, and
+ * the first ordinary access — `report.findingCounts.total` — threw at the
+ * caller instead. Every required field is validated before the value is
+ * returned, so a report that decodes is a report that can be used.
+ *
+ * Relaxing any of this to admit an older or partial payload would hand back
+ * exactly the unearned credibility this slice removed, so an incomplete row is
+ * refused rather than completed with defaults. `total` is deliberately not
+ * required to equal the sum of the four severities: `countFindings` sets it
+ * from the issue count, and an issue with an unrecognised severity is counted
+ * in the total without matching a bucket.
  */
 export function decodePlaytestReport(stored: unknown): PlaytestReport | null {
-  if (typeof stored !== "object" || stored === null) return null;
-  const record = stored as Record<string, unknown>;
-  if (record.schemaVersion !== PLAYTEST_REPORT_SCHEMA_VERSION) return null;
+  if (!isRecord(stored)) return null;
+  if (stored.schemaVersion !== PLAYTEST_REPORT_SCHEMA_VERSION) return null;
   if (
-    typeof record.evidenceKind !== "string" ||
+    typeof stored.evidenceKind !== "string" ||
     !PLAYTEST_EVIDENCE_KINDS.includes(
-      record.evidenceKind as PlaytestEvidenceKind,
+      stored.evidenceKind as PlaytestEvidenceKind,
     )
   ) {
     return null;
   }
-  const runtime = record.runtime as RuntimeMeasurement | undefined;
-  if (!runtime || runtime.status !== "not-measured") return null;
-  if (!Array.isArray(record.issues)) return null;
-  return stored as PlaytestReport;
+  if (!isRuntimeMeasurement(stored.runtime)) return null;
+  if (typeof stored.projectId !== "string") return null;
+  if (!isFiniteNumber(stored.generatedAt)) return null;
+  if (typeof stored.summary !== "string") return null;
+  if (!isFindingCounts(stored.findingCounts)) return null;
+  if (!isIssueList(stored.issues)) return null;
+  if (!isIssueList(stored.recommendations)) return null;
+  if (!Array.isArray(stored.systems) || !stored.systems.every(isSystemFindings))
+    return null;
+  if (!isPerformanceEstimate(stored.performance)) return null;
+  return stored as unknown as PlaytestReport;
 }

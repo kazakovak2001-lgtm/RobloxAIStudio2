@@ -69,8 +69,8 @@ Three places, and the repair path is the one that matters:
 | | Before | After |
 |---|---|---|
 | Iterate while | `currentScore < targetScore` | actionable findings exist |
-| Completed when | `currentScore >= targetScore`, reason `"Target score reached"` | never — completion is not claimable without measurement |
-| Stops with | `"No actionable repairs remaining"` / attempt limit / timeout | `"No actionable deterministic findings"` / attempt limit / timeout, each stated |
+| Completed when | `currentScore >= targetScore`, reason `"Target score reached"` | no actionable findings remain, reason `"No actionable deterministic findings remain"` |
+| Stops with | `"No actionable repairs remaining"` / attempt limit / timeout | `"No actionable deterministic findings remain"` / attempt limit / timeout, each stated |
 | Plan decisions | bend around `overallScore` vs `targetScore` | severity alone |
 | Improvement | `scoreBefore` vs `scoreAfter` | findings resolved, findings remaining |
 

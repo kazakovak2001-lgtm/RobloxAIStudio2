@@ -508,6 +508,101 @@ describe("AutonomousOrchestrator bounded preview truthfulness", () => {
     expect(session.executionGeneration).toBe(1);
   });
 
+  it("demotes a pre-PLAYTEST-TRUTH-1 quality score instead of restoring it", async () => {
+    // A durable session written before PLAYTEST-TRUTH-1: its playtest phase
+    // already completed and left the old heuristic behind. Recovery replays
+    // the phases and never reruns that playtest, so without demotion the
+    // session API and the terminal preview event go on publishing 87 as
+    // current measured quality.
+    const sessionStore = new InMemoryAutonomousSessionStore();
+    const prompt = "Build a legacy-scored obby";
+    const startedAt = Date.now();
+    const phases = [
+      {
+        id: "node-playtest",
+        phase: "playtest" as const,
+        status: "completed" as const,
+        startedAt,
+      },
+      {
+        id: "node-preview-completed",
+        phase: "preview_completed" as const,
+        status: "pending" as const,
+      },
+    ];
+    const cost = {
+      totalTokens: 0,
+      totalCost: 0,
+      totalTimeMs: 0,
+      source: "measured" as const,
+      perPhase: {},
+    };
+    const context = createAutonomousPhaseContext(
+      "project-legacy-score",
+      prompt,
+    );
+    const record: AutonomousSessionRecord = {
+      session: {
+        id: "orch-legacy-score",
+        projectId: "project-legacy-score",
+        prompt,
+        executionMode: "bounded",
+        resultAuthority: "preview-only",
+        status: "running",
+        currentPhase: "playtest",
+        phases,
+        goals: {
+          targetScore: 80,
+          budget: 10000,
+          timeLimitMs: 300000,
+          maxCost: 1,
+          maxRepairIterations: 3,
+        },
+        cost,
+        checkpoints: [
+          {
+            id: "checkpoint-legacy",
+            phase: "playtest",
+            timestamp: startedAt,
+            // The checkpoint carries the heuristic too, so restoring from it
+            // is the second way the number could come back.
+            snapshot: {
+              context: structuredClone(context),
+              phases: structuredClone(phases),
+              qualityScore: 87,
+              cost: structuredClone(cost),
+            },
+          },
+        ],
+        qualityScore: 87,
+        startedAt,
+        recoveryCount: 0,
+        executionGeneration: 0,
+      },
+      context,
+      checkpointSequence: 1,
+    };
+    await sessionStore.save(record);
+
+    const orchestrator = new AutonomousOrchestrator(undefined, {
+      sessionStore,
+      phaseRegistry: new AutonomousPhaseRegistry([]),
+    });
+    await orchestrator.ready();
+
+    // Loading alone must not republish it as current quality.
+    const hydrated = orchestrator.getSession(record.session.id)!;
+    expect(hydrated.qualityScore).toBeNull();
+    expect(hydrated.legacyQualityScore).toBe(87);
+
+    // Nor may recovering from the legacy checkpoint bring it back.
+    expect(await orchestrator.recover(hydrated.id)).toBe(true);
+    await waitForTerminal(hydrated);
+    const recovered = orchestrator.getSession(record.session.id)!;
+    expect(recovered.qualityScore).toBeNull();
+    expect(recovered.legacyQualityScore).toBe(87);
+  });
+
   it("keeps bounded checkpoint cost snapshots isolated", async () => {
     const orchestrator = new AutonomousOrchestrator();
     const session = await orchestrator.run(

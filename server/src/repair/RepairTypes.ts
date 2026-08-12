@@ -68,21 +68,10 @@ export interface RepairResult {
  */
 export const REPAIR_EVIDENCE_VERSION = 2;
 
-export interface RepairIterationRecord {
+/** Everything an iteration record carries regardless of when it was written. */
+interface RepairIterationBase {
   iteration: number;
   changedArtifacts: string[];
-  /**
-   * Legacy heuristic totals, present only on records written before
-   * PLAYTEST-TRUTH-1. They came from an average that added five points when
-   * the source contained `pcall`, so a repair could appear to improve a game
-   * without resolving a single finding. **Never read as a measurement, and
-   * never compared to decide anything.**
-   */
-  scoreBefore?: number;
-  scoreAfter?: number;
-  /** Findings before and after this iteration. Absent on legacy records. */
-  findingsBefore?: FindingCounts;
-  findingsAfter?: FindingCounts;
   duration: number;
   /** Not tracked yet — the LLM provider interface surfaces no usage metadata. */
   tokenUsage: number;
@@ -111,23 +100,38 @@ export interface RepairIterationRecord {
   strategyResults: RepairResult[];
 }
 
-export interface RepairSessionState {
+/**
+ * An iteration written before PLAYTEST-TRUTH-1.
+ *
+ * It carries the heuristic totals and no finding counts. Those numbers came
+ * from an average that added five points when the source contained `pcall`, so
+ * a repair could appear to improve a game without resolving a single finding.
+ * **Never read as a measurement, and never compared to decide anything.**
+ */
+export interface LegacyRepairIteration extends RepairIterationBase {
+  scoreBefore?: number;
+  scoreAfter?: number;
+  findingsBefore?: undefined;
+  findingsAfter?: undefined;
+}
+
+/** An iteration written by PLAYTEST-TRUTH-1 onward: findings, never scores. */
+export interface EvidenceVersionedRepairIteration extends RepairIterationBase {
+  findingsBefore: FindingCounts;
+  findingsAfter: FindingCounts;
+  scoreBefore?: undefined;
+  scoreAfter?: undefined;
+}
+
+export type RepairIterationRecord =
+  LegacyRepairIteration | EvidenceVersionedRepairIteration;
+
+/** Everything a session carries regardless of when it was written. */
+interface RepairSessionBase {
   projectId: string;
   status: "running" | "completed" | "stopped" | "timeout";
   currentIteration: number;
   maxIterations: number;
-  /**
-   * Legacy heuristic values, present only on sessions written before
-   * PLAYTEST-TRUTH-1. `targetScore` was compared against `currentScore` to
-   * decide whether to repair and to declare a session complete; neither
-   * measured anything. Kept readable, never written by new sessions.
-   */
-  targetScore?: number;
-  currentScore?: number;
-  /** Findings outstanding, which is what new sessions decide on. */
-  findingCounts: FindingCounts;
-  /** Absent on legacy sessions, which is how the two are told apart. */
-  evidenceVersion?: number;
   history: RepairIterationRecord[];
   /** Absent on sessions persisted before REPAIR-1C — always read via `?? []`. */
   deliveries?: RepairDeliveryRecord[];
@@ -135,6 +139,77 @@ export interface RepairSessionState {
   finishedAt?: number;
   totalRepairs: number;
   stopReason?: string;
+}
+
+/**
+ * A session written before PLAYTEST-TRUTH-1.
+ *
+ * `targetScore` was compared against `currentScore` to decide whether to repair
+ * and to declare a session complete; neither measured anything. These rows stay
+ * readable and are never rewritten.
+ *
+ * `findingCounts` is typed as absent rather than optional-on-one-type because
+ * a legacy row genuinely has no findings recorded. Absence is not zero
+ * findings: it means the question was never asked, and a consumer that treats
+ * it as `{ total: 0 }` would report a clean repair that never ran.
+ */
+export interface LegacyRepairSession extends RepairSessionBase {
+  evidenceVersion?: undefined;
+  findingCounts?: undefined;
+  targetScore?: number;
+  currentScore?: number;
+}
+
+/**
+ * A session written by PLAYTEST-TRUTH-1 onward.
+ *
+ * The evidence fields this slice claims are required here, so a new row cannot
+ * be persisted without them, and the heuristic fields are typed away so one
+ * cannot reappear.
+ */
+export interface EvidenceVersionedRepairSession extends RepairSessionBase {
+  evidenceVersion: typeof REPAIR_EVIDENCE_VERSION;
+  /** Findings outstanding, which is what new sessions decide on. */
+  findingCounts: FindingCounts;
+  targetScore?: undefined;
+  currentScore?: undefined;
+}
+
+/**
+ * Either shape, told apart by `evidenceVersion`.
+ *
+ * A single interface requiring `findingCounts` was wrong in both directions: it
+ * let a typed consumer dereference a field that legacy rows do not have, and it
+ * only type-checked because the persistence layer cast the value. The union
+ * makes the read boundary narrow before it can reach the evidence fields.
+ */
+export type RepairSessionState =
+  LegacyRepairSession | EvidenceVersionedRepairSession;
+
+/**
+ * Narrow a session read back out of storage.
+ *
+ * The store reads rows through an unchecked generic assertion, so this guard
+ * cannot assume the row is well formed. It requires the evidence fields as well
+ * as the version: a row that claims version 2 without `findingCounts` is not a
+ * valid version-2 row, and the safe reading is the weaker one. Treating it as
+ * legacy says only that no findings were recorded, which is true; trusting the
+ * version alone would let a consumer dereference a field that is not there.
+ */
+export function isEvidenceVersionedRepairSession(
+  session: RepairSessionState,
+): session is EvidenceVersionedRepairSession {
+  return (
+    session.evidenceVersion === REPAIR_EVIDENCE_VERSION &&
+    session.findingCounts !== undefined
+  );
+}
+
+/** True for a row written before PLAYTEST-TRUTH-1. */
+export function isLegacyRepairSession(
+  session: RepairSessionState,
+): session is LegacyRepairSession {
+  return !isEvidenceVersionedRepairSession(session);
 }
 
 /** One Studio delivery attempt — a fresh push of the latest repair, or an
