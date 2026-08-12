@@ -4,7 +4,7 @@
   "repository": "kazakovak2001-lgtm/RobloxAIStudio2",
   "releaseIdentity": {
     "backendBranch": "release/cutover-1e-candidate",
-    "backendCommit": "63221e79854be718e75a8582b6a7afe248ecb22a",
+    "backendCommit": "77976a7818695cfdccdea253794acc0cd3c79b91",
     "frontendRepository": "kazakovak2001-lgtm/Frontend",
     "frontendCommit": "b91ebdba613ca0d8f01a5fb33de355ae97588601"
   },
@@ -31,14 +31,14 @@
         "`PIPELINE-1B` | Deterministic validation recorded as a durable artifact | High | `complete` — backend PR #205",
         "`PIPELINE-1C` | Conditional stages inside the pipeline | Low | `unscoped`",
         "a security finding never negates generation, delivery or release, and a blocking gate is the separate `SECURITY-REVIEW-B` delivery",
-        "63221e79854be718e75a8582b6a7afe248ecb22a",
+        "77976a7818695cfdccdea253794acc0cd3c79b91",
         "b91ebdba613ca0d8f01a5fb33de355ae97588601",
         "`WORLD-1A` | Semantic world model and cross-artifact validation against generated Lua | High | `complete` — backend PR #207",
         "`WORLD-1B` | Design-time Studio materialization of the world model | Medium | `code_complete_evidence_pending` — backend PR #209 merged",
         "`WORLD-1C` | Canonical ownership of the world by the materialized scene | Medium | `blocked` — scoped, and blocked",
         "`AGENT-CONTRACT-1` | Versioned server-owned definitions for every runtime agent | Medium | `complete` — backend PR #212; foundation only, and every policy field is enforced",
         "Wall-clock timeout, monetary cost and input-token ceilings are deliberately absent because nothing enforces them today",
-        "release/cutover-1e-candidate@63221e79854be718e75a8582b6a7afe248ecb22a",
+        "release/cutover-1e-candidate@77976a7818695cfdccdea253794acc0cd3c79b91",
         "`ARTIFACT-CONTRACT-2` | Durable artifact envelope, content identity and lineage | High | `complete` — backend PR #214",
         "a report can name the exact bytes it read instead of being assumed to still apply",
         "`SECURITY-REVIEW-A2` | Hardening of the advisory Luau reviewer | Medium | `complete` — backend PR #216",
@@ -58,7 +58,9 @@
         "split four `complete`, one `blocked` and twelve `unscoped`",
         "`purpose` is populated for model entries from the producer's `description`",
         "| `PLAYTEST-TRUTH-1` | Stop presenting heuristic static analysis as measured playtest quality | High | `complete`",
-        "| `SIM-TRUTH-1` | Stop presenting deterministic simulation heuristics as measured player engagement | Medium | `scoped`",
+        "| `SIM-TRUTH-1` | Stop presenting deterministic simulation heuristics as measured player engagement | Medium | `complete`",
+        "`SIM-TRUTH-1` is complete to exactly seven things and no more.",
+        "A known limitation is part of the completion, not a caveat added to it.",
         "It adds no runtime capability of any kind",
         "`PLAYTEST-TRUTH-1` is complete to its implemented contract and no further",
         "No runtime playtest capability was added",
@@ -79,7 +81,9 @@
         "release/cutover-1e-candidate@042ca72d2b6f34af05779bcf8601f441ae93c0c9",
         "| `PLAYTEST-TRUTH-1` | Stop presenting heuristic static analysis as measured playtest quality | High | `scoped`",
         "The thirteen `unscoped` strategic items",
-        "`purpose` and `required` are representable and deliberately unpopulated"
+        "`purpose` and `required` are representable and deliberately unpopulated",
+        "release/cutover-1e-candidate@63221e79854be718e75a8582b6a7afe248ecb22a",
+        "| `SIM-TRUTH-1` | Stop presenting deterministic simulation heuristics as measured player engagement | Medium | `scoped`"
       ]
     },
     {
@@ -88,7 +92,7 @@
       "rank": 2,
       "status": "current",
       "requiredClaims": [
-        "63221e79854be718e75a8582b6a7afe248ecb22a",
+        "77976a7818695cfdccdea253794acc0cd3c79b91",
         "b91ebdba613ca0d8f01a5fb33de355ae97588601",
         "REPAIR-1 complete across backend and Frontend UI",
         "PLAYTEST-TRUTH-1 completed through backend PR #229, merged",
@@ -115,7 +119,11 @@
         "carries an explicit verdict **when the run produced enough evidence to form one**",
         "Absence means the question was not resolved, never that the generation was found `distinct`.",
         "`ASSET-FABRIC-1` complete (backend PR #227",
-        "`purpose` is populated for model entries from the producer's `description`"
+        "`purpose` is populated for model entries from the producer's `description`",
+        "SIM-TRUTH-1 completed through backend PR #231, merged",
+        "`SIM-TRUTH-1` complete (backend PR #231",
+        "No real player engagement, retention, fun, quality or runtime measurement is claimed.",
+        "no server-owned simulation, economy or world evidence source is wired to"
       ],
       "forbiddenClaims": [
         "pending reviewed merge",
@@ -131,7 +139,7 @@
       "status": "supporting",
       "requiredClaims": [
         "DOC-202A",
-        "63221e79854be718e75a8582b6a7afe248ecb22a",
+        "77976a7818695cfdccdea253794acc0cd3c79b91",
         "b91ebdba613ca0d8f01a5fb33de355ae97588601",
         "ARTIFACT-1, PROVIDER-1B and SECREVIEW-1 advance the runtime pair to backend",
         "PIPELINE-1A advances the runtime pair to backend",
@@ -161,7 +169,9 @@
         "This removes a fabricated measurement. It adds no capability.",
         "Complete to the contract only.",
         "Validation is advisory.",
-        "`purpose` and `required` are recorded honestly rather"
+        "`purpose` and `required` are recorded honestly rather",
+        "SIM-TRUTH-1 advances the runtime pair to backend",
+        "Complete to seven things and no more."
       ],
       "forbiddenClaims": []
     },
