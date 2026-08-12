@@ -838,6 +838,69 @@ as of August 12, 2026. The response states that explicitly. Wiring such a source
 is not claimed here. `PLAYTEST-2` is untouched and remains `unscoped`, and
 Studio acceptance stays paused and unchanged.
 
+## Architectural finding — `LIFECYCLE-EVIDENCE-1`, deferred pending a meaningful lifecycle consumer
+
+**This is a dependency finding, not a delivery item.** It is deliberately absent
+from the roadmap table: a row there would imply scheduled implementation, and
+the conclusion below is that implementation must not be scheduled yet. Recorded
+at `71bf4114268ce690e2fd2cf1e6008599770933bf`.
+
+`SIM-TRUTH-1` made one limitation explicit: `/lifecycle/tick` has no
+server-owned simulation, economy or world evidence source. All three arrive in
+the request body, and the results `/api/simulate` produces live in that
+router's process-local map, which this handler cannot read. The route therefore
+reports insufficient evidence, never evolves, and leaves a game in `CREATED`.
+
+**That abstention is correct, and it is not a bug awaiting a fix.** The
+alternative is what the slice removed: a client's own number, or a default
+standing in for one, deciding that a game is healthy. Naming the gap explicitly
+was the point; closing it is a separate question with a different answer.
+
+**Closing only the evidence-source gap would not produce a usable capability.**
+Four facts, each checked against the code at this commit rather than assumed:
+
+- The patch path operates on a copy. `LiveUpdateEngine.applyPatches` deep-clones
+  the blueprint and returns `resultingBlueprint`, and that field has no consumer
+  anywhere in the repository — its only two occurrences are the type declaration
+  and the return statement. The route reads the applied count. The evolved
+  blueprint is discarded when the request ends, and nothing treats it as
+  authoritative game state.
+- Lifecycle state and evolution have no durable persistence path. Nothing under
+  `server/src/lifecycle` or in the route writes durable storage, so no artifact
+  establishes an evolved game as the project result.
+- The lifecycle `MemoryEngine` write under `lifecycle-controller` has no
+  demonstrated read-side consumer in the active generation flow; the identifier
+  appears only at the write site, which is the same pattern already recorded for
+  `simulation-feedback`.
+- The signal itself is unproven. `SIM-TRUTH-1` established truthful provenance,
+  not simulator validity, and `GameSimulationEngine`'s scheduling artifacts
+  remain a known limitation it deliberately did not fix.
+
+Wiring an evidence source now would add plumbing around a subsystem whose output
+is not yet product-effective, and would connect an unproven simulation signal to
+a mutation path with no authoritative consumer — the same shape as the defect
+just removed.
+
+### Prerequisites before `LIFECYCLE-EVIDENCE-1` may become implementation-ready
+
+1. **A real lifecycle consumer.** The evolved or patched blueprint has an
+   authoritative downstream consumer, and the result is not discarded when the
+   request ends.
+2. **Durable lifecycle ownership.** What lifecycle state or artifact is durable
+   is defined, along with restart and recovery semantics, and project ownership
+   and lineage for an evolved game.
+3. **Simulation fidelity sufficient for lifecycle decisions.** The decision value
+   of the simulation's signals is justified before any of them drives a mutation.
+4. **A decision contract.** What evidence may trigger a patch or an evolution is
+   defined explicitly; insufficient evidence continues to abstain; and client
+   claims and arbitrary defaults never become server evidence again.
+
+**The current abstention is a safety boundary, not an implementation gap.** It
+prevents an unproven simulation signal from driving a lifecycle path whose
+mutated result currently has no authoritative consumer. A future reader should
+treat the `SIM-TRUTH-1` known limitation as deliberately held open, not as work
+waiting to be picked up.
+
 ## Scope boundary
 
 DOC-202A does not implement `STUDIO-2F`, `AUTONOMY-3A` or `COLLAB-3B`. It establishes documentation authority and post-merge truthfulness only.

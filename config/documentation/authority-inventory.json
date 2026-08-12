@@ -123,7 +123,9 @@
         "SIM-TRUTH-1 completed through backend PR #231, merged",
         "`SIM-TRUTH-1` complete (backend PR #231",
         "No real player engagement, retention, fun, quality or runtime measurement is claimed.",
-        "no server-owned simulation, economy or world evidence source is wired to"
+        "no server-owned simulation, economy or world evidence source is wired to",
+        "`LIFECYCLE-EVIDENCE-1` is a deferred prerequisite, not a problem to fix.",
+        "abstention is a safety boundary rather than an"
       ],
       "forbiddenClaims": [
         "pending reviewed merge",
@@ -171,7 +173,10 @@
         "Validation is advisory.",
         "`purpose` and `required` are recorded honestly rather",
         "SIM-TRUTH-1 advances the runtime pair to backend",
-        "Complete to seven things and no more."
+        "Complete to seven things and no more.",
+        "LIFECYCLE-EVIDENCE-1`, deferred pending a meaningful lifecycle consumer",
+        "This is a dependency finding, not a delivery item.",
+        "Prerequisites before `LIFECYCLE-EVIDENCE-1` may become implementation-ready"
       ],
       "forbiddenClaims": []
     },
