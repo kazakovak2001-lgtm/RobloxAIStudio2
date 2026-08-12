@@ -9,10 +9,10 @@ fail-closed guard for subsequent roadmap reconciliations.
 
 - Backend repository: `kazakovak2001-lgtm/RobloxAIStudio2`
 - Backend release branch: `release/cutover-1e-candidate`
-- Current backend runtime release: `042ca72d2b6f34af05779bcf8601f441ae93c0c9`
+- Current backend runtime release: `63221e79854be718e75a8582b6a7afe248ecb22a`
 - SECURITY-2G-F control baseline: `da55f716c798ec8c6a7f25a8e2a3b7b0a2244416`
 - Paired Frontend repository: `kazakovak2001-lgtm/Frontend`
-- Paired Frontend runtime contents: `0a6857ad548b9c3d48019dfa7a63adbb5fde4930`
+- Paired Frontend runtime contents: `b91ebdba613ca0d8f01a5fb33de355ae97588601`
 
 ## Authority order
 
@@ -736,6 +736,61 @@ Repair also broke outright on the new required lineage rule, failing before
 the repaired Lua was persisted, and the repair playtest stopped seeing assets
 entirely, which would have changed repair scoring on runs with nothing wrong
 with them.
+
+PLAYTEST-TRUTH-1 advances the runtime pair to backend
+`63221e79854be718e75a8582b6a7afe248ecb22a` and Frontend
+`b91ebdba613ca0d8f01a5fb33de355ae97588601`, through backend pull request
+`#229` and Frontend pull requests `#47` and `#48`. Both members moved.
+
+`PlaytestEngine` averaged six numbers into an `overallScore` and labelled
+anything above eighty `production_ready`. One of the six started at eighty and
+added five points when the generated source contained the substring `pcall`,
+and it read no findings at all. Nothing in that pipeline has ever run a Roblox
+play session, observed a player or measured anything at runtime. The repair
+loop then decided whether to run, and declared itself complete, by comparing
+that number to a target.
+
+**The findings were real and are kept. The arithmetic on top of them is gone.**
+A report states what produced it — `evidenceKind: "static-analysis"` — and
+states that runtime quality was not measured rather than omitting it or
+recording a zero: an absent field reads as an oversight and a zero reads as a
+failing grade, and neither is true when the question was never asked. A
+terminal autonomous session reports `qualityScore: null`, and repair decides on
+outstanding findings rather than on a target.
+
+**Two repositories, three pull requests, in that order for a reason.** Backend
+CI checks the paired Frontend commit out and runs the contract against it, so
+the Frontend member had to accept both shapes before the backend could change.
+Frontend `#47` made the contract transition-compatible and documented its own
+removal condition; backend `#229` removed the fabricated score; Frontend `#48`
+deleted the transitional acceptance once the pinned backend carried the slice.
+At no point did the pair verify against a contract that contradicted it, and no
+replacement score was derived at any step.
+
+Review found seven defects, three of them boundaries where the slice asserted
+more than it enforced. A session persisted before the slice carries the old
+number and its playtest phase is never rerun on recovery, so loading or
+recovering republished the heuristic as current measured quality; it is now
+demoted to `legacyQualityScore` with the live value left `null`. Storage
+decoding checked the version, the evidence kind, `runtime.status` and the
+presence of an `issues` array and then cast, so a truncated row came back as a
+whole report and threw at the caller on first ordinary access. And
+`RepairSessionState` required `findingCounts` while documenting legacy rows
+that omit it, type-checking only because the persistence layer cast — legacy
+and evidence-versioned sessions and iterations are now discriminated variants,
+so a legacy absence of findings is never read as zero findings. Each of the
+three invariants was verified by mutation rather than by assertion alone.
+
+**This removes a fabricated measurement. It adds no capability.** Nothing runs
+a play session, observes a player, simulates input or measures anything at
+runtime, and the platform still cannot answer whether a generated game is good.
+`performance` remains an estimate derived from counts with nothing timed, each
+system's `status` restates its finding counts and is not a magnitude, and
+legacy heuristic numbers stay readable on historical records and are compared
+to nothing. `PLAYTEST-2` is untouched: it remains the future real runtime,
+input and visual playtest capability, `unscoped` and blocked on its existing
+dependencies, and nothing here is evidence toward it. Studio acceptance is
+unchanged and remains paused on the operator session.
 
 ## Scope boundary
 
