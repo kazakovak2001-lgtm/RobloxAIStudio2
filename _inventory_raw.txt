@@ -108,6 +108,7 @@ docs/00-project-control/ROADMAP_STATUS.md
 docs/00-project-control/RUNTIME-PLAYTEST-1_RESULT.md
 docs/00-project-control/SECURITY-2G-E_AUTHORIZATION_MATRIX.md
 docs/00-project-control/SECURITY-REVIEW-B_PROMOTION_CRITERIA.md
+docs/00-project-control/SIM-TRUTH-1_SCOPE.md
 docs/00-project-control/STUDIO-1A_ARTIFACT_LINEAGE.md
 docs/00-project-control/STUDIO-1B_RUNTIME_CONSOLIDATION.md
 docs/00-project-control/STUDIO-1C_IMPORT_ACKNOWLEDGEMENT.md
@@ -609,6 +610,7 @@ server/src/__tests__/security2gE.system-metadata-scope.test.ts
 server/src/__tests__/security2gE.world-scope.test.ts
 server/src/__tests__/securityHardening.test.ts
 server/src/__tests__/securityreviewa2.hardening.test.ts
+server/src/__tests__/simtruth1.evidence.test.ts
 server/src/__tests__/studio1.artifact-lineage.test.ts
 server/src/__tests__/studio1.import-acknowledgement.test.ts
 server/src/__tests__/studio1.plugin-contract.test.ts

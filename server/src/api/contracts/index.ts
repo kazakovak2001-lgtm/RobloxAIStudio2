@@ -52,7 +52,28 @@ export interface CompileResponse {
     scripts: { total: number; lines: number };
     assets: { objects: number };
     validation: { score: number; passed: boolean };
-    simulation: { engagement: number };
+    /**
+     * SIM-TRUTH-1. This declared `{ engagement: number }`, a required numeric
+     * field carrying a score that measured nothing. Both compile handlers now
+     * report the evidence kind, the observed counts and the explicit statement
+     * that no player was observed, so a client reads what the simulation saw
+     * rather than a number standing in for a judgement.
+     */
+    simulation: {
+      evidenceKind: "deterministic-simulation";
+      observed: {
+        totalTicks: number;
+        mechanicsDeclared: number;
+        mechanicsExercised: number;
+        npcsDeclared: number;
+        npcsInteracted: number;
+        loopCompleteEventEmitted: boolean;
+        frictionEvents: number;
+        currencyGainEvents: number;
+        levelUpEvents: number;
+      };
+      player: { status: "not-observed"; reason: string };
+    };
     economy: { stability: number; health?: number };
   };
   project: {

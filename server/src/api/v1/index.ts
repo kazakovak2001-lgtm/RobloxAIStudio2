@@ -180,7 +180,9 @@ export function createV1Router(
                 passed: artifact.validationReport.passed,
               },
               simulation: {
-                engagement: artifact.simulationReport.playtest.engagementScore,
+                evidenceKind: artifact.simulationReport.playtest.evidenceKind,
+                observed: artifact.simulationReport.playtest.observed,
+                player: artifact.simulationReport.playtest.player,
               },
               economy: {
                 stability: artifact.economy.model.stabilityIndex,

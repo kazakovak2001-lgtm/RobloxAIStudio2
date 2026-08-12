@@ -58,6 +58,8 @@
         "split four `complete`, one `blocked` and twelve `unscoped`",
         "`purpose` is populated for model entries from the producer's `description`",
         "| `PLAYTEST-TRUTH-1` | Stop presenting heuristic static analysis as measured playtest quality | High | `complete`",
+        "| `SIM-TRUTH-1` | Stop presenting deterministic simulation heuristics as measured player engagement | Medium | `scoped`",
+        "It adds no runtime capability of any kind",
         "`PLAYTEST-TRUTH-1` is complete to its implemented contract and no further",
         "No runtime playtest capability was added",
         "It does not complete `PLAYTEST-2`",
@@ -373,6 +375,19 @@
         "legacy heuristic values, never measurements"
       ],
       "forbiddenClaims": []
+    },
+    {
+      "path": "docs/00-project-control/SIM-TRUTH-1_SCOPE.md",
+      "owner": "project-control",
+      "rank": 18,
+      "status": "supporting",
+      "requiredClaims": [
+        "SIM-TRUTH-1",
+        "This is not `PLAYTEST-2`.",
+        "Deterministic simulation is not a Roblox runtime play session.",
+        "No claim about real player engagement, fun, quality or balance"
+      ],
+      "forbiddenClaims": []
     }
   ],
   "historical": [
@@ -460,6 +475,10 @@
     {
       "source": "docs/00-project-control/ROADMAP_STATUS.md",
       "target": "docs/00-project-control/PLAYTEST-TRUTH-1_SCOPE.md"
+    },
+    {
+      "source": "docs/00-project-control/ROADMAP_STATUS.md",
+      "target": "docs/00-project-control/SIM-TRUTH-1_SCOPE.md"
     }
   ]
 }

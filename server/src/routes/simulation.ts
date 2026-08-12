@@ -6,7 +6,10 @@
 
 import { Router } from "express";
 import { GameSimulationEngine } from "../simulation/core/GameSimulationEngine";
-import { PlaytestAgent } from "../simulation/agents/PlaytestAgent";
+import {
+  PlaytestAgent,
+  decodeSimulationEvidenceReport,
+} from "../simulation/agents/PlaytestAgent";
 import { GameplayMetricsEngine } from "../simulation/metrics/GameplayMetricsEngine";
 import { SimulationFeedbackEngine } from "../simulation/feedback/SimulationFeedbackEngine";
 import { GenerationRefinementBridge } from "../simulation/bridge/GenerationRefinementBridge";
@@ -68,14 +71,21 @@ export function createSimulationRouter(access: ProjectAccessControl): Router {
             ticks: simulation.totalTicks,
             completed: simulation.completed,
           },
+          // SIM-TRUTH-1. The evidence kind, the observed facts and the derived
+          // ratios are reported as three separate things, and no aggregate is
+          // offered. `player` states that none was observed.
           report: {
-            engagementScore: report.engagementScore,
-            issues: report.issues.length,
+            schemaVersion: report.schemaVersion,
+            evidenceKind: report.evidenceKind,
+            observed: report.observed,
+            derived: report.derived,
+            player: report.player,
+            findings: report.findings,
             suggestions: report.suggestions,
           },
           metrics,
           feedback: {
-            grade: feedback.overallGrade,
+            decision: feedback.decision,
             shouldRegenerate: feedback.shouldRegenerate,
             items: feedback.items.length,
           },
@@ -144,7 +154,20 @@ export function createSimulationRouter(access: ProjectAccessControl): Router {
         .json({ success: false, error: "report and metrics required" });
       return;
     }
-    const feedback = feedbackEngine.generateFeedback(report, metrics);
+    // SIM-TRUTH-1. The report arrives from the caller, so it is decoded before
+    // it is read. A record predating this contract carries `issues` and an
+    // `engagementScore` and no `findings`; it used to throw here, and accepting
+    // it would promote a number that never measured anything into evidence.
+    const decoded = decodeSimulationEvidenceReport(report);
+    if (!decoded) {
+      res.status(400).json({
+        success: false,
+        error:
+          "report must be a simulation evidence report on the current schema version and evidence kind; legacy scored reports are not accepted",
+      });
+      return;
+    }
+    const feedback = feedbackEngine.generateFeedback(decoded, metrics);
     res.json({ success: true, data: feedback });
   });
 

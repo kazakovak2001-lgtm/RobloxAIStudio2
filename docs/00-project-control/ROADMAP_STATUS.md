@@ -55,6 +55,20 @@ loop decided whether to run, and declared itself complete, by comparing that num
 target. **It does not complete `PLAYTEST-2`**, which remains the future real runtime,
 input and visual playtest capability and remains blocked on its existing dependencies.
 
+`SIM-TRUTH-1` is the second item found the same way, and `PLAYTEST-TRUTH-1` found it: that slice
+recorded `simulation/agents/PlaytestAgent` as a separate `PlaytestReport` carrying its own score and
+deliberately did not fix it. An audit at `8f6e6a94` confirmed the same class of claim, live on four
+mounted routes. `engagementScore` weighted `loopProgress*40 + mechanicsCoverage*30 + npcRate*15 +
+(engaged ? 15 : 0)`, where the first two terms are the same quantity — the engine sets `loopProgress`
+from the identical expression — so one value carried seventy of the hundred points; `engaged` was
+initialised to `true`; and a blueprint with no NPCs scored full marks for interacting with nothing.
+Blueprints were also penalised for the simulator's own stride: mechanics are visited every third tick
+and NPCs every fifth, so a blueprint declaring three mechanics or five NPCs could never have them all
+reached, and the shortfall was reported as a defect in the game. `/lifecycle/tick` substituted `?? 70`
+for every missing signal, so a game nothing had ever simulated was assessed at composite health 73 and
+sent down an evolution branch that patched its blueprint. It adds no runtime capability of any kind
+and **does not complete `PLAYTEST-2`** either.
+
 `PLAYTEST-TRUTH-1` is complete to its implemented contract and no further. What was
 delivered is the removal of a fabricated measurement and the enforcement of its absence:
 the report carries `evidenceKind: "static-analysis"` and `runtime: { status:
@@ -96,6 +110,7 @@ and remain `unscoped` strategic direction.
 | `RUNTIME-PLAYTEST-1` | Authoritative Studio-attached Roblox runtime evidence | High | `complete` — [result](./RUNTIME-PLAYTEST-1_RESULT.md), operator-observed evidence | `STUDIO-ACCEPT-1` |
 | `REPAIR-1` | Artifact-applying repair, redelivery, and revalidation | High | `complete` — backend 1A/1B/1C plus the Frontend repair UI (backend PR #185/#187/#189, Frontend PR #38/#40) | `RUNTIME-PLAYTEST-1` |
 | `PLAYTEST-TRUTH-1` | Stop presenting heuristic static analysis as measured playtest quality | High | `complete` — backend PR #229 plus Frontend PR #47/#48; removal of the fabricated score, not a new capability, and **does not complete `PLAYTEST-2`** — [scope](./PLAYTEST-TRUTH-1_SCOPE.md) | — |
+| `SIM-TRUTH-1` | Stop presenting deterministic simulation heuristics as measured player engagement | Medium | `scoped` — the second fabricated score, found where `PLAYTEST-TRUTH-1` recorded it and did not fix it; removal of a claim, not a new capability, and **does not complete `PLAYTEST-2`** — [scope](./SIM-TRUTH-1_SCOPE.md) | — |
 | `PROVIDER-1A` | Truthful AI provider configuration and generation provenance | High | `complete` — backend PR #193 | `REPAIR-1` |
 | `PROVIDER-1B` | Fallback provenance completeness after a provider call | High | `complete` — backend PR #200 | `PROVIDER-1A` |
 | `ARTIFACT-1` | Deterministic Studio identity for delivered artifacts | Medium | `code_complete_evidence_pending` — backend PR #199 merged; the change is plugin Lua and no Studio-attached run has confirmed it | `STUDIO-ACCEPT-1` |

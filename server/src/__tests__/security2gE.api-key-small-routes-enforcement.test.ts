@@ -42,11 +42,15 @@ describe("SECURITY-2G-E API-key enforcement for small routes", () => {
 
     expect(feedback).toContain('"system.simulation.feedback.analyze"');
     expect(feedback).toContain('"request-simulation-report"');
+    // Matched on the call rather than its argument names: the invariant is
+    // that the capability guard precedes the engine, not what the decoded
+    // report is called. SIM-TRUTH-1 renamed that argument when it began
+    // decoding the caller-supplied report before reading it.
+    const engineCall = feedback.indexOf("feedbackEngine.generateFeedback(");
+    expect(engineCall).toBeGreaterThan(-1);
     expect(
       feedback.indexOf('"system.simulation.feedback.analyze"'),
-    ).toBeLessThan(
-      feedback.indexOf("feedbackEngine.generateFeedback(report, metrics)"),
-    );
+    ).toBeLessThan(engineCall);
     expect(source).toContain(
       "access.requireProjectAccess(req, res, blueprint.id)",
     );

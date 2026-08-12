@@ -139,6 +139,7 @@
 │   │   ├── RUNTIME-PLAYTEST-1_RESULT.md
 │   │   ├── SECURITY-2G-E_AUTHORIZATION_MATRIX.md
 │   │   ├── SECURITY-REVIEW-B_PROMOTION_CRITERIA.md
+│   │   ├── SIM-TRUTH-1_SCOPE.md
 │   │   ├── STUDIO-1_AUDIT.md
 │   │   ├── STUDIO-1A_ARTIFACT_LINEAGE.md
 │   │   ├── STUDIO-1B_RUNTIME_CONSOLIDATION.md
@@ -699,6 +700,7 @@
 │   │   │   ├── security2gE.world-scope.test.ts
 │   │   │   ├── securityHardening.test.ts
 │   │   │   ├── securityreviewa2.hardening.test.ts
+│   │   │   ├── simtruth1.evidence.test.ts
 │   │   │   ├── studio1.artifact-lineage.test.ts
 │   │   │   ├── studio1.import-acknowledgement.test.ts
 │   │   │   ├── studio1.plugin-contract.test.ts

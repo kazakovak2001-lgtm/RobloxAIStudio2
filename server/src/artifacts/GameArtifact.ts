@@ -13,7 +13,7 @@ import type { GameValidationResult } from "../generation/validation/GameValidati
 import type { EconomyModel } from "../economy/core/EconomyModelEngine";
 import type { ImbalanceReport } from "../economy/detection/ImbalanceDetector";
 import type { SimulationResult } from "../simulation/core/GameSimulationEngine";
-import type { PlaytestReport } from "../simulation/agents/PlaytestAgent";
+import type { SimulationEvidenceReport } from "../simulation/agents/PlaytestAgent";
 import type { EmergenceReport } from "../world/emergence/EmergentBehaviorEngine";
 
 export interface GameArtifact {
@@ -51,7 +51,7 @@ export interface GameArtifact {
   /** Simulation playtest results */
   simulationReport: {
     simulation: SimulationResult;
-    playtest: PlaytestReport;
+    playtest: SimulationEvidenceReport;
   };
 
   /** Quality evaluation score */
