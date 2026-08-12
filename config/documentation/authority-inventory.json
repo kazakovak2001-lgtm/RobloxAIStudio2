@@ -4,9 +4,9 @@
   "repository": "kazakovak2001-lgtm/RobloxAIStudio2",
   "releaseIdentity": {
     "backendBranch": "release/cutover-1e-candidate",
-    "backendCommit": "042ca72d2b6f34af05779bcf8601f441ae93c0c9",
+    "backendCommit": "63221e79854be718e75a8582b6a7afe248ecb22a",
     "frontendRepository": "kazakovak2001-lgtm/Frontend",
-    "frontendCommit": "0a6857ad548b9c3d48019dfa7a63adbb5fde4930"
+    "frontendCommit": "b91ebdba613ca0d8f01a5fb33de355ae97588601"
   },
   "authority": [
     {
@@ -31,14 +31,14 @@
         "`PIPELINE-1B` | Deterministic validation recorded as a durable artifact | High | `complete` — backend PR #205",
         "`PIPELINE-1C` | Conditional stages inside the pipeline | Low | `unscoped`",
         "a security finding never negates generation, delivery or release, and a blocking gate is the separate `SECURITY-REVIEW-B` delivery",
-        "042ca72d2b6f34af05779bcf8601f441ae93c0c9",
-        "0a6857ad548b9c3d48019dfa7a63adbb5fde4930",
+        "63221e79854be718e75a8582b6a7afe248ecb22a",
+        "b91ebdba613ca0d8f01a5fb33de355ae97588601",
         "`WORLD-1A` | Semantic world model and cross-artifact validation against generated Lua | High | `complete` — backend PR #207",
         "`WORLD-1B` | Design-time Studio materialization of the world model | Medium | `code_complete_evidence_pending` — backend PR #209 merged",
         "`WORLD-1C` | Canonical ownership of the world by the materialized scene | Medium | `blocked` — scoped, and blocked",
         "`AGENT-CONTRACT-1` | Versioned server-owned definitions for every runtime agent | Medium | `complete` — backend PR #212; foundation only, and every policy field is enforced",
         "Wall-clock timeout, monetary cost and input-token ceilings are deliberately absent because nothing enforces them today",
-        "release/cutover-1e-candidate@042ca72d2b6f34af05779bcf8601f441ae93c0c9",
+        "release/cutover-1e-candidate@63221e79854be718e75a8582b6a7afe248ecb22a",
         "`ARTIFACT-CONTRACT-2` | Durable artifact envelope, content identity and lineage | High | `complete` — backend PR #214",
         "a report can name the exact bytes it read instead of being assumed to still apply",
         "`SECURITY-REVIEW-A2` | Hardening of the advisory Luau reviewer | Medium | `complete` — backend PR #216",
@@ -57,7 +57,9 @@
         "The twelve `unscoped` strategic items",
         "split four `complete`, one `blocked` and twelve `unscoped`",
         "`purpose` is populated for model entries from the producer's `description`",
-        "| `PLAYTEST-TRUTH-1` | Stop presenting heuristic static analysis as measured playtest quality | High | `scoped`",
+        "| `PLAYTEST-TRUTH-1` | Stop presenting heuristic static analysis as measured playtest quality | High | `complete`",
+        "`PLAYTEST-TRUTH-1` is complete to its implemented contract and no further",
+        "No runtime playtest capability was added",
         "It does not complete `PLAYTEST-2`",
         "the first item here that did not come from the roadmap"
       ],
@@ -72,6 +74,8 @@
         "release/cutover-1e-candidate@514c321d794a66e0f6f5d407ba906ab3e45087d1",
         "Each generation now carries an explicit verdict",
         "release/cutover-1e-candidate@78c316db594795fa361330301e30933cbbcef2c3",
+        "release/cutover-1e-candidate@042ca72d2b6f34af05779bcf8601f441ae93c0c9",
+        "| `PLAYTEST-TRUTH-1` | Stop presenting heuristic static analysis as measured playtest quality | High | `scoped`",
         "The thirteen `unscoped` strategic items",
         "`purpose` and `required` are representable and deliberately unpopulated"
       ]
@@ -82,9 +86,13 @@
       "rank": 2,
       "status": "current",
       "requiredClaims": [
-        "042ca72d2b6f34af05779bcf8601f441ae93c0c9",
-        "0a6857ad548b9c3d48019dfa7a63adbb5fde4930",
+        "63221e79854be718e75a8582b6a7afe248ecb22a",
+        "b91ebdba613ca0d8f01a5fb33de355ae97588601",
         "REPAIR-1 complete across backend and Frontend UI",
+        "PLAYTEST-TRUTH-1 completed through backend PR #229, merged",
+        "`PLAYTEST-TRUTH-1` complete (backend PR #229 with Frontend PR #47/#48",
+        "This removes a fabricated measurement; it adds no capability.",
+        "`PLAYTEST-2` is untouched and remains `unscoped` strategic direction.",
         "PROVIDER-1A completed through backend PR #193, merged `ecae9bb59f1639d2e382e7221a956aa96460b3e9`",
         "STUDIO-2F-A code complete but not done (backend PR #195/#196/#197",
         "`PIPELINE-1A` and `PIPELINE-1B` complete (backend PR #203/#205",
@@ -121,8 +129,8 @@
       "status": "supporting",
       "requiredClaims": [
         "DOC-202A",
-        "042ca72d2b6f34af05779bcf8601f441ae93c0c9",
-        "0a6857ad548b9c3d48019dfa7a63adbb5fde4930",
+        "63221e79854be718e75a8582b6a7afe248ecb22a",
+        "b91ebdba613ca0d8f01a5fb33de355ae97588601",
         "ARTIFACT-1, PROVIDER-1B and SECREVIEW-1 advance the runtime pair to backend",
         "PIPELINE-1A advances the runtime pair to backend",
         "PIPELINE-1B advances the runtime pair to backend",
@@ -147,6 +155,8 @@
         "Only exact fingerprint equality counts as a repeat.",
         "The verdict is advisory.",
         "ASSET-FABRIC-1 advances the runtime pair to backend",
+        "PLAYTEST-TRUTH-1 advances the runtime pair to backend",
+        "This removes a fabricated measurement. It adds no capability.",
         "Complete to the contract only.",
         "Validation is advisory.",
         "`purpose` and `required` are recorded honestly rather"

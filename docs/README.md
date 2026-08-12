@@ -29,8 +29,8 @@ The old embedded root `src/` frontend is removed and protected by a permanent in
 
 ## Active paired release
 
-- Backend runtime: `release/cutover-1e-candidate@042ca72d2b6f34af05779bcf8601f441ae93c0c9`.
-- Frontend runtime contents: `kazakovak2001-lgtm/Frontend@0a6857ad548b9c3d48019dfa7a63adbb5fde4930`.
+- Backend runtime: `release/cutover-1e-candidate@63221e79854be718e75a8582b6a7afe248ecb22a`.
+- Frontend runtime contents: `kazakovak2001-lgtm/Frontend@b91ebdba613ca0d8f01a5fb33de355ae97588601`.
 - Pairing authority: protected Frontend Production Contract, Composed HTTPS Release, promoted-baseline integrity, and Merge Gate evidence.
 - No external production deployment is claimed by repository release evidence alone.
 
@@ -45,6 +45,7 @@ The old embedded root `src/` frontend is removed and protected by a permanent in
 - `DURABILITY-2E`: complete through DATA-201 and DATA-202; issue #135 is closed.
 - `SECURITY-2G`, `DOC-202`, `ROADMAP-AUDIT-1`, `STUDIO-ACCEPT-1`, and `RUNTIME-PLAYTEST-1`: complete.
 - `REPAIR-1`: complete — backend 1A (real single-strategy repair), 1B (Studio redelivery), and 1C (delivery/rollback audit), plus the Frontend Integrate-stage repair panel that surfaces them (Frontend PR #40).
+- `PLAYTEST-TRUTH-1`: complete — backend PR #229 with Frontend PR #47 and #48. `PlaytestEngine` averaged six numbers into an `overallScore` and labelled anything above eighty `production_ready`; one of the six started at eighty and added five points when the generated source contained the substring `pcall`, and nothing in that pipeline has ever run a Roblox play session. The findings are real and are kept; the arithmetic on top of them is gone. A report now states what produced it — `evidenceKind: "static-analysis"` — and states that runtime quality was **not measured** rather than omitting it or recording a zero, a terminal session reports `qualityScore: null`, and repair decides on outstanding findings instead of comparing that number to a target. A legacy score persisted before the slice is demoted to historical evidence on read rather than republished, storage decoding refuses a structurally incomplete report, and legacy repair rows are typed apart so an absence of findings never reads as zero findings. **This removes a fabricated measurement and adds no capability**: nothing runs a play session, observes a player, simulates input or measures anything at runtime, `performance` stays an estimate with nothing timed, and `PLAYTEST-2` is untouched and remains `unscoped`.
 - `PROVIDER-1A` and `PROVIDER-1B`: complete — backend PR #193 and #200. An execution now records which provider and model produced it, and every route that substitutes deterministic canned content declares itself, so an execution is reported as AI-authored only when a model authored all of it.
 - `ARTIFACT-1`: code complete, not done — backend PR #199. Delivered metadata artifacts have a stable Studio identity, so re-exporting a project should replace the previous instance instead of accumulating one per run. The change is plugin Lua and there is no Lua test harness, so runtime evidence from a Studio-attached run is still outstanding.
 - `SECREVIEW-1`: complete — backend PR #201. Deterministic trust-boundary review of generated Luau, recorded as a durable `SECURITY_REVIEW` artifact. It is advisory: a finding never negates generation, delivery or release, and a blocking gate is the separate `SECURITY-REVIEW-B` delivery, gated on seven [documented criteria](./00-project-control/SECURITY-REVIEW-B_PROMOTION_CRITERIA.md).
