@@ -475,6 +475,10 @@
     {
       "source": "docs/00-project-control/ROADMAP_STATUS.md",
       "target": "docs/00-project-control/PLAYTEST-TRUTH-1_SCOPE.md"
+    },
+    {
+      "source": "docs/00-project-control/ROADMAP_STATUS.md",
+      "target": "docs/00-project-control/SIM-TRUTH-1_SCOPE.md"
     }
   ]
 }

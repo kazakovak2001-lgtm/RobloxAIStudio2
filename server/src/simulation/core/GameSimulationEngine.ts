@@ -77,20 +77,26 @@ const NPC_STRIDE = 5;
 const CURRENCY_STRIDE = 4;
 
 /**
- * Count the distinct indices a stride can reach in a run of `ticks` ticks.
+ * Count the distinct entries a stride can reach in a run of `ticks` ticks.
  *
  * Enumerated rather than derived from a gcd identity, so the number is exactly
- * what the loop below does, including the case where the run was too short to
- * complete a cycle.
+ * what the loop below does, including a run too short to complete a cycle.
+ *
+ * Counted by identity rather than by index, because the simulator records
+ * mechanics in a `Set` keyed by name: a blueprint declaring the same mechanic
+ * twice has two reachable indices but only one reachable mechanic, and
+ * comparing an index ceiling against a name count would understate reach and
+ * raise a finding against the blueprint for it.
  */
-function reachableIndexCount(
+function reachableEntryCount(
   ticks: number,
   stride: number,
-  count: number,
+  entries: readonly string[],
 ): number {
-  if (count <= 0) return 0;
-  const reached = new Set<number>();
-  for (let t = 0; t < ticks; t += stride) reached.add(t % count);
+  if (entries.length <= 0) return 0;
+  const reached = new Set<string>();
+  for (let t = 0; t < ticks; t += stride)
+    reached.add(entries[t % entries.length]);
   return reached.size;
 }
 
@@ -102,15 +108,22 @@ export class GameSimulationEngine {
     const start = Date.now();
     const state = this.initState(blueprint);
 
+    let executed = 0;
     for (let t = 0; t < ticks; t++) {
       state.tick = t;
       this.runTick(state, blueprint);
+      executed = t + 1;
 
       // Early exit if player disengages
       if (!state.playerState.engaged && t > 10) break;
     }
 
-    const totalTicks = state.tick + 1;
+    // Ticks actually executed, not the last index plus one: a run of zero
+    // ticks executed nothing, and reporting it as one tick made the schedule
+    // claim the first mechanic was reachable when the loop never ran.
+    const totalTicks = executed;
+    const mechanicNames = blueprint.mechanics.map(String);
+    const npcIds = blueprint.npcs.map((n) => String(n.id));
     const result: SimulationResult = {
       blueprintId: blueprint.id,
       totalTicks,
@@ -122,18 +135,14 @@ export class GameSimulationEngine {
         mechanicStride: MECHANIC_STRIDE,
         npcStride: NPC_STRIDE,
         currencyStride: CURRENCY_STRIDE,
-        mechanicsDeclared: blueprint.mechanics.length,
-        npcsDeclared: blueprint.npcs.length,
-        mechanicsReachable: reachableIndexCount(
+        mechanicsDeclared: new Set(mechanicNames).size,
+        npcsDeclared: new Set(npcIds).size,
+        mechanicsReachable: reachableEntryCount(
           totalTicks,
           MECHANIC_STRIDE,
-          blueprint.mechanics.length,
+          mechanicNames,
         ),
-        npcsReachable: reachableIndexCount(
-          totalTicks,
-          NPC_STRIDE,
-          blueprint.npcs.length,
-        ),
+        npcsReachable: reachableEntryCount(totalTicks, NPC_STRIDE, npcIds),
       },
     };
 
@@ -209,9 +218,13 @@ export class GameSimulationEngine {
       });
     }
 
-    // Loop progress
+    // Loop progress. Divided by the number of *distinct* mechanics, because
+    // `mechanicsUsed` is a set of names: a blueprint declaring the same
+    // mechanic twice could otherwise never reach 1.0, and the loop would be
+    // reported as never completing for a game that exercised all of them.
+    const distinctMechanics = new Set(blueprint.mechanics).size;
     const mechanicsCoverage =
-      state.mechanicsUsed.size / Math.max(blueprint.mechanics.length, 1);
+      state.mechanicsUsed.size / Math.max(distinctMechanics, 1);
     state.loopProgress = Math.min(1.0, mechanicsCoverage);
 
     if (

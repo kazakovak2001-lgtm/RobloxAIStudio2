@@ -79,9 +79,7 @@ export interface SimulationObservations {
 /**
  * A ratio the simulator's own schedule bounds.
  *
- * `reachable` is what the stride could have indexed at all. When `exercised`
- * equals `reachable` and `reachable` is below `declared`, the shortfall is the
- * schedule's and says nothing about the game.
+ * `reachable` is what the stride could have reached at all.
  */
 export interface ReachRatio {
   readonly exercised: number;
@@ -91,7 +89,14 @@ export interface ReachRatio {
   readonly ofDeclared: number | null;
   /** `exercised / reachable`, or `null` when the schedule could reach nothing. */
   readonly ofReachable: number | null;
-  /** True when the schedule, not the game, capped this ratio. */
+  /**
+   * The schedule's ceiling sits below what the blueprint declared.
+   *
+   * States only that, and deliberately not "the shortfall is excusable": a run
+   * can also fall short of the ceiling, and a consumer reading this as "not the
+   * blueprint's fault" would excuse that too. Compare `exercised` against
+   * `reachable` to separate the two.
+   */
   readonly scheduleLimited: boolean;
 }
 
@@ -174,21 +179,27 @@ export class PlaytestAgent {
 
     const loopComplete = events.some((e) => e.type === "loop_complete");
     if (!loopComplete) {
-      // Attribution depends on whether the schedule could have completed it at
-      // all: a blueprint the stride cannot fully index can never emit the
-      // event, so the game is not what failed.
-      const reachableAll =
-        schedule.mechanicsDeclared > 0 &&
-        schedule.mechanicsReachable >= schedule.mechanicsDeclared;
+      // Three distinct causes, and only one of them is the simulator's.
+      // Declaring no mechanics at all is a property of the blueprint: the
+      // stride reached everything there was to reach, so blaming the schedule
+      // would assert something untrue about it.
+      const declaredNothing = schedule.mechanicsDeclared === 0;
+      const scheduleCannotComplete =
+        !declaredNothing &&
+        schedule.mechanicsReachable < schedule.mechanicsDeclared;
       findings.push({
         severity: "high",
         category: "broken-loop",
-        description: reachableAll
-          ? "Core gameplay loop was never completed during simulation"
-          : "Core gameplay loop was never completed during simulation, and this simulator's stride could not index every declared mechanic, so the loop could not complete regardless of the blueprint",
-        attribution: reachableAll ? "blueprint" : "simulator-schedule",
+        description: declaredNothing
+          ? "Core gameplay loop was never completed during simulation, because the blueprint declares no mechanics for it to complete"
+          : scheduleCannotComplete
+            ? "Core gameplay loop was never completed during simulation, and this simulator's stride could not reach every declared mechanic, so the loop could not complete regardless of the blueprint"
+            : "Core gameplay loop was never completed during simulation",
+        attribution: scheduleCannotComplete
+          ? "simulator-schedule"
+          : "blueprint",
       });
-      if (reachableAll) {
+      if (!scheduleCannotComplete) {
         suggestions.push("Simplify the core loop or add more discovery paths");
       }
     }
@@ -201,9 +212,14 @@ export class PlaytestAgent {
         description: f.detail,
         tick: f.tick,
         // The friction rule fires when no mechanic was exercised in twenty
-        // ticks, which the stride alone decides when nothing is reachable.
+        // ticks. That is the schedule's doing only when the stride could not
+        // reach mechanics the blueprint declared; a blueprint declaring none is
+        // the blueprint's own property.
         attribution:
-          schedule.mechanicsDeclared === 0 ? "simulator-schedule" : "blueprint",
+          schedule.mechanicsDeclared > 0 &&
+          schedule.mechanicsReachable < schedule.mechanicsDeclared
+            ? "simulator-schedule"
+            : "blueprint",
       });
     }
     if (frictionEvents.length > 0) {
@@ -255,22 +271,29 @@ export class PlaytestAgent {
     // The former rule read `npcRate < 0.5` over `interacted / declared`, with
     // `declared === 0` scored as a perfect 1. It asserted a dead end in the
     // game for a shortfall the stride had already fixed, and awarded credit for
-    // interacting with nothing. It now fires only when the run reached fewer
-    // NPCs than this schedule could have reached.
-    if (
-      npcReach.declared > 0 &&
-      npcReach.ofReachable !== null &&
-      npcReach.ofReachable < 0.5
-    ) {
+    // interacting with nothing.
+    //
+    // The shortfall is still reported, because it is real and a reader should
+    // see it — but attributed to whichever cause actually produced it. With
+    // this simulator the walk marks every NPC it indexes, so `exercised` equals
+    // `reachable` and the schedule is always the cause; the blueprint branch is
+    // kept because that identity is a property of the current loop and not of
+    // the contract.
+    if (npcReach.declared > 0 && npcsInteracted < npcReach.declared) {
+      const scheduleExplains = npcsInteracted >= npcReach.reachable;
       findings.push({
         severity: "low",
         category: "dead-end",
-        description: `Only ${npcsInteracted} of the ${npcReach.reachable} NPCs this simulation could reach were interacted with`,
-        attribution: "blueprint",
+        description: scheduleExplains
+          ? `${npcsInteracted} of ${npcReach.declared} NPCs were interacted with, which is every NPC this simulation's stride could reach — the shortfall is this simulator's scheduling, not the blueprint`
+          : `${npcsInteracted} of ${npcReach.declared} NPCs were interacted with, short of the ${npcReach.reachable} this simulation could reach`,
+        attribution: scheduleExplains ? "simulator-schedule" : "blueprint",
       });
-      suggestions.push(
-        "Place NPCs closer to player paths or add quest markers",
-      );
+      if (!scheduleExplains) {
+        suggestions.push(
+          "Place NPCs closer to player paths or add quest markers",
+        );
+      }
     }
 
     return {
@@ -298,4 +321,142 @@ export class PlaytestAgent {
       suggestions,
     };
   }
+}
+
+const FINDING_SEVERITIES: readonly string[] = [
+  "critical",
+  "high",
+  "medium",
+  "low",
+];
+const FINDING_CATEGORIES: readonly string[] = [
+  "friction",
+  "broken-loop",
+  "dead-end",
+  "economy",
+  "pacing",
+];
+const FINDING_ATTRIBUTIONS: readonly string[] = [
+  "blueprint",
+  "simulator-schedule",
+  "indeterminate",
+];
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function isCount(value: unknown): value is number {
+  return typeof value === "number" && Number.isInteger(value) && value >= 0;
+}
+
+function isRatio(value: unknown): boolean {
+  return (
+    value === null || (typeof value === "number" && Number.isFinite(value))
+  );
+}
+
+function isReachRatio(value: unknown): boolean {
+  return (
+    isRecord(value) &&
+    isCount(value.exercised) &&
+    isCount(value.declared) &&
+    isCount(value.reachable) &&
+    isRatio(value.ofDeclared) &&
+    isRatio(value.ofReachable) &&
+    typeof value.scheduleLimited === "boolean"
+  );
+}
+
+function isFinding(value: unknown): boolean {
+  return (
+    isRecord(value) &&
+    typeof value.severity === "string" &&
+    FINDING_SEVERITIES.includes(value.severity) &&
+    typeof value.category === "string" &&
+    FINDING_CATEGORIES.includes(value.category) &&
+    typeof value.description === "string" &&
+    typeof value.attribution === "string" &&
+    // Never optional: a finding whose cause is unstated cannot be acted on.
+    FINDING_ATTRIBUTIONS.includes(value.attribution)
+  );
+}
+
+/**
+ * Decode a simulation evidence report that arrived from outside this process.
+ *
+ * `POST /api/simulate/feedback` accepts a report in the request body, so the
+ * value reaching the feedback engine is whatever a caller sent. Before this
+ * existed, a pre-slice report carrying `issues` and `engagementScore` reached
+ * `report.findings.filter(...)` and threw, and a payload naming any version or
+ * evidence kind was processed as deterministic simulation evidence.
+ *
+ * Strict about the version and the evidence kind, so a legacy record cannot be
+ * promoted: its number was never a measurement and re-reading it as one here is
+ * exactly what this slice removes. Strict about the rest of the shape because
+ * the input is untrusted, and a partially-valid report would fail later at a
+ * caller instead of here.
+ */
+export function decodeSimulationEvidenceReport(
+  stored: unknown,
+): SimulationEvidenceReport | null {
+  if (!isRecord(stored)) return null;
+  if (stored.schemaVersion !== SIMULATION_EVIDENCE_VERSION) return null;
+  if (
+    typeof stored.evidenceKind !== "string" ||
+    !SIMULATION_EVIDENCE_KINDS.includes(
+      stored.evidenceKind as SimulationEvidenceKind,
+    )
+  ) {
+    return null;
+  }
+  if (typeof stored.blueprintId !== "string") return null;
+
+  const observed = stored.observed;
+  if (
+    !isRecord(observed) ||
+    !isCount(observed.totalTicks) ||
+    !isCount(observed.mechanicsDeclared) ||
+    !isCount(observed.mechanicsExercised) ||
+    !isCount(observed.npcsDeclared) ||
+    !isCount(observed.npcsInteracted) ||
+    typeof observed.loopCompleteEventEmitted !== "boolean" ||
+    !isCount(observed.frictionEvents) ||
+    !isCount(observed.currencyGainEvents) ||
+    !isCount(observed.levelUpEvents)
+  ) {
+    return null;
+  }
+
+  const derived = stored.derived;
+  if (
+    !isRecord(derived) ||
+    !isReachRatio(derived.mechanicReach) ||
+    !isReachRatio(derived.npcReach) ||
+    typeof derived.loopCompleted !== "boolean"
+  ) {
+    return null;
+  }
+
+  const player = stored.player;
+  if (
+    !isRecord(player) ||
+    player.status !== "not-observed" ||
+    typeof player.reason !== "string" ||
+    player.reason.length === 0
+  ) {
+    return null;
+  }
+
+  if (!Array.isArray(stored.findings) || !stored.findings.every(isFinding)) {
+    return null;
+  }
+  if (
+    !Array.isArray(stored.suggestions) ||
+    !stored.suggestions.every((s) => typeof s === "string")
+  ) {
+    return null;
+  }
+
+  return stored as unknown as SimulationEvidenceReport;
 }

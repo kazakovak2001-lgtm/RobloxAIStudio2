@@ -22,7 +22,7 @@ advances it, so nothing claims completion before the pair verifies it.
 `PlaytestReport.engagementScore` is a 0–100 number named after player engagement. It is produced by
 weighting four values from a deterministic script:
 
-```
+```text
 engagementScore = round(loopProgress*40 + mechanicsCoverage*30 + npcRate*15 + (engaged ? 15 : 0))
 ```
 
@@ -153,7 +153,10 @@ score removes no working behaviour. Any future regeneration rule can name determ
 directly — a `loop_complete` event was or was not emitted; N of M mechanics were reached by the
 stride; a `friction` event fired at tick T — without inventing a second aggregate.
 
-## Proposed implementation direction — documented, not executed
+## Proposed implementation direction — the pre-implementation proposal
+
+_Written before the slice was built, and kept as the record of what was intended. The section after
+"Explicitly out of scope" states what was actually delivered against it._
 
 1. **Declare an evidence kind**, as `PLAYTEST-TRUTH-1` did, naming this report deterministic
    simulation rather than measurement, so a future real-runtime source must declare itself.
@@ -197,7 +200,41 @@ stride; a `friction` event fired at tick T — without inventing a second aggreg
   must be written the same way, so that removing a fabricated aggregate is never read as having added
   a measurement capability.
 
-## Whether implementation is worth starting next
+## What was delivered
+
+Every point of the proposal above was implemented in the pull request carrying this record.
+
+- `SimulationEvidenceReport` declares `schemaVersion` and `evidenceKind: "deterministic-simulation"`,
+  and separates `observed` counts from `derived` ratios, with `player: { status: "not-observed" }`.
+- `engagementScore` is gone and no aggregate replaces it, asserted by test.
+- `SimulationSchedule` records what the walk could reach; every finding carries an `attribution`, and
+  a shortfall the schedule caused is never asserted against the blueprint nor counted toward
+  regeneration.
+- The letter grade and its weights are gone. `RegenerationDecision` names a versioned `policyId`, its
+  reason and the evidence it read, and abstains when the run could not test the blueprint.
+- `?? 70`, the economy `50` and the zero-NPC `1` are removed. `GameHealthMonitor.assess` returns
+  `insufficient-evidence` naming what was missing, records nothing in history, and reports no trend
+  on a first reading. `retentionSimulated` is gone.
+- `/lifecycle/tick` echoes caller data under `clientClaims`, never promotes it to evidence, and
+  abstains from evolution rather than running on a default.
+- `decodeSimulationEvidenceReport` refuses a legacy or malformed report at `POST /api/simulate/feedback`.
+
+**Corrections found during implementation and review.** The audit reported that no decision turned on
+the score; that held for `shouldRegenerate` but not for lifecycle, where the fabricated composite
+selected an evolution branch and patched the blueprint. Review then found that a blueprint declaring
+no mechanics was attributed to the simulator's schedule when it is a property of the blueprint; that
+the rewritten NPC rule could never fire, because the walk marks every NPC it indexes; that a
+zero-tick run reported one tick; that duplicate mechanic names made the reach ceiling exceed the
+countable mechanics; and that the versioned `CompileResponse` still promised `engagement: number`.
+All are fixed.
+
+**Known limitation, stated rather than papered over.** No server-owned simulation, economy or world
+evidence source is reachable from `/lifecycle/tick` — all three arrive in the request body — so the
+route now always reports `insufficient-evidence`, never evolves, and leaves a game in `CREATED`. The
+response says so explicitly under `lifecycleAdvance`. Building that evidence source is a separate
+slice; inventing one here would restore the defect this removes.
+
+## Whether implementation was worth starting
 
 Yes, with its priority stated honestly. It is the only bounded work on or off the board that is
 startable without the paused Studio session or the absent credential surface, it is directly

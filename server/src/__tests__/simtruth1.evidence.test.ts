@@ -7,6 +7,7 @@ import { GameSimulationEngine } from "../simulation/core/GameSimulationEngine";
 import {
   PlaytestAgent,
   SIMULATION_EVIDENCE_VERSION,
+  decodeSimulationEvidenceReport,
   type SimulationEvidenceReport,
 } from "../simulation/agents/PlaytestAgent";
 import { GameplayMetricsEngine } from "../simulation/metrics/GameplayMetricsEngine";
@@ -128,22 +129,26 @@ describe("SIM-TRUTH-1 simulator artifacts are not game defects", () => {
     );
     expect(brokenLoop).toHaveLength(1);
     expect(brokenLoop[0].attribution).toBe("simulator-schedule");
-    expect(brokenLoop[0].description).toMatch(/stride could not index/i);
+    expect(brokenLoop[0].description).toMatch(/stride could not reach/i);
     // The advice aimed at the game is withheld when the game is not the cause.
     expect(report.suggestions).not.toContain(
       "Simplify the core loop or add more discovery paths",
     );
   });
 
-  it("does not claim an NPC dead end when the stride capped NPC reach", () => {
+  it("does not blame the blueprint when the stride capped NPC reach", () => {
     // Five NPCs on a stride of five: exactly one is reachable, so the old
-    // "Only 20% of NPCs were interacted with" was caused by this loop.
+    // "Only 20% of NPCs were interacted with" was caused by this loop. The
+    // shortfall is still reported — dropping it would hide something real —
+    // but never against the blueprint.
     const report = run(4, 5);
     expect(report.derived.npcReach.declared).toBe(5);
     expect(report.derived.npcReach.reachable).toBe(1);
     expect(report.derived.npcReach.scheduleLimited).toBe(true);
     expect(report.derived.npcReach.ofReachable).toBe(1);
-    expect(report.findings.some((f) => f.category === "dead-end")).toBe(false);
+    const deadEnd = report.findings.filter((f) => f.category === "dead-end");
+    expect(deadEnd).toHaveLength(1);
+    expect(deadEnd[0].attribution).toBe("simulator-schedule");
   });
 
   it("gives every finding an attribution", () => {
@@ -211,12 +216,32 @@ describe("SIM-TRUTH-1 regeneration is decided by named policy", () => {
     }
   });
 
-  it("abstains rather than passing when the blueprint declares nothing to test", () => {
+  it("regenerates on a blueprint that declares nothing, naming it as the cause", () => {
     // The old engine graded this run `D` and returned shouldRegenerate false,
-    // which reads as "checked, and acceptable".
+    // which reads as "checked, and acceptable". Declaring no mechanics is a
+    // property of the blueprint and real evidence about it, so the policy acts
+    // on it rather than abstaining.
     const feedback = feedbackFor(0, 0);
+    expect(feedback.decision.outcome).toBe("regenerate");
+    expect(feedback.decision.evidenceUsed.join(" ")).toMatch(
+      /declares no mechanics/i,
+    );
+    expect(feedback.shouldRegenerate).toBe(true);
+  });
+
+  it("abstains when the run exercised nothing the blueprint declared", () => {
+    // Evidence about the simulation, not about the game: no conclusion may be
+    // drawn either way.
+    const bp = blueprint(2, 2);
+    const simulation = new GameSimulationEngine().simulateGame(bp, 0);
+    const report = new PlaytestAgent().analyze(bp, simulation);
+    const metrics = new GameplayMetricsEngine().extract(simulation);
+    const feedback = new SimulationFeedbackEngine().generateFeedback(
+      report,
+      metrics,
+    );
     expect(feedback.decision.outcome).toBe("abstain");
-    expect(feedback.decision.reason).toMatch(/could not test it/i);
+    expect(feedback.decision.reason).toMatch(/exercised none/i);
     expect(feedback.shouldRegenerate).toBe(false);
     expect(feedback.summary).toMatch(/abstain/);
   });
@@ -361,7 +386,16 @@ describe("SIM-TRUTH-1 lifecycle separates client claims from evidence", () => {
     // The claim is echoed as a claim, never promoted.
     const claims = result.data.clientClaims as Record<string, unknown>;
     expect(claims.simulation).toMatchObject({ engagementScore: 100 });
-    expect(JSON.stringify(health)).not.toMatch(/100/);
+    // Assert on the signals rather than the serialized text: `timestamp`
+    // renders milliseconds, so a substring check for "100" fails whenever the
+    // clock lands on .100.
+    expect(health.signals).toEqual({
+      simulationEvidence: null,
+      economyHealth: null,
+      worldStability: null,
+      anomalyRate: null,
+    });
+    expect(health.composite).toBeUndefined();
   });
 
   it("fabricates no health from absent evidence", async () => {
@@ -392,5 +426,135 @@ describe("SIM-TRUTH-1 lifecycle separates client claims from evidence", () => {
       /not produced|Absent evidence/i,
     );
     expect(result.data.feedback).toBeNull();
+  });
+});
+
+describe("SIM-TRUTH-1 review follow-up", () => {
+  it("refuses a legacy scored report instead of throwing on it", () => {
+    // The pre-slice shape: `issues`, an `engagementScore`, no `findings`.
+    // Reaching the feedback engine, it threw a TypeError; accepting it would
+    // promote a number that never measured anything.
+    const legacy = {
+      blueprintId: PROJECT,
+      issues: [],
+      engagementScore: 87,
+      loopCompletionRate: 1,
+      mechanicsCoverage: 1,
+      npcInteractionRate: 1,
+      suggestions: [],
+    };
+    expect(decodeSimulationEvidenceReport(legacy)).toBeNull();
+  });
+
+  it("decodes a report it produced and refuses altered versions", () => {
+    const report = JSON.parse(JSON.stringify(run(4, 4)));
+    expect(decodeSimulationEvidenceReport(report)).not.toBeNull();
+    expect(
+      decodeSimulationEvidenceReport({ ...report, schemaVersion: 99 }),
+    ).toBeNull();
+    expect(
+      decodeSimulationEvidenceReport({
+        ...report,
+        evidenceKind: "runtime-measurement",
+      }),
+    ).toBeNull();
+    // A report claiming a player was observed is not this evidence kind.
+    expect(
+      decodeSimulationEvidenceReport({
+        ...report,
+        player: { status: "observed", reason: "x" },
+      }),
+    ).toBeNull();
+  });
+
+  it.each([
+    "observed",
+    "derived",
+    "player",
+    "findings",
+    "suggestions",
+    "blueprintId",
+  ])("refuses a report missing %s", (field) => {
+    const report = JSON.parse(JSON.stringify(run(4, 4)));
+    delete report[field];
+    expect(decodeSimulationEvidenceReport(report)).toBeNull();
+  });
+
+  it("refuses a finding whose cause is unstated", () => {
+    const report = JSON.parse(JSON.stringify(run(3, 4)));
+    expect(report.findings.length).toBeGreaterThan(0);
+    delete report.findings[0].attribution;
+    expect(decodeSimulationEvidenceReport(report)).toBeNull();
+  });
+
+  it("counts a zero-tick run as zero ticks and reaches nothing", () => {
+    // A run of no ticks used to report one tick, which made the schedule claim
+    // the first mechanic was reachable and blamed the blueprint for the loop.
+    const bp = blueprint(1, 1);
+    const simulation = new GameSimulationEngine().simulateGame(bp, 0);
+    expect(simulation.totalTicks).toBe(0);
+    expect(simulation.schedule.mechanicsReachable).toBe(0);
+    expect(simulation.schedule.npcsReachable).toBe(0);
+
+    const report = new PlaytestAgent().analyze(bp, simulation);
+    const brokenLoop = report.findings.find(
+      (f) => f.category === "broken-loop",
+    );
+    expect(brokenLoop?.attribution).toBe("simulator-schedule");
+
+    const metrics = new GameplayMetricsEngine().extract(simulation);
+    const feedback = new SimulationFeedbackEngine().generateFeedback(
+      report,
+      metrics,
+    );
+    // Nothing ran, so nothing may be concluded about the blueprint.
+    expect(feedback.decision.outcome).not.toBe("regenerate");
+  });
+
+  it("attributes a blueprint that declares no mechanics to the blueprint", () => {
+    // The stride reached everything there was to reach, so the simulator is
+    // not the cause and must not be named as one.
+    const report = run(0, 2);
+    const brokenLoop = report.findings.find(
+      (f) => f.category === "broken-loop",
+    );
+    expect(brokenLoop?.attribution).toBe("blueprint");
+    expect(brokenLoop?.description).toMatch(/declares no mechanics/i);
+    for (const friction of report.findings.filter(
+      (f) => f.category === "friction",
+    )) {
+      expect(friction.attribution).toBe("blueprint");
+    }
+  });
+
+  it("still reports an NPC shortfall, attributed to the schedule", () => {
+    // The rule must not be dead: five NPCs on a stride of five leaves four
+    // unreached, and a reader should see that with its cause named.
+    const report = run(4, 5);
+    const deadEnd = report.findings.find((f) => f.category === "dead-end");
+    expect(deadEnd).toBeDefined();
+    expect(deadEnd?.attribution).toBe("simulator-schedule");
+    expect(deadEnd?.description).toMatch(/this simulator's scheduling/i);
+    expect(report.suggestions).not.toContain(
+      "Place NPCs closer to player paths or add quest markers",
+    );
+  });
+
+  it("does not let duplicate mechanic names understate reach", () => {
+    const bp = {
+      id: PROJECT,
+      mechanics: ["mine", "mine", "trade", "build"],
+      npcs: [],
+    } as never;
+    const simulation = new GameSimulationEngine().simulateGame(bp);
+    const report = new PlaytestAgent().analyze(bp, simulation);
+    // Three distinct mechanics are declared and all three are reachable, so no
+    // broken-loop finding may be raised against the blueprint.
+    expect(report.derived.mechanicReach.declared).toBe(3);
+    expect(report.derived.mechanicReach.reachable).toBe(3);
+    expect(report.derived.mechanicReach.exercised).toBe(3);
+    expect(report.findings.some((f) => f.category === "broken-loop")).toBe(
+      false,
+    );
   });
 });

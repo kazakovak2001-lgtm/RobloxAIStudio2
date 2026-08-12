@@ -139,17 +139,17 @@ export class SimulationFeedbackEngine {
       };
     }
 
+    // A blueprint declaring nothing is not an uninformative run — it is a
+    // blueprint finding, and the branch above has already acted on it. What
+    // remains is a run that could not exercise what the blueprint did declare,
+    // which is evidence about the simulation and not about the game.
     const { mechanicReach } = report.derived;
-    const exercisedNothing =
-      mechanicReach.declared > 0 && mechanicReach.exercised === 0;
-    const declaredNothing = mechanicReach.declared === 0;
-    if (exercisedNothing || declaredNothing) {
+    if (mechanicReach.declared > 0 && mechanicReach.exercised === 0) {
       return {
         outcome: "abstain",
         policyId: REGENERATION_POLICY_ID,
-        reason: declaredNothing
-          ? "The blueprint declares no mechanics, so this simulation could not test it"
-          : "The simulation exercised none of the declared mechanics, so it is not evidence about the blueprint",
+        reason:
+          "The simulation exercised none of the declared mechanics, so it is not evidence about the blueprint",
         evidenceUsed: [],
       };
     }

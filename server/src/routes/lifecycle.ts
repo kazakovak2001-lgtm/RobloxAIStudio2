@@ -77,9 +77,16 @@ export function createLifecycleRouter(access: ProjectAccessControl): Router {
         economy: economyData ?? null,
         world: worldData ?? null,
       };
+      // Every signal is withheld, and that is the honest state of this route
+      // rather than an oversight: `simulationData`, `economyData` and
+      // `worldData` all arrive in the request body, so none of them is
+      // server-produced evidence, and this handler holds no simulation,
+      // economy or world run of its own to read instead. Until a server-owned
+      // evidence source exists, `/lifecycle/tick` therefore never assesses and
+      // never evolves. That is deliberate: the alternative is the behaviour
+      // this slice removed, where a caller's number — or a default standing in
+      // for one — decided that a game was healthy and patched its blueprint.
       const assessment = healthMonitor.assess(gameId, {
-        // No server-produced simulation evidence is reachable here. Absent, not
-        // defaulted, and never taken from the caller.
         simulationEvidence: null,
         economyHealth: null,
         worldStability: null,
@@ -125,9 +132,15 @@ export function createLifecycleRouter(access: ProjectAccessControl): Router {
         ? await bridge.processFeedback(gameId, assessment, evolutionResult)
         : null;
 
-      // State transitions. `SIMULATED` is no longer entered from a tick that
-      // ran no simulation and read no simulation evidence.
+      // State transitions. `SIMULATED` used to be entered by any tick at all,
+      // which asserted a game had been simulated when nothing had simulated it.
+      // It is now entered only from server-produced simulation evidence, which
+      // no source currently supplies, so a game started here stays in `CREATED`
+      // until one exists. The response says so rather than leaving a caller to
+      // infer it from a state that never changes.
       const lifecycle = controller.getLifecycle(gameId);
+      const advanceBlocked =
+        lifecycle?.state === "CREATED" && !isAssessed(assessment);
       if (lifecycle?.state === "SIMULATED" && economyData)
         controller.transition(gameId, "BALANCED");
       if (lifecycle?.state === "BALANCED")
@@ -143,6 +156,14 @@ export function createLifecycleRouter(access: ProjectAccessControl): Router {
         success: true,
         data: {
           lifecycle: controller.getLifecycle(gameId),
+          lifecycleAdvance: advanceBlocked
+            ? {
+                advanced: false,
+                blockedFrom: "CREATED",
+                reason:
+                  "Advancing past CREATED requires server-produced simulation evidence, which no source supplies today. A tick that simulated nothing does not make a game SIMULATED.",
+              }
+            : { advanced: true },
           health: assessment,
           clientClaims,
           patches: { total: allPatches.length, applied: patchResult.applied },
