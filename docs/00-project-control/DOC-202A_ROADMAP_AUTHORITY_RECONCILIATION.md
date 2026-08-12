@@ -851,20 +851,33 @@ the request body, and the results `/api/simulate` produces live in that
 router's process-local map, which this handler cannot read. The route therefore
 reports insufficient evidence, never evolves, and leaves a game in `CREATED`.
 
-**That abstention is correct, and it is not a bug awaiting a fix.** The
-alternative is what the slice removed: a client's own number, or a default
-standing in for one, deciding that a game is healthy. Naming the gap explicitly
-was the point; closing it is a separate question with a different answer.
+**The abstention is specific, and stating it loosely would overstate it.** The
+route abstains from health assessment and from `ContinuousEvolutionEngine`. It
+does not abstain from client-driven patching: `simulationData`, `economyData`
+and `worldData` are still passed to `AutoPatchGenerator` as patch sources, the
+resulting patches are applied, and `recordPatch` increments the lifecycle
+version and patch count when any were generated. What the slice removed is a
+caller's number, or a default standing in for one, deciding that a game is
+_healthy_ and selecting an evolution branch from that. The client-driven patch
+path is a separate surface and is not covered by this abstention.
+
+**That abstention is correct as far as it goes, and it is not a bug awaiting a
+fix.** Naming the gap explicitly was the point; closing it is a separate
+question with a different answer.
 
 **Closing only the evidence-source gap would not produce a usable capability.**
 Four facts, each checked against the code at this commit rather than assumed:
 
-- The patch path operates on a copy. `LiveUpdateEngine.applyPatches` deep-clones
-  the blueprint and returns `resultingBlueprint`, and that field has no consumer
-  anywhere in the repository — its only two occurrences are the type declaration
-  and the return statement. The route reads the applied count. The evolved
-  blueprint is discarded when the request ends, and nothing treats it as
-  authoritative game state.
+- The tick's patch path operates on a copy that is then discarded.
+  `LiveUpdateEngine.applyPatches` deep-clones the blueprint and returns
+  `resultingBlueprint`; `/lifecycle/tick` reads only the applied count, so the
+  evolved blueprint is dropped when the request ends. The separate manual
+  endpoint `POST /api/lifecycle/patch` does return the whole `PatchResult`, so
+  that field is serialized to its caller — a grep for the identifier alone
+  misses this, because the object is returned wholesale. Neither path makes the
+  result durable, and neither treats it as authoritative game state: the manual
+  endpoint hands an evolved copy back to the caller that supplied the blueprint,
+  and nothing in the generation flow reads it.
 - Lifecycle state and evolution have no durable persistence path. Nothing under
   `server/src/lifecycle` or in the route writes durable storage, so no artifact
   establishes an evolved game as the project result.
