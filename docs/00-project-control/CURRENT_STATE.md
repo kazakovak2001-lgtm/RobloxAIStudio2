@@ -197,6 +197,24 @@ Project-scoped Studio API-key authority is resolved by PR #171. The exhaustive
 architecture build gate is restored by PR #172. Current desktop evidence is
 recorded in `STUDIO-ACCEPT-1_DESKTOP_ACCEPTANCE_RESULT.md`.
 
+**`LIFECYCLE-EVIDENCE-1` is a deferred prerequisite, not a problem to fix.**
+`SIM-TRUTH-1` made it explicit that `/lifecycle/tick` has no server-owned
+simulation, economy or world evidence source, so it abstains from health
+assessment and evolution rather than deriving them from request-body claims or
+defaults. That abstention is specific: the route still passes client-supplied
+`simulationData`, `economyData` and `worldData` to `AutoPatchGenerator`, applies
+the resulting patches and records them, so the client-driven patch path is a
+separate surface it does not cover. Closing only the evidence-source gap would
+not produce a usable capability: the tick evolves a copied blueprint it then
+discards, lifecycle state has no durable persistence path, and the lifecycle
+`MemoryEngine` write has no demonstrated reader. **The abstention is a safety boundary rather than an
+implementation gap**, and four prerequisites must hold before it may become
+implementation-ready — a real consumer, durable lifecycle ownership, justified
+simulation fidelity, and an explicit decision contract. The finding is recorded
+in full in [DOC-202A reconciliation](./DOC-202A_ROADMAP_AUTHORITY_RECONCILIATION.md).
+It is deliberately not a roadmap row, because a row would imply scheduled
+implementation.
+
 ---
 
 ## Technical Debt

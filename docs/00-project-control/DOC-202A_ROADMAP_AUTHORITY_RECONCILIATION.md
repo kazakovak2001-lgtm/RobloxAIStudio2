@@ -838,6 +838,82 @@ as of August 12, 2026. The response states that explicitly. Wiring such a source
 is not claimed here. `PLAYTEST-2` is untouched and remains `unscoped`, and
 Studio acceptance stays paused and unchanged.
 
+## Architectural finding — `LIFECYCLE-EVIDENCE-1`, deferred pending a meaningful lifecycle consumer
+
+**This is a dependency finding, not a delivery item.** It is deliberately absent
+from the roadmap table: a row there would imply scheduled implementation, and
+the conclusion below is that implementation must not be scheduled yet. Recorded
+at `71bf4114268ce690e2fd2cf1e6008599770933bf`.
+
+`SIM-TRUTH-1` made one limitation explicit: `/lifecycle/tick` has no
+server-owned simulation, economy or world evidence source. All three arrive in
+the request body, and the results `/api/simulate` produces live in that
+router's process-local map, which this handler cannot read. The route therefore
+reports insufficient evidence, never evolves, and leaves a game in `CREATED`.
+
+**The abstention is specific, and stating it loosely would overstate it.** The
+route abstains from health assessment and from `ContinuousEvolutionEngine`. It
+does not abstain from client-driven patching: `simulationData`, `economyData`
+and `worldData` are still passed to `AutoPatchGenerator` as patch sources, the
+resulting patches are applied, and `recordPatch` increments the lifecycle
+version and patch count when any were generated. What the slice removed is a
+caller's number, or a default standing in for one, deciding that a game is
+_healthy_ and selecting an evolution branch from that. The client-driven patch
+path is a separate surface and is not covered by this abstention.
+
+**That abstention is correct as far as it goes, and it is not a bug awaiting a
+fix.** Naming the gap explicitly was the point; closing it is a separate
+question with a different answer.
+
+**Closing only the evidence-source gap would not produce a usable capability.**
+Four facts, each checked against the code at this commit rather than assumed:
+
+- The tick's patch path operates on a copy that is then discarded.
+  `LiveUpdateEngine.applyPatches` deep-clones the blueprint and returns
+  `resultingBlueprint`; `/lifecycle/tick` reads only the applied count, so the
+  evolved blueprint is dropped when the request ends. The separate manual
+  endpoint `POST /api/lifecycle/patch` does return the whole `PatchResult`, so
+  that field is serialized to its caller — a grep for the identifier alone
+  misses this, because the object is returned wholesale. Neither path makes the
+  result durable, and neither treats it as authoritative game state: the manual
+  endpoint hands an evolved copy back to the caller that supplied the blueprint,
+  and nothing in the generation flow reads it.
+- Lifecycle state and evolution have no durable persistence path. Nothing under
+  `server/src/lifecycle` or in the route writes durable storage, so no artifact
+  establishes an evolved game as the project result.
+- The lifecycle `MemoryEngine` write under `lifecycle-controller` has no
+  demonstrated read-side consumer in the active generation flow; the identifier
+  appears only at the write site, which is the same pattern already recorded for
+  `simulation-feedback`.
+- The signal itself is unproven. `SIM-TRUTH-1` established truthful provenance,
+  not simulator validity, and `GameSimulationEngine`'s scheduling artifacts
+  remain a known limitation it deliberately did not fix.
+
+Wiring an evidence source now would add plumbing around a subsystem whose output
+is not yet product-effective, and would connect an unproven simulation signal to
+a mutation path with no authoritative consumer — the same shape as the defect
+just removed.
+
+### Prerequisites before `LIFECYCLE-EVIDENCE-1` may become implementation-ready
+
+1. **A real lifecycle consumer.** The evolved or patched blueprint has an
+   authoritative downstream consumer, and the result is not discarded when the
+   request ends.
+2. **Durable lifecycle ownership.** What lifecycle state or artifact is durable
+   is defined, along with restart and recovery semantics, and project ownership
+   and lineage for an evolved game.
+3. **Simulation fidelity sufficient for lifecycle decisions.** The decision value
+   of the simulation's signals is justified before any of them drives a mutation.
+4. **A decision contract.** What evidence may trigger a patch or an evolution is
+   defined explicitly; insufficient evidence continues to abstain; and client
+   claims and arbitrary defaults never become server evidence again.
+
+**The current abstention is a safety boundary, not an implementation gap.** It
+prevents an unproven simulation signal from driving a lifecycle path whose
+mutated result currently has no authoritative consumer. A future reader should
+treat the `SIM-TRUTH-1` known limitation as deliberately held open, not as work
+waiting to be picked up.
+
 ## Scope boundary
 
 DOC-202A does not implement `STUDIO-2F`, `AUTONOMY-3A` or `COLLAB-3B`. It establishes documentation authority and post-merge truthfulness only.
