@@ -9,7 +9,7 @@ fail-closed guard for subsequent roadmap reconciliations.
 
 - Backend repository: `kazakovak2001-lgtm/RobloxAIStudio2`
 - Backend release branch: `release/cutover-1e-candidate`
-- Current backend runtime release: `63221e79854be718e75a8582b6a7afe248ecb22a`
+- Current backend runtime release: `77976a7818695cfdccdea253794acc0cd3c79b91`
 - SECURITY-2G-F control baseline: `da55f716c798ec8c6a7f25a8e2a3b7b0a2244416`
 - Paired Frontend repository: `kazakovak2001-lgtm/Frontend`
 - Paired Frontend runtime contents: `b91ebdba613ca0d8f01a5fb33de355ae97588601`
@@ -791,6 +791,53 @@ to nothing. `PLAYTEST-2` is untouched: it remains the future real runtime,
 input and visual playtest capability, `unscoped` and blocked on its existing
 dependencies, and nothing here is evidence toward it. Studio acceptance is
 unchanged and remains paused on the operator session.
+
+SIM-TRUTH-1 advances the runtime pair to backend
+`77976a7818695cfdccdea253794acc0cd3c79b91`, through backend pull request
+`#231`. Frontend contents are unchanged at
+`b91ebdba613ca0d8f01a5fb33de355ae97588601`, because the slice is backend-only.
+
+`PLAYTEST-TRUTH-1` recorded `simulation/agents/PlaytestAgent` as a second,
+separate report carrying its own score and deliberately did not fix it. An audit
+at `8f6e6a94` confirmed the same class of claim, live on four mounted routes.
+`engagementScore` weighted `loopProgress*40 + mechanicsCoverage*30 + npcRate*15
+
+- (engaged ? 15 : 0)`. The engine sets `loopProgress`from the identical
+expression the agent recomputed as`mechanicsCoverage`, so one quantity carried
+seventy of the hundred points as two independent-looking terms; `engaged`was
+initialised to`true` and could only fall through a heuristic over that same
+  signal; and a blueprint with no NPCs scored full marks for interacting with
+  nothing.
+
+**Blueprints were penalised for the simulator's own arithmetic.** Mechanics are
+visited every third tick and NPCs every fifth, indexed by `tick % count`, so a
+blueprint declaring three mechanics or five NPCs provably cannot have them all
+reached. That shortfall was reported as a defect in the game.
+
+**Complete to seven things and no more.** Simulation evidence is separated into
+observed facts, derived indicators and an explicit `player: { status:
+"not-observed" }`. No aggregate engagement score and no letter grade exist under
+any name. A shortfall the schedule caused is attributed to the schedule. A value
+a caller supplies to `/lifecycle/tick` stays a client claim. Missing lifecycle
+evidence stays missing. Lifecycle abstains rather than fabricating health or
+evolution. And no real player engagement, retention, fun, quality or runtime
+measurement is claimed anywhere.
+
+Review found thirteen issues and all were fixed, three of them substantive: the
+route that accepts a report from the request body had no decoder, so a
+pre-slice record threw and any payload naming any version was processed as
+evidence; a blueprint declaring no mechanics was attributed to the simulator's
+schedule when it is a property of the blueprint; and the rewritten NPC rule
+could never fire, because the walk marks every NPC it indexes. Eight invariants
+were verified by mutation, each killed.
+
+**A known limitation is part of this record rather than a footnote to it.** No
+server-owned simulation, economy or world evidence source is wired to
+`/lifecycle/tick` — all three arrive in the request body — so the route always
+reports insufficient evidence, never evolves, and leaves a game in `CREATED`.
+The response states that explicitly. Wiring such a source is separate work and
+is not claimed here. `PLAYTEST-2` is untouched and remains `unscoped`, and
+Studio acceptance stays paused and unchanged.
 
 ## Scope boundary
 
