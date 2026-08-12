@@ -12,7 +12,7 @@ fail-closed guard for subsequent roadmap reconciliations.
 - Current backend runtime release: `042ca72d2b6f34af05779bcf8601f441ae93c0c9`
 - SECURITY-2G-F control baseline: `da55f716c798ec8c6a7f25a8e2a3b7b0a2244416`
 - Paired Frontend repository: `kazakovak2001-lgtm/Frontend`
-- Paired Frontend runtime contents: `94736069e049b9614c4012775677c78777f5060d`
+- Paired Frontend runtime contents: `0a6857ad548b9c3d48019dfa7a63adbb5fde4930`
 
 ## Authority order
 
