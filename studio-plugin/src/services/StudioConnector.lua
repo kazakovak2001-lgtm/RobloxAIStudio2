@@ -69,6 +69,9 @@ function StudioConnector:heartbeat()
 end
 
 function StudioConnector:sendMessage(msgType, command, payload)
+    payload = payload or {}
+    payload.projectId = self._projectId
+    payload.clientId = self._clientId
     self._lastMessageId = self._lastMessageId + 1
     local message = {
         protocolVersion = Config.PROTOCOL_VERSION,
@@ -78,7 +81,7 @@ function StudioConnector:sendMessage(msgType, command, payload)
         command = command,
         timestamp = os.time() * 1000,
         direction = "client_to_server",
-        payload = payload or {},
+        payload = payload,
     }
     return self:_post("/api/studio/protocol/message", message)
 end
