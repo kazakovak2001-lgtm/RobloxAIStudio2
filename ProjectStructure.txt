@@ -132,6 +132,7 @@
 │   │   ├── NOVELTY-1_SCOPE.md
 │   │   ├── NOVELTY-2_PROMOTION_CRITERIA.md
 │   │   ├── NOVELTY-2_SCOPE.md
+│   │   ├── PLAYTEST-TRUTH-1_SCOPE.md
 │   │   ├── ROADMAP_STATUS.md
 │   │   ├── ROADMAP-EXTENSION-1_STRATEGIC_DIRECTION.md
 │   │   ├── ROADMAP-RECONCILIATION-1_RESULT.md
@@ -636,6 +637,8 @@
 │   │   │   ├── pipeline1a.plan-definition.test.ts
 │   │   │   ├── pipeline1b.validation-report.test.ts
 │   │   │   ├── platform.test.ts
+│   │   │   ├── playtesttruth1.evidence.test.ts
+│   │   │   ├── playtesttruth1.review.test.ts
 │   │   │   ├── pluginProtocol.test.ts
 │   │   │   ├── preservationProperty.test.ts
 │   │   │   ├── productionQuality.test.ts

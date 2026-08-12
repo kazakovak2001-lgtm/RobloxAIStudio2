@@ -6,7 +6,7 @@
     "backendBranch": "release/cutover-1e-candidate",
     "backendCommit": "042ca72d2b6f34af05779bcf8601f441ae93c0c9",
     "frontendRepository": "kazakovak2001-lgtm/Frontend",
-    "frontendCommit": "94736069e049b9614c4012775677c78777f5060d"
+    "frontendCommit": "0a6857ad548b9c3d48019dfa7a63adbb5fde4930"
   },
   "authority": [
     {
@@ -32,7 +32,7 @@
         "`PIPELINE-1C` | Conditional stages inside the pipeline | Low | `unscoped`",
         "a security finding never negates generation, delivery or release, and a blocking gate is the separate `SECURITY-REVIEW-B` delivery",
         "042ca72d2b6f34af05779bcf8601f441ae93c0c9",
-        "94736069e049b9614c4012775677c78777f5060d",
+        "0a6857ad548b9c3d48019dfa7a63adbb5fde4930",
         "`WORLD-1A` | Semantic world model and cross-artifact validation against generated Lua | High | `complete` — backend PR #207",
         "`WORLD-1B` | Design-time Studio materialization of the world model | Medium | `code_complete_evidence_pending` — backend PR #209 merged",
         "`WORLD-1C` | Canonical ownership of the world by the materialized scene | Medium | `blocked` — scoped, and blocked",
@@ -56,7 +56,10 @@
         "`blocked` — its contract dependency is met, and it remains blocked on the Roblox Open Cloud credential surface that does not exist",
         "The twelve `unscoped` strategic items",
         "split four `complete`, one `blocked` and twelve `unscoped`",
-        "`purpose` is populated for model entries from the producer's `description`"
+        "`purpose` is populated for model entries from the producer's `description`",
+        "| `PLAYTEST-TRUTH-1` | Stop presenting heuristic static analysis as measured playtest quality | High | `scoped`",
+        "It does not complete `PLAYTEST-2`",
+        "the first item here that did not come from the roadmap"
       ],
       "forbiddenClaims": [
         "PR #162 pending reviewed merge",
@@ -80,7 +83,7 @@
       "status": "current",
       "requiredClaims": [
         "042ca72d2b6f34af05779bcf8601f441ae93c0c9",
-        "94736069e049b9614c4012775677c78777f5060d",
+        "0a6857ad548b9c3d48019dfa7a63adbb5fde4930",
         "REPAIR-1 complete across backend and Frontend UI",
         "PROVIDER-1A completed through backend PR #193, merged `ecae9bb59f1639d2e382e7221a956aa96460b3e9`",
         "STUDIO-2F-A code complete but not done (backend PR #195/#196/#197",
@@ -119,7 +122,7 @@
       "requiredClaims": [
         "DOC-202A",
         "042ca72d2b6f34af05779bcf8601f441ae93c0c9",
-        "94736069e049b9614c4012775677c78777f5060d",
+        "0a6857ad548b9c3d48019dfa7a63adbb5fde4930",
         "ARTIFACT-1, PROVIDER-1B and SECREVIEW-1 advance the runtime pair to backend",
         "PIPELINE-1A advances the runtime pair to backend",
         "PIPELINE-1B advances the runtime pair to backend",
@@ -345,6 +348,21 @@
         "`purpose` is populated for models only; `required` is unpopulated everywhere."
       ],
       "forbiddenClaims": ["`purpose` and `required` are unpopulated."]
+    },
+    {
+      "path": "docs/00-project-control/PLAYTEST-TRUTH-1_SCOPE.md",
+      "owner": "project-control",
+      "rank": 17,
+      "status": "supporting",
+      "requiredClaims": [
+        "PLAYTEST-TRUTH-1",
+        "This does not complete `PLAYTEST-2`.",
+        "Entirely invented. Reads no findings at all",
+        "A generated game is called production-ready because its source contains a `pcall` and a block comment.",
+        "The attempt ceiling is unchanged and independent.",
+        "legacy heuristic values, never measurements"
+      ],
+      "forbiddenClaims": []
     }
   ],
   "historical": [
@@ -428,6 +446,10 @@
     {
       "source": "docs/00-project-control/ROADMAP_STATUS.md",
       "target": "docs/00-project-control/ASSET-FABRIC-1_SCOPE.md"
+    },
+    {
+      "source": "docs/00-project-control/ROADMAP_STATUS.md",
+      "target": "docs/00-project-control/PLAYTEST-TRUTH-1_SCOPE.md"
     }
   ]
 }

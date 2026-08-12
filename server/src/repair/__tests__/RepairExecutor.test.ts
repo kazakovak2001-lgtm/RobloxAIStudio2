@@ -55,8 +55,13 @@ function plan(items: RepairPlanItem[]): RepairPlan {
     projectId: "repair-test-project",
     iteration: 1,
     items,
-    targetScore: 90,
-    currentScore: 40,
+    findingCounts: {
+      critical: items.length,
+      warning: 0,
+      suggestion: 0,
+      optimization: 0,
+      total: items.length,
+    },
     createdAt: Date.now(),
   };
 }

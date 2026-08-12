@@ -40,8 +40,11 @@ describe("Security Audit", () => {
         scripts: [],
         assets: [],
       });
-      expect(report.overallScore).toBeGreaterThanOrEqual(0);
-      expect(report.overallScore).toBeLessThanOrEqual(100);
+      // PLAYTEST-TRUTH-1. No score to bound. An empty project yields a
+      // readable report that claims nothing about quality.
+      expect(report.evidenceKind).toBe("static-analysis");
+      expect(report.runtime.status).toBe("not-measured");
+      expect(report.findingCounts.total).toBe(report.issues.length);
     });
 
     it("playtest handles malformed script content", async () => {
@@ -60,7 +63,7 @@ describe("Security Audit", () => {
         assets: [],
       });
       expect(report).toBeTruthy();
-      expect(report.overallScore).toBeGreaterThanOrEqual(0);
+      expect(report.runtime.status).toBe("not-measured");
     });
   });
 

@@ -3,16 +3,17 @@
  */
 
 import { randomUUID } from "crypto";
-import type {
-  PlaytestInput,
-  PlaytestIssue,
-  SystemScore,
+import {
+  countFindings,
+  type PlaytestInput,
+  type PlaytestIssue,
+  type SystemFindings,
 } from "./PlaytestTypes";
 
 export class PlaytestRuleEngine {
   run(input: PlaytestInput): {
     issues: PlaytestIssue[];
-    systemScores: SystemScore[];
+    systems: SystemFindings[];
   } {
     const issues: PlaytestIssue[] = [];
 
@@ -24,8 +25,8 @@ export class PlaytestRuleEngine {
     this.checkConfiguration(input, issues);
     this.checkGameplaySystems(input, issues);
 
-    const systemScores = this.calculateSystemScores(input, issues);
-    return { issues, systemScores };
+    const systems = this.summarizeSystems(issues);
+    return { issues, systems };
   }
 
   private checkRemoteEvents(
@@ -259,10 +260,7 @@ export class PlaytestRuleEngine {
     }
   }
 
-  private calculateSystemScores(
-    _input: PlaytestInput,
-    issues: PlaytestIssue[],
-  ): SystemScore[] {
+  private summarizeSystems(issues: PlaytestIssue[]): SystemFindings[] {
     const categories = [
       "architecture",
       "networking",
@@ -271,18 +269,19 @@ export class PlaytestRuleEngine {
       "gameplay",
     ];
     return categories.map((cat) => {
-      const catIssues = issues.filter((i) => i.category === cat);
-      const criticals = catIssues.filter(
-        (i) => i.severity === "critical",
-      ).length;
-      const warnings = catIssues.filter((i) => i.severity === "warning").length;
-      let score = 100 - criticals * 25 - warnings * 10;
-      score = Math.max(0, Math.min(100, score));
+      const counts = countFindings(issues.filter((i) => i.category === cat));
       return {
         system: cat,
-        score,
-        issues: catIssues.length,
-        status: score >= 80 ? "pass" : score >= 50 ? "warn" : "fail",
+        counts,
+        // A restatement of the counts, not a threshold over a magnitude. The
+        // previous version subtracted 25 per critical from an imaginary 100
+        // and called anything above 80 a pass.
+        status:
+          counts.critical > 0
+            ? ("fail" as const)
+            : counts.warning > 0
+              ? ("warn" as const)
+              : ("pass" as const),
       };
     });
   }

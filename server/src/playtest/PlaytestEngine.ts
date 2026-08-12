@@ -1,11 +1,20 @@
 /**
- * PlaytestEngine — Top-level facade for automated experience quality validation.
+ * PlaytestEngine — deterministic static analysis of generated source and plans.
+ *
+ * PLAYTEST-TRUTH-1. Not a playtest in any runtime sense, and no longer named
+ * as one in what it produces. It reads generated Lua and asset plans, applies
+ * deterministic rules, and reports what it found. It runs nothing, observes no
+ * player, and measures no quality.
  */
 
-import type {
-  PlaytestInput,
-  PlaytestReport,
-  PerformanceEstimate,
+import {
+  countFindings,
+  PLAYTEST_REPORT_SCHEMA_VERSION,
+  RUNTIME_NOT_MEASURED,
+  type FindingCounts,
+  type PlaytestInput,
+  type PlaytestReport,
+  type PerformanceEstimate,
 } from "./PlaytestTypes";
 import { PlaytestRuleEngine } from "./PlaytestRuleEngine";
 
@@ -21,54 +30,28 @@ export class PlaytestEngine {
    * Run a full playtest analysis on a project.
    */
   run(input: PlaytestInput): PlaytestReport {
-    const { issues, systemScores } = this.ruleEngine.run(input);
+    const { issues, systems } = this.ruleEngine.run(input);
     const performance = this.analyzePerformance(input);
+    const findingCounts = countFindings(issues);
 
-    const scores = {
-      architecture: this.scoreCategory(issues, "architecture"),
-      lua: this.scoreLua(input),
-      assets: this.scoreCategory(issues, "assets"),
-      dependencies: this.scoreCategory(issues, "dependencies"),
-      gameplay: this.scoreCategory(issues, "gameplay"),
-      performance:
-        performance.estimatedInitTimeMs < 3000
-          ? 90
-          : performance.estimatedInitTimeMs < 5000
-            ? 70
-            : 50,
-    };
-
-    const overallScore = Math.round(
-      Object.values(scores).reduce((sum, s) => sum + s, 0) /
-        Object.keys(scores).length,
-    );
-
-    const criticals = issues.filter((i) => i.severity === "critical");
     const recommendations = issues.filter(
       (i) => i.severity === "suggestion" || i.severity === "optimization",
     );
 
     const report: PlaytestReport = {
+      schemaVersion: PLAYTEST_REPORT_SCHEMA_VERSION,
+      evidenceKind: "static-analysis",
       projectId: input.projectId,
       generatedAt: Date.now(),
-      overallScore,
-      classification:
-        overallScore >= 80
-          ? "production_ready"
-          : overallScore >= 50
-            ? "needs_work"
-            : "critical_issues",
-      scores,
-      systemScores,
+      // Stated, not omitted. An absent field reads as an oversight and a zero
+      // reads as a failing grade; neither is true.
+      runtime: RUNTIME_NOT_MEASURED,
+      findingCounts,
       issues,
+      systems,
       performance,
       recommendations,
-      summary: this.buildSummary(
-        overallScore,
-        criticals.length,
-        issues.length,
-        input,
-      ),
+      summary: this.buildSummary(findingCounts, input),
     };
 
     this.reports.set(input.projectId, report);
@@ -130,44 +113,19 @@ export class PlaytestEngine {
     return 1 + Math.max(...deps.map((d) => this.getDepthFor(d.to, edges)));
   }
 
-  private scoreCategory(
-    issues: Array<{ severity: string; category: string }>,
-    category: string,
-  ): number {
-    const catIssues = issues.filter((i) => i.category === category);
-    let score = 100;
-    for (const issue of catIssues) {
-      if (issue.severity === "critical") score -= 25;
-      else if (issue.severity === "warning") score -= 10;
-      else score -= 3;
-    }
-    return Math.max(0, Math.min(100, score));
-  }
-
-  private scoreLua(input: PlaytestInput): number {
-    if (input.scripts.length === 0) return 50;
-    let score = 80;
-    if (input.scripts.length >= 5) score += 10;
-    if (input.scripts.some((s) => s.content.includes("pcall"))) score += 5;
-    if (input.scripts.some((s) => s.content.includes("--[["))) score += 5;
-    return Math.min(100, score);
-  }
-
-  private buildSummary(
-    score: number,
-    criticals: number,
-    total: number,
-    input: PlaytestInput,
-  ): string {
-    const status =
-      score >= 80
-        ? "Production Ready"
-        : score >= 50
-          ? "Needs Work"
-          : "Critical Issues";
+  /**
+   * State what was found, and what was not looked at.
+   *
+   * No grade and no verdict. The previous summary opened with
+   * "Production Ready (85/100)" for source that contained a `pcall`.
+   */
+  private buildSummary(counts: FindingCounts, input: PlaytestInput): string {
     return (
-      `${status} (${score}/100). ${input.scripts.length} scripts, ${input.assets.length} assets. ` +
-      `${criticals} critical issue${criticals !== 1 ? "s" : ""}, ${total} total findings.`
+      `Static analysis of ${input.scripts.length} script${input.scripts.length !== 1 ? "s" : ""} ` +
+      `and ${input.assets.length} planned asset${input.assets.length !== 1 ? "s" : ""}: ` +
+      `${counts.critical} critical, ${counts.warning} warning, ` +
+      `${counts.total} finding${counts.total !== 1 ? "s" : ""} in total. ` +
+      `Runtime quality is not measured.`
     );
   }
 }

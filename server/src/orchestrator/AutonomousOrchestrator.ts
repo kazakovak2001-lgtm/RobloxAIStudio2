@@ -6,7 +6,11 @@ import type {
   OrchestratorPhase,
   OrchestratorSession,
 } from "./OrchestratorTypes";
-import { DEFAULT_GOALS, createSessionId } from "./OrchestratorTypes";
+import {
+  DEFAULT_GOALS,
+  createSessionId,
+  demoteLegacyQualityScore,
+} from "./OrchestratorTypes";
 import {
   AutonomousPhaseRegistry,
   createAutonomousPhaseContext,
@@ -60,6 +64,15 @@ export interface AutonomousOrchestratorOptions {
 interface CheckpointSnapshot {
   context: AutonomousPhaseContext;
   phases: ExecutionNode[];
+  /**
+   * Quality of the previewed run, when a phase measured one.
+   *
+   * PLAYTEST-TRUTH-1. `null` on every session today. It used to be filled by
+   * the playtest phase, whose number averaged an invented Lua score that
+   * added five points when the source contained `pcall`. Nothing measures
+   * quality now, so nothing sets this, and `null` means unmeasured rather
+   * than zero or failed.
+   */
   qualityScore: number | null;
   genre?: string;
   cost: CostTracker;
@@ -296,6 +309,12 @@ export class AutonomousOrchestrator {
     record.context = this.clone(recoverableSnapshot.context);
     session.phases = this.clone(recoverableSnapshot.phases);
     session.qualityScore = recoverableSnapshot.qualityScore;
+    // PLAYTEST-TRUTH-1. A checkpoint written before this slice holds the old
+    // heuristic, and recovery replays the phases rather than rerunning the
+    // playtest that produced it. Demote it here too, so the row that gets
+    // persisted back stops asserting the number as current quality instead of
+    // relying on the publish boundary to hide it.
+    demoteLegacyQualityScore(session);
     session.genre = recoverableSnapshot.genre;
     session.cost = this.clone(recoverableSnapshot.cost);
     session.status = "running";
@@ -949,6 +968,12 @@ export class AutonomousOrchestrator {
 
   private publish(record: AutonomousSessionRecord): void {
     const snapshot = structuredClone(record);
+    // PLAYTEST-TRUTH-1. Every read path — the session API, the terminal preview
+    // event, hydration after a restart — reaches a session through here. A row
+    // persisted before this slice carries the old heuristic in `qualityScore`
+    // and its playtest phase is never rerun, so it is demoted to historical
+    // evidence on the way out rather than republished as measured quality.
+    demoteLegacyQualityScore(snapshot.session);
     const existing = this.sessions.get(snapshot.session.id);
     if (existing) {
       if (!this.sessionsEqual(existing, snapshot.session)) {

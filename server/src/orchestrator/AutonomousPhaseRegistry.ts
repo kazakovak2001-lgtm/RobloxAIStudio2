@@ -543,13 +543,20 @@ class PlaytestAdapter extends BaseAdapter {
       "PlaytestEngine",
       "heuristic",
       {
-        overallScore: report.overallScore,
-        classification: report.classification,
-        issueCount: report.issues.length,
+        // PLAYTEST-TRUTH-1. Counts and an explicit not-measured state. This
+        // used to report an `overallScore` and a `classification` of
+        // `production_ready`, and pass the same number as this phase's
+        // quality score — a grade for a game nobody ran.
+        evidenceKind: report.evidenceKind,
+        runtimeStatus: report.runtime.status,
+        criticalFindings: report.findingCounts.critical,
+        warningFindings: report.findingCounts.warning,
+        issueCount: report.findingCounts.total,
         estimatedInitTimeMs: report.performance.estimatedInitTimeMs,
         runtimeExecuted: false,
       },
-      report.overallScore,
+      // No quality score. Nothing measured one, and omitting it is the only
+      // truthful value available.
     );
   }
 }

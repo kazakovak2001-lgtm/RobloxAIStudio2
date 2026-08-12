@@ -29,7 +29,7 @@ import {
   decodeGameDna,
 } from "../validation/gameDna";
 import { normalizeLuaScripts } from "../types/playableLua";
-import { PlaytestEngine } from "../playtest";
+import { PlaytestEngine, actionableFindingCount } from "../playtest";
 import { RepairPlanner } from "./RepairPlanner";
 import { RepairExecutor, type RepairBlueprintLookup } from "./RepairExecutor";
 import { assembleRepairInput } from "./RepairInputAssembler";
@@ -44,7 +44,11 @@ import type {
   RepairIterationRecord,
   RepairDeliveryRecord,
 } from "./RepairTypes";
-import { DEFAULT_REPAIR_CONFIG } from "./RepairTypes";
+import {
+  DEFAULT_REPAIR_CONFIG,
+  EMPTY_FINDING_COUNTS,
+  REPAIR_EVIDENCE_VERSION,
+} from "./RepairTypes";
 
 export class RepairEngine {
   private readonly planner: RepairPlanner;
@@ -154,8 +158,12 @@ export class RepairEngine {
       status: "running",
       currentIteration: 0,
       maxIterations: cfg.maxIterations,
-      targetScore: cfg.targetScore,
-      currentScore: 0,
+      // PLAYTEST-TRUTH-1. Findings, not a grade. `targetScore` and
+      // `currentScore` are gone from new sessions: they ranged over a number
+      // that counted `pcall` occurrences, and a session that cleared the
+      // target was recorded as having reached a quality nobody measured.
+      findingCounts: EMPTY_FINDING_COUNTS,
+      evidenceVersion: REPAIR_EVIDENCE_VERSION,
       history: priorSession ? [...priorSession.history] : [],
       deliveries: priorSession?.deliveries ?? [],
       startedAt: startTime,
@@ -169,27 +177,29 @@ export class RepairEngine {
       executionId,
     );
     let report = this.playtestEngine.run(assembled.input);
-    session.currentScore = report.overallScore;
+    session.findingCounts = report.findingCounts;
 
     // REPAIR-1A: exactly one bounded attempt, regardless of maxIterations —
     // each iteration is now a real LLM call + validation + persistence, not
     // a free simulation. Multi-iteration auto-retry is deferred.
     const attemptIterations = Math.min(cfg.maxIterations, 1);
 
+    // Iterate while there is something a repair could act on. Criticals and
+    // warnings are actionable; suggestions and optimizations are advice, and
+    // treating advice as outstanding work is how a loop keeps running with
+    // nothing left to fix. The attempt ceiling and the timeout are unchanged
+    // and independent of any of this, so removing the score target cannot make
+    // this unbounded.
     while (
       session.currentIteration < attemptIterations &&
-      session.currentScore < cfg.targetScore &&
+      actionableFindingCount(session.findingCounts) > 0 &&
       Date.now() - startTime < cfg.timeoutMs
     ) {
       session.currentIteration++;
       const iterStart = Date.now();
-      const scoreBefore = session.currentScore;
+      const findingsBefore = session.findingCounts;
 
-      const plan = this.planner.plan(
-        report,
-        session.currentIteration,
-        cfg.targetScore,
-      );
+      const plan = this.planner.plan(report, session.currentIteration);
 
       const { results, scripts } = await this.executor.execute(plan, {
         projectId,
@@ -204,8 +214,8 @@ export class RepairEngine {
         session.history.push({
           iteration: session.currentIteration,
           changedArtifacts: [],
-          scoreBefore,
-          scoreAfter: scoreBefore,
+          findingsBefore,
+          findingsAfter: findingsBefore,
           duration: Date.now() - iterStart,
           tokenUsage: 0,
           aiCost: 0,
@@ -239,20 +249,20 @@ export class RepairEngine {
         newExecutionId,
       );
       report = this.playtestEngine.run(newInput.input);
-      session.currentScore = report.overallScore;
+      session.findingCounts = report.findingCounts;
       session.totalRepairs += appliedResults.length;
 
       const record: RepairIterationRecord = {
         iteration: session.currentIteration,
         changedArtifacts,
-        scoreBefore,
-        scoreAfter: session.currentScore,
         duration: Date.now() - iterStart,
         // Not tracked yet — the LLM provider interface surfaces no usage metadata.
         tokenUsage: 0,
         aiCost: 0,
         repairsApplied: appliedResults.length,
         timestamp: Date.now(),
+        findingsBefore,
+        findingsAfter: session.findingCounts,
         newExecutionId,
         parentExecutionId: executionId,
         // NOVELTY-2. The repaired execution's own verdict, which knows this
@@ -263,9 +273,13 @@ export class RepairEngine {
       session.history.push(record);
     }
 
-    if (session.currentScore >= cfg.targetScore) {
+    // Never "target score reached": completion is not claimable without a
+    // measurement, and there is none. A run that resolved every actionable
+    // finding says exactly that and nothing about whether the game is good.
+    if (actionableFindingCount(session.findingCounts) === 0) {
       session.status = "completed";
-      session.stopReason = session.stopReason ?? "Target score reached";
+      session.stopReason =
+        session.stopReason ?? "No actionable deterministic findings remain";
     } else if (Date.now() - startTime >= cfg.timeoutMs) {
       session.status = "timeout";
       session.stopReason = "Timeout exceeded";

@@ -100,6 +100,20 @@ export interface OrchestratorSession {
   cost: CostTracker;
   checkpoints: Checkpoint[];
   qualityScore: number | null;
+  /**
+   * The heuristic total a pre-PLAYTEST-TRUTH-1 session persisted, kept only as
+   * a record of what an older build wrote.
+   *
+   * A durable session written before this slice carries a number in
+   * `qualityScore`, and its playtest phase is not rerun on recovery. Restoring
+   * that number would republish the old heuristic as current quality — an
+   * average that added five points when the generated source contained the
+   * substring `pcall`. The value is moved here on read instead of being
+   * dropped, so the row stays auditable, and `qualityScore` becomes `null`
+   * because nothing measured anything. **Never a measurement, never compared,
+   * never promoted back.**
+   */
+  legacyQualityScore?: number;
   startedAt: number;
   finishedAt?: number;
   genre?: string;
@@ -110,6 +124,28 @@ export interface OrchestratorSession {
   restartInterruptedAt?: number;
   recoveryReason?: "server_restart";
   terminalEvidenceId?: string;
+}
+
+/**
+ * Demote a legacy heuristic quality score to historical evidence.
+ *
+ * PLAYTEST-TRUTH-1. Nothing measures runtime quality, so a live session's
+ * `qualityScore` is `null`. A session or checkpoint persisted before this slice
+ * holds a number there, and neither loading nor recovering reruns the playtest
+ * phase that produced it. Without this, that number is republished by the
+ * session API and the terminal preview event as though it were current
+ * measured quality.
+ *
+ * The number is preserved in `legacyQualityScore` rather than discarded: the
+ * row remains auditable, and its meaning is downgraded rather than reinterpreted.
+ * Idempotent, and a no-op for sessions that already report `null`.
+ */
+export function demoteLegacyQualityScore(session: OrchestratorSession): void {
+  if (typeof session.qualityScore !== "number") return;
+  if (session.legacyQualityScore === undefined) {
+    session.legacyQualityScore = session.qualityScore;
+  }
+  session.qualityScore = null;
 }
 
 export const DEFAULT_GOALS: GoalConfig = {
