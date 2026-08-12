@@ -79,7 +79,7 @@ health or evolution. And nothing here claims real player engagement, retention, 
 runtime measurement.
 
 **A known limitation is part of the completion, not a caveat added to it.** `/lifecycle/tick` cannot
-progress a game today: no server-owned simulation, economy or world evidence source is wired to it —
+progress a game as of August 12, 2026: no server-owned simulation, economy or world evidence source is wired to it —
 all three arrive in the request body — so the route always reports insufficient evidence, never
 evolves, and leaves a game in `CREATED`. The response says so explicitly rather than advancing on a
 default. Wiring that evidence source is separate work and is not claimed here.

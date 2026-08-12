@@ -800,14 +800,13 @@ SIM-TRUTH-1 advances the runtime pair to backend
 `PLAYTEST-TRUTH-1` recorded `simulation/agents/PlaytestAgent` as a second,
 separate report carrying its own score and deliberately did not fix it. An audit
 at `8f6e6a94` confirmed the same class of claim, live on four mounted routes.
-`engagementScore` weighted `loopProgress*40 + mechanicsCoverage*30 + npcRate*15
-
-- (engaged ? 15 : 0)`. The engine sets `loopProgress`from the identical
-expression the agent recomputed as`mechanicsCoverage`, so one quantity carried
-seventy of the hundred points as two independent-looking terms; `engaged`was
-initialised to`true` and could only fall through a heuristic over that same
-  signal; and a blueprint with no NPCs scored full marks for interacting with
-  nothing.
+`engagementScore` was a weighted sum of four values, written in full as
+`round(loopProgress*40 + mechanicsCoverage*30 + npcRate*15 + (engaged ? 15 : 0))`.
+The engine sets `loopProgress` from the identical expression the agent
+recomputed as `mechanicsCoverage`, so one quantity carried seventy of the
+hundred points as two independent-looking terms; `engaged` was initialised to
+`true` and could only fall through a heuristic over that same signal; and a
+blueprint with no NPCs scored full marks for interacting with nothing.
 
 **Blueprints were penalised for the simulator's own arithmetic.** Mechanics are
 visited every third tick and NPCs every fifth, indexed by `tick % count`, so a
@@ -834,8 +833,8 @@ were verified by mutation, each killed.
 **A known limitation is part of this record rather than a footnote to it.** No
 server-owned simulation, economy or world evidence source is wired to
 `/lifecycle/tick` — all three arrive in the request body — so the route always
-reports insufficient evidence, never evolves, and leaves a game in `CREATED`.
-The response states that explicitly. Wiring such a source is separate work and
+reports insufficient evidence, never evolves, and leaves a game in `CREATED`
+as of August 12, 2026. The response states that explicitly. Wiring such a source is separate work and
 is not claimed here. `PLAYTEST-2` is untouched and remains `unscoped`, and
 Studio acceptance stays paused and unchanged.
 
