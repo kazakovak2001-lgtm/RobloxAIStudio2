@@ -6,7 +6,8 @@
  */
 
 import { MemoryEngine } from "../../memory/core/MemoryEngine";
-import type { HealthMetrics } from "../monitor/GameHealthMonitor";
+import type { HealthAssessment } from "../monitor/GameHealthMonitor";
+import { isAssessed } from "../monitor/GameHealthMonitor";
 import type { EvolutionResult } from "../evolution/ContinuousEvolutionEngine";
 
 export interface LifecycleFeedbackResult {
@@ -28,19 +29,26 @@ export class LifecycleFeedbackBridge {
    */
   async processFeedback(
     gameId: string,
-    health: HealthMetrics,
+    health: HealthAssessment,
     evolution?: EvolutionResult,
   ): Promise<LifecycleFeedbackResult> {
     let memoryUpdated = false;
+
+    // SIM-TRUTH-1. The composite and trend are recorded only when an
+    // assessment was actually made. An insufficient-evidence result is stored
+    // as exactly that, so a later reader cannot mistake it for a reading.
+    const assessed = isAssessed(health);
 
     // Store in Memory v0.6
     try {
       await this.memoryEngine.storeMemory({
         agentId: "lifecycle-controller",
         projectId: gameId,
-        input: { health: health.overall, trend: health.trend },
+        input: assessed
+          ? { health: health.composite, trend: health.trend }
+          : { health: null, trend: null, status: health.status },
         output: {
-          healthMetrics: health,
+          healthAssessment: health,
           evolution: evolution
             ? {
                 type: evolution.evolutionType,
@@ -51,7 +59,7 @@ export class LifecycleFeedbackBridge {
         timestamp: new Date(),
         tags: [
           "lifecycle",
-          health.trend,
+          assessed ? (health.trend ?? "no-trend") : "insufficient-evidence",
           evolution?.evolutionType ?? "monitor",
         ],
       });
@@ -60,8 +68,10 @@ export class LifecycleFeedbackBridge {
       /* non-blocking */
     }
 
-    // Planner notification (conceptual — for future direct integration)
-    const plannerNotified = health.overall < 40; // Would trigger replanning
+    // Planner notification (conceptual — for future direct integration).
+    // SIM-TRUTH-1. Only an actual assessment can say a game is struggling.
+    // Insufficient evidence is not a low score.
+    const plannerNotified = assessed && health.composite < 40;
 
     // Evaluation trigger (conceptual — system evaluates patches independently)
     const evaluationTriggered =

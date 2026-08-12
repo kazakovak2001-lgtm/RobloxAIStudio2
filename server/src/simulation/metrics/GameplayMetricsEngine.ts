@@ -1,17 +1,35 @@
 /**
  * GameplayMetricsEngine.ts
  *
- * Extracts structured gameplay metrics from simulation results.
+ * Extracts structured metrics from a deterministic simulation run.
+ *
+ * SIM-TRUTH-1. Three fields here were not what their names said.
+ * `completionRate` was `loopProgress`, which is the mechanic reach ratio under
+ * a third name. `loopEngagementScore` was that same ratio times one hundred and
+ * called engagement. `economyStability` compared two quantities the simulator
+ * produces on fixed strides regardless of the blueprint, so it could not vary
+ * with the game, and it fell back to a bare `50` when no currency was gained —
+ * an invented middle reading for a question nothing had answered.
+ *
+ * Counts and event facts are kept. The ratios that restated one another are
+ * gone, and a value that cannot be computed is now absent rather than filled in.
  */
 
 import type { SimulationResult } from "../core/GameSimulationEngine";
 
 export interface GameplayMetrics {
   blueprintId: string;
-  completionRate: number; // 0–1
-  dropOffTick: number | null; // tick where player disengaged, or null if stayed
-  loopEngagementScore: number; // 0–100
-  economyStability: number; // 0–100
+  /** Tick a friction or drop-off event fired, or `null` when none did. */
+  dropOffTick: number | null;
+  /**
+   * Level-ups per currency gain.
+   *
+   * Both are produced by fixed strides that no blueprint influences, so this
+   * describes the simulator and not the game's economy. `null` when no currency
+   * was gained: absence means the question was not answered, never a middling
+   * result.
+   */
+  economyProgressionRatio: number | null;
   npcInteractionFrequency: number; // interactions per 10 ticks
   mechanicsDiscoveryRate: number; // 0–1
   totalEvents: number;
@@ -27,7 +45,6 @@ export class GameplayMetricsEngine {
     const events = simulation.events;
     const state = simulation.finalState;
 
-    // Drop-off point
     const dropOffEvent = events.find(
       (e) => e.type === "drop_off" || e.type === "friction",
     );
@@ -35,15 +52,10 @@ export class GameplayMetricsEngine {
       ? (dropOffEvent?.tick ?? simulation.totalTicks)
       : null;
 
-    // Economy stability: ratio of gains to level-ups
     const gains = events.filter((e) => e.type === "currency_gain").length;
     const levelUps = events.filter((e) => e.type === "level_up").length;
-    const economyStability =
-      gains > 0
-        ? Math.min(100, Math.round((levelUps / (gains * 0.1)) * 100))
-        : 50;
+    const economyProgressionRatio = gains > 0 ? levelUps / gains : null;
 
-    // NPC interaction frequency
     const npcInteractions = events.filter(
       (e) => e.type === "npc_interact",
     ).length;
@@ -52,10 +64,6 @@ export class GameplayMetricsEngine {
         ? (npcInteractions / simulation.totalTicks) * 10
         : 0;
 
-    // Loop engagement
-    const loopEngagement = Math.round(state.loopProgress * 100);
-
-    // Mechanics discovery rate
     const mechanicsDiscovery =
       state.mechanicsUsed.size > 0
         ? state.mechanicsUsed.size /
@@ -64,10 +72,8 @@ export class GameplayMetricsEngine {
 
     return {
       blueprintId: simulation.blueprintId,
-      completionRate: state.loopProgress,
       dropOffTick,
-      loopEngagementScore: loopEngagement,
-      economyStability,
+      economyProgressionRatio,
       npcInteractionFrequency: Math.round(npcFrequency * 100) / 100,
       mechanicsDiscoveryRate: Math.round(mechanicsDiscovery * 100) / 100,
       totalEvents: events.length,

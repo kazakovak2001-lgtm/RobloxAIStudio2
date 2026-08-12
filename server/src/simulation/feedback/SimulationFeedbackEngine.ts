@@ -1,11 +1,27 @@
 /**
  * SimulationFeedbackEngine.ts
  *
- * Converts simulation metrics + playtest issues into actionable feedback.
- * Maps issues to blueprint corrections and improvement suggestions.
+ * Turns simulation findings into actionable feedback and one regeneration
+ * decision.
+ *
+ * SIM-TRUTH-1. This used to compute a letter grade from
+ * `engagement*0.4 + completionRate*100*0.3 + economyStability*0.3` against
+ * thresholds of 80/65/50/35, and regenerate on `F`, or on `D` with a critical
+ * item. Every weight and threshold was chosen by hand and none was derived from
+ * anything; `engagement` was the removed score and `economyStability` was a
+ * simulator constant, so two thirds of the composite could not vary with the
+ * game.
+ *
+ * The grade is gone and no weighted number replaces it. Regeneration is decided
+ * by a named, versioned policy over findings the simulation actually produced,
+ * and when the evidence cannot support a decision the engine abstains and says
+ * so rather than returning a passing grade.
  */
 
-import type { PlaytestReport } from "../agents/PlaytestAgent";
+import type {
+  SimulationEvidenceReport,
+  SimulationFinding,
+} from "../agents/PlaytestAgent";
 import type { GameplayMetrics } from "../metrics/GameplayMetricsEngine";
 
 export interface FeedbackItem {
@@ -14,85 +30,137 @@ export interface FeedbackItem {
   action: string;
   target: string; // which blueprint section to fix
   reasoning: string;
+  /** Carried from the finding, so simulator artifacts stay distinguishable. */
+  attribution: SimulationFinding["attribution"];
+}
+
+/**
+ * The rule that decided regeneration, named and versioned so it is readable as
+ * policy rather than mistaken for a measurement.
+ */
+export const REGENERATION_POLICY_ID = "sim-findings-v1";
+
+export type RegenerationOutcome = "regenerate" | "no-action" | "abstain";
+
+export interface RegenerationDecision {
+  readonly outcome: RegenerationOutcome;
+  readonly policyId: typeof REGENERATION_POLICY_ID;
+  /** Why, in terms of the evidence the policy read. */
+  readonly reason: string;
+  /** The findings the policy counted, named individually. */
+  readonly evidenceUsed: string[];
 }
 
 export interface SimulationFeedback {
   blueprintId: string;
   items: FeedbackItem[];
-  overallGrade: "A" | "B" | "C" | "D" | "F";
+  decision: RegenerationDecision;
+  /** Convenience mirror of `decision.outcome === "regenerate"`. */
   shouldRegenerate: boolean;
   summary: string;
 }
 
 export class SimulationFeedbackEngine {
   /**
-   * Generate structured feedback from playtest + metrics.
+   * Generate structured feedback and a regeneration decision.
    */
   generateFeedback(
-    report: PlaytestReport,
+    report: SimulationEvidenceReport,
     metrics: GameplayMetrics,
   ): SimulationFeedback {
     const items: FeedbackItem[] = [];
 
-    // Convert playtest issues to feedback items
-    for (const issue of report.issues) {
+    for (const finding of report.findings) {
       items.push({
-        priority: issue.severity,
-        category: issue.category,
-        action: this.issueToAction(issue.category, issue.description),
-        target: this.categoryToTarget(issue.category),
-        reasoning: issue.description,
+        priority: finding.severity,
+        category: finding.category,
+        action: this.issueToAction(finding.category, finding.description),
+        target: this.categoryToTarget(finding.category),
+        reasoning: finding.description,
+        attribution: finding.attribution,
       });
     }
 
-    // Metrics-based feedback
-    if (metrics.completionRate < 0.5) {
-      items.push({
-        priority: "high",
-        category: "progression",
-        action: "Reduce obstacles preventing core loop completion",
-        target: "coreLoop",
-        reasoning: `Only ${Math.round(metrics.completionRate * 100)}% loop completion achieved`,
-      });
-    }
-
-    if (metrics.economyStability < 30) {
+    // Metric-derived advice. Only stated where the metric exists: an absent
+    // ratio is not evidence of a problem.
+    if (
+      metrics.economyProgressionRatio !== null &&
+      metrics.economyProgressionRatio === 0
+    ) {
       items.push({
         priority: "medium",
         category: "economy",
         action: "Rebalance currency earn rate vs progression costs",
         target: "economy",
-        reasoning: `Economy stability score: ${metrics.economyStability}/100`,
+        reasoning:
+          "Currency was gained and no level-up followed in this simulation",
+        // Both sides of the ratio are simulator strides.
+        attribution: "simulator-schedule",
       });
     }
 
-    if (metrics.npcInteractionFrequency < 0.5) {
-      items.push({
-        priority: "low",
-        category: "world",
-        action: "Improve NPC placement or add interaction incentives",
-        target: "npcs",
-        reasoning: `NPC interaction frequency: ${metrics.npcInteractionFrequency} per 10 ticks`,
-      });
-    }
+    const decision = this.decide(report);
 
-    // Overall grade
-    const grade = this.computeGrade(report.engagementScore, metrics);
-    const shouldRegenerate =
-      grade === "F" ||
-      (grade === "D" &&
-        items.filter((i) => i.priority === "critical").length > 0);
-
-    const summary = `Engagement: ${report.engagementScore}/100 | Grade: ${grade} | Issues: ${items.length} | Regenerate: ${shouldRegenerate ? "YES" : "NO"}`;
-
-    console.log(`[FEEDBACK] ${summary}`);
+    const summary = `Evidence: deterministic-simulation | Findings: ${report.findings.length} | Decision: ${decision.outcome} (${decision.policyId}) | ${decision.reason}`;
 
     return {
       blueprintId: report.blueprintId,
       items,
-      overallGrade: grade,
-      shouldRegenerate,
+      decision,
+      shouldRegenerate: decision.outcome === "regenerate",
       summary,
+    };
+  }
+
+  /**
+   * `sim-findings-v1`.
+   *
+   * Regenerate when the run produced at least one `critical` or `high` finding
+   * the blueprint is responsible for. Abstain when the run exercised nothing
+   * the blueprint declared, because a run that could not test the game is not
+   * evidence that the game is sound. Otherwise take no action.
+   *
+   * Findings attributed to the simulator's own schedule are never counted: they
+   * are facts about this loop, not about the game.
+   */
+  private decide(report: SimulationEvidenceReport): RegenerationDecision {
+    const actionable = report.findings.filter(
+      (f) =>
+        f.attribution === "blueprint" &&
+        (f.severity === "critical" || f.severity === "high"),
+    );
+
+    if (actionable.length > 0) {
+      return {
+        outcome: "regenerate",
+        policyId: REGENERATION_POLICY_ID,
+        reason: `${actionable.length} actionable finding(s) attributed to the blueprint`,
+        evidenceUsed: actionable.map((f) => `${f.category}: ${f.description}`),
+      };
+    }
+
+    const { mechanicReach } = report.derived;
+    const exercisedNothing =
+      mechanicReach.declared > 0 && mechanicReach.exercised === 0;
+    const declaredNothing = mechanicReach.declared === 0;
+    if (exercisedNothing || declaredNothing) {
+      return {
+        outcome: "abstain",
+        policyId: REGENERATION_POLICY_ID,
+        reason: declaredNothing
+          ? "The blueprint declares no mechanics, so this simulation could not test it"
+          : "The simulation exercised none of the declared mechanics, so it is not evidence about the blueprint",
+        evidenceUsed: [],
+      };
+    }
+
+    return {
+      outcome: "no-action",
+      policyId: REGENERATION_POLICY_ID,
+      reason: "No finding attributed to the blueprint reached high severity",
+      evidenceUsed: report.findings.map(
+        (f) => `${f.category} (${f.attribution})`,
+      ),
     };
   }
 
@@ -127,20 +195,5 @@ export class SimulationFeedbackEngine {
       default:
         return "general";
     }
-  }
-
-  private computeGrade(
-    engagement: number,
-    metrics: GameplayMetrics,
-  ): "A" | "B" | "C" | "D" | "F" {
-    const composite =
-      engagement * 0.4 +
-      metrics.completionRate * 100 * 0.3 +
-      metrics.economyStability * 0.3;
-    if (composite >= 80) return "A";
-    if (composite >= 65) return "B";
-    if (composite >= 50) return "C";
-    if (composite >= 35) return "D";
-    return "F";
   }
 }

@@ -14,7 +14,7 @@ import type { GameValidationResult } from "../generation/validation/GameValidati
 import type { EconomyModel } from "../economy/core/EconomyModelEngine";
 import type { ImbalanceReport } from "../economy/detection/ImbalanceDetector";
 import type { SimulationResult } from "../simulation/core/GameSimulationEngine";
-import type { PlaytestReport } from "../simulation/agents/PlaytestAgent";
+import type { SimulationEvidenceReport } from "../simulation/agents/PlaytestAgent";
 import type { EmergenceReport } from "../world/emergence/EmergentBehaviorEngine";
 
 export interface ArtifactInputs {
@@ -25,7 +25,7 @@ export interface ArtifactInputs {
   economyModel: EconomyModel;
   imbalanceReport?: ImbalanceReport;
   simulation: SimulationResult;
-  playtest: PlaytestReport;
+  playtest: SimulationEvidenceReport;
   emergence?: EmergenceReport;
   worldStability?: number;
   startTime: number; // Date.now() at pipeline start

@@ -35,6 +35,32 @@ export interface SimulationEvent {
   detail: string;
 }
 
+/**
+ * What this simulator's own scheduling could reach, independent of the game.
+ *
+ * SIM-TRUTH-1. The walk visits mechanics on a fixed stride of three ticks and
+ * NPCs on a stride of five, indexing by `tick % count`. When the count shares a
+ * factor with the stride, the walk provably cannot reach the rest: a blueprint
+ * declaring three mechanics has one reachable, and one declaring five NPCs has
+ * one reachable, however good the game is.
+ *
+ * Recorded so a consumer can tell a shortfall the blueprint caused from a
+ * shortfall this schedule caused. Without it, "only 20% of NPCs were
+ * interacted with" reads as a defect in the game when it is a property of the
+ * loop above. Descriptive only — the schedule itself is unchanged.
+ */
+export interface SimulationSchedule {
+  readonly mechanicStride: number;
+  readonly npcStride: number;
+  readonly currencyStride: number;
+  readonly mechanicsDeclared: number;
+  readonly npcsDeclared: number;
+  /** Distinct mechanics this run's stride could index at all. */
+  readonly mechanicsReachable: number;
+  /** Distinct NPCs this run's stride could index at all. */
+  readonly npcsReachable: number;
+}
+
 export interface SimulationResult {
   blueprintId: string;
   totalTicks: number;
@@ -42,6 +68,30 @@ export interface SimulationResult {
   events: SimulationEvent[];
   completed: boolean;
   durationMs: number;
+  /** SIM-TRUTH-1 provenance. See `SimulationSchedule`. */
+  readonly schedule: SimulationSchedule;
+}
+
+const MECHANIC_STRIDE = 3;
+const NPC_STRIDE = 5;
+const CURRENCY_STRIDE = 4;
+
+/**
+ * Count the distinct indices a stride can reach in a run of `ticks` ticks.
+ *
+ * Enumerated rather than derived from a gcd identity, so the number is exactly
+ * what the loop below does, including the case where the run was too short to
+ * complete a cycle.
+ */
+function reachableIndexCount(
+  ticks: number,
+  stride: number,
+  count: number,
+): number {
+  if (count <= 0) return 0;
+  const reached = new Set<number>();
+  for (let t = 0; t < ticks; t += stride) reached.add(t % count);
+  return reached.size;
 }
 
 export class GameSimulationEngine {
@@ -60,13 +110,31 @@ export class GameSimulationEngine {
       if (!state.playerState.engaged && t > 10) break;
     }
 
+    const totalTicks = state.tick + 1;
     const result: SimulationResult = {
       blueprintId: blueprint.id,
-      totalTicks: state.tick + 1,
+      totalTicks,
       finalState: state,
       events: state.events,
       completed: state.loopProgress >= 1.0,
       durationMs: Date.now() - start,
+      schedule: {
+        mechanicStride: MECHANIC_STRIDE,
+        npcStride: NPC_STRIDE,
+        currencyStride: CURRENCY_STRIDE,
+        mechanicsDeclared: blueprint.mechanics.length,
+        npcsDeclared: blueprint.npcs.length,
+        mechanicsReachable: reachableIndexCount(
+          totalTicks,
+          MECHANIC_STRIDE,
+          blueprint.mechanics.length,
+        ),
+        npcsReachable: reachableIndexCount(
+          totalTicks,
+          NPC_STRIDE,
+          blueprint.npcs.length,
+        ),
+      },
     };
 
     console.log(

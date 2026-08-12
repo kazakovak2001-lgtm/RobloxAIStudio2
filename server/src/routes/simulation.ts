@@ -68,14 +68,21 @@ export function createSimulationRouter(access: ProjectAccessControl): Router {
             ticks: simulation.totalTicks,
             completed: simulation.completed,
           },
+          // SIM-TRUTH-1. The evidence kind, the observed facts and the derived
+          // ratios are reported as three separate things, and no aggregate is
+          // offered. `player` states that none was observed.
           report: {
-            engagementScore: report.engagementScore,
-            issues: report.issues.length,
+            schemaVersion: report.schemaVersion,
+            evidenceKind: report.evidenceKind,
+            observed: report.observed,
+            derived: report.derived,
+            player: report.player,
+            findings: report.findings,
             suggestions: report.suggestions,
           },
           metrics,
           feedback: {
-            grade: feedback.overallGrade,
+            decision: feedback.decision,
             shouldRegenerate: feedback.shouldRegenerate,
             items: feedback.items.length,
           },

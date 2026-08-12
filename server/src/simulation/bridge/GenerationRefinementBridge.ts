@@ -30,8 +30,15 @@ export class GenerationRefinementBridge {
   async processFeedback(
     feedback: SimulationFeedback,
   ): Promise<RefinementDecision> {
+    // SIM-TRUTH-1. Only items the blueprint is responsible for are refinement
+    // areas. An item caused by the simulator's own stride names nothing the
+    // generator could fix.
     const refinementAreas = feedback.items
-      .filter((i) => i.priority === "critical" || i.priority === "high")
+      .filter(
+        (i) =>
+          i.attribution === "blueprint" &&
+          (i.priority === "critical" || i.priority === "high"),
+      )
       .map((i) => i.target);
 
     // Store feedback in memory for future generations
@@ -40,18 +47,23 @@ export class GenerationRefinementBridge {
       await this.memoryEngine.storeMemory({
         agentId: "simulation-feedback",
         projectId: feedback.blueprintId,
-        input: { grade: feedback.overallGrade, issues: feedback.items.length },
+        input: {
+          decision: feedback.decision.outcome,
+          policyId: feedback.decision.policyId,
+          issues: feedback.items.length,
+        },
         output: {
           feedback: feedback.items.map((i) => ({
             action: i.action,
             target: i.target,
             priority: i.priority,
+            attribution: i.attribution,
           })),
-          grade: feedback.overallGrade,
+          decision: feedback.decision,
           shouldRegenerate: feedback.shouldRegenerate,
         },
         timestamp: new Date(),
-        tags: ["simulation", "feedback", feedback.overallGrade],
+        tags: ["simulation", "feedback", feedback.decision.outcome],
       });
       memoryUpdated = true;
     } catch {
