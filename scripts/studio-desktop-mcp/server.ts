@@ -508,6 +508,19 @@ function equalBounds(
   );
 }
 
+export function windowStatesMatch(
+  reference: StudioWindowStatus,
+  current: StudioWindowStatus,
+): boolean {
+  return (
+    current.pid === reference.pid &&
+    current.title === reference.title &&
+    current.executable === reference.executable &&
+    current.minimized === reference.minimized &&
+    equalBounds(current.bounds, reference.bounds)
+  );
+}
+
 async function consumeFreshCaptureReference(
   captureId: string,
   pid: number,
@@ -526,14 +539,20 @@ async function consumeFreshCaptureReference(
       "The screenshot reference is missing, expired, already used, or belongs to another Studio PID; capture a new screenshot before input",
     );
   }
+  const unfocused = await invokeHelper<StudioWindowStatus>("Status", [
+    "-TargetPid",
+    String(pid),
+  ]);
+  if (!windowStatesMatch(reference.capture, unfocused)) {
+    throw new Error(
+      "The Roblox Studio window state changed before focus; capture a new screenshot before input",
+    );
+  }
   const current = await captureToTemporaryFile(pid, true);
   if (
     current.capture.imageWidth !== reference.capture.imageWidth ||
     current.capture.imageHeight !== reference.capture.imageHeight ||
-    current.capture.title !== reference.capture.title ||
-    current.capture.executable !== reference.capture.executable ||
-    current.capture.minimized !== reference.capture.minimized ||
-    !equalBounds(current.capture.bounds, reference.capture.bounds) ||
+    !windowStatesMatch(reference.capture, current.capture) ||
     !layoutFingerprintsMatch(
       reference.capture.layoutFingerprint,
       current.capture.layoutFingerprint,

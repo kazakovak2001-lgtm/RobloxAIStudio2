@@ -12,6 +12,7 @@ import {
   validateEvidenceArguments,
   validateKeyArguments,
   validateTextArguments,
+  windowStatesMatch,
   writeEvidenceFile,
 } from "../../../scripts/studio-desktop-mcp/server";
 
@@ -350,6 +351,29 @@ describe("Roblox Studio desktop MCP boundary", () => {
         512,
         384,
       ),
+    ).toBe(false);
+  });
+
+  it("invalidates a capture when Studio is minimized before focus", () => {
+    const reference = {
+      pid: 1234,
+      title: "Disposable Baseplate - Roblox Studio",
+      executable: "C:\\Roblox\\Versions\\version-test\\RobloxStudioBeta.exe",
+      minimized: false,
+      foreground: false,
+      bounds: { left: 0, top: 0, width: 1280, height: 720 },
+    };
+    expect(
+      windowStatesMatch(reference, { ...reference, foreground: true }),
+    ).toBe(true);
+    expect(
+      windowStatesMatch(reference, { ...reference, minimized: true }),
+    ).toBe(false);
+    expect(
+      windowStatesMatch(reference, {
+        ...reference,
+        bounds: { ...reference.bounds, width: 1279 },
+      }),
     ).toBe(false);
   });
 });
