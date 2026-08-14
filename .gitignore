@@ -61,6 +61,7 @@ desktop.ini
 # ─── Generated reports (CI artifacts, not committed) ──────────────────────────
 boundary-report.json
 import-graph.json
+artifacts/studio-acceptance/
 
 # ─── Server TypeScript build output ─────────────────────────────────────────
 server/dist/

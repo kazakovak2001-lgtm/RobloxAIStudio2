@@ -11,9 +11,13 @@
 │   │   ├── persistence-engineer.md
 │   │   ├── release-reviewer.md
 │   │   ├── security-reviewer.md
+│   │   ├── studio-acceptance-engineer.md
 │   │   └── test-engineer.md
+│   ├── settings.json
 │   └── skills
-│       └── data-202b-audit
+│       ├── data-202b-audit
+│       │   └── SKILL.md
+│       └── studio-acceptance
 │           └── SKILL.md
 ├── .dockerignore
 ├── .env.example
@@ -462,7 +466,8 @@
 │   │   └── IMPLEMENTATION_TASK_TEMPLATE.md
 │   ├── testing
 │   │   ├── ROBLOX_STUDIO_PLUGIN_TEST_PLAN.md
-│   │   └── ROBLOX_STUDIO_TEST_RESULTS.md
+│   │   ├── ROBLOX_STUDIO_TEST_RESULTS.md
+│   │   └── STUDIO_AUTOMATED_ACCEPTANCE.md
 │   ├── TESTING_STRATEGY.md
 │   ├── UI_REVIEW_REPORT.md
 │   ├── UPDATED_ARCHITECTURE_MAP.md
@@ -594,6 +599,9 @@
 │   ├── package-studio-plugin.ts
 │   ├── pre-check.ts
 │   ├── scan-imports.ts
+│   ├── studio-acceptance
+│   │   ├── run-studio-acceptance.ts
+│   │   └── studio-smoke.template.luau
 │   ├── test-architecture-graph.ts
 │   ├── test-decision-memory.ts
 │   ├── test-json-parser.ts
@@ -712,6 +720,7 @@
 │   │   │   ├── securityHardening.test.ts
 │   │   │   ├── securityreviewa2.hardening.test.ts
 │   │   │   ├── simtruth1.evidence.test.ts
+│   │   │   ├── studio.acceptance-runner.test.ts
 │   │   │   ├── studio1.artifact-lineage.test.ts
 │   │   │   ├── studio1.import-acknowledgement.test.ts
 │   │   │   ├── studio1.plugin-contract.test.ts
