@@ -1,8 +1,8 @@
 # SIM-TRUTH-1 — stop presenting deterministic simulation heuristics as measured player engagement
 
-**Status:** `scoped`. The audit below is complete and the slice is implemented in the pull request
-that carries this record; the roadmap row stays `scoped` until that merges and a reconciliation
-advances it, so nothing claims completion before the pair verifies it.
+**Status:** `complete`. Implemented and merged in backend PR #231, reconciled into
+`ROADMAP_STATUS.md` and `CURRENT_STATE.md` by PR #232 and narrowed further by PR #233. This
+record is retained as the audit and design rationale, not as a live status field.
 **Audit baseline:** `8f6e6a94599c180807deb2fc670e2cffd110417a`
 **Origin:** recorded as carried work by [PLAYTEST-TRUTH-1](./PLAYTEST-TRUTH-1_SCOPE.md), which named
 `simulation/agents/PlaytestAgent` as a second, separate `PlaytestReport` and explicitly did not fix it.

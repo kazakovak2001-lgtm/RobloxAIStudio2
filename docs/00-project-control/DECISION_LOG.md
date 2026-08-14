@@ -4,6 +4,285 @@ All significant architectural and product decisions are recorded here.
 
 ---
 
+## 2026-08-12 — Studio Protocol Message Identity Fix
+
+**Decision**: Stamp every outbound Studio protocol message with `payload.projectId` and
+`payload.clientId` from `StudioConnector:sendMessage`, rather than relying on individual call
+sites to carry identity fields on select payloads.
+
+**Reason**: The shared message envelope was missing identity fields the server-side protocol
+handler could use to disambiguate concurrent projects and clients; the gap was structural to the
+connector, not isolated to one message type.
+
+**Affected systems**: `studio-plugin/src/services/StudioConnector.lua`;
+`server/src/__tests__/studio1.plugin-contract.test.ts`.
+
+**Boundary**: A protocol-envelope correctness fix only. It does not satisfy the operator-observed
+Studio acceptance outstanding for `ARTIFACT-1`, `WORLD-1B`, or `STUDIO-2F-A`, and does not advance
+the pinned runtime pair recorded in `ROADMAP_STATUS.md`. Verified structurally by the plugin
+contract test; no Studio-attached run was performed.
+
+**Status**: Complete (commit `29f54611`, not a numbered roadmap slice).
+
+---
+
+## 2026-08-12 — SIM-TRUTH-1: Stop Presenting Deterministic Simulation Heuristics as Measured Engagement
+
+**Decision**: Remove `PlaytestReport.engagementScore` and the composite health/grade values
+produced by `GameSimulationEngine`/`GameHealthMonitor`. Replace them with a report that separates
+observed simulation facts from derived indicators and states `player: { status: "not-observed" }`
+explicitly; make `/lifecycle/tick` abstain (`insufficient-evidence`) instead of substituting
+defaults for missing simulation, economy, or world evidence.
+
+**Reason**: The former `engagementScore` counted one quantity twice across two of its four
+weights, initialized `engaged` to `true` unconditionally, and attributed the simulator's own
+tick-stride schedule to the blueprint as a defect. `/lifecycle/tick` then substituted `?? 70` for
+missing signals, letting a game nobody had simulated advance and mutate its own blueprint.
+
+**Evidence**: Backend PR #231, audit recorded in `SIM-TRUTH-1_SCOPE.md` (baseline
+`8f6e6a94599c180807deb2fc670e2cffd110417a`); reconciliation in PR #232 and #233.
+
+**Boundary**: Removes a fabricated measurement; adds no runtime capability and does not complete
+`PLAYTEST-2`. `/lifecycle/tick` still cannot progress a game as of 2026-08-12 because no
+server-owned simulation, economy, or world evidence source is wired to it — recorded as a known
+limitation, not fixed here.
+
+**Status**: Complete.
+
+---
+
+## 2026-08-12 — PLAYTEST-TRUTH-1: Stop Presenting Heuristic Static Analysis as Measured Playtest Quality
+
+**Decision**: Remove `PlaytestEngine`'s averaged `overallScore` and its
+`production_ready`/`needs_work`/`critical_issues` classification. Report `evidenceKind:
+"static-analysis"` and `runtime: { status: "not-measured" }` instead, and change the repair loop
+(`RepairEngine`/`RepairPlanner`) to decide on outstanding findings rather than a numeric target.
+
+**Reason**: One of the six averaged sub-scores (`lua`) read no findings at all — it added fixed
+points for the literal presence of `pcall` or a block comment in generated source — so a generated
+game could be labelled `production_ready`, and the repair loop could stop "successfully," without
+any real quality signal behind that label.
+
+**Evidence**: Backend PR #229 (audit baseline `6079392f0718066a0de6b26b3fb87765f2589ce9`), Frontend
+PR #47/#48; reconciliation in PR #230.
+
+**Boundary**: Raised outside the roadmap sequence, once every scoped roadmap item was blocked on
+the paused operator Studio session or the absent Roblox Open Cloud credential surface. Does not
+complete `PLAYTEST-2`; adds no runtime play session, input simulation, or visual verification.
+
+**Status**: Complete.
+
+---
+
+## 2026-08-11 — ASSET-FABRIC-1: Unified Multimodal Asset Contract
+
+**Decision**: Give the generation asset plan a versioned, typed contract, validated before
+persistence and bound by lineage to the design it derives from.
+
+**Reason**: The asset plan previously shipped on every generation unchecked, with nothing
+validating its shape or tying it back to the design it was meant to describe.
+
+**Evidence**: Backend PR #227 (`ASSET-FABRIC-1_SCOPE.md`); reconciliation in PR #228.
+
+**Boundary**: Contract only. Nothing resolves, uploads, or materializes an asset; validation is
+advisory — a malformed plan is stored unchanged and generation still passes. `ASSET-FABRIC-2` (the
+actual pipeline) remains `blocked` on the same absent Roblox Open Cloud credential surface that
+blocks `STUDIO-2F-B`.
+
+**Status**: Complete.
+
+---
+
+## 2026-08-11 — NOVELTY-1 / NOVELTY-2: Structural Fingerprint and Cross-Generation Verdict
+
+**Decision**: Fingerprint each generation's world model as `GameDNA` and compare it against a
+project's earlier generations read from durable storage (`NOVELTY-1`); attach an explicit,
+optional verdict to a generation whenever enough evidence exists to form one (`NOVELTY-2`).
+
+**Reason**: No comparison previously existed between one generation and another — only between a
+generation and its own spec — so structural repetition across generations went undetected.
+
+**Evidence**: Backend PR #223 (`NOVELTY-1_SCOPE.md`) and PR #225 (`NOVELTY-2_SCOPE.md`);
+reconciliation in PR #224 and #226.
+
+**Boundary**: Both advisory and threshold-free. `GenerationExecution.novelty` is absent whenever no
+`GAME_DNA` artifact exists, the report cannot be read, or comparison fails — absence never means
+"found distinct." Only exact fingerprint equality counts as a repeat; all eight promotion criteria
+for a similarity threshold (`NOVELTY-2_PROMOTION_CRITERIA.md`) remain unsatisfied.
+
+**Status**: Complete.
+
+---
+
+## 2026-08-11 — AGENT-SAFETY-1: Observe / Plan / Propose / Execute Permission Model
+
+**Decision**: Require every runtime agent to declare an authority tier (Observe/Plan/Propose/
+Execute) and whether it may delegate; refuse a delegated call before the callee runs whenever the
+caller may not delegate, the callee is not pipeline-reachable, or the callee outranks the caller.
+
+**Reason**: Runtime agents had no declared authority boundary, so nothing prevented one agent from
+invoking another beyond its intended scope.
+
+**Evidence**: Backend PR #221 (`AGENT-SAFETY-1_SCOPE.md`); reconciliation in PR #222.
+
+**Boundary**: The platform's own (non-agent) calls remain unrestricted. No agent currently claims
+`execute` authority, and validation refuses any that does.
+
+**Status**: Complete.
+
+---
+
+## 2026-08-10 — SECURITY-REVIEW-A2: Hardening the Advisory Luau Reviewer
+
+**Decision**: Bind every Luau review to the content hash of the bytes it actually read, with
+explicit `pass` / `finding` / `not_applicable` / `not_inspected` states, so the reviewer can no
+longer report a pass over code it never read. Extend rule coverage to RemoteFunction handlers,
+runtime code compilation, client-chosen player identity, and client-chosen HTTP targets.
+
+**Reason**: The prior reviewer could report a clean result without having actually inspected the
+code in question.
+
+**Evidence**: Backend PR #216; reconciliation in PR #217.
+
+**Boundary**: Still advisory — a finding never negates generation, delivery, or release. A blocking
+gate remains the separate `SECURITY-REVIEW-B` delivery, `blocked` until all seven promotion
+criteria in `SECURITY-REVIEW-B_PROMOTION_CRITERIA.md` hold.
+
+**Status**: Complete.
+
+---
+
+## 2026-08-10 — ARTIFACT-CONTRACT-2, and ARTIFACT-1 Evidence State
+
+**Decision**: Give every newly produced durable artifact a schema version, owning project,
+canonical content hash, producer identity, and dependency lineage (`ARTIFACT-CONTRACT-2`).
+
+**Reason**: Without a content-identity envelope, a validation or security report could not name
+the exact bytes it read, and the repair path was carrying a security review of old Lua onto newly
+regenerated Lua — the incoherent state this contract exists to prevent.
+
+**Evidence**: Backend PR #214 (`ARTIFACT-CONTRACT-2_SCOPE.md`); reconciliation in PR #215.
+
+**Boundary**: Historical artifacts carry no envelope and are held to none; no database migration
+was required, because the column is already JSONB. Separately, `ARTIFACT-1` (backend PR #199,
+merged 2026-08-09) remains `code_complete_evidence_pending`: it gives delivered metadata a
+deterministic Studio identity so regeneration replaces rather than accumulates instances, but the
+change is plugin Lua with no Lua test harness in this repository, and no Studio-attached run has
+confirmed the replacement behavior.
+
+**Status**: `ARTIFACT-CONTRACT-2` complete; `ARTIFACT-1` code_complete_evidence_pending, pending
+the same operator Studio session as `WORLD-1B` and `STUDIO-2F-A`.
+
+---
+
+## 2026-08-10 — AGENT-CONTRACT-1: Versioned Definitions for Every Runtime Agent
+
+**Decision**: Give every runtime agent one versioned, server-owned definition stating what it
+produces, whether it may fall back, and how hard it retries; consult every policy field from
+execution, pipeline validation, or a reconciliation that runs outside the test suite.
+
+**Reason**: Agent behavior — fallback eligibility, retry policy — was previously implicit in code
+rather than declared and centrally enforced.
+
+**Evidence**: Backend PR #212 (`AGENT-CONTRACT-1_SCOPE.md`); reconciliation in PR #213.
+
+**Boundary**: Foundation only. `title` is a human-readable label nothing reads. Timeout, cost, and
+input-token ceilings are recorded as gaps, not declared, because nothing enforces them yet.
+
+**Status**: Complete.
+
+---
+
+## 2026-08-09 — WORLD-1A (Complete) and WORLD-1B (Evidence Pending)
+
+**Decision**: Derive a semantic world model from generated content and compare two artifacts
+against each other rather than an artifact against its own spec (`WORLD-1A`); materialize that
+model at design time into Studio under `ReplicatedStorage.AIStudioArtifacts` rather than
+`Workspace` (`WORLD-1B`), so it cannot become a second playable world.
+
+**Reason**: No structural cross-artifact check previously existed. Materializing the world model
+directly into `Workspace` would have made an unobserved materializer the sole source of the
+runtime world, with no safety net.
+
+**Evidence**: Backend PR #207 (`WORLD-1A`) and PR #209 (`WORLD-1B`, `WORLD-1B_SCOPE.md`);
+reconciliation in accompanying docs PRs.
+
+**Boundary**: `WORLD-1A` is non-canonical, unmaterialized, and advisory. `WORLD-1B` is
+contract-tested but not Studio-verified; canonical ownership (`WORLD-1C`) is `blocked` until
+operator-observed `WORLD-1B` acceptance exists, because the switch would remove the Lua safety net
+that currently guarantees a world exists.
+
+**Status**: `WORLD-1A` complete; `WORLD-1B` code_complete_evidence_pending; `WORLD-1C` blocked.
+
+---
+
+## 2026-08-09 — PIPELINE-1A and PIPELINE-1B: Server-Owned Plan and Durable Validation Artifact
+
+**Decision**: Make the generation plan server-owned versioned data that a client request may only
+narrow (`PIPELINE-1A`); record deterministic validation findings as a durable typed artifact
+instead of raising an exception (`PIPELINE-1B`).
+
+**Reason**: The generation plan and its validation result were previously ephemeral and
+request-shaped rather than durable, auditable data.
+
+**Evidence**: Backend PR #203 (`PIPELINE-1A`) and PR #205 (`PIPELINE-1B`); reconciliation in
+accompanying docs PRs.
+
+**Boundary**: The playability contract stays blocking; UI materializability is advisory.
+`TesterAgent` is deliberately not wired into `PIPELINE-1B`, because a checklist of `pending` tests
+recorded as a validation report would read as a clean result for work that never ran. Conditional
+stages (`PIPELINE-1C`) remain `unscoped`.
+
+**Status**: Complete.
+
+---
+
+## 2026-08-09 — PROVIDER-1A and PROVIDER-1B: Truthful AI Provider Configuration and Fallback Provenance
+
+**Decision**: Make explicit AI-provider requests resolve or fail visibly (`requested`/
+`unsatisfied`) instead of silently returning `provider: null` and falling through to a hardcoded,
+fully-playable fallback game (`PROVIDER-1A`, backend PR #193, merged 2026-08-08). Extend that
+provenance tracking to cover deterministic substitution _after_ a successful provider call — an
+unparseable response or a missing required key previously repaired itself from canned content
+without recording that this happened (`PROVIDER-1B`, backend PR #200).
+
+**Reason**: A misconfigured deployment (`LLMProviderFactory.createByName()` missing `ollama`/
+`openrouter` branches) could previously present a canned, hardcoded game as an AI generation with
+no durable record that no real provider was used.
+
+**Evidence**: `PROVIDER-1A` verified by 1061 passing backend tests plus 34 provider-selection and 5
+provenance tests; `PROVIDER-1B` closes the parser/repair-substitution gap `PROVIDER-1A` did not
+cover.
+
+**Boundary**: No Studio-attached live run of a provider-backed generation was performed for
+`PROVIDER-1A`; `REQUIRE_LLM_PROVIDER` is not yet enabled in the release image; auto-detection still
+defaults to the hardcoded `llama3` model. Recorded as remaining debt, not silently changed.
+
+**Status**: Complete.
+
+---
+
+## 2026-08-08 — REPAIR-1 Completion (Backend 1A/1B/1C and Frontend UI)
+
+**Decision**: Treat `REPAIR-1` as complete across both repositories: the backend's three
+sub-phases (1A real artifact-applying repair, 1B Studio redelivery, 1C durable delivery/rollback
+audit trail) plus the Frontend Integrate-stage repair panel that surfaces them.
+
+**Reason**: `RepairEngine`/`RepairExecutor` previously simulated improvement
+(`simulateImprovement()`) without touching Lua source, and no Frontend surface existed to trigger,
+redeliver, or roll back a repair.
+
+**Evidence**: Backend PR #185 (1A), #187 (1B, merged `6ec42d55a74bab0a9001d7e66c02795f01b41886`),
+#189 (1C, merged `558f9e6f5cc80e3ae9e29cafdd15ce6a33addd0f`); Frontend PR #40 (merged
+`6c1458d836244f2b720f361a78c2ab13f1682f74`).
+
+**Boundary**: No live Studio-attached end-to-end run was performed for the Frontend repair panel
+itself — verified by contract, parser, type, and build checks only.
+
+**Status**: Complete.
+
+---
+
 ## 2026-08-06 — Exact Runtime Pair Authority
 
 **Decision**: Define the current executable release pair as backend
