@@ -1,4 +1,4 @@
-# Roblox AI Studio Plugin — v1.10
+# Roblox AI Studio Plugin — v1.11.0
 
 Canonical Roblox Studio plugin for importing durable generation artifacts from the Roblox AI Studio backend.
 
@@ -51,9 +51,9 @@ npm run studio:package
 The command creates ignored outputs under `dist/studio-plugin/`:
 
 ```text
-RobloxAIStudioPlugin-v1.10.0.rbxmx
-RobloxAIStudioPlugin-v1.10.0.manifest.json
-RobloxAIStudioPlugin-v1.10.0.SHA256SUMS.txt
+RobloxAIStudioPlugin-v1.11.0.rbxmx
+RobloxAIStudioPlugin-v1.11.0.manifest.json
+RobloxAIStudioPlugin-v1.11.0.SHA256SUMS.txt
 ```
 
 The `.rbxmx` model contains the active source hierarchy with `plugin.lua` represented as a `Script` and the remaining active modules represented as `ModuleScript` instances. The manifest records source and bundle SHA-256 values. Unchanged sources produce byte-identical package outputs.
@@ -133,7 +133,7 @@ Backend verificationStatus = verified
 
 The plugin reports `completed` only after all queued pipeline artifacts are materialized. Any loader failure is reported as `failed`. Queue delivery and acknowledgement alone never produce a verified state.
 
-## UI Tree Materialization (v1.9.0)
+## UI Tree Materialization (introduced in v1.9.0)
 
 `UITreeMaterializer` turns delivered UI content into real Instances. Three rules govern it:
 
@@ -145,7 +145,7 @@ Delivered screens are keyed by **screen name**, never by artifact id, so regener
 
 Content **without** `schemaVersion` falls back to the `StringValue` path, which is what makes this plugin safe against an older backend. Content that _claims_ a schema version must materialize or fail — it never degrades quietly, because that would let an unbuilt tree be recorded as verified.
 
-## Metadata Instance Identity (v1.10.0)
+## Metadata Instance Identity (introduced in v1.10.0)
 
 Every non-Lua artifact materializes as a `StringValue` named after its **artifact name** — `requirements.json`, `gameConcept.json`, `architecture.json` and so on — inside its stage folder.
 
@@ -177,7 +177,7 @@ Existing instances with the same path and compatible class are updated. An incom
 
 Protocol major version remains `1.0.0`. Existing protocol messages remain available, including `HELLO`, `PING`, `PONG`, `STATUS`, `GET_PROJECT`, `GET_ARTIFACTS`, `SYNC_REQUEST`, `SYNC_RESPONSE`, `VALIDATE`, and `ERROR`.
 
-STUDIO-1c adds backend support for `COMMAND_ACK` and `COMMAND_RESULT`; plugin v1.8 uses the equivalent REST command endpoints so polling, acknowledgement, result validation, command ownership, and project status all operate on the same server-side command ledger.
+STUDIO-1c added backend support for `COMMAND_ACK` and `COMMAND_RESULT`; plugin v1.8 introduced the equivalent REST command endpoints so polling, acknowledgement, result validation, command ownership, and project status all operate on the same server-side command ledger.
 
 ## Panel States
 
