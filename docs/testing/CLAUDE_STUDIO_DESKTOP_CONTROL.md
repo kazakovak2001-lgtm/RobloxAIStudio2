@@ -12,17 +12,17 @@ The Windows helper accepts only a visible process named `RobloxStudioBeta` whose
 
 The exposed tools are:
 
-| Tool                      | Effect                                                                                 | Permission             |
-| ------------------------- | -------------------------------------------------------------------------------------- | ---------------------- |
-| `studio_list_windows`     | Lists eligible Studio main windows and their PIDs.                                     | Pre-approved read-only |
-| `studio_window_status`    | Reports the selected eligible Studio window and bounds.                                | Pre-approved read-only |
-| `studio_screenshot`       | Captures only the selected Studio window handle, scaled to at most 1024×768.           | Pre-approved read-only |
-| `studio_click`            | Maps a point from the latest screenshot back inside the Studio window and left-clicks. | Ask every call         |
-| `studio_type_text`        | Sends up to 2,000 characters without control characters to Studio.                     | Ask every call         |
-| `studio_press_key`        | Sends one allowlisted navigation or Play-test key.                                     | Ask every call         |
-| `studio_capture_evidence` | Persists an approved Studio-window PNG under ignored local evidence.                   | Ask every call         |
+| Tool                      | Effect                                                                                | Permission             |
+| ------------------------- | ------------------------------------------------------------------------------------- | ---------------------- |
+| `studio_list_windows`     | Lists eligible Studio main windows and their PIDs.                                    | Pre-approved read-only |
+| `studio_window_status`    | Reports the selected eligible Studio window and bounds.                               | Pre-approved read-only |
+| `studio_screenshot`       | Captures only the selected Studio window handle, scaled to at most 1024×768.          | Pre-approved read-only |
+| `studio_click`            | Consumes a current screenshot token, maps its point inside Studio, and left-clicks.   | Ask every call         |
+| `studio_type_text`        | Consumes a current screenshot token and sends up to 2,000 plain characters.           | Ask every call         |
+| `studio_press_key`        | Consumes a current screenshot token and sends one allowlisted navigation or test key. | Ask every call         |
+| `studio_capture_evidence` | Persists an approved Studio-window PNG under ignored local evidence.                  | Ask every call         |
 
-Claude Code permissions deliberately do not blanket-approve input or evidence persistence. Do not change the `ask` rules to `allow`. The MCP tool cannot semantically identify every dangerous button, so the operator approval prompt, PID pinning, and the `studio-operator` policy are all load-bearing.
+Claude Code permissions deliberately do not blanket-approve input or evidence persistence. Do not change the `ask` rules to `allow`. Each screenshot returns a single-use `captureId`. Before input, the bridge recaptures the selected window and rejects the action unless the PID, title, executable, foreground/minimized state, bounds, dimensions, and PNG SHA-256 still match. The helper rechecks the exact bounds again after focusing Studio. The MCP tool still cannot semantically identify every dangerous button, so the operator approval prompt, capture binding, PID pinning, and the `studio-operator` policy are all load-bearing.
 
 Never approve an action that targets login, account, purchase, upload, publish, Save to Roblox, credentials, moderation, or an external link. Use only a disposable Baseplate or an explicitly named local test place. A published place may be loaded only when the acceptance scope explicitly requires it; loading never authorizes saving or publishing.
 

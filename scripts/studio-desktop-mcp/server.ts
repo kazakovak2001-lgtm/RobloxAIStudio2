@@ -1,4 +1,4 @@
-import { randomUUID } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { resolve } from "node:path";
@@ -34,6 +34,13 @@ interface StudioCaptureResult extends StudioWindowStatus {
   outputPath: string;
 }
 
+interface StudioCaptureReference {
+  captureId: string;
+  capture: StudioCaptureResult;
+  capturedAt: number;
+  imageSha256: string;
+}
+
 interface ToolDefinition {
   name: string;
   description: string;
@@ -52,6 +59,9 @@ const MAX_TEXT_LENGTH = 2_000;
 const MAX_SCREENSHOT_WIDTH = 1_024;
 const MAX_SCREENSHOT_HEIGHT = 768;
 const MAX_PROCESS_ID = 2_147_483_647;
+const CAPTURE_REFERENCE_TTL_MS = 10 * 60 * 1_000;
+const MAX_CAPTURE_REFERENCES = 32;
+const HELPER_TIMEOUT_MS = 30_000;
 const PROJECT_DIRECTORY = resolve(
   process.env.ROBLOX_STUDIO_DESKTOP_PROJECT_DIR ?? process.cwd(),
 );
@@ -71,6 +81,8 @@ const ALLOWED_KEYS = [
   "SHIFT_F5",
   "CTRL_F",
 ] as const;
+const captureReferences = new Map<string, StudioCaptureReference>();
+type AllowedKey = (typeof ALLOWED_KEYS)[number];
 
 export const STUDIO_DESKTOP_TOOLS: ToolDefinition[] = [
   {
@@ -132,28 +144,12 @@ export const STUDIO_DESKTOP_TOOLS: ToolDefinition[] = [
     inputSchema: {
       type: "object",
       additionalProperties: false,
-      required: [
-        "pid",
-        "x",
-        "y",
-        "screenshotWidth",
-        "screenshotHeight",
-        "button",
-      ],
+      required: ["pid", "captureId", "x", "y", "button"],
       properties: {
         pid: { type: "integer", minimum: 1, maximum: MAX_PROCESS_ID },
-        x: { type: "integer", minimum: 0 },
-        y: { type: "integer", minimum: 0 },
-        screenshotWidth: {
-          type: "integer",
-          minimum: 1,
-          maximum: MAX_SCREENSHOT_WIDTH,
-        },
-        screenshotHeight: {
-          type: "integer",
-          minimum: 1,
-          maximum: MAX_SCREENSHOT_HEIGHT,
-        },
+        captureId: { type: "string", format: "uuid" },
+        x: { type: "integer", minimum: 0, maximum: MAX_SCREENSHOT_WIDTH - 1 },
+        y: { type: "integer", minimum: 0, maximum: MAX_SCREENSHOT_HEIGHT - 1 },
         button: { type: "string", enum: ["left", "double_left"] },
       },
     },
@@ -171,9 +167,10 @@ export const STUDIO_DESKTOP_TOOLS: ToolDefinition[] = [
     inputSchema: {
       type: "object",
       additionalProperties: false,
-      required: ["pid", "text"],
+      required: ["pid", "captureId", "text"],
       properties: {
         pid: { type: "integer", minimum: 1, maximum: MAX_PROCESS_ID },
+        captureId: { type: "string", format: "uuid" },
         text: { type: "string", minLength: 1, maxLength: MAX_TEXT_LENGTH },
       },
     },
@@ -191,9 +188,10 @@ export const STUDIO_DESKTOP_TOOLS: ToolDefinition[] = [
     inputSchema: {
       type: "object",
       additionalProperties: false,
-      required: ["pid", "key"],
+      required: ["pid", "captureId", "key"],
       properties: {
         pid: { type: "integer", minimum: 1, maximum: MAX_PROCESS_ID },
+        captureId: { type: "string", format: "uuid" },
         key: { type: "string", enum: ALLOWED_KEYS },
       },
     },
@@ -278,6 +276,19 @@ function requireProcessId(object: Record<string, unknown>): number {
   return requireInteger(object, "pid", 1, MAX_PROCESS_ID);
 }
 
+function requireCaptureId(object: Record<string, unknown>): string {
+  const value = object.captureId;
+  if (
+    typeof value !== "string" ||
+    !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iu.test(
+      value,
+    )
+  ) {
+    throw new Error("captureId must be a UUID from studio_screenshot");
+  }
+  return value;
+}
+
 function validateOptionalTargetArguments(value: unknown): number | undefined {
   const object = assertObject(value ?? {});
   assertOnlyKeys(object, ["pid"]);
@@ -286,56 +297,38 @@ function validateOptionalTargetArguments(value: unknown): number | undefined {
 
 export function validateClickArguments(value: unknown): {
   pid: number;
+  captureId: string;
   x: number;
   y: number;
-  screenshotWidth: number;
-  screenshotHeight: number;
   button: "left" | "double_left";
 } {
   const object = assertObject(value);
-  assertOnlyKeys(object, [
-    "pid",
-    "x",
-    "y",
-    "screenshotWidth",
-    "screenshotHeight",
-    "button",
-  ]);
+  assertOnlyKeys(object, ["pid", "captureId", "x", "y", "button"]);
   const pid = requireProcessId(object);
-  const screenshotWidth = requireInteger(
-    object,
-    "screenshotWidth",
-    1,
-    MAX_SCREENSHOT_WIDTH,
-  );
-  const screenshotHeight = requireInteger(
-    object,
-    "screenshotHeight",
-    1,
-    MAX_SCREENSHOT_HEIGHT,
-  );
-  const x = requireInteger(object, "x", 0, screenshotWidth - 1);
-  const y = requireInteger(object, "y", 0, screenshotHeight - 1);
+  const captureId = requireCaptureId(object);
+  const x = requireInteger(object, "x", 0, MAX_SCREENSHOT_WIDTH - 1);
+  const y = requireInteger(object, "y", 0, MAX_SCREENSHOT_HEIGHT - 1);
   if (object.button !== "left" && object.button !== "double_left") {
     throw new Error("button must be left or double_left");
   }
   return {
     pid,
+    captureId,
     x,
     y,
-    screenshotWidth,
-    screenshotHeight,
     button: object.button,
   };
 }
 
 export function validateTextArguments(value: unknown): {
   pid: number;
+  captureId: string;
   text: string;
 } {
   const object = assertObject(value);
-  assertOnlyKeys(object, ["pid", "text"]);
+  assertOnlyKeys(object, ["pid", "captureId", "text"]);
   const pid = requireProcessId(object);
+  const captureId = requireCaptureId(object);
   const text = object.text;
   if (
     typeof text !== "string" ||
@@ -347,23 +340,134 @@ export function validateTextArguments(value: unknown): {
   if (/\p{Cc}/u.test(text)) {
     throw new Error("text must not contain control characters");
   }
-  return { pid, text };
+  if (text.startsWith("-")) {
+    throw new Error("text must not start with a hyphen");
+  }
+  return { pid, captureId, text };
+}
+
+function isAllowedKey(value: unknown): value is AllowedKey {
+  return (
+    typeof value === "string" &&
+    (ALLOWED_KEYS as readonly string[]).includes(value)
+  );
 }
 
 export function validateKeyArguments(value: unknown): {
   pid: number;
-  key: (typeof ALLOWED_KEYS)[number];
+  captureId: string;
+  key: AllowedKey;
 } {
   const object = assertObject(value);
-  assertOnlyKeys(object, ["pid", "key"]);
+  assertOnlyKeys(object, ["pid", "captureId", "key"]);
   const pid = requireProcessId(object);
-  if (
-    typeof object.key !== "string" ||
-    !ALLOWED_KEYS.includes(object.key as (typeof ALLOWED_KEYS)[number])
-  ) {
+  const captureId = requireCaptureId(object);
+  if (!isAllowedKey(object.key)) {
     throw new Error(`key must be one of: ${ALLOWED_KEYS.join(", ")}`);
   }
-  return { pid, key: object.key as (typeof ALLOWED_KEYS)[number] };
+  return { pid, captureId, key: object.key };
+}
+
+export function validateEvidenceArguments(value: unknown): {
+  pid: number;
+  runLabel: string;
+  evidenceName: string;
+} {
+  const object = assertObject(value);
+  assertOnlyKeys(object, ["pid", "runLabel", "evidenceName"]);
+  return {
+    pid: requireProcessId(object),
+    runLabel: requireSlug(object, "runLabel"),
+    evidenceName: requireSlug(object, "evidenceName"),
+  };
+}
+
+function imageSha256(data: Buffer): string {
+  return createHash("sha256").update(data).digest("hex");
+}
+
+function registerCaptureReference(
+  capture: StudioCaptureResult,
+  data: Buffer,
+): string {
+  const now = Date.now();
+  for (const [captureId, reference] of captureReferences) {
+    if (now - reference.capturedAt > CAPTURE_REFERENCE_TTL_MS)
+      captureReferences.delete(captureId);
+  }
+  while (captureReferences.size >= MAX_CAPTURE_REFERENCES) {
+    const oldestCaptureId = captureReferences.keys().next().value as
+      string | undefined;
+    if (!oldestCaptureId) break;
+    captureReferences.delete(oldestCaptureId);
+  }
+  const captureId = randomUUID();
+  captureReferences.set(captureId, {
+    captureId,
+    capture,
+    capturedAt: now,
+    imageSha256: imageSha256(data),
+  });
+  return captureId;
+}
+
+function equalBounds(
+  left: StudioWindowStatus["bounds"],
+  right: StudioWindowStatus["bounds"],
+): boolean {
+  return (
+    left.left === right.left &&
+    left.top === right.top &&
+    left.width === right.width &&
+    left.height === right.height
+  );
+}
+
+async function consumeFreshCaptureReference(
+  captureId: string,
+  pid: number,
+): Promise<StudioCaptureReference> {
+  const reference = captureReferences.get(captureId);
+  captureReferences.delete(captureId);
+  if (
+    !reference ||
+    Date.now() - reference.capturedAt > CAPTURE_REFERENCE_TTL_MS ||
+    reference.capture.pid !== pid
+  ) {
+    throw new Error(
+      "The screenshot reference is missing, expired, already used, or belongs to another Studio PID; capture a new screenshot before input",
+    );
+  }
+  const current = await captureToTemporaryFile(pid);
+  if (
+    current.capture.imageWidth !== reference.capture.imageWidth ||
+    current.capture.imageHeight !== reference.capture.imageHeight ||
+    current.capture.title !== reference.capture.title ||
+    current.capture.executable !== reference.capture.executable ||
+    current.capture.minimized !== reference.capture.minimized ||
+    current.capture.foreground !== reference.capture.foreground ||
+    !equalBounds(current.capture.bounds, reference.capture.bounds) ||
+    imageSha256(current.data) !== reference.imageSha256
+  ) {
+    throw new Error(
+      "The Roblox Studio window no longer matches the referenced screenshot; capture a new screenshot before input",
+    );
+  }
+  return reference;
+}
+
+function expectedBoundsArguments(reference: StudioCaptureReference): string[] {
+  const { bounds } = reference.capture;
+  return [
+    "-ExpectedLeft",
+    String(bounds.left),
+    "-ExpectedTop",
+    String(bounds.top),
+    "-ExpectedWidth",
+    String(bounds.width),
+    "-ExpectedHeight",
+    String(bounds.height),
+  ];
 }
 
 function parseHelperOutput<T>(output: string): T {
@@ -406,14 +510,26 @@ async function invokeHelper<T>(
     let stderr = "";
     child.stdout.setEncoding("utf8");
     child.stderr.setEncoding("utf8");
+    const timeout = setTimeout(() => {
+      child.kill();
+      rejectPromise(
+        new Error(
+          `Windows Studio helper timed out after ${String(HELPER_TIMEOUT_MS)}ms`,
+        ),
+      );
+    }, HELPER_TIMEOUT_MS);
     child.stdout.on("data", (chunk: string) => {
       stdout += chunk;
     });
     child.stderr.on("data", (chunk: string) => {
       stderr += chunk;
     });
-    child.once("error", rejectPromise);
+    child.once("error", (error) => {
+      clearTimeout(timeout);
+      rejectPromise(error);
+    });
     child.once("close", (exitCode) => {
+      clearTimeout(timeout);
       if (exitCode === 0) resolvePromise(stdout);
       else
         rejectPromise(
@@ -487,13 +603,15 @@ async function callTool(
   if (name === "studio_screenshot") {
     const pid = validateOptionalTargetArguments(rawArguments);
     const { capture, data } = await captureToTemporaryFile(pid);
+    const captureId = registerCaptureReference(capture, data);
     return {
       content: [
         textContent({
           ...capture,
           outputPath: undefined,
+          captureId,
           coordinateContract:
-            "Pass this pid plus x/y and imageWidth/imageHeight to studio_click.",
+            "Pass this pid and single-use captureId to the next input tool. For studio_click, use x/y from this exact image.",
         }),
         { type: "image", data: data.toString("base64"), mimeType: "image/png" },
       ],
@@ -501,6 +619,18 @@ async function callTool(
   }
   if (name === "studio_click") {
     const click = validateClickArguments(rawArguments);
+    const reference = await consumeFreshCaptureReference(
+      click.captureId,
+      click.pid,
+    );
+    if (
+      click.x >= reference.capture.imageWidth ||
+      click.y >= reference.capture.imageHeight
+    ) {
+      throw new Error(
+        "Click coordinates are outside the referenced screenshot",
+      );
+    }
     return {
       content: [
         textContent(
@@ -512,11 +642,12 @@ async function callTool(
             "-Y",
             String(click.y),
             "-ScreenshotWidth",
-            String(click.screenshotWidth),
+            String(reference.capture.imageWidth),
             "-ScreenshotHeight",
-            String(click.screenshotHeight),
+            String(reference.capture.imageHeight),
             "-Button",
             click.button,
+            ...expectedBoundsArguments(reference),
           ]),
         ),
       ],
@@ -524,6 +655,10 @@ async function callTool(
   }
   if (name === "studio_type_text") {
     const input = validateTextArguments(rawArguments);
+    const reference = await consumeFreshCaptureReference(
+      input.captureId,
+      input.pid,
+    );
     return {
       content: [
         textContent(
@@ -532,6 +667,7 @@ async function callTool(
             String(input.pid),
             "-Text",
             input.text,
+            ...expectedBoundsArguments(reference),
           ]),
         ),
       ],
@@ -539,6 +675,10 @@ async function callTool(
   }
   if (name === "studio_press_key") {
     const input = validateKeyArguments(rawArguments);
+    const reference = await consumeFreshCaptureReference(
+      input.captureId,
+      input.pid,
+    );
     return {
       content: [
         textContent(
@@ -547,17 +687,15 @@ async function callTool(
             String(input.pid),
             "-Key",
             input.key,
+            ...expectedBoundsArguments(reference),
           ]),
         ),
       ],
     };
   }
   if (name === "studio_capture_evidence") {
-    const object = assertObject(rawArguments);
-    assertOnlyKeys(object, ["pid", "runLabel", "evidenceName"]);
-    const pid = requireProcessId(object);
-    const runLabel = requireSlug(object, "runLabel");
-    const evidenceName = requireSlug(object, "evidenceName");
+    const { pid, runLabel, evidenceName } =
+      validateEvidenceArguments(rawArguments);
     const { capture, data } = await captureToTemporaryFile(pid);
     const evidenceDirectory = resolve(
       PROJECT_DIRECTORY,
@@ -642,14 +780,15 @@ async function startServer(): Promise<void> {
     for (const line of lines) {
       if (!line.trim()) continue;
       queue = queue.then(async () => {
-        let request: JsonRpcRequest;
+        let request: JsonRpcRequest | undefined;
         try {
           request = JSON.parse(line) as JsonRpcRequest;
           const result = await handleRequest(request);
           if (request.id !== undefined && result !== undefined)
             writeResponse(request.id, result);
         } catch (error) {
-          writeError(null, error);
+          if (request === undefined) writeError(null, error);
+          else if (request.id !== undefined) writeError(request.id, error);
         }
       });
     }

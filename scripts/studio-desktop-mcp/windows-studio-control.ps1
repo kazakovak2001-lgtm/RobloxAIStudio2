@@ -10,6 +10,10 @@ param(
     [int]$Y,
     [int]$ScreenshotWidth,
     [int]$ScreenshotHeight,
+    [int]$ExpectedLeft,
+    [int]$ExpectedTop,
+    [int]$ExpectedWidth,
+    [int]$ExpectedHeight,
     [ValidateSet('left', 'double_left')]
     [string]$Button = 'left',
     [string]$Text,
@@ -110,14 +114,14 @@ public static class StudioDesktopNative {
     [DllImport("user32.dll")]
     public static extern bool SetCursorPos(int x, int y);
 
-    [DllImport("user32.dll")]
-    public static extern void mouse_event(uint flags, uint dx, uint dy, uint data, UIntPtr extraInfo);
-
     [DllImport("user32.dll", SetLastError = true)]
     public static extern uint SendInput(uint count, INPUT[] inputs, int size);
 
     [DllImport("user32.dll")]
     public static extern bool SetProcessDPIAware();
+
+    [DllImport("user32.dll", SetLastError = true)]
+    public static extern bool SetProcessDpiAwarenessContext(IntPtr value);
 
     [DllImport("user32.dll")]
     public static extern bool PrintWindow(IntPtr hWnd, IntPtr deviceContext, uint flags);
@@ -142,10 +146,34 @@ public static class StudioDesktopNative {
             throw new InvalidOperationException("Windows did not accept the complete text input sequence.");
         }
     }
+
+    public static void SendLeftClick() {
+        var inputs = new[] {
+            new INPUT {
+                Type = 0,
+                Data = new InputUnion { Mouse = new MOUSEINPUT { Flags = 0x0002 } }
+            },
+            new INPUT {
+                Type = 0,
+                Data = new InputUnion { Mouse = new MOUSEINPUT { Flags = 0x0004 } }
+            }
+        };
+        if (SendInput((uint)inputs.Length, inputs, Marshal.SizeOf(typeof(INPUT))) != inputs.Length) {
+            throw new InvalidOperationException("Windows did not accept the complete mouse input sequence.");
+        }
+    }
+
+    public static void EnableDpiAwareness() {
+        try {
+            if (SetProcessDpiAwarenessContext(new IntPtr(-4))) return;
+        } catch (EntryPointNotFoundException) {
+        }
+        SetProcessDPIAware();
+    }
 }
 '@
 
-[StudioDesktopNative]::SetProcessDPIAware() | Out-Null
+[StudioDesktopNative]::EnableDpiAwareness()
 
 function Get-EligibleStudioWindows {
     $versionsRoot = [System.IO.Path]::GetFullPath((Join-Path $env:LOCALAPPDATA 'Roblox\Versions'))
@@ -236,6 +264,15 @@ function Assert-StudioForeground([object]$window) {
     }
 }
 
+function Assert-ExpectedWindowBounds([object]$window) {
+    if ($ExpectedWidth -lt 1 -or $ExpectedHeight -lt 1) {
+        throw 'Input requires bounds from a verified Studio screenshot.'
+    }
+    if ($window.Left -ne $ExpectedLeft -or $window.Top -ne $ExpectedTop -or $window.Width -ne $ExpectedWidth -or $window.Height -ne $ExpectedHeight) {
+        throw 'Roblox Studio window bounds changed after screenshot verification; no input was performed.'
+    }
+}
+
 function Convert-Status([object]$window) {
     return [ordered]@{
         pid = $window.Pid
@@ -306,6 +343,7 @@ if ($Action -eq 'Capture') {
 }
 
 $window = Focus-StudioWindow $window
+Assert-ExpectedWindowBounds $window
 
 if ($Action -eq 'Click') {
     if ($ScreenshotWidth -lt 1 -or $ScreenshotWidth -gt 1024 -or $ScreenshotHeight -lt 1 -or $ScreenshotHeight -gt 768) { throw 'Invalid screenshot dimensions.' }
@@ -318,12 +356,10 @@ if ($Action -eq 'Click') {
         throw 'Windows could not position the cursor inside Roblox Studio; no click was performed.'
     }
     Assert-StudioForeground $window
-    [StudioDesktopNative]::mouse_event(0x0002, 0, 0, 0, [UIntPtr]::Zero)
-    [StudioDesktopNative]::mouse_event(0x0004, 0, 0, 0, [UIntPtr]::Zero)
+    [StudioDesktopNative]::SendLeftClick()
     if ($Button -eq 'double_left') {
         Start-Sleep -Milliseconds 90
-        [StudioDesktopNative]::mouse_event(0x0002, 0, 0, 0, [UIntPtr]::Zero)
-        [StudioDesktopNative]::mouse_event(0x0004, 0, 0, 0, [UIntPtr]::Zero)
+        [StudioDesktopNative]::SendLeftClick()
     }
     Convert-Status (Get-EligibleStudioWindow $window.Pid) | ConvertTo-Json -Compress -Depth 5
     exit 0
