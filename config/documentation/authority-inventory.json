@@ -188,7 +188,7 @@
       "requiredClaims": [
         "STUDIO-2F-A",
         "the imperative Lua HUD remains runtime-canonical",
-        "There is no Lua test harness"
+        "There was no Lua test harness when this scope was written"
       ],
       "forbiddenClaims": []
     },

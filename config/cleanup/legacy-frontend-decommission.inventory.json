@@ -405,7 +405,9 @@
       "studioRelative": [
         "studio-plugin/",
         "scripts/package-studio-plugin.ts",
+        "scripts/studio-acceptance/run-studio-acceptance.ts",
         "server/src/__tests__/studio1.plugin",
+        "server/src/__tests__/studio.acceptance-runner.test.ts",
         "server/src/__tests__/world1b."
       ],
       "robloxArtifactRelative": [

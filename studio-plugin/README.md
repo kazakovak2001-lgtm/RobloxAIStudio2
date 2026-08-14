@@ -62,6 +62,8 @@ The **Studio Plugin Package** GitHub Actions workflow runs the same command, ver
 
 See [STUDIO-1e Desktop Acceptance Packaging and Runbook](../docs/00-project-control/STUDIO-1E_DESKTOP_ACCEPTANCE_RUNBOOK.md) for download verification, local installation, evidence capture, and failure triage.
 
+For deterministic execution of the canonical materializers inside the real Roblox Studio Luau VM, run `npm run studio:acceptance`. See [Roblox Studio automated acceptance](../docs/testing/STUDIO_AUTOMATED_ACCEPTANCE.md) for its safety and evidence boundaries. This automated check does not replace live authenticated export or subjective operator acceptance.
+
 ## Installation Prerequisites
 
 - Roblox Studio with **Allow HTTP Requests** enabled under Experience Settings → Security.

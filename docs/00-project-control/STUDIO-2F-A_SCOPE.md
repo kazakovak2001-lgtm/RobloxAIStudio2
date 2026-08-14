@@ -97,7 +97,7 @@ Both were verified directly in the code and are the reason several of the choice
 
 ## Testing Strategy
 
-Automated coverage is backend-only, and this document states that limit rather than implying the plugin is tested.
+The original STUDIO-2F-A slice had backend-only automated coverage. The later `npm run studio:acceptance` runner now executes the exact canonical materializer sources through the real Roblox Studio Luau VM, but it does not convert engine fixtures into live authenticated export or operator evidence.
 
 - **Determinism regression** — the same `uiDesign` must produce byte-identical serialized content across repeated builds and separate process runs. This is the direct guard against the `randomUUID` trap.
 - **Fail-closed table** — unknown class, unknown property, unknown value kind, unknown enum item, duplicate sibling name, illegal name characters, excessive depth, excessive object count, and a non-`ScreenGui` root must each be rejected.
@@ -108,7 +108,7 @@ Automated coverage is backend-only, and this document states that limit rather t
 - **Malformed new content must fail, not degrade** — content claiming `schemaVersion: 1` that is invalid, and content claiming an unknown future version, must both be rejected rather than falling back to `StringValue`, so a broken payload can never be recorded as verified.
 - **Mechanical gates** — plugin repackage with a version bump, full `npm run build` (architecture, boundary, layer-debt, runtime-ownership, memory-ownership, durable-writes and operational-state validators, then `tsc`), lint, format check, and the test suite.
 
-**Ceiling, stated plainly:** `studio-plugin/` contains only Lua sources and a README. There is no Lua test harness, and the existing "plugin tests" are substring assertions over Lua source text — they prove a string is present, not that the code behaves. Real materialization evidence must therefore be operator-observed in Roblox Studio and recorded as such, following the precedent set by [RUNTIME-PLAYTEST-1_RESULT.md](./RUNTIME-PLAYTEST-1_RESULT.md), which labels its own evidence operator-observed rather than machine-verified. The acceptance record must capture the materialized tree in Explorer, a second export showing no duplicate or orphaned screens, a deliberately corrupted class name placed **after** a valid screen — showing the export reported failure *and* left no partially built tree behind — a hand-added unowned `ScreenGui` sharing a generated screen name showing the export failed rather than destroying it, and a Play test showing exactly one HUD.
+**Ceiling, stated plainly:** There was no Lua test harness when this scope was written, and the original "plugin tests" were substring assertions over Lua source text — they proved a string was present, not that the code behaved. The later [automated Studio acceptance](../testing/STUDIO_AUTOMATED_ACCEPTANCE.md) closes that specific engine-execution gap for deterministic materializer fixtures. Real authenticated export, Explorer/panel evidence, and Play behavior remain separate: the acceptance record must still capture the materialized tree in Explorer, a second export showing no duplicate or orphaned screens, a deliberately corrupted class name placed **after** a valid screen, a hand-added unowned `ScreenGui` collision, and a Play test showing exactly one HUD whenever those broader claims are under review.
 
 ## Rollback Strategy
 

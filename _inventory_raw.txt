@@ -5,8 +5,11 @@
 .claude/agents/persistence-engineer.md
 .claude/agents/release-reviewer.md
 .claude/agents/security-reviewer.md
+.claude/agents/studio-acceptance-engineer.md
 .claude/agents/test-engineer.md
+.claude/settings.json
 .claude/skills/data-202b-audit/SKILL.md
+.claude/skills/studio-acceptance/SKILL.md
 .dockerignore
 .env.example
 .eslintrc.json
@@ -405,6 +408,7 @@ docs/project/CUTOVER-1F_POST_PROMOTION_CI_ALIGNMENT.md
 docs/templates/IMPLEMENTATION_TASK_TEMPLATE.md
 docs/testing/ROBLOX_STUDIO_PLUGIN_TEST_PLAN.md
 docs/testing/ROBLOX_STUDIO_TEST_RESULTS.md
+docs/testing/STUDIO_AUTOMATED_ACCEPTANCE.md
 docs/workspace-ux-redesign-v2/README.md
 docs/workspace-ux-redesign-v2/audit/component-catalog.md
 docs/workspace-ux-redesign-v2/audit/fragmentation-analysis.md
@@ -504,6 +508,8 @@ scripts/git-boundary-guard.js
 scripts/package-studio-plugin.ts
 scripts/pre-check.ts
 scripts/scan-imports.ts
+scripts/studio-acceptance/run-studio-acceptance.ts
+scripts/studio-acceptance/studio-smoke.template.luau
 scripts/test-architecture-graph.ts
 scripts/test-decision-memory.ts
 scripts/test-json-parser.ts
@@ -618,6 +624,7 @@ server/src/__tests__/security2gE.world-scope.test.ts
 server/src/__tests__/securityHardening.test.ts
 server/src/__tests__/securityreviewa2.hardening.test.ts
 server/src/__tests__/simtruth1.evidence.test.ts
+server/src/__tests__/studio.acceptance-runner.test.ts
 server/src/__tests__/studio1.artifact-lineage.test.ts
 server/src/__tests__/studio1.import-acknowledgement.test.ts
 server/src/__tests__/studio1.plugin-contract.test.ts

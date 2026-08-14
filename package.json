@@ -50,6 +50,7 @@
     "dev": "npm run dev:server",
     "dev:server": "node --watch --import tsx server/src/index.ts",
     "studio:package": "node --import tsx scripts/package-studio-plugin.ts",
+    "studio:acceptance": "node --import tsx scripts/studio-acceptance/run-studio-acceptance.ts",
     "validate:arch": "node --import tsx scripts/validate-architecture.ts",
     "validate:boundaries": "node --import tsx scripts/validate-boundaries.ts",
     "validate:layer-debt": "node --import tsx scripts/validate-layer-debt-evidence.ts",
