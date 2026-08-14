@@ -272,8 +272,8 @@ audit trail) plus the Frontend Integrate-stage repair panel that surfaces them.
 (`simulateImprovement()`) without touching Lua source, and no Frontend surface existed to trigger,
 redeliver, or roll back a repair.
 
-**Evidence**: Backend PR #185 (1A), #187 (1B, merged `6ec42d55a74bab0a9001d7e66c02795f01b41886`),
-#189 (1C, merged `558f9e6f5cc80e3ae9e29cafdd15ce6a33addd0f`); Frontend PR #40 (merged
+**Evidence**: Backend PR #185 (1A), PR #187 (1B, merged `6ec42d55a74bab0a9001d7e66c02795f01b41886`),
+PR #189 (1C, merged `558f9e6f5cc80e3ae9e29cafdd15ce6a33addd0f`); Frontend PR #40 (merged
 `6c1458d836244f2b720f361a78c2ab13f1682f74`).
 
 **Boundary**: No live Studio-attached end-to-end run was performed for the Frontend repair panel
