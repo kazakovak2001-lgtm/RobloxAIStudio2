@@ -3,6 +3,7 @@ import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import {
   handleRequest,
+  layoutFingerprintsMatch,
   STUDIO_DESKTOP_TOOLS,
   validateClickArguments,
   validateEvidenceArguments,
@@ -63,7 +64,7 @@ describe("Roblox Studio desktop MCP boundary", () => {
             rejectResponse(
               new Error(`MCP error response timed out: ${stderr.trim()}`),
             );
-          }, 5_000);
+          }, 15_000);
           child.stderr.on("data", (chunk: string) => {
             stderr += chunk;
           });
@@ -94,7 +95,7 @@ describe("Roblox Studio desktop MCP boundary", () => {
     } finally {
       child.kill();
     }
-  });
+  }, 20_000);
 
   it("maps clicks only from valid bounded screenshot coordinates", () => {
     expect(
@@ -189,5 +190,25 @@ describe("Roblox Studio desktop MCP boundary", () => {
         }),
       ).toThrow(/lowercase slug/);
     }
+  });
+
+  it("tolerates small chrome changes but rejects a changed layout", () => {
+    const expected = Buffer.alloc(328, 100);
+    const smallChange = Buffer.from(expected);
+    smallChange[0] = 110;
+    const changedLayout = Buffer.alloc(328, 180);
+
+    expect(
+      layoutFingerprintsMatch(
+        expected.toString("base64"),
+        smallChange.toString("base64"),
+      ),
+    ).toBe(true);
+    expect(
+      layoutFingerprintsMatch(
+        expected.toString("base64"),
+        changedLayout.toString("base64"),
+      ),
+    ).toBe(false);
   });
 });

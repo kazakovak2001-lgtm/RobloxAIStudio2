@@ -1,4 +1,4 @@
-import { createHash, randomUUID } from "node:crypto";
+import { randomUUID } from "node:crypto";
 import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { resolve } from "node:path";
@@ -31,6 +31,7 @@ interface StudioWindowStatus {
 interface StudioCaptureResult extends StudioWindowStatus {
   imageWidth: number;
   imageHeight: number;
+  layoutFingerprint: string;
   outputPath: string;
 }
 
@@ -38,7 +39,6 @@ interface StudioCaptureReference {
   captureId: string;
   capture: StudioCaptureResult;
   capturedAt: number;
-  imageSha256: string;
 }
 
 interface ToolDefinition {
@@ -382,14 +382,7 @@ export function validateEvidenceArguments(value: unknown): {
   };
 }
 
-function imageSha256(data: Buffer): string {
-  return createHash("sha256").update(data).digest("hex");
-}
-
-function registerCaptureReference(
-  capture: StudioCaptureResult,
-  data: Buffer,
-): string {
+function registerCaptureReference(capture: StudioCaptureResult): string {
   const now = Date.now();
   for (const [captureId, reference] of captureReferences) {
     if (now - reference.capturedAt > CAPTURE_REFERENCE_TTL_MS)
@@ -406,9 +399,28 @@ function registerCaptureReference(
     captureId,
     capture,
     capturedAt: now,
-    imageSha256: imageSha256(data),
   });
   return captureId;
+}
+
+export function layoutFingerprintsMatch(
+  expectedBase64: string,
+  currentBase64: string,
+): boolean {
+  const expected = Buffer.from(expectedBase64, "base64");
+  const current = Buffer.from(currentBase64, "base64");
+  if (expected.length === 0 || expected.length !== current.length) return false;
+  let totalDifference = 0;
+  let materiallyChanged = 0;
+  for (let index = 0; index < expected.length; index += 1) {
+    const difference = Math.abs(expected[index] - current[index]);
+    totalDifference += difference;
+    if (difference > 24) materiallyChanged += 1;
+  }
+  return (
+    totalDifference / expected.length <= 16 &&
+    materiallyChanged / expected.length <= 0.3
+  );
 }
 
 function equalBounds(
@@ -445,9 +457,11 @@ async function consumeFreshCaptureReference(
     current.capture.title !== reference.capture.title ||
     current.capture.executable !== reference.capture.executable ||
     current.capture.minimized !== reference.capture.minimized ||
-    current.capture.foreground !== reference.capture.foreground ||
     !equalBounds(current.capture.bounds, reference.capture.bounds) ||
-    imageSha256(current.data) !== reference.imageSha256
+    !layoutFingerprintsMatch(
+      reference.capture.layoutFingerprint,
+      current.capture.layoutFingerprint,
+    )
   ) {
     throw new Error(
       "The Roblox Studio window no longer matches the referenced screenshot; capture a new screenshot before input",
@@ -603,12 +617,13 @@ async function callTool(
   if (name === "studio_screenshot") {
     const pid = validateOptionalTargetArguments(rawArguments);
     const { capture, data } = await captureToTemporaryFile(pid);
-    const captureId = registerCaptureReference(capture, data);
+    const captureId = registerCaptureReference(capture);
     return {
       content: [
         textContent({
           ...capture,
           outputPath: undefined,
+          layoutFingerprint: undefined,
           captureId,
           coordinateContract:
             "Pass this pid and single-use captureId to the next input tool. For studio_click, use x/y from this exact image.",
@@ -709,7 +724,11 @@ async function callTool(
     await writeFile(evidencePath, data);
     return {
       content: [
-        textContent({ ...capture, outputPath: evidencePath }),
+        textContent({
+          ...capture,
+          layoutFingerprint: undefined,
+          outputPath: evidencePath,
+        }),
         { type: "image", data: data.toString("base64"), mimeType: "image/png" },
       ],
     };

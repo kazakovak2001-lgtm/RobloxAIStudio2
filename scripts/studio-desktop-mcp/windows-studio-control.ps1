@@ -273,6 +273,30 @@ function Assert-ExpectedWindowBounds([object]$window) {
     }
 }
 
+function Get-LayoutFingerprint([System.Drawing.Bitmap]$bitmap) {
+    $thumbnail = [System.Drawing.Bitmap]::new(32, 32)
+    $graphics = [System.Drawing.Graphics]::FromImage($thumbnail)
+    try {
+        $graphics.InterpolationMode = [System.Drawing.Drawing2D.InterpolationMode]::HighQualityBicubic
+        $graphics.DrawImage($bitmap, 0, 0, 32, 32)
+        $values = [System.Collections.Generic.List[byte]]::new()
+        for ($y = 3; $y -le 25; $y += 1) {
+            for ($x = 0; $x -lt 32; $x += 1) {
+                $isToolbar = $y -le 8
+                $isSideChrome = $y -ge 9 -and ($x -le 3 -or $x -ge 28)
+                if (-not $isToolbar -and -not $isSideChrome) { continue }
+                $color = $thumbnail.GetPixel($x, $y)
+                $luminance = [byte][Math]::Round((0.2126 * $color.R) + (0.7152 * $color.G) + (0.0722 * $color.B))
+                $values.Add($luminance)
+            }
+        }
+        return [Convert]::ToBase64String($values.ToArray())
+    } finally {
+        $graphics.Dispose()
+        $thumbnail.Dispose()
+    }
+}
+
 function Convert-Status([object]$window) {
     return [ordered]@{
         pid = $window.Pid
@@ -314,6 +338,7 @@ if ($Action -eq 'Capture') {
     $sourceGraphics = [System.Drawing.Graphics]::FromImage($source)
     $target = [System.Drawing.Bitmap]::new($targetWidth, $targetHeight)
     $targetGraphics = [System.Drawing.Graphics]::FromImage($target)
+    $layoutFingerprint = $null
     try {
         $deviceContext = $sourceGraphics.GetHdc()
         try {
@@ -325,6 +350,7 @@ if ($Action -eq 'Capture') {
         }
         $targetGraphics.InterpolationMode = [System.Drawing.Drawing2D.InterpolationMode]::HighQualityBicubic
         $targetGraphics.DrawImage($source, 0, 0, $targetWidth, $targetHeight)
+        $layoutFingerprint = Get-LayoutFingerprint $target
         $parent = [System.IO.Path]::GetDirectoryName([System.IO.Path]::GetFullPath($OutputPath))
         [System.IO.Directory]::CreateDirectory($parent) | Out-Null
         $target.Save([System.IO.Path]::GetFullPath($OutputPath), [System.Drawing.Imaging.ImageFormat]::Png)
@@ -337,6 +363,7 @@ if ($Action -eq 'Capture') {
     $result = Convert-Status $window
     $result.imageWidth = $targetWidth
     $result.imageHeight = $targetHeight
+    $result.layoutFingerprint = $layoutFingerprint
     $result.outputPath = [System.IO.Path]::GetFullPath($OutputPath)
     $result | ConvertTo-Json -Compress -Depth 5
     exit 0
@@ -359,6 +386,12 @@ if ($Action -eq 'Click') {
     [StudioDesktopNative]::SendLeftClick()
     if ($Button -eq 'double_left') {
         Start-Sleep -Milliseconds 90
+        $secondClickWindow = Get-EligibleStudioWindow $window.Pid
+        if ($secondClickWindow.Handle -ne $window.Handle) {
+            throw 'Roblox Studio main window changed after the first click; the second click was not performed.'
+        }
+        Assert-ExpectedWindowBounds $secondClickWindow
+        Assert-StudioForeground $secondClickWindow
         [StudioDesktopNative]::SendLeftClick()
     }
     Convert-Status (Get-EligibleStudioWindow $window.Pid) | ConvertTo-Json -Compress -Depth 5
