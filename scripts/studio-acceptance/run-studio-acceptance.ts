@@ -22,6 +22,7 @@ import {
 
 const RESULT_PREFIX = "RAI_STUDIO_ACCEPTANCE_RESULT:";
 const DEFAULT_TIMEOUT_MS = 120_000;
+const STUDIO_TERMINATION_GRACE_MS = 5_000;
 const REQUIRED_RUNTIME_SOURCES = [
   "src/utils/UITreeMaterializer.lua",
   "src/utils/WorldSceneMaterializer.lua",
@@ -54,7 +55,7 @@ export interface StudioSmokeResult {
   checks: StudioAcceptanceCheck[];
 }
 
-interface StudioProcessResult {
+export interface StudioProcessResult {
   exitCode: number | null;
   stdout: string;
   stderr: string;
@@ -490,10 +491,19 @@ export function parseStudioAcceptanceOutput(output: string): StudioSmokeResult {
   return result as StudioSmokeResult;
 }
 
-async function launchStudio(
+export function assertStudioExitCode(exitCode: number | null): void {
+  if (exitCode !== 0) {
+    throw new Error(
+      `Roblox Studio exited unsuccessfully (${exitCode === null ? "no exit code" : `exit code ${exitCode}`})`,
+    );
+  }
+}
+
+export async function launchStudio(
   executable: string,
   args: string[],
   timeoutMs: number,
+  terminationGraceMs = STUDIO_TERMINATION_GRACE_MS,
 ): Promise<StudioProcessResult> {
   return await new Promise((resolvePromise, rejectPromise) => {
     const child = spawn(executable, args, {
@@ -503,6 +513,8 @@ async function launchStudio(
     let stdout = "";
     let stderr = "";
     let settled = false;
+    let timeoutError: Error | undefined;
+    let forceKillTimeout: NodeJS.Timeout | undefined;
 
     child.stdout?.setEncoding("utf8");
     child.stderr?.setEncoding("utf8");
@@ -513,26 +525,46 @@ async function launchStudio(
       stderr += chunk;
     });
 
+    const clearTimers = () => {
+      clearTimeout(timeout);
+      if (forceKillTimeout) clearTimeout(forceKillTimeout);
+    };
     const timeout = setTimeout(() => {
       if (settled) return;
-      settled = true;
-      child.kill();
-      rejectPromise(
-        new Error(`Roblox Studio acceptance timed out after ${timeoutMs} ms`),
+      timeoutError = new Error(
+        `Roblox Studio acceptance timed out after ${timeoutMs} ms`,
       );
+      try {
+        child.kill();
+      } catch (error) {
+        stderr += `\nStudio termination request failed: ${String(error)}`;
+      }
+      forceKillTimeout = setTimeout(() => {
+        if (settled) return;
+        try {
+          child.kill("SIGKILL");
+        } catch (error) {
+          stderr += `\nStudio forced termination failed: ${String(error)}`;
+        }
+      }, terminationGraceMs);
     }, timeoutMs);
 
-    child.once("error", (error) => {
+    child.on("error", (error) => {
       if (settled) return;
+      if (timeoutError) {
+        stderr += `\nStudio process error during termination: ${error.message}`;
+        return;
+      }
       settled = true;
-      clearTimeout(timeout);
-      rejectPromise(error);
+      clearTimers();
+      rejectPromise(timeoutError ?? error);
     });
     child.once("close", (exitCode) => {
       if (settled) return;
       settled = true;
-      clearTimeout(timeout);
-      resolvePromise({ exitCode, stdout, stderr });
+      clearTimers();
+      if (timeoutError) rejectPromise(timeoutError);
+      else resolvePromise({ exitCode, stdout, stderr });
     });
   });
 }
@@ -658,6 +690,7 @@ export async function runStudioAcceptance(
       studioArguments,
       options.timeoutMs,
     );
+    assertStudioExitCode(processResult.exitCode);
     const studioOutput = await waitForOutput(
       studioOutputPath,
       Math.min(options.timeoutMs, 30_000),

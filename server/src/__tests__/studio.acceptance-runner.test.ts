@@ -8,8 +8,10 @@ import { describe, expect, it } from "vitest";
 import {
   asLuauLongString,
   assertGitRevisionStable,
+  assertStudioExitCode,
   buildStudioArguments,
   captureCleanGitRevision,
+  launchStudio,
   parseStudioAcceptanceArgs,
   parseStudioAcceptanceOutput,
   publishAcceptanceEvidence,
@@ -96,6 +98,20 @@ describe("Roblox Studio acceptance runner", () => {
     expect(() => parseStudioAcceptanceOutput("no result")).toThrow(
       /did not contain/,
     );
+  });
+
+  it("rejects unsuccessful exits and waits for a timed-out process to close", async () => {
+    expect(() => assertStudioExitCode(0)).not.toThrow();
+    expect(() => assertStudioExitCode(1)).toThrow(/exit code 1/);
+    expect(() => assertStudioExitCode(null)).toThrow(/no exit code/);
+
+    const childScript =
+      process.platform === "win32"
+        ? "setInterval(() => {}, 1000)"
+        : "process.on('SIGTERM', () => {}); setInterval(() => {}, 1000)";
+    await expect(
+      launchStudio(process.execPath, ["-e", childScript], 100, 100),
+    ).rejects.toThrow(/timed out after 100 ms/);
   });
 
   it("binds evidence to a clean revision and rejects a changed HEAD", async () => {
