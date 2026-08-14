@@ -29,6 +29,17 @@ const REQUIRED_RUNTIME_SOURCES = [
   "src/utils/WorldSceneMaterializer.lua",
   "src/utils/ArtifactLoader.lua",
 ] as const;
+export const REQUIRED_STUDIO_ACCEPTANCE_CHECK_NAMES = [
+  "canonical modules compile in Roblox Studio",
+  "Lua artifacts preserve path classes and source",
+  "metadata delivery is stable and idempotent",
+  "UI trees materialize idempotently",
+  "UI validation fails before attaching a partial tree",
+  "UI delivery preserves unowned collisions",
+  "world scenes materialize idempotently",
+  "world validation rejects executable classes atomically",
+  "acceptance fixtures clean up their DataModel changes",
+] as const;
 
 export type StudioAcceptanceTarget =
   | { mode: "baseplate" }
@@ -64,6 +75,14 @@ export interface StudioProcessResult {
 
 export interface CleanGitRevision {
   commit: string;
+}
+
+export interface PublishedAcceptanceEvidence {
+  runDirectory: string;
+  pointerPath: string;
+  studioOutputPath: string;
+  resultPath: string;
+  reportPath: string;
 }
 
 const EVIDENCE_FILES = [
@@ -167,7 +186,7 @@ async function acquirePublishLock(
 export async function publishAcceptanceEvidence(
   completedRunDirectory: string,
   outputDirectory: string,
-): Promise<void> {
+): Promise<PublishedAcceptanceEvidence> {
   const resolvedOutput = resolve(outputDirectory);
   if (resolve(completedRunDirectory) === resolvedOutput) {
     throw new Error(
@@ -175,17 +194,23 @@ export async function publishAcceptanceEvidence(
     );
   }
   const outputParent = dirname(resolvedOutput);
-  await mkdir(outputParent, { recursive: true });
-  const stagingDirectory = await mkdtemp(
-    join(outputParent, `.${basename(resolvedOutput)}.publish-`),
+  const runsDirectory = resolve(outputParent, "runs");
+  await mkdir(runsDirectory, { recursive: true });
+  const stagingDirectory = await mkdtemp(join(runsDirectory, ".publish-"));
+  const runDirectory = resolve(
+    runsDirectory,
+    `run-${Date.now()}-${basename(stagingDirectory).slice(".publish-".length)}`,
   );
   const lockDirectory = resolve(
     outputParent,
     `.${basename(resolvedOutput)}.publish-lock`,
   );
-  const previousDirectory = `${resolvedOutput}.previous-${basename(stagingDirectory)}`;
+  const pointerPath = resolve(resolvedOutput, "pointer.json");
+  const temporaryPointerPath = resolve(
+    outputParent,
+    `.${basename(resolvedOutput)}.pointer-${basename(stagingDirectory)}.tmp`,
+  );
   let releaseLock: (() => Promise<void>) | undefined;
-  let previousMoved = false;
   try {
     for (const file of EVIDENCE_FILES) {
       await copyFile(
@@ -194,37 +219,48 @@ export async function publishAcceptanceEvidence(
       );
     }
     releaseLock = await acquirePublishLock(lockDirectory);
+    await mkdir(resolvedOutput, { recursive: true });
     try {
       const existingEntries = await readdir(resolvedOutput);
       const unexpectedEntries = existingEntries.filter(
         (entry) =>
+          entry !== "pointer.json" &&
           !EVIDENCE_FILES.includes(entry as (typeof EVIDENCE_FILES)[number]),
       );
       if (unexpectedEntries.length > 0) {
         throw new Error(
-          `Refusing to replace a non-evidence output directory (${unexpectedEntries.join(", ")}): ${resolvedOutput}`,
+          `Refusing to publish into a non-evidence output directory (${unexpectedEntries.join(", ")}): ${resolvedOutput}`,
         );
       }
     } catch (error) {
       if (errorCode(error) !== "ENOENT") throw error;
     }
-    try {
-      await rename(resolvedOutput, previousDirectory);
-      previousMoved = true;
-    } catch (error) {
-      if (errorCode(error) !== "ENOENT") throw error;
-    }
-    await rename(stagingDirectory, resolvedOutput);
-    if (previousMoved) {
-      await rm(previousDirectory, { recursive: true, force: true });
-    }
-  } catch (error) {
-    if (previousMoved && !(await existingFile(resolvedOutput))) {
-      await rename(previousDirectory, resolvedOutput);
-    }
-    throw error;
+    await rename(stagingDirectory, runDirectory);
+    const relativeRunDirectory = `../runs/${basename(runDirectory)}`;
+    await writeFile(
+      temporaryPointerPath,
+      `${JSON.stringify(
+        {
+          schemaVersion: 1,
+          publishedAt: new Date().toISOString(),
+          runDirectory: relativeRunDirectory,
+        },
+        null,
+        2,
+      )}\n`,
+      "utf8",
+    );
+    await rename(temporaryPointerPath, pointerPath);
+    return {
+      runDirectory,
+      pointerPath,
+      studioOutputPath: resolve(runDirectory, "studio-output.log"),
+      resultPath: resolve(runDirectory, "result.json"),
+      reportPath: resolve(runDirectory, "report.md"),
+    };
   } finally {
     await rm(stagingDirectory, { recursive: true, force: true });
+    await rm(temporaryPointerPath, { force: true });
     if (releaseLock) await releaseLock();
   }
 }
@@ -473,7 +509,11 @@ export function parseStudioAcceptanceOutput(output: string): StudioSmokeResult {
   const json = matchingLine.slice(
     matchingLine.indexOf(RESULT_PREFIX) + RESULT_PREFIX.length,
   );
-  const result = JSON.parse(json) as Partial<StudioSmokeResult>;
+  const parsed: unknown = JSON.parse(json);
+  if (typeof parsed !== "object" || parsed === null) {
+    throw new Error("Roblox Studio returned an invalid acceptance result");
+  }
+  const result = parsed as Record<string, unknown>;
   if (
     result.schemaVersion !== 1 ||
     result.scope !== "studio-engine-plugin-runtime" ||
@@ -483,17 +523,50 @@ export function parseStudioAcceptanceOutput(output: string): StudioSmokeResult {
   ) {
     throw new Error("Roblox Studio returned an invalid acceptance result");
   }
-  for (const check of result.checks) {
+  const checks: StudioAcceptanceCheck[] = [];
+  for (const entry of result.checks) {
+    if (typeof entry !== "object" || entry === null) {
+      throw new Error("Roblox Studio returned an invalid acceptance check");
+    }
+    const check = entry as Record<string, unknown>;
     if (
-      !check ||
       typeof check.name !== "string" ||
       (check.status !== "PASS" && check.status !== "FAIL") ||
       typeof check.detail !== "string"
     ) {
       throw new Error("Roblox Studio returned an invalid acceptance check");
     }
+    checks.push({
+      name: check.name,
+      status: check.status,
+      detail: check.detail,
+    });
   }
-  return result as StudioSmokeResult;
+  const allChecksPass = checks.every((check) => check.status === "PASS");
+  if (result.status === "PASS") {
+    const hasExactCheckMatrix =
+      checks.length === REQUIRED_STUDIO_ACCEPTANCE_CHECK_NAMES.length &&
+      checks.every(
+        (check, index) =>
+          check.name === REQUIRED_STUDIO_ACCEPTANCE_CHECK_NAMES[index],
+      );
+    if (!hasExactCheckMatrix || !allChecksPass) {
+      throw new Error(
+        "Roblox Studio PASS result did not contain the complete passing check matrix",
+      );
+    }
+  } else if (allChecksPass) {
+    throw new Error(
+      "Roblox Studio FAIL result is inconsistent with its passing checks",
+    );
+  }
+  return {
+    schemaVersion: 1,
+    status: result.status,
+    scope: "studio-engine-plugin-runtime",
+    pluginVersion: result.pluginVersion,
+    checks,
+  };
 }
 
 export function assertStudioExitCode(exitCode: number | null): void {
@@ -647,8 +720,6 @@ export async function runStudioAcceptance(
     options.outputDirectory ??
       resolve(repositoryRoot, "artifacts/studio-acceptance/latest"),
   );
-  const resultPath = resolve(outputDirectory, "result.json");
-  const reportPath = resolve(outputDirectory, "report.md");
 
   const temporaryDirectory = await mkdtemp(
     join(tmpdir(), "roblox-ai-studio-acceptance-"),
@@ -757,11 +828,15 @@ export async function runStudioAcceptance(
       }),
       "utf8",
     );
-    await publishAcceptanceEvidence(completedRunDirectory, outputDirectory);
+    const publication = await publishAcceptanceEvidence(
+      completedRunDirectory,
+      outputDirectory,
+    );
 
     console.log(`Roblox Studio automated acceptance: ${result.status}`);
-    console.log(`Result: ${resultPath}`);
-    console.log(`Report: ${reportPath}`);
+    console.log(`Result: ${publication.resultPath}`);
+    console.log(`Report: ${publication.reportPath}`);
+    console.log(`Latest pointer: ${publication.pointerPath}`);
     if (result.status !== "PASS") process.exitCode = 1;
     return result;
   } finally {

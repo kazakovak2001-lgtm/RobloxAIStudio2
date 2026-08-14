@@ -15,6 +15,7 @@ import {
   parseStudioAcceptanceArgs,
   parseStudioAcceptanceOutput,
   publishAcceptanceEvidence,
+  REQUIRED_STUDIO_ACCEPTANCE_CHECK_NAMES,
   renderStudioSmokeScript,
 } from "../../../scripts/studio-acceptance/run-studio-acceptance";
 import type { StudioPluginPackageManifest } from "../../../scripts/package-studio-plugin";
@@ -91,7 +92,11 @@ describe("Roblox Studio acceptance runner", () => {
       status: "PASS",
       scope: "studio-engine-plugin-runtime",
       pluginVersion: "1.11.0",
-      checks: [{ name: "engine", status: "PASS", detail: "verified" }],
+      checks: REQUIRED_STUDIO_ACCEPTANCE_CHECK_NAMES.map((name) => ({
+        name,
+        status: "PASS",
+        detail: "verified",
+      })),
     };
     const output = [
       "RAI_STUDIO_ACCEPTANCE_RESULT:not-json",
@@ -101,6 +106,21 @@ describe("Roblox Studio acceptance runner", () => {
     expect(() => parseStudioAcceptanceOutput("no result")).toThrow(
       /did not contain/,
     );
+    expect(() =>
+      parseStudioAcceptanceOutput(
+        `RAI_STUDIO_ACCEPTANCE_RESULT:${JSON.stringify({ ...result, checks: [] })}`,
+      ),
+    ).toThrow(/complete passing check matrix/);
+    expect(() =>
+      parseStudioAcceptanceOutput(
+        `RAI_STUDIO_ACCEPTANCE_RESULT:${JSON.stringify({
+          ...result,
+          checks: result.checks.map((check, index) =>
+            index === 0 ? { ...check, status: "FAIL" } : check,
+          ),
+        })}`,
+      ),
+    ).toThrow(/complete passing check matrix/);
   });
 
   it("rejects unsuccessful exits and waits for a timed-out process to close", async () => {
@@ -147,7 +167,7 @@ describe("Roblox Studio acceptance runner", () => {
     } finally {
       await rm(repository, { recursive: true, force: true });
     }
-  });
+  }, 15_000);
 
   it("publishes each completed run as one concurrency-safe evidence set", async () => {
     const root = await mkdtemp(join(tmpdir(), "studio-acceptance-publish-"));
@@ -166,27 +186,38 @@ describe("Roblox Studio acceptance runner", () => {
       const second = await createRun("second");
       const latest = join(root, "latest");
 
-      await Promise.all([
+      const publications = await Promise.all([
         publishAcceptanceEvidence(first, latest),
         publishAcceptanceEvidence(second, latest),
       ]);
 
+      const pointer = JSON.parse(
+        await readFile(join(latest, "pointer.json"), "utf8"),
+      ) as { runDirectory: string };
+      const selectedRun = join(latest, pointer.runDirectory);
       const published = await Promise.all(
         ["studio-output.log", "result.json", "report.md"].map((file) =>
-          readFile(join(latest, file), "utf8"),
+          readFile(join(selectedRun, file), "utf8"),
         ),
       );
       expect(
         published.every((value) => value.startsWith("first:")) ||
           published.every((value) => value.startsWith("second:")),
       ).toBe(true);
+      await Promise.all(
+        publications.map((publication) =>
+          readFile(publication.resultPath, "utf8"),
+        ),
+      );
 
       const unsafeOutput = join(root, "unsafe-output");
       await mkdir(unsafeOutput);
       await writeFile(join(unsafeOutput, "keep.txt"), "keep\n", "utf8");
       await expect(
         publishAcceptanceEvidence(first, unsafeOutput),
-      ).rejects.toThrow(/Refusing to replace a non-evidence output directory/);
+      ).rejects.toThrow(
+        /Refusing to publish into a non-evidence output directory/,
+      );
       await expect(
         readFile(join(unsafeOutput, "keep.txt"), "utf8"),
       ).resolves.toBe("keep\n");

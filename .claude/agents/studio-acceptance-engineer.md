@@ -18,7 +18,7 @@ Run:
 npm run studio:acceptance
 ```
 
-The runner packages the exact canonical sources, injects the materializers into a real Roblox Studio Luau VM, exercises deterministic artifact, UI, world, ownership, idempotence, and atomic-failure fixtures, removes its temporary DataModel changes, and emits machine-readable evidence under `artifacts/studio-acceptance/latest/`.
+The runner packages the exact canonical sources, injects the materializers into a real Roblox Studio Luau VM, exercises deterministic artifact, UI, world, ownership, idempotence, and atomic-failure fixtures, removes its temporary DataModel changes, and emits immutable machine-readable runs under `artifacts/studio-acceptance/runs/`; `artifacts/studio-acceptance/latest/pointer.json` atomically selects the latest completed run.
 
 Treat the evidence boundary as load-bearing:
 

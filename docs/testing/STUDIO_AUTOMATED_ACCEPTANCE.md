@@ -19,7 +19,7 @@ The runner fails closed unless the repository is clean, captures `HEAD` before r
 5. tests script-class mapping, exact source assignment, metadata idempotence, real UI/world instances, allowlists, atomic rejection, and creator-owned collision protection;
 6. removes every acceptance-owned DataModel instance;
 7. keeps each in-flight Studio output in an isolated temporary run directory;
-8. publishes the completed JSON result, Markdown report, and raw Studio output together under `artifacts/studio-acceptance/latest/` using a concurrency-safe directory replacement.
+8. publishes the completed JSON result, Markdown report, and raw Studio output into an immutable directory under `artifacts/studio-acceptance/runs/`, then atomically updates `artifacts/studio-acceptance/latest/pointer.json` to select that complete run.
 
 The default target is Studio's disposable empty Baseplate. Optional load-only targets are:
 
@@ -34,7 +34,7 @@ The place ID and universe ID must be supplied together. Loading a published plac
 
 The runner has no publish, upload, save, Open Cloud, API-key, browser-session, or plugin-setting operation. Unknown options fail closed. Never add a Studio API key to this command: Roblox Studio echoes the executed Luau into its output, so embedding a credential in the script would persist it in evidence logs.
 
-Acceptance fixtures use a per-run GUID namespace and clean up only instances they created. Concurrent commands never share an in-flight Studio output file, and an incomplete run never replaces the last completed `latest` evidence. No runtime handle is persisted. Generated reports are ignored local evidence and do not become release truth merely by existing.
+Acceptance fixtures use a per-run GUID namespace and clean up only instances they created. Concurrent commands never share an in-flight Studio output file. Completed run directories are immutable, and an incomplete publication never removes or hides the run selected by the prior `latest/pointer.json`. No runtime handle is persisted. Generated reports are ignored local evidence and do not become release truth merely by existing.
 
 ## Evidence boundary
 
