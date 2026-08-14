@@ -16,7 +16,7 @@ The operator must:
 1. inspect branch, HEAD, worktree, scope, and current authority;
 2. list eligible Studio windows and pin the acceptance session to the selected PID;
 3. capture a screenshot before every input;
-4. request the built-in Claude Code approval for every click, typed text, key press, and evidence capture, using a verified screenshot coordinate for each key's intended focus target;
+4. request the built-in Claude Code approval for every click, typed text, key press, and evidence capture, using a verified screenshot coordinate for each key's intended focus target except the click-free `SHIFT_F5` Play-stop shortcut;
 5. stop on account, credential, purchase, upload, publish, Save to Roblox, moderation, or external-link UI;
 6. capture only approved local evidence under `artifacts/studio-acceptance/operator/`;
 7. separate visual facts from backend, persistence, receipt, multiplayer, and subjective-quality claims.

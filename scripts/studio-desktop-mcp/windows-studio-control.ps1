@@ -473,6 +473,9 @@ if ($Action -eq 'Capture' -or $Action -eq 'CaptureFocused') {
     exit 0
 }
 
+if ($window.Minimized) {
+    throw 'Roblox Studio became minimized before the final input boundary; no input was performed.'
+}
 $window = Focus-StudioWindow $window
 Assert-ExpectedWindowBounds $window
 
@@ -551,6 +554,12 @@ if ($Action -eq 'PressKey') {
         CTRL_F = '^f'
     }
     if (-not $sequences.ContainsKey($Key)) { throw 'The requested key is not allowlisted.' }
+    if ($Key -eq 'SHIFT_F5') {
+        Assert-StudioForeground $window
+        [System.Windows.Forms.SendKeys]::SendWait($sequences[$Key])
+        Convert-Status (Get-EligibleStudioWindow $window.Pid) | ConvertTo-Json -Compress -Depth 5
+        exit 0
+    }
     if ($ScreenshotWidth -lt 1 -or $ScreenshotWidth -gt 1024 -or $ScreenshotHeight -lt 1 -or $ScreenshotHeight -gt 768) { throw 'Invalid screenshot dimensions.' }
     if ($X -lt 0 -or $X -ge $ScreenshotWidth -or $Y -lt 0 -or $Y -ge $ScreenshotHeight) { throw 'Key target is outside the referenced screenshot.' }
     $screenX = $window.Left + [int][Math]::Floor(($X + 0.5) * $window.Width / $ScreenshotWidth)

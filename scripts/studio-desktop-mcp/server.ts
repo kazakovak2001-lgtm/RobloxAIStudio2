@@ -372,6 +372,10 @@ function isAllowedKey(value: unknown): value is AllowedKey {
   );
 }
 
+export function keyRequiresStableTarget(key: AllowedKey): boolean {
+  return key !== "SHIFT_F5";
+}
+
 export function validateKeyArguments(value: unknown): {
   pid: number;
   captureId: string;
@@ -866,7 +870,9 @@ async function callTool(
     ) {
       throw new Error("Key target is outside the referenced screenshot");
     }
-    assertTargetAreaUnchanged(reference, current, input.x, input.y);
+    if (keyRequiresStableTarget(input.key)) {
+      assertTargetAreaUnchanged(reference, current, input.x, input.y);
+    }
     return {
       content: [
         textContent(

@@ -6,6 +6,7 @@ import { describe, expect, it } from "vitest";
 import {
   handleRequest,
   imageTargetFingerprintsMatch,
+  keyRequiresStableTarget,
   layoutFingerprintsMatch,
   STUDIO_DESKTOP_TOOLS,
   validateClickArguments,
@@ -196,6 +197,8 @@ describe("Roblox Studio desktop MCP boundary", () => {
   });
 
   it("rejects arbitrary keys and unsafe text", () => {
+    expect(keyRequiresStableTarget("F5")).toBe(true);
+    expect(keyRequiresStableTarget("SHIFT_F5")).toBe(false);
     expect(
       validateKeyArguments({ pid: 1234, captureId, x: 100, y: 200, key: "F5" }),
     ).toEqual({ pid: 1234, captureId, x: 100, y: 200, key: "F5" });
