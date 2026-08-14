@@ -54,6 +54,16 @@ interface ToolDefinition {
   };
 }
 
+class JsonRpcProtocolError extends Error {
+  constructor(
+    readonly code: number,
+    message: string,
+  ) {
+    super(message);
+    this.name = "JsonRpcProtocolError";
+  }
+}
+
 const SERVER_NAME = "roblox-studio-desktop";
 const SERVER_VERSION = "1.0.0";
 const MCP_PROTOCOL_VERSION = "2025-06-18";
@@ -895,7 +905,14 @@ export async function handleRequest(
   request: JsonRpcRequest,
 ): Promise<Record<string, unknown> | undefined> {
   if (request.method === "initialize") {
-    assertObject(request.params ?? {});
+    try {
+      assertObject(request.params ?? {});
+    } catch (error) {
+      throw new JsonRpcProtocolError(
+        -32602,
+        error instanceof Error ? error.message : "Invalid initialize params",
+      );
+    }
     return {
       protocolVersion: MCP_PROTOCOL_VERSION,
       capabilities: { tools: { listChanged: false } },
@@ -905,9 +922,17 @@ export async function handleRequest(
   if (request.method === "ping") return {};
   if (request.method === "tools/list") return { tools: STUDIO_DESKTOP_TOOLS };
   if (request.method === "tools/call") {
-    const params = assertObject(request.params);
-    if (typeof params.name !== "string")
-      throw new Error("tools/call requires a tool name");
+    let params: Record<string, unknown>;
+    try {
+      params = assertObject(request.params);
+      if (typeof params.name !== "string")
+        throw new Error("tools/call requires a tool name");
+    } catch (error) {
+      throw new JsonRpcProtocolError(
+        -32602,
+        error instanceof Error ? error.message : "Invalid tools/call params",
+      );
+    }
     try {
       return await callTool(params.name, params.arguments ?? {});
     } catch (error) {
@@ -920,7 +945,10 @@ export async function handleRequest(
     }
   }
   if (request.method.startsWith("notifications/")) return undefined;
-  throw new Error(`Unsupported MCP method: ${request.method}`);
+  throw new JsonRpcProtocolError(
+    -32601,
+    `Unsupported MCP method: ${request.method}`,
+  );
 }
 
 function writeResponse(id: JsonRpcId, result: Record<string, unknown>): void {
@@ -933,7 +961,7 @@ function writeError(id: JsonRpcId, error: unknown): void {
       jsonrpc: "2.0",
       id,
       error: {
-        code: -32603,
+        code: error instanceof JsonRpcProtocolError ? error.code : -32603,
         message: error instanceof Error ? error.message : String(error),
       },
     })}\n`,
@@ -953,10 +981,20 @@ async function startServer(): Promise<void> {
       queue = queue.then(async () => {
         let request: JsonRpcRequest | undefined;
         try {
-          const parsed = JSON.parse(line) as unknown;
-          const object = assertObject(parsed);
+          let parsed: unknown;
+          try {
+            parsed = JSON.parse(line) as unknown;
+          } catch {
+            throw new JsonRpcProtocolError(-32700, "Parse error");
+          }
+          let object: Record<string, unknown>;
+          try {
+            object = assertObject(parsed);
+          } catch {
+            throw new JsonRpcProtocolError(-32600, "Invalid JSON-RPC request");
+          }
           if (object.jsonrpc !== "2.0" || typeof object.method !== "string") {
-            throw new Error("Invalid JSON-RPC request");
+            throw new JsonRpcProtocolError(-32600, "Invalid JSON-RPC request");
           }
           if (
             object.id !== undefined &&
@@ -964,7 +1002,10 @@ async function startServer(): Promise<void> {
             typeof object.id !== "string" &&
             typeof object.id !== "number"
           ) {
-            throw new Error("Invalid JSON-RPC request id");
+            throw new JsonRpcProtocolError(
+              -32600,
+              "Invalid JSON-RPC request id",
+            );
           }
           request = object as unknown as JsonRpcRequest;
           const result = await handleRequest(request);

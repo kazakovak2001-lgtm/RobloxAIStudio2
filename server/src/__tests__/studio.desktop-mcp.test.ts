@@ -55,7 +55,7 @@ describe("Roblox Studio desktop MCP boundary", () => {
     expect(newerClient).toMatchObject({ protocolVersion: "2025-06-18" });
   });
 
-  it("preserves a valid request ID in transport-level errors", async () => {
+  it("returns categorized transport errors and preserves valid request IDs", async () => {
     const child = spawn(
       process.execPath,
       [
@@ -83,11 +83,11 @@ describe("Roblox Studio desktop MCP boundary", () => {
           child.stdout.on("data", (chunk: string) => {
             stdout += chunk;
             const lines = stdout.split("\n").filter(Boolean);
-            if (lines.length < 2) return;
+            if (lines.length < 5) return;
             clearTimeout(timeout);
             resolveResponse(
               lines
-                .slice(0, 2)
+                .slice(0, 5)
                 .map((line) => JSON.parse(line) as Record<string, unknown>),
             );
           });
@@ -98,15 +98,53 @@ describe("Roblox Studio desktop MCP boundary", () => {
         },
       );
       child.stdin.end(
-        `null\n${JSON.stringify({ jsonrpc: "2.0", id: "request-73", method: "ping" })}\n`,
+        [
+          "not-json",
+          "null",
+          JSON.stringify({
+            jsonrpc: "2.0",
+            id: "method-error",
+            method: "unsupported/method",
+          }),
+          JSON.stringify({
+            jsonrpc: "2.0",
+            id: "params-error",
+            method: "initialize",
+            params: [],
+          }),
+          JSON.stringify({
+            jsonrpc: "2.0",
+            id: "request-73",
+            method: "ping",
+          }),
+          "",
+        ].join("\n"),
       );
       const responses = await responsePromise;
       expect(responses[0]).toMatchObject({
         jsonrpc: "2.0",
         id: null,
-        error: { code: -32603, message: "Tool arguments must be an object" },
+        error: { code: -32700, message: "Parse error" },
       });
       expect(responses[1]).toMatchObject({
+        jsonrpc: "2.0",
+        id: null,
+        error: { code: -32600, message: "Invalid JSON-RPC request" },
+      });
+      expect(responses[2]).toMatchObject({
+        jsonrpc: "2.0",
+        id: "method-error",
+        error: {
+          code: -32601,
+          message: expect.stringContaining("Unsupported MCP method"),
+        },
+      });
+      expect(responses[3]).toMatchObject({
+        jsonrpc: "2.0",
+        id: "params-error",
+        error: { code: -32602, message: "Tool arguments must be an object" },
+      });
+      expect(responses[4]).toMatchObject({
         jsonrpc: "2.0",
         id: "request-73",
         result: {},
