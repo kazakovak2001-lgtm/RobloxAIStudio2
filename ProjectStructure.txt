@@ -4,6 +4,17 @@
 │   └── agents
 │       └── j.agent.md
 ├── .blackboxrules
+├── .claude
+│   ├── agents
+│   │   ├── architecture-auditor.md
+│   │   ├── autonomous-orchestrator-engineer.md
+│   │   ├── persistence-engineer.md
+│   │   ├── release-reviewer.md
+│   │   ├── security-reviewer.md
+│   │   └── test-engineer.md
+│   └── skills
+│       └── data-202b-audit
+│           └── SKILL.md
 ├── .dockerignore
 ├── .env.example
 ├── .eslintrc.json

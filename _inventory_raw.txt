@@ -1,5 +1,12 @@
 .agents/agents/j.agent.md
 .blackboxrules
+.claude/agents/architecture-auditor.md
+.claude/agents/autonomous-orchestrator-engineer.md
+.claude/agents/persistence-engineer.md
+.claude/agents/release-reviewer.md
+.claude/agents/security-reviewer.md
+.claude/agents/test-engineer.md
+.claude/skills/data-202b-audit/SKILL.md
 .dockerignore
 .env.example
 .eslintrc.json
