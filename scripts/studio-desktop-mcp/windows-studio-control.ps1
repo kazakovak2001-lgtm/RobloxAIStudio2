@@ -14,6 +14,7 @@ param(
     [int]$ExpectedTop,
     [int]$ExpectedWidth,
     [int]$ExpectedHeight,
+    [string]$ExpectedImageFingerprint = '',
     [ValidateSet('left', 'double_left')]
     [string]$Button = 'left',
     [string]$Text,
@@ -42,6 +43,12 @@ public static class StudioDesktopNative {
         public int Top;
         public int Right;
         public int Bottom;
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    public struct POINT {
+        public int X;
+        public int Y;
     }
 
     [StructLayout(LayoutKind.Sequential)]
@@ -113,6 +120,12 @@ public static class StudioDesktopNative {
 
     [DllImport("user32.dll")]
     public static extern bool SetCursorPos(int x, int y);
+
+    [DllImport("user32.dll")]
+    public static extern IntPtr WindowFromPoint(POINT point);
+
+    [DllImport("user32.dll")]
+    public static extern bool IsChild(IntPtr parent, IntPtr child);
 
     [DllImport("user32.dll", SetLastError = true)]
     public static extern uint SendInput(uint count, INPUT[] inputs, int size);
@@ -318,6 +331,72 @@ function Get-ImageFingerprint([System.Drawing.Bitmap]$bitmap) {
     }
 }
 
+function Get-CurrentImageFingerprint([object]$window, [int]$targetWidth, [int]$targetHeight) {
+    if ($window.Minimized) { throw 'Roblox Studio was minimized before final target verification; no input was performed.' }
+    if ($targetWidth -lt 1 -or $targetWidth -gt 1024 -or $targetHeight -lt 1 -or $targetHeight -gt 768) { throw 'Invalid screenshot dimensions for final target verification.' }
+    $source = [System.Drawing.Bitmap]::new($window.Width, $window.Height)
+    $sourceGraphics = [System.Drawing.Graphics]::FromImage($source)
+    $target = [System.Drawing.Bitmap]::new($targetWidth, $targetHeight)
+    $targetGraphics = [System.Drawing.Graphics]::FromImage($target)
+    try {
+        $deviceContext = $sourceGraphics.GetHdc()
+        try {
+            if (-not [StudioDesktopNative]::PrintWindow($window.Handle, $deviceContext, 2)) {
+                throw 'Windows could not recapture Roblox Studio for final target verification; no input was performed.'
+            }
+        } finally {
+            $sourceGraphics.ReleaseHdc($deviceContext)
+        }
+        $targetGraphics.InterpolationMode = [System.Drawing.Drawing2D.InterpolationMode]::HighQualityBicubic
+        $targetGraphics.DrawImage($source, 0, 0, $targetWidth, $targetHeight)
+        return Get-ImageFingerprint $target
+    } finally {
+        $targetGraphics.Dispose()
+        $target.Dispose()
+        $sourceGraphics.Dispose()
+        $source.Dispose()
+    }
+}
+
+function Assert-ExpectedTargetFingerprint([object]$window, [int]$targetX, [int]$targetY, [int]$imageWidth, [int]$imageHeight) {
+    if ([string]::IsNullOrWhiteSpace($ExpectedImageFingerprint)) { throw 'Input requires a target fingerprint from a verified Studio screenshot.' }
+    try {
+        $expected = [Convert]::FromBase64String($ExpectedImageFingerprint)
+        $current = [Convert]::FromBase64String((Get-CurrentImageFingerprint $window $imageWidth $imageHeight))
+    } catch {
+        throw 'The target fingerprint could not be verified; no input was performed.'
+    }
+    $fingerprintSize = 64
+    if ($expected.Length -ne ($fingerprintSize * $fingerprintSize) -or $current.Length -ne $expected.Length) { throw 'The target fingerprint has invalid dimensions; no input was performed.' }
+    $centerX = [Math]::Min($fingerprintSize - 1, [int][Math]::Floor($targetX * $fingerprintSize / $imageWidth))
+    $centerY = [Math]::Min($fingerprintSize - 1, [int][Math]::Floor($targetY * $fingerprintSize / $imageHeight))
+    $compared = 0
+    $totalDifference = 0
+    $maximumDifference = 0
+    for ($sampleY = [Math]::Max(0, $centerY - 2); $sampleY -le [Math]::Min($fingerprintSize - 1, $centerY + 2); $sampleY += 1) {
+        for ($sampleX = [Math]::Max(0, $centerX - 2); $sampleX -le [Math]::Min($fingerprintSize - 1, $centerX + 2); $sampleX += 1) {
+            $index = ($sampleY * $fingerprintSize) + $sampleX
+            $difference = [Math]::Abs([int]$expected[$index] - [int]$current[$index])
+            $compared += 1
+            $totalDifference += $difference
+            $maximumDifference = [Math]::Max($maximumDifference, $difference)
+        }
+    }
+    if (($totalDifference / $compared) -gt 8 -or $maximumDifference -gt 40) {
+        throw 'The intended input area changed immediately before input; no input was performed.'
+    }
+}
+
+function Assert-CursorTargetsStudioWindow([object]$window, [int]$screenX, [int]$screenY) {
+    $point = [StudioDesktopNative+POINT]::new()
+    $point.X = $screenX
+    $point.Y = $screenY
+    $pointWindow = [StudioDesktopNative]::WindowFromPoint($point)
+    if ($pointWindow -eq [IntPtr]::Zero -or ($pointWindow -ne $window.Handle -and -not [StudioDesktopNative]::IsChild($window.Handle, $pointWindow))) {
+        throw 'A separate window or popup covers the intended Studio target; no input was performed.'
+    }
+}
+
 function Convert-Status([object]$window) {
     return [ordered]@{
         pid = $window.Pid
@@ -410,6 +489,9 @@ if ($Action -eq 'Click') {
     if (-not [StudioDesktopNative]::SetCursorPos($screenX, $screenY)) {
         throw 'Windows could not position the cursor inside Roblox Studio; no click was performed.'
     }
+    Start-Sleep -Milliseconds 100
+    Assert-ExpectedTargetFingerprint $window $X $Y $ScreenshotWidth $ScreenshotHeight
+    Assert-CursorTargetsStudioWindow $window $screenX $screenY
     Assert-StudioForeground $window
     [StudioDesktopNative]::SendLeftClick()
     if ($Button -eq 'double_left') {
@@ -438,6 +520,9 @@ if ($Action -eq 'TypeText') {
     if (-not [StudioDesktopNative]::SetCursorPos($screenX, $screenY)) {
         throw 'Windows could not position the cursor inside Roblox Studio; no text was entered.'
     }
+    Start-Sleep -Milliseconds 100
+    Assert-ExpectedTargetFingerprint $window $X $Y $ScreenshotWidth $ScreenshotHeight
+    Assert-CursorTargetsStudioWindow $window $screenX $screenY
     Assert-StudioForeground $window
     [StudioDesktopNative]::SendLeftClick()
     Start-Sleep -Milliseconds 90
@@ -473,6 +558,9 @@ if ($Action -eq 'PressKey') {
     if (-not [StudioDesktopNative]::SetCursorPos($screenX, $screenY)) {
         throw 'Windows could not position the cursor inside Roblox Studio; no key was sent.'
     }
+    Start-Sleep -Milliseconds 100
+    Assert-ExpectedTargetFingerprint $window $X $Y $ScreenshotWidth $ScreenshotHeight
+    Assert-CursorTargetsStudioWindow $window $screenX $screenY
     Assert-StudioForeground $window
     [StudioDesktopNative]::SendLeftClick()
     Start-Sleep -Milliseconds 90
