@@ -3,6 +3,7 @@ import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import {
   handleRequest,
+  imageTargetFingerprintsMatch,
   layoutFingerprintsMatch,
   STUDIO_DESKTOP_TOOLS,
   validateClickArguments,
@@ -56,7 +57,7 @@ describe("Roblox Studio desktop MCP boundary", () => {
     child.stdout.setEncoding("utf8");
     child.stderr.setEncoding("utf8");
     try {
-      const responsePromise = new Promise<Record<string, unknown>>(
+      const responsePromise = new Promise<Record<string, unknown>[]>(
         (resolveResponse, rejectResponse) => {
           let stdout = "";
           let stderr = "";
@@ -70,11 +71,13 @@ describe("Roblox Studio desktop MCP boundary", () => {
           });
           child.stdout.on("data", (chunk: string) => {
             stdout += chunk;
-            const newline = stdout.indexOf("\n");
-            if (newline < 0) return;
+            const lines = stdout.split("\n").filter(Boolean);
+            if (lines.length < 2) return;
             clearTimeout(timeout);
             resolveResponse(
-              JSON.parse(stdout.slice(0, newline)) as Record<string, unknown>,
+              lines
+                .slice(0, 2)
+                .map((line) => JSON.parse(line) as Record<string, unknown>),
             );
           });
           child.once("error", (error) => {
@@ -84,13 +87,18 @@ describe("Roblox Studio desktop MCP boundary", () => {
         },
       );
       child.stdin.end(
-        `${JSON.stringify({ jsonrpc: "2.0", id: "request-73", method: "unsupported" })}\n`,
+        `null\n${JSON.stringify({ jsonrpc: "2.0", id: "request-73", method: "ping" })}\n`,
       );
-      const response = await responsePromise;
-      expect(response).toMatchObject({
+      const responses = await responsePromise;
+      expect(responses[0]).toMatchObject({
+        jsonrpc: "2.0",
+        id: null,
+        error: { code: -32603, message: "Tool arguments must be an object" },
+      });
+      expect(responses[1]).toMatchObject({
         jsonrpc: "2.0",
         id: "request-73",
-        error: { code: -32603, message: "Unsupported MCP method: unsupported" },
+        result: {},
       });
     } finally {
       child.kill();
@@ -143,16 +151,41 @@ describe("Roblox Studio desktop MCP boundary", () => {
       validateKeyArguments({ pid: 1234, captureId, key: "ALT_F4" }),
     ).toThrow(/key must be one of/);
     expect(
-      validateTextArguments({ pid: 1234, captureId, text: "UI_GENERATION" }),
-    ).toEqual({ pid: 1234, captureId, text: "UI_GENERATION" });
+      validateTextArguments({
+        pid: 1234,
+        captureId,
+        x: 100,
+        y: 200,
+        text: "UI_GENERATION",
+      }),
+    ).toEqual({ pid: 1234, captureId, x: 100, y: 200, text: "UI_GENERATION" });
     expect(() =>
-      validateTextArguments({ pid: 1234, captureId, text: "line\nbreak" }),
+      validateTextArguments({
+        pid: 1234,
+        captureId,
+        x: 100,
+        y: 200,
+        text: "line\nbreak",
+      }),
     ).toThrow(/control characters/);
     expect(() =>
-      validateTextArguments({ pid: 1234, captureId, text: "-TargetPid" }),
+      validateTextArguments({
+        pid: 1234,
+        captureId,
+        x: 100,
+        y: 200,
+        text: "-TargetPid",
+      }),
     ).toThrow(/must not start with a hyphen/);
     expect(() =>
-      validateTextArguments({ pid: 1234, captureId, text: "ok", extra: true }),
+      validateTextArguments({
+        pid: 1234,
+        captureId,
+        x: 100,
+        y: 200,
+        text: "ok",
+        extra: true,
+      }),
     ).toThrow(/Unexpected argument/);
     expect(() =>
       validateKeyArguments({ pid: 0, captureId, key: "F5" }),
@@ -208,6 +241,35 @@ describe("Roblox Studio desktop MCP boundary", () => {
       layoutFingerprintsMatch(
         expected.toString("base64"),
         changedLayout.toString("base64"),
+      ),
+    ).toBe(false);
+  });
+
+  it("binds coordinate input to the local target area", () => {
+    const expected = Buffer.alloc(64 * 64, 100);
+    const outsideChange = Buffer.from(expected);
+    outsideChange[0] = 220;
+    const targetChange = Buffer.from(expected);
+    targetChange[32 * 64 + 32] = 220;
+
+    expect(
+      imageTargetFingerprintsMatch(
+        expected.toString("base64"),
+        outsideChange.toString("base64"),
+        1024,
+        768,
+        512,
+        384,
+      ),
+    ).toBe(true);
+    expect(
+      imageTargetFingerprintsMatch(
+        expected.toString("base64"),
+        targetChange.toString("base64"),
+        1024,
+        768,
+        512,
+        384,
       ),
     ).toBe(false);
   });

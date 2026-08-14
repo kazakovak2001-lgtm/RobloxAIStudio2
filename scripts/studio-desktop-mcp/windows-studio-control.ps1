@@ -1,6 +1,6 @@
 param(
     [Parameter(Mandatory = $true)]
-    [ValidateSet('ListWindows', 'Status', 'Capture', 'Click', 'TypeText', 'PressKey')]
+    [ValidateSet('ListWindows', 'Status', 'Capture', 'CaptureFocused', 'Click', 'TypeText', 'PressKey')]
     [string]$Action,
     [int]$TargetPid = 0,
     [string]$OutputPath,
@@ -17,7 +17,7 @@ param(
     [ValidateSet('left', 'double_left')]
     [string]$Button = 'left',
     [string]$Text,
-    [ValidateSet('TAB', 'SHIFT_TAB', 'ENTER', 'ESCAPE', 'UP', 'DOWN', 'LEFT', 'RIGHT', 'F5', 'SHIFT_F5', 'CTRL_F')]
+    [ValidateSet('TAB', 'SHIFT_TAB', 'ESCAPE', 'UP', 'DOWN', 'LEFT', 'RIGHT', 'F5', 'SHIFT_F5', 'CTRL_F')]
     [string]$Key
 )
 
@@ -297,6 +297,27 @@ function Get-LayoutFingerprint([System.Drawing.Bitmap]$bitmap) {
     }
 }
 
+function Get-ImageFingerprint([System.Drawing.Bitmap]$bitmap) {
+    $thumbnail = [System.Drawing.Bitmap]::new(64, 64)
+    $graphics = [System.Drawing.Graphics]::FromImage($thumbnail)
+    try {
+        $graphics.InterpolationMode = [System.Drawing.Drawing2D.InterpolationMode]::HighQualityBicubic
+        $graphics.DrawImage($bitmap, 0, 0, 64, 64)
+        $values = [System.Collections.Generic.List[byte]]::new()
+        for ($y = 0; $y -lt 64; $y += 1) {
+            for ($x = 0; $x -lt 64; $x += 1) {
+                $color = $thumbnail.GetPixel($x, $y)
+                $luminance = [byte][Math]::Round((0.2126 * $color.R) + (0.7152 * $color.G) + (0.0722 * $color.B))
+                $values.Add($luminance)
+            }
+        }
+        return [Convert]::ToBase64String($values.ToArray())
+    } finally {
+        $graphics.Dispose()
+        $thumbnail.Dispose()
+    }
+}
+
 function Convert-Status([object]$window) {
     return [ordered]@{
         pid = $window.Pid
@@ -321,12 +342,16 @@ if ($Action -eq 'ListWindows') {
 
 $window = Get-EligibleStudioWindow $TargetPid
 
+if ($Action -eq 'CaptureFocused') {
+    $window = Focus-StudioWindow $window
+}
+
 if ($Action -eq 'Status') {
     Convert-Status $window | ConvertTo-Json -Compress -Depth 5
     exit 0
 }
 
-if ($Action -eq 'Capture') {
+if ($Action -eq 'Capture' -or $Action -eq 'CaptureFocused') {
     if ([string]::IsNullOrWhiteSpace($OutputPath)) { throw 'Capture requires OutputPath.' }
     if ($MaxWidth -lt 1 -or $MaxWidth -gt 1024 -or $MaxHeight -lt 1 -or $MaxHeight -gt 768) { throw 'Capture dimensions exceed the 1024x768 safety boundary.' }
     if ($window.Minimized) { throw 'Roblox Studio is minimized; restore it before read-only capture.' }
@@ -338,6 +363,7 @@ if ($Action -eq 'Capture') {
     $sourceGraphics = [System.Drawing.Graphics]::FromImage($source)
     $target = [System.Drawing.Bitmap]::new($targetWidth, $targetHeight)
     $targetGraphics = [System.Drawing.Graphics]::FromImage($target)
+    $imageFingerprint = $null
     $layoutFingerprint = $null
     try {
         $deviceContext = $sourceGraphics.GetHdc()
@@ -350,6 +376,7 @@ if ($Action -eq 'Capture') {
         }
         $targetGraphics.InterpolationMode = [System.Drawing.Drawing2D.InterpolationMode]::HighQualityBicubic
         $targetGraphics.DrawImage($source, 0, 0, $targetWidth, $targetHeight)
+        $imageFingerprint = Get-ImageFingerprint $target
         $layoutFingerprint = Get-LayoutFingerprint $target
         $parent = [System.IO.Path]::GetDirectoryName([System.IO.Path]::GetFullPath($OutputPath))
         [System.IO.Directory]::CreateDirectory($parent) | Out-Null
@@ -363,6 +390,7 @@ if ($Action -eq 'Capture') {
     $result = Convert-Status $window
     $result.imageWidth = $targetWidth
     $result.imageHeight = $targetHeight
+    $result.imageFingerprint = $imageFingerprint
     $result.layoutFingerprint = $layoutFingerprint
     $result.outputPath = [System.IO.Path]::GetFullPath($OutputPath)
     $result | ConvertTo-Json -Compress -Depth 5
@@ -401,7 +429,22 @@ if ($Action -eq 'Click') {
 if ($Action -eq 'TypeText') {
     if ([string]::IsNullOrEmpty($Text) -or $Text.Length -gt 2000) { throw 'Text must contain 1 to 2000 characters.' }
     if ($Text -match '[\x00-\x1F\x7F]') { throw 'Control characters are not accepted.' }
+    if ($ScreenshotWidth -lt 1 -or $ScreenshotWidth -gt 1024 -or $ScreenshotHeight -lt 1 -or $ScreenshotHeight -gt 768) { throw 'Invalid screenshot dimensions.' }
+    if ($X -lt 0 -or $X -ge $ScreenshotWidth -or $Y -lt 0 -or $Y -ge $ScreenshotHeight) { throw 'Text target is outside the referenced screenshot.' }
+    $screenX = $window.Left + [int][Math]::Floor(($X + 0.5) * $window.Width / $ScreenshotWidth)
+    $screenY = $window.Top + [int][Math]::Floor(($Y + 0.5) * $window.Height / $ScreenshotHeight)
+    if ($screenX -lt $window.Left -or $screenX -ge ($window.Left + $window.Width) -or $screenY -lt $window.Top -or $screenY -ge ($window.Top + $window.Height)) { throw 'Mapped text target escaped the Roblox Studio window.' }
     Assert-StudioForeground $window
+    if (-not [StudioDesktopNative]::SetCursorPos($screenX, $screenY)) {
+        throw 'Windows could not position the cursor inside Roblox Studio; no text was entered.'
+    }
+    Assert-StudioForeground $window
+    [StudioDesktopNative]::SendLeftClick()
+    Start-Sleep -Milliseconds 90
+    $textWindow = Get-EligibleStudioWindow $window.Pid
+    if ($textWindow.Handle -ne $window.Handle) { throw 'Roblox Studio main window changed after focusing the text target; no text was entered.' }
+    Assert-ExpectedWindowBounds $textWindow
+    Assert-StudioForeground $textWindow
     [StudioDesktopNative]::SendUnicode($Text)
     Convert-Status (Get-EligibleStudioWindow $window.Pid) | ConvertTo-Json -Compress -Depth 5
     exit 0
@@ -411,7 +454,6 @@ if ($Action -eq 'PressKey') {
     $sequences = @{
         TAB = '{TAB}'
         SHIFT_TAB = '+{TAB}'
-        ENTER = '{ENTER}'
         ESCAPE = '{ESC}'
         UP = '{UP}'
         DOWN = '{DOWN}'

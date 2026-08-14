@@ -31,6 +31,7 @@ interface StudioWindowStatus {
 interface StudioCaptureResult extends StudioWindowStatus {
   imageWidth: number;
   imageHeight: number;
+  imageFingerprint: string;
   layoutFingerprint: string;
   outputPath: string;
 }
@@ -71,7 +72,6 @@ const HELPER_PATH = fileURLToPath(
 const ALLOWED_KEYS = [
   "TAB",
   "SHIFT_TAB",
-  "ENTER",
   "ESCAPE",
   "UP",
   "DOWN",
@@ -163,14 +163,16 @@ export const STUDIO_DESKTOP_TOOLS: ToolDefinition[] = [
   {
     name: "studio_type_text",
     description:
-      "Type plain text into the focused control inside Roblox Studio. Requires operator approval. Control characters and text longer than 2000 characters are rejected. Never supply credentials or secrets.",
+      "Click a verified point from the referenced screenshot and type plain text into that Studio control. Requires operator approval. Control characters and text longer than 2000 characters are rejected. Never supply credentials or secrets.",
     inputSchema: {
       type: "object",
       additionalProperties: false,
-      required: ["pid", "captureId", "text"],
+      required: ["pid", "captureId", "x", "y", "text"],
       properties: {
         pid: { type: "integer", minimum: 1, maximum: MAX_PROCESS_ID },
         captureId: { type: "string", format: "uuid" },
+        x: { type: "integer", minimum: 0, maximum: MAX_SCREENSHOT_WIDTH - 1 },
+        y: { type: "integer", minimum: 0, maximum: MAX_SCREENSHOT_HEIGHT - 1 },
         text: { type: "string", minLength: 1, maxLength: MAX_TEXT_LENGTH },
       },
     },
@@ -323,12 +325,16 @@ export function validateClickArguments(value: unknown): {
 export function validateTextArguments(value: unknown): {
   pid: number;
   captureId: string;
+  x: number;
+  y: number;
   text: string;
 } {
   const object = assertObject(value);
-  assertOnlyKeys(object, ["pid", "captureId", "text"]);
+  assertOnlyKeys(object, ["pid", "captureId", "x", "y", "text"]);
   const pid = requireProcessId(object);
   const captureId = requireCaptureId(object);
+  const x = requireInteger(object, "x", 0, MAX_SCREENSHOT_WIDTH - 1);
+  const y = requireInteger(object, "y", 0, MAX_SCREENSHOT_HEIGHT - 1);
   const text = object.text;
   if (
     typeof text !== "string" ||
@@ -343,7 +349,7 @@ export function validateTextArguments(value: unknown): {
   if (text.startsWith("-")) {
     throw new Error("text must not start with a hyphen");
   }
-  return { pid, captureId, text };
+  return { pid, captureId, x, y, text };
 }
 
 function isAllowedKey(value: unknown): value is AllowedKey {
@@ -423,6 +429,56 @@ export function layoutFingerprintsMatch(
   );
 }
 
+export function imageTargetFingerprintsMatch(
+  expectedBase64: string,
+  currentBase64: string,
+  imageWidth: number,
+  imageHeight: number,
+  x: number,
+  y: number,
+): boolean {
+  const expected = Buffer.from(expectedBase64, "base64");
+  const current = Buffer.from(currentBase64, "base64");
+  const fingerprintSize = 64;
+  if (
+    expected.length !== fingerprintSize * fingerprintSize ||
+    current.length !== expected.length ||
+    imageWidth < 1 ||
+    imageHeight < 1
+  ) {
+    return false;
+  }
+  const centerX = Math.min(
+    fingerprintSize - 1,
+    Math.floor((x * fingerprintSize) / imageWidth),
+  );
+  const centerY = Math.min(
+    fingerprintSize - 1,
+    Math.floor((y * fingerprintSize) / imageHeight),
+  );
+  let compared = 0;
+  let totalDifference = 0;
+  let maximumDifference = 0;
+  for (
+    let sampleY = Math.max(0, centerY - 2);
+    sampleY <= Math.min(fingerprintSize - 1, centerY + 2);
+    sampleY += 1
+  ) {
+    for (
+      let sampleX = Math.max(0, centerX - 2);
+      sampleX <= Math.min(fingerprintSize - 1, centerX + 2);
+      sampleX += 1
+    ) {
+      const index = sampleY * fingerprintSize + sampleX;
+      const difference = Math.abs(expected[index] - current[index]);
+      compared += 1;
+      totalDifference += difference;
+      maximumDifference = Math.max(maximumDifference, difference);
+    }
+  }
+  return totalDifference / compared <= 8 && maximumDifference <= 40;
+}
+
 function equalBounds(
   left: StudioWindowStatus["bounds"],
   right: StudioWindowStatus["bounds"],
@@ -438,7 +494,10 @@ function equalBounds(
 async function consumeFreshCaptureReference(
   captureId: string,
   pid: number,
-): Promise<StudioCaptureReference> {
+): Promise<{
+  reference: StudioCaptureReference;
+  current: StudioCaptureResult;
+}> {
   const reference = captureReferences.get(captureId);
   captureReferences.delete(captureId);
   if (
@@ -450,7 +509,7 @@ async function consumeFreshCaptureReference(
       "The screenshot reference is missing, expired, already used, or belongs to another Studio PID; capture a new screenshot before input",
     );
   }
-  const current = await captureToTemporaryFile(pid);
+  const current = await captureToTemporaryFile(pid, true);
   if (
     current.capture.imageWidth !== reference.capture.imageWidth ||
     current.capture.imageHeight !== reference.capture.imageHeight ||
@@ -467,7 +526,29 @@ async function consumeFreshCaptureReference(
       "The Roblox Studio window no longer matches the referenced screenshot; capture a new screenshot before input",
     );
   }
-  return reference;
+  return { reference, current: current.capture };
+}
+
+function assertTargetAreaUnchanged(
+  reference: StudioCaptureReference,
+  current: StudioCaptureResult,
+  x: number,
+  y: number,
+): void {
+  if (
+    !imageTargetFingerprintsMatch(
+      reference.capture.imageFingerprint,
+      current.imageFingerprint,
+      reference.capture.imageWidth,
+      reference.capture.imageHeight,
+      x,
+      y,
+    )
+  ) {
+    throw new Error(
+      "The intended input area changed after the referenced screenshot; capture a new screenshot before input",
+    );
+  }
 }
 
 function expectedBoundsArguments(reference: StudioCaptureReference): string[] {
@@ -495,7 +576,13 @@ function parseHelperOutput<T>(output: string): T {
 
 async function invokeHelper<T>(
   action:
-    "ListWindows" | "Status" | "Capture" | "Click" | "TypeText" | "PressKey",
+    | "ListWindows"
+    | "Status"
+    | "Capture"
+    | "CaptureFocused"
+    | "Click"
+    | "TypeText"
+    | "PressKey",
   argumentsList: string[] = [],
 ): Promise<T> {
   if (process.platform !== "win32") {
@@ -558,7 +645,10 @@ async function invokeHelper<T>(
   return parseHelperOutput<T>(output);
 }
 
-async function captureToTemporaryFile(pid?: number): Promise<{
+async function captureToTemporaryFile(
+  pid?: number,
+  focusBeforeCapture = false,
+): Promise<{
   capture: StudioCaptureResult;
   data: Buffer;
 }> {
@@ -566,15 +656,18 @@ async function captureToTemporaryFile(pid?: number): Promise<{
   const outputPath = resolve(directory, "studio.png");
   await mkdir(directory, { recursive: true });
   try {
-    const capture = await invokeHelper<StudioCaptureResult>("Capture", [
-      ...(pid === undefined ? [] : ["-TargetPid", String(pid)]),
-      "-OutputPath",
-      outputPath,
-      "-MaxWidth",
-      String(MAX_SCREENSHOT_WIDTH),
-      "-MaxHeight",
-      String(MAX_SCREENSHOT_HEIGHT),
-    ]);
+    const capture = await invokeHelper<StudioCaptureResult>(
+      focusBeforeCapture ? "CaptureFocused" : "Capture",
+      [
+        ...(pid === undefined ? [] : ["-TargetPid", String(pid)]),
+        "-OutputPath",
+        outputPath,
+        "-MaxWidth",
+        String(MAX_SCREENSHOT_WIDTH),
+        "-MaxHeight",
+        String(MAX_SCREENSHOT_HEIGHT),
+      ],
+    );
     return { capture, data: await readFile(outputPath) };
   } finally {
     await rm(directory, { recursive: true, force: true });
@@ -623,10 +716,11 @@ async function callTool(
         textContent({
           ...capture,
           outputPath: undefined,
+          imageFingerprint: undefined,
           layoutFingerprint: undefined,
           captureId,
           coordinateContract:
-            "Pass this pid and single-use captureId to the next input tool. For studio_click, use x/y from this exact image.",
+            "Pass this pid and single-use captureId to the next input tool. For studio_click or studio_type_text, use x/y from this exact image.",
         }),
         { type: "image", data: data.toString("base64"), mimeType: "image/png" },
       ],
@@ -634,7 +728,7 @@ async function callTool(
   }
   if (name === "studio_click") {
     const click = validateClickArguments(rawArguments);
-    const reference = await consumeFreshCaptureReference(
+    const { reference, current } = await consumeFreshCaptureReference(
       click.captureId,
       click.pid,
     );
@@ -646,6 +740,7 @@ async function callTool(
         "Click coordinates are outside the referenced screenshot",
       );
     }
+    assertTargetAreaUnchanged(reference, current, click.x, click.y);
     return {
       content: [
         textContent(
@@ -670,10 +765,17 @@ async function callTool(
   }
   if (name === "studio_type_text") {
     const input = validateTextArguments(rawArguments);
-    const reference = await consumeFreshCaptureReference(
+    const { reference, current } = await consumeFreshCaptureReference(
       input.captureId,
       input.pid,
     );
+    if (
+      input.x >= reference.capture.imageWidth ||
+      input.y >= reference.capture.imageHeight
+    ) {
+      throw new Error("Text target is outside the referenced screenshot");
+    }
+    assertTargetAreaUnchanged(reference, current, input.x, input.y);
     return {
       content: [
         textContent(
@@ -682,6 +784,14 @@ async function callTool(
             String(input.pid),
             "-Text",
             input.text,
+            "-X",
+            String(input.x),
+            "-Y",
+            String(input.y),
+            "-ScreenshotWidth",
+            String(reference.capture.imageWidth),
+            "-ScreenshotHeight",
+            String(reference.capture.imageHeight),
             ...expectedBoundsArguments(reference),
           ]),
         ),
@@ -690,7 +800,7 @@ async function callTool(
   }
   if (name === "studio_press_key") {
     const input = validateKeyArguments(rawArguments);
-    const reference = await consumeFreshCaptureReference(
+    const { reference } = await consumeFreshCaptureReference(
       input.captureId,
       input.pid,
     );
@@ -726,6 +836,7 @@ async function callTool(
       content: [
         textContent({
           ...capture,
+          imageFingerprint: undefined,
           layoutFingerprint: undefined,
           outputPath: evidencePath,
         }),
@@ -801,13 +912,26 @@ async function startServer(): Promise<void> {
       queue = queue.then(async () => {
         let request: JsonRpcRequest | undefined;
         try {
-          request = JSON.parse(line) as JsonRpcRequest;
+          const parsed = JSON.parse(line) as unknown;
+          const object = assertObject(parsed);
+          if (object.jsonrpc !== "2.0" || typeof object.method !== "string") {
+            throw new Error("Invalid JSON-RPC request");
+          }
+          if (
+            object.id !== undefined &&
+            object.id !== null &&
+            typeof object.id !== "string" &&
+            typeof object.id !== "number"
+          ) {
+            throw new Error("Invalid JSON-RPC request id");
+          }
+          request = object as unknown as JsonRpcRequest;
           const result = await handleRequest(request);
           if (request.id !== undefined && result !== undefined)
             writeResponse(request.id, result);
         } catch (error) {
-          if (request === undefined) writeError(null, error);
-          else if (request.id !== undefined) writeError(request.id, error);
+          if (request?.id === undefined) writeError(null, error);
+          else writeError(request.id, error);
         }
       });
     }
