@@ -1,16 +1,18 @@
-import { spawn } from "node:child_process";
+import { execFile, spawn } from "node:child_process";
 import {
   access,
+  copyFile,
   mkdir,
   mkdtemp,
   readFile,
   readdir,
+  rename,
   rm,
   stat,
   writeFile,
 } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { join, resolve } from "node:path";
+import { basename, dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import {
@@ -56,6 +58,173 @@ interface StudioProcessResult {
   exitCode: number | null;
   stdout: string;
   stderr: string;
+}
+
+export interface CleanGitRevision {
+  commit: string;
+}
+
+const EVIDENCE_FILES = [
+  "studio-output.log",
+  "result.json",
+  "report.md",
+] as const;
+
+function errorCode(error: unknown): string | undefined {
+  return typeof error === "object" && error !== null && "code" in error
+    ? String(error.code)
+    : undefined;
+}
+
+async function gitOutput(
+  repositoryRoot: string,
+  args: string[],
+): Promise<string> {
+  return await new Promise((resolvePromise, rejectPromise) => {
+    execFile(
+      "git",
+      args,
+      { cwd: repositoryRoot, encoding: "utf8" },
+      (error, stdout) => {
+        if (error) rejectPromise(error);
+        else resolvePromise(stdout.trim());
+      },
+    );
+  });
+}
+
+export async function captureCleanGitRevision(
+  repositoryRoot: string,
+): Promise<CleanGitRevision> {
+  const commit = await gitOutput(repositoryRoot, ["rev-parse", "HEAD"]);
+  const worktreeStatus = await gitOutput(repositoryRoot, [
+    "status",
+    "--porcelain=v1",
+    "--untracked-files=all",
+    "--ignore-submodules=none",
+  ]);
+  if (worktreeStatus) {
+    throw new Error(
+      `Studio acceptance requires a clean worktree before reading sources:\n${worktreeStatus}`,
+    );
+  }
+  const stableCommit = await gitOutput(repositoryRoot, ["rev-parse", "HEAD"]);
+  if (stableCommit !== commit) {
+    throw new Error(
+      `Studio acceptance HEAD changed while capturing the source revision: expected ${commit}, found ${stableCommit}`,
+    );
+  }
+  return { commit };
+}
+
+export async function assertGitRevisionStable(
+  repositoryRoot: string,
+  expected: CleanGitRevision,
+): Promise<void> {
+  const actual = await captureCleanGitRevision(repositoryRoot);
+  if (actual.commit !== expected.commit) {
+    throw new Error(
+      `Studio acceptance HEAD changed during the run: expected ${expected.commit}, found ${actual.commit}`,
+    );
+  }
+}
+
+async function acquirePublishLock(
+  lockDirectory: string,
+): Promise<() => Promise<void>> {
+  const deadline = Date.now() + 30_000;
+  while (true) {
+    try {
+      await mkdir(lockDirectory);
+      return async () => {
+        await rm(lockDirectory, { recursive: true, force: true });
+      };
+    } catch (error) {
+      if (errorCode(error) !== "EEXIST") throw error;
+      let lockAgeMs: number;
+      try {
+        lockAgeMs = Date.now() - (await stat(lockDirectory)).mtimeMs;
+      } catch (statError) {
+        if (errorCode(statError) === "ENOENT") continue;
+        throw statError;
+      }
+      if (lockAgeMs > 60_000) {
+        await rm(lockDirectory, { recursive: true, force: true });
+        continue;
+      }
+      if (Date.now() >= deadline) {
+        throw new Error(
+          `Timed out waiting to publish Studio acceptance evidence: ${lockDirectory}`,
+        );
+      }
+      await new Promise((resolvePromise) => setTimeout(resolvePromise, 100));
+    }
+  }
+}
+
+export async function publishAcceptanceEvidence(
+  completedRunDirectory: string,
+  outputDirectory: string,
+): Promise<void> {
+  const resolvedOutput = resolve(outputDirectory);
+  if (resolve(completedRunDirectory) === resolvedOutput) {
+    throw new Error(
+      "Completed Studio run and published output must be separate",
+    );
+  }
+  const outputParent = dirname(resolvedOutput);
+  await mkdir(outputParent, { recursive: true });
+  const stagingDirectory = await mkdtemp(
+    join(outputParent, `.${basename(resolvedOutput)}.publish-`),
+  );
+  const lockDirectory = resolve(
+    outputParent,
+    `.${basename(resolvedOutput)}.publish-lock`,
+  );
+  const previousDirectory = `${resolvedOutput}.previous-${basename(stagingDirectory)}`;
+  let releaseLock: (() => Promise<void>) | undefined;
+  let previousMoved = false;
+  try {
+    for (const file of EVIDENCE_FILES) {
+      await copyFile(
+        resolve(completedRunDirectory, file),
+        resolve(stagingDirectory, file),
+      );
+    }
+    releaseLock = await acquirePublishLock(lockDirectory);
+    try {
+      const existingEntries = await readdir(resolvedOutput);
+      const unexpectedEntries = existingEntries.filter(
+        (entry) =>
+          !EVIDENCE_FILES.includes(entry as (typeof EVIDENCE_FILES)[number]),
+      );
+      if (unexpectedEntries.length > 0) {
+        throw new Error(
+          `Refusing to replace a non-evidence output directory (${unexpectedEntries.join(", ")}): ${resolvedOutput}`,
+        );
+      }
+    } catch (error) {
+      if (errorCode(error) !== "ENOENT") throw error;
+    }
+    try {
+      await rename(resolvedOutput, previousDirectory);
+      previousMoved = true;
+    } catch (error) {
+      if (errorCode(error) !== "ENOENT") throw error;
+    }
+    await rename(stagingDirectory, resolvedOutput);
+    if (previousMoved) {
+      await rm(previousDirectory, { recursive: true, force: true });
+    }
+  } catch (error) {
+    if (previousMoved && !(await existingFile(resolvedOutput))) {
+      await rename(previousDirectory, resolvedOutput);
+    }
+    throw error;
+  } finally {
+    await rm(stagingDirectory, { recursive: true, force: true });
+    if (releaseLock) await releaseLock();
+  }
 }
 
 function requireValue(args: string[], index: number, option: string): string {
@@ -424,25 +593,11 @@ function renderMarkdownReport(report: {
   ].join("\n");
 }
 
-async function currentGitCommit(repositoryRoot: string): Promise<string> {
-  const { execFile } = await import("node:child_process");
-  return await new Promise((resolvePromise, rejectPromise) => {
-    execFile(
-      "git",
-      ["rev-parse", "HEAD"],
-      { cwd: repositoryRoot, encoding: "utf8" },
-      (error, stdout) => {
-        if (error) rejectPromise(error);
-        else resolvePromise(stdout.trim());
-      },
-    );
-  });
-}
-
 export async function runStudioAcceptance(
   options: StudioAcceptanceCliOptions,
   repositoryRoot = resolve(process.cwd()),
 ): Promise<StudioSmokeResult> {
+  const gitRevision = await captureCleanGitRevision(repositoryRoot);
   const studioExecutable = await resolveStudioExecutable(options.studioPath);
   if (
     options.target.mode === "local-place" &&
@@ -455,20 +610,14 @@ export async function runStudioAcceptance(
     options.outputDirectory ??
       resolve(repositoryRoot, "artifacts/studio-acceptance/latest"),
   );
-  await mkdir(outputDirectory, { recursive: true });
-  const studioOutputPath = resolve(outputDirectory, "studio-output.log");
   const resultPath = resolve(outputDirectory, "result.json");
   const reportPath = resolve(outputDirectory, "report.md");
-  await Promise.all(
-    [studioOutputPath, resultPath, reportPath].map((path) =>
-      rm(path, { force: true }),
-    ),
-  );
 
   const temporaryDirectory = await mkdtemp(
     join(tmpdir(), "roblox-ai-studio-acceptance-"),
   );
   try {
+    const studioOutputPath = resolve(temporaryDirectory, "studio-output.log");
     const packageResult = await packageStudioPlugin({
       repositoryRoot,
       outputDirectory: resolve(temporaryDirectory, "package"),
@@ -490,6 +639,7 @@ export async function runStudioAcceptance(
         ),
       );
     }
+    await assertGitRevisionStable(repositoryRoot, gitRevision);
     const smokeScript = renderStudioSmokeScript(
       template,
       packageResult.manifest,
@@ -518,12 +668,13 @@ export async function runStudioAcceptance(
         `Studio result used plugin ${result.pluginVersion}, expected ${packageResult.manifest.pluginVersion}`,
       );
     }
+    await assertGitRevisionStable(repositoryRoot, gitRevision);
 
     const report = {
       schemaVersion: 1,
       generatedAt: new Date().toISOString(),
       scope: "studio-engine-plugin-runtime",
-      gitCommit: await currentGitCommit(repositoryRoot),
+      gitCommit: gitRevision.commit,
       studioExecutable,
       studioExitCode: processResult.exitCode,
       target: options.target,
@@ -545,9 +696,19 @@ export async function runStudioAcceptance(
         "Subjective UX and multiplayer acceptance require separate evidence.",
       ],
     };
-    await writeFile(resultPath, `${JSON.stringify(report, null, 2)}\n`, "utf8");
+    const completedRunDirectory = resolve(temporaryDirectory, "evidence");
+    await mkdir(completedRunDirectory);
+    await copyFile(
+      studioOutputPath,
+      resolve(completedRunDirectory, "studio-output.log"),
+    );
     await writeFile(
-      reportPath,
+      resolve(completedRunDirectory, "result.json"),
+      `${JSON.stringify(report, null, 2)}\n`,
+      "utf8",
+    );
+    await writeFile(
+      resolve(completedRunDirectory, "report.md"),
       renderMarkdownReport({
         generatedAt: report.generatedAt,
         gitCommit: report.gitCommit,
@@ -558,6 +719,7 @@ export async function runStudioAcceptance(
       }),
       "utf8",
     );
+    await publishAcceptanceEvidence(completedRunDirectory, outputDirectory);
 
     console.log(`Roblox Studio automated acceptance: ${result.status}`);
     console.log(`Result: ${resultPath}`);

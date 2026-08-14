@@ -1,10 +1,18 @@
+import { execFileSync } from "node:child_process";
+import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+
 import { describe, expect, it } from "vitest";
 
 import {
   asLuauLongString,
+  assertGitRevisionStable,
   buildStudioArguments,
+  captureCleanGitRevision,
   parseStudioAcceptanceArgs,
   parseStudioAcceptanceOutput,
+  publishAcceptanceEvidence,
   renderStudioSmokeScript,
 } from "../../../scripts/studio-acceptance/run-studio-acceptance";
 import type { StudioPluginPackageManifest } from "../../../scripts/package-studio-plugin";
@@ -88,5 +96,83 @@ describe("Roblox Studio acceptance runner", () => {
     expect(() => parseStudioAcceptanceOutput("no result")).toThrow(
       /did not contain/,
     );
+  });
+
+  it("binds evidence to a clean revision and rejects a changed HEAD", async () => {
+    const repository = await mkdtemp(join(tmpdir(), "studio-acceptance-git-"));
+    try {
+      const git = (...args: string[]) =>
+        execFileSync("git", args, { cwd: repository, stdio: "pipe" });
+      git("init", "--quiet");
+      git("config", "user.name", "Studio Acceptance Test");
+      git("config", "user.email", "studio-acceptance@example.invalid");
+      await writeFile(join(repository, "source.txt"), "first\n", "utf8");
+      git("add", "source.txt");
+      git("commit", "--quiet", "-m", "first");
+
+      const revision = await captureCleanGitRevision(repository);
+      expect(revision.commit).toMatch(/^[0-9a-f]{40}$/);
+      await expect(
+        assertGitRevisionStable(repository, revision),
+      ).resolves.toBeUndefined();
+
+      await writeFile(join(repository, "source.txt"), "dirty\n", "utf8");
+      await expect(captureCleanGitRevision(repository)).rejects.toThrow(
+        /requires a clean worktree/,
+      );
+      git("add", "source.txt");
+      git("commit", "--quiet", "-m", "second");
+      await expect(
+        assertGitRevisionStable(repository, revision),
+      ).rejects.toThrow(/HEAD changed/);
+    } finally {
+      await rm(repository, { recursive: true, force: true });
+    }
+  });
+
+  it("publishes each completed run as one concurrency-safe evidence set", async () => {
+    const root = await mkdtemp(join(tmpdir(), "studio-acceptance-publish-"));
+    try {
+      const createRun = async (name: string) => {
+        const directory = join(root, name);
+        await mkdir(directory);
+        await Promise.all(
+          ["studio-output.log", "result.json", "report.md"].map((file) =>
+            writeFile(join(directory, file), `${name}:${file}\n`, "utf8"),
+          ),
+        );
+        return directory;
+      };
+      const first = await createRun("first");
+      const second = await createRun("second");
+      const latest = join(root, "latest");
+
+      await Promise.all([
+        publishAcceptanceEvidence(first, latest),
+        publishAcceptanceEvidence(second, latest),
+      ]);
+
+      const published = await Promise.all(
+        ["studio-output.log", "result.json", "report.md"].map((file) =>
+          readFile(join(latest, file), "utf8"),
+        ),
+      );
+      expect(
+        published.every((value) => value.startsWith("first:")) ||
+          published.every((value) => value.startsWith("second:")),
+      ).toBe(true);
+
+      const unsafeOutput = join(root, "unsafe-output");
+      await mkdir(unsafeOutput);
+      await writeFile(join(unsafeOutput, "keep.txt"), "keep\n", "utf8");
+      await expect(
+        publishAcceptanceEvidence(first, unsafeOutput),
+      ).rejects.toThrow(/Refusing to replace a non-evidence output directory/);
+      await expect(
+        readFile(join(unsafeOutput, "keep.txt"), "utf8"),
+      ).resolves.toBe("keep\n");
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
   });
 });
