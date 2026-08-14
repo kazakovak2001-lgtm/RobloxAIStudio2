@@ -486,11 +486,11 @@ if ($Action -eq 'Click') {
     $screenY = $window.Top + [int][Math]::Floor(($Y + 0.5) * $window.Height / $ScreenshotHeight)
     if ($screenX -lt $window.Left -or $screenX -ge ($window.Left + $window.Width) -or $screenY -lt $window.Top -or $screenY -ge ($window.Top + $window.Height)) { throw 'Mapped click escaped the Roblox Studio window.' }
     Assert-StudioForeground $window
+    Assert-ExpectedTargetFingerprint $window $X $Y $ScreenshotWidth $ScreenshotHeight
+    Assert-CursorTargetsStudioWindow $window $screenX $screenY
     if (-not [StudioDesktopNative]::SetCursorPos($screenX, $screenY)) {
         throw 'Windows could not position the cursor inside Roblox Studio; no click was performed.'
     }
-    Start-Sleep -Milliseconds 100
-    Assert-ExpectedTargetFingerprint $window $X $Y $ScreenshotWidth $ScreenshotHeight
     Assert-CursorTargetsStudioWindow $window $screenX $screenY
     Assert-StudioForeground $window
     [StudioDesktopNative]::SendLeftClick()
@@ -517,11 +517,11 @@ if ($Action -eq 'TypeText') {
     $screenY = $window.Top + [int][Math]::Floor(($Y + 0.5) * $window.Height / $ScreenshotHeight)
     if ($screenX -lt $window.Left -or $screenX -ge ($window.Left + $window.Width) -or $screenY -lt $window.Top -or $screenY -ge ($window.Top + $window.Height)) { throw 'Mapped text target escaped the Roblox Studio window.' }
     Assert-StudioForeground $window
+    Assert-ExpectedTargetFingerprint $window $X $Y $ScreenshotWidth $ScreenshotHeight
+    Assert-CursorTargetsStudioWindow $window $screenX $screenY
     if (-not [StudioDesktopNative]::SetCursorPos($screenX, $screenY)) {
         throw 'Windows could not position the cursor inside Roblox Studio; no text was entered.'
     }
-    Start-Sleep -Milliseconds 100
-    Assert-ExpectedTargetFingerprint $window $X $Y $ScreenshotWidth $ScreenshotHeight
     Assert-CursorTargetsStudioWindow $window $screenX $screenY
     Assert-StudioForeground $window
     [StudioDesktopNative]::SendLeftClick()
@@ -555,11 +555,11 @@ if ($Action -eq 'PressKey') {
     $screenY = $window.Top + [int][Math]::Floor(($Y + 0.5) * $window.Height / $ScreenshotHeight)
     if ($screenX -lt $window.Left -or $screenX -ge ($window.Left + $window.Width) -or $screenY -lt $window.Top -or $screenY -ge ($window.Top + $window.Height)) { throw 'Mapped key target escaped the Roblox Studio window.' }
     Assert-StudioForeground $window
+    Assert-ExpectedTargetFingerprint $window $X $Y $ScreenshotWidth $ScreenshotHeight
+    Assert-CursorTargetsStudioWindow $window $screenX $screenY
     if (-not [StudioDesktopNative]::SetCursorPos($screenX, $screenY)) {
         throw 'Windows could not position the cursor inside Roblox Studio; no key was sent.'
     }
-    Start-Sleep -Milliseconds 100
-    Assert-ExpectedTargetFingerprint $window $X $Y $ScreenshotWidth $ScreenshotHeight
     Assert-CursorTargetsStudioWindow $window $screenX $screenY
     Assert-StudioForeground $window
     [StudioDesktopNative]::SendLeftClick()
