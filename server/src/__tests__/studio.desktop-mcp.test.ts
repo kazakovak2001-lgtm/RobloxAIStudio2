@@ -114,6 +114,10 @@ describe("Roblox Studio desktop MCP boundary", () => {
           }),
           JSON.stringify({
             jsonrpc: "2.0",
+            method: "unsupported/notification",
+          }),
+          JSON.stringify({
+            jsonrpc: "2.0",
             id: "request-73",
             method: "ping",
           }),

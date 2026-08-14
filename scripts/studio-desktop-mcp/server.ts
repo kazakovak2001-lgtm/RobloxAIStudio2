@@ -1012,8 +1012,8 @@ async function startServer(): Promise<void> {
           if (request.id !== undefined && result !== undefined)
             writeResponse(request.id, result);
         } catch (error) {
-          if (request?.id === undefined) writeError(null, error);
-          else writeError(request.id, error);
+          if (request && request.id === undefined) return;
+          writeError(request?.id ?? null, error);
         }
       });
     }

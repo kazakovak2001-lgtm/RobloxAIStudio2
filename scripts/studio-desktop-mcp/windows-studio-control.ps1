@@ -501,6 +501,11 @@ if ($Action -eq 'Click') {
             throw 'Roblox Studio main window changed after the first click; the second click was not performed.'
         }
         Assert-ExpectedWindowBounds $secondClickWindow
+        Assert-CursorTargetsStudioWindow $secondClickWindow $screenX $screenY
+        if (-not [StudioDesktopNative]::SetCursorPos($screenX, $screenY)) {
+            throw 'Windows could not reposition the cursor inside Roblox Studio; the second click was not performed.'
+        }
+        Assert-CursorTargetsStudioWindow $secondClickWindow $screenX $screenY
         Assert-StudioForeground $secondClickWindow
         [StudioDesktopNative]::SendLeftClick()
     }
