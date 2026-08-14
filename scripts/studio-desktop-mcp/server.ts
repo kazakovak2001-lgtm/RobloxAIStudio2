@@ -56,6 +56,7 @@ interface ToolDefinition {
 
 const SERVER_NAME = "roblox-studio-desktop";
 const SERVER_VERSION = "1.0.0";
+const MCP_PROTOCOL_VERSION = "2025-06-18";
 const MAX_TEXT_LENGTH = 2_000;
 const MAX_SCREENSHOT_WIDTH = 1_024;
 const MAX_SCREENSHOT_HEIGHT = 768;
@@ -186,14 +187,16 @@ export const STUDIO_DESKTOP_TOOLS: ToolDefinition[] = [
   {
     name: "studio_press_key",
     description:
-      "Send one allowlisted navigation or Play-test key to Roblox Studio. Requires operator approval. No arbitrary shortcuts are accepted.",
+      "Click a verified point from the referenced screenshot to establish the intended UI context, then send one allowlisted navigation or Play-test key to Roblox Studio. Requires operator approval. No arbitrary shortcuts are accepted.",
     inputSchema: {
       type: "object",
       additionalProperties: false,
-      required: ["pid", "captureId", "key"],
+      required: ["pid", "captureId", "x", "y", "key"],
       properties: {
         pid: { type: "integer", minimum: 1, maximum: MAX_PROCESS_ID },
         captureId: { type: "string", format: "uuid" },
+        x: { type: "integer", minimum: 0, maximum: MAX_SCREENSHOT_WIDTH - 1 },
+        y: { type: "integer", minimum: 0, maximum: MAX_SCREENSHOT_HEIGHT - 1 },
         key: { type: "string", enum: ALLOWED_KEYS },
       },
     },
@@ -362,16 +365,20 @@ function isAllowedKey(value: unknown): value is AllowedKey {
 export function validateKeyArguments(value: unknown): {
   pid: number;
   captureId: string;
+  x: number;
+  y: number;
   key: AllowedKey;
 } {
   const object = assertObject(value);
-  assertOnlyKeys(object, ["pid", "captureId", "key"]);
+  assertOnlyKeys(object, ["pid", "captureId", "x", "y", "key"]);
   const pid = requireProcessId(object);
   const captureId = requireCaptureId(object);
+  const x = requireInteger(object, "x", 0, MAX_SCREENSHOT_WIDTH - 1);
+  const y = requireInteger(object, "y", 0, MAX_SCREENSHOT_HEIGHT - 1);
   if (!isAllowedKey(object.key)) {
     throw new Error(`key must be one of: ${ALLOWED_KEYS.join(", ")}`);
   }
-  return { pid, captureId, key: object.key };
+  return { pid, captureId, x, y, key: object.key };
 }
 
 export function validateEvidenceArguments(value: unknown): {
@@ -681,6 +688,22 @@ function textContent(value: unknown): { type: "text"; text: string } {
   };
 }
 
+export async function writeEvidenceFile(
+  evidencePath: string,
+  data: Buffer,
+): Promise<void> {
+  try {
+    await writeFile(evidencePath, data, { flag: "wx" });
+  } catch (error) {
+    if (error instanceof Error && "code" in error && error.code === "EEXIST") {
+      throw new Error(
+        "Evidence already exists at the requested path; choose a new runLabel or evidenceName",
+      );
+    }
+    throw error;
+  }
+}
+
 async function callTool(
   name: string,
   rawArguments: unknown,
@@ -720,7 +743,7 @@ async function callTool(
           layoutFingerprint: undefined,
           captureId,
           coordinateContract:
-            "Pass this pid and single-use captureId to the next input tool. For studio_click or studio_type_text, use x/y from this exact image.",
+            "Pass this pid and single-use captureId to the next input tool. For studio_click, studio_type_text, or studio_press_key, use x/y from this exact image.",
         }),
         { type: "image", data: data.toString("base64"), mimeType: "image/png" },
       ],
@@ -800,10 +823,17 @@ async function callTool(
   }
   if (name === "studio_press_key") {
     const input = validateKeyArguments(rawArguments);
-    const { reference } = await consumeFreshCaptureReference(
+    const { reference, current } = await consumeFreshCaptureReference(
       input.captureId,
       input.pid,
     );
+    if (
+      input.x >= reference.capture.imageWidth ||
+      input.y >= reference.capture.imageHeight
+    ) {
+      throw new Error("Key target is outside the referenced screenshot");
+    }
+    assertTargetAreaUnchanged(reference, current, input.x, input.y);
     return {
       content: [
         textContent(
@@ -812,6 +842,14 @@ async function callTool(
             String(input.pid),
             "-Key",
             input.key,
+            "-X",
+            String(input.x),
+            "-Y",
+            String(input.y),
+            "-ScreenshotWidth",
+            String(reference.capture.imageWidth),
+            "-ScreenshotHeight",
+            String(reference.capture.imageHeight),
             ...expectedBoundsArguments(reference),
           ]),
         ),
@@ -831,7 +869,7 @@ async function callTool(
     );
     const evidencePath = resolve(evidenceDirectory, `${evidenceName}.png`);
     await mkdir(evidenceDirectory, { recursive: true });
-    await writeFile(evidencePath, data);
+    await writeEvidenceFile(evidencePath, data);
     return {
       content: [
         textContent({
@@ -851,12 +889,9 @@ export async function handleRequest(
   request: JsonRpcRequest,
 ): Promise<Record<string, unknown> | undefined> {
   if (request.method === "initialize") {
-    const params = assertObject(request.params ?? {});
+    assertObject(request.params ?? {});
     return {
-      protocolVersion:
-        typeof params.protocolVersion === "string"
-          ? params.protocolVersion
-          : "2025-06-18",
+      protocolVersion: MCP_PROTOCOL_VERSION,
       capabilities: { tools: { listChanged: false } },
       serverInfo: { name: SERVER_NAME, version: SERVER_VERSION },
     };

@@ -464,7 +464,22 @@ if ($Action -eq 'PressKey') {
         CTRL_F = '^f'
     }
     if (-not $sequences.ContainsKey($Key)) { throw 'The requested key is not allowlisted.' }
+    if ($ScreenshotWidth -lt 1 -or $ScreenshotWidth -gt 1024 -or $ScreenshotHeight -lt 1 -or $ScreenshotHeight -gt 768) { throw 'Invalid screenshot dimensions.' }
+    if ($X -lt 0 -or $X -ge $ScreenshotWidth -or $Y -lt 0 -or $Y -ge $ScreenshotHeight) { throw 'Key target is outside the referenced screenshot.' }
+    $screenX = $window.Left + [int][Math]::Floor(($X + 0.5) * $window.Width / $ScreenshotWidth)
+    $screenY = $window.Top + [int][Math]::Floor(($Y + 0.5) * $window.Height / $ScreenshotHeight)
+    if ($screenX -lt $window.Left -or $screenX -ge ($window.Left + $window.Width) -or $screenY -lt $window.Top -or $screenY -ge ($window.Top + $window.Height)) { throw 'Mapped key target escaped the Roblox Studio window.' }
     Assert-StudioForeground $window
+    if (-not [StudioDesktopNative]::SetCursorPos($screenX, $screenY)) {
+        throw 'Windows could not position the cursor inside Roblox Studio; no key was sent.'
+    }
+    Assert-StudioForeground $window
+    [StudioDesktopNative]::SendLeftClick()
+    Start-Sleep -Milliseconds 90
+    $keyWindow = Get-EligibleStudioWindow $window.Pid
+    if ($keyWindow.Handle -ne $window.Handle) { throw 'Roblox Studio main window changed after focusing the key target; no key was sent.' }
+    Assert-ExpectedWindowBounds $keyWindow
+    Assert-StudioForeground $keyWindow
     [System.Windows.Forms.SendKeys]::SendWait($sequences[$Key])
     Convert-Status (Get-EligibleStudioWindow $window.Pid) | ConvertTo-Json -Compress -Depth 5
     exit 0

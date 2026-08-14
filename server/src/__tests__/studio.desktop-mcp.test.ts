@@ -1,4 +1,6 @@
 import { spawn } from "node:child_process";
+import { mkdtemp, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import {
@@ -10,6 +12,7 @@ import {
   validateEvidenceArguments,
   validateKeyArguments,
   validateTextArguments,
+  writeEvidenceFile,
 } from "../../../scripts/studio-desktop-mcp/server";
 
 describe("Roblox Studio desktop MCP boundary", () => {
@@ -42,6 +45,14 @@ describe("Roblox Studio desktop MCP boundary", () => {
       "studio_press_key",
       "studio_capture_evidence",
     ]);
+
+    const newerClient = await handleRequest({
+      jsonrpc: "2.0",
+      id: 3,
+      method: "initialize",
+      params: { protocolVersion: "2099-01-01" },
+    });
+    expect(newerClient).toMatchObject({ protocolVersion: "2025-06-18" });
   });
 
   it("preserves a valid request ID in transport-level errors", async () => {
@@ -142,13 +153,17 @@ describe("Roblox Studio desktop MCP boundary", () => {
   });
 
   it("rejects arbitrary keys and unsafe text", () => {
-    expect(validateKeyArguments({ pid: 1234, captureId, key: "F5" })).toEqual({
-      pid: 1234,
-      captureId,
-      key: "F5",
-    });
+    expect(
+      validateKeyArguments({ pid: 1234, captureId, x: 100, y: 200, key: "F5" }),
+    ).toEqual({ pid: 1234, captureId, x: 100, y: 200, key: "F5" });
     expect(() =>
-      validateKeyArguments({ pid: 1234, captureId, key: "ALT_F4" }),
+      validateKeyArguments({
+        pid: 1234,
+        captureId,
+        x: 100,
+        y: 200,
+        key: "ALT_F4",
+      }),
     ).toThrow(/key must be one of/);
     expect(
       validateTextArguments({
@@ -188,11 +203,20 @@ describe("Roblox Studio desktop MCP boundary", () => {
       }),
     ).toThrow(/Unexpected argument/);
     expect(() =>
-      validateKeyArguments({ pid: 0, captureId, key: "F5" }),
+      validateKeyArguments({ pid: 0, captureId, x: 100, y: 200, key: "F5" }),
     ).toThrow(/pid must be an integer/);
     expect(() =>
-      validateKeyArguments({ pid: 1234, captureId: "stale", key: "F5" }),
+      validateKeyArguments({
+        pid: 1234,
+        captureId: "stale",
+        x: 100,
+        y: 200,
+        key: "F5",
+      }),
     ).toThrow(/captureId must be a UUID/);
+    expect(() =>
+      validateKeyArguments({ pid: 1234, captureId, key: "F5" }),
+    ).toThrow(/x must be an integer/);
   });
 
   it("confines evidence labels to lowercase path-safe slugs", () => {
@@ -222,6 +246,19 @@ describe("Roblox Studio desktop MCP boundary", () => {
           evidenceName: unsafe,
         }),
       ).toThrow(/lowercase slug/);
+    }
+  });
+
+  it("refuses to overwrite existing Studio evidence", async () => {
+    const directory = await mkdtemp(resolve(tmpdir(), "studio-evidence-test-"));
+    const evidencePath = resolve(directory, "capture.png");
+    try {
+      await writeEvidenceFile(evidencePath, Buffer.from("first"));
+      await expect(
+        writeEvidenceFile(evidencePath, Buffer.from("second")),
+      ).rejects.toThrow(/Evidence already exists/);
+    } finally {
+      await rm(directory, { recursive: true, force: true });
     }
   });
 
