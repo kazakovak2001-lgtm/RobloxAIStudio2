@@ -22,6 +22,7 @@ import {
 
 const RESULT_PREFIX = "RAI_STUDIO_ACCEPTANCE_RESULT:";
 const DEFAULT_TIMEOUT_MS = 120_000;
+const MAX_TIMEOUT_MS = 2_147_483_647;
 const STUDIO_TERMINATION_GRACE_MS = 5_000;
 const REQUIRED_RUNTIME_SOURCES = [
   "src/utils/UITreeMaterializer.lua",
@@ -237,10 +238,14 @@ function requireValue(args: string[], index: number, option: string): string {
 }
 
 function requirePositiveInteger(value: string, option: string): number {
-  if (!/^\d+$/.test(value) || Number(value) <= 0) {
+  const parsed = Number(value);
+  if (!/^\d+$/.test(value) || parsed <= 0) {
     throw new Error(`${option} must be a positive integer`);
   }
-  return Number(value);
+  if (parsed > MAX_TIMEOUT_MS) {
+    throw new Error(`${option} must not exceed ${MAX_TIMEOUT_MS}`);
+  }
+  return parsed;
 }
 
 export function parseStudioAcceptanceArgs(

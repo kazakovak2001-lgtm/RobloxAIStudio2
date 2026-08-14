@@ -9,7 +9,13 @@ disable-model-invocation: true
 
 Run acceptance for the current exact HEAD. This workflow is read-only with respect to tracked files and external systems. Do not edit, commit, merge, push, publish, upload, change plugin settings, or expose credentials.
 
-Delegate the evidence run and interpretation to `studio-acceptance-engineer`. Inspect the worktree and current project-control authority first. Then run:
+Delegate the evidence run and interpretation to `studio-acceptance-engineer`. Inspect the worktree and current project-control authority first. With no arguments, run the exact pre-approved command:
+
+```text
+npm run studio:acceptance
+```
+
+Only when the caller supplied custom arguments, preserve them with the separator:
 
 ```text
 npm run studio:acceptance -- $ARGUMENTS

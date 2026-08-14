@@ -48,6 +48,9 @@ describe("Roblox Studio acceptance runner", () => {
     expect(() => parseStudioAcceptanceArgs(["--publish"])).toThrow(
       /Unknown option/,
     );
+    expect(() =>
+      parseStudioAcceptanceArgs(["--timeout-ms", "2147483648"]),
+    ).toThrow(/must not exceed 2147483647/);
   });
 
   it("builds only documented RunScript arguments and never adds publishing", () => {
