@@ -12,12 +12,15 @@
 │   │   ├── release-reviewer.md
 │   │   ├── security-reviewer.md
 │   │   ├── studio-acceptance-engineer.md
+│   │   ├── studio-operator.md
 │   │   └── test-engineer.md
 │   ├── settings.json
 │   └── skills
 │       ├── data-202b-audit
 │       │   └── SKILL.md
-│       └── studio-acceptance
+│       ├── studio-acceptance
+│       │   └── SKILL.md
+│       └── studio-desktop-acceptance
 │           └── SKILL.md
 ├── .dockerignore
 ├── .env.example
@@ -84,6 +87,7 @@
 │   └── steering
 │       └── pre-implementation-check.md
 ├── .kirorules
+├── .mcp.json
 ├── .nvmrc
 ├── .roorules
 ├── .snapshots
@@ -465,6 +469,7 @@
 │   ├── templates
 │   │   └── IMPLEMENTATION_TASK_TEMPLATE.md
 │   ├── testing
+│   │   ├── CLAUDE_STUDIO_DESKTOP_CONTROL.md
 │   │   ├── ROBLOX_STUDIO_PLUGIN_TEST_PLAN.md
 │   │   ├── ROBLOX_STUDIO_TEST_RESULTS.md
 │   │   └── STUDIO_AUTOMATED_ACCEPTANCE.md
@@ -602,6 +607,9 @@
 │   ├── studio-acceptance
 │   │   ├── run-studio-acceptance.ts
 │   │   └── studio-smoke.template.luau
+│   ├── studio-desktop-mcp
+│   │   ├── server.ts
+│   │   └── windows-studio-control.ps1
 │   ├── test-architecture-graph.ts
 │   ├── test-decision-memory.ts
 │   ├── test-json-parser.ts
@@ -721,6 +729,7 @@
 │   │   │   ├── securityreviewa2.hardening.test.ts
 │   │   │   ├── simtruth1.evidence.test.ts
 │   │   │   ├── studio.acceptance-runner.test.ts
+│   │   │   ├── studio.desktop-mcp.test.ts
 │   │   │   ├── studio1.artifact-lineage.test.ts
 │   │   │   ├── studio1.import-acknowledgement.test.ts
 │   │   │   ├── studio1.plugin-contract.test.ts

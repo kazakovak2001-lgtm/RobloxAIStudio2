@@ -1,0 +1,15 @@
+{
+  "mcpServers": {
+    "roblox_studio_desktop": {
+      "command": "node",
+      "args": [
+        "--import",
+        "tsx",
+        "${CLAUDE_PROJECT_DIR:-.}/scripts/studio-desktop-mcp/server.ts"
+      ],
+      "env": {
+        "ROBLOX_STUDIO_DESKTOP_PROJECT_DIR": "${CLAUDE_PROJECT_DIR:-.}"
+      }
+    }
+  }
+}

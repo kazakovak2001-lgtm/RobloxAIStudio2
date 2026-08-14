@@ -6,10 +6,12 @@
 .claude/agents/release-reviewer.md
 .claude/agents/security-reviewer.md
 .claude/agents/studio-acceptance-engineer.md
+.claude/agents/studio-operator.md
 .claude/agents/test-engineer.md
 .claude/settings.json
 .claude/skills/data-202b-audit/SKILL.md
 .claude/skills/studio-acceptance/SKILL.md
+.claude/skills/studio-desktop-acceptance/SKILL.md
 .dockerignore
 .env.example
 .eslintrc.json
@@ -58,6 +60,7 @@
 .kiro/specs/workspace-ux-redesign-v2/tasks.md
 .kiro/steering/pre-implementation-check.md
 .kirorules
+.mcp.json
 .nvmrc
 .roorules
 .snapshots/config.json
@@ -406,6 +409,7 @@ docs/project/CLEANUP-1D_POST_REMOVAL_VERIFICATION.md
 docs/project/CUTOVER-1E_DEFAULT_PROMOTION.md
 docs/project/CUTOVER-1F_POST_PROMOTION_CI_ALIGNMENT.md
 docs/templates/IMPLEMENTATION_TASK_TEMPLATE.md
+docs/testing/CLAUDE_STUDIO_DESKTOP_CONTROL.md
 docs/testing/ROBLOX_STUDIO_PLUGIN_TEST_PLAN.md
 docs/testing/ROBLOX_STUDIO_TEST_RESULTS.md
 docs/testing/STUDIO_AUTOMATED_ACCEPTANCE.md
@@ -510,6 +514,8 @@ scripts/pre-check.ts
 scripts/scan-imports.ts
 scripts/studio-acceptance/run-studio-acceptance.ts
 scripts/studio-acceptance/studio-smoke.template.luau
+scripts/studio-desktop-mcp/server.ts
+scripts/studio-desktop-mcp/windows-studio-control.ps1
 scripts/test-architecture-graph.ts
 scripts/test-decision-memory.ts
 scripts/test-json-parser.ts
@@ -625,6 +631,7 @@ server/src/__tests__/securityHardening.test.ts
 server/src/__tests__/securityreviewa2.hardening.test.ts
 server/src/__tests__/simtruth1.evidence.test.ts
 server/src/__tests__/studio.acceptance-runner.test.ts
+server/src/__tests__/studio.desktop-mcp.test.ts
 server/src/__tests__/studio1.artifact-lineage.test.ts
 server/src/__tests__/studio1.import-acknowledgement.test.ts
 server/src/__tests__/studio1.plugin-contract.test.ts
