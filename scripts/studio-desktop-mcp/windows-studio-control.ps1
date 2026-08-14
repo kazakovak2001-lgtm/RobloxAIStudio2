@@ -235,12 +235,9 @@ function Get-EligibleStudioWindow([int]$requestedPid = 0) {
         if ($pidMatches.Count -ne 1) { throw "PID $requestedPid is not an eligible Roblox Studio main window." }
         return $pidMatches[0]
     }
-    $foregroundHandle = [StudioDesktopNative]::GetForegroundWindow()
-    $foregroundMatches = @($windows | Where-Object { $_.Handle -eq $foregroundHandle })
-    if ($foregroundMatches.Count -eq 1) { return $foregroundMatches[0] }
     if ($windows.Count -ne 1) {
         $eligiblePids = ($windows | ForEach-Object { $_.Pid }) -join ', '
-        throw "Multiple Roblox Studio windows are open and none is foreground; specify one eligible PID: $eligiblePids."
+        throw "Multiple Roblox Studio windows are open; specify one eligible PID: $eligiblePids."
     }
     return $windows[0]
 }
