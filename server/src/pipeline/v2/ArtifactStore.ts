@@ -119,6 +119,10 @@ export type ArtifactType =
 const ARTIFACT_COLLECTION = "pipeline_artifacts";
 const PACKAGE_COMMIT_COLLECTION = "generation_package_commits";
 
+function packageCommitKey(projectId: string, pipelineId: string): string {
+  return `${projectId}:${pipelineId}`;
+}
+
 const STAGE_ARTIFACT_CONFIG: Record<
   StageName,
   { name: string; type: ArtifactType } | null
@@ -353,27 +357,51 @@ export class ArtifactStore {
       committedAt: Date.now(),
     };
 
+    const key = packageCommitKey(input.projectId, input.pipelineId);
     const storage = this.storage;
     if (storage) {
-      await storage.setDurable(
-        PACKAGE_COMMIT_COLLECTION,
-        input.pipelineId,
-        commit,
-      );
+      await storage.setDurable(PACKAGE_COMMIT_COLLECTION, key, commit);
     }
-    this.packageCommits.set(input.pipelineId, commit);
+    this.packageCommits.set(key, commit);
     return commit;
   }
 
-  getPackageCommit(pipelineId: string): GenerationPackageCommit | null {
-    const cached = this.packageCommits.get(pipelineId);
-    if (cached) return cached;
+  getPackageCommit(
+    projectId: string,
+    pipelineId: string,
+  ): GenerationPackageCommit | null;
+  getPackageCommit(pipelineId: string): GenerationPackageCommit | null;
+  getPackageCommit(
+    projectIdOrPipelineId: string,
+    maybePipelineId?: string,
+  ): GenerationPackageCommit | null {
+    const pipelineId = maybePipelineId ?? projectIdOrPipelineId;
+    const projectId =
+      maybePipelineId === undefined
+        ? this.resolveSingleProjectId(pipelineId)
+        : projectIdOrPipelineId;
+    if (!projectId) return null;
+
+    const key = packageCommitKey(projectId, pipelineId);
+    const cached = this.packageCommits.get(key);
+    if (cached) {
+      return cached.projectId === projectId && cached.pipelineId === pipelineId
+        ? cached
+        : null;
+    }
     const commit =
       this.storage?.get<GenerationPackageCommit>(
         PACKAGE_COMMIT_COLLECTION,
-        pipelineId,
+        key,
       ) ?? null;
-    if (commit) this.packageCommits.set(pipelineId, commit);
+    if (
+      !commit ||
+      commit.projectId !== projectId ||
+      commit.pipelineId !== pipelineId
+    ) {
+      return null;
+    }
+    this.packageCommits.set(key, commit);
     return commit;
   }
 
@@ -384,13 +412,50 @@ export class ArtifactStore {
    * before. Once either WORLD_MODEL or VALIDATION declares a mode, absence of
    * the last-written commit marker fails closed.
    */
-  getDeliverableArtifacts(pipelineId: string): PipelineArtifact[] {
-    const artifacts = this.getByPipeline(pipelineId);
-    const commit = this.getPackageCommit(pipelineId);
+  getDeliverableArtifacts(
+    projectId: string,
+    pipelineId: string,
+  ): PipelineArtifact[];
+  getDeliverableArtifacts(pipelineId: string): PipelineArtifact[];
+  getDeliverableArtifacts(
+    projectIdOrPipelineId: string,
+    maybePipelineId?: string,
+  ): PipelineArtifact[] {
+    const pipelineId = maybePipelineId ?? projectIdOrPipelineId;
+    const allArtifacts = this.getByPipeline(pipelineId);
+    const explicitProject = maybePipelineId !== undefined;
+    const projectId = explicitProject
+      ? projectIdOrPipelineId
+      : this.resolveSingleProjectId(pipelineId);
+
+    if (!projectId) {
+      // Historical artifacts can predate the project envelope. Preserve that
+      // one-argument compatibility path only when no artifact claims a tenant.
+      if (allArtifacts.some((artifact) => artifact.projectId !== undefined)) {
+        return [];
+      }
+      try {
+        const declaresMode = allArtifacts.some(
+          (artifact) =>
+            (artifact.stage === "WORLD_MODEL" ||
+              artifact.stage === "VALIDATION") &&
+            resolveWorldRuntimeModeFromContent(artifact.content).explicit,
+        );
+        return declaresMode ? [] : allArtifacts;
+      } catch {
+        return [];
+      }
+    }
+
+    const artifacts = allArtifacts.filter(
+      (artifact) => artifact.projectId === projectId,
+    );
+    const commit = this.getPackageCommit(projectId, pipelineId);
     if (commit) {
       if (
         commit.schemaVersion !== GENERATION_PACKAGE_COMMIT_SCHEMA_VERSION ||
-        commit.pipelineId !== pipelineId
+        commit.pipelineId !== pipelineId ||
+        commit.projectId !== projectId
       ) {
         return [];
       }
@@ -404,7 +469,7 @@ export class ArtifactStore {
           !artifact ||
           artifact.stage !== ref.stage ||
           artifact.contentHash !== ref.contentHash ||
-          artifact.projectId !== commit.projectId
+          artifact.projectId !== projectId
         ) {
           return [];
         }
@@ -593,6 +658,15 @@ export class ArtifactStore {
 
   private get storage(): ArtifactStorageProvider | undefined {
     return this.injectedStorage ?? configuredArtifactStorageFactory?.();
+  }
+
+  private resolveSingleProjectId(pipelineId: string): string | null {
+    const projectIds = new Set<string>();
+    for (const artifact of this.getByPipeline(pipelineId)) {
+      if (artifact.projectId) projectIds.add(artifact.projectId);
+      if (projectIds.size > 1) return null;
+    }
+    return projectIds.size === 1 ? [...projectIds][0]! : null;
   }
 
   private async mutate(
