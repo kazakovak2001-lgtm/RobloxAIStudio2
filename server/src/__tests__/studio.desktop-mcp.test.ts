@@ -279,18 +279,28 @@ describe("Roblox Studio desktop MCP boundary", () => {
     expect(
       validateEvidenceArguments({
         pid: 1234,
+        captureId,
         runLabel: "bridge-smoke",
         evidenceName: "initial-state",
       }),
     ).toEqual({
       pid: 1234,
+      captureId,
       runLabel: "bridge-smoke",
       evidenceName: "initial-state",
     });
+    expect(() =>
+      validateEvidenceArguments({
+        pid: 1234,
+        runLabel: "bridge-smoke",
+        evidenceName: "initial-state",
+      }),
+    ).toThrow(/captureId must be a UUID/);
     for (const unsafe of ["../escape", "Upper", ""]) {
       expect(() =>
         validateEvidenceArguments({
           pid: 1234,
+          captureId,
           runLabel: unsafe,
           evidenceName: "safe-name",
         }),
@@ -298,6 +308,7 @@ describe("Roblox Studio desktop MCP boundary", () => {
       expect(() =>
         validateEvidenceArguments({
           pid: 1234,
+          captureId,
           runLabel: "safe-run",
           evidenceName: unsafe,
         }),
@@ -425,7 +436,16 @@ describe("Roblox Studio desktop MCP boundary", () => {
     const keyBlock = helper.slice(
       helper.indexOf("if ($Action -eq 'PressKey')"),
     );
+    const clickBlock = helper.slice(
+      helper.indexOf("if ($Action -eq 'Click')"),
+      helper.indexOf("if ($Action -eq 'TypeText')"),
+    );
 
+    expect(helper).not.toContain("SetCursorPos");
+    expect(clickBlock).toContain("SendAbsoluteLeftClick($screenX, $screenY)");
+    expect(helper).toMatch(
+      /SendAbsoluteLeftClick\(int screenX, int screenY\)[\s\S]*SendInput\(\(uint\)inputs\.Length, inputs/u,
+    );
     expect(textBlock).not.toContain("SendLeftClick");
     expect(textBlock).toMatch(
       /Assert-ExpectedTargetFingerprint \$window[\s\S]*SendUnicode\(\$Text\)/u,

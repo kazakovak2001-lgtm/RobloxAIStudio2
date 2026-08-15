@@ -41,6 +41,7 @@ interface StudioCaptureResult extends StudioWindowStatus {
 interface StudioCaptureReference {
   captureId: string;
   capture: StudioCaptureResult;
+  data: Buffer;
   capturedAt: number;
 }
 
@@ -223,13 +224,14 @@ export const STUDIO_DESKTOP_TOOLS: ToolDefinition[] = [
   {
     name: "studio_capture_evidence",
     description:
-      "Capture the Roblox Studio window into ignored local operator evidence under artifacts/studio-acceptance/operator. Requires approval because the screenshot is persisted locally.",
+      "Persist the exact single-use Studio screenshot identified by captureId into ignored local operator evidence under artifacts/studio-acceptance/operator. No new screenshot is taken. Requires approval because the approved PNG is persisted locally.",
     inputSchema: {
       type: "object",
       additionalProperties: false,
-      required: ["pid", "runLabel", "evidenceName"],
+      required: ["pid", "captureId", "runLabel", "evidenceName"],
       properties: {
         pid: { type: "integer", minimum: 1, maximum: MAX_PROCESS_ID },
+        captureId: { type: "string", format: "uuid" },
         runLabel: { type: "string", pattern: "^[a-z0-9][a-z0-9-]{0,63}$" },
         evidenceName: {
           type: "string",
@@ -400,19 +402,24 @@ export function validateKeyArguments(value: unknown): {
 
 export function validateEvidenceArguments(value: unknown): {
   pid: number;
+  captureId: string;
   runLabel: string;
   evidenceName: string;
 } {
   const object = assertObject(value);
-  assertOnlyKeys(object, ["pid", "runLabel", "evidenceName"]);
+  assertOnlyKeys(object, ["pid", "captureId", "runLabel", "evidenceName"]);
   return {
     pid: requireProcessId(object),
+    captureId: requireCaptureId(object),
     runLabel: requireSlug(object, "runLabel"),
     evidenceName: requireSlug(object, "evidenceName"),
   };
 }
 
-function registerCaptureReference(capture: StudioCaptureResult): string {
+function registerCaptureReference(
+  capture: StudioCaptureResult,
+  data: Buffer,
+): string {
   const now = Date.now();
   for (const [captureId, reference] of captureReferences) {
     if (now - reference.capturedAt > CAPTURE_REFERENCE_TTL_MS)
@@ -428,6 +435,7 @@ function registerCaptureReference(capture: StudioCaptureResult): string {
   captureReferences.set(captureId, {
     captureId,
     capture,
+    data,
     capturedAt: now,
   });
   return captureId;
@@ -610,17 +618,7 @@ async function consumeFreshCaptureReference(
   current: StudioCaptureResult;
   focused: StudioCaptureResult;
 }> {
-  const reference = captureReferences.get(captureId);
-  captureReferences.delete(captureId);
-  if (
-    !reference ||
-    Date.now() - reference.capturedAt > CAPTURE_REFERENCE_TTL_MS ||
-    reference.capture.pid !== pid
-  ) {
-    throw new Error(
-      "The screenshot reference is missing, expired, already used, or belongs to another Studio PID; capture a new screenshot before input",
-    );
-  }
+  const reference = consumeCaptureReference(captureId, pid);
   const unfocused = await invokeHelper<StudioWindowStatus>("Status", [
     "-TargetPid",
     String(pid),
@@ -647,6 +645,24 @@ async function consumeFreshCaptureReference(
     current: current.capture,
     focused: focused.capture,
   };
+}
+
+function consumeCaptureReference(
+  captureId: string,
+  pid: number,
+): StudioCaptureReference {
+  const reference = captureReferences.get(captureId);
+  captureReferences.delete(captureId);
+  if (
+    !reference ||
+    Date.now() - reference.capturedAt > CAPTURE_REFERENCE_TTL_MS ||
+    reference.capture.pid !== pid
+  ) {
+    throw new Error(
+      "The screenshot reference is missing, expired, already used, or belongs to another Studio PID; capture a new screenshot before input",
+    );
+  }
+  return reference;
 }
 
 function assertTargetAreaStableAcrossApproval(
@@ -872,7 +888,7 @@ async function callTool(
   if (name === "studio_screenshot") {
     const pid = validateOptionalTargetArguments(rawArguments);
     const { capture, data } = await captureToTemporaryFile(pid);
-    const captureId = registerCaptureReference(capture);
+    const captureId = registerCaptureReference(capture, data);
     return {
       content: [
         textContent({
@@ -1012,9 +1028,10 @@ async function callTool(
     };
   }
   if (name === "studio_capture_evidence") {
-    const { pid, runLabel, evidenceName } =
+    const { pid, captureId, runLabel, evidenceName } =
       validateEvidenceArguments(rawArguments);
-    const { capture, data } = await captureToTemporaryFile(pid);
+    const reference = consumeCaptureReference(captureId, pid);
+    const { capture, data } = reference;
     const evidenceDirectory = resolve(
       PROJECT_DIRECTORY,
       "artifacts",

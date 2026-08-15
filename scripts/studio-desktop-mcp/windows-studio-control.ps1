@@ -121,9 +121,6 @@ public static class StudioDesktopNative {
     public static extern int GetWindowText(IntPtr hWnd, StringBuilder text, int maximumCount);
 
     [DllImport("user32.dll")]
-    public static extern bool SetCursorPos(int x, int y);
-
-    [DllImport("user32.dll")]
     public static extern IntPtr WindowFromPoint(POINT point);
 
     [DllImport("user32.dll")]
@@ -131,6 +128,9 @@ public static class StudioDesktopNative {
 
     [DllImport("user32.dll", SetLastError = true)]
     public static extern uint SendInput(uint count, INPUT[] inputs, int size);
+
+    [DllImport("user32.dll")]
+    public static extern int GetSystemMetrics(int index);
 
     [DllImport("user32.dll")]
     public static extern bool SetProcessDPIAware();
@@ -162,15 +162,25 @@ public static class StudioDesktopNative {
         }
     }
 
-    public static void SendLeftClick() {
+    public static void SendAbsoluteLeftClick(int screenX, int screenY) {
+        var virtualLeft = GetSystemMetrics(76);
+        var virtualTop = GetSystemMetrics(77);
+        var virtualWidth = GetSystemMetrics(78);
+        var virtualHeight = GetSystemMetrics(79);
+        if (virtualWidth <= 1 || virtualHeight <= 1 || screenX < virtualLeft || screenX >= virtualLeft + virtualWidth || screenY < virtualTop || screenY >= virtualTop + virtualHeight) {
+            throw new InvalidOperationException("The verified click point is outside the Windows virtual desktop.");
+        }
+        var absoluteX = (int)Math.Round((screenX - virtualLeft) * 65535.0 / (virtualWidth - 1));
+        var absoluteY = (int)Math.Round((screenY - virtualTop) * 65535.0 / (virtualHeight - 1));
+        const uint absoluteMove = 0x0001 | 0x4000 | 0x8000;
         var inputs = new[] {
             new INPUT {
                 Type = 0,
-                Data = new InputUnion { Mouse = new MOUSEINPUT { Flags = 0x0002 } }
+                Data = new InputUnion { Mouse = new MOUSEINPUT { Dx = absoluteX, Dy = absoluteY, Flags = absoluteMove | 0x0002 } }
             },
             new INPUT {
                 Type = 0,
-                Data = new InputUnion { Mouse = new MOUSEINPUT { Flags = 0x0004 } }
+                Data = new InputUnion { Mouse = new MOUSEINPUT { Dx = absoluteX, Dy = absoluteY, Flags = absoluteMove | 0x0004 } }
             }
         };
         if (SendInput((uint)inputs.Length, inputs, Marshal.SizeOf(typeof(INPUT))) != inputs.Length) {
@@ -505,12 +515,8 @@ if ($Action -eq 'Click') {
     Assert-StudioForeground $window
     Assert-ExpectedTargetFingerprint $window $X $Y $ScreenshotWidth $ScreenshotHeight
     Assert-CursorTargetsStudioWindow $window $screenX $screenY
-    if (-not [StudioDesktopNative]::SetCursorPos($screenX, $screenY)) {
-        throw 'Windows could not position the cursor inside Roblox Studio; no click was performed.'
-    }
-    Assert-CursorTargetsStudioWindow $window $screenX $screenY
     Assert-StudioForeground $window
-    [StudioDesktopNative]::SendLeftClick()
+    [StudioDesktopNative]::SendAbsoluteLeftClick($screenX, $screenY)
     Convert-Status (Get-EligibleStudioWindow $window.Pid) | ConvertTo-Json -Compress -Depth 5
     exit 0
 }
