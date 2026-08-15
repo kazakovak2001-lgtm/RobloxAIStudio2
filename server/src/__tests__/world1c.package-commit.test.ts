@@ -501,12 +501,12 @@ describe("WORLD-1C package commits are tenant-scoped", () => {
     expect(store.getDeliverableArtifacts(pipelineId)).toEqual([]);
 
     const afterRestart = new ArtifactStore(storage);
-    expect(
-      afterRestart.getPackageCommit(projectA, pipelineId)?.projectId,
-    ).toBe(projectA);
-    expect(
-      afterRestart.getPackageCommit(projectB, pipelineId)?.projectId,
-    ).toBe(projectB);
+    expect(afterRestart.getPackageCommit(projectA, pipelineId)?.projectId).toBe(
+      projectA,
+    );
+    expect(afterRestart.getPackageCommit(projectB, pipelineId)?.projectId).toBe(
+      projectB,
+    );
   });
 
   it("returns no committed package for the wrong project", async () => {
