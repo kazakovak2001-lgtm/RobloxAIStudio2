@@ -1,26 +1,31 @@
 # Deferred Roblox Studio Acceptance Result
 
-**Status:** Partial acceptance — `ARTIFACT-1` and `STUDIO-2F-A` accepted; `WORLD-1B` retains one evidence gap
+**Status:** Accepted — `ARTIFACT-1`, `STUDIO-2F-A`, and `WORLD-1B` complete
 
 **Acceptance date:** August 15, 2026
 
 **Acceptance branch:** `test/studio-acceptance-final`
 
-**Accepted implementation commit:** `710815936176a5f1f88cc7eb38b690b4bcdb7e71`
+**Accepted implementation commits:** `710815936176a5f1f88cc7eb38b690b4bcdb7e71` and changed-design follow-up `b5f6cd636c8b4da58b96afd63131a5c7223aab1c`
 
 ## Decision
 
 The deferred Studio checks were executed against a real Roblox Studio desktop,
 the real Studio Luau engine, a PostgreSQL-backed backend, and canonical plugin
-package v1.11.2. The combined evidence accepts `ARTIFACT-1` and `STUDIO-2F-A`.
-It does not close `WORLD-1B`: the session did not deliver a second generation
-whose changed design removed a managed world entity, so checklist item 4 in
-[WORLD-1B_SCOPE.md](./WORLD-1B_SCOPE.md) remains unproven. `WORLD-1C` therefore
-remains blocked.
+package v1.11.2. The combined evidence accepts `ARTIFACT-1`, `STUDIO-2F-A`, and
+`WORLD-1B`. A follow-up changed the durable blueprint from five explicit
+mechanics to four, generated execution `exec-1786788687047`, delivered all 12
+artifacts through command `cmd-40d8b3e3-4`, and received exact verified Studio
+receipts. Explorer contained only `mechanic-1` through `mechanic-4`; the Studio
+command-bar assertion reported four managed interactive entities and
+`mechanic5Swept true`. Checklist item 4 in
+[WORLD-1B_SCOPE.md](./WORLD-1B_SCOPE.md) is therefore proven. The acceptance
+prerequisite blocking `WORLD-1C` is removed; `WORLD-1C` remains separately
+scoped and unimplemented.
 
-No LLM provider was configured. Execution `exec-1786781992357` used the
-platform's deterministic fallback and is **not AI generation**. Nothing was
-published or deployed externally.
+No LLM provider was configured. Executions `exec-1786781992357` and
+`exec-1786788687047` used the platform's deterministic fallback and are **not
+AI generation**. Nothing was published or deployed externally.
 
 ## Acceptance identity
 
@@ -29,11 +34,13 @@ published or deployed externally.
 | Project                         | `proj-83f96f3d-d`                                                  |
 | Owner                           | `user-2d13e044-b`                                                  |
 | Generation execution            | `exec-1786781992357`                                               |
+| Changed-design execution        | `exec-1786788687047`                                               |
 | First verified export           | `cmd-3411f6e7-7`                                                   |
 | Idempotence export              | `cmd-43b33b28-f`                                                   |
 | World collision export          | `cmd-9864ea45-6`                                                   |
 | UI collision export             | `cmd-d3b876c0-2`                                                   |
 | Recovery export                 | `cmd-3621a709-e`                                                   |
+| Changed-design export           | `cmd-40d8b3e3-4`                                                   |
 | Expected and verified artifacts | `12 / 12`                                                          |
 | Plugin                          | `1.11.2`, protocol `1.0.0`                                         |
 | Package SHA-256                 | `c471d6761fc00409f8ea140a470a31c225b0e42908a5a95aa29437a07849766b` |
@@ -41,22 +48,22 @@ published or deployed externally.
 
 ## Acceptance criteria
 
-| Criterion                                                       | Result  | Evidence                                                                                                               |
-| --------------------------------------------------------------- | ------- | ---------------------------------------------------------------------------------------------------------------------- |
-| Authenticated plugin connection and heartbeat                   | PASS    | `POST /connect`, `GET /commands`, and `POST /heartbeat` returned 200                                                   |
-| Durable command and verification evidence                       | PASS    | command `completed`; verification `verified`; 12/12 receipts                                                           |
-| Stable metadata identity and repeat export                      | PASS    | two verified exports of the same execution produced no duplicate/orphaned metadata                                     |
-| Real generated UI tree in Explorer                              | PASS    | exactly `MainHUD`, `MainMenu`, and `PauseMenu` under `UI_GENERATION`, all managed                                      |
-| UI invalid-class rejection is atomic                            | PASS    | real Studio engine rejected a forbidden `Script` after a valid screen without attaching either screen                  |
-| Creator-owned UI collision fails closed                         | PASS    | authenticated export failed; the unmanaged colliding `MainHUD` survived unchanged                                      |
-| UI recovery after collision removal                             | PASS    | the same execution returned to `verified`, 12/12                                                                       |
-| Real design-time world tree and semantic attributes             | PASS    | 15 models, zero invalid identity/role attributes, and no `Workspace.AIStudioArtifacts`                                 |
-| Creator-owned world collision fails closed                      | PASS    | authenticated export failed without deleting the unmanaged colliding entity                                            |
-| Creator content inside a replaced world is preserved            | PASS    | `AIStudioPreserved.OperatorOwnedMarker` survived and remained unmanaged                                                |
-| Changed design sweeps a disappeared managed world entity        | **GAP** | no changed-design execution was delivered in the operator session                                                      |
-| Play creates exactly one runtime HUD and one playable objective | PASS    | score progressed 0→1→4→5 and the HUD displayed `Objective complete!`                                                   |
-| Backend restart retains Studio authority                        | PASS    | a non-environment project key survived two backend starts with `STUDIO_API_KEY` and `STUDIO_PROJECT_ID` absent         |
-| Plugin reconnect is thread-safe                                 | PASS    | v1.11.2 auto-reconnected after backend restart; no `cannot cancel thread` error; commands and heartbeat resumed at 200 |
+| Criterion                                                       | Result | Evidence                                                                                                                     |
+| --------------------------------------------------------------- | ------ | ---------------------------------------------------------------------------------------------------------------------------- |
+| Authenticated plugin connection and heartbeat                   | PASS   | `POST /connect`, `GET /commands`, and `POST /heartbeat` returned 200                                                         |
+| Durable command and verification evidence                       | PASS   | command `completed`; verification `verified`; 12/12 receipts                                                                 |
+| Stable metadata identity and repeat export                      | PASS   | two verified exports of the same execution produced no duplicate/orphaned metadata                                           |
+| Real generated UI tree in Explorer                              | PASS   | exactly `MainHUD`, `MainMenu`, and `PauseMenu` under `UI_GENERATION`, all managed                                            |
+| UI invalid-class rejection is atomic                            | PASS   | real Studio engine rejected a forbidden `Script` after a valid screen without attaching either screen                        |
+| Creator-owned UI collision fails closed                         | PASS   | authenticated export failed; the unmanaged colliding `MainHUD` survived unchanged                                            |
+| UI recovery after collision removal                             | PASS   | the same execution returned to `verified`, 12/12                                                                             |
+| Real design-time world tree and semantic attributes             | PASS   | 15 models, zero invalid identity/role attributes, and no `Workspace.AIStudioArtifacts`                                       |
+| Creator-owned world collision fails closed                      | PASS   | authenticated export failed without deleting the unmanaged colliding entity                                                  |
+| Creator content inside a replaced world is preserved            | PASS   | `AIStudioPreserved.OperatorOwnedMarker` survived and remained unmanaged                                                      |
+| Changed design sweeps a disappeared managed world entity        | PASS   | changed execution verified 12/12; Explorer showed only `mechanic-1`…`mechanic-4`; command bar reported `mechanic5Swept true` |
+| Play creates exactly one runtime HUD and one playable objective | PASS   | score progressed 0→1→4→5 and the HUD displayed `Objective complete!`                                                         |
+| Backend restart retains Studio authority                        | PASS   | a non-environment project key survived two backend starts with `STUDIO_API_KEY` and `STUDIO_PROJECT_ID` absent               |
+| Plugin reconnect is thread-safe                                 | PASS   | v1.11.2 auto-reconnected after backend restart; no `cannot cancel thread` error; commands and heartbeat resumed at 200       |
 
 ## Defects found and fixed during acceptance
 
@@ -73,6 +80,12 @@ published or deployed externally.
    producing HTTP and toolbar errors unrelated to the generated game. Plugin
    v1.11.2 now returns before loading modules unless it is running in Studio Edit
    plugin context.
+5. Deterministic fallback ignored explicit blueprint mechanics and always used
+   the five-mechanic generated seed, so an authenticated changed-design sweep
+   could not be produced without an LLM. Commit
+   `b5f6cd636c8b4da58b96afd63131a5c7223aab1c` makes explicit
+   blueprint mechanics authoritative for fallback while preserving the seed
+   behavior when none are supplied, with a non-vacuous regression test.
 
 ## Real Studio engine acceptance
 
@@ -107,6 +120,7 @@ Representative SHA-256 identities are:
 | `14-play-0-of-5.png`                          | `7e55a308c2cc24ca7deb8a13da04673007fe326b3e40ead78cd6e625aea9a45d` |
 | `17-play-objective-complete.png`              | `a6414c42a46fa1c57e4d85935738315d21787533630f4b9c0d7b41e08abff8fd` |
 | `20-auto-reconnect-after-backend-restart.png` | `c2368aa0ab0e1347b7aa8592e716fe939ed3171b16487628bee8241f14e49080` |
+| `21-world-changed-design-sweep-verified.png`  | `0e9d2d56cae7df4b0b84e70402d263f6b3cbe5bae2960778744e25064b101224` |
 
 No credential value, digest, or reusable token is present in the record.
 
@@ -118,13 +132,13 @@ No credential value, digest, or reusable token is present in the record.
 - **INFERENCE:** the transition from transport failure to authenticated 200s
   attributes the original `localhost` failure to the IPv4-only listener; the
   dual-stack regression tests independently support that inference.
-- **GAP:** a changed-design export removing a managed world entity was not run.
-- **RISK:** recording `WORLD-1B` as complete now would silently waive its explicit
-  operator checklist and prematurely unblock the canonical-ownership switch.
-- **RECOMMENDATION:** keep `WORLD-1B` evidence-pending and `WORLD-1C` blocked;
-  close the remaining gap with one bounded changed-design export before any
-  ownership work. `STUDIO-2F-B` through `STUDIO-2F-E` remain separate scopes and
-  are not completed by this result.
+- **GAP:** no `WORLD-1B` operator criterion remains open. This does not provide
+  multiplayer, performance, production deployment, or `WORLD-1C` evidence.
+- **RISK:** treating this design-time acceptance as proof of canonical runtime
+  ownership would exceed the evidence; `WORLD-1C` still needs its own delivery.
+- **RECOMMENDATION:** record `WORLD-1B` complete and allow the separately scoped
+  `WORLD-1C` work to be considered next. `STUDIO-2F-B` through `STUDIO-2F-E`
+  remain separate scopes and are not completed by this result.
 
 ## Evidence boundary
 

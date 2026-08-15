@@ -4,6 +4,40 @@ All significant architectural and product decisions are recorded here.
 
 ---
 
+## 2026-08-15 — WORLD-1B Changed-Design Acceptance Closes the Evidence Gap
+
+**Decision**: Accept `WORLD-1B` as complete and remove its acceptance blocker
+from `WORLD-1C`. Keep `WORLD-1C` separately scoped and unimplemented.
+
+**Reason**: Durable blueprint version 2 explicitly reduced the deterministic
+design from five mechanics to four. Execution `exec-1786788687047` completed
+with `WORLD_MODEL` entities `mechanic-1` through `mechanic-4`; Studio command
+`cmd-40d8b3e3-4` delivered 12 artifacts and persisted `verified` with 12 exact
+receipts. The real Studio Explorer showed only those four managed interactive
+entities, and the command-bar assertion printed four managed entities and
+`mechanic5Swept true`.
+
+**Affected systems**: deterministic `GameDesignerAgent` fallback, durable
+acceptance blueprint, Studio delivery, and project-control authority. No
+Frontend runtime, publishing, deployment, or merge.
+
+**Boundary**: This closes design-time `WORLD-1B` acceptance only. The execution
+used deterministic fallback and is not AI generation. It does not prove
+canonical runtime ownership, multiplayer, performance, subjective quality, or
+production readiness.
+
+**Evidence**:
+[STUDIO-DEFERRED-ACCEPTANCE_RESULT.md](./STUDIO-DEFERRED-ACCEPTANCE_RESULT.md),
+implementation commit `b5f6cd636c8b4da58b96afd63131a5c7223aab1c`, execution
+`exec-1786788687047`, command
+`cmd-40d8b3e3-4`, and local evidence
+`21-world-changed-design-sweep-verified.png` at SHA-256
+`0e9d2d56cae7df4b0b84e70402d263f6b3cbe5bae2960778744e25064b101224`.
+
+**Status**: `WORLD-1B` complete; `WORLD-1C` scoped, unblocked, and not started.
+
+---
+
 ## 2026-08-15 — Deferred Studio Acceptance Is Evidence-Specific
 
 **Decision**: Accept `ARTIFACT-1` and `STUDIO-2F-A` on combined authenticated

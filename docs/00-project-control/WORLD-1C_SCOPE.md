@@ -2,32 +2,32 @@
 
 # WORLD-1C — Canonical Runtime World Ownership
 
-**Status:** Scoped and **blocked**. Implementation is not started, and must not start until the prerequisite below is satisfied.
-**Depends on:** `WORLD-1A`, `WORLD-1B` (both merged), and — as a hard prerequisite — **operator-observed Studio acceptance of `WORLD-1B`**.
+**Status:** Scoped and unblocked; implementation is not started. The operator-observed prerequisite was satisfied on August 15, 2026.
+**Depends on:** `WORLD-1A` and complete `WORLD-1B`, including operator-observed Studio acceptance.
 **Does not depend on:** `STUDIO-2F-E`. WORLD-1C moves world structure only and leaves the HUD contract untouched.
 
 ## Objective
 
 Move ownership of the runtime world from the imperative Lua that builds it into `Workspace` today, to the typed WORLD scene, so that Lua binds to semantic entities and owns only gameplay behaviour.
 
-## The blocker, stated first
+## The prerequisite gate, now satisfied
 
-**WORLD-1C must not be implemented until `WORLD-1B` has been observed working in a real Roblox Studio session.**
+**WORLD-1C was not permitted to begin until `WORLD-1B` had been observed working in a real Roblox Studio session.** The [deferred Studio acceptance result](./STUDIO-DEFERRED-ACCEPTANCE_RESULT.md) now records all six criteria passing, including a changed-design managed sweep.
 
-This is not caution about a new feature. It is what the audit found:
+This was not generic caution about a new feature. At scoping time the audit found:
 
 1. **The materializer has never run.** `WorldSceneMaterializer.lua` is contract-tested only. There is no Lua execution harness in this repository, so nothing has ever observed it create an instance, set an attribute, or return a path. Its own tests label that plainly.
 2. **Today the Lua world is the safety net.** If the materializer silently fails, nothing is lost, because the generated server `Script` still builds the world. WORLD-1C removes that net: the world a player sees would come *only* from code no one has ever seen run.
 3. **The switch invalidates the platform's sole runtime evidence.** `RUNTIME-PLAYTEST-1` is an operator-observed Play-mode result over a **Lua-created** world — a `GeneratedAdventure` Workspace folder with a spawn pad and five orbs. Under materialized-world ownership that evidence describes a world the platform no longer builds that way, and there is no replacement evidence.
 4. **The same change would weaken the only gate that has held.** `getPlayableLuaIssues` is the fail-closed contract on every path into Studio — generation, the recorder, the v2 pipeline and repair acceptance. WORLD-1C necessarily replaces its world-creation rules with binding rules. Relaxing the one proven gate in the same change that introduces an unproven world source concentrates two risks in one step.
 
-Shipping it now would mean: an unobserved materializer becomes the only world source, the proven gate is relaxed to allow it, the fallback that guarantees a playable game stops building a world, and the only runtime evidence the platform holds no longer describes what it does. **That is precisely the evidence standard this project refuses to break.**
+Before acceptance, shipping it would have made an unobserved materializer the only world source while relaxing the proven gate and invalidating the only runtime evidence. The acceptance removes that prerequisite blocker. It does not itself implement mode-aware ownership, replace the runtime playtest, or satisfy the remaining design obligations in this scope.
 
 ### Prerequisite
 
-One operator-observed Studio session confirming `WORLD-1B`: the scene appears under `ReplicatedStorage.AIStudioArtifacts.WORLD_MODEL` with the expected zones, entity models, and `AIStudioWorldEntityId` / `AIStudioWorldRole` attributes; re-export replaces rather than duplicates; a hand-added instance survives; and a name collision fails the export without destroying creator work. The six-point checklist is in [WORLD-1B_SCOPE.md](./WORLD-1B_SCOPE.md).
+**Satisfied August 15, 2026.** One operator-observed Studio session confirmed `WORLD-1B`: the scene appeared under `ReplicatedStorage.AIStudioArtifacts.WORLD_MODEL` with the expected zones, entity models, and `AIStudioWorldEntityId` / `AIStudioWorldRole` attributes; re-export replaced rather than duplicated; a hand-added instance survived; a name collision failed without destroying creator work; and a changed design swept the disappeared managed `mechanic-5`. The six-point checklist is in [WORLD-1B_SCOPE.md](./WORLD-1B_SCOPE.md).
 
-That session should also close the outstanding `ARTIFACT-1` and `STUDIO-2F-A` evidence, since all three deliveries touch the same plugin.
+That session also closed the `ARTIFACT-1` and `STUDIO-2F-A` evidence because all three deliveries touch the same plugin.
 
 ## Audit findings
 
