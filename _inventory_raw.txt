@@ -660,6 +660,7 @@ server/src/agents/implementations/DatabaseAgent.ts
 server/src/agents/implementations/DebugAgent.ts
 server/src/agents/implementations/DocumentationAgent.ts
 server/src/agents/implementations/DuplicationDetectionAgent.ts
+server/src/agents/implementations/GameDesignerAgent.test.ts
 server/src/agents/implementations/GameDesignerAgent.ts
 server/src/agents/implementations/LuaGeneratorAgent.test.ts
 server/src/agents/implementations/LuaGeneratorAgent.ts
