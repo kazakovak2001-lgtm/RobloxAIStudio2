@@ -402,7 +402,7 @@ describe("Roblox Studio desktop MCP boundary", () => {
     ).toBe(false);
   });
 
-  it("revalidates focused text and key targets immediately before input", async () => {
+  it("keeps focus clicks separate from text and key input", async () => {
     const helperPath = resolve(
       process.cwd(),
       "scripts/studio-desktop-mcp/windows-studio-control.ps1",
@@ -416,11 +416,13 @@ describe("Roblox Studio desktop MCP boundary", () => {
       helper.indexOf("if ($Action -eq 'PressKey')"),
     );
 
+    expect(textBlock).not.toContain("SendLeftClick");
     expect(textBlock).toMatch(
-      /SendLeftClick\(\)[\s\S]*Assert-ExpectedTargetFingerprint \$textWindow[\s\S]*SendUnicode\(\$Text\)/u,
+      /Assert-ExpectedTargetFingerprint \$window[\s\S]*SendUnicode\(\$Text\)/u,
     );
+    expect(keyBlock).not.toContain("SendLeftClick");
     expect(keyBlock).toMatch(
-      /SendLeftClick\(\)[\s\S]*Assert-ExpectedTargetFingerprint \$keyWindow[\s\S]*SendWait/u,
+      /Assert-ExpectedTargetFingerprint \$window[\s\S]*SendWait/u,
     );
   });
 

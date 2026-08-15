@@ -175,7 +175,7 @@ export const STUDIO_DESKTOP_TOOLS: ToolDefinition[] = [
   {
     name: "studio_type_text",
     description:
-      "Click a verified point from the referenced screenshot and type plain text into that Studio control. Requires operator approval. Control characters and text longer than 2000 characters are rejected. Never supply credentials or secrets.",
+      "Type plain text into the Studio control that was focused by a separately approved studio_click and is visibly focused in the referenced screenshot. This tool never clicks. Requires operator approval. Control characters and text longer than 2000 characters are rejected. Never supply credentials or secrets.",
     inputSchema: {
       type: "object",
       additionalProperties: false,
@@ -198,7 +198,7 @@ export const STUDIO_DESKTOP_TOOLS: ToolDefinition[] = [
   {
     name: "studio_press_key",
     description:
-      "Click a verified point from the referenced screenshot to establish the intended UI context, then send one allowlisted navigation or Play-test key to Roblox Studio. Requires operator approval. No arbitrary shortcuts are accepted.",
+      "Send one allowlisted navigation or Play-test key to the Studio control that was focused by a separately approved studio_click and is visibly focused in the referenced screenshot. This tool never clicks. SHIFT_F5 is the only focus-target exception. Requires operator approval. No arbitrary shortcuts are accepted.",
     inputSchema: {
       type: "object",
       additionalProperties: false,
@@ -874,7 +874,7 @@ async function callTool(
           layoutFingerprint: undefined,
           captureId,
           coordinateContract:
-            "Pass this pid and single-use captureId to the next input tool. For studio_click, studio_type_text, or studio_press_key, use x/y from this exact image.",
+            "Pass this pid and single-use captureId to the next input tool. For studio_click, use x/y from this exact image. Before studio_type_text or contextual studio_press_key, focus the control with a separately approved studio_click, capture a new screenshot, and use x/y for the visibly focused control from that new image.",
         }),
         { type: "image", data: data.toString("base64"), mimeType: "image/png" },
       ],
