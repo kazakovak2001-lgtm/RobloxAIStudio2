@@ -329,6 +329,20 @@ export class StudioRuntime {
         message: "Generated artifacts exceed the Studio transfer limit.",
       };
     }
+    // WORLD-1C. The snapshot and the transfer are two separate reads, so a
+    // package can stop being deliverable between them — an artifact edited
+    // through Studio sync invalidates the commit marker, and every member then
+    // resolves as missing. Queueing anyway would export a partial or empty
+    // package under a success result, which is the incoherent delivery the
+    // commit boundary exists to prevent.
+    if (transfer.missing.length > 0) {
+      return {
+        success: false,
+        reason: "no_artifacts",
+        message:
+          "The artifact package changed while it was being read and is no longer deliverable.",
+      };
+    }
 
     const command: StudioCommand = {
       id: createCommandId(),

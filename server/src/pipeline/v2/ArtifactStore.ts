@@ -14,6 +14,10 @@ import {
   type ArtifactDependency,
   type ArtifactProducer,
 } from "./artifactEnvelope";
+import {
+  resolveWorldRuntimeModeFromContent,
+  type WorldRuntimeMode,
+} from "../../types/worldRuntimeMode";
 
 export interface ArtifactStorageProvider {
   get<T>(collection: string, id: string): T | null;
@@ -64,6 +68,24 @@ export interface PipelineArtifact {
   dependencies?: readonly ArtifactDependency[];
 }
 
+export const GENERATION_PACKAGE_COMMIT_SCHEMA_VERSION = 1;
+
+export interface GenerationPackageArtifactRef {
+  readonly artifactId: string;
+  readonly stage: StageName;
+  readonly contentHash: string;
+}
+
+export interface GenerationPackageCommit {
+  readonly schemaVersion: typeof GENERATION_PACKAGE_COMMIT_SCHEMA_VERSION;
+  readonly pipelineId: string;
+  readonly projectId: string;
+  readonly worldRuntimeMode: WorldRuntimeMode;
+  readonly source: "generation" | "repair";
+  readonly artifacts: readonly GenerationPackageArtifactRef[];
+  readonly committedAt: number;
+}
+
 /**
  * Server-held context a new artifact is written under.
  *
@@ -95,6 +117,7 @@ export type ArtifactType =
   | "asset-plan";
 
 const ARTIFACT_COLLECTION = "pipeline_artifacts";
+const PACKAGE_COMMIT_COLLECTION = "generation_package_commits";
 
 const STAGE_ARTIFACT_CONFIG: Record<
   StageName,
@@ -120,6 +143,7 @@ export class ArtifactStore {
   private artifacts: Map<string, PipelineArtifact> = new Map();
   private byPipeline: Map<string, string[]> = new Map();
   private readonly mutationQueues = new Map<string, Promise<void>>();
+  private readonly packageCommits = new Map<string, GenerationPackageCommit>();
 
   constructor(private readonly injectedStorage?: ArtifactStorageProvider) {}
 
@@ -229,6 +253,182 @@ export class ArtifactStore {
       .filter(
         (artifact): artifact is PipelineArtifact => artifact !== undefined,
       );
+  }
+
+  /**
+   * Publish one coherent artifact package after every member is durable.
+   *
+   * The marker is intentionally a separate durable record written last. A
+   * process failure can leave raw artifacts behind, but Studio reads explicit
+   * WORLD-1C packages only through this marker and therefore cannot observe a
+   * half-written ownership switch.
+   */
+  async commitPackage(input: {
+    pipelineId: string;
+    projectId: string;
+    worldRuntimeMode: WorldRuntimeMode;
+    source: "generation" | "repair";
+    artifacts: readonly PipelineArtifact[];
+  }): Promise<GenerationPackageCommit> {
+    if (input.artifacts.length === 0) {
+      throw new ArtifactContentError("Cannot commit an empty artifact package");
+    }
+
+    const byStage = new Map<StageName, PipelineArtifact>();
+    const seenIds = new Set<string>();
+    for (const artifact of input.artifacts) {
+      if (
+        artifact.pipelineId !== input.pipelineId ||
+        artifact.projectId !== input.projectId ||
+        !artifact.contentHash
+      ) {
+        throw new ArtifactContentError(
+          `Artifact ${artifact.id} does not belong to the package commit`,
+        );
+      }
+      if (seenIds.has(artifact.id)) {
+        throw new ArtifactContentError(
+          `Artifact ${artifact.id} appears twice in the package commit`,
+        );
+      }
+      if (byStage.has(artifact.stage)) {
+        throw new ArtifactContentError(
+          `Stage ${artifact.stage} appears twice in the package commit`,
+        );
+      }
+      seenIds.add(artifact.id);
+      byStage.set(artifact.stage, artifact);
+    }
+
+    const world = byStage.get("WORLD_MODEL");
+    const lua = byStage.get("LUA_GENERATION");
+    if (!world || !lua) {
+      throw new ArtifactContentError(
+        "A committed package requires WORLD_MODEL and LUA_GENERATION artifacts",
+      );
+    }
+    const worldMode = resolveWorldRuntimeModeFromContent(world.content);
+    if (worldMode.explicit && worldMode.mode !== input.worldRuntimeMode) {
+      throw new ArtifactContentError(
+        `WORLD_MODEL mode ${worldMode.mode} does not match package mode ${input.worldRuntimeMode}`,
+      );
+    }
+    if (
+      !worldMode.explicit &&
+      input.worldRuntimeMode === "materialized-world"
+    ) {
+      throw new ArtifactContentError(
+        "A materialized-world package requires an explicit WORLD_MODEL mode",
+      );
+    }
+
+    const validation = byStage.get("VALIDATION");
+    const validationPassed =
+      !!validation &&
+      !!validation.content &&
+      typeof validation.content === "object" &&
+      !Array.isArray(validation.content) &&
+      (validation.content as Record<string, unknown>).passed === true;
+    if (
+      (input.source === "generation" ||
+        input.worldRuntimeMode === "materialized-world") &&
+      !validationPassed
+    ) {
+      throw new ArtifactContentError(
+        "The package requires a passing VALIDATION artifact",
+      );
+    }
+
+    const commit: GenerationPackageCommit = {
+      schemaVersion: GENERATION_PACKAGE_COMMIT_SCHEMA_VERSION,
+      pipelineId: input.pipelineId,
+      projectId: input.projectId,
+      worldRuntimeMode: input.worldRuntimeMode,
+      source: input.source,
+      artifacts: input.artifacts.map((artifact) => ({
+        artifactId: artifact.id,
+        stage: artifact.stage,
+        contentHash: artifact.contentHash!,
+      })),
+      committedAt: Date.now(),
+    };
+
+    const storage = this.storage;
+    if (storage) {
+      await storage.setDurable(
+        PACKAGE_COMMIT_COLLECTION,
+        input.pipelineId,
+        commit,
+      );
+    }
+    this.packageCommits.set(input.pipelineId, commit);
+    return commit;
+  }
+
+  getPackageCommit(pipelineId: string): GenerationPackageCommit | null {
+    const cached = this.packageCommits.get(pipelineId);
+    if (cached) return cached;
+    const commit =
+      this.storage?.get<GenerationPackageCommit>(
+        PACKAGE_COMMIT_COLLECTION,
+        pipelineId,
+      ) ?? null;
+    if (commit) this.packageCommits.set(pipelineId, commit);
+    return commit;
+  }
+
+  /**
+   * Artifacts Studio may observe as one package.
+   *
+   * Historical packages carry no explicit mode and remain readable exactly as
+   * before. Once either WORLD_MODEL or VALIDATION declares a mode, absence of
+   * the last-written commit marker fails closed.
+   */
+  getDeliverableArtifacts(pipelineId: string): PipelineArtifact[] {
+    const artifacts = this.getByPipeline(pipelineId);
+    const commit = this.getPackageCommit(pipelineId);
+    if (commit) {
+      if (
+        commit.schemaVersion !== GENERATION_PACKAGE_COMMIT_SCHEMA_VERSION ||
+        commit.pipelineId !== pipelineId
+      ) {
+        return [];
+      }
+      const byId = new Map(
+        artifacts.map((artifact) => [artifact.id, artifact]),
+      );
+      const committed: PipelineArtifact[] = [];
+      for (const ref of commit.artifacts) {
+        const artifact = byId.get(ref.artifactId);
+        if (
+          !artifact ||
+          artifact.stage !== ref.stage ||
+          artifact.contentHash !== ref.contentHash ||
+          artifact.projectId !== commit.projectId
+        ) {
+          return [];
+        }
+        committed.push(artifact);
+      }
+      return committed;
+    }
+
+    try {
+      // Every mode carrier is examined, not just the newest. A package that
+      // declared a mode anywhere is an explicit package, and reading only the
+      // last-written carrier would let an undeclared artifact stored after a
+      // declared one hand the package back to the historical path.
+      const declaresMode = artifacts.some(
+        (artifact) =>
+          (artifact.stage === "WORLD_MODEL" ||
+            artifact.stage === "VALIDATION") &&
+          resolveWorldRuntimeModeFromContent(artifact.content).explicit,
+      );
+      if (declaresMode) return [];
+    } catch {
+      return [];
+    }
+    return artifacts;
   }
 
   /**

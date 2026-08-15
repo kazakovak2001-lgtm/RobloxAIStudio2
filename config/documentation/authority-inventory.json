@@ -35,7 +35,7 @@
         "b91ebdba613ca0d8f01a5fb33de355ae97588601",
         "`WORLD-1A` | Semantic world model and cross-artifact validation against generated Lua | High | `complete` — backend PR #207",
         "`WORLD-1B` | Design-time Studio materialization of the world model | Medium | `complete` — real Studio materialization",
-        "`WORLD-1C` | Canonical ownership of the world by the materialized scene | Medium | `scoped` — acceptance prerequisite satisfied; implementation not started",
+        "`WORLD-1C` | Canonical ownership of the world by the materialized scene | Medium | `in progress` — one preparatory slice landed",
         "`AGENT-CONTRACT-1` | Versioned server-owned definitions for every runtime agent | Medium | `complete` — backend PR #212; foundation only, and every policy field is enforced",
         "Wall-clock timeout, monetary cost and input-token ceilings are deliberately absent because nothing enforces them today",
         "release/cutover-1e-candidate@77976a7818695cfdccdea253794acc0cd3c79b91",
@@ -107,7 +107,7 @@
         "deterministic Luau trust-boundary review that never negates delivery",
         "`WORLD-1A` complete (backend PR #207",
         "`WORLD-1B` complete ([result](./STUDIO-DEFERRED-ACCEPTANCE_RESULT.md)",
-        "`WORLD-1C` scoped and unblocked but not started",
+        "`WORLD-1C` in progress, one preparatory slice",
         "`AGENT-CONTRACT-1` complete (backend PR #212",
         "`title` carried as a human-readable label that nothing reads",
         "`ARTIFACT-CONTRACT-2` complete (backend PR #214",
@@ -234,9 +234,16 @@
         "WORLD-1C",
         "The operator-observed prerequisite was satisfied on August 15, 2026",
         "Today the Lua world is the safety net.",
-        "exactly one component owns runtime world structure"
+        "exactly one component owns runtime world structure",
+        "One preparatory slice is implemented; the ownership switch is not.",
+        "No mode-aware playability contract",
+        "Nothing sets `materialized-world`"
       ],
-      "forbiddenClaims": []
+      "forbiddenClaims": [
+        "WORLD-1C is complete",
+        "canonical ownership has moved",
+        "operator-observed Studio acceptance of WORLD-1C"
+      ]
     },
     {
       "path": "docs/00-project-control/AGENT-CONTRACT-1_SCOPE.md",

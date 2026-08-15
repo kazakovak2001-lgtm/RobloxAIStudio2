@@ -18,6 +18,7 @@ import {
   type ArtifactDependency,
   type ArtifactStore,
   type PipelineArtifact,
+  type StageName,
 } from "../pipeline/v2";
 import { reviewLuaSecurity } from "../validation/luaSecurityReview";
 import { resolveRepairAncestry } from "../pipeline/v2";
@@ -29,6 +30,7 @@ import {
   decodeGameDna,
 } from "../validation/gameDna";
 import { normalizeLuaScripts } from "../types/playableLua";
+import { resolveWorldRuntimeModeFromContent } from "../types/worldRuntimeMode";
 import { PlaytestEngine, actionableFindingCount } from "../playtest";
 import { RepairPlanner } from "./RepairPlanner";
 import { RepairExecutor, type RepairBlueprintLookup } from "./RepairExecutor";
@@ -329,13 +331,19 @@ export class RepairEngine {
     projectId: string,
     repairedScripts: Awaited<ReturnType<typeof assembleRepairInput>>["scripts"],
   ): Promise<NoveltyVerdictRecord | undefined> {
-    const parentArtifacts = this.artifactStore.getByPipeline(parentExecutionId);
+    const parentArtifacts =
+      this.artifactStore.getDeliverableArtifacts(parentExecutionId);
     const parentLua = parentArtifacts.find(
       (artifact) => artifact.stage === "LUA_GENERATION",
     );
 
     let carriedWorld: PipelineArtifact | null = null;
     let carriedDesign: PipelineArtifact | null = null;
+    // WORLD-1C. The package commit names what *this* repair wrote. Reading the
+    // pipeline back instead would fold in whatever else shares the execution
+    // id, and a parent holding two artifacts of one stage would carry both
+    // forward and make the commit unsatisfiable.
+    const recordedByStage = new Map<StageName, PipelineArtifact>();
     // ASSET_PLANNING requires a GAME_DESIGN edge, so the design has to be
     // committed before the plan that names it. Copying in stage order rather
     // than in whatever order the parent happens to list them.
@@ -382,6 +390,7 @@ export class RepairEngine {
             : {}),
         },
       );
+      recordedByStage.set(carried.stage, carried);
       if (carried.stage === "WORLD_MODEL") carriedWorld = carried;
       if (carried.stage === "GAME_DESIGN") carriedDesign = carried;
     }
@@ -406,12 +415,48 @@ export class RepairEngine {
       },
     );
 
-    await this.storeRepairedSecurityReview(
+    recordedByStage.set("LUA_GENERATION", repairedLua);
+
+    const review = await this.storeRepairedSecurityReview(
       newExecutionId,
       projectId,
       repairedLua,
     );
-    return this.storeRepairedGameDna(newExecutionId, projectId, carriedWorld);
+    if (review) recordedByStage.set("SECURITY_REVIEW", review);
+
+    const { novelty, artifact: dna } = await this.storeRepairedGameDna(
+      newExecutionId,
+      projectId,
+      carriedWorld,
+    );
+    if (dna) recordedByStage.set("GAME_DNA", dna);
+
+    // WORLD-1C. A repaired execution is publishable only when it carries the
+    // world it was repaired against, because the mode travels on that artifact
+    // and a package with no declared owner cannot be checked for two.
+    //
+    // `materialized-world` is deliberately refused. Repair regenerates the
+    // whole Lua package and accepts it on `getPlayableLuaIssues`, which is
+    // still the lua-owned contract — it would accept world-building Lua beside
+    // a materialized world. Until that contract is mode-aware, the repaired
+    // artifacts stay inspectable and no commit marker is written, so delivery
+    // refuses them rather than shipping the two-owner state.
+    if (carriedWorld) {
+      const worldRuntimeMode = resolveWorldRuntimeModeFromContent(
+        carriedWorld.content,
+      ).mode;
+      if (worldRuntimeMode !== "materialized-world") {
+        await this.artifactStore.commitPackage({
+          pipelineId: newExecutionId,
+          projectId,
+          worldRuntimeMode,
+          source: "repair",
+          artifacts: [...recordedByStage.values()],
+        });
+      }
+    }
+
+    return novelty;
   }
 
   /**
@@ -432,11 +477,14 @@ export class RepairEngine {
     newExecutionId: string,
     projectId: string,
     carriedWorld: PipelineArtifact | null,
-  ): Promise<NoveltyVerdictRecord | undefined> {
-    if (!carriedWorld) return undefined;
+  ): Promise<{
+    novelty: NoveltyVerdictRecord | undefined;
+    artifact: PipelineArtifact | null;
+  }> {
+    if (!carriedWorld) return { novelty: undefined, artifact: null };
 
     const dna = buildGameDnaFromStoredWorld(carriedWorld.content);
-    if (!dna) return undefined;
+    if (!dna) return { novelty: undefined, artifact: null };
 
     const priorsFound = new Set(
       this.artifactStore
@@ -474,22 +522,31 @@ export class RepairEngine {
       .filter((prior): prior is NonNullable<typeof prior> => prior !== null);
 
     const report = buildGameDnaReport({ dna, priorsFound, priors });
-    await this.artifactStore.store(newExecutionId, "GAME_DNA", null, report, {
-      projectId,
-      producer: deterministicProducer("game-dna"),
-      dependencies: [ArtifactStoreClass.dependencyOn(carriedWorld)],
-    });
+    const artifact = await this.artifactStore.store(
+      newExecutionId,
+      "GAME_DNA",
+      null,
+      report,
+      {
+        projectId,
+        producer: deterministicProducer("game-dna"),
+        dependencies: [ArtifactStoreClass.dependencyOn(carriedWorld)],
+      },
+    );
 
     // NOVELTY-2. Derived after the repaired Lua is stored, so the ancestry
     // walk has the lineage edge to follow. A repaired execution has no
     // `GenerationExecution` row, so without this the `repair-preserved`
     // verdict would exist in code and be unreachable in production.
     const ancestry = resolveRepairAncestry(this.artifactStore, newExecutionId);
-    return deriveNoveltyVerdict({
-      report,
-      ancestors: ancestry.ancestors,
-      ancestryResolved: ancestry.resolved,
-    });
+    return {
+      novelty: deriveNoveltyVerdict({
+        report,
+        ancestors: ancestry.ancestors,
+        ancestryResolved: ancestry.resolved,
+      }),
+      artifact,
+    };
   }
 
   /** Re-review the repaired Lua so no report outlives the code it describes. */
@@ -497,17 +554,17 @@ export class RepairEngine {
     newExecutionId: string,
     projectId: string,
     repairedLua: PipelineArtifact,
-  ): Promise<void> {
+  ): Promise<PipelineArtifact | null> {
     let scripts;
     try {
       scripts = normalizeLuaScripts(repairedLua.content);
     } catch {
       // The repaired package failed to read back as scripts. No review is
       // recorded rather than one asserting a package nobody could parse.
-      return;
+      return null;
     }
 
-    await this.artifactStore.store(
+    return this.artifactStore.store(
       newExecutionId,
       "SECURITY_REVIEW",
       null,

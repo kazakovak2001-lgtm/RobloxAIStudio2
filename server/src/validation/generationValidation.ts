@@ -20,9 +20,13 @@
 
 import type { WorldCrossValidation } from "./worldCrossValidation";
 import type { AssetPlanResult } from "./assetPlan";
+import {
+  LEGACY_WORLD_RUNTIME_MODE,
+  type WorldRuntimeMode,
+} from "../types/worldRuntimeMode";
 
 /** Contract version of the report body. Bump on any shape change. */
-export const GENERATION_VALIDATION_SCHEMA_VERSION = 1;
+export const GENERATION_VALIDATION_SCHEMA_VERSION = 2;
 
 /**
  * How the verdict was reached. A closed set, recorded on the artifact so a
@@ -65,6 +69,8 @@ export interface GenerationValidationCheck {
 export interface GenerationValidationReport {
   readonly schemaVersion: number;
   readonly analysisMode: GenerationValidationAnalysisMode;
+  /** Ownership contract the playability checks were evaluated under. */
+  readonly worldRuntimeMode: WorldRuntimeMode;
   readonly checks: readonly GenerationValidationCheck[];
   readonly blockingFailures: number;
   readonly advisoryFailures: number;
@@ -91,6 +97,8 @@ export type UIMaterializationOutcome =
 
 /** Outcomes the recorder observed while storing a generation's artifacts. */
 export interface GenerationValidationInput {
+  /** Defaults only for direct legacy callers; generation always passes it. */
+  readonly worldRuntimeMode?: WorldRuntimeMode;
   /**
    * Whether the Lua stage produced output at all — not whether that output was
    * accepted. Keeping the two apart is the point: a run that generated
@@ -229,6 +237,7 @@ export function buildGenerationValidationReport(
   return {
     schemaVersion: GENERATION_VALIDATION_SCHEMA_VERSION,
     analysisMode: GENERATION_VALIDATION_ANALYSIS_MODE,
+    worldRuntimeMode: input.worldRuntimeMode ?? LEGACY_WORLD_RUNTIME_MODE,
     checks,
     blockingFailures,
     advisoryFailures,

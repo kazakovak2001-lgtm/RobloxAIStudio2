@@ -38,7 +38,7 @@ export class ArtifactTransferManager {
    * Get artifact references for a pipeline (metadata only, no content).
    */
   getArtifactRefs(pipelineId: string): ArtifactRef[] {
-    const artifacts = this.artifactStore.getByPipeline(pipelineId);
+    const artifacts = this.artifactStore.getDeliverableArtifacts(pipelineId);
     return artifacts.map((a: PipelineArtifact) => this.toRef(a));
   }
 
@@ -46,7 +46,19 @@ export class ArtifactTransferManager {
    * Transfer specific artifacts by ID (with content).
    */
   transfer(artifactIds: string[]): TransferResult {
-    return this.transferMatching(artifactIds, () => true);
+    const deliverableByPipeline = new Map<string, Set<string>>();
+    return this.transferMatching(artifactIds, (artifact) => {
+      let deliverable = deliverableByPipeline.get(artifact.pipelineId);
+      if (!deliverable) {
+        deliverable = new Set(
+          this.artifactStore
+            .getDeliverableArtifacts(artifact.pipelineId)
+            .map((candidate) => candidate.id),
+        );
+        deliverableByPipeline.set(artifact.pipelineId, deliverable);
+      }
+      return deliverable.has(artifact.id);
+    });
   }
 
   /**
@@ -58,9 +70,15 @@ export class ArtifactTransferManager {
     pipelineId: string,
     artifactIds: string[],
   ): TransferResult {
+    const deliverable = new Set(
+      this.artifactStore
+        .getDeliverableArtifacts(pipelineId)
+        .map((artifact) => artifact.id),
+    );
     return this.transferMatching(
       artifactIds,
-      (artifact) => artifact.pipelineId === pipelineId,
+      (artifact) =>
+        artifact.pipelineId === pipelineId && deliverable.has(artifact.id),
     );
   }
 
