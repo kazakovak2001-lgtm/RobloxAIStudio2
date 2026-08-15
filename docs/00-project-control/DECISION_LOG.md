@@ -4,6 +4,38 @@ All significant architectural and product decisions are recorded here.
 
 ---
 
+## 2026-08-15 — Deferred Studio Acceptance Is Evidence-Specific
+
+**Decision**: Accept `ARTIFACT-1` and `STUDIO-2F-A` on combined authenticated
+desktop, real Studio engine, and Play evidence. Keep `WORLD-1B`
+`code_complete_evidence_pending` and keep `WORLD-1C` blocked because the
+changed-design managed-sweep criterion was not exercised.
+
+**Reason**: The session directly proved stable metadata replacement, real UI
+and world instances, exact 12/12 receipt verification, fail-closed creator
+collisions, UI recovery, creator preservation, one runtime HUD/objective, and
+credential persistence across backend restart. The clean-HEAD engine runner
+also rejected a forbidden UI class after a valid screen atomically. None of
+those observations proves that a managed world entity disappears when a later
+design removes it, and the `WORLD-1B` scope requires that exact observation.
+
+**Affected systems**: `studio-plugin/` v1.11.2; Studio acceptance and roadmap
+authority; no Frontend runtime and no external deployment.
+
+**Boundary**: The accepted generation was deterministic fallback with no LLM
+configured and is not AI generation. The evidence is local single-player
+Studio behavior, not publishing, multiplayer, subjective quality, performance,
+retention, or production readiness.
+
+**Evidence**:
+[STUDIO-DEFERRED-ACCEPTANCE_RESULT.md](./STUDIO-DEFERRED-ACCEPTANCE_RESULT.md),
+implementation commit `710815936176a5f1f88cc7eb38b690b4bcdb7e71`, and
+`npm run studio:acceptance` PASS (9/9) on that clean commit.
+
+**Status**: Partial acceptance; one bounded `WORLD-1B` evidence gap remains.
+
+---
+
 ## 2026-08-12 — Studio Protocol Message Identity Fix
 
 **Decision**: Stamp every outbound Studio protocol message with `payload.projectId` and
