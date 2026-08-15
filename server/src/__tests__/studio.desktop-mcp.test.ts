@@ -439,6 +439,8 @@ describe("Roblox Studio desktop MCP boundary", () => {
   it("invalidates a capture when Studio is minimized before focus", () => {
     const reference = {
       pid: 1234,
+      windowHandle: "424242",
+      processStartTimeUtc: "2026-08-15T00:00:00.0000000Z",
       title: "Disposable Baseplate - Roblox Studio",
       executable: "C:\\Roblox\\Versions\\version-test\\RobloxStudioBeta.exe",
       minimized: false,
@@ -450,6 +452,15 @@ describe("Roblox Studio desktop MCP boundary", () => {
     ).toBe(true);
     expect(
       windowStatesMatch(reference, { ...reference, minimized: true }),
+    ).toBe(false);
+    expect(
+      windowStatesMatch(reference, { ...reference, windowHandle: "424243" }),
+    ).toBe(false);
+    expect(
+      windowStatesMatch(reference, {
+        ...reference,
+        processStartTimeUtc: "2026-08-15T00:00:01.0000000Z",
+      }),
     ).toBe(false);
     expect(
       windowStatesMatch(reference, {

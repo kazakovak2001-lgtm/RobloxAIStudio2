@@ -16,6 +16,8 @@ interface JsonRpcRequest {
 
 interface StudioWindowStatus {
   pid: number;
+  windowHandle: string;
+  processStartTimeUtc: string;
   title: string;
   executable: string;
   minimized: boolean;
@@ -576,6 +578,8 @@ export function windowStatesMatch(
 ): boolean {
   return (
     current.pid === reference.pid &&
+    current.windowHandle === reference.windowHandle &&
+    current.processStartTimeUtc === reference.processStartTimeUtc &&
     current.title === reference.title &&
     current.executable === reference.executable &&
     current.minimized === reference.minimized &&
@@ -689,9 +693,13 @@ function assertTargetAreaStableAcrossFocus(
   }
 }
 
-function expectedBoundsArguments(reference: StudioCaptureReference): string[] {
-  const { bounds } = reference.capture;
+function expectedWindowArguments(reference: StudioCaptureReference): string[] {
+  const { bounds, windowHandle, processStartTimeUtc } = reference.capture;
   return [
+    "-ExpectedWindowHandle",
+    windowHandle,
+    "-ExpectedProcessStartTimeUtc",
+    processStartTimeUtc,
     "-ExpectedLeft",
     String(bounds.left),
     "-ExpectedTop",
@@ -914,7 +922,7 @@ async function callTool(
             click.button,
             "-ExpectedImageFingerprint",
             focused.imageFingerprint,
-            ...expectedBoundsArguments(reference),
+            ...expectedWindowArguments(reference),
           ]),
         ),
       ],
@@ -952,7 +960,7 @@ async function callTool(
             String(reference.capture.imageHeight),
             "-ExpectedImageFingerprint",
             focused.imageFingerprint,
-            ...expectedBoundsArguments(reference),
+            ...expectedWindowArguments(reference),
           ]),
         ),
       ],
@@ -997,7 +1005,7 @@ async function callTool(
             String(reference.capture.imageHeight),
             "-ExpectedImageFingerprint",
             focused.imageFingerprint,
-            ...expectedBoundsArguments(reference),
+            ...expectedWindowArguments(reference),
           ]),
         ),
       ],

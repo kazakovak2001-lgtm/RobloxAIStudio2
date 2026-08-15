@@ -14,6 +14,8 @@ param(
     [int]$ExpectedTop,
     [int]$ExpectedWidth,
     [int]$ExpectedHeight,
+    [string]$ExpectedWindowHandle = '',
+    [string]$ExpectedProcessStartTimeUtc = '',
     [string]$ExpectedImageFingerprint = '',
     [ValidateSet('left')]
     [string]$Button = 'left',
@@ -209,7 +211,9 @@ function Get-EligibleStudioWindows {
             [StudioDesktopNative]::GetWindowText($handle, $title, $title.Capacity) | Out-Null
             $windows.Add([pscustomobject]@{
                 Handle = $handle
+                WindowHandle = $handle.ToInt64().ToString([System.Globalization.CultureInfo]::InvariantCulture)
                 Pid = [int]$processId
+                ProcessStartTimeUtc = $process.StartTime.ToUniversalTime().ToString('o', [System.Globalization.CultureInfo]::InvariantCulture)
                 Title = $title.ToString()
                 Executable = $executable
                 Minimized = [StudioDesktopNative]::IsIconic($handle)
@@ -280,6 +284,15 @@ function Assert-ExpectedWindowBounds([object]$window) {
     }
     if ($window.Left -ne $ExpectedLeft -or $window.Top -ne $ExpectedTop -or $window.Width -ne $ExpectedWidth -or $window.Height -ne $ExpectedHeight) {
         throw 'Roblox Studio window bounds changed after screenshot verification; no input was performed.'
+    }
+}
+
+function Assert-ExpectedWindowIdentity([object]$window) {
+    if ([string]::IsNullOrWhiteSpace($ExpectedWindowHandle) -or [string]::IsNullOrWhiteSpace($ExpectedProcessStartTimeUtc)) {
+        throw 'Input requires native window identity from a verified Studio screenshot.'
+    }
+    if ($window.WindowHandle -ne $ExpectedWindowHandle -or $window.ProcessStartTimeUtc -ne $ExpectedProcessStartTimeUtc) {
+        throw 'Roblox Studio native window or process identity changed after screenshot verification; no input was performed.'
     }
 }
 
@@ -397,6 +410,8 @@ function Assert-CursorTargetsStudioWindow([object]$window, [int]$screenX, [int]$
 function Convert-Status([object]$window) {
     return [ordered]@{
         pid = $window.Pid
+        windowHandle = $window.WindowHandle
+        processStartTimeUtc = $window.ProcessStartTimeUtc
         title = $window.Title
         executable = $window.Executable
         minimized = $window.Minimized
@@ -473,10 +488,12 @@ if ($Action -eq 'Capture' -or $Action -eq 'CaptureFocused') {
     exit 0
 }
 
+Assert-ExpectedWindowIdentity $window
 if ($window.Minimized) {
     throw 'Roblox Studio became minimized before the final input boundary; no input was performed.'
 }
 $window = Focus-StudioWindow $window
+Assert-ExpectedWindowIdentity $window
 Assert-ExpectedWindowBounds $window
 
 if ($Action -eq 'Click') {
