@@ -645,6 +645,7 @@ server/src/__tests__/studioIntegration.test.ts
 server/src/__tests__/world1a.cross-artifact-validation.test.ts
 server/src/__tests__/world1b.receipt-verification.test.ts
 server/src/__tests__/world1b.scene-contract.test.ts
+server/src/__tests__/world1c.package-commit.test.ts
 server/src/agents/collaboration/AgentCoordinator.ts
 server/src/agents/collaboration/AgentMessageBus.ts
 server/src/agents/collaboration/CollaborationTypes.ts
@@ -1256,6 +1257,7 @@ server/src/types/llm.ts
 server/src/types/novelty.ts
 server/src/types/pipeline-events.ts
 server/src/types/playableLua.ts
+server/src/types/worldRuntimeMode.ts
 server/src/ui-gen/UIGenerationEngine.ts
 server/src/ui-gen/UIHierarchyBuilder.ts
 server/src/ui-gen/UIInstanceTreeBuilder.ts
