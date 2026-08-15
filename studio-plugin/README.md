@@ -1,4 +1,4 @@
-# Roblox AI Studio Plugin — v1.11.0
+# Roblox AI Studio Plugin — v1.11.1
 
 Canonical Roblox Studio plugin for importing durable generation artifacts from the Roblox AI Studio backend.
 
@@ -51,9 +51,9 @@ npm run studio:package
 The command creates ignored outputs under `dist/studio-plugin/`:
 
 ```text
-RobloxAIStudioPlugin-v1.11.0.rbxmx
-RobloxAIStudioPlugin-v1.11.0.manifest.json
-RobloxAIStudioPlugin-v1.11.0.SHA256SUMS.txt
+RobloxAIStudioPlugin-v1.11.1.rbxmx
+RobloxAIStudioPlugin-v1.11.1.manifest.json
+RobloxAIStudioPlugin-v1.11.1.SHA256SUMS.txt
 ```
 
 The `.rbxmx` model contains the active source hierarchy with `plugin.lua` represented as a `Script` and the remaining active modules represented as `ModuleScript` instances. The manifest records source and bundle SHA-256 values. Unchanged sources produce byte-identical package outputs.
@@ -83,7 +83,7 @@ node -e "const c=require('node:crypto'); console.log('rai_'+c.randomBytes(8).toS
 1. Open the **AI Studio** toolbar panel.
 2. Copy the project ID from the standalone web Workspace.
 3. Paste it into **Project ID**.
-4. Paste the matching `STUDIO_API_KEY` into **Studio API key**. It is stored only in local Roblox Studio plugin settings and is not part of the distributed `.rbxmx` package.
+4. Paste the matching `STUDIO_API_KEY` into **Studio API key**. The input is visually concealed and is cleared immediately when **Connect** is selected. The key is stored only in local Roblox Studio plugin settings and is not part of the distributed `.rbxmx` package. On later sessions, leave the field empty to reuse the saved key; paste a new value only to replace it.
 5. Restart the backend after setting `STUDIO_API_KEY` and `STUDIO_PROJECT_ID`, then select **Connect**.
 
 The project ID is persisted with plugin settings and is sent to `POST /api/studio/connect`. It must match the project that will queue the export; `game.Name` is not used as an ownership substitute.

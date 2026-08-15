@@ -95,7 +95,12 @@ describe("STUDIO-1d canonical Roblox plugin contract", () => {
     expect(panel).toContain('self:_textBox(frame, "Project ID"');
     expect(panel).toContain('self:_updateStatus("Project ID required"');
     expect(panel).toContain('GetSetting("AIStudioApiKey")');
-    expect(panel).toContain('SetSetting("AIStudioApiKey", apiKey)');
+    expect(panel).toContain('SetSetting("AIStudioApiKey", enteredApiKey)');
+    expect(panel).toContain("self._savedApiKey");
+    expect(panel).toContain("self:_secretTextBox(frame, apiKeyPlaceholder, 3)");
+    expect(panel).toContain('self._elements.apiKeyInput.Text = ""');
+    expect(panel).toContain("input.TextTransparency = 1");
+    expect(panel).not.toContain("defaultApiKey");
     expect(connector).toContain('headers["X-API-Key"] = self._apiKey');
     expect(connector).not.toContain("Config.API_KEY");
     expect(connector).toContain("payload.projectId = self._projectId");
@@ -118,7 +123,7 @@ describe("STUDIO-1d canonical Roblox plugin contract", () => {
     expect(panel).not.toContain("end:updaeSt");
     expect(panel).not.toContain("self._statusLabel");
     expect(panel).toContain('self:_updateStatus("Verified"');
-    expect(config).toContain('Config.PLUGIN_VERSION = "1.11.0"');
+    expect(config).toContain('Config.PLUGIN_VERSION = "1.11.1"');
     expect(config).toContain("Config.COMMAND_POLL_INTERVAL = 2");
   });
 });
