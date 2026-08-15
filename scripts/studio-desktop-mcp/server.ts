@@ -645,14 +645,14 @@ async function consumeFreshCaptureReference(
   };
 }
 
-function assertTargetAreaUnchanged(
+function assertTargetAreaStableAcrossApproval(
   reference: StudioCaptureReference,
   current: StudioCaptureResult,
   x: number,
   y: number,
 ): void {
   if (
-    !imageTargetFingerprintsMatch(
+    !imageTargetFingerprintsMatchWithUniformShift(
       reference.capture.imageFingerprint,
       current.imageFingerprint,
       reference.capture.imageWidth,
@@ -662,7 +662,7 @@ function assertTargetAreaUnchanged(
     )
   ) {
     throw new Error(
-      "The intended input area changed after the referenced screenshot; capture a new screenshot before input",
+      "The intended input area changed while awaiting approval; capture a new screenshot before input",
     );
   }
 }
@@ -894,7 +894,7 @@ async function callTool(
         "Click coordinates are outside the referenced screenshot",
       );
     }
-    assertTargetAreaUnchanged(reference, current, click.x, click.y);
+    assertTargetAreaStableAcrossApproval(reference, current, click.x, click.y);
     assertTargetAreaStableAcrossFocus(current, focused, click.x, click.y);
     return {
       content: [
@@ -932,7 +932,7 @@ async function callTool(
     ) {
       throw new Error("Text target is outside the referenced screenshot");
     }
-    assertTargetAreaUnchanged(reference, current, input.x, input.y);
+    assertTargetAreaStableAcrossApproval(reference, current, input.x, input.y);
     assertTargetAreaStableAcrossFocus(current, focused, input.x, input.y);
     return {
       content: [
@@ -971,7 +971,12 @@ async function callTool(
       throw new Error("Key target is outside the referenced screenshot");
     }
     if (keyRequiresStableTarget(input.key)) {
-      assertTargetAreaUnchanged(reference, current, input.x, input.y);
+      assertTargetAreaStableAcrossApproval(
+        reference,
+        current,
+        input.x,
+        input.y,
+      );
       assertTargetAreaStableAcrossFocus(current, focused, input.x, input.y);
     }
     return {

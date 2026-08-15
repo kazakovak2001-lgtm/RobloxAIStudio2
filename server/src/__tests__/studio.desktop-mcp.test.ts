@@ -382,6 +382,16 @@ describe("Roblox Studio desktop MCP boundary", () => {
     ).toBe(true);
     expect(
       imageTargetFingerprintsMatchWithUniformShift(
+        uniformFocusShift.toString("base64"),
+        expected.toString("base64"),
+        1024,
+        768,
+        512,
+        384,
+      ),
+    ).toBe(true);
+    expect(
+      imageTargetFingerprintsMatchWithUniformShift(
         expected.toString("base64"),
         excessiveUniformFocusShift.toString("base64"),
         1024,
