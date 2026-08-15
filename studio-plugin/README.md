@@ -1,4 +1,4 @@
-# Roblox AI Studio Plugin — v1.11.1
+# Roblox AI Studio Plugin — v1.11.2
 
 Canonical Roblox Studio plugin for importing durable generation artifacts from the Roblox AI Studio backend.
 
@@ -51,9 +51,9 @@ npm run studio:package
 The command creates ignored outputs under `dist/studio-plugin/`:
 
 ```text
-RobloxAIStudioPlugin-v1.11.1.rbxmx
-RobloxAIStudioPlugin-v1.11.1.manifest.json
-RobloxAIStudioPlugin-v1.11.1.SHA256SUMS.txt
+RobloxAIStudioPlugin-v1.11.2.rbxmx
+RobloxAIStudioPlugin-v1.11.2.manifest.json
+RobloxAIStudioPlugin-v1.11.2.SHA256SUMS.txt
 ```
 
 The `.rbxmx` model contains the active source hierarchy with `plugin.lua` represented as a `Script` and the remaining active modules represented as `ModuleScript` instances. The manifest records source and bundle SHA-256 values. Unchanged sources produce byte-identical package outputs.

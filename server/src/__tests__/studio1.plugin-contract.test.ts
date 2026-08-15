@@ -29,6 +29,20 @@ describe("STUDIO-1d canonical Roblox plugin contract", () => {
     expect(entry).not.toContain("RuntimeValidator.new()");
   });
 
+  it("keeps the plugin inert outside the Studio Edit plugin context", () => {
+    const entry = readPluginFile("plugin.lua");
+    const guardIndex = entry.indexOf(
+      "if not RunService:IsEdit() or plugin == nil then",
+    );
+    const firstModuleIndex = entry.indexOf("local Config = require(");
+    const toolbarIndex = entry.indexOf("plugin:CreateToolbar");
+
+    expect(entry).toContain('game:GetService("RunService")');
+    expect(guardIndex).toBeGreaterThan(-1);
+    expect(guardIndex).toBeLessThan(firstModuleIndex);
+    expect(guardIndex).toBeLessThan(toolbarIndex);
+  });
+
   it("uses the existing REST command queue and acknowledgement lifecycle", () => {
     const connector = readPluginFile("src/services/StudioConnector.lua");
     const sync = readPluginFile("src/services/SyncManager.lua");
@@ -123,7 +137,21 @@ describe("STUDIO-1d canonical Roblox plugin contract", () => {
     expect(panel).not.toContain("end:updaeSt");
     expect(panel).not.toContain("self._statusLabel");
     expect(panel).toContain('self:_updateStatus("Verified"');
-    expect(config).toContain('Config.PLUGIN_VERSION = "1.11.1"');
+    expect(config).toContain('Config.PLUGIN_VERSION = "1.11.2"');
     expect(config).toContain("Config.COMMAND_POLL_INTERVAL = 2");
+  });
+
+  it("does not cancel the active heartbeat thread during reconnect", () => {
+    const connection = readPluginFile("src/services/ConnectionManager.lua");
+
+    expect(connection).toContain(
+      "if self._heartbeatThread == heartbeatThread then",
+    );
+    expect(connection).toContain("self._heartbeatThread = nil");
+    expect(connection).toContain("heartbeatThread ~= coroutine.running()");
+    expect(connection).toContain('coroutine.status(heartbeatThread) ~= "dead"');
+    expect(connection.indexOf("self._heartbeatThread = nil")).toBeLessThan(
+      connection.indexOf("self:_attemptReconnect()"),
+    );
   });
 });
