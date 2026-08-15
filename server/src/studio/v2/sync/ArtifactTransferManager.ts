@@ -43,6 +43,20 @@ export class ArtifactTransferManager {
   }
 
   /**
+   * Tenant-scoped artifact references for security-sensitive delivery paths.
+   */
+  getArtifactRefsForProject(
+    projectId: string,
+    pipelineId: string,
+  ): ArtifactRef[] {
+    const artifacts = this.artifactStore.getDeliverableArtifacts(
+      projectId,
+      pipelineId,
+    );
+    return artifacts.map((a: PipelineArtifact) => this.toRef(a));
+  }
+
+  /**
    * Transfer specific artifacts by ID (with content).
    */
   transfer(artifactIds: string[]): TransferResult {
@@ -79,6 +93,29 @@ export class ArtifactTransferManager {
       artifactIds,
       (artifact) =>
         artifact.pipelineId === pipelineId && deliverable.has(artifact.id),
+    );
+  }
+
+  /**
+   * Transfer artifacts only when both tenant and pipeline match.
+   */
+  transferForProject(
+    projectId: string,
+    pipelineId: string,
+    artifactIds: string[],
+  ): TransferResult {
+    const deliverable = new Set(
+      this.artifactStore
+        .getDeliverableArtifacts(projectId, pipelineId)
+        .map((artifact) => artifact.id),
+    );
+
+    return this.transferMatching(
+      artifactIds,
+      (artifact) =>
+        artifact.projectId === projectId &&
+        artifact.pipelineId === pipelineId &&
+        deliverable.has(artifact.id),
     );
   }
 

@@ -929,4 +929,40 @@ describe("WORLD-1C Studio delivery refuses an incoherent package", () => {
     expect(runtime.bridge.getPendingCommandCount(clientId)).toBe(0);
     expect(await runtime.getProjectEvidence(PROJECT_ID)).toBeNull();
   });
+  it("refuses delivery when the requested execution belongs to another project", async () => {
+    const { runtime, clientId } = await connectedRuntime();
+    const foreignProjectId = "foreign-project";
+    const foreignExecutionId = "foreign-exec";
+
+    const recorded = await new GenerationArtifactRecorder(
+      runtime.artifacts,
+    ).record(foreignExecutionId, playableNodes(), foreignProjectId, {
+      worldRuntimeMode: "lua-owned",
+    });
+
+    // Defense in depth: even if a caller associates the foreign execution with
+    // the authorized project, tenant-scoped delivery must fail closed.
+    runtime.activateProjectExecution(PROJECT_ID, foreignExecutionId);
+
+    expect(runtime.getProjectSnapshot(PROJECT_ID)).toBeNull();
+
+    const transfer = runtime.transferProjectArtifacts(
+      PROJECT_ID,
+      recorded.map((artifact) => artifact.id),
+    );
+    expect(transfer).not.toBeNull();
+    expect(transfer!.artifacts).toEqual([]);
+    expect(transfer!.missing).toEqual(recorded.map((artifact) => artifact.id));
+
+    const queued = await runtime.queueProjectExport(
+      clientId,
+      PROJECT_ID,
+      foreignExecutionId,
+    );
+
+    expect(queued.success).toBe(false);
+    if (queued.success) return;
+    expect(queued.reason).toBe("no_artifacts");
+    expect(runtime.bridge.getPendingCommandCount(clientId)).toBe(0);
+  });
 });

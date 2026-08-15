@@ -48,6 +48,29 @@ export class ProjectSyncManager {
   }
 
   /**
+   * Tenant-scoped snapshot for security-sensitive Studio delivery.
+   */
+  getProjectSnapshotForProject(
+    projectId: string,
+    pipelineId: string,
+  ): ProjectSnapshot | null {
+    const refs = this.transferManager.getArtifactRefsForProject(
+      projectId,
+      pipelineId,
+    );
+    const version = this.generateVersion(pipelineId, refs);
+    this.versions.set(pipelineId, version);
+
+    return {
+      projectId,
+      version,
+      artifacts: refs,
+      generatedAt: Date.now(),
+      artifactCount: refs.length,
+    };
+  }
+
+  /**
    * Process a sync request with changes from Studio after artifact mutations are
    * durably acknowledged.
    */

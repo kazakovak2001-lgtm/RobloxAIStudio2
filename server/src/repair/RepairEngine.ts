@@ -331,8 +331,10 @@ export class RepairEngine {
     projectId: string,
     repairedScripts: Awaited<ReturnType<typeof assembleRepairInput>>["scripts"],
   ): Promise<NoveltyVerdictRecord | undefined> {
-    const parentArtifacts =
-      this.artifactStore.getDeliverableArtifacts(parentExecutionId);
+    const parentArtifacts = this.artifactStore.getDeliverableArtifacts(
+      projectId,
+      parentExecutionId,
+    );
     const parentLua = parentArtifacts.find(
       (artifact) => artifact.stage === "LUA_GENERATION",
     );

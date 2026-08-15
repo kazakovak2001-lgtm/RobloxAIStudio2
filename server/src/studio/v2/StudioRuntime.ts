@@ -175,10 +175,13 @@ export class StudioRuntime {
     this.latestExecutionByProject.set(projectId, executionId);
   }
 
-  getProjectSnapshot(projectOrExecutionId: string): ProjectSnapshot | null {
-    const executionId = this.resolveExecutionId(projectOrExecutionId);
+  getProjectSnapshot(projectId: string): ProjectSnapshot | null {
+    const executionId = this.resolveExecutionId(projectId);
     if (!executionId) return null;
-    const snapshot = this.sync.getProjectSnapshot(executionId);
+    const snapshot = this.sync.getProjectSnapshotForProject(
+      projectId,
+      executionId,
+    );
     return snapshot && snapshot.artifactCount > 0 ? snapshot : null;
   }
 
@@ -189,14 +192,14 @@ export class StudioRuntime {
   }
 
   transferProjectArtifacts(
-    projectOrExecutionId: string,
+    projectId: string,
     artifactIds: string[],
   ): TransferResult | null {
-    const executionId = this.resolveExecutionId(projectOrExecutionId);
+    const executionId = this.resolveExecutionId(projectId);
     if (!executionId) return null;
     return this.sync
       .getTransferManager()
-      .transferForPipeline(executionId, artifactIds);
+      .transferForProject(projectId, executionId, artifactIds);
   }
 
   async processProjectSyncRequest(
@@ -261,7 +264,10 @@ export class StudioRuntime {
       };
     }
 
-    const snapshot = this.sync.getProjectSnapshot(executionId);
+    const snapshot = this.sync.getProjectSnapshotForProject(
+      projectId,
+      executionId,
+    );
     if (!snapshot || snapshot.artifactCount === 0) {
       return {
         success: false,
@@ -319,9 +325,11 @@ export class StudioRuntime {
       };
     }
 
-    const transfer = this.sync
-      .getTransferManager()
-      .transfer(snapshot.artifacts.map((artifact) => artifact.id));
+    const transfer = this.sync.getTransferManager().transferForProject(
+      projectId,
+      executionId,
+      snapshot.artifacts.map((artifact) => artifact.id),
+    );
     if (transfer.payloadExceeded) {
       return {
         success: false,
