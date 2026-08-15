@@ -74,6 +74,7 @@ const MAX_PROCESS_ID = 2_147_483_647;
 const CAPTURE_REFERENCE_TTL_MS = 10 * 60 * 1_000;
 const MAX_CAPTURE_REFERENCES = 32;
 const HELPER_TIMEOUT_MS = 30_000;
+const MAX_FOCUS_LUMINANCE_SHIFT = 40;
 const PROJECT_DIRECTORY = resolve(
   process.env.ROBLOX_STUDIO_DESKTOP_PROJECT_DIR ?? process.cwd(),
 );
@@ -549,9 +550,11 @@ export function imageTargetFingerprintsMatchWithUniformShift(
     Math.abs(difference - meanShift),
   );
   return (
+    Math.abs(meanShift) <= MAX_FOCUS_LUMINANCE_SHIFT &&
     residuals.reduce((sum, difference) => sum + difference, 0) /
       residuals.length <=
-      8 && Math.max(...residuals) <= 40
+      8 &&
+    Math.max(...residuals) <= 40
   );
 }
 

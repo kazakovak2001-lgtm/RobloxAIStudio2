@@ -520,6 +520,8 @@ if ($Action -eq 'TypeText') {
     if ($textWindow.Handle -ne $window.Handle) { throw 'Roblox Studio main window changed after focusing the text target; no text was entered.' }
     Assert-ExpectedWindowBounds $textWindow
     Assert-StudioForeground $textWindow
+    Assert-ExpectedTargetFingerprint $textWindow $X $Y $ScreenshotWidth $ScreenshotHeight
+    Assert-CursorTargetsStudioWindow $textWindow $screenX $screenY
     [StudioDesktopNative]::SendUnicode($Text)
     Convert-Status (Get-EligibleStudioWindow $window.Pid) | ConvertTo-Json -Compress -Depth 5
     exit 0
@@ -564,6 +566,8 @@ if ($Action -eq 'PressKey') {
     if ($keyWindow.Handle -ne $window.Handle) { throw 'Roblox Studio main window changed after focusing the key target; no key was sent.' }
     Assert-ExpectedWindowBounds $keyWindow
     Assert-StudioForeground $keyWindow
+    Assert-ExpectedTargetFingerprint $keyWindow $X $Y $ScreenshotWidth $ScreenshotHeight
+    Assert-CursorTargetsStudioWindow $keyWindow $screenX $screenY
     [System.Windows.Forms.SendKeys]::SendWait($sequences[$Key])
     Convert-Status (Get-EligibleStudioWindow $window.Pid) | ConvertTo-Json -Compress -Depth 5
     exit 0

@@ -1,5 +1,5 @@
 import { spawn } from "node:child_process";
-import { mkdtemp, rm } from "node:fs/promises";
+import { mkdtemp, readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
@@ -367,6 +367,7 @@ describe("Roblox Studio desktop MCP boundary", () => {
     ).toBe(false);
 
     const uniformFocusShift = Buffer.alloc(64 * 64, 130);
+    const excessiveUniformFocusShift = Buffer.alloc(64 * 64, 180);
     const structuralFocusChange = Buffer.from(uniformFocusShift);
     structuralFocusChange[32 * 64 + 32] = 230;
     expect(
@@ -382,6 +383,16 @@ describe("Roblox Studio desktop MCP boundary", () => {
     expect(
       imageTargetFingerprintsMatchWithUniformShift(
         expected.toString("base64"),
+        excessiveUniformFocusShift.toString("base64"),
+        1024,
+        768,
+        512,
+        384,
+      ),
+    ).toBe(false);
+    expect(
+      imageTargetFingerprintsMatchWithUniformShift(
+        expected.toString("base64"),
         structuralFocusChange.toString("base64"),
         1024,
         768,
@@ -389,6 +400,28 @@ describe("Roblox Studio desktop MCP boundary", () => {
         384,
       ),
     ).toBe(false);
+  });
+
+  it("revalidates focused text and key targets immediately before input", async () => {
+    const helperPath = resolve(
+      process.cwd(),
+      "scripts/studio-desktop-mcp/windows-studio-control.ps1",
+    );
+    const helper = await readFile(helperPath, "utf8");
+    const textBlock = helper.slice(
+      helper.indexOf("if ($Action -eq 'TypeText')"),
+      helper.indexOf("if ($Action -eq 'PressKey')"),
+    );
+    const keyBlock = helper.slice(
+      helper.indexOf("if ($Action -eq 'PressKey')"),
+    );
+
+    expect(textBlock).toMatch(
+      /SendLeftClick\(\)[\s\S]*Assert-ExpectedTargetFingerprint \$textWindow[\s\S]*SendUnicode\(\$Text\)/u,
+    );
+    expect(keyBlock).toMatch(
+      /SendLeftClick\(\)[\s\S]*Assert-ExpectedTargetFingerprint \$keyWindow[\s\S]*SendWait/u,
+    );
   });
 
   it("invalidates a capture when Studio is minimized before focus", () => {
