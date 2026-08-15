@@ -169,6 +169,7 @@
 │   │   ├── STUDIO-1G_DESKTOP_ACCEPTANCE_RESULT.md
 │   │   ├── STUDIO-2F-A_SCOPE.md
 │   │   ├── STUDIO-ACCEPT-1_DESKTOP_ACCEPTANCE_RESULT.md
+│   │   ├── STUDIO-DEFERRED-ACCEPTANCE_RESULT.md
 │   │   ├── WORLD-1B_SCOPE.md
 │   │   └── WORLD-1C_SCOPE.md
 │   ├── 01-architecture
@@ -729,6 +730,7 @@
 │   │   │   ├── securityreviewa2.hardening.test.ts
 │   │   │   ├── simtruth1.evidence.test.ts
 │   │   │   ├── studio.acceptance-runner.test.ts
+│   │   │   ├── studio.backend-dualstack-bind.test.ts
 │   │   │   ├── studio.desktop-mcp.test.ts
 │   │   │   ├── studio1.artifact-lineage.test.ts
 │   │   │   ├── studio1.import-acknowledgement.test.ts
