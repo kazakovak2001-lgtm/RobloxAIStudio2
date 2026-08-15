@@ -15,7 +15,7 @@ param(
     [int]$ExpectedWidth,
     [int]$ExpectedHeight,
     [string]$ExpectedImageFingerprint = '',
-    [ValidateSet('left', 'double_left')]
+    [ValidateSet('left')]
     [string]$Button = 'left',
     [string]$Text,
     [ValidateSet('TAB', 'SHIFT_TAB', 'ESCAPE', 'UP', 'DOWN', 'LEFT', 'RIGHT', 'F5', 'SHIFT_F5', 'CTRL_F')]
@@ -494,21 +494,6 @@ if ($Action -eq 'Click') {
     Assert-CursorTargetsStudioWindow $window $screenX $screenY
     Assert-StudioForeground $window
     [StudioDesktopNative]::SendLeftClick()
-    if ($Button -eq 'double_left') {
-        Start-Sleep -Milliseconds 90
-        $secondClickWindow = Get-EligibleStudioWindow $window.Pid
-        if ($secondClickWindow.Handle -ne $window.Handle) {
-            throw 'Roblox Studio main window changed after the first click; the second click was not performed.'
-        }
-        Assert-ExpectedWindowBounds $secondClickWindow
-        Assert-CursorTargetsStudioWindow $secondClickWindow $screenX $screenY
-        if (-not [StudioDesktopNative]::SetCursorPos($screenX, $screenY)) {
-            throw 'Windows could not reposition the cursor inside Roblox Studio; the second click was not performed.'
-        }
-        Assert-CursorTargetsStudioWindow $secondClickWindow $screenX $screenY
-        Assert-StudioForeground $secondClickWindow
-        [StudioDesktopNative]::SendLeftClick()
-    }
     Convert-Status (Get-EligibleStudioWindow $window.Pid) | ConvertTo-Json -Compress -Depth 5
     exit 0
 }

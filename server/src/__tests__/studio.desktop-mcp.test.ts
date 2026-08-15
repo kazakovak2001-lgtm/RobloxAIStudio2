@@ -6,6 +6,7 @@ import { describe, expect, it } from "vitest";
 import {
   handleRequest,
   imageTargetFingerprintsMatch,
+  imageTargetFingerprintsMatchWithUniformShift,
   keyRequiresStableTarget,
   layoutFingerprintsMatch,
   STUDIO_DESKTOP_TOOLS,
@@ -193,7 +194,16 @@ describe("Roblox Studio desktop MCP boundary", () => {
         y: 1,
         button: "right",
       }),
-    ).toThrow(/button must be left or double_left/);
+    ).toThrow(/button must be left/);
+    expect(() =>
+      validateClickArguments({
+        pid: 1234,
+        captureId,
+        x: 1,
+        y: 1,
+        button: "double_left",
+      }),
+    ).toThrow(/button must be left/);
   });
 
   it("rejects arbitrary keys and unsafe text", () => {
@@ -349,6 +359,30 @@ describe("Roblox Studio desktop MCP boundary", () => {
       imageTargetFingerprintsMatch(
         expected.toString("base64"),
         targetChange.toString("base64"),
+        1024,
+        768,
+        512,
+        384,
+      ),
+    ).toBe(false);
+
+    const uniformFocusShift = Buffer.alloc(64 * 64, 130);
+    const structuralFocusChange = Buffer.from(uniformFocusShift);
+    structuralFocusChange[32 * 64 + 32] = 230;
+    expect(
+      imageTargetFingerprintsMatchWithUniformShift(
+        expected.toString("base64"),
+        uniformFocusShift.toString("base64"),
+        1024,
+        768,
+        512,
+        384,
+      ),
+    ).toBe(true);
+    expect(
+      imageTargetFingerprintsMatchWithUniformShift(
+        expected.toString("base64"),
+        structuralFocusChange.toString("base64"),
         1024,
         768,
         512,

@@ -161,7 +161,7 @@ export const STUDIO_DESKTOP_TOOLS: ToolDefinition[] = [
         captureId: { type: "string", format: "uuid" },
         x: { type: "integer", minimum: 0, maximum: MAX_SCREENSHOT_WIDTH - 1 },
         y: { type: "integer", minimum: 0, maximum: MAX_SCREENSHOT_HEIGHT - 1 },
-        button: { type: "string", enum: ["left", "double_left"] },
+        button: { type: "string", enum: ["left"] },
       },
     },
     annotations: {
@@ -315,7 +315,7 @@ export function validateClickArguments(value: unknown): {
   captureId: string;
   x: number;
   y: number;
-  button: "left" | "double_left";
+  button: "left";
 } {
   const object = assertObject(value);
   assertOnlyKeys(object, ["pid", "captureId", "x", "y", "button"]);
@@ -323,8 +323,8 @@ export function validateClickArguments(value: unknown): {
   const captureId = requireCaptureId(object);
   const x = requireInteger(object, "x", 0, MAX_SCREENSHOT_WIDTH - 1);
   const y = requireInteger(object, "y", 0, MAX_SCREENSHOT_HEIGHT - 1);
-  if (object.button !== "left" && object.button !== "double_left") {
-    throw new Error("button must be left or double_left");
+  if (object.button !== "left") {
+    throw new Error("button must be left");
   }
   return {
     pid,
@@ -500,6 +500,61 @@ export function imageTargetFingerprintsMatch(
   return totalDifference / compared <= 8 && maximumDifference <= 40;
 }
 
+export function imageTargetFingerprintsMatchWithUniformShift(
+  expectedBase64: string,
+  currentBase64: string,
+  imageWidth: number,
+  imageHeight: number,
+  x: number,
+  y: number,
+): boolean {
+  const expected = Buffer.from(expectedBase64, "base64");
+  const current = Buffer.from(currentBase64, "base64");
+  const fingerprintSize = 64;
+  if (
+    expected.length !== fingerprintSize * fingerprintSize ||
+    current.length !== expected.length ||
+    imageWidth < 1 ||
+    imageHeight < 1
+  ) {
+    return false;
+  }
+  const centerX = Math.min(
+    fingerprintSize - 1,
+    Math.floor((x * fingerprintSize) / imageWidth),
+  );
+  const centerY = Math.min(
+    fingerprintSize - 1,
+    Math.floor((y * fingerprintSize) / imageHeight),
+  );
+  const signedDifferences: number[] = [];
+  for (
+    let sampleY = Math.max(0, centerY - 2);
+    sampleY <= Math.min(fingerprintSize - 1, centerY + 2);
+    sampleY += 1
+  ) {
+    for (
+      let sampleX = Math.max(0, centerX - 2);
+      sampleX <= Math.min(fingerprintSize - 1, centerX + 2);
+      sampleX += 1
+    ) {
+      const index = sampleY * fingerprintSize + sampleX;
+      signedDifferences.push(current[index] - expected[index]);
+    }
+  }
+  const meanShift =
+    signedDifferences.reduce((sum, difference) => sum + difference, 0) /
+    signedDifferences.length;
+  const residuals = signedDifferences.map((difference) =>
+    Math.abs(difference - meanShift),
+  );
+  return (
+    residuals.reduce((sum, difference) => sum + difference, 0) /
+      residuals.length <=
+      8 && Math.max(...residuals) <= 40
+  );
+}
+
 function equalBounds(
   left: StudioWindowStatus["bounds"],
   right: StudioWindowStatus["bounds"],
@@ -525,12 +580,28 @@ export function windowStatesMatch(
   );
 }
 
+function captureMatchesReference(
+  reference: StudioCaptureReference,
+  current: StudioCaptureResult,
+): boolean {
+  return (
+    current.imageWidth === reference.capture.imageWidth &&
+    current.imageHeight === reference.capture.imageHeight &&
+    windowStatesMatch(reference.capture, current) &&
+    layoutFingerprintsMatch(
+      reference.capture.layoutFingerprint,
+      current.layoutFingerprint,
+    )
+  );
+}
+
 async function consumeFreshCaptureReference(
   captureId: string,
   pid: number,
 ): Promise<{
   reference: StudioCaptureReference;
   current: StudioCaptureResult;
+  focused: StudioCaptureResult;
 }> {
   const reference = captureReferences.get(captureId);
   captureReferences.delete(captureId);
@@ -552,21 +623,23 @@ async function consumeFreshCaptureReference(
       "The Roblox Studio window state changed before focus; capture a new screenshot before input",
     );
   }
-  const current = await captureToTemporaryFile(pid, true);
-  if (
-    current.capture.imageWidth !== reference.capture.imageWidth ||
-    current.capture.imageHeight !== reference.capture.imageHeight ||
-    !windowStatesMatch(reference.capture, current.capture) ||
-    !layoutFingerprintsMatch(
-      reference.capture.layoutFingerprint,
-      current.capture.layoutFingerprint,
-    )
-  ) {
+  const current = await captureToTemporaryFile(pid);
+  if (!captureMatchesReference(reference, current.capture)) {
     throw new Error(
       "The Roblox Studio window no longer matches the referenced screenshot; capture a new screenshot before input",
     );
   }
-  return { reference, current: current.capture };
+  const focused = await captureToTemporaryFile(pid, true);
+  if (!captureMatchesReference(reference, focused.capture)) {
+    throw new Error(
+      "The Roblox Studio window changed while receiving focus; capture a new screenshot before input",
+    );
+  }
+  return {
+    reference,
+    current: current.capture,
+    focused: focused.capture,
+  };
 }
 
 function assertTargetAreaUnchanged(
@@ -587,6 +660,28 @@ function assertTargetAreaUnchanged(
   ) {
     throw new Error(
       "The intended input area changed after the referenced screenshot; capture a new screenshot before input",
+    );
+  }
+}
+
+function assertTargetAreaStableAcrossFocus(
+  beforeFocus: StudioCaptureResult,
+  afterFocus: StudioCaptureResult,
+  x: number,
+  y: number,
+): void {
+  if (
+    !imageTargetFingerprintsMatchWithUniformShift(
+      beforeFocus.imageFingerprint,
+      afterFocus.imageFingerprint,
+      beforeFocus.imageWidth,
+      beforeFocus.imageHeight,
+      x,
+      y,
+    )
+  ) {
+    throw new Error(
+      "The intended input area changed while Studio received focus; capture a new screenshot before input",
     );
   }
 }
@@ -784,7 +879,7 @@ async function callTool(
   }
   if (name === "studio_click") {
     const click = validateClickArguments(rawArguments);
-    const { reference, current } = await consumeFreshCaptureReference(
+    const { reference, current, focused } = await consumeFreshCaptureReference(
       click.captureId,
       click.pid,
     );
@@ -797,6 +892,7 @@ async function callTool(
       );
     }
     assertTargetAreaUnchanged(reference, current, click.x, click.y);
+    assertTargetAreaStableAcrossFocus(current, focused, click.x, click.y);
     return {
       content: [
         textContent(
@@ -814,7 +910,7 @@ async function callTool(
             "-Button",
             click.button,
             "-ExpectedImageFingerprint",
-            reference.capture.imageFingerprint,
+            focused.imageFingerprint,
             ...expectedBoundsArguments(reference),
           ]),
         ),
@@ -823,7 +919,7 @@ async function callTool(
   }
   if (name === "studio_type_text") {
     const input = validateTextArguments(rawArguments);
-    const { reference, current } = await consumeFreshCaptureReference(
+    const { reference, current, focused } = await consumeFreshCaptureReference(
       input.captureId,
       input.pid,
     );
@@ -834,6 +930,7 @@ async function callTool(
       throw new Error("Text target is outside the referenced screenshot");
     }
     assertTargetAreaUnchanged(reference, current, input.x, input.y);
+    assertTargetAreaStableAcrossFocus(current, focused, input.x, input.y);
     return {
       content: [
         textContent(
@@ -851,7 +948,7 @@ async function callTool(
             "-ScreenshotHeight",
             String(reference.capture.imageHeight),
             "-ExpectedImageFingerprint",
-            reference.capture.imageFingerprint,
+            focused.imageFingerprint,
             ...expectedBoundsArguments(reference),
           ]),
         ),
@@ -860,7 +957,7 @@ async function callTool(
   }
   if (name === "studio_press_key") {
     const input = validateKeyArguments(rawArguments);
-    const { reference, current } = await consumeFreshCaptureReference(
+    const { reference, current, focused } = await consumeFreshCaptureReference(
       input.captureId,
       input.pid,
     );
@@ -872,6 +969,7 @@ async function callTool(
     }
     if (keyRequiresStableTarget(input.key)) {
       assertTargetAreaUnchanged(reference, current, input.x, input.y);
+      assertTargetAreaStableAcrossFocus(current, focused, input.x, input.y);
     }
     return {
       content: [
@@ -890,7 +988,7 @@ async function callTool(
             "-ScreenshotHeight",
             String(reference.capture.imageHeight),
             "-ExpectedImageFingerprint",
-            reference.capture.imageFingerprint,
+            focused.imageFingerprint,
             ...expectedBoundsArguments(reference),
           ]),
         ),
