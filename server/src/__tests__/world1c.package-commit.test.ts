@@ -400,12 +400,12 @@ describe("WORLD-1C the commit boundary survives a restart", () => {
     // in-memory commit at all.
     const after = new ArtifactStore(storage);
 
-    const commit = after.getPackageCommit("restart-exec");
+    const commit = after.getPackageCommit(PROJECT_ID, "restart-exec");
     expect(commit).not.toBeNull();
     expect(commit!.worldRuntimeMode).toBe("lua-owned");
     expect(commit!.source).toBe("generation");
 
-    const delivered = after.getDeliverableArtifacts("restart-exec");
+    const delivered = after.getDeliverableArtifacts(PROJECT_ID, "restart-exec");
     expect(delivered.map((a) => a.stage)).toContain("WORLD_MODEL");
     expect(delivered.map((a) => a.stage)).toContain("LUA_GENERATION");
     expect(delivered.map((a) => a.stage)).toContain("VALIDATION");
@@ -424,12 +424,102 @@ describe("WORLD-1C the commit boundary survives a restart", () => {
 
     // The marker is the last durable write, so a crash before it lands leaves
     // exactly this state: every stage artifact present, no marker.
-    storage.delete("generation_package_commits", "lost-marker-exec");
+    storage.delete(
+      "generation_package_commits",
+      `${PROJECT_ID}:lost-marker-exec`,
+    );
 
     const after = new ArtifactStore(storage);
-    expect(after.getPackageCommit("lost-marker-exec")).toBeNull();
+    expect(after.getPackageCommit(PROJECT_ID, "lost-marker-exec")).toBeNull();
     expect(after.getByPipeline("lost-marker-exec").length).toBeGreaterThan(0);
-    expect(after.getDeliverableArtifacts("lost-marker-exec")).toEqual([]);
+    expect(
+      after.getDeliverableArtifacts(PROJECT_ID, "lost-marker-exec"),
+    ).toEqual([]);
+  });
+});
+
+// ─── Tenant isolation ───────────────────────────────────────────────────────
+
+describe("WORLD-1C package commits are tenant-scoped", () => {
+  async function commitRepairPackage(
+    store: ArtifactStore,
+    pipelineId: string,
+    projectId: string,
+  ) {
+    const world = await store.store(
+      pipelineId,
+      "WORLD_MODEL",
+      null,
+      { ...buildWorldModel({}), worldRuntimeMode: "lua-owned" },
+      { projectId, producer: deterministicProducer("world-model") },
+    );
+    const lua = await store.store(
+      pipelineId,
+      "LUA_GENERATION",
+      "lua_generator",
+      { scripts: [] },
+      { projectId },
+    );
+    return store.commitPackage({
+      pipelineId,
+      projectId,
+      worldRuntimeMode: "lua-owned",
+      source: "repair",
+      artifacts: [world, lua],
+    });
+  }
+
+  it("keeps identical pipeline ids independent across projects", async () => {
+    const storage = new InMemoryStorageProvider();
+    const store = new ArtifactStore(storage);
+    const pipelineId = "shared-exec";
+    const projectA = "project-a";
+    const projectB = "project-b";
+
+    await commitRepairPackage(store, pipelineId, projectA);
+    await commitRepairPackage(store, pipelineId, projectB);
+
+    expect(store.getPackageCommit(projectA, pipelineId)?.projectId).toBe(
+      projectA,
+    );
+    expect(store.getPackageCommit(projectB, pipelineId)?.projectId).toBe(
+      projectB,
+    );
+    expect(
+      store
+        .getDeliverableArtifacts(projectA, pipelineId)
+        .every((artifact) => artifact.projectId === projectA),
+    ).toBe(true);
+    expect(
+      store
+        .getDeliverableArtifacts(projectB, pipelineId)
+        .every((artifact) => artifact.projectId === projectB),
+    ).toBe(true);
+
+    // The compatibility one-argument path cannot choose a tenant when the raw
+    // pipeline namespace is ambiguous, so it fails closed rather than leaking.
+    expect(store.getDeliverableArtifacts(pipelineId)).toEqual([]);
+
+    const afterRestart = new ArtifactStore(storage);
+    expect(
+      afterRestart.getPackageCommit(projectA, pipelineId)?.projectId,
+    ).toBe(projectA);
+    expect(
+      afterRestart.getPackageCommit(projectB, pipelineId)?.projectId,
+    ).toBe(projectB);
+  });
+
+  it("returns no committed package for the wrong project", async () => {
+    const store = new ArtifactStore(new InMemoryStorageProvider());
+    await commitRepairPackage(store, "tenant-exec", PROJECT_ID);
+
+    expect(store.getPackageCommit("other-project", "tenant-exec")).toBeNull();
+    expect(
+      store.getDeliverableArtifacts("other-project", "tenant-exec"),
+    ).toEqual([]);
+    expect(
+      store.getDeliverableArtifacts(PROJECT_ID, "tenant-exec").length,
+    ).toBe(2);
   });
 });
 
