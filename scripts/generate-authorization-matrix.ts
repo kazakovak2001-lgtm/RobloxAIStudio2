@@ -44,10 +44,36 @@ interface MatrixOperation {
   crossTenantEvidence: string;
 }
 
+/**
+ * An outbound server emission. These are not authorization operations: nothing
+ * authenticates a broadcast, so they carry no principal or capability. They are
+ * recorded separately because the matrix otherwise models only inbound
+ * authorization, and a globally broadcast payload reaches every connected
+ * socket regardless of how well the inbound side is guarded.
+ */
+interface MatrixBroadcast {
+  event: string;
+  source: string;
+  /**
+   * - `project-room` — addressed to one project's room.
+   * - `project-room-with-global-fallback` — scoped when a project is known and
+   *   broadcast to everyone when it is not.
+   * - `global-bypassing-available-scope` — broadcast to everyone from a site
+   *   where the project is in scope and a project-room emitter already exists.
+   * - `global-no-project-context` — broadcast to everyone from a site with no
+   *   project in scope, so scoping needs context plumbed in first.
+   * - `global-unreviewed` — discovered but not yet classified.
+   */
+  targeting: string;
+  /** Test proving a foreign socket does not receive the payload, or a gap marker. */
+  tenancyEvidence: string;
+}
+
 interface AuthorizationMatrix {
   version: number;
   controlId: string;
   operations: MatrixOperation[];
+  broadcasts: MatrixBroadcast[];
 }
 
 const repositoryRoot = process.cwd();
@@ -1544,6 +1570,86 @@ function bindingFor(
   };
 }
 
+/**
+ * Outbound emissions are discovered rather than listed, so a new broadcast
+ * cannot be added without appearing here as `global-unreviewed`.
+ */
+function discoverBroadcasts(): MatrixBroadcast[] {
+  const discovered = new Map<string, MatrixBroadcast>();
+  // Matches io.emit("literal", …) and io.emit(identifier, …). Emissions sent
+  // through io.to(room).emit(…) are already scoped and are not global.
+  const pattern = /\bio\.emit\(\s*(?:["'`]([^"'`]+)["'`]|([A-Za-z_$][\w$]*))/g;
+
+  for (const file of listTypeScriptFiles(serverRoot)) {
+    const source = relativeSource(file);
+    for (const match of fs.readFileSync(file, "utf8").matchAll(pattern)) {
+      const event = match[1] ?? `dynamic:${match[2]}`;
+      const rule = broadcastRules.find(
+        (candidate) => candidate.source === source && candidate.event === event,
+      );
+      discovered.set(`${source}|${event}`, {
+        event,
+        source,
+        targeting: rule?.targeting ?? "global-unreviewed",
+        tenancyEvidence: rule?.tenancyEvidence ?? "none-recorded",
+      });
+    }
+  }
+
+  return [...discovered.values()].sort((left, right) =>
+    `${left.source}|${left.event}`.localeCompare(
+      `${right.source}|${right.event}`,
+    ),
+  );
+}
+
+const broadcastRules: ReadonlyArray<{
+  source: string;
+  event: string;
+  targeting: string;
+  tenancyEvidence: string;
+}> = [
+  // index.ts:263-272 emitForProject addresses project:<id> when evt.projectId is
+  // present and falls back to a global broadcast when it is not.
+  {
+    source: "server/src/index.ts",
+    event: "dynamic:eventName",
+    targeting: "project-room-with-global-fallback",
+    tenancyEvidence: "none-recorded",
+  },
+  // The evaluation, memory and planning branches sit in the same switch as
+  // emitForProject, with the same evt.projectId in scope, and broadcast anyway.
+  ...[
+    "evaluation.started",
+    "evaluation.completed",
+    "evaluation.failed",
+    "memory.created",
+    "memory.updated",
+    "memory.snapshot",
+    "memory.decision",
+    "planning.created",
+    "planning.updated",
+    "planning.step.selected",
+    "planning.replanned",
+    "planning.completed",
+    "planning.failed",
+  ].map((event) => ({
+    source: "server/src/index.ts",
+    event,
+    targeting: "global-bypassing-available-scope",
+    tenancyEvidence: "none-recorded",
+  })),
+  // index.ts:751 streams execution traces from an ExecutionTracer listener that
+  // receives no project, so the payload cannot be scoped without plumbing one
+  // through. It carries executionId, nodeId, agentId, evaluationScore and error.
+  {
+    source: "server/src/index.ts",
+    event: "trace.event",
+    targeting: "global-no-project-context",
+    tenancyEvidence: "none-recorded",
+  },
+];
+
 const current = JSON.parse(
   fs.readFileSync(matrixPath, "utf8"),
 ) as AuthorizationMatrix;
@@ -1574,11 +1680,16 @@ const operations = discoverOperations().map((operation): MatrixOperation => {
   return { ...resolved, ...bindingFor(resolved) } as MatrixOperation;
 });
 
+const broadcasts = discoverBroadcasts();
+
 const next: AuthorizationMatrix = {
   version: 1,
   controlId: "SECURITY-2G-E",
   operations,
+  broadcasts,
 };
 
 fs.writeFileSync(matrixPath, `${JSON.stringify(next, null, 2)}\n`);
-console.log(`Authorization matrix now tracks ${operations.length} operations.`);
+console.log(
+  `Authorization matrix now tracks ${operations.length} operations and ${broadcasts.length} global broadcasts.`,
+);

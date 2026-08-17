@@ -12,13 +12,39 @@ interface MatrixOperation {
   resourceScope: string;
   positiveEvidence: string;
   negativeEvidence: string;
+  resourceBinding: string;
+  crossTenantEvidence: string;
+}
+
+interface MatrixBroadcast {
+  event: string;
+  source: string;
+  targeting: string;
+  tenancyEvidence: string;
 }
 
 interface AuthorizationMatrix {
   version: number;
   controlId: string;
   operations: MatrixOperation[];
+  broadcasts: MatrixBroadcast[];
 }
+
+const RESOURCE_BINDINGS = new Set([
+  "path-scoped",
+  "indirect-verified",
+  "body-supplied-object",
+  "indirect-unreviewed",
+  "not-resource-scoped",
+]);
+
+const BROADCAST_TARGETING = new Set([
+  "project-room",
+  "project-room-with-global-fallback",
+  "global-bypassing-available-scope",
+  "global-no-project-context",
+  "global-unreviewed",
+]);
 
 const repositoryRoot = path.resolve(__dirname, "../../..");
 const serverRoot = path.join(repositoryRoot, "server/src");
@@ -103,6 +129,49 @@ describe("SECURITY-2G-E authorization inventory", () => {
       if (operation.classification !== "public") {
         expect(operation.negativeEvidence).not.toBe("missing");
       }
+    }
+  });
+
+  // AUDIT object-binding sweep. `resourceScope` says where an identifier comes
+  // from; these two fields say whether the gap between the authorized identifier
+  // and the acted-on object is closed, and whether a foreign request is proven
+  // to be refused. An operation may honestly be unreviewed, but it may not be
+  // silently missing a verdict.
+  it("records an object binding verdict and cross-tenant evidence per operation", () => {
+    for (const operation of matrix.operations) {
+      expect(
+        RESOURCE_BINDINGS.has(operation.resourceBinding),
+        `${operation.transport} ${operation.operation} has binding ${operation.resourceBinding}`,
+      ).toBe(true);
+      expect(operation.crossTenantEvidence).not.toBe("");
+    }
+  });
+
+  it("tracks every global broadcast with a targeting verdict", () => {
+    const pattern =
+      /\bio\.emit\(\s*(?:["'`]([^"'`]+)["'`]|([A-Za-z_$][\w$]*))/g;
+    const discovered = new Set<string>();
+    for (const file of listTypeScriptFiles(serverRoot)) {
+      const source = relativeSource(file);
+      for (const match of fs.readFileSync(file, "utf8").matchAll(pattern)) {
+        discovered.add(`${source}|${match[1] ?? `dynamic:${match[2]}`}`);
+      }
+    }
+
+    const tracked = new Set(
+      matrix.broadcasts.map((entry) => `${entry.source}|${entry.event}`),
+    );
+    expect({
+      untracked: [...discovered].filter((key) => !tracked.has(key)).sort(),
+      stale: [...tracked].filter((key) => !discovered.has(key)).sort(),
+    }).toEqual({ untracked: [], stale: [] });
+
+    for (const broadcast of matrix.broadcasts) {
+      expect(
+        BROADCAST_TARGETING.has(broadcast.targeting),
+        `${broadcast.event} has targeting ${broadcast.targeting}`,
+      ).toBe(true);
+      expect(broadcast.tenancyEvidence).not.toBe("");
     }
   });
 });
