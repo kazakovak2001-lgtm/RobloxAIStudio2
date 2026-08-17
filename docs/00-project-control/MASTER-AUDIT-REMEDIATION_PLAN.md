@@ -2,7 +2,7 @@
 
 # Master audit remediation plan
 
-Generated from `config/audit/master-audit-register.json` (46 findings). Severity is the register's; ordering is by the worst severity in each group, except that re-verification comes first and verified controls come last.
+Generated from `config/audit/master-audit-register.json` (47 findings). Severity is the register's; ordering is by the worst severity in each group, except that re-verification comes first and verified controls come last.
 
 Findings are grouped by shared architectural root rather than by symptom. Several of these are the same defect seen from different places, and repairing them one at a time would mean repairing the root several times.
 
@@ -10,7 +10,7 @@ Findings are grouped by shared architectural root rather than by symptom. Severa
 
 | Disposition        | Findings |
 | ------------------ | -------- |
-| NOT-STARTED        | 37       |
+| NOT-STARTED        | 38       |
 | FIXED-UNMERGED     | 4        |
 | NO-ACTION-REQUIRED | 4        |
 | SCOPED-OUT         | 1        |
@@ -24,7 +24,20 @@ Nothing else should be repaired against these until they are re-established as f
 | **AUDIT-CI-FAILURE-SET-001** — The current backend CI failure set must be re-established before remediation | P1       | OPEN   | NOT-STARTED |
 | **AUDIT-REPO-GOVERNANCE-001** — Repository visibility and branch protection must be established as fact     | P1       | OPEN   | NOT-STARTED |
 
-## 2. generation-start-admission — worst severity P1
+## 2. pipeline-outcome-truth — worst severity P1
+
+What the system reports about a run does not always match what happened. This is where green signals hide red states.
+
+| Finding                                                                                                               | Severity | Status    | Disposition |
+| --------------------------------------------------------------------------------------------------------------------- | -------- | --------- | ----------- |
+| **AUDIT-LIFECYCLE-SPLIT-BRAIN-001** — Realtime reports a pipeline completed before artifact and validation stages run | P1       | CONFIRMED | NOT-STARTED |
+| **AUDIT-FAILURE-STEPS-LOSS-001** — Terminal failure records lose pipeline_steps recorded before the failure           | P1       | CONFIRMED | NOT-STARTED |
+| **AUDIT-E2E-TRUTH-001** — The production contract test accepts a failed generation                                    | P1       | CONFIRMED | NOT-STARTED |
+| **CI-PROD-CONTRACT-FIDELITY-001** — The production contract runs against in-memory storage                            | P2       | CONFIRMED | NOT-STARTED |
+| **AUDIT-FLAKY-AUTH-TEST-001** — The user-self authorization test fails intermittently under parallel load             | P2       | CONFIRMED | NOT-STARTED |
+| **AUDIT-SCRIPTS-UNTYPED-001** — Validator and generator scripts are outside the typecheck boundary                    | P3       | CONFIRMED | NOT-STARTED |
+
+## 3. generation-start-admission — worst severity P1
 
 Everything that decides whether a generation may begin and under whose identity. Two of these are already fixed on branches and the rest share their entry point.
 
@@ -35,18 +48,6 @@ Everything that decides whether a generation may begin and under whose identity.
 | **AUDIT-DUP-GENERATION-001** — No suppression of a second concurrent generation for the same project                      | P1       | CONFIRMED | NOT-STARTED                                                                               |
 | **AUDIT-OUTCOME-LAST-WRITER-001** — An older overlapping run can overwrite a newer run's terminal project state           | P1       | CONFIRMED | NOT-STARTED                                                                               |
 | **QUOTA-ENFORCEMENT-001** — Generation does not enforce tier limits before starting                                       | P1       | CONFIRMED | NOT-STARTED                                                                               |
-
-## 3. pipeline-outcome-truth — worst severity P1
-
-What the system reports about a run does not always match what happened. This is where green signals hide red states.
-
-| Finding                                                                                                               | Severity | Status    | Disposition |
-| --------------------------------------------------------------------------------------------------------------------- | -------- | --------- | ----------- |
-| **AUDIT-LIFECYCLE-SPLIT-BRAIN-001** — Realtime reports a pipeline completed before artifact and validation stages run | P1       | CONFIRMED | NOT-STARTED |
-| **AUDIT-FAILURE-STEPS-LOSS-001** — Terminal failure records lose pipeline_steps recorded before the failure           | P1       | CONFIRMED | NOT-STARTED |
-| **AUDIT-E2E-TRUTH-001** — The production contract test accepts a failed generation                                    | P1       | CONFIRMED | NOT-STARTED |
-| **CI-PROD-CONTRACT-FIDELITY-001** — The production contract runs against in-memory storage                            | P2       | CONFIRMED | NOT-STARTED |
-| **AUDIT-SCRIPTS-UNTYPED-001** — Validator and generator scripts are outside the typecheck boundary                    | P3       | CONFIRMED | NOT-STARTED |
 
 ## 4. authorization-object-binding — worst severity P1
 

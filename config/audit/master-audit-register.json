@@ -556,6 +556,19 @@
       "evidence": ["docs/00-project-control/CURRENT_STATE.md"],
       "notes": "Penetration testing, AI red teaming, chaos and fault injection, load and soak testing, a real backup and restore drill with measured objectives, full accessibility review, browser compatibility, database index and migration review, and project deletion and privacy behaviour are all unperformed. Recorded as one open block so their absence is visible rather than implied.",
       "remediationGroup": "assurance-not-performed"
+    },
+    {
+      "id": "AUDIT-FLAKY-AUTH-TEST-001",
+      "title": "The user-self authorization test fails intermittently under parallel load",
+      "severity": "P2",
+      "status": "CONFIRMED",
+      "disposition": "NOT-STARTED",
+      "area": "test-authority",
+      "remediationGroup": "pipeline-outcome-truth",
+      "evidence": [
+        "server/src/__tests__/security2gE.authorization-domains.test.ts"
+      ],
+      "notes": "It passes in isolation and times out at about five seconds when the full security suite runs in parallel. Reproduced twice in this session, once on a clean baseline with all local changes removed, so it is a baseline flake rather than a regression. It matters more than an ordinary flake because it is one of only five operations in the matrix with real behavioural cross-tenant evidence, so when it flakes that evidence is unreliable."
     }
   ],
   "remediationGroups": [
