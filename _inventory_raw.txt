@@ -576,6 +576,7 @@ server/src/__tests__/productionQuality.test.ts
 server/src/__tests__/repair-delivery.test.ts
 server/src/__tests__/saasFoundation.test.ts
 server/src/__tests__/secreview1.advisory-delivery.test.ts
+server/src/__tests__/secrt1a.realtime-tenancy.test.ts
 server/src/__tests__/security.test.ts
 server/src/__tests__/security2gE.agent-collaboration-scope.test.ts
 server/src/__tests__/security2gE.ai-chat-session-boundary.test.ts
@@ -1199,6 +1200,7 @@ server/src/simulation/core/GameSimulationEngine.ts
 server/src/simulation/feedback/SimulationFeedbackEngine.ts
 server/src/simulation/metrics/GameplayMetricsEngine.ts
 server/src/socket/index.ts
+server/src/socket/pipelineEventBridge.ts
 server/src/socket/streaming.ts
 server/src/studio/SceneGraphTranslator.ts
 server/src/studio/StudioAssetMapper.ts
