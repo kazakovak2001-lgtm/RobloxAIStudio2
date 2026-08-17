@@ -112,9 +112,24 @@ export class GameGenerationService {
     return this.validator.validate(blueprint);
   }
 
+  /**
+   * SEC-GENERATION-BLUEPRINT-001.
+   *
+   * `blueprintIdOrProjectId` is caller-supplied and is resolved against both
+   * blueprint ids and project ids, so on its own it decides which project the
+   * resulting execution belongs to. A caller authorized for one project could
+   * therefore pass a blueprint id belonging to another and have the execution
+   * recorded against that other project.
+   *
+   * `expectedProjectId` closes that: when supplied, the resolved blueprint must
+   * belong to it, asserted before any state is written. It is optional so
+   * existing internal callers that pass a project id keep working, but every
+   * request-driven caller is expected to pass it.
+   */
   async startGeneration(
     blueprintIdOrProjectId: string,
     userId: string,
+    expectedProjectId?: string,
   ): Promise<GenerationExecution> {
     const blueprint =
       (await this.repository.getBlueprint(blueprintIdOrProjectId)) ??
@@ -123,6 +138,14 @@ export class GameGenerationService {
     if (!blueprint) {
       throw new Error(
         `Blueprint not found for id/project ${blueprintIdOrProjectId}`,
+      );
+    }
+
+    // Fail closed before recordExecution: nothing about project
+    // `expectedProjectId` or the blueprint's own project may be mutated.
+    if (expectedProjectId && blueprint.project_id !== expectedProjectId) {
+      throw new Error(
+        `Blueprint ${blueprint.id} does not belong to project ${expectedProjectId}`,
       );
     }
 
