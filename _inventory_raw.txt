@@ -82,6 +82,7 @@ architecture.layer-debt.json
 architecture.manifest.json
 artifacts/runtime/runtime-ownership-report.json
 commitlint.config.js
+config/audit/master-audit-register.json
 config/cleanup/legacy-frontend-decommission.inventory.json
 config/cutover/promoted-baseline.inventory.json
 config/cutover/release-baseline.inventory.json
@@ -523,6 +524,7 @@ scripts/test-pre-check.ts
 scripts/validate-agent-contract.ts
 scripts/validate-architecture.ts
 scripts/validate-artifact-contract.ts
+scripts/validate-audit-register.ts
 scripts/validate-boundaries.ts
 scripts/validate-controller.ts
 scripts/validate-documentation-authority.ts
