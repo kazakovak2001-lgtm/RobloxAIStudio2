@@ -2,6 +2,14 @@
  * AuthService — Authentication with storage-backed opaque sessions.
  * Uses bcrypt (cost factor 12) for password hashing with automatic salt and
  * stores only SHA-256 digests of high-entropy refresh credentials.
+ *
+ * AUTH-BCRYPT-EVENTLOOP-001. Hashing and comparison use the asynchronous bcrypt
+ * API. The cost factor is unchanged, so the work and the resulting hash are the
+ * same; the difference is that this implementation is pure JavaScript, and its
+ * synchronous form ran the whole cost-12 computation without yielding. One
+ * registration starved the event loop for roughly half a second, which blocked
+ * every other request in the process, so a handful of concurrent registrations
+ * was enough to stall the server.
  */
 
 import { randomBytes, randomUUID, createHash, timingSafeEqual } from "crypto";
@@ -77,7 +85,7 @@ export class AuthService {
     const normalizedEmail = this.normalizeEmail(email);
     const credentials: StoredCredentials = {
       email: normalizedEmail,
-      passwordHash: bcrypt.hashSync(password, BCRYPT_COST_FACTOR),
+      passwordHash: await bcrypt.hash(password, BCRYPT_COST_FACTOR),
       userId,
     };
     try {
@@ -104,17 +112,17 @@ export class AuthService {
     }
   }
 
-  prepareRegistration(
+  async prepareRegistration(
     email: string,
     password: string,
     userId: string,
     role: UserRole = "creator",
-  ): PreparedAuthRegistration {
+  ): Promise<PreparedAuthRegistration> {
     const normalizedEmail = this.normalizeEmail(email);
     const preparedSession = this.prepareSession(userId, role);
     const credentials: StoredCredentials = {
       email: normalizedEmail,
-      passwordHash: bcrypt.hashSync(password, BCRYPT_COST_FACTOR),
+      passwordHash: await bcrypt.hash(password, BCRYPT_COST_FACTOR),
       userId,
     };
 
@@ -168,12 +176,12 @@ export class AuthService {
           id: normalizedEmail,
           data: {
             ...creds,
-            passwordHash: bcrypt.hashSync(password, BCRYPT_COST_FACTOR),
+            passwordHash: await bcrypt.hash(password, BCRYPT_COST_FACTOR),
           } satisfies StoredCredentials,
         });
       }
     } else {
-      passwordValid = bcrypt.compareSync(password, creds.passwordHash);
+      passwordValid = await bcrypt.compare(password, creds.passwordHash);
     }
 
     if (!passwordValid) {
