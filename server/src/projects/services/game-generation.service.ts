@@ -1,3 +1,5 @@
+import { randomUUID } from "crypto";
+
 import type {
   GameBlueprint,
   CreateBlueprintInput,
@@ -128,7 +130,13 @@ export class GameGenerationService {
 
     const now = new Date();
     const execution: GenerationExecution = {
-      id: `exec-${Date.now()}`,
+      // AUDIT-ID-EXEC-001. `exec-${Date.now()}` collided whenever two starts
+      // landed in the same millisecond, and `generation_executions` is keyed by
+      // this id alone, across every project — so the second write silently
+      // overwrote the first execution's ownership and state. Identity must not
+      // depend on wall-clock resolution. The `exec-` prefix is kept because
+      // existing evidence and logs are read by it; only the suffix changes.
+      id: `exec-${randomUUID()}`,
       blueprint_id: blueprint.id,
       project_id: blueprint.project_id,
       user_id: userId,

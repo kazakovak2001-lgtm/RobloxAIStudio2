@@ -548,6 +548,7 @@ server/src/__tests__/artifactcontract2.lineage.test.ts
 server/src/__tests__/artifactcontract2.repair-lineage.test.ts
 server/src/__tests__/artifactcontract2.v2-pipeline.test.ts
 server/src/__tests__/assetfabric1.assetPlan.test.ts
+server/src/__tests__/auditidexec1.execution-identity.test.ts
 server/src/__tests__/autonomousPipelineExploration.test.ts
 server/src/__tests__/autonomousPipelineIntegration.test.ts
 server/src/__tests__/autonomousPipelinePreservation.test.ts
