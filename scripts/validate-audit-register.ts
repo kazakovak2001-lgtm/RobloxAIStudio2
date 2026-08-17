@@ -21,6 +21,7 @@ interface RegisterFinding {
   status: string;
   disposition: string;
   area: string;
+  remediationGroup: string;
   evidence: string[];
   owningBranch?: string;
   owningSha?: string;
@@ -31,6 +32,7 @@ interface AuditRegister {
   schemaVersion: number;
   controlId: string;
   statement: string;
+  remediationGroups: string[];
   severities: string[];
   statuses: string[];
   dispositions: string[];
@@ -88,6 +90,11 @@ function validate(): { errors: string[]; warnings: string[]; total: number } {
     );
   }
 
+  const remediationGroups = new Set(register.remediationGroups ?? []);
+  if (!remediationGroups.size) {
+    errors.push("Audit register must declare its remediation groups.");
+  }
+
   const findings = Array.isArray(register.findings) ? register.findings : [];
   if (!findings.length) {
     errors.push("Audit register must contain at least one finding.");
@@ -113,6 +120,13 @@ function validate(): { errors: string[]; warnings: string[]; total: number } {
     }
     if (!severities.has(finding.severity)) {
       errors.push(`Finding ${label} has unknown severity: ${finding.severity}`);
+    }
+    // Without a group the finding never reaches the remediation plan, so it
+    // would be recorded and then never scheduled.
+    if (!remediationGroups.has(finding.remediationGroup)) {
+      errors.push(
+        `Finding ${label} has unknown remediation group: ${finding.remediationGroup}`,
+      );
     }
     if (!statuses.has(finding.status)) {
       errors.push(`Finding ${label} has unknown status: ${finding.status}`);

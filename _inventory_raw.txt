@@ -112,6 +112,7 @@ docs/00-project-control/DATA-202_ROLE_MUTATION_SLICE.md
 docs/00-project-control/DECISION_LOG.md
 docs/00-project-control/DOC-202A_ROADMAP_AUTHORITY_RECONCILIATION.md
 docs/00-project-control/FRONTEND_CUTOVER.md
+docs/00-project-control/MASTER-AUDIT-REMEDIATION_PLAN.md
 docs/00-project-control/NOVELTY-1_SCOPE.md
 docs/00-project-control/NOVELTY-2_PROMOTION_CRITERIA.md
 docs/00-project-control/NOVELTY-2_SCOPE.md
@@ -509,6 +510,7 @@ scripts/cutover/verify-composed-release.mjs
 scripts/cutover/verify-promoted-baseline-integrity.mjs
 scripts/cutover/verify-release-baseline-readiness.mjs
 scripts/generate-authorization-matrix.ts
+scripts/generate-remediation-plan.ts
 scripts/git-boundary-guard.js
 scripts/package-studio-plugin.ts
 scripts/pre-check.ts

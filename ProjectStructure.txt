@@ -150,6 +150,7 @@
 │   │   │   └── 2026-07-24-core-1b-durable-runtime.md
 │   │   ├── DOC-202A_ROADMAP_AUTHORITY_RECONCILIATION.md
 │   │   ├── FRONTEND_CUTOVER.md
+│   │   ├── MASTER-AUDIT-REMEDIATION_PLAN.md
 │   │   ├── NOVELTY-1_SCOPE.md
 │   │   ├── NOVELTY-2_PROMOTION_CRITERIA.md
 │   │   ├── NOVELTY-2_SCOPE.md
@@ -602,6 +603,7 @@
 │   │   ├── verify-promoted-baseline-integrity.mjs
 │   │   └── verify-release-baseline-readiness.mjs
 │   ├── generate-authorization-matrix.ts
+│   ├── generate-remediation-plan.ts
 │   ├── git-boundary-guard.js
 │   ├── package-studio-plugin.ts
 │   ├── pre-check.ts
