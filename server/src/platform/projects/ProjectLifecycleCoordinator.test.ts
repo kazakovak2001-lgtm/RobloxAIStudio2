@@ -251,117 +251,164 @@ describe("GenerationOutcomeCoordinator", () => {
   });
 });
 
+/**
+ * AUDIT-START-ATOMICITY-001 changed this contract: start evidence now commits
+ * as one `applyDurableBatch` rather than three independent durable writes, so
+ * `prepare` runs before any project mutation and `afterCommit` runs only once
+ * the transaction has committed. The four cases below carry the same intents as
+ * the pre-fix versions — serialization, no premature resolution, persistence
+ * errors surfacing, and no work started when bookkeeping fails — restated
+ * against the transactional contract.
+ */
 describe("ProjectGenerationStartCoordinator", () => {
-  it("serializes project bookkeeping before scheduling generation", async () => {
-    const projects = new ControlledProjectRepository(true);
-    const coordinator = new ProjectGenerationStartCoordinator(projects);
+  const PROJECT = "project";
+  const PROJECTS_COLLECTION = "projects";
+
+  interface StoredProject {
+    id: string;
+    generationCount: number;
+    status: string;
+  }
+
+  function startFixture(
+    storage: InMemoryStorageProvider = new InMemoryStorageProvider(),
+  ) {
+    storage.set<StoredProject>(PROJECTS_COLLECTION, PROJECT, {
+      id: PROJECT,
+      generationCount: 0,
+      status: "draft",
+    });
+    const projects = {
+      get: (projectId: string) =>
+        storage.get<StoredProject>(PROJECTS_COLLECTION, projectId),
+      // The standalone project write must be gone: start commits in one batch.
+      updateDurable: async () => {
+        throw new Error("updateDurable must not be used by start()");
+      },
+    };
+    return {
+      storage,
+      coordinator: new ProjectGenerationStartCoordinator(projects, storage),
+      project: () => storage.get<StoredProject>(PROJECTS_COLLECTION, PROJECT),
+    };
+  }
+
+  const evidenceFor = (id: string): readonly DurableMutation[] => [
+    {
+      operation: "set",
+      collection: "generation_executions",
+      id,
+      data: { id, status: "running" },
+    },
+    {
+      operation: "set",
+      collection: "generation_history",
+      id,
+      data: { pipelineId: id, projectId: PROJECT },
+    },
+  ];
+
+  it("serializes concurrent starts and increments the count once each", async () => {
+    const { coordinator, project } = startFixture();
     const order: string[] = [];
 
     const first = coordinator.start(
-      "project",
+      PROJECT,
       async () => {
-        order.push("schedule-one");
+        order.push("prepare-one");
         return "one";
       },
-      async (result) => {
-        order.push(`record-${result}`);
-      },
+      (id) => evidenceFor(id),
+      (id) => order.push(`enqueue-${id}`),
     );
-    await projects.firstUpdateStarted.promise;
-
     const second = coordinator.start(
-      "project",
+      PROJECT,
       async () => {
-        order.push("schedule-two");
+        order.push("prepare-two");
         return "two";
       },
-      async (result) => {
-        order.push(`record-${result}`);
-      },
+      (id) => evidenceFor(id),
+      (id) => order.push(`enqueue-${id}`),
     );
-    await Promise.resolve();
 
-    expect(projects.updateCounts).toEqual([1]);
-    expect(order).toEqual([]);
-
-    projects.releaseFirstUpdate.resolve();
     await expect(Promise.all([first, second])).resolves.toEqual(["one", "two"]);
 
-    expect(projects.updateCounts).toEqual([1, 2]);
-    expect(projects.currentCount()).toBe(2);
+    // Serialized: the second start never interleaves inside the first.
     expect(order).toEqual([
-      "schedule-one",
-      "record-one",
-      "schedule-two",
-      "record-two",
+      "prepare-one",
+      "enqueue-one",
+      "prepare-two",
+      "enqueue-two",
     ]);
+    expect(project()?.generationCount).toBe(2);
+    expect(project()?.status).toBe("generating");
   });
 
-  it("does not resolve before generation history is acknowledged", async () => {
-    const projects = new ControlledProjectRepository();
-    const coordinator = new ProjectGenerationStartCoordinator(projects);
-    const historyAcknowledged = deferred();
+  it("does not resolve before the durable start evidence is acknowledged", async () => {
+    const release = deferred();
+    class GatedStorage extends InMemoryStorageProvider {
+      override async applyDurableBatch(mutations: readonly DurableMutation[]) {
+        await release.promise;
+        return super.applyDurableBatch(mutations);
+      }
+    }
+    const { coordinator } = startFixture(new GatedStorage());
     let settled = false;
 
     const operation = coordinator.start(
-      "project",
+      PROJECT,
       async () => "execution",
-      async () => {
-        await historyAcknowledged.promise;
-      },
+      (id) => evidenceFor(id),
     );
     void operation.then(
-      () => {
-        settled = true;
-      },
-      () => {
-        settled = true;
-      },
+      () => (settled = true),
+      () => (settled = true),
     );
 
     await Promise.resolve();
     await Promise.resolve();
     expect(settled).toBe(false);
 
-    historyAcknowledged.resolve();
+    release.resolve();
     await expect(operation).resolves.toBe("execution");
     expect(settled).toBe(true);
   });
 
-  it("propagates generation history persistence rejection", async () => {
-    const projects = new ControlledProjectRepository();
-    const coordinator = new ProjectGenerationStartCoordinator(projects);
+  it("propagates start evidence persistence rejection", async () => {
+    const { coordinator } = startFixture(new FailingBatchStorage());
 
     await expect(
       coordinator.start(
-        "project",
+        PROJECT,
         async () => "execution",
-        async () => {
-          throw new Error("injected history write rejection");
-        },
+        (id) => evidenceFor(id),
       ),
-    ).rejects.toThrow("injected history write rejection");
+    ).rejects.toThrow();
   });
 
-  it("does not schedule generation after rejected bookkeeping", async () => {
-    const projects = new ControlledProjectRepository();
-    projects.rejectNext = true;
-    const coordinator = new ProjectGenerationStartCoordinator(projects);
-    let scheduled = false;
+  it("does not start generation work when bookkeeping fails to commit", async () => {
+    const { coordinator, storage, project } = startFixture(
+      new FailingBatchStorage(),
+    );
+    let enqueued = false;
 
     await expect(
       coordinator.start(
-        "project",
-        async () => {
-          scheduled = true;
-          return "execution";
+        PROJECT,
+        async () => "execution",
+        (id) => evidenceFor(id),
+        () => {
+          enqueued = true;
         },
-        async () => undefined,
       ),
-    ).rejects.toThrow("injected project write rejection");
+    ).rejects.toThrow();
 
-    expect(scheduled).toBe(false);
-    expect(projects.currentCount()).toBe(0);
+    // The whole transaction rolled back: no work started, no false state.
+    expect(enqueued).toBe(false);
+    expect(project()?.generationCount).toBe(0);
+    expect(project()?.status).toBe("draft");
+    expect(storage.get("generation_executions", "execution")).toBeNull();
+    expect(storage.get("generation_history", "execution")).toBeNull();
   });
 });
 

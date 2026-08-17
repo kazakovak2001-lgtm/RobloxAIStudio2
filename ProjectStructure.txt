@@ -646,6 +646,7 @@
 │   │   │   ├── artifactcontract2.repair-lineage.test.ts
 │   │   │   ├── artifactcontract2.v2-pipeline.test.ts
 │   │   │   ├── assetfabric1.assetPlan.test.ts
+│   │   │   ├── auditstartatomicity1.generation-start.test.ts
 │   │   │   ├── autonomousPipelineExploration.test.ts
 │   │   │   ├── autonomousPipelineIntegration.test.ts
 │   │   │   ├── autonomousPipelinePreservation.test.ts

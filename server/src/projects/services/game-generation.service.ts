@@ -112,10 +112,21 @@ export class GameGenerationService {
     return this.validator.validate(blueprint);
   }
 
-  async startGeneration(
+  /**
+   * AUDIT-START-ATOMICITY-001.
+   *
+   * Resolve the blueprint and build the execution record **without** persisting
+   * it and without starting any process-local work. Split out of
+   * `startGeneration` so a caller that must commit the execution together with
+   * other durable evidence — project state and start history — can put all
+   * three in one `applyDurableBatch` instead of three independent writes.
+   *
+   * Nothing here is durable, so a rejection leaves no state behind.
+   */
+  async prepareGeneration(
     blueprintIdOrProjectId: string,
     userId: string,
-  ): Promise<GenerationExecution> {
+  ): Promise<{ execution: GenerationExecution; blueprint: GameBlueprint }> {
     const blueprint =
       (await this.repository.getBlueprint(blueprintIdOrProjectId)) ??
       (await this.repository.getBlueprintByProjectId(blueprintIdOrProjectId));
@@ -138,8 +149,40 @@ export class GameGenerationService {
       pipeline_steps: [],
     };
 
-    await this.repository.recordExecution(execution);
+    return { execution, blueprint };
+  }
 
+  /**
+   * Persist the execution on its own and start it. Unchanged contract for
+   * callers that do not need the execution to share a transaction with other
+   * durable evidence.
+   */
+  async startGeneration(
+    blueprintIdOrProjectId: string,
+    userId: string,
+  ): Promise<GenerationExecution> {
+    const { execution, blueprint } = await this.prepareGeneration(
+      blueprintIdOrProjectId,
+      userId,
+    );
+
+    await this.repository.recordExecution(execution);
+    this.enqueueGeneration(execution, blueprint, userId);
+    return execution;
+  }
+
+  /**
+   * Start the process-local pipeline for an execution that is already durable.
+   *
+   * Deliberately not async and deliberately last: it must only run after the
+   * durable start evidence has committed, so a failed commit never leaves a
+   * pipeline running for state that was rolled back.
+   */
+  enqueueGeneration(
+    execution: GenerationExecution,
+    blueprint: GameBlueprint,
+    userId: string,
+  ): void {
     setImmediate(
       () =>
         void this.executionQueue.add(async () => {
@@ -302,8 +345,6 @@ export class GameGenerationService {
           }
         }),
     );
-
-    return execution;
   }
 
   async getExecution(id: string): Promise<GenerationExecution | null> {

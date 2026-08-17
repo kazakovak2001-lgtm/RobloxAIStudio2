@@ -1,6 +1,7 @@
 import type { GenerationExecution } from "../../types/blueprint";
 import {
   DurableStorageConflictError,
+  type DurableMutation,
   type StorageProvider,
 } from "../storage/StorageProvider";
 
@@ -208,12 +209,36 @@ export class GenerationOutcomeCoordinator {
 }
 
 export class ProjectGenerationStartCoordinator {
-  constructor(private readonly projects: GenerationProjectRepository) {}
+  constructor(
+    private readonly projects: GenerationProjectRepository,
+    private readonly storage: StorageProvider,
+  ) {}
 
+  /**
+   * AUDIT-START-ATOMICITY-001.
+   *
+   * Start evidence commits as one transaction. The previous implementation
+   * wrote the project (status/generationCount), then the execution, then the
+   * start history as three independent durable writes, so a rejection anywhere
+   * after the first left the project falsely claiming `generating` with an
+   * incremented count and no execution to ever repair it.
+   *
+   * `prepare` must not write anything durable and must not start process-local
+   * work. Everything durable goes through the single `applyDurableBatch` below,
+   * whose contract is that no cache change becomes visible unless every
+   * mutation commits and a rejection preserves the exact pre-transaction state.
+   * `afterCommit` runs only once that transaction has committed, which is where
+   * process-local work such as enqueueing the pipeline belongs.
+   *
+   * This mirrors `GenerationOutcomeCoordinator.commit` above, which already
+   * commits execution + history + project together; the start path was the
+   * asymmetric one.
+   */
   async start<T>(
     projectId: string,
-    schedule: () => Promise<T>,
-    recordHistory: (result: T) => Promise<void>,
+    prepare: () => Promise<T>,
+    buildStartEvidence: (result: T) => readonly DurableMutation[],
+    afterCommit?: (result: T) => void,
   ): Promise<T> {
     return withProjectLock(projectId, async () => {
       const project = this.projects.get(projectId);
@@ -221,13 +246,32 @@ export class ProjectGenerationStartCoordinator {
         throw new Error(`Project ${projectId} not found`);
       }
 
-      await this.projects.updateDurable(projectId, {
+      // Nothing durable yet: a rejection here leaves no state at all.
+      const result = await prepare();
+
+      // Spread the stored record so unrelated project fields survive, matching
+      // what SaaSProjectRepository.updateDurable would have preserved.
+      const stored =
+        this.storage.get<GenerationProjectState>(PROJECTS, projectId) ??
+        project;
+      const updatedProject: GenerationProjectState = {
+        ...stored,
         status: "generating",
         generationCount: project.generationCount + 1,
-      });
+        updatedAt: Date.now(),
+      };
 
-      const result = await schedule();
-      await recordHistory(result);
+      await this.storage.applyDurableBatch([
+        ...buildStartEvidence(result),
+        {
+          operation: "set",
+          collection: PROJECTS,
+          id: projectId,
+          data: updatedProject,
+        },
+      ]);
+
+      afterCommit?.(result);
       return result;
     });
   }

@@ -92,9 +92,13 @@ export function createGameGenerationRouter(
   projectRuntime: ProjectRuntime,
 ): Router {
   const router = Router();
-  const { projectRepository, generationHistory, access } = projectRuntime;
+  // generationHistory is intentionally not destructured: the start-history
+  // entry is now written inside the coordinator's durable batch rather than as
+  // a separate follow-up write.
+  const { projectRepository, access, storage } = projectRuntime;
   const generationStartCoordinator = new ProjectGenerationStartCoordinator(
     projectRepository,
+    storage,
   );
   const generationOperatorUserIds = new Set(
     (process.env.GENERATION_OPERATOR_USER_IDS ?? "")
@@ -239,28 +243,46 @@ export function createGameGenerationRouter(
         );
       }
 
+      // AUDIT-START-ATOMICITY-001. The execution and its start-history entry
+      // are handed to the coordinator as durable mutations so they commit in
+      // the same transaction as the project's status/generationCount. The
+      // pipeline is only enqueued after that transaction commits.
       const result = await generationStartCoordinator.start(
         projectId,
-        () => gameService.startGeneration(blueprintId || projectId, userId),
-        async (execution) => {
-          studioManager.activateProjectExecution(projectId, execution.id);
-          await generationHistory.record({
+        () => gameService.prepareGeneration(blueprintId || projectId, userId),
+        ({ execution }) => [
+          {
+            operation: "set" as const,
+            collection: "generation_executions",
             id: execution.id,
-            projectId,
-            pipelineId: execution.id,
-            status: execution.status,
-            startedAt: execution.started_at.getTime(),
-            stagesCompleted: 0,
-            stagesTotal: 0,
-            failures: 0,
-            tokenUsage: 0,
-            aiCost: 0,
-          });
+            data: execution,
+          },
+          {
+            operation: "set" as const,
+            collection: "generation_history",
+            id: execution.id,
+            data: {
+              id: execution.id,
+              projectId,
+              pipelineId: execution.id,
+              status: execution.status,
+              startedAt: execution.started_at.getTime(),
+              stagesCompleted: 0,
+              stagesTotal: 0,
+              failures: 0,
+              tokenUsage: 0,
+              aiCost: 0,
+            },
+          },
+        ],
+        ({ execution, blueprint }) => {
+          studioManager.activateProjectExecution(projectId, execution.id);
+          gameService.enqueueGeneration(execution, blueprint, userId);
         },
       );
       res.json({
         success: true,
-        executionId: result.id,
+        executionId: result.execution.id,
         status: "generation_started",
       });
     } catch (error) {
