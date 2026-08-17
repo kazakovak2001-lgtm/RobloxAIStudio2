@@ -1,28 +1,38 @@
 {
   "schemaVersion": 1,
   "status": "PASS",
-  "generatedAt": "2026-07-30T23:06:19.563Z",
+  "generatedAt": "2026-08-17T22:12:40.959Z",
   "registryPath": "config/runtime/runtime-ownership.json",
   "counts": {
-    "entries": 16,
-    "canonical": 2,
-    "boundedAdapters": 5,
-    "preview": 8,
-    "deprecated": 1,
+    "entries": 34,
+    "canonical": 8,
+    "boundedAdapters": 15,
+    "preview": 9,
+    "deprecated": 2,
     "removed": 0,
-    "discoveredEntrypoints": 16,
-    "productionFilesScanned": 552,
-    "registeredImports": 38,
-    "acknowledgedPreviewImports": 15
+    "discoveredEntrypoints": 34,
+    "productionFilesScanned": 576,
+    "registeredImports": 83,
+    "acknowledgedPreviewImports": 16
   },
   "canonicalByCapability": {
     "execution-engine": "planning-plan-executor",
-    "provider-construction": "providers-llm-provider-factory"
+    "provider-construction": "providers-llm-provider-factory",
+    "generation-orchestration": "projects-game-generation-service",
+    "generation-queueing": "execution-execution-queue",
+    "blueprint-simulation": "simulation-game-simulation-engine",
+    "repair-loop": "repair-engine",
+    "game-lifecycle": "lifecycle-game-controller",
+    "world-runtime": "world-state-engine"
   },
   "discoveredEntrypoints": [
     "server/src/execution/aiPipelineIntegrator.ts",
+    "server/src/execution/executionQueue.ts",
+    "server/src/generation/GenerationPipeline.ts",
     "server/src/integration/EndToEndValidator.ts",
     "server/src/integration/PlatformIntegrationManager.ts",
+    "server/src/lifecycle/core/GameLifecycleController.ts",
+    "server/src/lifecycle/live/LiveUpdateEngine.ts",
     "server/src/memory/MemoryRegistry.ts",
     "server/src/memory/agents/AgentMemoryBridge.ts",
     "server/src/memory/core/MemoryEngine.ts",
@@ -32,10 +42,24 @@
     "server/src/pipeline/v2/PipelineEngine.ts",
     "server/src/pipeline/v2/PipelineExecutor.ts",
     "server/src/planning/execution/PlanExecutor.ts",
+    "server/src/platform/queue/GenerationQueue.ts",
+    "server/src/projects/services/game-generation.service.ts",
     "server/src/providers/ai/ProviderFactory.ts",
     "server/src/providers/ai/ProviderRegistry.ts",
     "server/src/providers/providerFactory.ts",
-    "server/src/runtime/controller/RuntimeExecutionController.ts"
+    "server/src/repair/RepairEngine.ts",
+    "server/src/repair/RepairExecutor.ts",
+    "server/src/repair/RepairPlanner.ts",
+    "server/src/repair/RepairSessionStore.ts",
+    "server/src/runtime/controller/RuntimeExecutionController.ts",
+    "server/src/simulation/agents/PlaytestAgent.ts",
+    "server/src/simulation/core/GameSimulationEngine.ts",
+    "server/src/world/bridge/WorldSimulationBridge.ts",
+    "server/src/world/core/WorldStateEngine.ts",
+    "server/src/world/emergence/EmergentBehaviorEngine.ts",
+    "server/src/world/interaction/InteractionGraphEngine.ts",
+    "server/src/world/mutation/WorldMutationEngine.ts",
+    "server/src/world/npc/NPCBehaviorEngine.ts"
   ],
   "importUses": [
     {
@@ -46,10 +70,66 @@
       "kind": "import"
     },
     {
+      "importer": "server/src/api/v1/index.ts",
+      "targetId": "simulation-game-simulation-engine",
+      "targetPath": "server/src/simulation/core/GameSimulationEngine.ts",
+      "importPath": "../../simulation/core/GameSimulationEngine",
+      "kind": "import"
+    },
+    {
+      "importer": "server/src/api/v1/index.ts",
+      "targetId": "simulation-playtest-agent",
+      "targetPath": "server/src/simulation/agents/PlaytestAgent.ts",
+      "importPath": "../../simulation/agents/PlaytestAgent",
+      "kind": "import"
+    },
+    {
       "importer": "server/src/api/v2/index.ts",
       "targetId": "planning-plan-executor",
       "targetPath": "server/src/planning/execution/PlanExecutor.ts",
       "importPath": "../../planning/execution/PlanExecutor",
+      "kind": "import"
+    },
+    {
+      "importer": "server/src/artifacts/GameArtifact.ts",
+      "targetId": "simulation-game-simulation-engine",
+      "targetPath": "server/src/simulation/core/GameSimulationEngine.ts",
+      "importPath": "../simulation/core/GameSimulationEngine",
+      "kind": "import"
+    },
+    {
+      "importer": "server/src/artifacts/GameArtifact.ts",
+      "targetId": "simulation-playtest-agent",
+      "targetPath": "server/src/simulation/agents/PlaytestAgent.ts",
+      "importPath": "../simulation/agents/PlaytestAgent",
+      "kind": "import"
+    },
+    {
+      "importer": "server/src/artifacts/GameArtifact.ts",
+      "targetId": "world-emergent-behavior-engine",
+      "targetPath": "server/src/world/emergence/EmergentBehaviorEngine.ts",
+      "importPath": "../world/emergence/EmergentBehaviorEngine",
+      "kind": "import"
+    },
+    {
+      "importer": "server/src/artifacts/GameArtifactBuilder.ts",
+      "targetId": "simulation-game-simulation-engine",
+      "targetPath": "server/src/simulation/core/GameSimulationEngine.ts",
+      "importPath": "../simulation/core/GameSimulationEngine",
+      "kind": "import"
+    },
+    {
+      "importer": "server/src/artifacts/GameArtifactBuilder.ts",
+      "targetId": "simulation-playtest-agent",
+      "targetPath": "server/src/simulation/agents/PlaytestAgent.ts",
+      "importPath": "../simulation/agents/PlaytestAgent",
+      "kind": "import"
+    },
+    {
+      "importer": "server/src/artifacts/GameArtifactBuilder.ts",
+      "targetId": "world-emergent-behavior-engine",
+      "targetPath": "server/src/world/emergence/EmergentBehaviorEngine.ts",
+      "importPath": "../world/emergence/EmergentBehaviorEngine",
       "kind": "import"
     },
     {
@@ -78,6 +158,13 @@
       "targetId": "planning-plan-executor",
       "targetPath": "server/src/planning/execution/PlanExecutor.ts",
       "importPath": "../../planning/execution/PlanExecutor",
+      "kind": "import"
+    },
+    {
+      "importer": "server/src/index.ts",
+      "targetId": "projects-game-generation-service",
+      "targetPath": "server/src/projects/services/game-generation.service.ts",
+      "importPath": "./projects/services/game-generation.service",
       "kind": "import"
     },
     {
@@ -130,6 +217,20 @@
       "kind": "import"
     },
     {
+      "importer": "server/src/lifecycle/evolution/ContinuousEvolutionEngine.ts",
+      "targetId": "lifecycle-live-update-engine",
+      "targetPath": "server/src/lifecycle/live/LiveUpdateEngine.ts",
+      "importPath": "../live/LiveUpdateEngine",
+      "kind": "import"
+    },
+    {
+      "importer": "server/src/lifecycle/patch/AutoPatchGenerator.ts",
+      "targetId": "lifecycle-live-update-engine",
+      "targetPath": "server/src/lifecycle/live/LiveUpdateEngine.ts",
+      "importPath": "../live/LiveUpdateEngine",
+      "kind": "import"
+    },
+    {
       "importer": "server/src/memory/agents/AgentMemoryBridge.ts",
       "targetId": "memory-engine",
       "targetPath": "server/src/memory/core/MemoryEngine.ts",
@@ -179,6 +280,13 @@
       "kind": "re-export"
     },
     {
+      "importer": "server/src/orchestrator/store/AutonomousSessionStore.ts",
+      "targetId": "autonomous-phase-registry",
+      "targetPath": "server/src/orchestrator/AutonomousPhaseRegistry.ts",
+      "importPath": "../AutonomousPhaseRegistry",
+      "kind": "import"
+    },
+    {
       "importer": "server/src/pipeline/v2/PipelineEngine.ts",
       "targetId": "pipeline-v2-executor",
       "targetPath": "server/src/pipeline/v2/PipelineExecutor.ts",
@@ -204,6 +312,27 @@
       "targetId": "memory-agent-bridge",
       "targetPath": "server/src/memory/agents/AgentMemoryBridge.ts",
       "importPath": "../../memory/agents/AgentMemoryBridge",
+      "kind": "import"
+    },
+    {
+      "importer": "server/src/platform/queue/index.ts",
+      "targetId": "platform-generation-queue",
+      "targetPath": "server/src/platform/queue/GenerationQueue.ts",
+      "importPath": "./GenerationQueue",
+      "kind": "re-export"
+    },
+    {
+      "importer": "server/src/platform/storage/OperationalStoreComposition.ts",
+      "targetId": "repair-session-store",
+      "targetPath": "server/src/repair/RepairSessionStore.ts",
+      "importPath": "../../repair/RepairSessionStore",
+      "kind": "import"
+    },
+    {
+      "importer": "server/src/projects/services/game-generation.service.ts",
+      "targetId": "execution-execution-queue",
+      "targetPath": "server/src/execution/executionQueue.ts",
+      "importPath": "../../execution/executionQueue",
       "kind": "import"
     },
     {
@@ -235,10 +364,73 @@
       "kind": "import"
     },
     {
+      "importer": "server/src/repair/RepairEngine.ts",
+      "targetId": "repair-planner",
+      "targetPath": "server/src/repair/RepairPlanner.ts",
+      "importPath": "./RepairPlanner",
+      "kind": "import"
+    },
+    {
+      "importer": "server/src/repair/RepairEngine.ts",
+      "targetId": "repair-executor",
+      "targetPath": "server/src/repair/RepairExecutor.ts",
+      "importPath": "./RepairExecutor",
+      "kind": "import"
+    },
+    {
+      "importer": "server/src/repair/RepairEngine.ts",
+      "targetId": "repair-session-store",
+      "targetPath": "server/src/repair/RepairSessionStore.ts",
+      "importPath": "./RepairSessionStore",
+      "kind": "import"
+    },
+    {
+      "importer": "server/src/repair/index.ts",
+      "targetId": "repair-engine",
+      "targetPath": "server/src/repair/RepairEngine.ts",
+      "importPath": "./RepairEngine",
+      "kind": "re-export"
+    },
+    {
+      "importer": "server/src/repair/index.ts",
+      "targetId": "repair-planner",
+      "targetPath": "server/src/repair/RepairPlanner.ts",
+      "importPath": "./RepairPlanner",
+      "kind": "re-export"
+    },
+    {
+      "importer": "server/src/repair/index.ts",
+      "targetId": "repair-executor",
+      "targetPath": "server/src/repair/RepairExecutor.ts",
+      "importPath": "./RepairExecutor",
+      "kind": "re-export"
+    },
+    {
+      "importer": "server/src/repair/index.ts",
+      "targetId": "repair-session-store",
+      "targetPath": "server/src/repair/RepairSessionStore.ts",
+      "importPath": "./RepairSessionStore",
+      "kind": "re-export"
+    },
+    {
       "importer": "server/src/routes/compile.ts",
       "targetId": "planning-plan-executor",
       "targetPath": "server/src/planning/execution/PlanExecutor.ts",
       "importPath": "../planning/execution/PlanExecutor",
+      "kind": "import"
+    },
+    {
+      "importer": "server/src/routes/compile.ts",
+      "targetId": "simulation-game-simulation-engine",
+      "targetPath": "server/src/simulation/core/GameSimulationEngine.ts",
+      "importPath": "../simulation/core/GameSimulationEngine",
+      "kind": "import"
+    },
+    {
+      "importer": "server/src/routes/compile.ts",
+      "targetId": "simulation-playtest-agent",
+      "targetPath": "server/src/simulation/agents/PlaytestAgent.ts",
+      "importPath": "../simulation/agents/PlaytestAgent",
       "kind": "import"
     },
     {
@@ -249,10 +441,31 @@
       "kind": "import"
     },
     {
+      "importer": "server/src/routes/game-generation.ts",
+      "targetId": "projects-game-generation-service",
+      "targetPath": "server/src/projects/services/game-generation.service.ts",
+      "importPath": "../projects/services/game-generation.service",
+      "kind": "import"
+    },
+    {
       "importer": "server/src/routes/generation-v2.ts",
       "targetId": "planning-plan-executor",
       "targetPath": "server/src/planning/execution/PlanExecutor.ts",
       "importPath": "../planning/execution/PlanExecutor",
+      "kind": "import"
+    },
+    {
+      "importer": "server/src/routes/lifecycle.ts",
+      "targetId": "lifecycle-game-controller",
+      "targetPath": "server/src/lifecycle/core/GameLifecycleController.ts",
+      "importPath": "../lifecycle/core/GameLifecycleController",
+      "kind": "import"
+    },
+    {
+      "importer": "server/src/routes/lifecycle.ts",
+      "targetId": "lifecycle-live-update-engine",
+      "targetPath": "server/src/lifecycle/live/LiveUpdateEngine.ts",
+      "importPath": "../lifecycle/live/LiveUpdateEngine",
       "kind": "import"
     },
     {
@@ -267,6 +480,62 @@
       "targetId": "planning-plan-executor",
       "targetPath": "server/src/planning/execution/PlanExecutor.ts",
       "importPath": "../planning/execution/PlanExecutor",
+      "kind": "import"
+    },
+    {
+      "importer": "server/src/routes/simulation.ts",
+      "targetId": "simulation-game-simulation-engine",
+      "targetPath": "server/src/simulation/core/GameSimulationEngine.ts",
+      "importPath": "../simulation/core/GameSimulationEngine",
+      "kind": "import"
+    },
+    {
+      "importer": "server/src/routes/simulation.ts",
+      "targetId": "simulation-playtest-agent",
+      "targetPath": "server/src/simulation/agents/PlaytestAgent.ts",
+      "importPath": "../simulation/agents/PlaytestAgent",
+      "kind": "import"
+    },
+    {
+      "importer": "server/src/routes/world.ts",
+      "targetId": "world-state-engine",
+      "targetPath": "server/src/world/core/WorldStateEngine.ts",
+      "importPath": "../world/core/WorldStateEngine",
+      "kind": "import"
+    },
+    {
+      "importer": "server/src/routes/world.ts",
+      "targetId": "world-npc-behavior-engine",
+      "targetPath": "server/src/world/npc/NPCBehaviorEngine.ts",
+      "importPath": "../world/npc/NPCBehaviorEngine",
+      "kind": "import"
+    },
+    {
+      "importer": "server/src/routes/world.ts",
+      "targetId": "world-interaction-graph-engine",
+      "targetPath": "server/src/world/interaction/InteractionGraphEngine.ts",
+      "importPath": "../world/interaction/InteractionGraphEngine",
+      "kind": "import"
+    },
+    {
+      "importer": "server/src/routes/world.ts",
+      "targetId": "world-emergent-behavior-engine",
+      "targetPath": "server/src/world/emergence/EmergentBehaviorEngine.ts",
+      "importPath": "../world/emergence/EmergentBehaviorEngine",
+      "kind": "import"
+    },
+    {
+      "importer": "server/src/routes/world.ts",
+      "targetId": "world-mutation-engine",
+      "targetPath": "server/src/world/mutation/WorldMutationEngine.ts",
+      "importPath": "../world/mutation/WorldMutationEngine",
+      "kind": "import"
+    },
+    {
+      "importer": "server/src/routes/world.ts",
+      "targetId": "world-simulation-bridge",
+      "targetPath": "server/src/world/bridge/WorldSimulationBridge.ts",
+      "importPath": "../world/bridge/WorldSimulationBridge",
       "kind": "import"
     },
     {
@@ -291,6 +560,13 @@
       "kind": "import"
     },
     {
+      "importer": "server/src/simulation/agents/PlaytestAgent.ts",
+      "targetId": "simulation-game-simulation-engine",
+      "targetPath": "server/src/simulation/core/GameSimulationEngine.ts",
+      "importPath": "../core/GameSimulationEngine",
+      "kind": "import"
+    },
+    {
       "importer": "server/src/simulation/bridge/GenerationRefinementBridge.ts",
       "targetId": "memory-engine",
       "targetPath": "server/src/memory/core/MemoryEngine.ts",
@@ -298,10 +574,73 @@
       "kind": "import"
     },
     {
+      "importer": "server/src/simulation/feedback/SimulationFeedbackEngine.ts",
+      "targetId": "simulation-playtest-agent",
+      "targetPath": "server/src/simulation/agents/PlaytestAgent.ts",
+      "importPath": "../agents/PlaytestAgent",
+      "kind": "import"
+    },
+    {
+      "importer": "server/src/simulation/metrics/GameplayMetricsEngine.ts",
+      "targetId": "simulation-game-simulation-engine",
+      "targetPath": "server/src/simulation/core/GameSimulationEngine.ts",
+      "importPath": "../core/GameSimulationEngine",
+      "kind": "import"
+    },
+    {
+      "importer": "server/src/world/bridge/WorldSimulationBridge.ts",
+      "targetId": "world-emergent-behavior-engine",
+      "targetPath": "server/src/world/emergence/EmergentBehaviorEngine.ts",
+      "importPath": "../emergence/EmergentBehaviorEngine",
+      "kind": "import"
+    },
+    {
+      "importer": "server/src/world/bridge/WorldSimulationBridge.ts",
+      "targetId": "world-mutation-engine",
+      "targetPath": "server/src/world/mutation/WorldMutationEngine.ts",
+      "importPath": "../mutation/WorldMutationEngine",
+      "kind": "import"
+    },
+    {
       "importer": "server/src/world/bridge/WorldSimulationBridge.ts",
       "targetId": "memory-engine",
       "targetPath": "server/src/memory/core/MemoryEngine.ts",
       "importPath": "../../memory/core/MemoryEngine",
+      "kind": "import"
+    },
+    {
+      "importer": "server/src/world/emergence/EmergentBehaviorEngine.ts",
+      "targetId": "world-interaction-graph-engine",
+      "targetPath": "server/src/world/interaction/InteractionGraphEngine.ts",
+      "importPath": "../interaction/InteractionGraphEngine",
+      "kind": "import"
+    },
+    {
+      "importer": "server/src/world/emergence/EmergentBehaviorEngine.ts",
+      "targetId": "world-state-engine",
+      "targetPath": "server/src/world/core/WorldStateEngine.ts",
+      "importPath": "../core/WorldStateEngine",
+      "kind": "import"
+    },
+    {
+      "importer": "server/src/world/mutation/WorldMutationEngine.ts",
+      "targetId": "world-state-engine",
+      "targetPath": "server/src/world/core/WorldStateEngine.ts",
+      "importPath": "../core/WorldStateEngine",
+      "kind": "import"
+    },
+    {
+      "importer": "server/src/world/mutation/WorldMutationEngine.ts",
+      "targetId": "world-emergent-behavior-engine",
+      "targetPath": "server/src/world/emergence/EmergentBehaviorEngine.ts",
+      "importPath": "../emergence/EmergentBehaviorEngine",
+      "kind": "import"
+    },
+    {
+      "importer": "server/src/world/npc/NPCBehaviorEngine.ts",
+      "targetId": "world-state-engine",
+      "targetPath": "server/src/world/core/WorldStateEngine.ts",
+      "importPath": "../core/WorldStateEngine",
       "kind": "import"
     }
   ],
@@ -384,6 +723,13 @@
       "kind": "re-export"
     },
     {
+      "importer": "server/src/platform/queue/index.ts",
+      "targetId": "platform-generation-queue",
+      "targetPath": "server/src/platform/queue/GenerationQueue.ts",
+      "importPath": "./GenerationQueue",
+      "kind": "re-export"
+    },
+    {
       "importer": "server/src/providers/ai/ProviderFactory.ts",
       "targetId": "providers-ai-provider-registry",
       "targetPath": "server/src/providers/ai/ProviderRegistry.ts",
@@ -415,6 +761,7 @@
   "errors": [],
   "warnings": [
     "Runtime entry providers-ai-provider-registry has no replacement path recorded.",
-    "Runtime entry knowledge-memory-manager has no replacement path recorded."
+    "Runtime entry knowledge-memory-manager has no replacement path recorded.",
+    "Runtime entry platform-generation-queue has no replacement path recorded."
   ]
 }
