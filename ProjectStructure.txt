@@ -750,6 +750,7 @@
 │   │   │   ├── security2gE.world-scope.test.ts
 │   │   │   ├── securityHardening.test.ts
 │   │   │   ├── securityreviewa2.hardening.test.ts
+│   │   │   ├── serialization1.prompt-values.test.ts
 │   │   │   ├── simtruth1.evidence.test.ts
 │   │   │   ├── studio.acceptance-runner.test.ts
 │   │   │   ├── studio.desktop-mcp.test.ts
@@ -848,6 +849,7 @@
 │   │   │   │   ├── index.ts
 │   │   │   │   └── PromptEngine.ts
 │   │   │   ├── promptTemplates.ts
+│   │   │   ├── promptValues.ts
 │   │   │   ├── provider.ts
 │   │   │   ├── router.ts
 │   │   │   └── runtime

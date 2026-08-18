@@ -651,6 +651,7 @@ server/src/__tests__/security2gE.system-metadata-scope.test.ts
 server/src/__tests__/security2gE.world-scope.test.ts
 server/src/__tests__/securityHardening.test.ts
 server/src/__tests__/securityreviewa2.hardening.test.ts
+server/src/__tests__/serialization1.prompt-values.test.ts
 server/src/__tests__/simtruth1.evidence.test.ts
 server/src/__tests__/studio.acceptance-runner.test.ts
 server/src/__tests__/studio.desktop-mcp.test.ts
@@ -727,6 +728,7 @@ server/src/ai/memory/__tests__/MemoryStore.test.ts
 server/src/ai/memory/index.ts
 server/src/ai/outputParser.ts
 server/src/ai/promptTemplates.ts
+server/src/ai/promptValues.ts
 server/src/ai/prompts/PromptEngine.ts
 server/src/ai/prompts/__tests__/PromptEngine.test.ts
 server/src/ai/prompts/defaultPrompts.ts

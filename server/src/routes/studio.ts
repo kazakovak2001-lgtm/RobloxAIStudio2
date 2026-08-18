@@ -214,12 +214,25 @@ export function parseImportReport(
   };
 }
 
+/**
+ * Failures that must not distinguish "not yours" from "does not exist".
+ *
+ * MAR-001. A caller authorized for one Studio client could name a command
+ * belonging to a client in another project and learn two things from the
+ * refusal: that the command existed, and what lifecycle status it was in.
+ * Neither is the caller's information. These reasons are therefore answered
+ * identically, so the denial says only that there is nothing here for you.
+ */
+const CONCEALED_COMMAND_FAILURES = new Set([
+  "command_not_found",
+  "client_mismatch",
+]);
+
+const CONCEALED_COMMAND_MESSAGE = "Studio command was not found.";
+
 function commandFailureStatus(reason: string): number {
+  if (CONCEALED_COMMAND_FAILURES.has(reason)) return 404;
   switch (reason) {
-    case "command_not_found":
-      return 404;
-    case "client_mismatch":
-      return 403;
     case "invalid_command":
       return 400;
     case "invalid_status":
@@ -236,6 +249,18 @@ function sendCommandAction(
   result: StudioCommandActionResult,
 ): void {
   if (!result.success) {
+    // An ownership failure answers with nothing about the resource, and answers
+    // the same way whether or not it exists. A lifecycle failure is about the
+    // caller's own command, so its status stays in the response where it is
+    // useful for diagnosis.
+    if (CONCEALED_COMMAND_FAILURES.has(result.reason)) {
+      res.status(404).json({
+        success: false,
+        error: CONCEALED_COMMAND_MESSAGE,
+        reason: "command_not_found",
+      });
+      return;
+    }
     res.status(commandFailureStatus(result.reason)).json({
       success: false,
       error: result.message,
@@ -735,15 +760,11 @@ export function createStudioRouter(
       sendStudioMutationError(res, error);
       return;
     }
-    if (!command) {
+    // MAR-001. These two cases answer identically on purpose: a command that
+    // belongs to another client is, to this caller, a command that does not
+    // exist. Answering 403 here would confirm it exists.
+    if (!command || command.clientId !== clientId) {
       res.status(404).json({ success: false, error: "Command not found" });
-      return;
-    }
-    if (command.clientId !== clientId) {
-      res.status(403).json({
-        success: false,
-        error: "Command belongs to a different client",
-      });
       return;
     }
     res.json({ success: true, data: command });

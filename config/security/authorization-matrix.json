@@ -2416,9 +2416,9 @@
       "capability": "project.studio.command.read",
       "resourceScope": "resolved-client-project",
       "positiveEvidence": "server/src/__tests__/security2gE.studio-client-scope.test.ts",
-      "negativeEvidence": "server/src/__tests__/security2gE.studio-client-scope.test.ts",
-      "resourceBinding": "indirect-unreviewed",
-      "crossTenantEvidence": "none-recorded"
+      "negativeEvidence": "server/src/__tests__/mar001.studio-command-concealment.test.ts",
+      "resourceBinding": "indirect-verified",
+      "crossTenantEvidence": "server/src/__tests__/mar001.studio-command-concealment.test.ts"
     },
     {
       "transport": "rest",
@@ -2507,9 +2507,9 @@
       "capability": "project.studio.command.acknowledge",
       "resourceScope": "resolved-client-project",
       "positiveEvidence": "server/src/__tests__/security2gE.studio-client-scope.test.ts",
-      "negativeEvidence": "server/src/__tests__/security2gE.studio-client-scope.test.ts",
-      "resourceBinding": "indirect-unreviewed",
-      "crossTenantEvidence": "none-recorded"
+      "negativeEvidence": "server/src/__tests__/mar001.studio-command-concealment.test.ts",
+      "resourceBinding": "indirect-verified",
+      "crossTenantEvidence": "server/src/__tests__/mar001.studio-command-concealment.test.ts"
     },
     {
       "transport": "rest",
@@ -2520,9 +2520,9 @@
       "capability": "project.studio.command.report",
       "resourceScope": "resolved-client-project",
       "positiveEvidence": "server/src/__tests__/security2gE.studio-client-scope.test.ts",
-      "negativeEvidence": "server/src/__tests__/security2gE.studio-client-scope.test.ts",
-      "resourceBinding": "indirect-unreviewed",
-      "crossTenantEvidence": "none-recorded"
+      "negativeEvidence": "server/src/__tests__/mar001.studio-command-concealment.test.ts",
+      "resourceBinding": "indirect-verified",
+      "crossTenantEvidence": "server/src/__tests__/mar001.studio-command-concealment.test.ts"
     },
     {
       "transport": "rest",
