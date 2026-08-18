@@ -681,6 +681,7 @@
 │   │   │   ├── secgenerationblueprint1.generate-route.test.ts
 │   │   │   ├── secgenerationblueprint1.project-binding.test.ts
 │   │   │   ├── secreview1.advisory-delivery.test.ts
+│   │   │   ├── secrt1a.realtime-tenancy.test.ts
 │   │   │   ├── security.test.ts
 │   │   │   ├── security2gE.agent-collaboration-scope.test.ts
 │   │   │   ├── security2gE.ai-chat-session-boundary.test.ts
@@ -1474,6 +1475,7 @@
 │   │   │       └── GameplayMetricsEngine.ts
 │   │   ├── socket
 │   │   │   ├── index.ts
+│   │   │   ├── pipelineEventBridge.ts
 │   │   │   └── streaming.ts
 │   │   ├── studio
 │   │   │   ├── artifacts
