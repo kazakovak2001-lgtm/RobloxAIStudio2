@@ -55,6 +55,7 @@ import {
   PostgresStorageProvider,
 } from "./platform/storage/postgres";
 import { runMigrations } from "./platform/storage/postgres/migrationRunner";
+import { reconcileInterruptedGenerations } from "./platform/projects/GenerationRecovery";
 const app: Express = express();
 const storageProvider = createStorageProvider();
 configureAuthService(storageProvider);
@@ -665,6 +666,14 @@ import { createAutonomousRouter } from "./routes/autonomous";
 import { AutonomousOrchestrator } from "./orchestrator";
 const autonomousOrchestrator = new AutonomousOrchestrator(events);
 registerStoragePostInitializeHook(() => autonomousOrchestrator.ready());
+
+// AUDIT-RECOVERY-001. Canonical generation gets the same treatment on boot:
+// executions left `running` by a previous process are closed truthfully and
+// their projects released, so nothing stays generating forever and the next
+// generation can be admitted.
+registerStoragePostInitializeHook(async () => {
+  await reconcileInterruptedGenerations(storageProvider);
+});
 app.use(
   "/api/autonomous",
   createAutonomousRouter(events, access, autonomousOrchestrator),
@@ -820,6 +829,19 @@ async function shutdown(signal: "SIGTERM" | "SIGINT"): Promise<void> {
   await new Promise<void>((resolve) => {
     httpServer.close(() => resolve());
   });
+
+  // AUDIT-GRACEFUL-SHUTDOWN-001. The canonical generation queue is process
+  // local, so anything still running is about to lose its worker. Closing the
+  // HTTP server first means no new generation can be admitted; this then closes
+  // what is left truthfully instead of leaving it durably `running` for the
+  // next boot to find. It is the same reconciliation the next boot would run,
+  // done now while the reason is known.
+  try {
+    await reconcileInterruptedGenerations(storageProvider);
+  } catch (error) {
+    console.error("[shutdown] generation reconciliation failed:", error);
+  }
+
   await flushStorageProvider(storageProvider);
   await closeStorageProvider(storageProvider);
   console.log("✅ Server closed");

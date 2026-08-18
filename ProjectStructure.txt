@@ -656,6 +656,7 @@
 │   │   │   ├── cutover1c.origin-policy.test.ts
 │   │   │   ├── e2eGeneration.test.ts
 │   │   │   ├── generation-provenance.test.ts
+│   │   │   ├── genrecovery1.restart-reconciliation.test.ts
 │   │   │   ├── gensingleflight1.active-claim.test.ts
 │   │   │   ├── harden2a.auth-contract.test.ts
 │   │   │   ├── identityAccess.test.ts
@@ -1274,6 +1275,7 @@
 │   │   │   │   └── TokenProvider.ts
 │   │   │   ├── index.ts
 │   │   │   ├── projects
+│   │   │   │   ├── GenerationRecovery.ts
 │   │   │   │   ├── index.ts
 │   │   │   │   ├── ProjectLifecycleCoordinator.test.ts
 │   │   │   │   ├── ProjectLifecycleCoordinator.ts

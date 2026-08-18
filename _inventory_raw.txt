@@ -558,6 +558,7 @@ server/src/__tests__/core1b.postgres.integration.test.ts
 server/src/__tests__/cutover1c.origin-policy.test.ts
 server/src/__tests__/e2eGeneration.test.ts
 server/src/__tests__/generation-provenance.test.ts
+server/src/__tests__/genrecovery1.restart-reconciliation.test.ts
 server/src/__tests__/gensingleflight1.active-claim.test.ts
 server/src/__tests__/harden2a.auth-contract.test.ts
 server/src/__tests__/identityAccess.test.ts
@@ -1052,6 +1053,7 @@ server/src/platform/auth/TokenProvider.ts
 server/src/platform/auth/authServiceInstance.ts
 server/src/platform/auth/index.ts
 server/src/platform/index.ts
+server/src/platform/projects/GenerationRecovery.ts
 server/src/platform/projects/ProjectLifecycleCoordinator.test.ts
 server/src/platform/projects/ProjectLifecycleCoordinator.ts
 server/src/platform/projects/SaaSProjectRepository.ts
