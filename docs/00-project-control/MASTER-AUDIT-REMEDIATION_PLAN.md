@@ -74,8 +74,8 @@ One defect shape: the identifier the caller was authorized for is not the thing 
 | **SEC-RESOURCE-AUTHORIZATION-HELPER-001** — Route-level authorization had no canonical mechanism, so each route decided separately what to authorize and what to disclose | P1       | CONFIRMED | FIXED-UNMERGED (fix/mar-001-resource-authorization-helper @ 81ad71e35ed11284f7a6292f0b56963969750fb5) |
 | **SEC-MATRIX-EVIDENCE-VOLATILE-001** — Regenerating the authorization matrix discarded every recorded cross-tenant verdict                                                | P1       | CONFIRMED | FIXED-UNMERGED (fix/mar-001-closure @ 437da697e1c8a026e23a9bbdfce9b0b4034859f0)                       |
 | **SEC-MAR001-REMAINING-GAPS-001** — MAR-001 has fifteen operations left where nothing canonical protects the resource                                                     | P1       | CONFIRMED | NOT-STARTED                                                                                           |
-| **SEC-STUDIO-SCRIPT-OVERWRITE-001** — The plugin destroyed and overwrote creator-authored scripts without checking ownership                                              | P1       | CONFIRMED | FIXED-UNMERGED (fix/mar-002-script-ownership @ pending)                                               |
-| **SEC-STUDIO-SCRIPT-PLACEMENT-001** — An unrecognised script root fell back to the container that replicates to every client                                              | P1       | CONFIRMED | FIXED-UNMERGED (fix/mar-002-script-ownership @ pending)                                               |
+| **SEC-STUDIO-SCRIPT-OVERWRITE-001** — The plugin destroyed and overwrote creator-authored scripts without checking ownership                                              | P1       | CONFIRMED | FIXED-UNMERGED (fix/mar-002-script-ownership @ b99bb1a4c83642f8259902cd8f4bccd749962808)              |
+| **SEC-STUDIO-SCRIPT-PLACEMENT-001** — An unrecognised script root fell back to the container that replicates to every client                                              | P1       | CONFIRMED | FIXED-UNMERGED (fix/mar-002-script-ownership @ b99bb1a4c83642f8259902cd8f4bccd749962808)              |
 | **AUDIT-BODY-SUPPLIED-BLUEPRINT-001** — Eight operations authorize against an identifier inside a caller-supplied body object                                             | P2       | CONFIRMED | NOT-STARTED                                                                                           |
 | **SEC-STUDIO-PROTOCOL-DISCLOSURE-001** — The command disclosure closed on the REST path was still reachable over the protocol transport                                   | P2       | CONFIRMED | FIXED-UNMERGED (fix/mar-001-studio-protocol-binding @ 74b987129b549eca3fdde294e3e3cf603af81c7d)       |
 | **SEC-STUDIO-STATUS-COUNT-001** — GET /status reported a platform-wide Studio session count                                                                               | P2       | CONFIRMED | FIXED-UNMERGED (fix/mar-001-studio-protocol-binding @ 74b987129b549eca3fdde294e3e3cf603af81c7d)       |
@@ -160,11 +160,11 @@ Generation runs against mutable, sometimes stale design input, and design change
 
 Whole classes of assurance have not been run. Listed so their absence is explicit rather than implied by silence.
 
-| Finding                                                                                                   | Severity | Status    | Disposition                                             |
-| --------------------------------------------------------------------------------------------------------- | -------- | --------- | ------------------------------------------------------- |
-| **STUDIO-PLAY-ACCEPTANCE-001** — No end-to-end proof from generation to Roblox Play with runtime evidence | P1       | OPEN      | NOT-STARTED                                             |
-| **AUDIT-DYNAMIC-ASSURANCE-001** — Dynamic assurance has not been performed                                | P1       | OPEN      | NOT-STARTED                                             |
-| **AUDIT-STUDIO-PLUGIN-UNTESTABLE-001** — The Studio plugin had no executable test path                    | P1       | CONFIRMED | FIXED-UNMERGED (fix/mar-002-script-ownership @ pending) |
+| Finding                                                                                                   | Severity | Status    | Disposition                                                                              |
+| --------------------------------------------------------------------------------------------------------- | -------- | --------- | ---------------------------------------------------------------------------------------- |
+| **STUDIO-PLAY-ACCEPTANCE-001** — No end-to-end proof from generation to Roblox Play with runtime evidence | P1       | OPEN      | NOT-STARTED                                                                              |
+| **AUDIT-DYNAMIC-ASSURANCE-001** — Dynamic assurance has not been performed                                | P1       | OPEN      | NOT-STARTED                                                                              |
+| **AUDIT-STUDIO-PLUGIN-UNTESTABLE-001** — The Studio plugin had no executable test path                    | P1       | CONFIRMED | FIXED-UNMERGED (fix/mar-002-script-ownership @ b99bb1a4c83642f8259902cd8f4bccd749962808) |
 
 ## 10. supply-chain-hardening — worst severity P1
 

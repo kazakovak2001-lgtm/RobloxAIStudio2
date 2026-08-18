@@ -1173,7 +1173,7 @@
       "remediationGroup": "authorization-object-binding",
       "mar": "MAR-002",
       "owningBranch": "fix/mar-002-script-ownership",
-      "owningSha": "pending",
+      "owningSha": "b99bb1a4c83642f8259902cd8f4bccd749962808",
       "evidence": [
         "studio-plugin/src/utils/ArtifactLoader.lua",
         "server/src/__tests__/mar002.script-placement-ownership.test.ts"
@@ -1190,7 +1190,7 @@
       "remediationGroup": "authorization-object-binding",
       "mar": "MAR-002",
       "owningBranch": "fix/mar-002-script-ownership",
-      "owningSha": "pending",
+      "owningSha": "b99bb1a4c83642f8259902cd8f4bccd749962808",
       "evidence": [
         "studio-plugin/src/utils/ArtifactLoader.lua",
         "server/src/__tests__/mar002.script-placement-ownership.test.ts"
@@ -1207,7 +1207,7 @@
       "remediationGroup": "assurance-not-performed",
       "mar": "MAR-002",
       "owningBranch": "fix/mar-002-script-ownership",
-      "owningSha": "pending",
+      "owningSha": "b99bb1a4c83642f8259902cd8f4bccd749962808",
       "evidence": [
         "server/src/__tests__/support/studioPluginHarness.ts",
         "server/src/__tests__/support/robloxStub.lua",
