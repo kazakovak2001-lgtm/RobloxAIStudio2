@@ -1116,9 +1116,9 @@
       "capability": "project.distributed.dead-letter.list",
       "resourceScope": "owner-project-set",
       "positiveEvidence": "server/src/__tests__/security2gE.distributed-scope.test.ts",
-      "negativeEvidence": "server/src/__tests__/security2gE.distributed-scope.test.ts",
-      "resourceBinding": "indirect-unreviewed",
-      "crossTenantEvidence": "none-recorded"
+      "negativeEvidence": "server/src/__tests__/mar001.job-ownership.test.ts",
+      "resourceBinding": "indirect-verified",
+      "crossTenantEvidence": "server/src/__tests__/mar001.job-ownership.test.ts"
     },
     {
       "transport": "rest",
@@ -1129,9 +1129,9 @@
       "capability": "project.distributed.job.read",
       "resourceScope": "resolved-job-project",
       "positiveEvidence": "server/src/__tests__/security2gE.distributed-scope.test.ts",
-      "negativeEvidence": "server/src/__tests__/security2gE.distributed-scope.test.ts",
-      "resourceBinding": "indirect-unreviewed",
-      "crossTenantEvidence": "none-recorded"
+      "negativeEvidence": "server/src/__tests__/mar001.job-ownership.test.ts",
+      "resourceBinding": "indirect-verified",
+      "crossTenantEvidence": "server/src/__tests__/mar001.job-ownership.test.ts"
     },
     {
       "transport": "rest",
@@ -1168,9 +1168,9 @@
       "capability": "project.distributed.dead-letter.retry",
       "resourceScope": "resolved-job-project",
       "positiveEvidence": "server/src/__tests__/security2gE.distributed-scope.test.ts",
-      "negativeEvidence": "server/src/__tests__/security2gE.distributed-scope.test.ts",
-      "resourceBinding": "indirect-unreviewed",
-      "crossTenantEvidence": "none-recorded"
+      "negativeEvidence": "server/src/__tests__/mar001.job-ownership.test.ts",
+      "resourceBinding": "indirect-verified",
+      "crossTenantEvidence": "server/src/__tests__/mar001.job-ownership.test.ts"
     },
     {
       "transport": "rest",
@@ -1194,9 +1194,9 @@
       "capability": "project.distributed.job.submit",
       "resourceScope": "body-project",
       "positiveEvidence": "server/src/__tests__/security2gE.distributed-scope.test.ts",
-      "negativeEvidence": "server/src/__tests__/security2gE.distributed-scope.test.ts",
-      "resourceBinding": "indirect-unreviewed",
-      "crossTenantEvidence": "none-recorded"
+      "negativeEvidence": "server/src/__tests__/mar001.job-ownership.test.ts",
+      "resourceBinding": "indirect-verified",
+      "crossTenantEvidence": "server/src/__tests__/mar001.job-ownership.test.ts"
     },
     {
       "transport": "rest",
@@ -1935,9 +1935,9 @@
       "capability": "project.planning.read",
       "resourceScope": "resolved-plan-project",
       "positiveEvidence": "server/src/__tests__/security2gE.planning-scope.test.ts",
-      "negativeEvidence": "server/src/__tests__/security2gE.planning-scope.test.ts",
-      "resourceBinding": "indirect-unreviewed",
-      "crossTenantEvidence": "none-recorded"
+      "negativeEvidence": "server/src/__tests__/mar001.job-ownership.test.ts",
+      "resourceBinding": "indirect-verified",
+      "crossTenantEvidence": "server/src/__tests__/mar001.job-ownership.test.ts"
     },
     {
       "transport": "rest",
@@ -1948,9 +1948,9 @@
       "capability": "project.planning.create",
       "resourceScope": "body-project",
       "positiveEvidence": "server/src/__tests__/security2gE.planning-scope.test.ts",
-      "negativeEvidence": "server/src/__tests__/security2gE.planning-scope.test.ts",
-      "resourceBinding": "indirect-unreviewed",
-      "crossTenantEvidence": "none-recorded"
+      "negativeEvidence": "server/src/__tests__/mar001.job-ownership.test.ts",
+      "resourceBinding": "indirect-verified",
+      "crossTenantEvidence": "server/src/__tests__/mar001.job-ownership.test.ts"
     },
     {
       "transport": "rest",
@@ -1961,9 +1961,9 @@
       "capability": "project.planning.execute",
       "resourceScope": "resolved-plan-project",
       "positiveEvidence": "server/src/__tests__/security2gE.planning-scope.test.ts",
-      "negativeEvidence": "server/src/__tests__/security2gE.planning-scope.test.ts",
-      "resourceBinding": "indirect-unreviewed",
-      "crossTenantEvidence": "none-recorded"
+      "negativeEvidence": "server/src/__tests__/mar001.job-ownership.test.ts",
+      "resourceBinding": "indirect-verified",
+      "crossTenantEvidence": "server/src/__tests__/mar001.job-ownership.test.ts"
     },
     {
       "transport": "rest",

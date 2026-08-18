@@ -675,6 +675,7 @@
 │   │   │   ├── intent2.requirement-traceability.test.ts
 │   │   │   ├── llmlog1.payload-redaction.test.ts
 │   │   │   ├── llmparser1.balanced-extraction.test.ts
+│   │   │   ├── mar001.conversation-ownership.test.ts
 │   │   │   ├── mar001.resource-authorization.test.ts
 │   │   │   ├── mar001.studio-command-concealment.test.ts
 │   │   │   ├── mar001.studio-protocol-binding.test.ts
