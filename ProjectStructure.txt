@@ -8,15 +8,27 @@
 │   ├── agents
 │   │   ├── architecture-auditor.md
 │   │   ├── autonomous-orchestrator-engineer.md
+│   │   ├── frontend-contract-reviewer.md
 │   │   ├── persistence-engineer.md
+│   │   ├── project-mapper.md
 │   │   ├── release-reviewer.md
 │   │   ├── security-reviewer.md
 │   │   ├── studio-acceptance-engineer.md
 │   │   ├── studio-operator.md
 │   │   └── test-engineer.md
+│   ├── rules
+│   │   ├── frontend-contract.md
+│   │   ├── persistence.md
+│   │   ├── pipeline-v2.md
+│   │   ├── security.md
+│   │   └── studio.md
 │   ├── settings.json
 │   └── skills
 │       ├── data-202b-audit
+│       │   └── SKILL.md
+│       ├── robloxaistudio-backend-slice
+│       │   └── SKILL.md
+│       ├── robloxaistudio-frontend-contract
 │       │   └── SKILL.md
 │       ├── studio-acceptance
 │       │   └── SKILL.md
@@ -102,6 +114,7 @@
 ├── artifacts
 │   └── runtime
 │       └── runtime-ownership-report.json
+├── CLAUDE.md
 ├── commitlint.config.js
 ├── config
 │   ├── cleanup
