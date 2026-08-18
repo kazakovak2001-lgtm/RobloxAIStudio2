@@ -1126,7 +1126,7 @@
       "remediationGroup": "authorization-object-binding",
       "mar": "MAR-001",
       "owningBranch": "fix/mar-001-closure",
-      "owningSha": "pending",
+      "owningSha": "437da697e1c8a026e23a9bbdfce9b0b4034859f0",
       "evidence": [
         "scripts/generate-authorization-matrix.ts",
         "config/security/authorization-matrix.json"
