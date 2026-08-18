@@ -946,6 +946,57 @@
         "server/src/__tests__/mar001.studio-command-concealment.test.ts"
       ],
       "notes": "The binding itself was present: a caller authorized for one Studio client could not acknowledge or report on a command belonging to a client in another project. The refusal was the leak. A command owned by another tenant answered 403 and carried that command's lifecycle status in the response body, while a command that did not exist answered 404, so the difference confirmed existence and state. Both now answer identically and carry nothing about the resource. The runtime still distinguishes client_mismatch internally, so the server keeps knowing the difference and stops telling the caller."
+    },
+    {
+      "id": "SEC-STUDIO-PROTOCOL-BINDING-001",
+      "title": "Studio protocol messages were authorized against a project the caller chose, not the client they acted on",
+      "severity": "P1",
+      "status": "CONFIRMED",
+      "disposition": "FIXED-UNMERGED",
+      "area": "security",
+      "remediationGroup": "authorization-object-binding",
+      "mar": "MAR-001",
+      "owningBranch": "fix/mar-001-studio-protocol-binding",
+      "owningSha": "74b987129b549eca3fdde294e3e3cf603af81c7d",
+      "evidence": [
+        "server/src/routes/studio.ts",
+        "server/src/__tests__/mar001.studio-protocol-binding.test.ts"
+      ],
+      "notes": "POST /protocol/message resolved the project to authorize by preferring payload.projectId, then dispatched handlers such as COMMAND_ACK and COMMAND_RESULT which act on payload.clientId. A caller could therefore present a project they legitimately owned for the access check and another tenant's client for the work. The runtime's own client-to-command check did not catch it, because both identifiers named the same foreign client consistently; it was the authorization that pointed elsewhere. Reproduced against the baseline: the intruder's request moved the victim's command from sent to acknowledged. The client's project now wins whenever a clientId is present, and a projectId that disagrees with it is refused rather than resolved in either direction."
+    },
+    {
+      "id": "SEC-STUDIO-PROTOCOL-DISCLOSURE-001",
+      "title": "The command disclosure closed on the REST path was still reachable over the protocol transport",
+      "severity": "P2",
+      "status": "CONFIRMED",
+      "disposition": "FIXED-UNMERGED",
+      "area": "security",
+      "remediationGroup": "authorization-object-binding",
+      "mar": "MAR-001",
+      "owningBranch": "fix/mar-001-studio-protocol-binding",
+      "owningSha": "74b987129b549eca3fdde294e3e3cf603af81c7d",
+      "evidence": [
+        "server/src/routes/studio.ts",
+        "server/src/__tests__/mar001.studio-protocol-binding.test.ts"
+      ],
+      "notes": "COMMAND_ACK and COMMAND_RESULT returned the refusal reason and the command's lifecycle status, which is what SEC-STUDIO-COMMAND-DISCLOSURE-001 removed from the REST responses. Two transports reach one runtime, so concealing only the route left the same disclosure available. Recorded separately because it shows the cost of repairing a route rather than a rule. After the binding fix the cross-tenant path no longer reaches the handler at all, so what remains reachable is a caller naming a sibling client inside their own project; that is the path the test exercises."
+    },
+    {
+      "id": "SEC-STUDIO-STATUS-COUNT-001",
+      "title": "GET /status reported a platform-wide Studio session count",
+      "severity": "P2",
+      "status": "CONFIRMED",
+      "disposition": "FIXED-UNMERGED",
+      "area": "security",
+      "remediationGroup": "authorization-object-binding",
+      "mar": "MAR-001",
+      "owningBranch": "fix/mar-001-studio-protocol-binding",
+      "owningSha": "74b987129b549eca3fdde294e3e3cf603af81c7d",
+      "evidence": [
+        "server/src/routes/studio.ts",
+        "server/src/__tests__/mar001.studio-protocol-binding.test.ts"
+      ],
+      "notes": "Every other field in the response was filtered to the caller's authorized clients, while sessionCount came from an unfiltered platform-wide listing. The session listing route already did the correct filtering, so the fix reuses it rather than introducing a rule. Low severity on its own: it exposes a count, not identities or content."
     }
   ]
 }
