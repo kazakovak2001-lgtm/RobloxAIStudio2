@@ -36,6 +36,10 @@ import {
 } from "../../validation/generationValidation";
 import { UIInstanceTreeBuilder } from "../../ui-gen/UIInstanceTreeBuilder";
 import type { MaterializableUITree } from "../../ui-gen/UIInstanceTreeContract";
+import {
+  LEGACY_WORLD_RUNTIME_MODE,
+  type WorldRuntimeMode,
+} from "../../types/worldRuntimeMode";
 
 const AGENT_STAGE_MAP: Readonly<Record<string, StageName>> = {
   requirements: "REQUIREMENTS",
@@ -70,7 +74,10 @@ export class GenerationArtifactRecorder {
     executionId: string,
     nodes: readonly TaskNode[],
     projectId: string,
+    options: { worldRuntimeMode?: WorldRuntimeMode } = {},
   ): Promise<PipelineArtifact[]> {
+    const worldRuntimeMode =
+      options.worldRuntimeMode ?? LEGACY_WORLD_RUNTIME_MODE;
     // Staged, not stored. STUDIO-1A holds that a rejected generation persists
     // no content at all, so nothing may be written until validation has run:
     // partial artifacts under a failed execution id are exactly what a later
@@ -208,7 +215,11 @@ export class GenerationArtifactRecorder {
     pending.push({
       stage: "WORLD_MODEL",
       agent: null,
-      content: { ...world, scene: buildWorldScene(world) },
+      content: {
+        ...world,
+        worldRuntimeMode,
+        scene: buildWorldScene(world),
+      },
       producer: deterministicProducer("world-model"),
       dependsOn: ["GAME_DESIGN", "ARCHITECTURE"],
     });
@@ -226,6 +237,7 @@ export class GenerationArtifactRecorder {
     });
 
     const report = buildGenerationValidationReport({
+      worldRuntimeMode,
       luaPresent,
       luaIssues,
       ui,
@@ -308,6 +320,17 @@ export class GenerationArtifactRecorder {
         ]),
       }),
     );
+
+    // WORLD-1C. The marker is the only publication boundary for new explicit
+    // ownership packages. If this final durable write fails, the raw stage
+    // artifacts remain inspectable but Studio cannot deliver them.
+    await this.artifactStore.commitPackage({
+      pipelineId: executionId,
+      projectId,
+      worldRuntimeMode,
+      source: "generation",
+      artifacts: recorded,
+    });
 
     return recorded;
   }

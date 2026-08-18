@@ -186,7 +186,10 @@ describe("Studio Integration", () => {
       const store = new ArtifactStore();
       const syncManager = new ProjectSyncManager(store);
 
-      const snapshot = syncManager.getProjectSnapshot("empty-project");
+      const snapshot = syncManager.getProjectSnapshotForProject(
+        ARTIFACT_TEST_PROJECT,
+        "empty-project",
+      );
       expect(snapshot).not.toBeNull();
       expect(snapshot!.artifactCount).toBe(0);
       expect(snapshot!.version).toBeTruthy();
@@ -214,7 +217,10 @@ describe("Studio Integration", () => {
       );
 
       const syncManager = new ProjectSyncManager(store);
-      const snapshot = syncManager.getProjectSnapshot("pipe-1");
+      const snapshot = syncManager.getProjectSnapshotForProject(
+        ARTIFACT_TEST_PROJECT,
+        "pipe-1",
+      );
 
       expect(snapshot!.artifactCount).toBe(2);
       expect(snapshot!.artifacts).toHaveLength(2);
@@ -234,7 +240,9 @@ describe("Studio Integration", () => {
       );
 
       const syncManager = new ProjectSyncManager(store);
-      const transfer = syncManager.getTransferManager().transfer([art1.id]);
+      const transfer = syncManager
+        .getTransferManager()
+        .transferForProject(ARTIFACT_TEST_PROJECT, "pipe-1", [art1.id]);
 
       expect(transfer.artifacts).toHaveLength(1);
       expect(transfer.artifacts[0].content).toEqual({
@@ -248,7 +256,9 @@ describe("Studio Integration", () => {
       const syncManager = new ProjectSyncManager(store);
       const transfer = syncManager
         .getTransferManager()
-        .transfer(["nonexistent-id"]);
+        .transferForProject(ARTIFACT_TEST_PROJECT, "empty-project", [
+          "nonexistent-id",
+        ]);
 
       expect(transfer.artifacts).toHaveLength(0);
       expect(transfer.missing).toContain("nonexistent-id");
@@ -290,12 +300,17 @@ describe("Studio Integration", () => {
 
       // Step 4: Sync to Studio (simulated plugin)
       const syncManager = new ProjectSyncManager(store);
-      const snapshot = syncManager.getProjectSnapshot("studio-pipe");
+      const snapshot = syncManager.getProjectSnapshotForProject(
+        ARTIFACT_TEST_PROJECT,
+        "studio-pipe",
+      );
       expect(snapshot!.artifactCount).toBe(result.totalScripts);
 
       // Step 5: Transfer all artifacts
       const ids = snapshot!.artifacts.map((a) => a.id);
-      const transfer = syncManager.getTransferManager().transfer(ids);
+      const transfer = syncManager
+        .getTransferManager()
+        .transferForProject(ARTIFACT_TEST_PROJECT, "studio-pipe", ids);
       expect(transfer.artifacts.length).toBe(result.totalScripts);
       expect(transfer.payloadExceeded).toBe(false);
     });

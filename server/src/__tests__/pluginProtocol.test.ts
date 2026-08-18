@@ -82,7 +82,9 @@ describe("Plugin Protocol", () => {
         },
         { projectId: ARTIFACT_TEST_PROJECT },
       );
-      const transfer = syncManager.getTransferManager().transfer([art.id]);
+      const transfer = syncManager
+        .getTransferManager()
+        .transferForProject(ARTIFACT_TEST_PROJECT, "pipe-1", [art.id]);
 
       expect(transfer.artifacts).toHaveLength(1);
       expect(transfer.artifacts[0].content).toEqual({ code: "print('hi')" });
@@ -111,7 +113,10 @@ describe("Plugin Protocol", () => {
         { projectId: ARTIFACT_TEST_PROJECT },
       );
 
-      const snapshot = syncManager.getProjectSnapshot("pipe-1");
+      const snapshot = syncManager.getProjectSnapshotForProject(
+        ARTIFACT_TEST_PROJECT,
+        "pipe-1",
+      );
       expect(snapshot!.artifacts).toHaveLength(3);
       expect(snapshot!.artifacts.every((a) => a.hash.length > 0)).toBe(true);
     });
@@ -119,7 +124,9 @@ describe("Plugin Protocol", () => {
     it("missing artifact handled gracefully", () => {
       const transfer = syncManager
         .getTransferManager()
-        .transfer(["does-not-exist"]);
+        .transferForProject(ARTIFACT_TEST_PROJECT, "pipe-1", [
+          "does-not-exist",
+        ]);
       expect(transfer.missing).toContain("does-not-exist");
       expect(transfer.artifacts).toHaveLength(0);
     });
@@ -141,16 +148,20 @@ describe("Plugin Protocol", () => {
       const syncManager = new ProjectSyncManager(store);
 
       // Try to update a non-existent artifact (should fail validation)
-      const result = await syncManager.processSyncRequest("pipe-1", [
-        {
-          changeId: "change-1",
-          artifactId: "nonexistent",
-          artifactType: "lua",
-          changeType: "update",
-          content: "modified",
-          timestamp: Date.now(),
-        },
-      ]);
+      const result = await syncManager.processSyncRequest(
+        ARTIFACT_TEST_PROJECT,
+        "pipe-1",
+        [
+          {
+            changeId: "change-1",
+            artifactId: "nonexistent",
+            artifactType: "lua",
+            changeType: "update",
+            content: "modified",
+            timestamp: Date.now(),
+          },
+        ],
+      );
 
       expect(result.status).toBe("error");
       expect(result.appliedChanges).toHaveLength(0);
@@ -169,16 +180,20 @@ describe("Plugin Protocol", () => {
       );
 
       const syncManager = new ProjectSyncManager(store);
-      const result = await syncManager.processSyncRequest("pipe-1", [
-        {
-          changeId: "change-1",
-          artifactId: art.id,
-          artifactType: "lua",
-          changeType: "update",
-          content: { code: "modified" },
-          timestamp: Date.now() + 1000, // Future timestamp to avoid conflict
-        },
-      ]);
+      const result = await syncManager.processSyncRequest(
+        ARTIFACT_TEST_PROJECT,
+        "pipe-1",
+        [
+          {
+            changeId: "change-1",
+            artifactId: art.id,
+            artifactType: "lua",
+            changeType: "update",
+            content: { code: "modified" },
+            timestamp: Date.now() + 1000, // Future timestamp to avoid conflict
+          },
+        ],
+      );
 
       expect(result.status).toBe("applied");
       expect(result.appliedChanges).toContain("change-1");

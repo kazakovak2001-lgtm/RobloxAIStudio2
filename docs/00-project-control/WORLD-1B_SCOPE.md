@@ -2,7 +2,7 @@
 
 # WORLD-1B — Design-Time World Materialization
 
-**Status:** Code complete, contract tested, **not done**. Operator-observed Studio acceptance is outstanding and is deliberately not attempted in this delivery.
+**Status:** Complete. Code, contract tests, and operator-observed Studio acceptance passed; see [STUDIO-DEFERRED-ACCEPTANCE_RESULT.md](./STUDIO-DEFERRED-ACCEPTANCE_RESULT.md).
 **Depends on:** `WORLD-1A` (semantic world model and cross-artifact validation), `STUDIO-2F-A` (UI materialization architecture this reuses).
 
 ## Objective
@@ -70,17 +70,21 @@ There is no spawn/collectible/objective/shop vocabulary anywhere in the contract
 - Depth, node count, name shape and payload size are bounded on both sides.
 - Attributes carrying semantic identity are namespaced `AIStudioWorld*`.
 
-## Evidence ceiling
+## Implementation-time evidence ceiling
 
-There is still no Lua execution harness in this repository. This delivery is therefore:
+There was no Lua execution harness in this repository when this delivery landed. At that boundary it was therefore:
 
 - **code complete** — the backend and plugin contracts are implemented;
 - **contract tested** — including cross-language allowlist parity and mutation-verified safety properties;
 - **not operator-observed** — no Studio session has run it.
 
-`WORLD-1B` must not be recorded as done until an operator-observed session confirms it. That session should ideally also close the outstanding `ARTIFACT-1` and `STUDIO-2F-A` evidence, which remains pending and is **not** addressed by this delivery.
+The later operator session and changed-design follow-up completed all six items
+below, including verified replacement of a five-entity design by a four-entity
+design and removal of `mechanic-5`. That later evidence supersedes only this
+implementation-time ceiling; it does not add a Lua test harness or prove
+`WORLD-1C` runtime ownership.
 
-## Operator acceptance checklist (for the later session)
+## Operator acceptance checklist
 
 1. Export a project and confirm `ReplicatedStorage.AIStudioArtifacts.WORLD_MODEL` contains zone folders with one model per entity, each carrying `AIStudioWorldEntityId` and `AIStudioWorldRole`.
 2. Confirm `Workspace` is untouched by the export, and that Play still builds exactly one world, from the generated server script.

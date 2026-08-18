@@ -175,7 +175,7 @@ describe("Studio operational evidence store", () => {
       "LUA_GENERATION",
       "lua_generator",
       { scripts: [{ path: "Main.server.lua", content: "return true" }] },
-      { projectId: ARTIFACT_TEST_PROJECT },
+      { projectId: "project-runtime-restart" },
     );
     const client = first.bridge.connect("0.650", "project-runtime-restart");
     first.sessions.create(client);

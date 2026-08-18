@@ -20,6 +20,8 @@ export {
   type ArtifactType,
   type ReviewStatus,
   type ReviewSummary,
+  type GenerationPackageArtifactRef,
+  type GenerationPackageCommit,
 } from "./ArtifactStore";
 export {
   AGENTLESS_STAGE_PRODUCERS,

@@ -175,46 +175,63 @@ export class StudioRuntime {
     this.latestExecutionByProject.set(projectId, executionId);
   }
 
-  getProjectSnapshot(projectOrExecutionId: string): ProjectSnapshot | null {
-    const executionId = this.resolveExecutionId(projectOrExecutionId);
+  getProjectSnapshot(projectId: string): ProjectSnapshot | null {
+    const executionId = this.resolveExecutionId(projectId);
     if (!executionId) return null;
-    const snapshot = this.sync.getProjectSnapshot(executionId);
+    const snapshot = this.sync.getProjectSnapshotForProject(
+      projectId,
+      executionId,
+    );
     return snapshot && snapshot.artifactCount > 0 ? snapshot : null;
   }
 
-  getSyncStatus(projectOrExecutionId?: string): SyncStatus {
-    if (!projectOrExecutionId) return this.sync.getSyncStatus();
-    const executionId = this.resolveExecutionId(projectOrExecutionId);
-    return this.sync.getSyncStatus(executionId ?? projectOrExecutionId);
+  getSyncStatus(projectId?: string): SyncStatus {
+    if (!projectId) return this.sync.getSyncStatus();
+
+    const executionId = this.resolveExecutionId(projectId);
+    if (!executionId) {
+      // No execution to scope to yet — the instance-global sync fields
+      // belong to whichever project last synced, not to this one. Returning
+      // them here would leak another tenant's sync metadata.
+      return {
+        lastSyncTimestamp: null,
+        pendingChanges: 0,
+        conflictCount: 0,
+        currentVersion: "0.0.0",
+        projectId,
+      };
+    }
+
+    return this.sync.getSyncStatus(projectId, executionId);
   }
 
   transferProjectArtifacts(
-    projectOrExecutionId: string,
+    projectId: string,
     artifactIds: string[],
   ): TransferResult | null {
-    const executionId = this.resolveExecutionId(projectOrExecutionId);
+    const executionId = this.resolveExecutionId(projectId);
     if (!executionId) return null;
     return this.sync
       .getTransferManager()
-      .transferForPipeline(executionId, artifactIds);
+      .transferForProject(projectId, executionId, artifactIds);
   }
 
   async processProjectSyncRequest(
-    projectOrExecutionId: string,
+    projectId: string,
     changes: SyncChange[],
   ): Promise<SyncResult | null> {
-    const executionId = this.resolveExecutionId(projectOrExecutionId);
+    const executionId = this.resolveExecutionId(projectId);
     if (!executionId) return null;
-    return this.sync.processSyncRequest(executionId, changes);
+    return this.sync.processSyncRequest(projectId, executionId, changes);
   }
 
   validateProjectChanges(
-    projectOrExecutionId: string,
+    projectId: string,
     changes: SyncChange[],
   ): ValidationResult | null {
-    const executionId = this.resolveExecutionId(projectOrExecutionId);
+    const executionId = this.resolveExecutionId(projectId);
     if (!executionId) return null;
-    return this.sync.validateOnly(executionId, changes);
+    return this.sync.validateOnly(projectId, executionId, changes);
   }
 
   async getCommand(commandId: string): Promise<StudioCommand | null> {
@@ -261,7 +278,10 @@ export class StudioRuntime {
       };
     }
 
-    const snapshot = this.sync.getProjectSnapshot(executionId);
+    const snapshot = this.sync.getProjectSnapshotForProject(
+      projectId,
+      executionId,
+    );
     if (!snapshot || snapshot.artifactCount === 0) {
       return {
         success: false,
@@ -319,14 +339,30 @@ export class StudioRuntime {
       };
     }
 
-    const transfer = this.sync
-      .getTransferManager()
-      .transfer(snapshot.artifacts.map((artifact) => artifact.id));
+    const transfer = this.sync.getTransferManager().transferForProject(
+      projectId,
+      executionId,
+      snapshot.artifacts.map((artifact) => artifact.id),
+    );
     if (transfer.payloadExceeded) {
       return {
         success: false,
         reason: "payload_exceeded",
         message: "Generated artifacts exceed the Studio transfer limit.",
+      };
+    }
+    // WORLD-1C. The snapshot and the transfer are two separate reads, so a
+    // package can stop being deliverable between them — an artifact edited
+    // through Studio sync invalidates the commit marker, and every member then
+    // resolves as missing. Queueing anyway would export a partial or empty
+    // package under a success result, which is the incoherent delivery the
+    // commit boundary exists to prevent.
+    if (transfer.missing.length > 0) {
+      return {
+        success: false,
+        reason: "no_artifacts",
+        message:
+          "The artifact package changed while it was being read and is no longer deliverable.",
       };
     }
 

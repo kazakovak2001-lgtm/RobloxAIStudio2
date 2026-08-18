@@ -74,24 +74,40 @@ end
 
 function ConnectionManager:_startHeartbeat()
     self:_stopHeartbeat()
-    self._heartbeatThread = task.spawn(function()
+    local heartbeatThread
+    heartbeatThread = task.spawn(function()
         while self._status == "connected" do
             task.wait(Config.HEARTBEAT_INTERVAL)
             if self._status ~= "connected" then break end
             local ok = self._connector:heartbeat()
             if not ok then
                 self._status = "reconnecting"
+                -- The reconnect path starts a replacement heartbeat. Release
+                -- ownership first so that it never tries to cancel this
+                -- currently-running thread.
+                if self._heartbeatThread == heartbeatThread then
+                    self._heartbeatThread = nil
+                end
                 self:_attemptReconnect()
                 break
             end
         end
+
+        if self._heartbeatThread == heartbeatThread then
+            self._heartbeatThread = nil
+        end
     end)
+    self._heartbeatThread = heartbeatThread
 end
 
 function ConnectionManager:_stopHeartbeat()
-    if self._heartbeatThread then
-        task.cancel(self._heartbeatThread)
-        self._heartbeatThread = nil
+    local heartbeatThread = self._heartbeatThread
+    self._heartbeatThread = nil
+    if heartbeatThread
+        and heartbeatThread ~= coroutine.running()
+        and coroutine.status(heartbeatThread) ~= "dead"
+    then
+        task.cancel(heartbeatThread)
     end
 end
 

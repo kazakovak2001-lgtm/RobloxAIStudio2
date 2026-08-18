@@ -35,32 +35,39 @@ export class ArtifactTransferManager {
   }
 
   /**
-   * Get artifact references for a pipeline (metadata only, no content).
+   * Tenant-scoped artifact references for security-sensitive delivery paths.
    */
-  getArtifactRefs(pipelineId: string): ArtifactRef[] {
-    const artifacts = this.artifactStore.getByPipeline(pipelineId);
+  getArtifactRefsForProject(
+    projectId: string,
+    pipelineId: string,
+  ): ArtifactRef[] {
+    const artifacts = this.artifactStore.getDeliverableArtifacts(
+      projectId,
+      pipelineId,
+    );
     return artifacts.map((a: PipelineArtifact) => this.toRef(a));
   }
 
   /**
-   * Transfer specific artifacts by ID (with content).
+   * Transfer artifacts only when both tenant and pipeline match.
    */
-  transfer(artifactIds: string[]): TransferResult {
-    return this.transferMatching(artifactIds, () => true);
-  }
-
-  /**
-   * Transfer artifacts only when they belong to the requested pipeline.
-   * Non-matching identifiers are reported as missing so callers do not leak
-   * cross-project artifact existence.
-   */
-  transferForPipeline(
+  transferForProject(
+    projectId: string,
     pipelineId: string,
     artifactIds: string[],
   ): TransferResult {
+    const deliverable = new Set(
+      this.artifactStore
+        .getDeliverableArtifacts(projectId, pipelineId)
+        .map((artifact) => artifact.id),
+    );
+
     return this.transferMatching(
       artifactIds,
-      (artifact) => artifact.pipelineId === pipelineId,
+      (artifact) =>
+        artifact.projectId === projectId &&
+        artifact.pipelineId === pipelineId &&
+        deliverable.has(artifact.id),
     );
   }
 

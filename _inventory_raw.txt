@@ -142,6 +142,7 @@ docs/00-project-control/STUDIO-1G_DESKTOP_ACCEPTANCE_RESULT.md
 docs/00-project-control/STUDIO-1_AUDIT.md
 docs/00-project-control/STUDIO-2F-A_SCOPE.md
 docs/00-project-control/STUDIO-ACCEPT-1_DESKTOP_ACCEPTANCE_RESULT.md
+docs/00-project-control/STUDIO-DEFERRED-ACCEPTANCE_RESULT.md
 docs/00-project-control/WORLD-1B_SCOPE.md
 docs/00-project-control/WORLD-1C_SCOPE.md
 docs/00-project-control/decisions/2026-07-24-core-1b-durable-runtime.md
@@ -649,6 +650,7 @@ server/src/__tests__/securityHardening.test.ts
 server/src/__tests__/securityreviewa2.hardening.test.ts
 server/src/__tests__/simtruth1.evidence.test.ts
 server/src/__tests__/studio.acceptance-runner.test.ts
+server/src/__tests__/studio.backend-dualstack-bind.test.ts
 server/src/__tests__/studio.desktop-mcp.test.ts
 server/src/__tests__/studio1.artifact-lineage.test.ts
 server/src/__tests__/studio1.import-acknowledgement.test.ts
@@ -661,6 +663,7 @@ server/src/__tests__/studioIntegration.test.ts
 server/src/__tests__/world1a.cross-artifact-validation.test.ts
 server/src/__tests__/world1b.receipt-verification.test.ts
 server/src/__tests__/world1b.scene-contract.test.ts
+server/src/__tests__/world1c.package-commit.test.ts
 server/src/agents/collaboration/AgentCoordinator.ts
 server/src/agents/collaboration/AgentMessageBus.ts
 server/src/agents/collaboration/CollaborationTypes.ts
@@ -676,6 +679,7 @@ server/src/agents/implementations/DatabaseAgent.ts
 server/src/agents/implementations/DebugAgent.ts
 server/src/agents/implementations/DocumentationAgent.ts
 server/src/agents/implementations/DuplicationDetectionAgent.ts
+server/src/agents/implementations/GameDesignerAgent.test.ts
 server/src/agents/implementations/GameDesignerAgent.ts
 server/src/agents/implementations/LuaGeneratorAgent.test.ts
 server/src/agents/implementations/LuaGeneratorAgent.ts
@@ -1273,6 +1277,7 @@ server/src/types/llm.ts
 server/src/types/novelty.ts
 server/src/types/pipeline-events.ts
 server/src/types/playableLua.ts
+server/src/types/worldRuntimeMode.ts
 server/src/ui-gen/UIGenerationEngine.ts
 server/src/ui-gen/UIHierarchyBuilder.ts
 server/src/ui-gen/UIInstanceTreeBuilder.ts
