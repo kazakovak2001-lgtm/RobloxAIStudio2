@@ -2,7 +2,7 @@
 
 # Master audit remediation plan
 
-Generated from `config/audit/master-audit-register.json` (52 findings). Severity is the register's; ordering is by the worst severity in each group, except that re-verification comes first and verified controls come last.
+Generated from `config/audit/master-audit-register.json` (53 findings). Severity is the register's; ordering is by the worst severity in each group, except that re-verification comes first and verified controls come last.
 
 Findings are grouped by shared architectural root rather than by symptom. Several of these are the same defect seen from different places, and repairing them one at a time would mean repairing the root several times.
 
@@ -11,7 +11,7 @@ Findings are grouped by shared architectural root rather than by symptom. Severa
 | Disposition        | Findings |
 | ------------------ | -------- |
 | NOT-STARTED        | 25       |
-| FIXED-UNMERGED     | 22       |
+| FIXED-UNMERGED     | 23       |
 | NO-ACTION-REQUIRED | 4        |
 | SCOPED-OUT         | 1        |
 
@@ -21,7 +21,7 @@ Every finding names the deduplicated root cause it belongs to. A finding the tax
 
 | Root cause                                                                                         | Priority        | Findings | Fixed | Remaining |
 | -------------------------------------------------------------------------------------------------- | --------------- | -------- | ----- | --------- |
-| **MAR-001** — Cross-tenant resource authorization is not parent-bound everywhere                   | P0              | 9        | 4     | 5         |
+| **MAR-001** — Cross-tenant resource authorization is not parent-bound everywhere                   | P0              | 10       | 5     | 5         |
 | **MAR-003** — No single clean canonical product acceptance run exists                              | P0-release-gate | 3        | 0     | 3         |
 | **MAR-004** — Generation has no durable project-scoped single-flight and idempotent start identity | P1              | 3        | 3     | 0         |
 | **MAR-005** — State transitions have no unified durable CAS/version authority                      | P1              | 3        | 3     | 0         |
@@ -85,7 +85,19 @@ The generated artifact does not reliably match the stated requirement, in transp
 | **LLM-PARSER-001** — Valid JSON was discarded when a model added prose after it                          | P1       | CONFIRMED | FIXED-UNMERGED (integration/wave-0 @ fb0a213f6c2321c283f1616784311cc0fe031b0b) |
 | **SERIALIZATION-001** — Structures reached generation prompts as the literal text [object Object]        | P1       | CONFIRMED | FIXED-UNMERGED (integration/wave-0 @ 0abaf874a487506a72d16d2b22e3f25977ac331f) |
 
-## 4. generation-start-admission — worst severity P1
+## 4. authorization-object-binding — worst severity P1
+
+One defect shape: the identifier the caller was authorized for is not the thing the operation acts on. Fixing the sweep and the evidence together is what stops the next instance.
+
+| Finding                                                                                                                             | Severity | Status    | Disposition                                                                                        |
+| ----------------------------------------------------------------------------------------------------------------------------------- | -------- | --------- | -------------------------------------------------------------------------------------------------- |
+| **SEC-GENERATION-BLUEPRINT-001** — Generation accepted a blueprint id belonging to another project                                  | P1       | CONFIRMED | FIXED-UNMERGED (integration/wave-0 @ 04482f16c5249d864020f05e8f59d1c7224f4ed7)                     |
+| **AUDIT-CROSS-TENANT-EVIDENCE-001** — Cross-tenant denial is essentially unevidenced across the API                                 | P1       | CONFIRMED | NOT-STARTED                                                                                        |
+| **AUDIT-BINDING-UNREVIEWED-001** — Ninety-eight operations still have no object-binding verdict                                     | P1       | OPEN      | SCOPED-OUT                                                                                         |
+| **SEC-STUDIO-COMMAND-DISCLOSURE-001** — Refusing another tenant's Studio command disclosed that it existed and what state it was in | P1       | CONFIRMED | FIXED-UNMERGED (fix/mar-001-studio-command-concealment @ 4f81c75251d4972396b16602fae1cf17c4ae9b11) |
+| **AUDIT-BODY-SUPPLIED-BLUEPRINT-001** — Eight operations authorize against an identifier inside a caller-supplied body object       | P2       | CONFIRMED | NOT-STARTED                                                                                        |
+
+## 5. generation-start-admission — worst severity P1
 
 Everything that decides whether a generation may begin and under whose identity. Two of these are already fixed on branches and the rest share their entry point.
 
@@ -96,17 +108,6 @@ Everything that decides whether a generation may begin and under whose identity.
 | **AUDIT-DUP-GENERATION-001** — No suppression of a second concurrent generation for the same project                      | P1       | CONFIRMED | FIXED-UNMERGED (integration/wave-0 @ e0d800d273b3c618d4af07d9ffbbe2873da49937) |
 | **AUDIT-OUTCOME-LAST-WRITER-001** — An older overlapping run can overwrite a newer run's terminal project state           | P1       | CONFIRMED | FIXED-UNMERGED (integration/wave-0 @ e0d800d273b3c618d4af07d9ffbbe2873da49937) |
 | **QUOTA-ENFORCEMENT-001** — Generation does not enforce tier limits before starting                                       | P1       | CONFIRMED | NOT-STARTED                                                                    |
-
-## 5. authorization-object-binding — worst severity P1
-
-One defect shape: the identifier the caller was authorized for is not the thing the operation acts on. Fixing the sweep and the evidence together is what stops the next instance.
-
-| Finding                                                                                                                       | Severity | Status    | Disposition                                                                    |
-| ----------------------------------------------------------------------------------------------------------------------------- | -------- | --------- | ------------------------------------------------------------------------------ |
-| **SEC-GENERATION-BLUEPRINT-001** — Generation accepted a blueprint id belonging to another project                            | P1       | CONFIRMED | FIXED-UNMERGED (integration/wave-0 @ 04482f16c5249d864020f05e8f59d1c7224f4ed7) |
-| **AUDIT-CROSS-TENANT-EVIDENCE-001** — Cross-tenant denial is essentially unevidenced across the API                           | P1       | CONFIRMED | NOT-STARTED                                                                    |
-| **AUDIT-BINDING-UNREVIEWED-001** — Ninety-eight operations still have no object-binding verdict                               | P1       | OPEN      | SCOPED-OUT                                                                     |
-| **AUDIT-BODY-SUPPLIED-BLUEPRINT-001** — Eight operations authorize against an identifier inside a caller-supplied body object | P2       | CONFIRMED | NOT-STARTED                                                                    |
 
 ## 6. canonical-generation-recovery — worst severity P1
 

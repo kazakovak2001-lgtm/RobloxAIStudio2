@@ -929,6 +929,23 @@
       "owningSha": "0abaf874a487506a72d16d2b22e3f25977ac331f",
       "evidence": ["server/src/ai/promptValues.ts"],
       "notes": "Five agents summarised structures with a name-or-item fallback. An item without a name stringified to a placeholder, so the model was told a mechanic or system existed and given nothing about it, including in the prompt that generates the Lua. Values are now described so the content survives when there is no name."
+    },
+    {
+      "id": "SEC-STUDIO-COMMAND-DISCLOSURE-001",
+      "title": "Refusing another tenant's Studio command disclosed that it existed and what state it was in",
+      "severity": "P1",
+      "status": "CONFIRMED",
+      "disposition": "FIXED-UNMERGED",
+      "area": "security",
+      "remediationGroup": "authorization-object-binding",
+      "mar": "MAR-001",
+      "owningBranch": "fix/mar-001-studio-command-concealment",
+      "owningSha": "4f81c75251d4972396b16602fae1cf17c4ae9b11",
+      "evidence": [
+        "server/src/routes/studio.ts",
+        "server/src/__tests__/mar001.studio-command-concealment.test.ts"
+      ],
+      "notes": "The binding itself was present: a caller authorized for one Studio client could not acknowledge or report on a command belonging to a client in another project. The refusal was the leak. A command owned by another tenant answered 403 and carried that command's lifecycle status in the response body, while a command that did not exist answered 404, so the difference confirmed existence and state. Both now answer identically and carry nothing about the resource. The runtime still distinguishes client_mismatch internally, so the server keeps knowing the difference and stops telling the caller."
     }
   ]
 }
