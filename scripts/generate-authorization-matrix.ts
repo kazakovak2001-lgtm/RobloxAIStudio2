@@ -42,6 +42,28 @@ interface MatrixOperation {
    *   than filled in with a weaker test that happens to exist.
    */
   crossTenantEvidence: string;
+  /**
+   * Where the operation sits in the MAR-001 scope, which is a different
+   * question from either field above.
+   *
+   * `resourceBinding` says whether the mechanism is right. `crossTenantEvidence`
+   * says whether anyone has executed a request against it. Neither answers
+   * "does MAR-001 still owe this operation anything", and reading the two
+   * together produced a count that mixed unrelated things: a metadata route
+   * with no resource to bind was indistinguishable from a child-resource
+   * handler nobody had checked.
+   *
+   * - `verified-correct` — the mechanism resolves the resource and authorizes
+   *   its own project. Nothing is owed but evidence, and often not even that.
+   * - `not-resource-bound` — no per-resource authorization to make. Metadata,
+   *   registries, echoes of the request, and the caller's own session.
+   * - `direct-project` — the authorized identifier is itself the thing the
+   *   operation acts on, so an authorization-target mismatch cannot be
+   *   written. The degenerate case of the canonical rule.
+   * - `mechanism-gap` — a resource is parented to something, and nothing
+   *   canonical protects it. This is the only category MAR-001 still owes.
+   */
+  mar001Category: string;
 }
 
 /**
@@ -1517,12 +1539,117 @@ const overrides = new Map<
  * Only families whose handlers were actually read carry a verdict here. Every
  * other family derives `indirect-unreviewed` and is recorded as an open gap.
  */
+const MAR_STUDIO_COMMAND =
+  "server/src/__tests__/mar001.studio-command-concealment.test.ts";
+const MAR_STUDIO_PROTOCOL =
+  "server/src/__tests__/mar001.studio-protocol-binding.test.ts";
+const MAR_STUDIO_CLOSURE =
+  "server/src/__tests__/mar001.studio-surface-closure.test.ts";
+const MAR_CONVERSATION =
+  "server/src/__tests__/mar001.conversation-ownership.test.ts";
+const MAR_JOB = "server/src/__tests__/mar001.job-ownership.test.ts";
+const MAR_AUTONOMOUS =
+  "server/src/__tests__/mar001.autonomous-session-ownership.test.ts";
+
+/**
+ * Recorded verdicts, keyed most specific first.
+ *
+ * These live here rather than in the generated file because the generated file
+ * is generated: running this script used to reset every recorded verdict to
+ * `indirect-unreviewed` / `none-recorded`, silently discarding the evidence of
+ * four remediation slices. Regeneration is now idempotent, and `--check`
+ * refuses a committed matrix that this script would not produce.
+ */
 const bindingRules: ReadonlyArray<{
   source?: string;
   scope?: string;
+  operations?: readonly string[];
   binding: string;
   crossTenantEvidence: string;
 }> = [
+  // MAR-001, recorded by executed cross-tenant request rather than by reading.
+  // Studio command routes: SEC-STUDIO-COMMAND-DISCLOSURE-001.
+  {
+    source: "server/src/routes/studio.ts",
+    operations: [
+      "GET /commands/:commandId",
+      "POST /commands/:commandId/acknowledge",
+      "POST /commands/:commandId/result",
+    ],
+    binding: "indirect-verified",
+    crossTenantEvidence: MAR_STUDIO_COMMAND,
+  },
+  // SEC-STUDIO-PROTOCOL-BINDING-001 and SEC-STUDIO-STATUS-COUNT-001.
+  {
+    source: "server/src/routes/studio.ts",
+    operations: ["POST /protocol/message", "GET /status"],
+    binding: "indirect-verified",
+    crossTenantEvidence: MAR_STUDIO_PROTOCOL,
+  },
+  // The rest of the Studio surface, correct already and now exercised.
+  {
+    source: "server/src/routes/studio.ts",
+    operations: ["GET /protocol/info"],
+    binding: "not-resource-scoped",
+    crossTenantEvidence: MAR_STUDIO_CLOSURE,
+  },
+  {
+    source: "server/src/routes/studio.ts",
+    binding: "indirect-verified",
+    crossTenantEvidence: MAR_STUDIO_CLOSURE,
+  },
+  // SEC-CONVERSATION-DISCLOSURE-001: migrated to the canonical helper.
+  {
+    source: "server/src/routes/chatPersistence.ts",
+    operations: [
+      "GET /conversation/:id",
+      "POST /message",
+      "DELETE /conversation/:id",
+    ],
+    binding: "indirect-verified",
+    crossTenantEvidence: MAR_CONVERSATION,
+  },
+  // SEC-JOB-DISCLOSURE-001 and SEC-JOB-DOUBLE-RESPONSE-001.
+  {
+    source: "server/src/routes/distributed.ts",
+    operations: [
+      "GET /job/:id",
+      "POST /retry/:id",
+      "GET /dead-letter",
+      "POST /submit",
+    ],
+    binding: "indirect-verified",
+    crossTenantEvidence: MAR_JOB,
+  },
+  // Plan access was already correct. Exercised, not rewritten.
+  {
+    source: "server/src/routes/planning.ts",
+    operations: ["GET /:id", "POST /execute", "POST /create"],
+    binding: "indirect-verified",
+    crossTenantEvidence: MAR_JOB,
+  },
+  // Autonomous session control resolves the session and conceals a foreign one
+  // as absent. Correct before this pass; it lacked only evidence.
+  {
+    source: "server/src/routes/autonomous.ts",
+    scope: "resolved-session-project",
+    binding: "indirect-verified",
+    crossTenantEvidence: MAR_AUTONOMOUS,
+  },
+  {
+    source: "server/src/routes/autonomous.ts",
+    operations: ["POST /run"],
+    binding: "indirect-verified",
+    crossTenantEvidence: MAR_AUTONOMOUS,
+  },
+  {
+    // The project id is in the path and is authorized directly. Recording it as
+    // an indirect resolution would overstate what the route does.
+    source: "server/src/routes/autonomous.ts",
+    operations: ["GET /project/:projectId/latest"],
+    binding: "path-scoped",
+    crossTenantEvidence: MAR_AUTONOMOUS,
+  },
   // concept.ts resolves both identifiers in router.param middleware
   // (concept.ts:45-70): the pipeline or artifact is fetched, its owning project
   // is derived, access is checked against that project, and denial is concealed
@@ -1579,9 +1706,19 @@ function deriveResourceBinding(resourceScope: string): string {
 }
 
 function bindingFor(
-  operation: Pick<MatrixOperation, "source"> & { resourceScope: string },
-): Pick<MatrixOperation, "resourceBinding" | "crossTenantEvidence"> {
+  operation: Pick<MatrixOperation, "source" | "operation"> & {
+    resourceScope: string;
+  },
+): Pick<
+  MatrixOperation,
+  "resourceBinding" | "crossTenantEvidence" | "mar001Category"
+> {
   const rule =
+    bindingRules.find(
+      (candidate) =>
+        candidate.source === operation.source &&
+        candidate.operations?.includes(operation.operation),
+    ) ??
     bindingRules.find(
       (candidate) =>
         candidate.source === operation.source &&
@@ -1589,20 +1726,90 @@ function bindingFor(
     ) ??
     bindingRules.find(
       (candidate) =>
+        candidate.source === operation.source &&
+        candidate.scope === undefined &&
+        candidate.operations === undefined,
+    ) ??
+    bindingRules.find(
+      (candidate) =>
         candidate.source === undefined &&
         candidate.scope === operation.resourceScope,
     );
 
-  if (rule) {
-    return {
-      resourceBinding: rule.binding,
-      crossTenantEvidence: rule.crossTenantEvidence,
-    };
-  }
+  const resourceBinding = rule
+    ? rule.binding
+    : deriveResourceBinding(operation.resourceScope);
+  const crossTenantEvidence = rule ? rule.crossTenantEvidence : "none-recorded";
   return {
-    resourceBinding: deriveResourceBinding(operation.resourceScope),
-    crossTenantEvidence: "none-recorded",
+    resourceBinding,
+    crossTenantEvidence,
+    mar001Category: categorise(resourceBinding, operation.resourceScope),
   };
+}
+
+/**
+ * Scopes with nothing to bind: metadata, registries, values echoed back from the
+ * request, and the caller's own session. Listed rather than pattern-matched,
+ * because a scope quietly falling into the wrong bucket is how a real gap would
+ * disappear from the count.
+ */
+const NOT_RESOURCE_BOUND_SCOPES: ReadonlySet<string> = new Set([
+  "api-v1-metadata",
+  "api-v2-metadata",
+  "current-user",
+  "current-user-session",
+  "domain-knowledge",
+  "domain-taxonomy",
+  "governance-agent-registry",
+  "knowledge-pattern-registry",
+  "knowledge-prompt-registry",
+  "knowledge-runtime",
+  "placeholder-metadata",
+  "platform-agent-registry",
+  "platform-runtime-metadata",
+  "request-domain-input",
+  "request-economy-report",
+  "request-game-idea",
+  "request-generation-outputs",
+  "request-simulation-report",
+  "static-system-metadata",
+  "system",
+  "system-operational-metadata",
+]);
+
+/**
+ * Scopes where the authorized identifier is itself the thing acted on, so the
+ * mismatch MAR-001 exists to prevent cannot be expressed.
+ */
+const DIRECT_PROJECT_SCOPES: ReadonlySet<string> = new Set([
+  "authorized-project-set",
+  "authorized-project-set-or-client",
+  "body-game-project",
+  "body-project",
+  "filtered-project-set",
+  "owner-project-set",
+  "path-game-project",
+  "path-project",
+  "query-project",
+]);
+
+function categorise(resourceBinding: string, resourceScope: string): string {
+  // The strongest statement wins: a verified mechanism is verified whatever
+  // shape its identifier has.
+  if (resourceBinding === "indirect-verified") return "verified-correct";
+  if (
+    resourceBinding === "not-resource-scoped" ||
+    NOT_RESOURCE_BOUND_SCOPES.has(resourceScope)
+  ) {
+    return "not-resource-bound";
+  }
+  if (
+    resourceBinding === "path-scoped" ||
+    DIRECT_PROJECT_SCOPES.has(resourceScope)
+  ) {
+    return "direct-project";
+  }
+  return "mechanism-gap";
 }
 
 /**
@@ -1724,7 +1931,52 @@ const next: AuthorizationMatrix = {
   broadcasts,
 };
 
-fs.writeFileSync(matrixPath, `${JSON.stringify(next, null, 2)}\n`);
-console.log(
-  `Authorization matrix now tracks ${operations.length} operations and ${broadcasts.length} global broadcasts.`,
-);
+const rendered = `${JSON.stringify(next, null, 2)}
+`;
+
+/**
+ * `--check` refuses a committed matrix this script would not produce.
+ *
+ * Without it the generated file could be hand-edited and then silently reset by
+ * the next run, which is exactly what happened: regenerating discarded the
+ * recorded cross-tenant evidence of four remediation slices, and nothing
+ * failed. Verdicts now live in the rules above, so regeneration is idempotent
+ * and this check keeps it that way.
+ */
+if (process.argv.includes("--check")) {
+  const committed = fs.existsSync(matrixPath)
+    ? fs.readFileSync(matrixPath, "utf8")
+    : "";
+  const normalise = (value: string) => value.split("\r\n").join("\n");
+  if (normalise(committed) !== normalise(rendered)) {
+    console.error("Authorization matrix validation");
+    console.error("  status: FAIL");
+    console.error(
+      "  error: the committed matrix is not what this generator produces.",
+    );
+    console.error(
+      "  Edit the binding rules in this script, then regenerate. Editing the",
+    );
+    console.error("  generated file directly does not survive the next run.");
+    process.exit(1);
+  }
+  console.log("Authorization matrix validation");
+  console.log("  status: PASS");
+  console.log(`  operations: ${operations.length}`);
+  const categories = operations.reduce<Record<string, number>>(
+    (totals, operation) => {
+      totals[operation.mar001Category] =
+        (totals[operation.mar001Category] ?? 0) + 1;
+      return totals;
+    },
+    {},
+  );
+  for (const [category, total] of Object.entries(categories).sort()) {
+    console.log(`  ${category}: ${total}`);
+  }
+} else {
+  fs.writeFileSync(matrixPath, rendered);
+  console.log(
+    `Authorization matrix now tracks ${operations.length} operations and ${broadcasts.length} global broadcasts.`,
+  );
+}

@@ -13,7 +13,8 @@
       "positiveEvidence": "server/src/__tests__/security2gE.api-v1-scope.test.ts",
       "negativeEvidence": "server/src/__tests__/security2gE.api-v1-scope.test.ts",
       "resourceBinding": "indirect-unreviewed",
-      "crossTenantEvidence": "none-recorded"
+      "crossTenantEvidence": "none-recorded",
+      "mar001Category": "not-resource-bound"
     },
     {
       "transport": "rest",
@@ -26,7 +27,8 @@
       "positiveEvidence": "server/src/__tests__/security2gE.api-v1-scope.test.ts",
       "negativeEvidence": "server/src/__tests__/security2gE.api-v1-scope.test.ts",
       "resourceBinding": "indirect-unreviewed",
-      "crossTenantEvidence": "none-recorded"
+      "crossTenantEvidence": "none-recorded",
+      "mar001Category": "mechanism-gap"
     },
     {
       "transport": "rest",
@@ -39,7 +41,8 @@
       "positiveEvidence": "server/src/__tests__/security2gE.api-v1-scope.test.ts",
       "negativeEvidence": "server/src/__tests__/security2gE.api-v1-scope.test.ts",
       "resourceBinding": "indirect-unreviewed",
-      "crossTenantEvidence": "none-recorded"
+      "crossTenantEvidence": "none-recorded",
+      "mar001Category": "not-resource-bound"
     },
     {
       "transport": "rest",
@@ -52,7 +55,8 @@
       "positiveEvidence": "server/src/__tests__/security2gE.api-v1-scope.test.ts",
       "negativeEvidence": "server/src/__tests__/security2gE.api-v1-scope.test.ts",
       "resourceBinding": "indirect-unreviewed",
-      "crossTenantEvidence": "none-recorded"
+      "crossTenantEvidence": "none-recorded",
+      "mar001Category": "direct-project"
     },
     {
       "transport": "rest",
@@ -65,7 +69,8 @@
       "positiveEvidence": "server/src/__tests__/security2gE.api-v1-scope.test.ts",
       "negativeEvidence": "server/src/__tests__/security2gE.api-v1-scope.test.ts",
       "resourceBinding": "indirect-unreviewed",
-      "crossTenantEvidence": "none-recorded"
+      "crossTenantEvidence": "none-recorded",
+      "mar001Category": "direct-project"
     },
     {
       "transport": "rest",
@@ -78,7 +83,8 @@
       "positiveEvidence": "server/src/__tests__/security2gE.api-v1-scope.test.ts",
       "negativeEvidence": "server/src/__tests__/security2gE.api-v1-scope.test.ts",
       "resourceBinding": "indirect-unreviewed",
-      "crossTenantEvidence": "none-recorded"
+      "crossTenantEvidence": "none-recorded",
+      "mar001Category": "mechanism-gap"
     },
     {
       "transport": "rest",
@@ -91,7 +97,8 @@
       "positiveEvidence": "server/src/__tests__/security2gE.api-v2-scope.test.ts",
       "negativeEvidence": "server/src/__tests__/security2gE.api-v2-scope.test.ts",
       "resourceBinding": "indirect-unreviewed",
-      "crossTenantEvidence": "none-recorded"
+      "crossTenantEvidence": "none-recorded",
+      "mar001Category": "not-resource-bound"
     },
     {
       "transport": "rest",
@@ -104,7 +111,8 @@
       "positiveEvidence": "server/src/__tests__/security2gE.api-v2-scope.test.ts",
       "negativeEvidence": "server/src/__tests__/security2gE.api-v2-scope.test.ts",
       "resourceBinding": "indirect-unreviewed",
-      "crossTenantEvidence": "none-recorded"
+      "crossTenantEvidence": "none-recorded",
+      "mar001Category": "direct-project"
     },
     {
       "transport": "rest",
@@ -117,7 +125,8 @@
       "positiveEvidence": "server/src/__tests__/security2gE.api-v2-scope.test.ts",
       "negativeEvidence": "server/src/__tests__/security2gE.api-v2-scope.test.ts",
       "resourceBinding": "indirect-unreviewed",
-      "crossTenantEvidence": "none-recorded"
+      "crossTenantEvidence": "none-recorded",
+      "mar001Category": "direct-project"
     },
     {
       "transport": "rest",
@@ -130,7 +139,8 @@
       "positiveEvidence": "server/src/__tests__/security2gE.authorization-domains.test.ts",
       "negativeEvidence": "not-applicable-public",
       "resourceBinding": "indirect-unreviewed",
-      "crossTenantEvidence": "none-recorded"
+      "crossTenantEvidence": "none-recorded",
+      "mar001Category": "not-resource-bound"
     },
     {
       "transport": "rest",
@@ -143,7 +153,8 @@
       "positiveEvidence": "server/src/__tests__/security2gE.authorization-domains.test.ts",
       "negativeEvidence": "not-applicable-public",
       "resourceBinding": "indirect-unreviewed",
-      "crossTenantEvidence": "none-recorded"
+      "crossTenantEvidence": "none-recorded",
+      "mar001Category": "not-resource-bound"
     },
     {
       "transport": "rest",
@@ -156,7 +167,8 @@
       "positiveEvidence": "server/src/__tests__/security2gE.autonomous-health-scope.test.ts",
       "negativeEvidence": "server/src/__tests__/security2gE.autonomous-health-scope.test.ts",
       "resourceBinding": "indirect-unreviewed",
-      "crossTenantEvidence": "none-recorded"
+      "crossTenantEvidence": "none-recorded",
+      "mar001Category": "not-resource-bound"
     },
     {
       "transport": "rest",
@@ -169,7 +181,8 @@
       "positiveEvidence": "server/src/__tests__/security2gE.autonomous-health-scope.test.ts",
       "negativeEvidence": "server/src/__tests__/security2gE.autonomous-health-scope.test.ts",
       "resourceBinding": "indirect-unreviewed",
-      "crossTenantEvidence": "none-recorded"
+      "crossTenantEvidence": "none-recorded",
+      "mar001Category": "not-resource-bound"
     },
     {
       "transport": "rest",
@@ -182,7 +195,8 @@
       "positiveEvidence": "server/src/__tests__/security2gE.agent-collaboration-scope.test.ts",
       "negativeEvidence": "server/src/__tests__/security2gE.agent-collaboration-scope.test.ts",
       "resourceBinding": "not-resource-scoped",
-      "crossTenantEvidence": "none-recorded"
+      "crossTenantEvidence": "none-recorded",
+      "mar001Category": "not-resource-bound"
     },
     {
       "transport": "rest",
@@ -195,7 +209,8 @@
       "positiveEvidence": "server/src/__tests__/security2gE.agent-collaboration-scope.test.ts",
       "negativeEvidence": "server/src/__tests__/security2gE.agent-collaboration-scope.test.ts",
       "resourceBinding": "not-resource-scoped",
-      "crossTenantEvidence": "none-recorded"
+      "crossTenantEvidence": "none-recorded",
+      "mar001Category": "not-resource-bound"
     },
     {
       "transport": "rest",
@@ -208,7 +223,8 @@
       "positiveEvidence": "server/src/__tests__/security2gE.agent-collaboration-scope.test.ts",
       "negativeEvidence": "server/src/__tests__/security2gE.agent-collaboration-scope.test.ts",
       "resourceBinding": "not-resource-scoped",
-      "crossTenantEvidence": "none-recorded"
+      "crossTenantEvidence": "none-recorded",
+      "mar001Category": "not-resource-bound"
     },
     {
       "transport": "rest",
@@ -221,7 +237,8 @@
       "positiveEvidence": "server/src/__tests__/security2gE.agent-collaboration-scope.test.ts",
       "negativeEvidence": "server/src/__tests__/security2gE.agent-collaboration-scope.test.ts",
       "resourceBinding": "not-resource-scoped",
-      "crossTenantEvidence": "none-recorded"
+      "crossTenantEvidence": "none-recorded",
+      "mar001Category": "not-resource-bound"
     },
     {
       "transport": "rest",
@@ -234,7 +251,8 @@
       "positiveEvidence": "server/src/__tests__/security2gE.agent-collaboration-scope.test.ts",
       "negativeEvidence": "server/src/__tests__/security2gE.agent-collaboration-scope.test.ts",
       "resourceBinding": "indirect-unreviewed",
-      "crossTenantEvidence": "none-recorded"
+      "crossTenantEvidence": "none-recorded",
+      "mar001Category": "direct-project"
     },
     {
       "transport": "rest",
@@ -247,7 +265,8 @@
       "positiveEvidence": "server/src/__tests__/security2gE.ai-chat-session-boundary.test.ts",
       "negativeEvidence": "server/src/__tests__/security2gE.ai-chat-session-boundary.test.ts",
       "resourceBinding": "indirect-unreviewed",
-      "crossTenantEvidence": "none-recorded"
+      "crossTenantEvidence": "none-recorded",
+      "mar001Category": "not-resource-bound"
     },
     {
       "transport": "rest",
@@ -260,7 +279,8 @@
       "positiveEvidence": "server/src/__tests__/security2gE.analytics-operator-boundary.test.ts",
       "negativeEvidence": "server/src/__tests__/security2gE.analytics-operator-boundary.test.ts",
       "resourceBinding": "not-resource-scoped",
-      "crossTenantEvidence": "none-recorded"
+      "crossTenantEvidence": "none-recorded",
+      "mar001Category": "not-resource-bound"
     },
     {
       "transport": "rest",
@@ -273,7 +293,8 @@
       "positiveEvidence": "server/src/__tests__/security2gE.analytics-operator-boundary.test.ts",
       "negativeEvidence": "server/src/__tests__/security2gE.analytics-operator-boundary.test.ts",
       "resourceBinding": "not-resource-scoped",
-      "crossTenantEvidence": "none-recorded"
+      "crossTenantEvidence": "none-recorded",
+      "mar001Category": "not-resource-bound"
     },
     {
       "transport": "rest",
@@ -286,7 +307,8 @@
       "positiveEvidence": "server/src/__tests__/security2gE.analytics-operator-boundary.test.ts",
       "negativeEvidence": "server/src/__tests__/security2gE.analytics-operator-boundary.test.ts",
       "resourceBinding": "not-resource-scoped",
-      "crossTenantEvidence": "none-recorded"
+      "crossTenantEvidence": "none-recorded",
+      "mar001Category": "not-resource-bound"
     },
     {
       "transport": "rest",
@@ -299,7 +321,8 @@
       "positiveEvidence": "server/src/__tests__/security2gE.analytics-operator-boundary.test.ts",
       "negativeEvidence": "server/src/__tests__/security2gE.analytics-operator-boundary.test.ts",
       "resourceBinding": "not-resource-scoped",
-      "crossTenantEvidence": "none-recorded"
+      "crossTenantEvidence": "none-recorded",
+      "mar001Category": "not-resource-bound"
     },
     {
       "transport": "rest",
@@ -312,7 +335,8 @@
       "positiveEvidence": "server/src/__tests__/security2gE.analytics-operator-boundary.test.ts",
       "negativeEvidence": "server/src/__tests__/security2gE.analytics-operator-boundary.test.ts",
       "resourceBinding": "not-resource-scoped",
-      "crossTenantEvidence": "none-recorded"
+      "crossTenantEvidence": "none-recorded",
+      "mar001Category": "not-resource-bound"
     },
     {
       "transport": "rest",
@@ -325,7 +349,8 @@
       "positiveEvidence": "server/src/__tests__/security2gE.analytics-operator-boundary.test.ts",
       "negativeEvidence": "server/src/__tests__/security2gE.analytics-operator-boundary.test.ts",
       "resourceBinding": "not-resource-scoped",
-      "crossTenantEvidence": "none-recorded"
+      "crossTenantEvidence": "none-recorded",
+      "mar001Category": "not-resource-bound"
     },
     {
       "transport": "rest",
@@ -338,7 +363,8 @@
       "positiveEvidence": "server/src/__tests__/security2gE.analytics-operator-boundary.test.ts",
       "negativeEvidence": "server/src/__tests__/security2gE.analytics-operator-boundary.test.ts",
       "resourceBinding": "not-resource-scoped",
-      "crossTenantEvidence": "none-recorded"
+      "crossTenantEvidence": "none-recorded",
+      "mar001Category": "not-resource-bound"
     },
     {
       "transport": "rest",
@@ -351,7 +377,8 @@
       "positiveEvidence": "server/src/__tests__/security2gE.analytics-operator-boundary.test.ts",
       "negativeEvidence": "server/src/__tests__/security2gE.analytics-operator-boundary.test.ts",
       "resourceBinding": "not-resource-scoped",
-      "crossTenantEvidence": "none-recorded"
+      "crossTenantEvidence": "none-recorded",
+      "mar001Category": "not-resource-bound"
     },
     {
       "transport": "rest",
@@ -364,7 +391,8 @@
       "positiveEvidence": "server/src/__tests__/security2gE.analytics-operator-boundary.test.ts",
       "negativeEvidence": "server/src/__tests__/security2gE.analytics-operator-boundary.test.ts",
       "resourceBinding": "not-resource-scoped",
-      "crossTenantEvidence": "none-recorded"
+      "crossTenantEvidence": "none-recorded",
+      "mar001Category": "not-resource-bound"
     },
     {
       "transport": "rest",
@@ -377,7 +405,8 @@
       "positiveEvidence": "server/src/__tests__/security2gE.analytics-operator-boundary.test.ts",
       "negativeEvidence": "server/src/__tests__/security2gE.analytics-operator-boundary.test.ts",
       "resourceBinding": "not-resource-scoped",
-      "crossTenantEvidence": "none-recorded"
+      "crossTenantEvidence": "none-recorded",
+      "mar001Category": "not-resource-bound"
     },
     {
       "transport": "rest",
@@ -389,8 +418,9 @@
       "resourceScope": "resolved-session-project",
       "positiveEvidence": "server/src/__tests__/security2gE.indirect-session-routes.test.ts",
       "negativeEvidence": "server/src/__tests__/security2gE.indirect-session-routes.test.ts",
-      "resourceBinding": "indirect-unreviewed",
-      "crossTenantEvidence": "none-recorded"
+      "resourceBinding": "indirect-verified",
+      "crossTenantEvidence": "server/src/__tests__/mar001.autonomous-session-ownership.test.ts",
+      "mar001Category": "verified-correct"
     },
     {
       "transport": "rest",
@@ -403,7 +433,8 @@
       "positiveEvidence": "server/src/__tests__/security2gE.autonomous-health-scope.test.ts",
       "negativeEvidence": "server/src/__tests__/security2gE.autonomous-health-scope.test.ts",
       "resourceBinding": "path-scoped",
-      "crossTenantEvidence": "none-recorded"
+      "crossTenantEvidence": "server/src/__tests__/mar001.autonomous-session-ownership.test.ts",
+      "mar001Category": "direct-project"
     },
     {
       "transport": "rest",
@@ -415,8 +446,9 @@
       "resourceScope": "resolved-session-project",
       "positiveEvidence": "server/src/__tests__/security2gE.indirect-session-routes.test.ts",
       "negativeEvidence": "server/src/__tests__/security2gE.indirect-session-routes.test.ts",
-      "resourceBinding": "indirect-unreviewed",
-      "crossTenantEvidence": "none-recorded"
+      "resourceBinding": "indirect-verified",
+      "crossTenantEvidence": "server/src/__tests__/mar001.autonomous-session-ownership.test.ts",
+      "mar001Category": "verified-correct"
     },
     {
       "transport": "rest",
@@ -428,8 +460,9 @@
       "resourceScope": "resolved-session-project",
       "positiveEvidence": "server/src/__tests__/security2gE.indirect-session-routes.test.ts",
       "negativeEvidence": "server/src/__tests__/security2gE.indirect-session-routes.test.ts",
-      "resourceBinding": "indirect-unreviewed",
-      "crossTenantEvidence": "none-recorded"
+      "resourceBinding": "indirect-verified",
+      "crossTenantEvidence": "server/src/__tests__/mar001.autonomous-session-ownership.test.ts",
+      "mar001Category": "verified-correct"
     },
     {
       "transport": "rest",
@@ -441,8 +474,9 @@
       "resourceScope": "resolved-session-project",
       "positiveEvidence": "server/src/__tests__/security2gE.indirect-session-routes.test.ts",
       "negativeEvidence": "server/src/__tests__/security2gE.indirect-session-routes.test.ts",
-      "resourceBinding": "indirect-unreviewed",
-      "crossTenantEvidence": "none-recorded"
+      "resourceBinding": "indirect-verified",
+      "crossTenantEvidence": "server/src/__tests__/mar001.autonomous-session-ownership.test.ts",
+      "mar001Category": "verified-correct"
     },
     {
       "transport": "rest",
@@ -454,8 +488,9 @@
       "resourceScope": "resolved-session-project",
       "positiveEvidence": "server/src/__tests__/security2gE.indirect-session-routes.test.ts",
       "negativeEvidence": "server/src/__tests__/security2gE.indirect-session-routes.test.ts",
-      "resourceBinding": "indirect-unreviewed",
-      "crossTenantEvidence": "none-recorded"
+      "resourceBinding": "indirect-verified",
+      "crossTenantEvidence": "server/src/__tests__/mar001.autonomous-session-ownership.test.ts",
+      "mar001Category": "verified-correct"
     },
     {
       "transport": "rest",
@@ -467,8 +502,9 @@
       "resourceScope": "resolved-session-project",
       "positiveEvidence": "server/src/__tests__/security2gE.indirect-session-routes.test.ts",
       "negativeEvidence": "server/src/__tests__/security2gE.indirect-session-routes.test.ts",
-      "resourceBinding": "indirect-unreviewed",
-      "crossTenantEvidence": "none-recorded"
+      "resourceBinding": "indirect-verified",
+      "crossTenantEvidence": "server/src/__tests__/mar001.autonomous-session-ownership.test.ts",
+      "mar001Category": "verified-correct"
     },
     {
       "transport": "rest",
@@ -480,8 +516,9 @@
       "resourceScope": "body-project",
       "positiveEvidence": "server/src/__tests__/security2gE.autonomous-run-scope.test.ts",
       "negativeEvidence": "server/src/__tests__/security2gE.autonomous-run-scope.test.ts",
-      "resourceBinding": "indirect-unreviewed",
-      "crossTenantEvidence": "none-recorded"
+      "resourceBinding": "indirect-verified",
+      "crossTenantEvidence": "server/src/__tests__/mar001.autonomous-session-ownership.test.ts",
+      "mar001Category": "verified-correct"
     },
     {
       "transport": "rest",
@@ -494,7 +531,8 @@
       "positiveEvidence": "server/src/__tests__/security2gE.compile-scope.test.ts",
       "negativeEvidence": "server/src/__tests__/security2gE.compile-scope.test.ts",
       "resourceBinding": "indirect-unreviewed",
-      "crossTenantEvidence": "none-recorded"
+      "crossTenantEvidence": "none-recorded",
+      "mar001Category": "direct-project"
     },
     {
       "transport": "rest",
@@ -507,7 +545,8 @@
       "positiveEvidence": "server/src/__tests__/security2gE.concept-entry-scope.test.ts",
       "negativeEvidence": "server/src/__tests__/security2gE.concept-entry-scope.test.ts",
       "resourceBinding": "indirect-unreviewed",
-      "crossTenantEvidence": "none-recorded"
+      "crossTenantEvidence": "none-recorded",
+      "mar001Category": "mechanism-gap"
     },
     {
       "transport": "rest",
@@ -520,7 +559,8 @@
       "positiveEvidence": "server/src/__tests__/security2gE.concept-resource-resolvers.test.ts",
       "negativeEvidence": "server/src/__tests__/security2gE.concept-resource-resolvers.test.ts",
       "resourceBinding": "indirect-verified",
-      "crossTenantEvidence": "static-source-only"
+      "crossTenantEvidence": "static-source-only",
+      "mar001Category": "verified-correct"
     },
     {
       "transport": "rest",
@@ -533,7 +573,8 @@
       "positiveEvidence": "server/src/__tests__/security2gE.concept-resource-resolvers.test.ts",
       "negativeEvidence": "server/src/__tests__/security2gE.concept-resource-resolvers.test.ts",
       "resourceBinding": "indirect-verified",
-      "crossTenantEvidence": "static-source-only"
+      "crossTenantEvidence": "static-source-only",
+      "mar001Category": "verified-correct"
     },
     {
       "transport": "rest",
@@ -546,7 +587,8 @@
       "positiveEvidence": "server/src/__tests__/security2gE.concept-resource-resolvers.test.ts",
       "negativeEvidence": "server/src/__tests__/security2gE.concept-resource-resolvers.test.ts",
       "resourceBinding": "indirect-verified",
-      "crossTenantEvidence": "static-source-only"
+      "crossTenantEvidence": "static-source-only",
+      "mar001Category": "verified-correct"
     },
     {
       "transport": "rest",
@@ -559,7 +601,8 @@
       "positiveEvidence": "server/src/__tests__/security2gE.concept-resource-resolvers.test.ts",
       "negativeEvidence": "server/src/__tests__/security2gE.concept-resource-resolvers.test.ts",
       "resourceBinding": "indirect-verified",
-      "crossTenantEvidence": "static-source-only"
+      "crossTenantEvidence": "static-source-only",
+      "mar001Category": "verified-correct"
     },
     {
       "transport": "rest",
@@ -572,7 +615,8 @@
       "positiveEvidence": "server/src/__tests__/security2gE.concept-resource-resolvers.test.ts",
       "negativeEvidence": "server/src/__tests__/security2gE.concept-resource-resolvers.test.ts",
       "resourceBinding": "indirect-verified",
-      "crossTenantEvidence": "static-source-only"
+      "crossTenantEvidence": "static-source-only",
+      "mar001Category": "verified-correct"
     },
     {
       "transport": "rest",
@@ -585,7 +629,8 @@
       "positiveEvidence": "server/src/__tests__/security2gE.concept-matrix-history.test.ts",
       "negativeEvidence": "server/src/__tests__/security2gE.concept-matrix-history.test.ts",
       "resourceBinding": "indirect-unreviewed",
-      "crossTenantEvidence": "none-recorded"
+      "crossTenantEvidence": "none-recorded",
+      "mar001Category": "direct-project"
     },
     {
       "transport": "rest",
@@ -598,7 +643,8 @@
       "positiveEvidence": "server/src/__tests__/security2gE.concept-resource-resolvers.test.ts",
       "negativeEvidence": "server/src/__tests__/security2gE.concept-resource-resolvers.test.ts",
       "resourceBinding": "indirect-verified",
-      "crossTenantEvidence": "static-source-only"
+      "crossTenantEvidence": "static-source-only",
+      "mar001Category": "verified-correct"
     },
     {
       "transport": "rest",
@@ -611,7 +657,8 @@
       "positiveEvidence": "server/src/__tests__/security2gE.concept-resource-resolvers.test.ts",
       "negativeEvidence": "server/src/__tests__/security2gE.concept-resource-resolvers.test.ts",
       "resourceBinding": "indirect-verified",
-      "crossTenantEvidence": "static-source-only"
+      "crossTenantEvidence": "static-source-only",
+      "mar001Category": "verified-correct"
     },
     {
       "transport": "rest",
@@ -624,7 +671,8 @@
       "positiveEvidence": "server/src/__tests__/security2gE.concept-resource-resolvers.test.ts",
       "negativeEvidence": "server/src/__tests__/security2gE.concept-resource-resolvers.test.ts",
       "resourceBinding": "indirect-verified",
-      "crossTenantEvidence": "static-source-only"
+      "crossTenantEvidence": "static-source-only",
+      "mar001Category": "verified-correct"
     },
     {
       "transport": "rest",
@@ -637,7 +685,8 @@
       "positiveEvidence": "server/src/__tests__/security2gE.concept-resource-resolvers.test.ts",
       "negativeEvidence": "server/src/__tests__/security2gE.concept-resource-resolvers.test.ts",
       "resourceBinding": "indirect-verified",
-      "crossTenantEvidence": "static-source-only"
+      "crossTenantEvidence": "static-source-only",
+      "mar001Category": "verified-correct"
     },
     {
       "transport": "rest",
@@ -650,7 +699,8 @@
       "positiveEvidence": "server/src/__tests__/security2gE.concept-resource-resolvers.test.ts",
       "negativeEvidence": "server/src/__tests__/security2gE.concept-resource-resolvers.test.ts",
       "resourceBinding": "indirect-verified",
-      "crossTenantEvidence": "static-source-only"
+      "crossTenantEvidence": "static-source-only",
+      "mar001Category": "verified-correct"
     },
     {
       "transport": "rest",
@@ -663,7 +713,8 @@
       "positiveEvidence": "server/src/__tests__/security2gE.concept-resource-resolvers.test.ts",
       "negativeEvidence": "server/src/__tests__/security2gE.concept-resource-resolvers.test.ts",
       "resourceBinding": "indirect-verified",
-      "crossTenantEvidence": "static-source-only"
+      "crossTenantEvidence": "static-source-only",
+      "mar001Category": "verified-correct"
     },
     {
       "transport": "rest",
@@ -676,7 +727,8 @@
       "positiveEvidence": "server/src/__tests__/security2gE.concept-resource-resolvers.test.ts",
       "negativeEvidence": "server/src/__tests__/security2gE.concept-resource-resolvers.test.ts",
       "resourceBinding": "indirect-verified",
-      "crossTenantEvidence": "static-source-only"
+      "crossTenantEvidence": "static-source-only",
+      "mar001Category": "verified-correct"
     },
     {
       "transport": "rest",
@@ -689,7 +741,8 @@
       "positiveEvidence": "server/src/__tests__/security2gE.concept-resource-resolvers.test.ts",
       "negativeEvidence": "server/src/__tests__/security2gE.concept-resource-resolvers.test.ts",
       "resourceBinding": "indirect-verified",
-      "crossTenantEvidence": "static-source-only"
+      "crossTenantEvidence": "static-source-only",
+      "mar001Category": "verified-correct"
     },
     {
       "transport": "rest",
@@ -702,7 +755,8 @@
       "positiveEvidence": "server/src/__tests__/security2gE.concept-resource-resolvers.test.ts",
       "negativeEvidence": "server/src/__tests__/security2gE.concept-resource-resolvers.test.ts",
       "resourceBinding": "indirect-verified",
-      "crossTenantEvidence": "static-source-only"
+      "crossTenantEvidence": "static-source-only",
+      "mar001Category": "verified-correct"
     },
     {
       "transport": "rest",
@@ -715,7 +769,8 @@
       "positiveEvidence": "server/src/__tests__/security2gE.concept-resource-resolvers.test.ts",
       "negativeEvidence": "server/src/__tests__/security2gE.concept-resource-resolvers.test.ts",
       "resourceBinding": "indirect-verified",
-      "crossTenantEvidence": "static-source-only"
+      "crossTenantEvidence": "static-source-only",
+      "mar001Category": "verified-correct"
     },
     {
       "transport": "rest",
@@ -728,7 +783,8 @@
       "positiveEvidence": "server/src/__tests__/security2gE.concept-entry-scope.test.ts",
       "negativeEvidence": "server/src/__tests__/security2gE.concept-entry-scope.test.ts",
       "resourceBinding": "indirect-unreviewed",
-      "crossTenantEvidence": "none-recorded"
+      "crossTenantEvidence": "none-recorded",
+      "mar001Category": "mechanism-gap"
     },
     {
       "transport": "rest",
@@ -741,7 +797,8 @@
       "positiveEvidence": "server/src/__tests__/security2gE.concept-entry-scope.test.ts",
       "negativeEvidence": "server/src/__tests__/security2gE.concept-entry-scope.test.ts",
       "resourceBinding": "indirect-unreviewed",
-      "crossTenantEvidence": "none-recorded"
+      "crossTenantEvidence": "none-recorded",
+      "mar001Category": "direct-project"
     },
     {
       "transport": "rest",
@@ -754,7 +811,8 @@
       "positiveEvidence": "server/src/__tests__/security2gE.concept-entry-scope.test.ts",
       "negativeEvidence": "server/src/__tests__/security2gE.concept-entry-scope.test.ts",
       "resourceBinding": "indirect-unreviewed",
-      "crossTenantEvidence": "none-recorded"
+      "crossTenantEvidence": "none-recorded",
+      "mar001Category": "mechanism-gap"
     },
     {
       "transport": "rest",
@@ -767,7 +825,8 @@
       "positiveEvidence": "server/src/__tests__/security2gE.controller-operator-boundary.test.ts",
       "negativeEvidence": "server/src/__tests__/security2gE.controller-operator-boundary.test.ts",
       "resourceBinding": "not-resource-scoped",
-      "crossTenantEvidence": "none-recorded"
+      "crossTenantEvidence": "none-recorded",
+      "mar001Category": "not-resource-bound"
     },
     {
       "transport": "rest",
@@ -780,7 +839,8 @@
       "positiveEvidence": "server/src/__tests__/security2gE.controller-operator-boundary.test.ts",
       "negativeEvidence": "server/src/__tests__/security2gE.controller-operator-boundary.test.ts",
       "resourceBinding": "not-resource-scoped",
-      "crossTenantEvidence": "none-recorded"
+      "crossTenantEvidence": "none-recorded",
+      "mar001Category": "not-resource-bound"
     },
     {
       "transport": "rest",
@@ -793,7 +853,8 @@
       "positiveEvidence": "server/src/__tests__/security2gE.controller-operator-boundary.test.ts",
       "negativeEvidence": "server/src/__tests__/security2gE.controller-operator-boundary.test.ts",
       "resourceBinding": "not-resource-scoped",
-      "crossTenantEvidence": "none-recorded"
+      "crossTenantEvidence": "none-recorded",
+      "mar001Category": "not-resource-bound"
     },
     {
       "transport": "rest",
@@ -806,7 +867,8 @@
       "positiveEvidence": "server/src/__tests__/security2gE.controller-operator-boundary.test.ts",
       "negativeEvidence": "server/src/__tests__/security2gE.controller-operator-boundary.test.ts",
       "resourceBinding": "not-resource-scoped",
-      "crossTenantEvidence": "none-recorded"
+      "crossTenantEvidence": "none-recorded",
+      "mar001Category": "not-resource-bound"
     },
     {
       "transport": "rest",
@@ -819,7 +881,8 @@
       "positiveEvidence": "server/src/__tests__/security2gE.controller-operator-boundary.test.ts",
       "negativeEvidence": "server/src/__tests__/security2gE.controller-operator-boundary.test.ts",
       "resourceBinding": "not-resource-scoped",
-      "crossTenantEvidence": "none-recorded"
+      "crossTenantEvidence": "none-recorded",
+      "mar001Category": "not-resource-bound"
     },
     {
       "transport": "rest",
@@ -832,7 +895,8 @@
       "positiveEvidence": "server/src/__tests__/security2gE.controller-operator-boundary.test.ts",
       "negativeEvidence": "server/src/__tests__/security2gE.controller-operator-boundary.test.ts",
       "resourceBinding": "not-resource-scoped",
-      "crossTenantEvidence": "none-recorded"
+      "crossTenantEvidence": "none-recorded",
+      "mar001Category": "not-resource-bound"
     },
     {
       "transport": "rest",
@@ -845,7 +909,8 @@
       "positiveEvidence": "server/src/__tests__/security2gE.controller-operator-boundary.test.ts",
       "negativeEvidence": "server/src/__tests__/security2gE.controller-operator-boundary.test.ts",
       "resourceBinding": "not-resource-scoped",
-      "crossTenantEvidence": "none-recorded"
+      "crossTenantEvidence": "none-recorded",
+      "mar001Category": "not-resource-bound"
     },
     {
       "transport": "rest",
@@ -858,7 +923,8 @@
       "positiveEvidence": "server/src/__tests__/security2gE.controller-operator-boundary.test.ts",
       "negativeEvidence": "server/src/__tests__/security2gE.controller-operator-boundary.test.ts",
       "resourceBinding": "not-resource-scoped",
-      "crossTenantEvidence": "none-recorded"
+      "crossTenantEvidence": "none-recorded",
+      "mar001Category": "not-resource-bound"
     },
     {
       "transport": "rest",
@@ -871,7 +937,8 @@
       "positiveEvidence": "server/src/__tests__/security2gE.controller-operator-boundary.test.ts",
       "negativeEvidence": "server/src/__tests__/security2gE.controller-operator-boundary.test.ts",
       "resourceBinding": "not-resource-scoped",
-      "crossTenantEvidence": "none-recorded"
+      "crossTenantEvidence": "none-recorded",
+      "mar001Category": "not-resource-bound"
     },
     {
       "transport": "rest",
@@ -884,7 +951,8 @@
       "positiveEvidence": "server/src/__tests__/security2gE.controller-operator-boundary.test.ts",
       "negativeEvidence": "server/src/__tests__/security2gE.controller-operator-boundary.test.ts",
       "resourceBinding": "not-resource-scoped",
-      "crossTenantEvidence": "none-recorded"
+      "crossTenantEvidence": "none-recorded",
+      "mar001Category": "not-resource-bound"
     },
     {
       "transport": "rest",
@@ -897,7 +965,8 @@
       "positiveEvidence": "server/src/__tests__/security2gE.controller-operator-boundary.test.ts",
       "negativeEvidence": "server/src/__tests__/security2gE.controller-operator-boundary.test.ts",
       "resourceBinding": "not-resource-scoped",
-      "crossTenantEvidence": "none-recorded"
+      "crossTenantEvidence": "none-recorded",
+      "mar001Category": "not-resource-bound"
     },
     {
       "transport": "rest",
@@ -910,7 +979,8 @@
       "positiveEvidence": "server/src/__tests__/security2gE.controller-operator-boundary.test.ts",
       "negativeEvidence": "server/src/__tests__/security2gE.controller-operator-boundary.test.ts",
       "resourceBinding": "not-resource-scoped",
-      "crossTenantEvidence": "none-recorded"
+      "crossTenantEvidence": "none-recorded",
+      "mar001Category": "not-resource-bound"
     },
     {
       "transport": "rest",
@@ -923,7 +993,8 @@
       "positiveEvidence": "server/src/__tests__/security2gE.controller-operator-boundary.test.ts",
       "negativeEvidence": "server/src/__tests__/security2gE.controller-operator-boundary.test.ts",
       "resourceBinding": "not-resource-scoped",
-      "crossTenantEvidence": "none-recorded"
+      "crossTenantEvidence": "none-recorded",
+      "mar001Category": "not-resource-bound"
     },
     {
       "transport": "rest",
@@ -936,7 +1007,8 @@
       "positiveEvidence": "server/src/__tests__/security2gE.controller-operator-boundary.test.ts",
       "negativeEvidence": "server/src/__tests__/security2gE.controller-operator-boundary.test.ts",
       "resourceBinding": "not-resource-scoped",
-      "crossTenantEvidence": "none-recorded"
+      "crossTenantEvidence": "none-recorded",
+      "mar001Category": "not-resource-bound"
     },
     {
       "transport": "rest",
@@ -949,7 +1021,8 @@
       "positiveEvidence": "server/src/__tests__/security2gE.controller-operator-boundary.test.ts",
       "negativeEvidence": "server/src/__tests__/security2gE.controller-operator-boundary.test.ts",
       "resourceBinding": "not-resource-scoped",
-      "crossTenantEvidence": "none-recorded"
+      "crossTenantEvidence": "none-recorded",
+      "mar001Category": "not-resource-bound"
     },
     {
       "transport": "rest",
@@ -962,7 +1035,8 @@
       "positiveEvidence": "server/src/__tests__/security2gE.controller-operator-boundary.test.ts",
       "negativeEvidence": "server/src/__tests__/security2gE.controller-operator-boundary.test.ts",
       "resourceBinding": "not-resource-scoped",
-      "crossTenantEvidence": "none-recorded"
+      "crossTenantEvidence": "none-recorded",
+      "mar001Category": "not-resource-bound"
     },
     {
       "transport": "rest",
@@ -975,7 +1049,8 @@
       "positiveEvidence": "server/src/__tests__/security2gE.controller-operator-boundary.test.ts",
       "negativeEvidence": "server/src/__tests__/security2gE.controller-operator-boundary.test.ts",
       "resourceBinding": "not-resource-scoped",
-      "crossTenantEvidence": "none-recorded"
+      "crossTenantEvidence": "none-recorded",
+      "mar001Category": "not-resource-bound"
     },
     {
       "transport": "rest",
@@ -988,7 +1063,8 @@
       "positiveEvidence": "server/src/__tests__/security2gE.debug-operator-boundary.test.ts",
       "negativeEvidence": "server/src/__tests__/security2gE.debug-operator-boundary.test.ts",
       "resourceBinding": "not-resource-scoped",
-      "crossTenantEvidence": "none-recorded"
+      "crossTenantEvidence": "none-recorded",
+      "mar001Category": "not-resource-bound"
     },
     {
       "transport": "rest",
@@ -1001,7 +1077,8 @@
       "positiveEvidence": "server/src/__tests__/security2gE.debug-operator-boundary.test.ts",
       "negativeEvidence": "server/src/__tests__/security2gE.debug-operator-boundary.test.ts",
       "resourceBinding": "not-resource-scoped",
-      "crossTenantEvidence": "none-recorded"
+      "crossTenantEvidence": "none-recorded",
+      "mar001Category": "not-resource-bound"
     },
     {
       "transport": "rest",
@@ -1014,7 +1091,8 @@
       "positiveEvidence": "server/src/__tests__/security2gE.debug-operator-boundary.test.ts",
       "negativeEvidence": "server/src/__tests__/security2gE.debug-operator-boundary.test.ts",
       "resourceBinding": "not-resource-scoped",
-      "crossTenantEvidence": "none-recorded"
+      "crossTenantEvidence": "none-recorded",
+      "mar001Category": "not-resource-bound"
     },
     {
       "transport": "rest",
@@ -1027,7 +1105,8 @@
       "positiveEvidence": "server/src/__tests__/security2gE.debug-operator-boundary.test.ts",
       "negativeEvidence": "server/src/__tests__/security2gE.debug-operator-boundary.test.ts",
       "resourceBinding": "not-resource-scoped",
-      "crossTenantEvidence": "none-recorded"
+      "crossTenantEvidence": "none-recorded",
+      "mar001Category": "not-resource-bound"
     },
     {
       "transport": "rest",
@@ -1040,7 +1119,8 @@
       "positiveEvidence": "server/src/__tests__/security2gE.debug-operator-boundary.test.ts",
       "negativeEvidence": "server/src/__tests__/security2gE.debug-operator-boundary.test.ts",
       "resourceBinding": "not-resource-scoped",
-      "crossTenantEvidence": "none-recorded"
+      "crossTenantEvidence": "none-recorded",
+      "mar001Category": "not-resource-bound"
     },
     {
       "transport": "rest",
@@ -1053,7 +1133,8 @@
       "positiveEvidence": "server/src/__tests__/security2gE.debug-operator-boundary.test.ts",
       "negativeEvidence": "server/src/__tests__/security2gE.debug-operator-boundary.test.ts",
       "resourceBinding": "not-resource-scoped",
-      "crossTenantEvidence": "none-recorded"
+      "crossTenantEvidence": "none-recorded",
+      "mar001Category": "not-resource-bound"
     },
     {
       "transport": "rest",
@@ -1066,7 +1147,8 @@
       "positiveEvidence": "server/src/__tests__/security2gE.debug-operator-boundary.test.ts",
       "negativeEvidence": "server/src/__tests__/security2gE.debug-operator-boundary.test.ts",
       "resourceBinding": "not-resource-scoped",
-      "crossTenantEvidence": "none-recorded"
+      "crossTenantEvidence": "none-recorded",
+      "mar001Category": "not-resource-bound"
     },
     {
       "transport": "rest",
@@ -1079,7 +1161,8 @@
       "positiveEvidence": "server/src/__tests__/security2gE.debug-operator-boundary.test.ts",
       "negativeEvidence": "server/src/__tests__/security2gE.debug-operator-boundary.test.ts",
       "resourceBinding": "not-resource-scoped",
-      "crossTenantEvidence": "none-recorded"
+      "crossTenantEvidence": "none-recorded",
+      "mar001Category": "not-resource-bound"
     },
     {
       "transport": "rest",
@@ -1092,7 +1175,8 @@
       "positiveEvidence": "server/src/__tests__/security2gE.debug-operator-boundary.test.ts",
       "negativeEvidence": "server/src/__tests__/security2gE.debug-operator-boundary.test.ts",
       "resourceBinding": "not-resource-scoped",
-      "crossTenantEvidence": "none-recorded"
+      "crossTenantEvidence": "none-recorded",
+      "mar001Category": "not-resource-bound"
     },
     {
       "transport": "rest",
@@ -1105,7 +1189,8 @@
       "positiveEvidence": "server/src/__tests__/security2gE.distributed-scope.test.ts",
       "negativeEvidence": "server/src/__tests__/security2gE.distributed-scope.test.ts",
       "resourceBinding": "not-resource-scoped",
-      "crossTenantEvidence": "none-recorded"
+      "crossTenantEvidence": "none-recorded",
+      "mar001Category": "not-resource-bound"
     },
     {
       "transport": "rest",
@@ -1116,9 +1201,10 @@
       "capability": "project.distributed.dead-letter.list",
       "resourceScope": "owner-project-set",
       "positiveEvidence": "server/src/__tests__/security2gE.distributed-scope.test.ts",
-      "negativeEvidence": "server/src/__tests__/mar001.job-ownership.test.ts",
+      "negativeEvidence": "server/src/__tests__/security2gE.distributed-scope.test.ts",
       "resourceBinding": "indirect-verified",
-      "crossTenantEvidence": "server/src/__tests__/mar001.job-ownership.test.ts"
+      "crossTenantEvidence": "server/src/__tests__/mar001.job-ownership.test.ts",
+      "mar001Category": "verified-correct"
     },
     {
       "transport": "rest",
@@ -1129,9 +1215,10 @@
       "capability": "project.distributed.job.read",
       "resourceScope": "resolved-job-project",
       "positiveEvidence": "server/src/__tests__/security2gE.distributed-scope.test.ts",
-      "negativeEvidence": "server/src/__tests__/mar001.job-ownership.test.ts",
+      "negativeEvidence": "server/src/__tests__/security2gE.distributed-scope.test.ts",
       "resourceBinding": "indirect-verified",
-      "crossTenantEvidence": "server/src/__tests__/mar001.job-ownership.test.ts"
+      "crossTenantEvidence": "server/src/__tests__/mar001.job-ownership.test.ts",
+      "mar001Category": "verified-correct"
     },
     {
       "transport": "rest",
@@ -1144,7 +1231,8 @@
       "positiveEvidence": "server/src/__tests__/security2gE.distributed-scope.test.ts",
       "negativeEvidence": "server/src/__tests__/security2gE.distributed-scope.test.ts",
       "resourceBinding": "not-resource-scoped",
-      "crossTenantEvidence": "none-recorded"
+      "crossTenantEvidence": "none-recorded",
+      "mar001Category": "not-resource-bound"
     },
     {
       "transport": "rest",
@@ -1157,7 +1245,8 @@
       "positiveEvidence": "server/src/__tests__/security2gE.distributed-scope.test.ts",
       "negativeEvidence": "server/src/__tests__/security2gE.distributed-scope.test.ts",
       "resourceBinding": "not-resource-scoped",
-      "crossTenantEvidence": "none-recorded"
+      "crossTenantEvidence": "none-recorded",
+      "mar001Category": "not-resource-bound"
     },
     {
       "transport": "rest",
@@ -1168,9 +1257,10 @@
       "capability": "project.distributed.dead-letter.retry",
       "resourceScope": "resolved-job-project",
       "positiveEvidence": "server/src/__tests__/security2gE.distributed-scope.test.ts",
-      "negativeEvidence": "server/src/__tests__/mar001.job-ownership.test.ts",
+      "negativeEvidence": "server/src/__tests__/security2gE.distributed-scope.test.ts",
       "resourceBinding": "indirect-verified",
-      "crossTenantEvidence": "server/src/__tests__/mar001.job-ownership.test.ts"
+      "crossTenantEvidence": "server/src/__tests__/mar001.job-ownership.test.ts",
+      "mar001Category": "verified-correct"
     },
     {
       "transport": "rest",
@@ -1183,7 +1273,8 @@
       "positiveEvidence": "server/src/__tests__/security2gE.distributed-scope.test.ts",
       "negativeEvidence": "server/src/__tests__/security2gE.distributed-scope.test.ts",
       "resourceBinding": "not-resource-scoped",
-      "crossTenantEvidence": "none-recorded"
+      "crossTenantEvidence": "none-recorded",
+      "mar001Category": "not-resource-bound"
     },
     {
       "transport": "rest",
@@ -1194,9 +1285,10 @@
       "capability": "project.distributed.job.submit",
       "resourceScope": "body-project",
       "positiveEvidence": "server/src/__tests__/security2gE.distributed-scope.test.ts",
-      "negativeEvidence": "server/src/__tests__/mar001.job-ownership.test.ts",
+      "negativeEvidence": "server/src/__tests__/security2gE.distributed-scope.test.ts",
       "resourceBinding": "indirect-verified",
-      "crossTenantEvidence": "server/src/__tests__/mar001.job-ownership.test.ts"
+      "crossTenantEvidence": "server/src/__tests__/mar001.job-ownership.test.ts",
+      "mar001Category": "verified-correct"
     },
     {
       "transport": "rest",
@@ -1209,7 +1301,8 @@
       "positiveEvidence": "server/src/__tests__/security2gE.domain-scope.test.ts",
       "negativeEvidence": "server/src/__tests__/security2gE.domain-scope.test.ts",
       "resourceBinding": "indirect-unreviewed",
-      "crossTenantEvidence": "none-recorded"
+      "crossTenantEvidence": "none-recorded",
+      "mar001Category": "not-resource-bound"
     },
     {
       "transport": "rest",
@@ -1222,7 +1315,8 @@
       "positiveEvidence": "server/src/__tests__/security2gE.domain-scope.test.ts",
       "negativeEvidence": "server/src/__tests__/security2gE.domain-scope.test.ts",
       "resourceBinding": "indirect-unreviewed",
-      "crossTenantEvidence": "none-recorded"
+      "crossTenantEvidence": "none-recorded",
+      "mar001Category": "not-resource-bound"
     },
     {
       "transport": "rest",
@@ -1235,7 +1329,8 @@
       "positiveEvidence": "server/src/__tests__/security2gE.domain-scope.test.ts",
       "negativeEvidence": "server/src/__tests__/security2gE.domain-scope.test.ts",
       "resourceBinding": "indirect-unreviewed",
-      "crossTenantEvidence": "none-recorded"
+      "crossTenantEvidence": "none-recorded",
+      "mar001Category": "not-resource-bound"
     },
     {
       "transport": "rest",
@@ -1248,7 +1343,8 @@
       "positiveEvidence": "server/src/__tests__/security2gE.domain-scope.test.ts",
       "negativeEvidence": "server/src/__tests__/security2gE.domain-scope.test.ts",
       "resourceBinding": "indirect-unreviewed",
-      "crossTenantEvidence": "none-recorded"
+      "crossTenantEvidence": "none-recorded",
+      "mar001Category": "not-resource-bound"
     },
     {
       "transport": "rest",
@@ -1261,7 +1357,8 @@
       "positiveEvidence": "server/src/__tests__/security2gE.domain-scope.test.ts",
       "negativeEvidence": "server/src/__tests__/security2gE.domain-scope.test.ts",
       "resourceBinding": "indirect-unreviewed",
-      "crossTenantEvidence": "none-recorded"
+      "crossTenantEvidence": "none-recorded",
+      "mar001Category": "not-resource-bound"
     },
     {
       "transport": "rest",
@@ -1274,7 +1371,8 @@
       "positiveEvidence": "server/src/__tests__/security2gE.economy-scope.test.ts",
       "negativeEvidence": "server/src/__tests__/security2gE.economy-scope.test.ts",
       "resourceBinding": "indirect-unreviewed",
-      "crossTenantEvidence": "none-recorded"
+      "crossTenantEvidence": "none-recorded",
+      "mar001Category": "not-resource-bound"
     },
     {
       "transport": "rest",
@@ -1287,7 +1385,8 @@
       "positiveEvidence": "server/src/__tests__/security2gE.economy-scope.test.ts",
       "negativeEvidence": "server/src/__tests__/security2gE.economy-scope.test.ts",
       "resourceBinding": "body-supplied-object",
-      "crossTenantEvidence": "none-recorded"
+      "crossTenantEvidence": "none-recorded",
+      "mar001Category": "mechanism-gap"
     },
     {
       "transport": "rest",
@@ -1300,7 +1399,8 @@
       "positiveEvidence": "server/src/__tests__/security2gE.economy-scope.test.ts",
       "negativeEvidence": "server/src/__tests__/security2gE.economy-scope.test.ts",
       "resourceBinding": "indirect-unreviewed",
-      "crossTenantEvidence": "none-recorded"
+      "crossTenantEvidence": "none-recorded",
+      "mar001Category": "not-resource-bound"
     },
     {
       "transport": "rest",
@@ -1313,7 +1413,8 @@
       "positiveEvidence": "server/src/__tests__/security2gE.economy-scope.test.ts",
       "negativeEvidence": "server/src/__tests__/security2gE.economy-scope.test.ts",
       "resourceBinding": "body-supplied-object",
-      "crossTenantEvidence": "none-recorded"
+      "crossTenantEvidence": "none-recorded",
+      "mar001Category": "mechanism-gap"
     },
     {
       "transport": "rest",
@@ -1326,7 +1427,8 @@
       "positiveEvidence": "server/src/__tests__/security2gE.evaluation-operator-boundary.test.ts",
       "negativeEvidence": "server/src/__tests__/security2gE.evaluation-operator-boundary.test.ts",
       "resourceBinding": "not-resource-scoped",
-      "crossTenantEvidence": "none-recorded"
+      "crossTenantEvidence": "none-recorded",
+      "mar001Category": "not-resource-bound"
     },
     {
       "transport": "rest",
@@ -1339,7 +1441,8 @@
       "positiveEvidence": "server/src/__tests__/security2gE.evaluation-operator-boundary.test.ts",
       "negativeEvidence": "server/src/__tests__/security2gE.evaluation-operator-boundary.test.ts",
       "resourceBinding": "not-resource-scoped",
-      "crossTenantEvidence": "none-recorded"
+      "crossTenantEvidence": "none-recorded",
+      "mar001Category": "not-resource-bound"
     },
     {
       "transport": "rest",
@@ -1352,7 +1455,8 @@
       "positiveEvidence": "server/src/__tests__/security2gE.evaluation-operator-boundary.test.ts",
       "negativeEvidence": "server/src/__tests__/security2gE.evaluation-operator-boundary.test.ts",
       "resourceBinding": "not-resource-scoped",
-      "crossTenantEvidence": "none-recorded"
+      "crossTenantEvidence": "none-recorded",
+      "mar001Category": "not-resource-bound"
     },
     {
       "transport": "rest",
@@ -1365,7 +1469,8 @@
       "positiveEvidence": "server/src/__tests__/security2gE.evaluation-operator-boundary.test.ts",
       "negativeEvidence": "server/src/__tests__/security2gE.evaluation-operator-boundary.test.ts",
       "resourceBinding": "not-resource-scoped",
-      "crossTenantEvidence": "none-recorded"
+      "crossTenantEvidence": "none-recorded",
+      "mar001Category": "not-resource-bound"
     },
     {
       "transport": "rest",
@@ -1378,7 +1483,8 @@
       "positiveEvidence": "server/src/__tests__/definechat1.proposal-routes.test.ts",
       "negativeEvidence": "server/src/__tests__/definechat1.proposal-routes.test.ts",
       "resourceBinding": "path-scoped",
-      "crossTenantEvidence": "none-recorded"
+      "crossTenantEvidence": "none-recorded",
+      "mar001Category": "direct-project"
     },
     {
       "transport": "rest",
@@ -1391,7 +1497,8 @@
       "positiveEvidence": "server/src/__tests__/security2gE.project-routes.test.ts",
       "negativeEvidence": "server/src/__tests__/security2gE.project-routes.test.ts",
       "resourceBinding": "path-scoped",
-      "crossTenantEvidence": "none-recorded"
+      "crossTenantEvidence": "none-recorded",
+      "mar001Category": "direct-project"
     },
     {
       "transport": "rest",
@@ -1404,7 +1511,8 @@
       "positiveEvidence": "server/src/__tests__/security2gE.project-routes.test.ts",
       "negativeEvidence": "server/src/__tests__/security2gE.project-routes.test.ts",
       "resourceBinding": "path-scoped",
-      "crossTenantEvidence": "none-recorded"
+      "crossTenantEvidence": "none-recorded",
+      "mar001Category": "direct-project"
     },
     {
       "transport": "rest",
@@ -1417,7 +1525,8 @@
       "positiveEvidence": "server/src/__tests__/security2gE.project-routes.test.ts",
       "negativeEvidence": "server/src/__tests__/security2gE.project-routes.test.ts",
       "resourceBinding": "path-scoped",
-      "crossTenantEvidence": "none-recorded"
+      "crossTenantEvidence": "none-recorded",
+      "mar001Category": "direct-project"
     },
     {
       "transport": "rest",
@@ -1430,7 +1539,8 @@
       "positiveEvidence": "server/src/__tests__/security2gE.indirect-blueprint-routes.test.ts",
       "negativeEvidence": "server/src/__tests__/security2gE.indirect-blueprint-routes.test.ts",
       "resourceBinding": "indirect-verified",
-      "crossTenantEvidence": "none-recorded"
+      "crossTenantEvidence": "none-recorded",
+      "mar001Category": "verified-correct"
     },
     {
       "transport": "rest",
@@ -1443,7 +1553,8 @@
       "positiveEvidence": "server/src/__tests__/security2gE.indirect-blueprint-routes.test.ts",
       "negativeEvidence": "server/src/__tests__/security2gE.indirect-blueprint-routes.test.ts",
       "resourceBinding": "indirect-verified",
-      "crossTenantEvidence": "none-recorded"
+      "crossTenantEvidence": "none-recorded",
+      "mar001Category": "verified-correct"
     },
     {
       "transport": "rest",
@@ -1456,7 +1567,8 @@
       "positiveEvidence": "server/src/__tests__/security2gE.indirect-blueprint-routes.test.ts",
       "negativeEvidence": "server/src/__tests__/security2gE.indirect-blueprint-routes.test.ts",
       "resourceBinding": "indirect-verified",
-      "crossTenantEvidence": "none-recorded"
+      "crossTenantEvidence": "none-recorded",
+      "mar001Category": "verified-correct"
     },
     {
       "transport": "rest",
@@ -1469,7 +1581,8 @@
       "positiveEvidence": "server/src/__tests__/security2gE.game-generation-final-scope.test.ts",
       "negativeEvidence": "server/src/__tests__/security2gE.game-generation-final-scope.test.ts",
       "resourceBinding": "indirect-unreviewed",
-      "crossTenantEvidence": "none-recorded"
+      "crossTenantEvidence": "none-recorded",
+      "mar001Category": "direct-project"
     },
     {
       "transport": "rest",
@@ -1482,7 +1595,8 @@
       "positiveEvidence": "server/src/__tests__/security2gE.game-generation-final-scope.test.ts",
       "negativeEvidence": "server/src/__tests__/security2gE.game-generation-final-scope.test.ts",
       "resourceBinding": "not-resource-scoped",
-      "crossTenantEvidence": "none-recorded"
+      "crossTenantEvidence": "none-recorded",
+      "mar001Category": "not-resource-bound"
     },
     {
       "transport": "rest",
@@ -1495,7 +1609,8 @@
       "positiveEvidence": "server/src/__tests__/definechat1.proposal-routes.test.ts",
       "negativeEvidence": "server/src/__tests__/definechat1.proposal-routes.test.ts",
       "resourceBinding": "path-scoped",
-      "crossTenantEvidence": "none-recorded"
+      "crossTenantEvidence": "none-recorded",
+      "mar001Category": "direct-project"
     },
     {
       "transport": "rest",
@@ -1508,7 +1623,8 @@
       "positiveEvidence": "server/src/__tests__/definechat1.proposal-routes.test.ts",
       "negativeEvidence": "server/src/__tests__/definechat1.proposal-routes.test.ts",
       "resourceBinding": "path-scoped",
-      "crossTenantEvidence": "none-recorded"
+      "crossTenantEvidence": "none-recorded",
+      "mar001Category": "direct-project"
     },
     {
       "transport": "rest",
@@ -1521,7 +1637,8 @@
       "positiveEvidence": "server/src/__tests__/definechat1.proposal-routes.test.ts",
       "negativeEvidence": "server/src/__tests__/definechat1.proposal-routes.test.ts",
       "resourceBinding": "path-scoped",
-      "crossTenantEvidence": "none-recorded"
+      "crossTenantEvidence": "none-recorded",
+      "mar001Category": "direct-project"
     },
     {
       "transport": "rest",
@@ -1534,7 +1651,8 @@
       "positiveEvidence": "server/src/__tests__/security2gE.project-routes.test.ts",
       "negativeEvidence": "server/src/__tests__/security2gE.project-routes.test.ts",
       "resourceBinding": "path-scoped",
-      "crossTenantEvidence": "none-recorded"
+      "crossTenantEvidence": "none-recorded",
+      "mar001Category": "direct-project"
     },
     {
       "transport": "rest",
@@ -1547,7 +1665,8 @@
       "positiveEvidence": "server/src/__tests__/security2gE.project-routes.test.ts",
       "negativeEvidence": "server/src/__tests__/security2gE.project-routes.test.ts",
       "resourceBinding": "path-scoped",
-      "crossTenantEvidence": "none-recorded"
+      "crossTenantEvidence": "none-recorded",
+      "mar001Category": "direct-project"
     },
     {
       "transport": "rest",
@@ -1560,7 +1679,8 @@
       "positiveEvidence": "server/src/__tests__/security2gE.project-routes.test.ts",
       "negativeEvidence": "server/src/__tests__/security2gE.project-routes.test.ts",
       "resourceBinding": "path-scoped",
-      "crossTenantEvidence": "none-recorded"
+      "crossTenantEvidence": "none-recorded",
+      "mar001Category": "direct-project"
     },
     {
       "transport": "rest",
@@ -1573,7 +1693,8 @@
       "positiveEvidence": "server/src/__tests__/security2gE.game-architect-scope.test.ts",
       "negativeEvidence": "server/src/__tests__/security2gE.game-architect-scope.test.ts",
       "resourceBinding": "indirect-unreviewed",
-      "crossTenantEvidence": "none-recorded"
+      "crossTenantEvidence": "none-recorded",
+      "mar001Category": "not-resource-bound"
     },
     {
       "transport": "rest",
@@ -1586,7 +1707,8 @@
       "positiveEvidence": "server/src/__tests__/security2gE.game-architect-scope.test.ts",
       "negativeEvidence": "server/src/__tests__/security2gE.game-architect-scope.test.ts",
       "resourceBinding": "indirect-unreviewed",
-      "crossTenantEvidence": "none-recorded"
+      "crossTenantEvidence": "none-recorded",
+      "mar001Category": "not-resource-bound"
     },
     {
       "transport": "rest",
@@ -1599,7 +1721,8 @@
       "positiveEvidence": "server/src/__tests__/security2gE.game-architect-scope.test.ts",
       "negativeEvidence": "server/src/__tests__/security2gE.game-architect-scope.test.ts",
       "resourceBinding": "indirect-unreviewed",
-      "crossTenantEvidence": "none-recorded"
+      "crossTenantEvidence": "none-recorded",
+      "mar001Category": "not-resource-bound"
     },
     {
       "transport": "rest",
@@ -1612,7 +1735,8 @@
       "positiveEvidence": "server/src/__tests__/security2gE.generation-v2-scope.test.ts",
       "negativeEvidence": "server/src/__tests__/security2gE.generation-v2-scope.test.ts",
       "resourceBinding": "indirect-unreviewed",
-      "crossTenantEvidence": "none-recorded"
+      "crossTenantEvidence": "none-recorded",
+      "mar001Category": "not-resource-bound"
     },
     {
       "transport": "rest",
@@ -1625,7 +1749,8 @@
       "positiveEvidence": "server/src/__tests__/security2gE.generation-v2-scope.test.ts",
       "negativeEvidence": "server/src/__tests__/security2gE.generation-v2-scope.test.ts",
       "resourceBinding": "body-supplied-object",
-      "crossTenantEvidence": "none-recorded"
+      "crossTenantEvidence": "none-recorded",
+      "mar001Category": "mechanism-gap"
     },
     {
       "transport": "rest",
@@ -1638,7 +1763,8 @@
       "positiveEvidence": "server/src/__tests__/security2gE.generation-v2-scope.test.ts",
       "negativeEvidence": "server/src/__tests__/security2gE.generation-v2-scope.test.ts",
       "resourceBinding": "indirect-unreviewed",
-      "crossTenantEvidence": "none-recorded"
+      "crossTenantEvidence": "none-recorded",
+      "mar001Category": "direct-project"
     },
     {
       "transport": "rest",
@@ -1651,7 +1777,8 @@
       "positiveEvidence": "server/src/__tests__/security2gE.generation-v2-scope.test.ts",
       "negativeEvidence": "server/src/__tests__/security2gE.generation-v2-scope.test.ts",
       "resourceBinding": "body-supplied-object",
-      "crossTenantEvidence": "none-recorded"
+      "crossTenantEvidence": "none-recorded",
+      "mar001Category": "mechanism-gap"
     },
     {
       "transport": "rest",
@@ -1662,9 +1789,10 @@
       "capability": "project.chat.conversation.delete",
       "resourceScope": "resolved-conversation-project",
       "positiveEvidence": "server/src/__tests__/security2gE.chat-persistence-scope.test.ts",
-      "negativeEvidence": "server/src/__tests__/mar001.conversation-ownership.test.ts",
+      "negativeEvidence": "server/src/__tests__/security2gE.chat-persistence-scope.test.ts",
       "resourceBinding": "indirect-verified",
-      "crossTenantEvidence": "server/src/__tests__/mar001.conversation-ownership.test.ts"
+      "crossTenantEvidence": "server/src/__tests__/mar001.conversation-ownership.test.ts",
+      "mar001Category": "verified-correct"
     },
     {
       "transport": "rest",
@@ -1677,7 +1805,8 @@
       "positiveEvidence": "server/src/__tests__/security2gE.chat-persistence-scope.test.ts",
       "negativeEvidence": "server/src/__tests__/security2gE.chat-persistence-scope.test.ts",
       "resourceBinding": "path-scoped",
-      "crossTenantEvidence": "none-recorded"
+      "crossTenantEvidence": "none-recorded",
+      "mar001Category": "direct-project"
     },
     {
       "transport": "rest",
@@ -1688,9 +1817,10 @@
       "capability": "project.chat.conversation.read",
       "resourceScope": "resolved-conversation-project",
       "positiveEvidence": "server/src/__tests__/security2gE.chat-persistence-scope.test.ts",
-      "negativeEvidence": "server/src/__tests__/mar001.conversation-ownership.test.ts",
+      "negativeEvidence": "server/src/__tests__/security2gE.chat-persistence-scope.test.ts",
       "resourceBinding": "indirect-verified",
-      "crossTenantEvidence": "server/src/__tests__/mar001.conversation-ownership.test.ts"
+      "crossTenantEvidence": "server/src/__tests__/mar001.conversation-ownership.test.ts",
+      "mar001Category": "verified-correct"
     },
     {
       "transport": "rest",
@@ -1701,9 +1831,10 @@
       "capability": "project.chat.message.create",
       "resourceScope": "body-or-resolved-conversation-project",
       "positiveEvidence": "server/src/__tests__/security2gE.chat-persistence-scope.test.ts",
-      "negativeEvidence": "server/src/__tests__/mar001.conversation-ownership.test.ts",
+      "negativeEvidence": "server/src/__tests__/security2gE.chat-persistence-scope.test.ts",
       "resourceBinding": "indirect-verified",
-      "crossTenantEvidence": "server/src/__tests__/mar001.conversation-ownership.test.ts"
+      "crossTenantEvidence": "server/src/__tests__/mar001.conversation-ownership.test.ts",
+      "mar001Category": "verified-correct"
     },
     {
       "transport": "rest",
@@ -1716,7 +1847,8 @@
       "positiveEvidence": "server/src/__tests__/security2gE.knowledge-scope.test.ts",
       "negativeEvidence": "server/src/__tests__/security2gE.knowledge-scope.test.ts",
       "resourceBinding": "indirect-unreviewed",
-      "crossTenantEvidence": "none-recorded"
+      "crossTenantEvidence": "none-recorded",
+      "mar001Category": "not-resource-bound"
     },
     {
       "transport": "rest",
@@ -1729,7 +1861,8 @@
       "positiveEvidence": "server/src/__tests__/security2gE.knowledge-scope.test.ts",
       "negativeEvidence": "server/src/__tests__/security2gE.knowledge-scope.test.ts",
       "resourceBinding": "indirect-unreviewed",
-      "crossTenantEvidence": "none-recorded"
+      "crossTenantEvidence": "none-recorded",
+      "mar001Category": "not-resource-bound"
     },
     {
       "transport": "rest",
@@ -1742,7 +1875,8 @@
       "positiveEvidence": "server/src/__tests__/security2gE.knowledge-scope.test.ts",
       "negativeEvidence": "server/src/__tests__/security2gE.knowledge-scope.test.ts",
       "resourceBinding": "indirect-unreviewed",
-      "crossTenantEvidence": "none-recorded"
+      "crossTenantEvidence": "none-recorded",
+      "mar001Category": "not-resource-bound"
     },
     {
       "transport": "rest",
@@ -1755,7 +1889,8 @@
       "positiveEvidence": "server/src/__tests__/security2gE.knowledge-scope.test.ts",
       "negativeEvidence": "server/src/__tests__/security2gE.knowledge-scope.test.ts",
       "resourceBinding": "indirect-unreviewed",
-      "crossTenantEvidence": "none-recorded"
+      "crossTenantEvidence": "none-recorded",
+      "mar001Category": "not-resource-bound"
     },
     {
       "transport": "rest",
@@ -1768,7 +1903,8 @@
       "positiveEvidence": "server/src/__tests__/security2gE.knowledge-scope.test.ts",
       "negativeEvidence": "server/src/__tests__/security2gE.knowledge-scope.test.ts",
       "resourceBinding": "indirect-unreviewed",
-      "crossTenantEvidence": "none-recorded"
+      "crossTenantEvidence": "none-recorded",
+      "mar001Category": "direct-project"
     },
     {
       "transport": "rest",
@@ -1781,7 +1917,8 @@
       "positiveEvidence": "server/src/__tests__/security2gE.lifecycle-scope.test.ts",
       "negativeEvidence": "server/src/__tests__/security2gE.lifecycle-scope.test.ts",
       "resourceBinding": "path-scoped",
-      "crossTenantEvidence": "none-recorded"
+      "crossTenantEvidence": "none-recorded",
+      "mar001Category": "direct-project"
     },
     {
       "transport": "rest",
@@ -1794,7 +1931,8 @@
       "positiveEvidence": "server/src/__tests__/security2gE.lifecycle-scope.test.ts",
       "negativeEvidence": "server/src/__tests__/security2gE.lifecycle-scope.test.ts",
       "resourceBinding": "body-supplied-object",
-      "crossTenantEvidence": "none-recorded"
+      "crossTenantEvidence": "none-recorded",
+      "mar001Category": "mechanism-gap"
     },
     {
       "transport": "rest",
@@ -1807,7 +1945,8 @@
       "positiveEvidence": "server/src/__tests__/security2gE.lifecycle-scope.test.ts",
       "negativeEvidence": "server/src/__tests__/security2gE.lifecycle-scope.test.ts",
       "resourceBinding": "indirect-unreviewed",
-      "crossTenantEvidence": "none-recorded"
+      "crossTenantEvidence": "none-recorded",
+      "mar001Category": "direct-project"
     },
     {
       "transport": "rest",
@@ -1820,7 +1959,8 @@
       "positiveEvidence": "server/src/__tests__/security2gE.lifecycle-scope.test.ts",
       "negativeEvidence": "server/src/__tests__/security2gE.lifecycle-scope.test.ts",
       "resourceBinding": "indirect-unreviewed",
-      "crossTenantEvidence": "none-recorded"
+      "crossTenantEvidence": "none-recorded",
+      "mar001Category": "direct-project"
     },
     {
       "transport": "rest",
@@ -1833,7 +1973,8 @@
       "positiveEvidence": "server/src/__tests__/security2gE.lua-generation-scope.test.ts",
       "negativeEvidence": "server/src/__tests__/security2gE.lua-generation-scope.test.ts",
       "resourceBinding": "indirect-unreviewed",
-      "crossTenantEvidence": "none-recorded"
+      "crossTenantEvidence": "none-recorded",
+      "mar001Category": "direct-project"
     },
     {
       "transport": "rest",
@@ -1846,7 +1987,8 @@
       "positiveEvidence": "server/src/__tests__/security2gE.lua-generation-scope.test.ts",
       "negativeEvidence": "server/src/__tests__/security2gE.lua-generation-scope.test.ts",
       "resourceBinding": "indirect-unreviewed",
-      "crossTenantEvidence": "none-recorded"
+      "crossTenantEvidence": "none-recorded",
+      "mar001Category": "direct-project"
     },
     {
       "transport": "rest",
@@ -1859,7 +2001,8 @@
       "positiveEvidence": "server/src/__tests__/security2gE.lua-generation-scope.test.ts",
       "negativeEvidence": "server/src/__tests__/security2gE.lua-generation-scope.test.ts",
       "resourceBinding": "indirect-unreviewed",
-      "crossTenantEvidence": "none-recorded"
+      "crossTenantEvidence": "none-recorded",
+      "mar001Category": "direct-project"
     },
     {
       "transport": "rest",
@@ -1872,7 +2015,8 @@
       "positiveEvidence": "server/src/__tests__/security2gE.lua-generation-scope.test.ts",
       "negativeEvidence": "server/src/__tests__/security2gE.lua-generation-scope.test.ts",
       "resourceBinding": "indirect-unreviewed",
-      "crossTenantEvidence": "none-recorded"
+      "crossTenantEvidence": "none-recorded",
+      "mar001Category": "direct-project"
     },
     {
       "transport": "rest",
@@ -1885,7 +2029,8 @@
       "positiveEvidence": "server/src/__tests__/security2gE.memory-scope.test.ts",
       "negativeEvidence": "server/src/__tests__/security2gE.memory-scope.test.ts",
       "resourceBinding": "indirect-unreviewed",
-      "crossTenantEvidence": "none-recorded"
+      "crossTenantEvidence": "none-recorded",
+      "mar001Category": "direct-project"
     },
     {
       "transport": "rest",
@@ -1898,7 +2043,8 @@
       "positiveEvidence": "server/src/__tests__/security2gE.memory-scope.test.ts",
       "negativeEvidence": "server/src/__tests__/security2gE.memory-scope.test.ts",
       "resourceBinding": "not-resource-scoped",
-      "crossTenantEvidence": "none-recorded"
+      "crossTenantEvidence": "none-recorded",
+      "mar001Category": "not-resource-bound"
     },
     {
       "transport": "rest",
@@ -1911,7 +2057,8 @@
       "positiveEvidence": "server/src/__tests__/security2gE.memory-scope.test.ts",
       "negativeEvidence": "server/src/__tests__/security2gE.memory-scope.test.ts",
       "resourceBinding": "indirect-unreviewed",
-      "crossTenantEvidence": "none-recorded"
+      "crossTenantEvidence": "none-recorded",
+      "mar001Category": "direct-project"
     },
     {
       "transport": "rest",
@@ -1924,7 +2071,8 @@
       "positiveEvidence": "server/src/__tests__/security2gE.memory-scope.test.ts",
       "negativeEvidence": "server/src/__tests__/security2gE.memory-scope.test.ts",
       "resourceBinding": "indirect-unreviewed",
-      "crossTenantEvidence": "none-recorded"
+      "crossTenantEvidence": "none-recorded",
+      "mar001Category": "direct-project"
     },
     {
       "transport": "rest",
@@ -1935,9 +2083,10 @@
       "capability": "project.planning.read",
       "resourceScope": "resolved-plan-project",
       "positiveEvidence": "server/src/__tests__/security2gE.planning-scope.test.ts",
-      "negativeEvidence": "server/src/__tests__/mar001.job-ownership.test.ts",
+      "negativeEvidence": "server/src/__tests__/security2gE.planning-scope.test.ts",
       "resourceBinding": "indirect-verified",
-      "crossTenantEvidence": "server/src/__tests__/mar001.job-ownership.test.ts"
+      "crossTenantEvidence": "server/src/__tests__/mar001.job-ownership.test.ts",
+      "mar001Category": "verified-correct"
     },
     {
       "transport": "rest",
@@ -1948,9 +2097,10 @@
       "capability": "project.planning.create",
       "resourceScope": "body-project",
       "positiveEvidence": "server/src/__tests__/security2gE.planning-scope.test.ts",
-      "negativeEvidence": "server/src/__tests__/mar001.job-ownership.test.ts",
+      "negativeEvidence": "server/src/__tests__/security2gE.planning-scope.test.ts",
       "resourceBinding": "indirect-verified",
-      "crossTenantEvidence": "server/src/__tests__/mar001.job-ownership.test.ts"
+      "crossTenantEvidence": "server/src/__tests__/mar001.job-ownership.test.ts",
+      "mar001Category": "verified-correct"
     },
     {
       "transport": "rest",
@@ -1961,9 +2111,10 @@
       "capability": "project.planning.execute",
       "resourceScope": "resolved-plan-project",
       "positiveEvidence": "server/src/__tests__/security2gE.planning-scope.test.ts",
-      "negativeEvidence": "server/src/__tests__/mar001.job-ownership.test.ts",
+      "negativeEvidence": "server/src/__tests__/security2gE.planning-scope.test.ts",
       "resourceBinding": "indirect-verified",
-      "crossTenantEvidence": "server/src/__tests__/mar001.job-ownership.test.ts"
+      "crossTenantEvidence": "server/src/__tests__/mar001.job-ownership.test.ts",
+      "mar001Category": "verified-correct"
     },
     {
       "transport": "rest",
@@ -1976,7 +2127,8 @@
       "positiveEvidence": "server/src/__tests__/security2gE.authorization-domains.test.ts",
       "negativeEvidence": "server/src/__tests__/security2gE.authorization-domains.test.ts",
       "resourceBinding": "indirect-unreviewed",
-      "crossTenantEvidence": "none-recorded"
+      "crossTenantEvidence": "none-recorded",
+      "mar001Category": "not-resource-bound"
     },
     {
       "transport": "rest",
@@ -1989,7 +2141,8 @@
       "positiveEvidence": "server/src/__tests__/security2gE.platform-remaining-scope.test.ts",
       "negativeEvidence": "server/src/__tests__/security2gE.platform-remaining-scope.test.ts",
       "resourceBinding": "indirect-unreviewed",
-      "crossTenantEvidence": "none-recorded"
+      "crossTenantEvidence": "none-recorded",
+      "mar001Category": "not-resource-bound"
     },
     {
       "transport": "rest",
@@ -2002,7 +2155,8 @@
       "positiveEvidence": "server/src/__tests__/security2gE.platform-remaining-scope.test.ts",
       "negativeEvidence": "server/src/__tests__/security2gE.platform-remaining-scope.test.ts",
       "resourceBinding": "indirect-unreviewed",
-      "crossTenantEvidence": "none-recorded"
+      "crossTenantEvidence": "none-recorded",
+      "mar001Category": "not-resource-bound"
     },
     {
       "transport": "rest",
@@ -2015,7 +2169,8 @@
       "positiveEvidence": "server/src/__tests__/security2gE.authorization-domains.test.ts",
       "negativeEvidence": "server/src/__tests__/security2gE.authorization-domains.test.ts",
       "resourceBinding": "path-scoped",
-      "crossTenantEvidence": "server/src/__tests__/security2gE.authorization-domains.test.ts"
+      "crossTenantEvidence": "server/src/__tests__/security2gE.authorization-domains.test.ts",
+      "mar001Category": "direct-project"
     },
     {
       "transport": "rest",
@@ -2028,7 +2183,8 @@
       "positiveEvidence": "server/src/__tests__/security2gE.authorization-domains.test.ts",
       "negativeEvidence": "server/src/__tests__/security2gE.authorization-domains.test.ts",
       "resourceBinding": "path-scoped",
-      "crossTenantEvidence": "server/src/__tests__/security2gE.authorization-domains.test.ts"
+      "crossTenantEvidence": "server/src/__tests__/security2gE.authorization-domains.test.ts",
+      "mar001Category": "direct-project"
     },
     {
       "transport": "rest",
@@ -2041,7 +2197,8 @@
       "positiveEvidence": "server/src/__tests__/security2gE.authorization-domains.test.ts",
       "negativeEvidence": "server/src/__tests__/security2gE.authorization-domains.test.ts",
       "resourceBinding": "path-scoped",
-      "crossTenantEvidence": "server/src/__tests__/security2gE.authorization-domains.test.ts"
+      "crossTenantEvidence": "server/src/__tests__/security2gE.authorization-domains.test.ts",
+      "mar001Category": "direct-project"
     },
     {
       "transport": "rest",
@@ -2054,7 +2211,8 @@
       "positiveEvidence": "server/src/routes/__tests__/projects.runtime.test.ts",
       "negativeEvidence": "server/src/routes/__tests__/projects.runtime.test.ts",
       "resourceBinding": "path-scoped",
-      "crossTenantEvidence": "none-recorded"
+      "crossTenantEvidence": "none-recorded",
+      "mar001Category": "direct-project"
     },
     {
       "transport": "rest",
@@ -2067,7 +2225,8 @@
       "positiveEvidence": "server/src/__tests__/security2gE.authorization-domains.test.ts",
       "negativeEvidence": "server/src/__tests__/security2gE.authorization-domains.test.ts",
       "resourceBinding": "path-scoped",
-      "crossTenantEvidence": "server/src/__tests__/security2gE.authorization-domains.test.ts"
+      "crossTenantEvidence": "server/src/__tests__/security2gE.authorization-domains.test.ts",
+      "mar001Category": "direct-project"
     },
     {
       "transport": "rest",
@@ -2080,7 +2239,8 @@
       "positiveEvidence": "server/src/__tests__/security2gE.authorization-domains.test.ts",
       "negativeEvidence": "not-applicable-public",
       "resourceBinding": "not-resource-scoped",
-      "crossTenantEvidence": "none-recorded"
+      "crossTenantEvidence": "none-recorded",
+      "mar001Category": "not-resource-bound"
     },
     {
       "transport": "rest",
@@ -2093,7 +2253,8 @@
       "positiveEvidence": "server/src/__tests__/security2gE.authorization-domains.test.ts",
       "negativeEvidence": "not-applicable-public",
       "resourceBinding": "not-resource-scoped",
-      "crossTenantEvidence": "none-recorded"
+      "crossTenantEvidence": "none-recorded",
+      "mar001Category": "not-resource-bound"
     },
     {
       "transport": "rest",
@@ -2106,7 +2267,8 @@
       "positiveEvidence": "server/src/__tests__/security2gE.authorization-domains.test.ts",
       "negativeEvidence": "not-applicable-public",
       "resourceBinding": "not-resource-scoped",
-      "crossTenantEvidence": "none-recorded"
+      "crossTenantEvidence": "none-recorded",
+      "mar001Category": "not-resource-bound"
     },
     {
       "transport": "rest",
@@ -2119,7 +2281,8 @@
       "positiveEvidence": "server/src/__tests__/security2gE.authorization-domains.test.ts",
       "negativeEvidence": "not-applicable-public",
       "resourceBinding": "not-resource-scoped",
-      "crossTenantEvidence": "none-recorded"
+      "crossTenantEvidence": "none-recorded",
+      "mar001Category": "not-resource-bound"
     },
     {
       "transport": "rest",
@@ -2132,7 +2295,8 @@
       "positiveEvidence": "server/src/__tests__/security2gE.authorization-domains.test.ts",
       "negativeEvidence": "not-applicable-public",
       "resourceBinding": "not-resource-scoped",
-      "crossTenantEvidence": "none-recorded"
+      "crossTenantEvidence": "none-recorded",
+      "mar001Category": "not-resource-bound"
     },
     {
       "transport": "rest",
@@ -2145,7 +2309,8 @@
       "positiveEvidence": "server/src/__tests__/security2gE.platform-remaining-scope.test.ts",
       "negativeEvidence": "server/src/__tests__/security2gE.platform-remaining-scope.test.ts",
       "resourceBinding": "not-resource-scoped",
-      "crossTenantEvidence": "none-recorded"
+      "crossTenantEvidence": "none-recorded",
+      "mar001Category": "not-resource-bound"
     },
     {
       "transport": "rest",
@@ -2158,7 +2323,8 @@
       "positiveEvidence": "server/src/routes/__tests__/projects.runtime.test.ts",
       "negativeEvidence": "server/src/routes/__tests__/projects.runtime.test.ts",
       "resourceBinding": "path-scoped",
-      "crossTenantEvidence": "none-recorded"
+      "crossTenantEvidence": "none-recorded",
+      "mar001Category": "direct-project"
     },
     {
       "transport": "rest",
@@ -2171,7 +2337,8 @@
       "positiveEvidence": "server/src/__tests__/security2gE.authorization-domains.test.ts",
       "negativeEvidence": "server/src/__tests__/security2gE.authorization-domains.test.ts",
       "resourceBinding": "path-scoped",
-      "crossTenantEvidence": "server/src/__tests__/security2gE.authorization-domains.test.ts"
+      "crossTenantEvidence": "server/src/__tests__/security2gE.authorization-domains.test.ts",
+      "mar001Category": "direct-project"
     },
     {
       "transport": "rest",
@@ -2184,7 +2351,8 @@
       "positiveEvidence": "server/src/__tests__/security2gE.playtest-scope.test.ts",
       "negativeEvidence": "server/src/__tests__/security2gE.playtest-scope.test.ts",
       "resourceBinding": "path-scoped",
-      "crossTenantEvidence": "none-recorded"
+      "crossTenantEvidence": "none-recorded",
+      "mar001Category": "direct-project"
     },
     {
       "transport": "rest",
@@ -2197,7 +2365,8 @@
       "positiveEvidence": "server/src/__tests__/security2gE.playtest-scope.test.ts",
       "negativeEvidence": "server/src/__tests__/security2gE.playtest-scope.test.ts",
       "resourceBinding": "indirect-unreviewed",
-      "crossTenantEvidence": "none-recorded"
+      "crossTenantEvidence": "none-recorded",
+      "mar001Category": "direct-project"
     },
     {
       "transport": "rest",
@@ -2210,7 +2379,8 @@
       "positiveEvidence": "server/src/__tests__/security2gE.projects-routes.test.ts",
       "negativeEvidence": "server/src/__tests__/security2gE.projects-routes.test.ts",
       "resourceBinding": "path-scoped",
-      "crossTenantEvidence": "none-recorded"
+      "crossTenantEvidence": "none-recorded",
+      "mar001Category": "direct-project"
     },
     {
       "transport": "rest",
@@ -2223,7 +2393,8 @@
       "positiveEvidence": "server/src/__tests__/security2gE.projects-routes.test.ts",
       "negativeEvidence": "server/src/__tests__/security2gE.projects-routes.test.ts",
       "resourceBinding": "indirect-unreviewed",
-      "crossTenantEvidence": "none-recorded"
+      "crossTenantEvidence": "none-recorded",
+      "mar001Category": "direct-project"
     },
     {
       "transport": "rest",
@@ -2236,7 +2407,8 @@
       "positiveEvidence": "server/src/__tests__/security2gE.projects-routes.test.ts",
       "negativeEvidence": "server/src/__tests__/security2gE.projects-routes.test.ts",
       "resourceBinding": "path-scoped",
-      "crossTenantEvidence": "none-recorded"
+      "crossTenantEvidence": "none-recorded",
+      "mar001Category": "direct-project"
     },
     {
       "transport": "rest",
@@ -2249,7 +2421,8 @@
       "positiveEvidence": "server/src/__tests__/security2gE.projects-routes.test.ts",
       "negativeEvidence": "server/src/__tests__/security2gE.projects-routes.test.ts",
       "resourceBinding": "path-scoped",
-      "crossTenantEvidence": "none-recorded"
+      "crossTenantEvidence": "none-recorded",
+      "mar001Category": "direct-project"
     },
     {
       "transport": "rest",
@@ -2262,7 +2435,8 @@
       "positiveEvidence": "server/src/__tests__/security2gE.projects-routes.test.ts",
       "negativeEvidence": "server/src/__tests__/security2gE.projects-routes.test.ts",
       "resourceBinding": "indirect-unreviewed",
-      "crossTenantEvidence": "none-recorded"
+      "crossTenantEvidence": "none-recorded",
+      "mar001Category": "not-resource-bound"
     },
     {
       "transport": "rest",
@@ -2275,7 +2449,8 @@
       "positiveEvidence": "server/src/__tests__/security2gE.projects-routes.test.ts",
       "negativeEvidence": "server/src/__tests__/security2gE.projects-routes.test.ts",
       "resourceBinding": "path-scoped",
-      "crossTenantEvidence": "none-recorded"
+      "crossTenantEvidence": "none-recorded",
+      "mar001Category": "direct-project"
     },
     {
       "transport": "rest",
@@ -2288,7 +2463,8 @@
       "positiveEvidence": "server/src/__tests__/security2gE.repair-scope.test.ts",
       "negativeEvidence": "server/src/__tests__/security2gE.repair-scope.test.ts",
       "resourceBinding": "path-scoped",
-      "crossTenantEvidence": "none-recorded"
+      "crossTenantEvidence": "none-recorded",
+      "mar001Category": "direct-project"
     },
     {
       "transport": "rest",
@@ -2301,7 +2477,8 @@
       "positiveEvidence": "server/src/__tests__/security2gE.repair-scope.test.ts",
       "negativeEvidence": "server/src/__tests__/security2gE.repair-scope.test.ts",
       "resourceBinding": "path-scoped",
-      "crossTenantEvidence": "none-recorded"
+      "crossTenantEvidence": "none-recorded",
+      "mar001Category": "direct-project"
     },
     {
       "transport": "rest",
@@ -2314,7 +2491,8 @@
       "positiveEvidence": "server/src/__tests__/security2gE.repair-scope.test.ts",
       "negativeEvidence": "server/src/__tests__/security2gE.repair-scope.test.ts",
       "resourceBinding": "path-scoped",
-      "crossTenantEvidence": "none-recorded"
+      "crossTenantEvidence": "none-recorded",
+      "mar001Category": "direct-project"
     },
     {
       "transport": "rest",
@@ -2327,7 +2505,8 @@
       "positiveEvidence": "server/src/__tests__/security2gE.repair-scope.test.ts",
       "negativeEvidence": "server/src/__tests__/security2gE.repair-scope.test.ts",
       "resourceBinding": "path-scoped",
-      "crossTenantEvidence": "none-recorded"
+      "crossTenantEvidence": "none-recorded",
+      "mar001Category": "direct-project"
     },
     {
       "transport": "rest",
@@ -2340,7 +2519,8 @@
       "positiveEvidence": "server/src/__tests__/security2gE.repair-scope.test.ts",
       "negativeEvidence": "server/src/__tests__/security2gE.repair-scope.test.ts",
       "resourceBinding": "indirect-unreviewed",
-      "crossTenantEvidence": "none-recorded"
+      "crossTenantEvidence": "none-recorded",
+      "mar001Category": "direct-project"
     },
     {
       "transport": "rest",
@@ -2353,7 +2533,8 @@
       "positiveEvidence": "server/src/__tests__/security2gE.simulation-scope.test.ts",
       "negativeEvidence": "server/src/__tests__/security2gE.simulation-scope.test.ts",
       "resourceBinding": "path-scoped",
-      "crossTenantEvidence": "none-recorded"
+      "crossTenantEvidence": "none-recorded",
+      "mar001Category": "direct-project"
     },
     {
       "transport": "rest",
@@ -2366,7 +2547,8 @@
       "positiveEvidence": "server/src/__tests__/security2gE.simulation-scope.test.ts",
       "negativeEvidence": "server/src/__tests__/security2gE.simulation-scope.test.ts",
       "resourceBinding": "indirect-unreviewed",
-      "crossTenantEvidence": "none-recorded"
+      "crossTenantEvidence": "none-recorded",
+      "mar001Category": "not-resource-bound"
     },
     {
       "transport": "rest",
@@ -2379,7 +2561,8 @@
       "positiveEvidence": "server/src/__tests__/security2gE.simulation-scope.test.ts",
       "negativeEvidence": "server/src/__tests__/security2gE.simulation-scope.test.ts",
       "resourceBinding": "body-supplied-object",
-      "crossTenantEvidence": "none-recorded"
+      "crossTenantEvidence": "none-recorded",
+      "mar001Category": "mechanism-gap"
     },
     {
       "transport": "rest",
@@ -2392,7 +2575,8 @@
       "positiveEvidence": "server/src/__tests__/security2gE.simulation-scope.test.ts",
       "negativeEvidence": "server/src/__tests__/security2gE.simulation-scope.test.ts",
       "resourceBinding": "body-supplied-object",
-      "crossTenantEvidence": "none-recorded"
+      "crossTenantEvidence": "none-recorded",
+      "mar001Category": "mechanism-gap"
     },
     {
       "transport": "rest",
@@ -2403,9 +2587,10 @@
       "capability": "project.studio.commands.poll",
       "resourceScope": "resolved-client-project",
       "positiveEvidence": "server/src/__tests__/security2gE.studio-client-scope.test.ts",
-      "negativeEvidence": "server/src/__tests__/mar001.studio-surface-closure.test.ts",
+      "negativeEvidence": "server/src/__tests__/security2gE.studio-client-scope.test.ts",
       "resourceBinding": "indirect-verified",
-      "crossTenantEvidence": "server/src/__tests__/mar001.studio-surface-closure.test.ts"
+      "crossTenantEvidence": "server/src/__tests__/mar001.studio-surface-closure.test.ts",
+      "mar001Category": "verified-correct"
     },
     {
       "transport": "rest",
@@ -2416,9 +2601,10 @@
       "capability": "project.studio.command.read",
       "resourceScope": "resolved-client-project",
       "positiveEvidence": "server/src/__tests__/security2gE.studio-client-scope.test.ts",
-      "negativeEvidence": "server/src/__tests__/mar001.studio-command-concealment.test.ts",
+      "negativeEvidence": "server/src/__tests__/security2gE.studio-client-scope.test.ts",
       "resourceBinding": "indirect-verified",
-      "crossTenantEvidence": "server/src/__tests__/mar001.studio-command-concealment.test.ts"
+      "crossTenantEvidence": "server/src/__tests__/mar001.studio-command-concealment.test.ts",
+      "mar001Category": "verified-correct"
     },
     {
       "transport": "rest",
@@ -2429,9 +2615,10 @@
       "capability": "project.studio.events.read",
       "resourceScope": "authorized-project-set",
       "positiveEvidence": "server/src/__tests__/security2gE.studio-client-scope.test.ts",
-      "negativeEvidence": "server/src/__tests__/mar001.studio-surface-closure.test.ts",
+      "negativeEvidence": "server/src/__tests__/security2gE.studio-client-scope.test.ts",
       "resourceBinding": "indirect-verified",
-      "crossTenantEvidence": "server/src/__tests__/mar001.studio-surface-closure.test.ts"
+      "crossTenantEvidence": "server/src/__tests__/mar001.studio-surface-closure.test.ts",
+      "mar001Category": "verified-correct"
     },
     {
       "transport": "rest",
@@ -2444,7 +2631,8 @@
       "positiveEvidence": "server/src/__tests__/security2gE.studio-protocol-scope.test.ts",
       "negativeEvidence": "server/src/__tests__/security2gE.studio-protocol-scope.test.ts",
       "resourceBinding": "not-resource-scoped",
-      "crossTenantEvidence": "server/src/__tests__/mar001.studio-surface-closure.test.ts"
+      "crossTenantEvidence": "server/src/__tests__/mar001.studio-surface-closure.test.ts",
+      "mar001Category": "not-resource-bound"
     },
     {
       "transport": "rest",
@@ -2455,9 +2643,10 @@
       "capability": "project.studio.protocol.log.read",
       "resourceScope": "resolved-client-session",
       "positiveEvidence": "server/src/__tests__/security2gE.studio-protocol-scope.test.ts",
-      "negativeEvidence": "server/src/__tests__/mar001.studio-surface-closure.test.ts",
+      "negativeEvidence": "server/src/__tests__/security2gE.studio-protocol-scope.test.ts",
       "resourceBinding": "indirect-verified",
-      "crossTenantEvidence": "server/src/__tests__/mar001.studio-surface-closure.test.ts"
+      "crossTenantEvidence": "server/src/__tests__/mar001.studio-surface-closure.test.ts",
+      "mar001Category": "verified-correct"
     },
     {
       "transport": "rest",
@@ -2468,9 +2657,10 @@
       "capability": "project.studio.sessions.read",
       "resourceScope": "authorized-project-set-or-client",
       "positiveEvidence": "server/src/__tests__/security2gE.studio-client-scope.test.ts",
-      "negativeEvidence": "server/src/__tests__/mar001.studio-surface-closure.test.ts",
+      "negativeEvidence": "server/src/__tests__/security2gE.studio-client-scope.test.ts",
       "resourceBinding": "indirect-verified",
-      "crossTenantEvidence": "server/src/__tests__/mar001.studio-surface-closure.test.ts"
+      "crossTenantEvidence": "server/src/__tests__/mar001.studio-surface-closure.test.ts",
+      "mar001Category": "verified-correct"
     },
     {
       "transport": "rest",
@@ -2481,9 +2671,10 @@
       "capability": "project.studio.clients.read",
       "resourceScope": "authorized-project-set",
       "positiveEvidence": "server/src/__tests__/security2gE.studio-client-scope.test.ts",
-      "negativeEvidence": "server/src/__tests__/mar001.studio-protocol-binding.test.ts",
+      "negativeEvidence": "server/src/__tests__/security2gE.studio-client-scope.test.ts",
       "resourceBinding": "indirect-verified",
-      "crossTenantEvidence": "server/src/__tests__/mar001.studio-protocol-binding.test.ts"
+      "crossTenantEvidence": "server/src/__tests__/mar001.studio-protocol-binding.test.ts",
+      "mar001Category": "verified-correct"
     },
     {
       "transport": "rest",
@@ -2494,9 +2685,10 @@
       "capability": "project.studio.sync.status.read",
       "resourceScope": "query-project",
       "positiveEvidence": "server/src/__tests__/security2gE.studio-project-parity.test.ts",
-      "negativeEvidence": "server/src/__tests__/mar001.studio-surface-closure.test.ts",
+      "negativeEvidence": "server/src/__tests__/security2gE.studio-project-parity.test.ts",
       "resourceBinding": "indirect-verified",
-      "crossTenantEvidence": "server/src/__tests__/mar001.studio-surface-closure.test.ts"
+      "crossTenantEvidence": "server/src/__tests__/mar001.studio-surface-closure.test.ts",
+      "mar001Category": "verified-correct"
     },
     {
       "transport": "rest",
@@ -2507,9 +2699,10 @@
       "capability": "project.studio.command.acknowledge",
       "resourceScope": "resolved-client-project",
       "positiveEvidence": "server/src/__tests__/security2gE.studio-client-scope.test.ts",
-      "negativeEvidence": "server/src/__tests__/mar001.studio-command-concealment.test.ts",
+      "negativeEvidence": "server/src/__tests__/security2gE.studio-client-scope.test.ts",
       "resourceBinding": "indirect-verified",
-      "crossTenantEvidence": "server/src/__tests__/mar001.studio-command-concealment.test.ts"
+      "crossTenantEvidence": "server/src/__tests__/mar001.studio-command-concealment.test.ts",
+      "mar001Category": "verified-correct"
     },
     {
       "transport": "rest",
@@ -2520,9 +2713,10 @@
       "capability": "project.studio.command.report",
       "resourceScope": "resolved-client-project",
       "positiveEvidence": "server/src/__tests__/security2gE.studio-client-scope.test.ts",
-      "negativeEvidence": "server/src/__tests__/mar001.studio-command-concealment.test.ts",
+      "negativeEvidence": "server/src/__tests__/security2gE.studio-client-scope.test.ts",
       "resourceBinding": "indirect-verified",
-      "crossTenantEvidence": "server/src/__tests__/mar001.studio-command-concealment.test.ts"
+      "crossTenantEvidence": "server/src/__tests__/mar001.studio-command-concealment.test.ts",
+      "mar001Category": "verified-correct"
     },
     {
       "transport": "rest",
@@ -2533,9 +2727,10 @@
       "capability": "project.studio.connect",
       "resourceScope": "body-project",
       "positiveEvidence": "server/src/__tests__/security2gE.studio-project-parity.test.ts",
-      "negativeEvidence": "server/src/__tests__/mar001.studio-surface-closure.test.ts",
+      "negativeEvidence": "server/src/__tests__/security2gE.studio-project-parity.test.ts",
       "resourceBinding": "indirect-verified",
-      "crossTenantEvidence": "server/src/__tests__/mar001.studio-surface-closure.test.ts"
+      "crossTenantEvidence": "server/src/__tests__/mar001.studio-surface-closure.test.ts",
+      "mar001Category": "verified-correct"
     },
     {
       "transport": "rest",
@@ -2546,9 +2741,10 @@
       "capability": "project.studio.client.disconnect",
       "resourceScope": "resolved-client-project",
       "positiveEvidence": "server/src/__tests__/security2gE.studio-client-scope.test.ts",
-      "negativeEvidence": "server/src/__tests__/mar001.studio-surface-closure.test.ts",
+      "negativeEvidence": "server/src/__tests__/security2gE.studio-client-scope.test.ts",
       "resourceBinding": "indirect-verified",
-      "crossTenantEvidence": "server/src/__tests__/mar001.studio-surface-closure.test.ts"
+      "crossTenantEvidence": "server/src/__tests__/mar001.studio-surface-closure.test.ts",
+      "mar001Category": "verified-correct"
     },
     {
       "transport": "rest",
@@ -2559,9 +2755,10 @@
       "capability": "project.studio.client.heartbeat",
       "resourceScope": "resolved-client-project",
       "positiveEvidence": "server/src/__tests__/security2gE.studio-client-scope.test.ts",
-      "negativeEvidence": "server/src/__tests__/mar001.studio-surface-closure.test.ts",
+      "negativeEvidence": "server/src/__tests__/security2gE.studio-client-scope.test.ts",
       "resourceBinding": "indirect-verified",
-      "crossTenantEvidence": "server/src/__tests__/mar001.studio-surface-closure.test.ts"
+      "crossTenantEvidence": "server/src/__tests__/mar001.studio-surface-closure.test.ts",
+      "mar001Category": "verified-correct"
     },
     {
       "transport": "rest",
@@ -2572,9 +2769,10 @@
       "capability": "project.studio.protocol.message.dispatch",
       "resourceScope": "resolved-message-project",
       "positiveEvidence": "server/src/__tests__/security2gE.studio-protocol-scope.test.ts",
-      "negativeEvidence": "server/src/__tests__/mar001.studio-protocol-binding.test.ts",
+      "negativeEvidence": "server/src/__tests__/security2gE.studio-protocol-scope.test.ts",
       "resourceBinding": "indirect-verified",
-      "crossTenantEvidence": "server/src/__tests__/mar001.studio-protocol-binding.test.ts"
+      "crossTenantEvidence": "server/src/__tests__/mar001.studio-protocol-binding.test.ts",
+      "mar001Category": "verified-correct"
     },
     {
       "transport": "rest",
@@ -2585,9 +2783,10 @@
       "capability": "project.studio.protocol.register",
       "resourceScope": "body-project",
       "positiveEvidence": "server/src/__tests__/security2gE.studio-protocol-scope.test.ts",
-      "negativeEvidence": "server/src/__tests__/mar001.studio-surface-closure.test.ts",
+      "negativeEvidence": "server/src/__tests__/security2gE.studio-protocol-scope.test.ts",
       "resourceBinding": "indirect-verified",
-      "crossTenantEvidence": "server/src/__tests__/mar001.studio-surface-closure.test.ts"
+      "crossTenantEvidence": "server/src/__tests__/mar001.studio-surface-closure.test.ts",
+      "mar001Category": "verified-correct"
     },
     {
       "transport": "rest",
@@ -2598,9 +2797,10 @@
       "capability": "project.studio.artifacts.transfer",
       "resourceScope": "body-project",
       "positiveEvidence": "server/src/__tests__/security2gE.studio-protocol-scope.test.ts",
-      "negativeEvidence": "server/src/__tests__/mar001.studio-surface-closure.test.ts",
+      "negativeEvidence": "server/src/__tests__/security2gE.studio-protocol-scope.test.ts",
       "resourceBinding": "indirect-verified",
-      "crossTenantEvidence": "server/src/__tests__/mar001.studio-surface-closure.test.ts"
+      "crossTenantEvidence": "server/src/__tests__/mar001.studio-surface-closure.test.ts",
+      "mar001Category": "verified-correct"
     },
     {
       "transport": "rest",
@@ -2611,9 +2811,10 @@
       "capability": "project.studio.snapshot.read",
       "resourceScope": "body-project",
       "positiveEvidence": "server/src/__tests__/security2gE.studio-project-parity.test.ts",
-      "negativeEvidence": "server/src/__tests__/mar001.studio-surface-closure.test.ts",
+      "negativeEvidence": "server/src/__tests__/security2gE.studio-project-parity.test.ts",
       "resourceBinding": "indirect-verified",
-      "crossTenantEvidence": "server/src/__tests__/mar001.studio-surface-closure.test.ts"
+      "crossTenantEvidence": "server/src/__tests__/mar001.studio-surface-closure.test.ts",
+      "mar001Category": "verified-correct"
     },
     {
       "transport": "rest",
@@ -2626,7 +2827,8 @@
       "positiveEvidence": "server/src/__tests__/security2gE.system-metadata-scope.test.ts",
       "negativeEvidence": "server/src/__tests__/security2gE.system-metadata-scope.test.ts",
       "resourceBinding": "indirect-unreviewed",
-      "crossTenantEvidence": "none-recorded"
+      "crossTenantEvidence": "none-recorded",
+      "mar001Category": "not-resource-bound"
     },
     {
       "transport": "rest",
@@ -2639,7 +2841,8 @@
       "positiveEvidence": "server/src/__tests__/security2gE.system-metadata-scope.test.ts",
       "negativeEvidence": "server/src/__tests__/security2gE.system-metadata-scope.test.ts",
       "resourceBinding": "indirect-unreviewed",
-      "crossTenantEvidence": "none-recorded"
+      "crossTenantEvidence": "none-recorded",
+      "mar001Category": "not-resource-bound"
     },
     {
       "transport": "rest",
@@ -2652,7 +2855,8 @@
       "positiveEvidence": "server/src/__tests__/security2gE.system-metadata-scope.test.ts",
       "negativeEvidence": "server/src/__tests__/security2gE.system-metadata-scope.test.ts",
       "resourceBinding": "indirect-unreviewed",
-      "crossTenantEvidence": "none-recorded"
+      "crossTenantEvidence": "none-recorded",
+      "mar001Category": "not-resource-bound"
     },
     {
       "transport": "rest",
@@ -2665,7 +2869,8 @@
       "positiveEvidence": "server/src/__tests__/security2gE.world-scope.test.ts",
       "negativeEvidence": "server/src/__tests__/security2gE.world-scope.test.ts",
       "resourceBinding": "indirect-unreviewed",
-      "crossTenantEvidence": "none-recorded"
+      "crossTenantEvidence": "none-recorded",
+      "mar001Category": "not-resource-bound"
     },
     {
       "transport": "rest",
@@ -2678,7 +2883,8 @@
       "positiveEvidence": "server/src/__tests__/security2gE.world-scope.test.ts",
       "negativeEvidence": "server/src/__tests__/security2gE.world-scope.test.ts",
       "resourceBinding": "indirect-unreviewed",
-      "crossTenantEvidence": "none-recorded"
+      "crossTenantEvidence": "none-recorded",
+      "mar001Category": "not-resource-bound"
     },
     {
       "transport": "rest",
@@ -2691,7 +2897,8 @@
       "positiveEvidence": "server/src/__tests__/security2gE.world-scope.test.ts",
       "negativeEvidence": "server/src/__tests__/security2gE.world-scope.test.ts",
       "resourceBinding": "body-supplied-object",
-      "crossTenantEvidence": "none-recorded"
+      "crossTenantEvidence": "none-recorded",
+      "mar001Category": "mechanism-gap"
     },
     {
       "transport": "rest",
@@ -2704,7 +2911,8 @@
       "positiveEvidence": "server/src/__tests__/security2gE.world-scope.test.ts",
       "negativeEvidence": "server/src/__tests__/security2gE.world-scope.test.ts",
       "resourceBinding": "indirect-unreviewed",
-      "crossTenantEvidence": "none-recorded"
+      "crossTenantEvidence": "none-recorded",
+      "mar001Category": "not-resource-bound"
     },
     {
       "transport": "socket",
@@ -2717,7 +2925,8 @@
       "positiveEvidence": "server/src/__tests__/harden2a.auth-contract.test.ts",
       "negativeEvidence": "server/src/__tests__/harden2a.auth-contract.test.ts",
       "resourceBinding": "indirect-unreviewed",
-      "crossTenantEvidence": "none-recorded"
+      "crossTenantEvidence": "none-recorded",
+      "mar001Category": "mechanism-gap"
     },
     {
       "transport": "socket",
@@ -2730,7 +2939,8 @@
       "positiveEvidence": "server/src/__tests__/security2gE.socket-leave-parity.test.ts",
       "negativeEvidence": "server/src/__tests__/security2gE.socket-leave-parity.test.ts",
       "resourceBinding": "indirect-unreviewed",
-      "crossTenantEvidence": "none-recorded"
+      "crossTenantEvidence": "none-recorded",
+      "mar001Category": "mechanism-gap"
     }
   ],
   "broadcasts": []

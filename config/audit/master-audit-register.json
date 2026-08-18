@@ -456,7 +456,7 @@
         "config/security/authorization-matrix.json",
         "server/src/__tests__/security2gE.authorization-inventory.test.ts"
       ],
-      "notes": "Of 206 operations, five have a test that issues a real foreign request, fifteen have evidence that only asserts strings in handler source, and 186 have none recorded. The existing negativeEvidence column mostly proves missing authentication, which is a weaker property than cross-owner denial. One family, body-blueprint-project, now has a behavioural harness on integration/wave-0 (a5ca5fe3); the rest of the inventory is still unevidenced, so this stays open."
+      "notes": "Of 206 operations, five have a test that issues a real foreign request, fifteen have evidence that only asserts strings in handler source, and 186 have none recorded. The existing negativeEvidence column mostly proves missing authentication, which is a weaker property than cross-owner denial. One family, body-blueprint-project, now has a behavioural harness on integration/wave-0 (a5ca5fe3); the rest of the inventory is still unevidenced, so this stays open. Closed as a count and reopened as a list. The matrix now carries mar001Category, which separates the question the count was conflating: 91 operations have no per-resource authorization to make, 53 authorize the very identifier they act on so the mismatch cannot be written, 51 have a verified mechanism, and 15 are real gaps. Those 15 are the whole of the remaining MAR-001 debt and are enumerated in SEC-MAR001-REMAINING-GAPS-001."
     },
     {
       "id": "AUDIT-BINDING-UNREVIEWED-001",
@@ -1115,6 +1115,53 @@
         "server/src/__tests__/mar001.job-ownership.test.ts"
       ],
       "notes": "The plan routes derive the project from the stored plan, conceal a foreign plan as an absent one, and authorize before POST /execute runs any agent. Execution options take the project from plan.goal.projectId rather than from the request. Recorded as a verified control rather than migrated: rewriting a correct check to resemble the others would carry a migration's risk for no change in behaviour. What it lacked was evidence, which it now has."
+    },
+    {
+      "id": "SEC-MATRIX-EVIDENCE-VOLATILE-001",
+      "title": "Regenerating the authorization matrix discarded every recorded cross-tenant verdict",
+      "severity": "P1",
+      "status": "CONFIRMED",
+      "disposition": "FIXED-UNMERGED",
+      "area": "security",
+      "remediationGroup": "authorization-object-binding",
+      "mar": "MAR-001",
+      "owningBranch": "fix/mar-001-closure",
+      "owningSha": "pending",
+      "evidence": [
+        "scripts/generate-authorization-matrix.ts",
+        "config/security/authorization-matrix.json"
+      ],
+      "notes": "The matrix is generated, and four remediation slices recorded their evidence by editing the generated file. Running the generator reset 27 operations to indirect-unreviewed and none-recorded, and nothing failed: no check compared the committed matrix against what the generator produces. Found by running the generator during this closure, not by review. Verdicts now live in the generator's binding rules so regeneration reproduces them, and a --check mode wired into npm run validate refuses a committed matrix the generator would not produce. Proved both ways: a hand edit exits 1, a regenerated file exits 0."
+    },
+    {
+      "id": "SEC-MAR001-REMAINING-GAPS-001",
+      "title": "MAR-001 has fifteen operations left where nothing canonical protects the resource",
+      "severity": "P1",
+      "status": "CONFIRMED",
+      "disposition": "NOT-STARTED",
+      "area": "security",
+      "remediationGroup": "authorization-object-binding",
+      "mar": "MAR-001",
+      "evidence": [
+        "config/security/authorization-matrix.json",
+        "scripts/generate-authorization-matrix.ts"
+      ],
+      "notes": "Four families, none of which the canonical helper covers as it stands. (1) concept.ts session-owned-concept, 3 operations: ownership is a Map from concept id to user id, so the parent is a user rather than a project and requireOwned, which is project-derived, does not apply. (2) body-blueprint-project, 8 operations across economy, generation-v2, lifecycle, simulation and world: a blueprint identifier taken from the body is passed to requireProjectAccess as though it were a project identifier, which is AUDIT-BODY-SUPPLIED-BLUEPRINT-001. (3) socket project:join and project:leave, which is AUDIT-REALTIME-ROOM-001. (4) api/v1 plan routes, 2 operations: a second plan surface beside routes/planning.ts, unexercised, and duplication is the reason it was missed. Memory operations are deliberately not here: they classify as direct-project, and isolating what memory holds belongs to MAR-008 rather than to resource binding."
+    },
+    {
+      "id": "AUDIT-AUTONOMOUS-BINDING-VERIFIED-001",
+      "title": "Autonomous session control was correct and unexercised",
+      "severity": "P3",
+      "status": "VERIFIED-CONTROL",
+      "disposition": "NO-ACTION-REQUIRED",
+      "area": "security",
+      "remediationGroup": "verified-controls",
+      "mar": "MAR-001",
+      "evidence": [
+        "server/src/routes/autonomous.ts",
+        "server/src/__tests__/mar001.autonomous-session-ownership.test.ts"
+      ],
+      "notes": "Two helpers, both concealing: one resolves the session and derives its project, the other takes a project directly, and each answers 'Session not found' for an absent session and for another tenant's alike. Four operations mutate a running session, so the tests assert the session never entered a state only pause, resume, cancel or recover can produce, rather than comparing a status captured before the calls — the orchestrator finishes the run on its own and that comparison raced it. Recorded as a verified control, not migrated: no production code was changed. Sensitivity proved by neutralising each helper in turn; the first attempt only neutralised one and left the read assertions passing, which is how the second helper was found."
     }
   ]
 }

@@ -2,7 +2,7 @@
 
 # Master audit remediation plan
 
-Generated from `config/audit/master-audit-register.json` (63 findings). Severity is the register's; ordering is by the worst severity in each group, except that re-verification comes first and verified controls come last.
+Generated from `config/audit/master-audit-register.json` (66 findings). Severity is the register's; ordering is by the worst severity in each group, except that re-verification comes first and verified controls come last.
 
 Findings are grouped by shared architectural root rather than by symptom. Several of these are the same defect seen from different places, and repairing them one at a time would mean repairing the root several times.
 
@@ -10,9 +10,9 @@ Findings are grouped by shared architectural root rather than by symptom. Severa
 
 | Disposition        | Findings |
 | ------------------ | -------- |
-| FIXED-UNMERGED     | 32       |
-| NOT-STARTED        | 25       |
-| NO-ACTION-REQUIRED | 5        |
+| FIXED-UNMERGED     | 33       |
+| NOT-STARTED        | 26       |
+| NO-ACTION-REQUIRED | 6        |
 | SCOPED-OUT         | 1        |
 
 ## Root-cause coverage
@@ -21,7 +21,7 @@ Every finding names the deduplicated root cause it belongs to. A finding the tax
 
 | Root cause                                                                                         | Priority        | Findings | Fixed | Remaining |
 | -------------------------------------------------------------------------------------------------- | --------------- | -------- | ----- | --------- |
-| **MAR-001** — Cross-tenant resource authorization is not parent-bound everywhere                   | P0              | 20       | 14    | 6         |
+| **MAR-001** — Cross-tenant resource authorization is not parent-bound everywhere                   | P0              | 23       | 15    | 8         |
 | **MAR-003** — No single clean canonical product acceptance run exists                              | P0-release-gate | 3        | 0     | 3         |
 | **MAR-004** — Generation has no durable project-scoped single-flight and idempotent start identity | P1              | 3        | 3     | 0         |
 | **MAR-005** — State transitions have no unified durable CAS/version authority                      | P1              | 3        | 3     | 0         |
@@ -71,6 +71,8 @@ One defect shape: the identifier the caller was authorized for is not the thing 
 | **SEC-STUDIO-COMMAND-DISCLOSURE-001** — Refusing another tenant's Studio command disclosed that it existed and what state it was in                                       | P1       | CONFIRMED | FIXED-UNMERGED (fix/mar-001-studio-command-concealment @ 4f81c75251d4972396b16602fae1cf17c4ae9b11)    |
 | **SEC-STUDIO-PROTOCOL-BINDING-001** — Studio protocol messages were authorized against a project the caller chose, not the client they acted on                           | P1       | CONFIRMED | FIXED-UNMERGED (fix/mar-001-studio-protocol-binding @ 74b987129b549eca3fdde294e3e3cf603af81c7d)       |
 | **SEC-RESOURCE-AUTHORIZATION-HELPER-001** — Route-level authorization had no canonical mechanism, so each route decided separately what to authorize and what to disclose | P1       | CONFIRMED | FIXED-UNMERGED (fix/mar-001-resource-authorization-helper @ 81ad71e35ed11284f7a6292f0b56963969750fb5) |
+| **SEC-MATRIX-EVIDENCE-VOLATILE-001** — Regenerating the authorization matrix discarded every recorded cross-tenant verdict                                                | P1       | CONFIRMED | FIXED-UNMERGED (fix/mar-001-closure @ pending)                                                        |
+| **SEC-MAR001-REMAINING-GAPS-001** — MAR-001 has fifteen operations left where nothing canonical protects the resource                                                     | P1       | CONFIRMED | NOT-STARTED                                                                                           |
 | **AUDIT-BODY-SUPPLIED-BLUEPRINT-001** — Eight operations authorize against an identifier inside a caller-supplied body object                                             | P2       | CONFIRMED | NOT-STARTED                                                                                           |
 | **SEC-STUDIO-PROTOCOL-DISCLOSURE-001** — The command disclosure closed on the REST path was still reachable over the protocol transport                                   | P2       | CONFIRMED | FIXED-UNMERGED (fix/mar-001-studio-protocol-binding @ 74b987129b549eca3fdde294e3e3cf603af81c7d)       |
 | **SEC-STUDIO-STATUS-COUNT-001** — GET /status reported a platform-wide Studio session count                                                                               | P2       | CONFIRMED | FIXED-UNMERGED (fix/mar-001-studio-protocol-binding @ 74b987129b549eca3fdde294e3e3cf603af81c7d)       |
@@ -224,3 +226,4 @@ Controls confirmed to behave correctly. Recorded so they are not mistaken for ga
 | **AUDIT-ARTIFACT-STORE-CONTROL** — Project-scoped artifact store ownership and commit marker semantics | P3       | VERIFIED-CONTROL | NO-ACTION-REQUIRED |
 | **AUDIT-AUTONOMOUS-RECOVERY-CONTROL** — Autonomous orchestrator implements real restart recovery       | P3       | VERIFIED-CONTROL | NO-ACTION-REQUIRED |
 | **AUDIT-PLAN-BINDING-VERIFIED-001** — Plan access was correct and unexercised                          | P3       | VERIFIED-CONTROL | NO-ACTION-REQUIRED |
+| **AUDIT-AUTONOMOUS-BINDING-VERIFIED-001** — Autonomous session control was correct and unexercised     | P3       | VERIFIED-CONTROL | NO-ACTION-REQUIRED |
