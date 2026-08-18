@@ -1,4 +1,9 @@
 import type { LLMProvider, LLMOptions, LLMResponse } from "../types/llm";
+import {
+  logProviderCall,
+  payloadLoggingEnabled,
+  previewForDebug,
+} from "./providerTelemetry";
 import { LLMError } from "../types/llm";
 import { fetchWithTimeout, withRetry } from "./llmUtils";
 
@@ -71,9 +76,12 @@ export class OllamaProvider implements LLMProvider {
           },
         };
 
-        console.log(`[ollama-debug] URL: ${url}`);
-        console.log(`[ollama-debug] Method: POST`);
-        console.log(`[ollama-debug] Body: ${JSON.stringify(requestBody)}`);
+        // LLM-LOG-DATA-001. The request body carries the user brief and the
+        // internal prompt, so it is never logged. Only a bounded preview is
+        // available, and only outside production with the flag set.
+        if (payloadLoggingEnabled()) {
+          console.log(`[ollama-debug] prompt: ${previewForDebug(prompt)}`);
+        }
 
         let response: Response;
         try {
@@ -87,15 +95,12 @@ export class OllamaProvider implements LLMProvider {
             timeout,
           );
         } catch (fetchErr) {
-          console.error(`[ollama-debug] fetch() threw:`, fetchErr);
           console.error(
-            `[ollama-debug] Stack:`,
-            fetchErr instanceof Error ? fetchErr.stack : "none",
+            `[llm] provider=ollama model=${model} request failed:`,
+            fetchErr instanceof Error ? fetchErr.message : fetchErr,
           );
           throw fetchErr;
         }
-
-        console.log(`[ollama-debug] HTTP status: ${response.status}`);
 
         if (!response.ok) {
           const errorText = await response.text().catch(() => "");
@@ -152,7 +157,15 @@ export class OllamaProvider implements LLMProvider {
         buffer += decoder.decode();
         consumeLine(buffer);
 
-        console.log(`[ollama-debug] response length: ${content.length}`);
+        logProviderCall({
+          provider: "ollama",
+          model,
+          status: response.status,
+          durationMs: Date.now() - start,
+          responseChars: content.length,
+          tokensUsed,
+          finishReason: "complete",
+        });
 
         return {
           content,

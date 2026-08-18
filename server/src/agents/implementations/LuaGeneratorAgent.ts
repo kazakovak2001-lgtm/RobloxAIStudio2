@@ -1,4 +1,5 @@
 import { BaseAgent, type AgentConfig } from "../core/BaseAgent";
+import { summariseForPrompt } from "../../ai/promptValues";
 import type { AgentInput } from "../../types";
 import {
   assertPlayableLuaScripts,
@@ -333,11 +334,11 @@ export class LuaGeneratorAgent extends BaseAgent {
       ". Each is a responsibility implemented inside the generated game code. None of them is a Roblox service: never pass any of these names to game:GetService().";
 
     const mechanicsArr = (gameplay as any)?.mechanics;
+    // SERIALIZATION-001. This is the prompt that generates the Lua, so a
+    // mechanic reduced to `[object Object]` here is a system the generated
+    // game was asked to implement with no description of it.
     const systemsSummary = Array.isArray(mechanicsArr)
-      ? mechanicsArr
-          .slice(0, 4)
-          .map((m: any) => String(m?.name ?? m))
-          .join(", ")
+      ? summariseForPrompt(mechanicsArr.slice(0, 4), "core systems")
       : "core systems";
 
     const fallback = playableFallback(name);

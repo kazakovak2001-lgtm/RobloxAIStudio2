@@ -16,6 +16,7 @@ import { PlannerEngine } from "../../planning/core/PlannerEngine";
 import { PlanExecutor } from "../../planning/execution/PlanExecutor";
 import { AgentRegistry } from "../../agents/core/AgentRegistry";
 import { ExecutionTracer } from "../../core/observability/ExecutionTracer";
+import type { ExecutionTraceEvent } from "../../core/observability/types";
 import type { ProjectAccessControl } from "../../routes/projects";
 
 export function createV2Router(
@@ -57,25 +58,7 @@ export function createV2Router(
     };
 
     const tracer = ExecutionTracer.instance();
-    const listener = (event: {
-      eventType: string;
-      nodeId: string;
-      agentId: string;
-      durationMs?: number;
-      evaluationScore?: number;
-      error?: string;
-    }) => {
-      sendEvent("trace", {
-        type: event.eventType,
-        node: event.nodeId,
-        agent: event.agentId,
-        durationMs: event.durationMs,
-        score: event.evaluationScore,
-        error: event.error,
-      });
-    };
-
-    tracer.addListener(listener);
+    let listener: ((event: ExecutionTraceEvent) => void) | undefined;
 
     try {
       const { intent, constraints } = req.body;
@@ -89,6 +72,26 @@ export function createV2Router(
         constraints: constraints ?? [],
         projectId,
       });
+
+      // SEC-REALTIME-TRACE-001. The tracer is process-wide, so an unfiltered
+      // listener streamed every concurrent execution's trace to this response,
+      // including other tenants'. The caller asked about the plan it just
+      // created, so the stream is restricted to that execution, and to the
+      // project it was authorized for. Registering after the plan exists is
+      // what makes the narrower filter possible.
+      listener = (event: ExecutionTraceEvent) => {
+        if (event.executionId !== plan.planId) return;
+        if (event.projectId && event.projectId !== projectId) return;
+        sendEvent("trace", {
+          type: event.eventType,
+          node: event.nodeId,
+          agent: event.agentId,
+          durationMs: event.durationMs,
+          score: event.evaluationScore,
+          error: event.error,
+        });
+      };
+      tracer.addListener(listener);
 
       sendEvent("plan.created", {
         planId: plan.planId,
@@ -113,7 +116,7 @@ export function createV2Router(
         message: err instanceof Error ? err.message : "Unknown error",
       });
     } finally {
-      tracer.removeListener(listener);
+      if (listener) tracer.removeListener(listener);
       res.end();
     }
   });

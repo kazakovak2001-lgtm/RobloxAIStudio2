@@ -100,7 +100,7 @@ export function createPlatformRouter({
     }
 
     const preparedUser = users.prepareCreate({ email, displayName });
-    const preparedAuth = auth.prepareRegistration(
+    const preparedAuth = await auth.prepareRegistration(
       preparedUser.user.email,
       password,
       preparedUser.user.id,

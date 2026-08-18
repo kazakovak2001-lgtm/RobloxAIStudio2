@@ -117,6 +117,8 @@
 ├── CLAUDE.md
 ├── commitlint.config.js
 ├── config
+│   ├── audit
+│   │   └── master-audit-register.json
 │   ├── cleanup
 │   │   └── legacy-frontend-decommission.inventory.json
 │   ├── cutover
@@ -161,6 +163,7 @@
 │   │   │   └── 2026-07-24-core-1b-durable-runtime.md
 │   │   ├── DOC-202A_ROADMAP_AUTHORITY_RECONCILIATION.md
 │   │   ├── FRONTEND_CUTOVER.md
+│   │   ├── MASTER-AUDIT-REMEDIATION_PLAN.md
 │   │   ├── NOVELTY-1_SCOPE.md
 │   │   ├── NOVELTY-2_PROMOTION_CRITERIA.md
 │   │   ├── NOVELTY-2_SCOPE.md
@@ -613,6 +616,7 @@
 │   │   ├── verify-promoted-baseline-integrity.mjs
 │   │   └── verify-release-baseline-readiness.mjs
 │   ├── generate-authorization-matrix.ts
+│   ├── generate-remediation-plan.ts
 │   ├── git-boundary-guard.js
 │   ├── package-studio-plugin.ts
 │   ├── pre-check.ts
@@ -630,6 +634,7 @@
 │   ├── validate-agent-contract.ts
 │   ├── validate-architecture.ts
 │   ├── validate-artifact-contract.ts
+│   ├── validate-audit-register.ts
 │   ├── validate-boundaries.ts
 │   ├── validate-controller.ts
 │   ├── validate-documentation-authority.ts
@@ -659,13 +664,19 @@
 │   │   │   ├── artifactcontract2.repair-lineage.test.ts
 │   │   │   ├── artifactcontract2.v2-pipeline.test.ts
 │   │   │   ├── assetfabric1.assetPlan.test.ts
+│   │   │   ├── auditidexec1.execution-identity.test.ts
+│   │   │   ├── auditstartatomicity1.generation-start.test.ts
 │   │   │   ├── autonomousPipelineExploration.test.ts
 │   │   │   ├── autonomousPipelineIntegration.test.ts
 │   │   │   ├── autonomousPipelinePreservation.test.ts
+│   │   │   ├── blueprint1.immutable-snapshot.test.ts
+│   │   │   ├── blueprint2.intent-sync.test.ts
 │   │   │   ├── bugConditionExploration.test.ts
 │   │   │   ├── core1b.persistence.test.ts
 │   │   │   ├── core1b.postgres.integration.test.ts
 │   │   │   ├── cutover1c.origin-policy.test.ts
+│   │   │   ├── definechat1.blueprint-proposals.test.ts
+│   │   │   ├── definechat1.proposal-routes.test.ts
 │   │   │   ├── e2eGeneration.test.ts
 │   │   │   ├── firstplayable1.clientHudContract.test.ts
 │   │   │   ├── firstplayable1.constrainedRepairSpatial.test.ts
@@ -676,15 +687,35 @@
 │   │   │   ├── firstplayable1.spatialLuaContract.test.ts
 │   │   │   ├── firstplayable1.spatialWiring.test.ts
 │   │   │   ├── generation-provenance.test.ts
+│   │   │   ├── genrecovery1.restart-reconciliation.test.ts
+│   │   │   ├── gensingleflight1.active-claim.test.ts
 │   │   │   ├── harden2a.auth-contract.test.ts
 │   │   │   ├── identityAccess.test.ts
 │   │   │   ├── integration.test.ts
+│   │   │   ├── intent1.default-contamination.test.ts
+│   │   │   ├── intent2.requirement-traceability.test.ts
+│   │   │   ├── llmlog1.payload-redaction.test.ts
+│   │   │   ├── llmparser1.balanced-extraction.test.ts
+│   │   │   ├── mar001.autonomous-session-ownership.test.ts
+│   │   │   ├── mar001.conversation-ownership.test.ts
+│   │   │   ├── mar001.job-ownership.test.ts
+│   │   │   ├── mar001.resource-authorization.test.ts
+│   │   │   ├── mar001.studio-command-concealment.test.ts
+│   │   │   ├── mar001.studio-protocol-binding.test.ts
+│   │   │   ├── mar001.studio-surface-closure.test.ts
+│   │   │   ├── mar002.loader-provenance.test.ts
+│   │   │   ├── mar002.provenance-contract.test.ts
+│   │   │   ├── mar002.script-placement-ownership.test.ts
+│   │   │   ├── mar002.sync-provenance.test.ts
+│   │   │   ├── mar002.world-and-idempotence.test.ts
+│   │   │   ├── mar004.idempotent-start.test.ts
 │   │   │   ├── novelty1.gameDna.test.ts
 │   │   │   ├── novelty2.verdict.test.ts
 │   │   │   ├── performance.test.ts
 │   │   │   ├── persistence.test.ts
 │   │   │   ├── pipeline1a.plan-definition.test.ts
 │   │   │   ├── pipeline1b.validation-report.test.ts
+│   │   │   ├── pipelinetruth1.completion-boundary.test.ts
 │   │   │   ├── platform.test.ts
 │   │   │   ├── playtesttruth1.evidence.test.ts
 │   │   │   ├── playtesttruth1.review.test.ts
@@ -694,7 +725,12 @@
 │   │   │   ├── productLayer.test.ts
 │   │   │   ├── repair-delivery.test.ts
 │   │   │   ├── saasFoundation.test.ts
+│   │   │   ├── secauthz1.cross-tenant-harness.test.ts
+│   │   │   ├── secgenerationblueprint1.generate-route.test.ts
+│   │   │   ├── secgenerationblueprint1.project-binding.test.ts
 │   │   │   ├── secreview1.advisory-delivery.test.ts
+│   │   │   ├── secrt1a.realtime-tenancy.test.ts
+│   │   │   ├── secrt1b.trace-tenancy.test.ts
 │   │   │   ├── security.test.ts
 │   │   │   ├── security2gE.agent-collaboration-scope.test.ts
 │   │   │   ├── security2gE.ai-chat-session-boundary.test.ts
@@ -748,6 +784,7 @@
 │   │   │   ├── security2gE.world-scope.test.ts
 │   │   │   ├── securityHardening.test.ts
 │   │   │   ├── securityreviewa2.hardening.test.ts
+│   │   │   ├── serialization1.prompt-values.test.ts
 │   │   │   ├── simtruth1.evidence.test.ts
 │   │   │   ├── studio.acceptance-runner.test.ts
 │   │   │   ├── studio.desktop-mcp.test.ts
@@ -759,6 +796,10 @@
 │   │   │   ├── studio2fa.allowlist-parity.test.ts
 │   │   │   ├── studio2fa.receipt-verification.test.ts
 │   │   │   ├── studioIntegration.test.ts
+│   │   │   ├── support
+│   │   │   │   ├── robloxStub.lua
+│   │   │   │   └── studioPluginHarness.ts
+│   │   │   ├── testevidence1.auth-event-loop.test.ts
 │   │   │   ├── world1a.cross-artifact-validation.test.ts
 │   │   │   ├── world1b.receipt-verification.test.ts
 │   │   │   └── world1b.scene-contract.test.ts
@@ -845,6 +886,7 @@
 │   │   │   │   ├── index.ts
 │   │   │   │   └── PromptEngine.ts
 │   │   │   ├── promptTemplates.ts
+│   │   │   ├── promptValues.ts
 │   │   │   ├── provider.ts
 │   │   │   ├── router.ts
 │   │   │   └── runtime
@@ -1293,6 +1335,7 @@
 │   │   │   │   └── TokenProvider.ts
 │   │   │   ├── index.ts
 │   │   │   ├── projects
+│   │   │   │   ├── GenerationRecovery.ts
 │   │   │   │   ├── index.ts
 │   │   │   │   ├── ProjectLifecycleCoordinator.test.ts
 │   │   │   │   ├── ProjectLifecycleCoordinator.ts
@@ -1405,7 +1448,8 @@
 │   │   │   ├── ollama.ts
 │   │   │   ├── openai.ts
 │   │   │   ├── openrouter.ts
-│   │   │   └── providerFactory.ts
+│   │   │   ├── providerFactory.ts
+│   │   │   └── providerTelemetry.ts
 │   │   ├── repair
 │   │   │   ├── __tests__
 │   │   │   │   ├── RepairEngine.test.ts
@@ -1454,6 +1498,7 @@
 │   │   │   ├── playtest.ts
 │   │   │   ├── projects.ts
 │   │   │   ├── repair.ts
+│   │   │   ├── resourceAuthorization.ts
 │   │   │   ├── simulation.ts
 │   │   │   ├── studio.ts
 │   │   │   ├── system.ts
@@ -1488,6 +1533,7 @@
 │   │   │       └── GameplayMetricsEngine.ts
 │   │   ├── socket
 │   │   │   ├── index.ts
+│   │   │   ├── pipelineEventBridge.ts
 │   │   │   └── streaming.ts
 │   │   ├── studio
 │   │   │   ├── artifacts
@@ -1577,6 +1623,7 @@
 │   │   │   ├── generationValidation.ts
 │   │   │   ├── luaSecurityReview.ts
 │   │   │   ├── noveltyVerdict.ts
+│   │   │   ├── requirementTraceability.ts
 │   │   │   ├── spatialDesign.ts
 │   │   │   ├── worldCrossValidation.ts
 │   │   │   ├── worldModel.ts

@@ -45,21 +45,82 @@ export class LLMOutputParser {
     const direct = LLMOutputParser.tryParse(raw.trim());
     if (direct !== null) return direct;
 
-    // 3. Bracket scan: find the first { or [ and attempt parse from there
-    const objStart = raw.indexOf("{");
-    const arrStart = raw.indexOf("[");
+    // 3. Balanced scan from each opening bracket.
+    //
+    // LLM-PARSER-001. This used to slice from the first bracket to the end of
+    // the string and parse that, so any trailing prose destroyed a response
+    // whose JSON was perfectly good:
+    //
+    //   {"valid":"json"}
+    //   Here is an explanation of what I did...
+    //
+    // Scanning to the matching close finds the object and leaves the prose
+    // behind. It also refuses to invent one: a response truncated before its
+    // closing bracket has no balanced candidate and returns null rather than
+    // parsing a fragment.
+    for (const start of LLMOutputParser.bracketStarts(raw)) {
+      const candidate = LLMOutputParser.balancedSlice(raw, start);
+      if (candidate === null) continue;
+      const parsed = LLMOutputParser.tryParse(candidate);
+      if (parsed !== null) return parsed;
+    }
 
-    if (objStart === -1 && arrStart === -1) return null;
+    return null;
+  }
 
-    const start =
-      objStart === -1
-        ? arrStart
-        : arrStart === -1
-          ? objStart
-          : Math.min(objStart, arrStart);
+  /** Every position where a JSON value could begin, earliest first. */
+  private static bracketStarts(raw: string): number[] {
+    const starts: number[] = [];
+    for (let index = 0; index < raw.length; index += 1) {
+      const char = raw[index];
+      if (char === "{" || char === "[") starts.push(index);
+    }
+    return starts;
+  }
 
-    const slice = raw.slice(start);
-    return LLMOutputParser.tryParse(slice);
+  /**
+   * The substring from `start` to its matching bracket, or null when there is
+   * none.
+   *
+   * String literals are tracked so a brace inside one does not change depth.
+   * That is not hypothetical here: generated Luau is delivered inside JSON
+   * strings and is full of braces.
+   */
+  private static balancedSlice(raw: string, start: number): string | null {
+    const open = raw[start];
+    const close = open === "{" ? "}" : "]";
+    let depth = 0;
+    let inString = false;
+    let escaped = false;
+
+    for (let index = start; index < raw.length; index += 1) {
+      const char = raw[index];
+
+      if (escaped) {
+        escaped = false;
+        continue;
+      }
+      if (char === "\\") {
+        // Only meaningful inside a string, but harmless outside one, where a
+        // backslash cannot legally appear anyway.
+        escaped = true;
+        continue;
+      }
+      if (char === '"') {
+        inString = !inString;
+        continue;
+      }
+      if (inString) continue;
+
+      if (char === open) depth += 1;
+      else if (char === close) {
+        depth -= 1;
+        if (depth === 0) return raw.slice(start, index + 1);
+      }
+    }
+
+    // Ran out of input with brackets still open: the response was cut off.
+    return null;
   }
 
   /**

@@ -5,6 +5,7 @@ import type {
   AgentType,
 } from "../../types";
 import { BaseAgent, type AgentConfig } from "../core/BaseAgent";
+import { summariseForPrompt } from "../../ai/promptValues";
 
 /**
  * OrchestratorAgent
@@ -122,14 +123,13 @@ export class OrchestratorAgent extends BaseAgent {
 
     if (!this.llm) return fallback;
 
-    const systemsBuilt =
-      systems.map((s) => String(s.name)).join(", ") || "none";
+    // SERIALIZATION-001. A system without a name rendered as the literal
+    // string "undefined" here, and an unnamed object as `[object Object]`.
+    const systemsBuilt = summariseForPrompt(systems, "none");
     const luaOutput = input.lua_generator as
       Record<string, unknown> | undefined;
     const serverScripts = Array.isArray((luaOutput as any)?.server)
-      ? (luaOutput as any).server
-          .map((s: any) => String(s?.name ?? s))
-          .join(", ")
+      ? summariseForPrompt((luaOutput as any).server, "none")
       : "none";
 
     // PromptTemplateRegistry is the single source of truth.

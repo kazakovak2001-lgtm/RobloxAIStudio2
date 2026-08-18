@@ -1,12 +1,18 @@
 import { Router } from "express";
-import { GameGenerationService } from "../projects/services/game-generation.service";
+import {
+  BlueprintProposalError,
+  GameGenerationService,
+} from "../projects/services/game-generation.service";
 import type { StudioIntegrationManager } from "../studio/integration/StudioIntegrationManager";
 import type {
   ArtifactVerificationStatus,
   StudioProjectSession,
 } from "../studio/integration/types";
 import type { ProjectRuntime } from "./projects";
-import { ProjectGenerationStartCoordinator } from "../platform/projects/ProjectLifecycleCoordinator";
+import {
+  ActiveGenerationConflictError,
+  ProjectGenerationStartCoordinator,
+} from "../platform/projects/ProjectLifecycleCoordinator";
 import { DurableStorageError } from "../platform/storage/StorageProvider";
 import type { CreateBlueprintInput } from "../projects/types/blueprint";
 import type { SaaSProject } from "../platform/projects/SaaSProjectRepository";
@@ -43,31 +49,117 @@ interface StudioSyncResult extends StudioConnectionInfo {
   commandId?: string;
 }
 
-/** Preserve user-authored project intent when creating the first blueprint. */
+/**
+ * The blueprint fields a project owns, and whether the user actually stated
+ * each one.
+ *
+ * BLUEPRINT-STALE-001. Shared by blueprint creation and by the reconciliation
+ * at generation start, so there is one definition of what the project states
+ * rather than two that can drift.
+ */
+export function projectStatedIntent(project: SaaSProject): {
+  stated: Partial<CreateBlueprintInput>;
+  assumedFields: string[];
+} {
+  const stated: Partial<CreateBlueprintInput> = {};
+  const assumedFields: string[] = [];
+
+  const gameType = project.gameType?.trim();
+  if (gameType) stated.game_type = gameType;
+  else assumedFields.push("game_type");
+
+  if (isBlueprintDifficulty(project.difficulty)) {
+    stated.difficulty = project.difficulty;
+  } else {
+    assumedFields.push("difficulty");
+  }
+
+  if (
+    project.players === "solo" ||
+    project.players === "large-group" ||
+    project.players === "mmo"
+  ) {
+    stated.estimated_players = project.players;
+  } else {
+    assumedFields.push("estimated_players");
+  }
+
+  if (project.genre) stated.genre = [project.genre];
+  else assumedFields.push("genre");
+
+  const description = (project.description ?? "").trim();
+  if (description) stated.description = description;
+  else assumedFields.push("description");
+
+  const targetAudience = project.targetAudience?.trim();
+  if (targetAudience) stated.target_audience = targetAudience;
+  else assumedFields.push("target_audience");
+
+  if (project.name) stated.name = project.name;
+
+  return { stated, assumedFields };
+}
+
+/**
+ * Preserve user-authored project intent when creating the first blueprint.
+ *
+ * INTENT-DEFAULT-CONTAMINATION-001. This function has to fill gaps, because the
+ * blueprint contract requires a game type, a genre, a difficulty and a player
+ * count. What it must not do is present those fills as things the user asked
+ * for. Every gap it closes is named in `assumed_fields`, so a downstream reader
+ * can tell a choice from a default.
+ *
+ * The invented description is gone. A project with no brief used to arrive
+ * downstream carrying "Create a complete playable adventure Roblox experience",
+ * which reads exactly like a user requirement and is not one. An empty
+ * description is the honest representation of an empty brief, and the validator
+ * does not require one.
+ */
 export function buildProjectBlueprintInput(
   project: SaaSProject,
 ): CreateBlueprintInput {
-  const gameType = project.gameType?.trim() || project.genre || "adventure";
+  const assumedFields: string[] = [];
+
+  const statedGameType = project.gameType?.trim();
+  const gameType = statedGameType || project.genre || "adventure";
+  if (!statedGameType) assumedFields.push("game_type");
+
   const difficulty = isBlueprintDifficulty(project.difficulty)
     ? project.difficulty
     : "medium";
+  if (!isBlueprintDifficulty(project.difficulty)) {
+    assumedFields.push("difficulty");
+  }
+
+  const statedPlayers =
+    project.players === "solo" ||
+    project.players === "large-group" ||
+    project.players === "mmo";
   const estimatedPlayers =
     project.players === "solo"
       ? "solo"
       : project.players === "large-group" || project.players === "mmo"
         ? project.players
         : "small-group";
+  if (!statedPlayers) assumedFields.push("estimated_players");
+
+  if (!project.genre) assumedFields.push("genre");
+
+  const description = (project.description ?? "").trim();
+  if (!description) assumedFields.push("description");
+
+  const targetAudience = project.targetAudience?.trim();
+  if (!targetAudience) assumedFields.push("target_audience");
 
   return {
     project_id: project.id,
     user_id: project.ownerId,
     name: project.name,
-    description:
-      (project.description ?? "").trim() ||
-      `Create a complete playable ${gameType} Roblox experience.`,
+    description,
+    assumed_fields: assumedFields,
     game_type: gameType,
     genre: [project.genre || gameType],
-    target_audience: project.targetAudience || "general Roblox players",
+    target_audience: targetAudience || "general Roblox players",
     difficulty,
     estimated_players: estimatedPlayers,
     gameplay: {
@@ -92,9 +184,13 @@ export function createGameGenerationRouter(
   projectRuntime: ProjectRuntime,
 ): Router {
   const router = Router();
-  const { projectRepository, generationHistory, access } = projectRuntime;
+  // generationHistory is intentionally not destructured: the start-history
+  // entry is now written inside the coordinator's durable batch rather than as
+  // a separate follow-up write.
+  const { projectRepository, access, storage } = projectRuntime;
   const generationStartCoordinator = new ProjectGenerationStartCoordinator(
     projectRepository,
+    storage,
   );
   const generationOperatorUserIds = new Set(
     (process.env.GENERATION_OPERATOR_USER_IDS ?? "")
@@ -116,6 +212,26 @@ export function createGameGenerationRouter(
       return false;
     }
     return true;
+  };
+
+  /**
+   * A refusal from the proposal review path is a client-side conflict, not a
+   * server fault: the proposal is gone, or someone already decided it.
+   */
+  const sendProposalError = (
+    res: Parameters<ProjectRuntime["access"]["requireProjectAccess"]>[1],
+    error: unknown,
+    fallback: string,
+  ): void => {
+    if (error instanceof BlueprintProposalError) {
+      const missing = error.message.includes("not found");
+      res
+        .status(missing ? 404 : 409)
+        .json({ success: false, error: error.message });
+      return;
+    }
+    console.error(`[blueprint-proposals] ${fallback}:`, error);
+    res.status(500).json({ success: false, error: fallback });
   };
 
   const sendStudioError = (
@@ -220,6 +336,25 @@ export function createGameGenerationRouter(
       if (!userId) return;
       const { blueprintId } = req.body;
 
+      // SEC-GENERATION-BLUEPRINT-001. `blueprintId` is caller-supplied and was
+      // previously resolved without proving it belongs to the project the
+      // caller was authorized for, so authorization of one project could start
+      // generation against another. An explicit id must resolve to a blueprint
+      // owned by this project, and it never falls back to a different
+      // blueprint: falling back would silently accept an unauthorized id.
+      // 404 rather than 403 so the response does not confirm that a blueprint
+      // exists in some other project, matching the execution-status endpoint.
+      if (blueprintId) {
+        const requested = await gameService.getBlueprint(blueprintId);
+        if (!requested || requested.project_id !== projectId) {
+          res.status(404).json({
+            success: false,
+            error: "Blueprint not found for this project",
+          });
+          return;
+        }
+      }
+
       // Auto-create a minimal blueprint if one doesn't exist yet.
       // This enables the workflow: Create Project → Generate without manual blueprint creation.
       const existingBlueprint =
@@ -237,33 +372,107 @@ export function createGameGenerationRouter(
           projectId,
           buildProjectBlueprintInput(project),
         );
+      } else {
+        // BLUEPRINT-STALE-001. A blueprint was only ever built from the project
+        // once. Editing the brief afterwards changed the project and left the
+        // blueprint alone, so "create, generate, rewrite the brief, generate
+        // again" silently regenerated the original design and the user saw no
+        // reason why.
+        //
+        // Only fields the user actually stated are carried over. A value the
+        // system assumed must not overwrite whatever the blueprint holds, since
+        // that would let a default win against a deliberate refinement — the
+        // same confusion INTENT-DEFAULT-CONTAMINATION-001 is about, pointed the
+        // other way.
+        const project = projectRepository.get(projectId);
+        if (project) {
+          const { stated, assumedFields } = projectStatedIntent(project);
+          const drifted = Object.entries(stated).filter(([field, value]) => {
+            const current = (
+              existingBlueprint as unknown as Record<string, unknown>
+            )[field];
+            return JSON.stringify(current) !== JSON.stringify(value);
+          });
+          if (drifted.length > 0) {
+            await gameService.updateBlueprint(existingBlueprint.id, {
+              ...Object.fromEntries(drifted),
+              assumed_fields: assumedFields,
+            });
+          }
+        }
       }
 
+      // AUDIT-START-ATOMICITY-001. The execution and its start-history entry
+      // are handed to the coordinator as durable mutations so they commit in
+      // the same transaction as the project's status/generationCount. The
+      // pipeline is only enqueued after that transaction commits.
       const result = await generationStartCoordinator.start(
         projectId,
-        () => gameService.startGeneration(blueprintId || projectId, userId),
-        async (execution) => {
-          studioManager.activateProjectExecution(projectId, execution.id);
-          await generationHistory.record({
-            id: execution.id,
+        // SEC-GENERATION-BLUEPRINT-001. projectId is passed as the expected
+        // owner so the service refuses to build an execution for any other
+        // project, even if the identifier resolves elsewhere. The route check
+        // above and this are the same policy asserted at both boundaries, not
+        // two policies. It now runs inside prepare, before anything durable
+        // exists, so a refused request leaves no state at all.
+        () =>
+          gameService.prepareGeneration(
+            blueprintId || projectId,
+            userId,
             projectId,
-            pipelineId: execution.id,
-            status: execution.status,
-            startedAt: execution.started_at.getTime(),
-            stagesCompleted: 0,
-            stagesTotal: 0,
-            failures: 0,
-            tokenUsage: 0,
-            aiCost: 0,
-          });
+          ),
+        ({ execution, versionMutations }) => [
+          // BLUEPRINT-STALE-001. The immutable snapshot this run is bound to
+          // commits with the execution that names it, so neither can exist
+          // without the other.
+          ...versionMutations,
+          {
+            operation: "set" as const,
+            collection: "generation_executions",
+            id: execution.id,
+            data: execution,
+          },
+          {
+            operation: "set" as const,
+            collection: "generation_history",
+            id: execution.id,
+            data: {
+              id: execution.id,
+              projectId,
+              pipelineId: execution.id,
+              status: execution.status,
+              startedAt: execution.started_at.getTime(),
+              stagesCompleted: 0,
+              stagesTotal: 0,
+              failures: 0,
+              tokenUsage: 0,
+              aiCost: 0,
+            },
+          },
+        ],
+        ({ execution }) => execution.id,
+        ({ execution, blueprint }) => {
+          studioManager.activateProjectExecution(projectId, execution.id);
+          gameService.enqueueGeneration(execution, blueprint, userId);
         },
       );
       res.json({
         success: true,
-        executionId: result.id,
+        executionId: result.execution.id,
         status: "generation_started",
       });
     } catch (error) {
+      // AUDIT-DUP-GENERATION-001. A project that already has a running
+      // generation is a conflict, not a server fault. Answering 500 here would
+      // read as "try again", which is exactly how a retry produced the second
+      // generation this refusal exists to prevent.
+      if (error instanceof ActiveGenerationConflictError) {
+        res.status(409).json({
+          success: false,
+          error: "A generation is already running for this project",
+          executionId: error.activeExecutionId,
+        });
+        return;
+      }
       const message =
         error instanceof Error ? error.message : "Generation failed";
       console.error("[generate] Error:", message);
@@ -271,6 +480,107 @@ export function createGameGenerationRouter(
     }
   });
 
+  // ─── Blueprint change proposals (CHAT-BLUEPRINT-DISCONNECT-001) ────────
+  //
+  // A design change agreed in conversation used to affect nothing. These make
+  // the claim reviewable: proposing records it, accepting applies it and
+  // versions the result, and nothing takes effect until someone accepts.
+  router.get("/:projectId/blueprint/proposals", async (req, res) => {
+    const { projectId } = req.params;
+    if (!(await access.requireProjectAccess(req, res, projectId))) return;
+    try {
+      const status = req.query.status;
+      const proposals = await gameService.listBlueprintProposals(
+        projectId,
+        status === "pending" || status === "accepted" || status === "rejected"
+          ? status
+          : undefined,
+      );
+      res.json({ success: true, data: proposals });
+    } catch (error) {
+      sendProposalError(res, error, "Failed to list blueprint proposals");
+    }
+  });
+
+  router.post("/:projectId/blueprint/proposals", async (req, res) => {
+    const { projectId } = req.params;
+    if (!(await access.requireProjectAccess(req, res, projectId))) return;
+    const userId = await access.getRequestUserId(req);
+    if (!userId) return;
+    try {
+      const blueprint = await gameService.getBlueprintByProject(projectId);
+      if (!blueprint) {
+        res.status(404).json({
+          success: false,
+          error: "Blueprint not found for this project",
+        });
+        return;
+      }
+      const { changes, rationale, proposedBy } = req.body ?? {};
+      const proposal = await gameService.proposeBlueprintChange(
+        blueprint.id,
+        typeof proposedBy === "string" && proposedBy ? proposedBy : userId,
+        (changes ?? {}) as Record<string, unknown>,
+        typeof rationale === "string" ? rationale : undefined,
+      );
+      res.json({ success: true, data: proposal });
+    } catch (error) {
+      sendProposalError(res, error, "Failed to record blueprint proposal");
+    }
+  });
+
+  router.post(
+    "/:projectId/blueprint/proposals/:proposalId/accept",
+    async (req, res) => {
+      const { projectId, proposalId } = req.params;
+      if (!(await access.requireProjectAccess(req, res, projectId))) return;
+      const userId = await access.getRequestUserId(req);
+      if (!userId) return;
+      try {
+        const result = await gameService.acceptBlueprintProposal(
+          proposalId,
+          userId,
+        );
+        if (result.blueprint.project_id !== projectId) {
+          res.status(404).json({ success: false, error: "Proposal not found" });
+          return;
+        }
+        res.json({
+          success: true,
+          data: {
+            blueprintId: result.blueprint.id,
+            versionId: result.version.id,
+            snapshotHash: result.version.snapshot_hash,
+          },
+        });
+      } catch (error) {
+        sendProposalError(res, error, "Failed to accept blueprint proposal");
+      }
+    },
+  );
+
+  router.post(
+    "/:projectId/blueprint/proposals/:proposalId/reject",
+    async (req, res) => {
+      const { projectId, proposalId } = req.params;
+      if (!(await access.requireProjectAccess(req, res, projectId))) return;
+      const userId = await access.getRequestUserId(req);
+      if (!userId) return;
+      try {
+        const proposal = await gameService.rejectBlueprintProposal(
+          proposalId,
+          userId,
+        );
+        if (proposal.project_id !== projectId) {
+          res.status(404).json({ success: false, error: "Proposal not found" });
+          return;
+        }
+        res.json({ success: true, data: proposal });
+      } catch (error) {
+        sendProposalError(res, error, "Failed to reject blueprint proposal");
+      }
+    },
+  );
   // Create blueprint
   router.post("/:projectId/blueprints", async (req, res) => {
     try {

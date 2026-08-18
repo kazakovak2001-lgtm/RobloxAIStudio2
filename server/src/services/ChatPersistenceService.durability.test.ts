@@ -9,7 +9,7 @@ import {
   type DurableMutationResult,
 } from "../platform/storage/StorageProvider";
 import { createChatPersistenceRouter } from "../routes/chatPersistence";
-import type { ProjectAccessControl } from "../routes/projects";
+import type { ConcealingProjectAccess } from "../routes/projects";
 import {
   ChatPersistenceService,
   type Conversation,
@@ -110,12 +110,15 @@ class RejectingBatchStorage extends InMemoryStorageProvider {
   }
 }
 
-const allowAccess: ProjectAccessControl = {
+// The conversation routes conceal resource existence, which they can only do
+// through the bare-boolean check, so the stub has to provide it too.
+const allowAccess = {
   getRequestUserId: (_req: Request) => "owner",
   requireAuthenticatedUser: (_req: Request, _res: Response) => "owner",
   requireProjectAccess: (_req: Request, _res: Response, _projectId: string) =>
     true,
-};
+  hasProjectAccess: (_req: Request, _projectId: string) => true,
+} as unknown as ConcealingProjectAccess;
 
 async function withServer<T>(
   service: ChatPersistenceService,

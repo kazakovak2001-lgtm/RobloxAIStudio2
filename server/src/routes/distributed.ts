@@ -22,7 +22,8 @@ import {
   type Response,
 } from "express";
 import { ExecutionCoordinator } from "../distributed/execution/ExecutionCoordinator";
-import type { ProjectAccessControl } from "./projects";
+import type { ConcealingProjectAccess } from "./projects";
+import { createResourceAuthorizer } from "./resourceAuthorization";
 
 function requireDistributedOperator(
   req: Request,
@@ -51,24 +52,33 @@ function requireDistributedOperator(
 
 export function createDistributedRouter(
   coordinator: ExecutionCoordinator,
-  access: ProjectAccessControl,
+  access: ConcealingProjectAccess,
 ): Router {
   const router = Router();
 
-  const requireJobProjectAccess = async (
+  /**
+   * MAR-001. This resolved correctly already — it loaded the job and authorized
+   * the job's own project — but the two refusals differed. A job that did not
+   * exist answered "Job not found"; another tenant's fell through to the
+   * project control and answered "Project not found", so the pair told a caller
+   * which job ids were real. That mattered most beside POST /retry, which
+   * re-queues work and therefore spends compute.
+   *
+   * Through the canonical helper the project still comes from the loaded job,
+   * and a job that is absent, unattributed or someone else's answers alike.
+   */
+  const requireOwned = createResourceAuthorizer(access.hasProjectAccess);
+  const requireJobProjectAccess = (
     req: Request,
     res: Response,
     jobId: string,
-  ) => {
-    const job = coordinator.getJobStatus(jobId);
-    if (!job || !job.projectId) {
-      res.status(404).json({ success: false, error: "Job not found" });
-      return undefined;
-    }
-    if (!(await access.requireProjectAccess(req, res, job.projectId)))
-      return undefined;
-    return job;
-  };
+  ) =>
+    requireOwned(req, res, {
+      resource: "Job",
+      id: jobId,
+      load: (id: string) => coordinator.getJobStatus(id),
+      projectOf: (job) => job.projectId,
+    });
 
   const filterAuthorizedDeadLetters = async (req: Request) => {
     const visible = [];
@@ -136,11 +146,11 @@ export function createDistributedRouter(
 
   // GET /job/:id — get job status
   router.get("/job/:id", async (req, res) => {
+    // The access check has already answered when it refuses. Writing a second
+    // response here threw ERR_HTTP_HEADERS_SENT on every denied request, which
+    // surfaced as an unhandled error rather than as the refusal it was.
     const job = await requireJobProjectAccess(req, res, req.params.id);
-    if (!job) {
-      res.status(404).json({ success: false, error: "Job not found" });
-      return;
-    }
+    if (!job) return;
 
     res.json({
       success: true,

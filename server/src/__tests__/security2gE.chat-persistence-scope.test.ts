@@ -24,25 +24,35 @@ const matrix = JSON.parse(
 };
 
 describe("SECURITY-2G-E chat persistence scope", () => {
-  it("guards direct and resolved project chat resources", () => {
+  // MAR-001 moved the conversation routes onto the canonical helper, so the
+  // strings this used to look for no longer exist. What it was really pinning
+  // was ordering — authorization before the mutation — and that is kept here.
+  // The behavioural proof now lives in mar001.conversation-ownership.test.ts,
+  // which issues real cross-tenant requests instead of reading the file.
+  it("authorizes before it reads, writes or deletes", () => {
     expect(route).toContain(
       "access.requireProjectAccess(req, res, req.params.projectId)",
     );
-    expect(route).toContain(
-      "access.requireProjectAccess(req, res, conversation.projectId)",
-    );
-    expect(route).toContain("access.requireProjectAccess(req, res, projectId)");
+    expect(route).toContain("requireOwnedConversation");
+
     expect(
       route.indexOf("requireProjectAccess(req, res, req.params.projectId)"),
     ).toBeLessThan(route.indexOf("chatPersistence.getHistory"));
     expect(
-      route.indexOf("requireProjectAccess(req, res, conversation.projectId)"),
+      route.indexOf("requireOwnedConversation(req, res, conversationId)"),
     ).toBeLessThan(route.indexOf("chatPersistence.createMessage"));
     expect(
-      route.lastIndexOf(
-        "requireProjectAccess(req, res, conversation.projectId)",
-      ),
+      route.lastIndexOf("requireOwnedConversation(req, res, req.params.id)"),
     ).toBeLessThan(route.indexOf("chatPersistence.deleteConversation"));
+  });
+
+  it("derives conversation authority from the conversation itself", () => {
+    // The loader is the invariant: the project comes from the stored
+    // conversation, never from anything the caller sent alongside it.
+    expect(route).toContain(
+      "projectOf: (conversation) => conversation.projectId",
+    );
+    expect(route).not.toContain("requireProjectAccess(req, res, conversation");
   });
 
   it("classifies all four chat persistence operations", () => {
