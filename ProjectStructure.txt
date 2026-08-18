@@ -673,6 +673,7 @@
 │   │   │   ├── productLayer.test.ts
 │   │   │   ├── repair-delivery.test.ts
 │   │   │   ├── saasFoundation.test.ts
+│   │   │   ├── secauthz1.cross-tenant-harness.test.ts
 │   │   │   ├── secreview1.advisory-delivery.test.ts
 │   │   │   ├── security.test.ts
 │   │   │   ├── security2gE.agent-collaboration-scope.test.ts

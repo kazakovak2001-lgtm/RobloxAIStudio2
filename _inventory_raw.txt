@@ -575,6 +575,7 @@ server/src/__tests__/productLayer.test.ts
 server/src/__tests__/productionQuality.test.ts
 server/src/__tests__/repair-delivery.test.ts
 server/src/__tests__/saasFoundation.test.ts
+server/src/__tests__/secauthz1.cross-tenant-harness.test.ts
 server/src/__tests__/secreview1.advisory-delivery.test.ts
 server/src/__tests__/security.test.ts
 server/src/__tests__/security2gE.agent-collaboration-scope.test.ts
