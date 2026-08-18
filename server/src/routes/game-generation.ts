@@ -1,5 +1,8 @@
 import { Router } from "express";
-import { GameGenerationService } from "../projects/services/game-generation.service";
+import {
+  BlueprintProposalError,
+  GameGenerationService,
+} from "../projects/services/game-generation.service";
 import type { StudioIntegrationManager } from "../studio/integration/StudioIntegrationManager";
 import type {
   ArtifactVerificationStatus,
@@ -209,6 +212,26 @@ export function createGameGenerationRouter(
       return false;
     }
     return true;
+  };
+
+  /**
+   * A refusal from the proposal review path is a client-side conflict, not a
+   * server fault: the proposal is gone, or someone already decided it.
+   */
+  const sendProposalError = (
+    res: Parameters<ProjectRuntime["access"]["requireProjectAccess"]>[1],
+    error: unknown,
+    fallback: string,
+  ): void => {
+    if (error instanceof BlueprintProposalError) {
+      const missing = error.message.includes("not found");
+      res
+        .status(missing ? 404 : 409)
+        .json({ success: false, error: error.message });
+      return;
+    }
+    console.error(`[blueprint-proposals] ${fallback}:`, error);
+    res.status(500).json({ success: false, error: fallback });
   };
 
   const sendStudioError = (
@@ -457,6 +480,107 @@ export function createGameGenerationRouter(
     }
   });
 
+  // ─── Blueprint change proposals (CHAT-BLUEPRINT-DISCONNECT-001) ────────
+  //
+  // A design change agreed in conversation used to affect nothing. These make
+  // the claim reviewable: proposing records it, accepting applies it and
+  // versions the result, and nothing takes effect until someone accepts.
+  router.get("/:projectId/blueprint/proposals", async (req, res) => {
+    const { projectId } = req.params;
+    if (!(await access.requireProjectAccess(req, res, projectId))) return;
+    try {
+      const status = req.query.status;
+      const proposals = await gameService.listBlueprintProposals(
+        projectId,
+        status === "pending" || status === "accepted" || status === "rejected"
+          ? status
+          : undefined,
+      );
+      res.json({ success: true, data: proposals });
+    } catch (error) {
+      sendProposalError(res, error, "Failed to list blueprint proposals");
+    }
+  });
+
+  router.post("/:projectId/blueprint/proposals", async (req, res) => {
+    const { projectId } = req.params;
+    if (!(await access.requireProjectAccess(req, res, projectId))) return;
+    const userId = await access.getRequestUserId(req);
+    if (!userId) return;
+    try {
+      const blueprint = await gameService.getBlueprintByProject(projectId);
+      if (!blueprint) {
+        res.status(404).json({
+          success: false,
+          error: "Blueprint not found for this project",
+        });
+        return;
+      }
+      const { changes, rationale, proposedBy } = req.body ?? {};
+      const proposal = await gameService.proposeBlueprintChange(
+        blueprint.id,
+        typeof proposedBy === "string" && proposedBy ? proposedBy : userId,
+        (changes ?? {}) as Record<string, unknown>,
+        typeof rationale === "string" ? rationale : undefined,
+      );
+      res.json({ success: true, data: proposal });
+    } catch (error) {
+      sendProposalError(res, error, "Failed to record blueprint proposal");
+    }
+  });
+
+  router.post(
+    "/:projectId/blueprint/proposals/:proposalId/accept",
+    async (req, res) => {
+      const { projectId, proposalId } = req.params;
+      if (!(await access.requireProjectAccess(req, res, projectId))) return;
+      const userId = await access.getRequestUserId(req);
+      if (!userId) return;
+      try {
+        const result = await gameService.acceptBlueprintProposal(
+          proposalId,
+          userId,
+        );
+        if (result.blueprint.project_id !== projectId) {
+          res.status(404).json({ success: false, error: "Proposal not found" });
+          return;
+        }
+        res.json({
+          success: true,
+          data: {
+            blueprintId: result.blueprint.id,
+            versionId: result.version.id,
+            snapshotHash: result.version.snapshot_hash,
+          },
+        });
+      } catch (error) {
+        sendProposalError(res, error, "Failed to accept blueprint proposal");
+      }
+    },
+  );
+
+  router.post(
+    "/:projectId/blueprint/proposals/:proposalId/reject",
+    async (req, res) => {
+      const { projectId, proposalId } = req.params;
+      if (!(await access.requireProjectAccess(req, res, projectId))) return;
+      const userId = await access.getRequestUserId(req);
+      if (!userId) return;
+      try {
+        const proposal = await gameService.rejectBlueprintProposal(
+          proposalId,
+          userId,
+        );
+        if (proposal.project_id !== projectId) {
+          res.status(404).json({ success: false, error: "Proposal not found" });
+          return;
+        }
+        res.json({ success: true, data: proposal });
+      } catch (error) {
+        sendProposalError(res, error, "Failed to reject blueprint proposal");
+      }
+    },
+  );
   // Create blueprint
   router.post("/:projectId/blueprints", async (req, res) => {
     try {

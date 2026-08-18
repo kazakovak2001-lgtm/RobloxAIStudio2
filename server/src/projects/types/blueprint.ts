@@ -7,6 +7,7 @@ export type {
   UpdateBlueprintInput,
   BlueprintQueryOptions,
   BlueprintVersion,
+  BlueprintChangeProposal,
   GenerationExecution,
   BlueprintStatus,
   GameplaySystem,

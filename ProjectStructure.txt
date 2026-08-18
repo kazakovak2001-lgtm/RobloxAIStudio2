@@ -662,6 +662,8 @@
 │   │   │   ├── core1b.persistence.test.ts
 │   │   │   ├── core1b.postgres.integration.test.ts
 │   │   │   ├── cutover1c.origin-policy.test.ts
+│   │   │   ├── definechat1.blueprint-proposals.test.ts
+│   │   │   ├── definechat1.proposal-routes.test.ts
 │   │   │   ├── e2eGeneration.test.ts
 │   │   │   ├── generation-provenance.test.ts
 │   │   │   ├── genrecovery1.restart-reconciliation.test.ts

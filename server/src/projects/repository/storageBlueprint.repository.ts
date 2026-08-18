@@ -5,6 +5,7 @@ import type {
   StorageProvider,
 } from "../../platform/storage/StorageProvider";
 import type {
+  BlueprintChangeProposal,
   BlueprintQueryOptions,
   BlueprintVersion,
   CreateBlueprintInput,
@@ -17,6 +18,7 @@ import type { IBlueprintRepository } from "./blueprint.repository";
 const BLUEPRINTS = "game_blueprints";
 const VERSIONS = "blueprint_versions";
 const EXECUTIONS = "generation_executions";
+const PROPOSALS = "blueprint_change_proposals";
 
 /**
  * Durable blueprint repository backed by the process-wide StorageProvider.
@@ -176,8 +178,17 @@ export class StorageBlueprintRepository implements IBlueprintRepository {
     blueprintId: string,
     userId: string,
     description?: string,
+    /**
+     * The design to record, when it is not the blueprint as currently stored.
+     *
+     * Accepting a change has to version the result of the change, not the state
+     * before it, and both have to commit together. Passing the intended design
+     * here is what lets the caller do that in one transaction.
+     */
+    snapshotOverride?: GameBlueprint,
   ): Promise<{ version: BlueprintVersion; mutations: DurableMutation[] }> {
-    const blueprint = await this.getBlueprint(blueprintId);
+    const blueprint =
+      snapshotOverride ?? (await this.getBlueprint(blueprintId));
     if (!blueprint) throw new Error(`Blueprint ${blueprintId} not found`);
 
     const activeVersions = this.storage.list<BlueprintVersion>(
@@ -230,6 +241,74 @@ export class StorageBlueprintRepository implements IBlueprintRepository {
     return { version, mutations };
   }
 
+  /**
+   * CHAT-BLUEPRINT-DISCONNECT-001. Proposal storage lives here because it is
+   * durable blueprint state, and because accepting one has to write the
+   * blueprint, its version and the decision in a single transaction.
+   */
+  async saveProposal(
+    proposal: BlueprintChangeProposal,
+  ): Promise<BlueprintChangeProposal> {
+    await this.storage.setDurable(PROPOSALS, proposal.id, proposal);
+    return this.hydrateProposal(proposal);
+  }
+
+  getProposal(proposalId: string): BlueprintChangeProposal | null {
+    const proposal = this.storage.get<BlueprintChangeProposal>(
+      PROPOSALS,
+      proposalId,
+    );
+    return proposal ? this.hydrateProposal(proposal) : null;
+  }
+
+  listProposals(
+    projectId: string,
+    status?: BlueprintChangeProposal["status"],
+  ): BlueprintChangeProposal[] {
+    return this.storage
+      .list<BlueprintChangeProposal>(
+        PROPOSALS,
+        (candidate) =>
+          candidate.project_id === projectId &&
+          (status === undefined || candidate.status === status),
+      )
+      .map((proposal) => this.hydrateProposal(proposal));
+  }
+
+  /** Apply the blueprint, its version and the decision together. */
+  async commitProposalAcceptance(
+    blueprint: GameBlueprint,
+    versionMutations: DurableMutation[],
+    proposal: BlueprintChangeProposal,
+  ): Promise<void> {
+    await this.storage.applyDurableBatch([
+      ...versionMutations,
+      {
+        operation: "set",
+        collection: BLUEPRINTS,
+        id: blueprint.id,
+        data: blueprint,
+      },
+      {
+        operation: "set",
+        collection: PROPOSALS,
+        id: proposal.id,
+        data: proposal,
+      },
+    ]);
+  }
+
+  private hydrateProposal(
+    proposal: BlueprintChangeProposal,
+  ): BlueprintChangeProposal {
+    return {
+      ...proposal,
+      created_at: new Date(proposal.created_at),
+      ...(proposal.decided_at
+        ? { decided_at: new Date(proposal.decided_at) }
+        : {}),
+    };
+  }
   async saveVersion(
     blueprintId: string,
     userId: string,

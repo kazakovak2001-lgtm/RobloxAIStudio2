@@ -2,6 +2,8 @@ import { randomUUID } from "crypto";
 
 import type {
   GameBlueprint,
+  BlueprintChangeProposal,
+  BlueprintVersion,
   CreateBlueprintInput,
   GenerationExecution,
 } from "../types/blueprint";
@@ -36,6 +38,14 @@ export interface GenerationProviderInfo {
   provider: string | null;
   /** Model name, when a provider resolved. */
   model?: string;
+}
+
+/** Refusal from the blueprint proposal review path. */
+export class BlueprintProposalError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "BlueprintProposalError";
+  }
 }
 
 export class GameGenerationService {
@@ -113,6 +123,150 @@ export class GameGenerationService {
 
   validateBlueprint(blueprint: GameBlueprint) {
     return this.validator.validate(blueprint);
+  }
+
+  /**
+   * CHAT-BLUEPRINT-DISCONNECT-001. Record a proposed design change.
+   *
+   * A proposal changes nothing. The Define conversation could previously state
+   * that it had altered the design while the next generation still consumed the
+   * old blueprint, because nothing connected the two. Writing the claim down as
+   * a pending, field-level proposal makes it reviewable and, until accepted,
+   * inert.
+   */
+  async proposeBlueprintChange(
+    blueprintId: string,
+    proposedBy: string,
+    changes: Partial<GameBlueprint>,
+    rationale?: string,
+  ): Promise<BlueprintChangeProposal> {
+    const blueprint = await this.repository.getBlueprint(blueprintId);
+    if (!blueprint) {
+      throw new Error(`Blueprint ${blueprintId} not found`);
+    }
+    const editable = this.editableChanges(changes);
+    if (Object.keys(editable).length === 0) {
+      throw new BlueprintProposalError(
+        "A proposal must change at least one design field",
+      );
+    }
+
+    const proposal: BlueprintChangeProposal = {
+      id: `blueprint-proposal-${randomUUID()}`,
+      project_id: blueprint.project_id,
+      blueprint_id: blueprint.id,
+      proposed_by: proposedBy,
+      created_at: new Date(),
+      changes: editable,
+      ...(rationale ? { rationale } : {}),
+      status: "pending",
+    };
+    return this.repository.saveProposal(proposal);
+  }
+
+  async listBlueprintProposals(
+    projectId: string,
+    status?: BlueprintChangeProposal["status"],
+  ): Promise<BlueprintChangeProposal[]> {
+    return this.repository.listProposals(projectId, status);
+  }
+
+  /**
+   * Apply a proposal and version the result, in one transaction.
+   *
+   * The updated blueprint, the version recording it and the proposal's decision
+   * commit together. Applying the change without recording the version would
+   * leave a design nothing could trace; recording a version for a change that
+   * did not commit would claim a design that never existed.
+   */
+  async acceptBlueprintProposal(
+    proposalId: string,
+    decidedBy: string,
+  ): Promise<{ blueprint: GameBlueprint; version: BlueprintVersion }> {
+    const proposal = this.repository.getProposal(proposalId);
+    if (!proposal) throw new BlueprintProposalError("Proposal not found");
+    if (proposal.status !== "pending") {
+      throw new BlueprintProposalError(
+        `Proposal ${proposalId} is already ${proposal.status}`,
+      );
+    }
+
+    const blueprint = await this.repository.getBlueprint(proposal.blueprint_id);
+    if (!blueprint) throw new BlueprintProposalError("Blueprint not found");
+
+    const updated: GameBlueprint = {
+      ...blueprint,
+      ...this.editableChanges(proposal.changes),
+      id: blueprint.id,
+      project_id: blueprint.project_id,
+      user_id: blueprint.user_id,
+      created_at: blueprint.created_at,
+      updated_at: new Date(),
+      version: blueprint.version + 1,
+    };
+
+    const { version, mutations } = await this.repository.prepareVersion(
+      blueprint.id,
+      decidedBy,
+      `Accepted proposal ${proposal.id}`,
+      updated,
+    );
+
+    await this.repository.commitProposalAcceptance(updated, mutations, {
+      ...proposal,
+      status: "accepted",
+      decided_at: new Date(),
+      decided_by: decidedBy,
+      applied_version_id: version.id,
+    });
+
+    this.cache.set(updated.project_id, updated);
+    return { blueprint: updated, version };
+  }
+
+  async rejectBlueprintProposal(
+    proposalId: string,
+    decidedBy: string,
+  ): Promise<BlueprintChangeProposal> {
+    const proposal = this.repository.getProposal(proposalId);
+    if (!proposal) throw new BlueprintProposalError("Proposal not found");
+    if (proposal.status !== "pending") {
+      throw new BlueprintProposalError(
+        `Proposal ${proposalId} is already ${proposal.status}`,
+      );
+    }
+
+    const rejected: BlueprintChangeProposal = {
+      ...proposal,
+      status: "rejected",
+      decided_at: new Date(),
+      decided_by: decidedBy,
+    };
+    return this.repository.saveProposal(rejected);
+  }
+
+  /**
+   * Keep a proposal to design fields.
+   *
+   * Identity, ownership and lifecycle bookkeeping are not design, and a
+   * proposal that could rewrite them would be a way to move a blueprint between
+   * projects through the review path.
+   */
+  private editableChanges(
+    changes: Partial<GameBlueprint>,
+  ): Partial<GameBlueprint> {
+    const forbidden = new Set([
+      "id",
+      "project_id",
+      "user_id",
+      "created_at",
+      "updated_at",
+      "version",
+      "status",
+    ]);
+    return Object.fromEntries(
+      Object.entries(changes).filter(([field]) => !forbidden.has(field)),
+    ) as Partial<GameBlueprint>;
   }
 
   /**

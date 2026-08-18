@@ -1370,6 +1370,19 @@
     {
       "transport": "rest",
       "source": "server/src/routes/game-generation.ts",
+      "operation": "GET /:projectId/blueprint/proposals",
+      "classification": "project-owner",
+      "principal": "user-session",
+      "capability": "project.blueprint.proposals.read",
+      "resourceScope": "path-project",
+      "positiveEvidence": "server/src/__tests__/definechat1.proposal-routes.test.ts",
+      "negativeEvidence": "server/src/__tests__/definechat1.proposal-routes.test.ts",
+      "resourceBinding": "path-scoped",
+      "crossTenantEvidence": "none-recorded"
+    },
+    {
+      "transport": "rest",
+      "source": "server/src/routes/game-generation.ts",
       "operation": "GET /:projectId/export",
       "classification": "project-owner",
       "principal": "user-session",
@@ -1469,6 +1482,45 @@
       "positiveEvidence": "server/src/__tests__/security2gE.game-generation-final-scope.test.ts",
       "negativeEvidence": "server/src/__tests__/security2gE.game-generation-final-scope.test.ts",
       "resourceBinding": "not-resource-scoped",
+      "crossTenantEvidence": "none-recorded"
+    },
+    {
+      "transport": "rest",
+      "source": "server/src/routes/game-generation.ts",
+      "operation": "POST /:projectId/blueprint/proposals",
+      "classification": "project-owner",
+      "principal": "user-session",
+      "capability": "project.blueprint.proposals.create",
+      "resourceScope": "path-project",
+      "positiveEvidence": "server/src/__tests__/definechat1.proposal-routes.test.ts",
+      "negativeEvidence": "server/src/__tests__/definechat1.proposal-routes.test.ts",
+      "resourceBinding": "path-scoped",
+      "crossTenantEvidence": "none-recorded"
+    },
+    {
+      "transport": "rest",
+      "source": "server/src/routes/game-generation.ts",
+      "operation": "POST /:projectId/blueprint/proposals/:proposalId/accept",
+      "classification": "project-owner",
+      "principal": "user-session",
+      "capability": "project.blueprint.proposals.accept",
+      "resourceScope": "path-project",
+      "positiveEvidence": "server/src/__tests__/definechat1.proposal-routes.test.ts",
+      "negativeEvidence": "server/src/__tests__/definechat1.proposal-routes.test.ts",
+      "resourceBinding": "path-scoped",
+      "crossTenantEvidence": "none-recorded"
+    },
+    {
+      "transport": "rest",
+      "source": "server/src/routes/game-generation.ts",
+      "operation": "POST /:projectId/blueprint/proposals/:proposalId/reject",
+      "classification": "project-owner",
+      "principal": "user-session",
+      "capability": "project.blueprint.proposals.reject",
+      "resourceScope": "path-project",
+      "positiveEvidence": "server/src/__tests__/definechat1.proposal-routes.test.ts",
+      "negativeEvidence": "server/src/__tests__/definechat1.proposal-routes.test.ts",
+      "resourceBinding": "path-scoped",
       "crossTenantEvidence": "none-recorded"
     },
     {

@@ -212,6 +212,33 @@ export interface BlueprintVersion {
   is_active: boolean;
 }
 
+/**
+ * CHAT-BLUEPRINT-DISCONNECT-001. A proposed change to a blueprint's design.
+ *
+ * The Define conversation persisted messages and nothing else, so an assistant
+ * could state that it had changed the design while the next generation still
+ * consumed the old blueprint. A proposal makes the claim into a thing: it is
+ * visible, it names exactly which fields would change, and until someone
+ * accepts it, it has no effect on any generation.
+ */
+export interface BlueprintChangeProposal {
+  id: string;
+  project_id: string;
+  blueprint_id: string;
+  /** Who or what proposed it — a user id, or an assistant identifier. */
+  proposed_by: string;
+  created_at: Date;
+  /** Only the fields this proposal would change. */
+  changes: Partial<GameBlueprint>;
+  /** Why, in the proposer's words. Shown alongside the diff. */
+  rationale?: string;
+  status: "pending" | "accepted" | "rejected";
+  decided_at?: Date;
+  decided_by?: string;
+  /** The version acceptance created, so the effect is traceable. */
+  applied_version_id?: string;
+}
+
 export interface GenerationExecution {
   id: string;
   blueprint_id: string;

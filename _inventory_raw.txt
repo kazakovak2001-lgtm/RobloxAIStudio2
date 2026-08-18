@@ -563,6 +563,8 @@ server/src/__tests__/bugConditionExploration.test.ts
 server/src/__tests__/core1b.persistence.test.ts
 server/src/__tests__/core1b.postgres.integration.test.ts
 server/src/__tests__/cutover1c.origin-policy.test.ts
+server/src/__tests__/definechat1.blueprint-proposals.test.ts
+server/src/__tests__/definechat1.proposal-routes.test.ts
 server/src/__tests__/e2eGeneration.test.ts
 server/src/__tests__/generation-provenance.test.ts
 server/src/__tests__/genrecovery1.restart-reconciliation.test.ts

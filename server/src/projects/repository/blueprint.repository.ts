@@ -7,6 +7,7 @@ import { getConfiguredStorageProvider } from "../../platform/storage/StorageFact
 import type {
   GameBlueprint,
   BlueprintVersion,
+  BlueprintChangeProposal,
   GenerationExecution,
   CreateBlueprintInput,
   UpdateBlueprintInput,
@@ -48,6 +49,7 @@ export interface IBlueprintRepository {
     blueprintId: string,
     userId: string,
     description?: string,
+    snapshotOverride?: GameBlueprint,
   ): Promise<{ version: BlueprintVersion; mutations: DurableMutation[] }>;
   getVersion(
     blueprintId: string,
@@ -58,6 +60,24 @@ export interface IBlueprintRepository {
     blueprintId: string,
     versionNumber: number,
   ): Promise<GameBlueprint | null>;
+  /**
+   * CHAT-BLUEPRINT-DISCONNECT-001. Proposal storage is durable blueprint
+   * state, and accepting one has to write the blueprint, its version and the
+   * decision together, so it lives beside the version machinery it needs.
+   */
+  saveProposal(
+    proposal: BlueprintChangeProposal,
+  ): Promise<BlueprintChangeProposal>;
+  getProposal(proposalId: string): BlueprintChangeProposal | null;
+  listProposals(
+    projectId: string,
+    status?: BlueprintChangeProposal["status"],
+  ): BlueprintChangeProposal[];
+  commitProposalAcceptance(
+    blueprint: GameBlueprint,
+    versionMutations: DurableMutation[],
+    proposal: BlueprintChangeProposal,
+  ): Promise<void>;
   recordExecution(execution: GenerationExecution): Promise<GenerationExecution>;
   getExecution(id: string): Promise<GenerationExecution | null>;
   listExecutions(blueprintId: string): Promise<GenerationExecution[]>;
