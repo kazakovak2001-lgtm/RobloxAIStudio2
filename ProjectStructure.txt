@@ -678,6 +678,7 @@
 │   │   │   ├── productLayer.test.ts
 │   │   │   ├── repair-delivery.test.ts
 │   │   │   ├── saasFoundation.test.ts
+│   │   │   ├── secauthz1.cross-tenant-harness.test.ts
 │   │   │   ├── secgenerationblueprint1.generate-route.test.ts
 │   │   │   ├── secgenerationblueprint1.project-binding.test.ts
 │   │   │   ├── secreview1.advisory-delivery.test.ts
