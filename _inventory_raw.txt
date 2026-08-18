@@ -556,6 +556,14 @@ server/src/__tests__/core1b.persistence.test.ts
 server/src/__tests__/core1b.postgres.integration.test.ts
 server/src/__tests__/cutover1c.origin-policy.test.ts
 server/src/__tests__/e2eGeneration.test.ts
+server/src/__tests__/firstplayable1.clientHudContract.test.ts
+server/src/__tests__/firstplayable1.constrainedRepairSpatial.test.ts
+server/src/__tests__/firstplayable1.executionSide.test.ts
+server/src/__tests__/firstplayable1.luaOutputSchema.test.ts
+server/src/__tests__/firstplayable1.luaTokenBudget.test.ts
+server/src/__tests__/firstplayable1.spatialDesign.test.ts
+server/src/__tests__/firstplayable1.spatialLuaContract.test.ts
+server/src/__tests__/firstplayable1.spatialWiring.test.ts
 server/src/__tests__/generation-provenance.test.ts
 server/src/__tests__/harden2a.auth-contract.test.ts
 server/src/__tests__/identityAccess.test.ts
@@ -1111,6 +1119,8 @@ server/src/projects/services/project.service.ts
 server/src/projects/types/blueprint.ts
 server/src/projects/validation/project.validation.ts
 server/src/providers/__tests__/groq.test.ts
+server/src/providers/__tests__/ollamaStructuredOutput.test.ts
+server/src/providers/__tests__/ollamaTimeout.test.ts
 server/src/providers/__tests__/providerFactory.test.ts
 server/src/providers/__tests__/providers.test.ts
 server/src/providers/ai/BaseProvider.ts
@@ -1272,6 +1282,7 @@ server/src/validation/gameDna.ts
 server/src/validation/generationValidation.ts
 server/src/validation/luaSecurityReview.ts
 server/src/validation/noveltyVerdict.ts
+server/src/validation/spatialDesign.ts
 server/src/validation/worldCrossValidation.ts
 server/src/validation/worldModel.ts
 server/src/validation/worldSceneBuilder.ts
