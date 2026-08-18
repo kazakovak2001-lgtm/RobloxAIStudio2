@@ -47,6 +47,57 @@ interface StudioSyncResult extends StudioConnectionInfo {
 }
 
 /**
+ * The blueprint fields a project owns, and whether the user actually stated
+ * each one.
+ *
+ * BLUEPRINT-STALE-001. Shared by blueprint creation and by the reconciliation
+ * at generation start, so there is one definition of what the project states
+ * rather than two that can drift.
+ */
+export function projectStatedIntent(project: SaaSProject): {
+  stated: Partial<CreateBlueprintInput>;
+  assumedFields: string[];
+} {
+  const stated: Partial<CreateBlueprintInput> = {};
+  const assumedFields: string[] = [];
+
+  const gameType = project.gameType?.trim();
+  if (gameType) stated.game_type = gameType;
+  else assumedFields.push("game_type");
+
+  if (isBlueprintDifficulty(project.difficulty)) {
+    stated.difficulty = project.difficulty;
+  } else {
+    assumedFields.push("difficulty");
+  }
+
+  if (
+    project.players === "solo" ||
+    project.players === "large-group" ||
+    project.players === "mmo"
+  ) {
+    stated.estimated_players = project.players;
+  } else {
+    assumedFields.push("estimated_players");
+  }
+
+  if (project.genre) stated.genre = [project.genre];
+  else assumedFields.push("genre");
+
+  const description = (project.description ?? "").trim();
+  if (description) stated.description = description;
+  else assumedFields.push("description");
+
+  const targetAudience = project.targetAudience?.trim();
+  if (targetAudience) stated.target_audience = targetAudience;
+  else assumedFields.push("target_audience");
+
+  if (project.name) stated.name = project.name;
+
+  return { stated, assumedFields };
+}
+
+/**
  * Preserve user-authored project intent when creating the first blueprint.
  *
  * INTENT-DEFAULT-CONTAMINATION-001. This function has to fill gaps, because the
@@ -298,6 +349,34 @@ export function createGameGenerationRouter(
           projectId,
           buildProjectBlueprintInput(project),
         );
+      } else {
+        // BLUEPRINT-STALE-001. A blueprint was only ever built from the project
+        // once. Editing the brief afterwards changed the project and left the
+        // blueprint alone, so "create, generate, rewrite the brief, generate
+        // again" silently regenerated the original design and the user saw no
+        // reason why.
+        //
+        // Only fields the user actually stated are carried over. A value the
+        // system assumed must not overwrite whatever the blueprint holds, since
+        // that would let a default win against a deliberate refinement — the
+        // same confusion INTENT-DEFAULT-CONTAMINATION-001 is about, pointed the
+        // other way.
+        const project = projectRepository.get(projectId);
+        if (project) {
+          const { stated, assumedFields } = projectStatedIntent(project);
+          const drifted = Object.entries(stated).filter(([field, value]) => {
+            const current = (
+              existingBlueprint as unknown as Record<string, unknown>
+            )[field];
+            return JSON.stringify(current) !== JSON.stringify(value);
+          });
+          if (drifted.length > 0) {
+            await gameService.updateBlueprint(existingBlueprint.id, {
+              ...Object.fromEntries(drifted),
+              assumed_fields: assumedFields,
+            });
+          }
+        }
       }
 
       // AUDIT-START-ATOMICITY-001. The execution and its start-history entry

@@ -558,6 +558,7 @@ server/src/__tests__/autonomousPipelineExploration.test.ts
 server/src/__tests__/autonomousPipelineIntegration.test.ts
 server/src/__tests__/autonomousPipelinePreservation.test.ts
 server/src/__tests__/blueprint1.immutable-snapshot.test.ts
+server/src/__tests__/blueprint2.intent-sync.test.ts
 server/src/__tests__/bugConditionExploration.test.ts
 server/src/__tests__/core1b.persistence.test.ts
 server/src/__tests__/core1b.postgres.integration.test.ts
