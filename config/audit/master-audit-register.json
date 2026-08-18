@@ -1283,6 +1283,24 @@
         "server/src/__tests__/mar002.loader-provenance.test.ts"
       ],
       "notes": "The materializers were given a project and delivery, but the two instance kinds the loader writes itself, scripts and the metadata StringValue, still decided ownership from the managed mark alone. The boundary therefore held for a generated screen and not for the script beside it, and the weaker half decides the boundary. Both now stamp the same three attributes and gate replacement on a matching project, with an unattributed managed instance treated as foreign exactly as elsewhere. Reproduced against the baseline: eight assertions failed before the change, including a script and a metadata value belonging to another project being silently overwritten. Reverse-proved separately for stamping, for the ownership check and for the missing-provenance guard; each revert fails a distinct set. A stub gap surfaced during the baseline rather than being papered over: HttpService had no JSONEncode, and the stub raised instead of returning nil, which is why it was noticed."
+    },
+    {
+      "id": "SEC-STUDIO-PROVENANCE-UNWIRED-001",
+      "title": "Provenance was enforced but never set, and would have been plugin-global if it had been",
+      "severity": "P1",
+      "status": "CONFIRMED",
+      "disposition": "FIXED-UNMERGED",
+      "area": "security",
+      "remediationGroup": "authorization-object-binding",
+      "mar": "MAR-002",
+      "owningBranch": "fix/mar-002-script-ownership",
+      "owningSha": "pending",
+      "evidence": [
+        "studio-plugin/src/services/SyncManager.lua",
+        "studio-plugin/src/utils/ArtifactLoader.lua",
+        "server/src/__tests__/mar002.sync-provenance.test.ts"
+      ],
+      "notes": "setProvenance had no caller anywhere in the plugin, so in a real session every import would have been refused by the rule meant to protect it: correct and unreachable, which is worse than either alone. It was also the wrong shape. One ArtifactLoader serves the whole plugin session, so identity stored on it outlives the import that set it; a later call that forgot would write under whichever project went last, and an import interleaved across the HTTP yields inside a poll could write under the other. Rather than clearing the field, the field was removed: provenance is passed per loadArtifact call and is import-scoped by construction, so there is no stale state to clear and no window to race. SyncManager derives it from the queued EXPORT_PROJECT payload, which the backend authorized and which is validated for a non-empty project and execution before anything is written, rather than from the connector's own project. Reverse-proved twice: dropping the argument fails three assertions, and sourcing the project from the connector instead of the payload fails two."
     }
   ]
 }

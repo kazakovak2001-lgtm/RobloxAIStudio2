@@ -27,31 +27,24 @@ function ArtifactLoader.new(errorReporter)
     local self = setmetatable({}, ArtifactLoader)
     self._errors = errorReporter
     self._loaded = {}
-    self._provenance = nil
     return self
-end
-
---[[
-    MAR-002. The project and delivery this loader is materializing for.
-
-    Every managed instance is stamped with these, and replace and sweep will
-    only touch instances stamped with the same project. Set by the sync manager
-    before artifacts are loaded; without it the materializers refuse, which is
-    the fail-closed direction.
-]]
-function ArtifactLoader:setProvenance(projectId, deliveryId)
-    self._provenance = { projectId = projectId, deliveryId = deliveryId }
 end
 
 --[[
     The provenance to write and to check against, or an error.
 
+    Passed per call rather than held on the loader. One loader instance serves
+    the whole plugin session, so provenance stored on it would outlive the
+    import that set it: a later call that forgot to set it would silently write
+    under whichever project happened to go last, and an import interleaved
+    across the HTTP yields inside a poll could write under the other one.
+    Import-scoped by construction is cheaper than remembering to clear it.
+
     Fail closed. Writing an unattributed instance would create exactly the
     legacy shape the ownership rule treats as foreign, so the loader would be
     manufacturing work that nothing could ever claim.
 ]]
-function ArtifactLoader:_requireProvenance()
-    local provenance = self._provenance
+function ArtifactLoader:_requireProvenance(provenance)
     if type(provenance) ~= "table"
         or type(provenance.projectId) ~= "string"
         or provenance.projectId == ""
@@ -82,29 +75,30 @@ local function stampProvenance(instance, provenance)
     instance:SetAttribute(DELIVERY_ATTRIBUTE, provenance.deliveryId)
 end
 
-function ArtifactLoader:load(artifact)
-    return self:loadArtifact(artifact)
+function ArtifactLoader:load(artifact, provenance)
+    return self:loadArtifact(artifact, provenance)
 end
 
-function ArtifactLoader:loadArtifact(artifact)
+function ArtifactLoader:loadArtifact(artifact, provenance)
     local success, result = pcall(function()
+        local scoped = self:_requireProvenance(provenance)
         if type(artifact) ~= "table" or type(artifact.id) ~= "string" then
             error("Artifact must include a string id")
         end
 
         if artifact.type == "lua" then
-            return self:_loadLuaArtifact(artifact)
+            return self:_loadLuaArtifact(artifact, scoped)
         end
         if artifact.type == "ui-layout" and self:_claimsUITreeSchema(artifact.content) then
-            return self:_loadUITreeArtifact(artifact)
+            return self:_loadUITreeArtifact(artifact, scoped)
         end
         -- WORLD-1B. Routed on the scene rather than the artifact type, so an
         -- older backend's content without a scene still takes the metadata
         -- path below and nothing claims a world was materialized.
         if self:_carriesWorldScene(artifact.content) then
-            return self:_loadWorldSceneArtifact(artifact)
+            return self:_loadWorldSceneArtifact(artifact, scoped)
         end
-        return self:_loadMetadataArtifact(artifact)
+        return self:_loadMetadataArtifact(artifact, scoped)
     end)
 
     if not success then
@@ -124,7 +118,7 @@ function ArtifactLoader:loadArtifact(artifact)
     return result
 end
 
-function ArtifactLoader:_loadLuaArtifact(artifact)
+function ArtifactLoader:_loadLuaArtifact(artifact, provenance)
     local content = artifact.content
     if type(content) ~= "table" or type(content.scripts) ~= "table" or #content.scripts == 0 then
         error("Lua artifact content must contain a non-empty scripts array")
@@ -142,7 +136,11 @@ function ArtifactLoader:_loadLuaArtifact(artifact)
             error("Lua script definition " .. tostring(index) .. " requires string content")
         end
 
-        local instance = self:_upsertScript(scriptDefinition.path, scriptDefinition.content)
+        local instance = self:_upsertScript(
+            scriptDefinition.path,
+            scriptDefinition.content,
+            provenance
+        )
         table.insert(instancePaths, instance:GetFullName())
     end
 
@@ -166,13 +164,13 @@ function ArtifactLoader:_claimsUITreeSchema(content)
     return type(content) == "table" and content.schemaVersion ~= nil
 end
 
-function ArtifactLoader:_loadUITreeArtifact(artifact)
+function ArtifactLoader:_loadUITreeArtifact(artifact, provenance)
     local stageFolder = self:_ensureStageFolder(artifact.stage or "UI_GENERATION")
 
     local delivered, err = UITreeMaterializer.materialize(
         artifact.content,
         stageFolder,
-        self._provenance
+        provenance
     )
     if not delivered then
         -- Level 0: `err` is already a complete operator message, and the outer
@@ -211,13 +209,13 @@ function ArtifactLoader:_carriesWorldScene(content)
         and content.scene.sceneVersion == WorldSceneMaterializer.SCENE_VERSION
 end
 
-function ArtifactLoader:_loadWorldSceneArtifact(artifact)
+function ArtifactLoader:_loadWorldSceneArtifact(artifact, provenance)
     local stageFolder = self:_ensureStageFolder(artifact.stage or "WORLD_MODEL")
 
     local delivered, err = WorldSceneMaterializer.materialize(
         artifact.content.scene,
         stageFolder,
-        self._provenance
+        provenance
     )
     if not delivered then
         -- Level 0: `err` is already a complete operator message and the outer
@@ -335,8 +333,8 @@ function ArtifactLoader:_removeLegacyIdNamedValues(stageFolder)
     end
 end
 
-function ArtifactLoader:_loadMetadataArtifact(artifact)
-    local provenance = self:_requireProvenance()
+function ArtifactLoader:_loadMetadataArtifact(artifact, provenance)
+    provenance = self:_requireProvenance(provenance)
     local stageFolder = self:_ensureStageFolder(artifact.stage or "OTHER")
     local stageName = tostring(artifact.stage or "OTHER")
     local valueName = self:_metadataInstanceName(artifact)
@@ -380,8 +378,8 @@ function ArtifactLoader:_loadMetadataArtifact(artifact)
     }
 end
 
-function ArtifactLoader:_upsertScript(path, source)
-    local provenance = self:_requireProvenance()
+function ArtifactLoader:_upsertScript(path, source, provenance)
+    provenance = self:_requireProvenance(provenance)
     local segments = self:_splitPath(path)
     if #segments == 0 then error("Script path is empty") end
 

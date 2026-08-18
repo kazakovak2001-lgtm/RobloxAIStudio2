@@ -42,8 +42,13 @@ function withLoader(body: string) {
   return plugin!.run(`
     local ArtifactLoader = require("ArtifactLoader")
     local loader = ArtifactLoader.new()
-    loader:setProvenance("${PROJECT_A}", "delivery-1")
     local services = _G.__stub.services
+    -- Import-scoped: provenance travels with each call rather than sitting on
+    -- the loader, which one plugin session shares across every project.
+    local function prov(projectId, deliveryId)
+      return { projectId = projectId, deliveryId = deliveryId }
+    end
+    local ours = prov("${PROJECT_A}", "delivery-1")
     ${body}
   `);
 }
@@ -51,7 +56,7 @@ function withLoader(body: string) {
 describe("MAR-002 loader stamps provenance on what it creates", () => {
   it("stamps project and delivery on a script", async () => {
     const result = await withLoader(`
-      loader:_upsertScript("ServerScriptService/Main.server.lua", "-- generated")
+      loader:_upsertScript("ServerScriptService/Main.server.lua", "-- generated", ours)
       local script = services.ServerScriptService:FindFirstChild("Main")
       return {
         managed = script:GetAttribute("AIStudioManaged"),
@@ -72,7 +77,7 @@ describe("MAR-002 loader stamps provenance on what it creates", () => {
       loader:_loadMetadataArtifact({
         id = "artifact-1", name = "Report", type = "report",
         stage = "OTHER", content = { ok = true },
-      })
+      }, ours)
       local stage = services.ReplicatedStorage:FindFirstChild("AIStudioArtifacts")
         :FindFirstChild("OTHER")
       local value = stage:GetChildren()[1]
@@ -94,9 +99,8 @@ describe("MAR-002 loader stamps provenance on what it creates", () => {
 describe("MAR-002 scripts are scoped to their project", () => {
   it("lets a project update its own script", async () => {
     const result = await withLoader(`
-      loader:_upsertScript("ServerScriptService/Main.server.lua", "-- first")
-      loader:setProvenance("${PROJECT_A}", "delivery-2")
-      loader:_upsertScript("ServerScriptService/Main.server.lua", "-- second")
+      loader:_upsertScript("ServerScriptService/Main.server.lua", "-- first", ours)
+      loader:_upsertScript("ServerScriptService/Main.server.lua", "-- second", prov("${PROJECT_A}", "delivery-2"))
       local script = services.ServerScriptService:FindFirstChild("Main")
       return { source = script.Source, delivery = script:GetAttribute("AIStudioDelivery") }
     `);
@@ -112,13 +116,11 @@ describe("MAR-002 scripts are scoped to their project", () => {
 
   it("refuses a script belonging to another project", async () => {
     const result = await withLoader(`
-      loader:setProvenance("${PROJECT_B}", "delivery-b")
-      loader:_upsertScript("ServerScriptService/Main.server.lua", "-- theirs")
+      loader:_upsertScript("ServerScriptService/Main.server.lua", "-- theirs", prov("${PROJECT_B}", "delivery-b"))
       local theirs = services.ServerScriptService:FindFirstChild("Main")
 
-      loader:setProvenance("${PROJECT_A}", "delivery-a")
       local ok, err = pcall(function()
-        loader:_upsertScript("ServerScriptService/Main.server.lua", "-- ours")
+        loader:_upsertScript("ServerScriptService/Main.server.lua", "-- ours", ours)
       end)
 
       return {
@@ -145,7 +147,7 @@ describe("MAR-002 scripts are scoped to their project", () => {
       legacy.Parent = services.ServerScriptService
 
       local ok, err = pcall(function()
-        loader:_upsertScript("ServerScriptService/Main.server.lua", "-- ours")
+        loader:_upsertScript("ServerScriptService/Main.server.lua", "-- ours", ours)
       end)
 
       return {
@@ -170,12 +172,11 @@ describe("MAR-002 metadata values are scoped to their project", () => {
       loader:_loadMetadataArtifact({
         id = "artifact-1", name = "Report", type = "report",
         stage = "OTHER", content = { round = 1 },
-      })
-      loader:setProvenance("${PROJECT_A}", "delivery-2")
+      }, ours)
       loader:_loadMetadataArtifact({
         id = "artifact-1", name = "Report", type = "report",
         stage = "OTHER", content = { round = 2 },
-      })
+      }, prov("${PROJECT_A}", "delivery-2"))
       local stage = services.ReplicatedStorage:FindFirstChild("AIStudioArtifacts")
         :FindFirstChild("OTHER")
       local value = stage:GetChildren()[1]
@@ -195,21 +196,19 @@ describe("MAR-002 metadata values are scoped to their project", () => {
 
   it("refuses a metadata value belonging to another project", async () => {
     const result = await withLoader(`
-      loader:setProvenance("${PROJECT_B}", "delivery-b")
       loader:_loadMetadataArtifact({
         id = "artifact-1", name = "Report", type = "report",
         stage = "OTHER", content = { owner = "b" },
-      })
+      }, prov("${PROJECT_B}", "delivery-b"))
       local stage = services.ReplicatedStorage:FindFirstChild("AIStudioArtifacts")
         :FindFirstChild("OTHER")
       local theirs = stage:GetChildren()[1]
 
-      loader:setProvenance("${PROJECT_A}", "delivery-a")
       local ok, err = pcall(function()
         loader:_loadMetadataArtifact({
           id = "artifact-1", name = "Report", type = "report",
           stage = "OTHER", content = { owner = "a" },
-        })
+        }, ours)
       end)
 
       return {
@@ -236,7 +235,7 @@ describe("MAR-002 the loader refuses without provenance", () => {
       local services = _G.__stub.services
 
       local scriptOk, scriptErr = pcall(function()
-        loader:_upsertScript("ServerScriptService/Main.server.lua", "-- generated")
+        loader:_upsertScript("ServerScriptService/Main.server.lua", "-- generated", ours)
       end)
       local metaOk, metaErr = pcall(function()
         loader:_loadMetadataArtifact({

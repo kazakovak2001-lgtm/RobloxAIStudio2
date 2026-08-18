@@ -365,7 +365,11 @@ describe("WORLD-1B delivery path is actually wired", () => {
     );
 
     expect(dispatch).toContain("self:_carriesWorldScene(artifact.content)");
-    expect(dispatch).toContain("self:_loadWorldSceneArtifact(artifact)");
+    // MAR-002 made provenance import-scoped, so the dispatch carries the
+    // identity of the export it belongs to. The routing itself is unchanged.
+    expect(dispatch).toContain(
+      "self:_loadWorldSceneArtifact(artifact, scoped)",
+    );
     // Before the metadata fallback, or a scene would become a StringValue.
     expect(dispatch.indexOf("_loadWorldSceneArtifact")).toBeLessThan(
       dispatch.indexOf("_loadMetadataArtifact"),

@@ -22,6 +22,8 @@ const MODULES = [
   "utils/ArtifactLoader",
   "utils/UITreeMaterializer",
   "utils/WorldSceneMaterializer",
+  "services/SyncManager",
+  "core/Config",
 ] as const;
 
 export interface PluginHarness {
@@ -67,28 +69,36 @@ _G.__stub = stub
 local loaded = {}
 local pending = {}
 
--- \`script.Parent.X\` resolves to the module name, and require looks it up.
-local function makeScriptHandle(name)
+-- Plugin modules address each other by walking \`script.Parent\` chains of
+-- varying depth. The chain itself is not under test, so each step returns a
+-- proxy remembering the last segment, and require resolves by that name.
+local function makeHandle(name)
   return setmetatable({}, {
-    __index = function(_, key)
-      if key == "Parent" then
-        return setmetatable({}, {
-          __index = function(_, moduleName) return moduleName end,
-        })
-      end
-      return nil
-    end,
+    __index = function(_, key) return makeHandle(key) end,
+    __call = function() return name end,
+    __tostring = function() return name end,
+    __name = name,
   })
 end
 
+local function handleName(target)
+  if type(target) == "string" then return target end
+  local meta = getmetatable(target)
+  return meta and meta.__name or nil
+end
+
+local function makeScriptHandle()
+  return makeHandle("script")
+end
+
 function require(target)
-  local name = target
+  local name = handleName(target)
   if loaded[name] ~= nil then return loaded[name] end
   local chunk = pending[name]
   if not chunk then
     error("harness: no such plugin module: " .. tostring(name))
   end
-  script = makeScriptHandle(name)
+  script = makeScriptHandle()
   loaded[name] = chunk()
   return loaded[name]
 end

@@ -48,10 +48,10 @@ function withLoader(body: string) {
     local loader = ArtifactLoader.new({
       report = function(_, message) table.insert(reported, message) end,
     })
-    -- MAR-002 made provenance mandatory. These cases are about placement and
-    -- creator ownership, so they carry one identity throughout; the
-    -- project-scoping rules have their own file.
-    loader:setProvenance("project-a", "delivery-1")
+    -- MAR-002 made provenance mandatory and import-scoped. These cases are
+    -- about placement and creator ownership, so they pass one identity
+    -- throughout; the project-scoping rules have their own file.
+    local prov = { projectId = "project-a", deliveryId = "delivery-1" }
     local services = _G.__stub.services
     ${body}
   `);
@@ -67,7 +67,7 @@ describe("MAR-002 creator-owned scripts survive generation", () => {
       creator.Parent = services.ServerScriptService
 
       pcall(function()
-        loader:_upsertScript("ServerScriptService/Main.server.lua", "-- generated")
+        loader:_upsertScript("ServerScriptService/Main.server.lua", "-- generated", prov)
       end)
 
       return {
@@ -91,7 +91,7 @@ describe("MAR-002 creator-owned scripts survive generation", () => {
       creator.Parent = services.ServerScriptService
 
       pcall(function()
-        loader:_upsertScript("ServerScriptService/Main.server.lua", "-- generated")
+        loader:_upsertScript("ServerScriptService/Main.server.lua", "-- generated", prov)
       end)
 
       return creator.Source
@@ -102,7 +102,7 @@ describe("MAR-002 creator-owned scripts survive generation", () => {
 
   it("marks the scripts it creates as its own", async () => {
     const result = await withLoader(`
-      loader:_upsertScript("ServerScriptService/Generated.server.lua", "-- generated")
+      loader:_upsertScript("ServerScriptService/Generated.server.lua", "-- generated", prov)
       local created = services.ServerScriptService:FindFirstChild("Generated")
       return created and created:GetAttribute("AIStudioManaged") or false
     `);
@@ -114,8 +114,8 @@ describe("MAR-002 creator-owned scripts survive generation", () => {
 
   it("replaces its own script from a previous generation", async () => {
     const result = await withLoader(`
-      loader:_upsertScript("ServerScriptService/Generated.server.lua", "-- first")
-      loader:_upsertScript("ServerScriptService/Generated.server.lua", "-- second")
+      loader:_upsertScript("ServerScriptService/Generated.server.lua", "-- first", prov)
+      loader:_upsertScript("ServerScriptService/Generated.server.lua", "-- second", prov)
       local created = services.ServerScriptService:FindFirstChild("Generated")
       return created and created.Source or "MISSING"
     `);
@@ -130,7 +130,7 @@ describe("MAR-002 script placement is refused rather than guessed", () => {
   it("refuses an unrecognised root instead of redirecting to ReplicatedStorage", async () => {
     const result = await withLoader(`
       local ok, err = pcall(function()
-        loader:_upsertScript("NotAService/Main.server.lua", "-- generated")
+        loader:_upsertScript("NotAService/Main.server.lua", "-- generated", prov)
       end)
       local stray = services.ReplicatedStorage:FindFirstChild("NotAService")
       return { refused = not ok, leaked = stray ~= nil, message = tostring(err) }
@@ -142,7 +142,7 @@ describe("MAR-002 script placement is refused rather than guessed", () => {
   it("does not place a server script where every client can read it", async () => {
     const result = await withLoader(`
       local ok = pcall(function()
-        loader:_upsertScript("ReplicatedStorage/Secret.server.lua", "-- server only")
+        loader:_upsertScript("ReplicatedStorage/Secret.server.lua", "-- server only", prov)
       end)
       local placed = services.ReplicatedStorage:FindFirstChild("Secret")
       return { accepted = ok, placed = placed ~= nil }
@@ -163,7 +163,7 @@ describe("MAR-002 script placement is refused rather than guessed", () => {
       }
       for _, entry in ipairs(placements) do
         local ok, err = pcall(function()
-          loader:_upsertScript(entry[1], "-- generated")
+          loader:_upsertScript(entry[1], "-- generated", prov)
         end)
         if not ok then return "REFUSED " .. entry[1] .. ": " .. tostring(err) end
       end
