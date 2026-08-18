@@ -10,8 +10,8 @@ Findings are grouped by shared architectural root rather than by symptom. Severa
 
 | Disposition        | Findings |
 | ------------------ | -------- |
-| NOT-STARTED        | 28       |
-| FIXED-UNMERGED     | 14       |
+| NOT-STARTED        | 26       |
+| FIXED-UNMERGED     | 16       |
 | NO-ACTION-REQUIRED | 4        |
 | SCOPED-OUT         | 1        |
 
@@ -114,10 +114,10 @@ Sensitive content reaches places it should not, and evidence records an identity
 
 Generation runs against mutable, sometimes stale design input, and design changes agreed elsewhere never reach it.
 
-| Finding                                                                                  | Severity | Status    | Disposition |
-| ---------------------------------------------------------------------------------------- | -------- | --------- | ----------- |
-| **AUDIT-BLUEPRINT-STALE-001** — Editing a project does not update its existing blueprint | P1       | CONFIRMED | NOT-STARTED |
-| **CHAT-BLUEPRINT-DISCONNECT-001** — Design chat does not change the canonical blueprint  | P1       | CONFIRMED | NOT-STARTED |
+| Finding                                                                                  | Severity | Status    | Disposition                                                                    |
+| ---------------------------------------------------------------------------------------- | -------- | --------- | ------------------------------------------------------------------------------ |
+| **AUDIT-BLUEPRINT-STALE-001** — Editing a project does not update its existing blueprint | P1       | CONFIRMED | FIXED-UNMERGED (integration/wave-0 @ ed47c74ae92c5d98ddf6458cf1fe64637e822be9) |
+| **CHAT-BLUEPRINT-DISCONNECT-001** — Design chat does not change the canonical blueprint  | P1       | CONFIRMED | FIXED-UNMERGED (integration/wave-0 @ 31c81c013dce25619b5638614161902a6fcad86c) |
 
 ## 11. release-capability-truth — worst severity P1
 
