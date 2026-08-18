@@ -50,4 +50,28 @@ describe("SECURITY-2G-E direct project route guards", () => {
     expect(handler).toContain("execution.project_id !== req.params.projectId");
     expect(handler).toContain("res.status(404)");
   });
+
+  // SEC-GENERATION-BLUEPRINT-001. A static check, like its siblings above: it
+  // pins the ordering of the guard inside the handler source. The behavioural
+  // guarantee lives in secgenerationblueprint1.project-binding.test.ts, which
+  // exercises the service the route delegates to.
+  it("binds an explicit generation blueprint to the authorized project before scheduling", () => {
+    const handler = routeHandler("post", "/:projectId/generate");
+
+    const mismatchGuard = handler.indexOf("requested.project_id !== projectId");
+    const scheduling = handler.indexOf("startGeneration");
+
+    expect(mismatchGuard).toBeGreaterThanOrEqual(0);
+    expect(scheduling).toBeGreaterThan(mismatchGuard);
+    expect(handler).toContain("res.status(404)");
+  });
+
+  it("passes the authorized project to the service as the expected owner", () => {
+    const handler = routeHandler("post", "/:projectId/generate");
+    // The service refuses to record an execution for any other project, so the
+    // invariant is not protected by the route alone.
+    expect(handler).toMatch(
+      /startGeneration\(\s*blueprintId \|\| projectId,\s*userId,\s*projectId,?\s*\)/,
+    );
+  });
 });

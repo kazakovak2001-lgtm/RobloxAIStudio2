@@ -220,6 +220,25 @@ export function createGameGenerationRouter(
       if (!userId) return;
       const { blueprintId } = req.body;
 
+      // SEC-GENERATION-BLUEPRINT-001. `blueprintId` is caller-supplied and was
+      // previously resolved without proving it belongs to the project the
+      // caller was authorized for, so authorization of one project could start
+      // generation against another. An explicit id must resolve to a blueprint
+      // owned by this project, and it never falls back to a different
+      // blueprint: falling back would silently accept an unauthorized id.
+      // 404 rather than 403 so the response does not confirm that a blueprint
+      // exists in some other project, matching the execution-status endpoint.
+      if (blueprintId) {
+        const requested = await gameService.getBlueprint(blueprintId);
+        if (!requested || requested.project_id !== projectId) {
+          res.status(404).json({
+            success: false,
+            error: "Blueprint not found for this project",
+          });
+          return;
+        }
+      }
+
       // Auto-create a minimal blueprint if one doesn't exist yet.
       // This enables the workflow: Create Project → Generate without manual blueprint creation.
       const existingBlueprint =
@@ -241,7 +260,16 @@ export function createGameGenerationRouter(
 
       const result = await generationStartCoordinator.start(
         projectId,
-        () => gameService.startGeneration(blueprintId || projectId, userId),
+        // projectId is passed as the expected owner so the service refuses to
+        // record an execution for any other project, even if the identifier
+        // resolves elsewhere. The route check above and this are the same
+        // policy asserted at both boundaries, not two policies.
+        () =>
+          gameService.startGeneration(
+            blueprintId || projectId,
+            userId,
+            projectId,
+          ),
         async (execution) => {
           studioManager.activateProjectExecution(projectId, execution.id);
           await generationHistory.record({
