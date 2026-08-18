@@ -1162,6 +1162,58 @@
         "server/src/__tests__/mar001.autonomous-session-ownership.test.ts"
       ],
       "notes": "Two helpers, both concealing: one resolves the session and derives its project, the other takes a project directly, and each answers 'Session not found' for an absent session and for another tenant's alike. Four operations mutate a running session, so the tests assert the session never entered a state only pause, resume, cancel or recover can produce, rather than comparing a status captured before the calls — the orchestrator finishes the run on its own and that comparison raced it. Recorded as a verified control, not migrated: no production code was changed. Sensitivity proved by neutralising each helper in turn; the first attempt only neutralised one and left the read assertions passing, which is how the second helper was found."
+    },
+    {
+      "id": "SEC-STUDIO-SCRIPT-OVERWRITE-001",
+      "title": "The plugin destroyed and overwrote creator-authored scripts without checking ownership",
+      "severity": "P1",
+      "status": "CONFIRMED",
+      "disposition": "FIXED-UNMERGED",
+      "area": "security",
+      "remediationGroup": "authorization-object-binding",
+      "mar": "MAR-002",
+      "owningBranch": "fix/mar-002-script-ownership",
+      "owningSha": "pending",
+      "evidence": [
+        "studio-plugin/src/utils/ArtifactLoader.lua",
+        "server/src/__tests__/mar002.script-placement-ownership.test.ts"
+      ],
+      "notes": "ArtifactLoader:_upsertScript took whatever instance already carried the target name. On a class mismatch it destroyed it; otherwise it overwrote Source. Neither branch asked whether the instance was the plugin's own, and scripts the plugin created were never marked AIStudioManaged, so the ownership machinery the UI and world materializers rely on could not see them either. A creator's hand-written module sitting where generated output wanted to be was deleted without a word. Reproduced against the baseline by running the plugin's own Lua: the creator's ModuleScript came back destroyed and the creator's Source came back replaced. A collision with unmarked work is now refused, the plugin's own output stays freely replaceable, and created scripts are marked."
+    },
+    {
+      "id": "SEC-STUDIO-SCRIPT-PLACEMENT-001",
+      "title": "An unrecognised script root fell back to the container that replicates to every client",
+      "severity": "P1",
+      "status": "CONFIRMED",
+      "disposition": "FIXED-UNMERGED",
+      "area": "security",
+      "remediationGroup": "authorization-object-binding",
+      "mar": "MAR-002",
+      "owningBranch": "fix/mar-002-script-ownership",
+      "owningSha": "pending",
+      "evidence": [
+        "studio-plugin/src/utils/ArtifactLoader.lua",
+        "server/src/__tests__/mar002.script-placement-ownership.test.ts"
+      ],
+      "notes": "_resolveRoot returned ReplicatedStorage with the unrecognised segment demoted to a folder name, so a typo or a root this plugin version had not heard of landed silently in a replicated container. A server Script placed there does not run, but its source replicates to every client, so a placement mistake became a disclosure of server logic. Nothing checked class against container either, so ReplicatedStorage/Secret.server.lua was accepted outright. Both reproduced against the baseline. An unnameable destination is now refused, and a class may only occupy a container that can run it."
+    },
+    {
+      "id": "AUDIT-STUDIO-PLUGIN-UNTESTABLE-001",
+      "title": "The Studio plugin had no executable test path",
+      "severity": "P1",
+      "status": "CONFIRMED",
+      "disposition": "FIXED-UNMERGED",
+      "area": "assurance",
+      "remediationGroup": "assurance-not-performed",
+      "mar": "MAR-002",
+      "owningBranch": "fix/mar-002-script-ownership",
+      "owningSha": "pending",
+      "evidence": [
+        "server/src/__tests__/support/studioPluginHarness.ts",
+        "server/src/__tests__/support/robloxStub.lua",
+        "server/src/__tests__/mar002.script-placement-ownership.test.ts"
+      ],
+      "notes": "Every claim about the plugin was a string search over its source, which cannot show that a creator's script survived a generation or that a bad root was refused. That is the same weak evidence MAR-001 spent four slices replacing, and it would have made every MAR-002 fix unprovable. A Lua runtime was added as a dev dependency and a Roblox instance stub written for it, so the plugin's own modules run and their effects are observed. The stub models Parent reassignment, Destroy, attributes and IsA, and raises on any class or service it does not model, because a stub that quietly returns nil turns a real defect into a passing test."
     }
   ]
 }

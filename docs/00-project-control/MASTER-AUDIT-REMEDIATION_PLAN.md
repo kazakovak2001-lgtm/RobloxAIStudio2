@@ -2,7 +2,7 @@
 
 # Master audit remediation plan
 
-Generated from `config/audit/master-audit-register.json` (66 findings). Severity is the register's; ordering is by the worst severity in each group, except that re-verification comes first and verified controls come last.
+Generated from `config/audit/master-audit-register.json` (69 findings). Severity is the register's; ordering is by the worst severity in each group, except that re-verification comes first and verified controls come last.
 
 Findings are grouped by shared architectural root rather than by symptom. Several of these are the same defect seen from different places, and repairing them one at a time would mean repairing the root several times.
 
@@ -10,7 +10,7 @@ Findings are grouped by shared architectural root rather than by symptom. Severa
 
 | Disposition        | Findings |
 | ------------------ | -------- |
-| FIXED-UNMERGED     | 33       |
+| FIXED-UNMERGED     | 36       |
 | NOT-STARTED        | 26       |
 | NO-ACTION-REQUIRED | 6        |
 | SCOPED-OUT         | 1        |
@@ -22,6 +22,7 @@ Every finding names the deduplicated root cause it belongs to. A finding the tax
 | Root cause                                                                                         | Priority        | Findings | Fixed | Remaining |
 | -------------------------------------------------------------------------------------------------- | --------------- | -------- | ----- | --------- |
 | **MAR-001** — Cross-tenant resource authorization is not parent-bound everywhere                   | P0              | 23       | 15    | 8         |
+| **MAR-002** — Studio materializer has no universal creator-ownership safety boundary               | P0              | 3        | 3     | 0         |
 | **MAR-003** — No single clean canonical product acceptance run exists                              | P0-release-gate | 3        | 0     | 3         |
 | **MAR-004** — Generation has no durable project-scoped single-flight and idempotent start identity | P1              | 3        | 3     | 0         |
 | **MAR-005** — State transitions have no unified durable CAS/version authority                      | P1              | 3        | 3     | 0         |
@@ -38,7 +39,7 @@ Every finding names the deduplicated root cause it belongs to. A finding the tax
 | **MAR-033** — Fuzz and property testing are systematically missing                                 | P2              | 1        | 0     | 1         |
 | **MAR-036** — Dead and legacy code, and naming drift                                               | P3              | 1        | 0     | 1         |
 
-21 of 37 root causes have no finding recorded against them yet: MAR-002, MAR-006, MAR-007, MAR-008, MAR-009, MAR-011, MAR-015, MAR-017, MAR-019, MAR-021, MAR-022, MAR-025, MAR-026, MAR-027, MAR-028, MAR-029, MAR-030, MAR-031, MAR-034, MAR-035, MAR-037. The register under-covers the audit by that much.
+20 of 37 root causes have no finding recorded against them yet: MAR-006, MAR-007, MAR-008, MAR-009, MAR-011, MAR-015, MAR-017, MAR-019, MAR-021, MAR-022, MAR-025, MAR-026, MAR-027, MAR-028, MAR-029, MAR-030, MAR-031, MAR-034, MAR-035, MAR-037. The register under-covers the audit by that much.
 
 ### 7 findings the taxonomy does not cover
 
@@ -73,6 +74,8 @@ One defect shape: the identifier the caller was authorized for is not the thing 
 | **SEC-RESOURCE-AUTHORIZATION-HELPER-001** — Route-level authorization had no canonical mechanism, so each route decided separately what to authorize and what to disclose | P1       | CONFIRMED | FIXED-UNMERGED (fix/mar-001-resource-authorization-helper @ 81ad71e35ed11284f7a6292f0b56963969750fb5) |
 | **SEC-MATRIX-EVIDENCE-VOLATILE-001** — Regenerating the authorization matrix discarded every recorded cross-tenant verdict                                                | P1       | CONFIRMED | FIXED-UNMERGED (fix/mar-001-closure @ 437da697e1c8a026e23a9bbdfce9b0b4034859f0)                       |
 | **SEC-MAR001-REMAINING-GAPS-001** — MAR-001 has fifteen operations left where nothing canonical protects the resource                                                     | P1       | CONFIRMED | NOT-STARTED                                                                                           |
+| **SEC-STUDIO-SCRIPT-OVERWRITE-001** — The plugin destroyed and overwrote creator-authored scripts without checking ownership                                              | P1       | CONFIRMED | FIXED-UNMERGED (fix/mar-002-script-ownership @ pending)                                               |
+| **SEC-STUDIO-SCRIPT-PLACEMENT-001** — An unrecognised script root fell back to the container that replicates to every client                                              | P1       | CONFIRMED | FIXED-UNMERGED (fix/mar-002-script-ownership @ pending)                                               |
 | **AUDIT-BODY-SUPPLIED-BLUEPRINT-001** — Eight operations authorize against an identifier inside a caller-supplied body object                                             | P2       | CONFIRMED | NOT-STARTED                                                                                           |
 | **SEC-STUDIO-PROTOCOL-DISCLOSURE-001** — The command disclosure closed on the REST path was still reachable over the protocol transport                                   | P2       | CONFIRMED | FIXED-UNMERGED (fix/mar-001-studio-protocol-binding @ 74b987129b549eca3fdde294e3e3cf603af81c7d)       |
 | **SEC-STUDIO-STATUS-COUNT-001** — GET /status reported a platform-wide Studio session count                                                                               | P2       | CONFIRMED | FIXED-UNMERGED (fix/mar-001-studio-protocol-binding @ 74b987129b549eca3fdde294e3e3cf603af81c7d)       |
@@ -153,7 +156,17 @@ Generation runs against mutable, sometimes stale design input, and design change
 | **BLUEPRINT-SNAPSHOT-001** — A generation run read the live blueprint rather than an immutable snapshot | P1       | CONFIRMED | FIXED-UNMERGED (integration/wave-0 @ c1aca8a8bcec3654b35c86e06689f7be682f8635) |
 | **INTENT-DEFAULT-CONTAMINATION-001** — System defaults were presented downstream as user-stated intent  | P1       | CONFIRMED | FIXED-UNMERGED (integration/wave-0 @ 63132fff1bb0148886d6c967ddc2199af3378b17) |
 
-## 9. supply-chain-hardening — worst severity P1
+## 9. assurance-not-performed — worst severity P1
+
+Whole classes of assurance have not been run. Listed so their absence is explicit rather than implied by silence.
+
+| Finding                                                                                                   | Severity | Status    | Disposition                                             |
+| --------------------------------------------------------------------------------------------------------- | -------- | --------- | ------------------------------------------------------- |
+| **STUDIO-PLAY-ACCEPTANCE-001** — No end-to-end proof from generation to Roblox Play with runtime evidence | P1       | OPEN      | NOT-STARTED                                             |
+| **AUDIT-DYNAMIC-ASSURANCE-001** — Dynamic assurance has not been performed                                | P1       | OPEN      | NOT-STARTED                                             |
+| **AUDIT-STUDIO-PLUGIN-UNTESTABLE-001** — The Studio plugin had no executable test path                    | P1       | CONFIRMED | FIXED-UNMERGED (fix/mar-002-script-ownership @ pending) |
+
+## 10. supply-chain-hardening — worst severity P1
 
 Reproducibility and exception hygiene in the build and scanning path.
 
@@ -162,7 +175,7 @@ Reproducibility and exception hygiene in the build and scanning path.
 | **SEC-SCANNER-EXCEPTION-CLOCK-001** — Security exception expiry validated against a frozen audit date | P1       | CONFIRMED | FIXED-UNMERGED (integration/wave-0 @ d7d1cca0) |
 | **SUPPLYCHAIN-ACTIONS-001** — Actions and base images are pinned by tag rather than digest            | P2       | CONFIRMED | NOT-STARTED                                    |
 
-## 10. data-handling — worst severity P1
+## 11. data-handling — worst severity P1
 
 Sensitive content reaches places it should not, and evidence records an identity the caller asserted rather than one the server knows.
 
@@ -171,7 +184,7 @@ Sensitive content reaches places it should not, and evidence records an identity
 | **LLM-LOG-DATA-001** — Provider logging can write prompts and generated code to backend logs  | P1       | CONFIRMED | FIXED-UNMERGED (integration/wave-0 @ 2d6023ebecd7c9db83f5e4f914bdc2f62b3c6f75) |
 | **AUDIT-REVIEW-ATTRIBUTION-001** — Artifact review attribution is taken from the request body | P2       | CONFIRMED | NOT-STARTED                                                                    |
 
-## 11. release-capability-truth — worst severity P1
+## 12. release-capability-truth — worst severity P1
 
 A release can present itself as healthy without the capability it exists to provide.
 
@@ -180,7 +193,7 @@ A release can present itself as healthy without the capability it exists to prov
 | **CONFIG-LLM-RELEASE-001** — A release can start healthy without a real AI provider | P1       | CONFIRMED | NOT-STARTED |
 | **AUDIT-READINESS-001** — Health is liveness rather than readiness                  | P2       | CONFIRMED | NOT-STARTED |
 
-## 12. auth-credential-lifecycle — worst severity P1
+## 13. auth-credential-lifecycle — worst severity P1
 
 Credential identity and credential recovery are incomplete in ways the interface does not admit.
 
@@ -189,7 +202,7 @@ Credential identity and credential recovery are incomplete in ways the interface
 | **AUTH-EMAIL-IDENTITY-001** — Profile email can diverge from the password credential key              | P1       | CONFIRMED | NOT-STARTED |
 | **AUTH-PASSWORD-RESET-001** — Password reset is not implemented behind an interface that claims it is | P1       | CONFIRMED | NOT-STARTED |
 
-## 13. durable-product-state — worst severity P1
+## 14. durable-product-state — worst severity P1
 
 Product state documented as persisted is held in process memory and erased by restart.
 
@@ -197,15 +210,6 @@ Product state documented as persisted is held in process memory and erased by re
 | -------------------------------------------------------------------------------------- | -------- | --------- | ----------- |
 | **VERSION-HISTORY-PERSIST-001** — Project version history is process-local             | P1       | CONFIRMED | NOT-STARTED |
 | **USER-PREF-PERSIST-001** — Preferences are documented as persisted but held in memory | P2       | CONFIRMED | NOT-STARTED |
-
-## 14. assurance-not-performed — worst severity P1
-
-Whole classes of assurance have not been run. Listed so their absence is explicit rather than implied by silence.
-
-| Finding                                                                                                   | Severity | Status | Disposition |
-| --------------------------------------------------------------------------------------------------------- | -------- | ------ | ----------- |
-| **STUDIO-PLAY-ACCEPTANCE-001** — No end-to-end proof from generation to Roblox Play with runtime evidence | P1       | OPEN   | NOT-STARTED |
-| **AUDIT-DYNAMIC-ASSURANCE-001** — Dynamic assurance has not been performed                                | P1       | OPEN   | NOT-STARTED |
 
 ## 15. architecture-deadwood — worst severity P3
 

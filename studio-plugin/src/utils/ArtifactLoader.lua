@@ -13,6 +13,8 @@ local StarterGui = game:GetService("StarterGui")
 local StarterPlayer = game:GetService("StarterPlayer")
 local Workspace = game:GetService("Workspace")
 
+local MANAGED_ATTRIBUTE = "AIStudioManaged"
+
 local ArtifactLoader = {}
 ArtifactLoader.__index = ArtifactLoader
 
@@ -313,15 +315,33 @@ function ArtifactLoader:_upsertScript(path, source)
     local segments = self:_splitPath(path)
     if #segments == 0 then error("Script path is empty") end
 
+    local rootName = segments[1]
     local parent, startIndex = self:_resolveRoot(segments)
-    for index = startIndex, #segments - 1 do
-        parent = self:_ensureFolder(parent, segments[index])
+    if not parent then
+        error("Unknown script root: " .. tostring(rootName))
     end
 
     local fileName = segments[#segments]
     local instanceName = self:_scriptName(fileName)
     local className = self:_scriptClass(fileName)
+    self:_assertPlacement(rootName, className)
+
+    for index = startIndex, #segments - 1 do
+        parent = self:_ensureFolder(parent, segments[index])
+    end
+
     local existing = parent:FindFirstChild(instanceName)
+    if existing and existing:GetAttribute(MANAGED_ATTRIBUTE) ~= true then
+        -- MAR-002. This used to destroy the instance on a class mismatch and
+        -- overwrite its source otherwise, without asking whose it was. A name
+        -- collision with a person's work is a reason to stop, not a reason to
+        -- delete: the plugin can regenerate its own output and cannot
+        -- regenerate theirs.
+        error(
+            "Refusing to replace " .. existing:GetFullName()
+                .. ": it was not created by AI Studio"
+        )
+    end
     if existing and existing.ClassName ~= className then
         existing:Destroy()
         existing = nil
@@ -334,6 +354,10 @@ function ArtifactLoader:_upsertScript(path, source)
         instance.Parent = parent
     end
 
+    -- Marked so the next run can tell its own output from a person's. Scripts
+    -- were the one artifact kind created without a mark, which is what left the
+    -- ownership check above with nothing to read.
+    instance:SetAttribute(MANAGED_ATTRIBUTE, true)
     instance.Source = source
     return instance
 end
@@ -353,7 +377,46 @@ function ArtifactLoader:_resolveRoot(segments)
         return StarterPlayer:WaitForChild("StarterCharacterScripts"), 2
     end
 
-    return ReplicatedStorage, 1
+    -- MAR-002. This used to return ReplicatedStorage with the unrecognised
+    -- segment demoted to a folder name, so a typo or a root this plugin has not
+    -- heard of landed silently in the container that replicates to every
+    -- client. A destination that cannot be named is not a destination.
+    return nil, nil
+end
+
+--[[
+    Which containers a script class may legitimately occupy.
+
+    A server Script only runs where the server can reach it, and putting one in
+    a replicated container does not merely make it dead code: the source
+    replicates to every client, so a placement mistake becomes a disclosure of
+    server logic. A LocalScript is the mirror image, inert anywhere the client
+    cannot see. ModuleScripts are fetched by whatever requires them, so they are
+    the one class with no placement constraint.
+]]
+local SCRIPT_CLASS_ROOTS = {
+    Script = {
+        ServerScriptService = true,
+        ServerStorage = true,
+        Workspace = true,
+    },
+    LocalScript = {
+        StarterGui = true,
+        StarterPlayer = true,
+        StarterPlayerScripts = true,
+        StarterCharacterScripts = true,
+    },
+}
+
+function ArtifactLoader:_assertPlacement(rootName, className)
+    local allowed = SCRIPT_CLASS_ROOTS[className]
+    if not allowed then return end
+    if not allowed[rootName] then
+        error(
+            "Refusing to place a " .. className .. " in " .. rootName
+                .. ": that container cannot run it safely"
+        )
+    end
 end
 
 function ArtifactLoader:_ensureFolder(parent, name)
