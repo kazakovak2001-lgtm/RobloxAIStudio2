@@ -199,7 +199,11 @@ describe("STUDIO-2F-A plugin materialization contract", () => {
 
   it("refuses to replace an instance it does not own", () => {
     expect(MATERIALIZER).toContain(
-      "if existing and not isManaged(existing) then",
+      // MAR-002 narrowed this to isOwnedBy, which requires the managed mark AND a
+      // matching project. That is strictly stronger: managed alone let one
+      // project's export destroy another's work. Behaviour is proved in
+      // server/src/__tests__/mar002.provenance-contract.test.ts.
+      "if existing and not isOwnedBy(existing, provenance.projectId) then",
     );
     expect(MATERIALIZER).toContain("is not managed by AI Studio");
   });
@@ -266,9 +270,7 @@ describe("STUDIO-2F-A plugin materialization contract", () => {
   });
 
   it("sweeps only screens it manages", () => {
-    expect(MATERIALIZER).toContain(
-      "if isManaged(child) and not deliveredNames[child.Name] then",
-    );
+    expect(MATERIALIZER).toContain("if isOwnedBy(child, provenance.projectId)");
   });
 });
 

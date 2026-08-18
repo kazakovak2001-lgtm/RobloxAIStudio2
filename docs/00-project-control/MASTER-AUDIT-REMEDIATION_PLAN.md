@@ -10,8 +10,8 @@ Findings are grouped by shared architectural root rather than by symptom. Severa
 
 | Disposition        | Findings |
 | ------------------ | -------- |
-| FIXED-UNMERGED     | 36       |
-| NOT-STARTED        | 28       |
+| FIXED-UNMERGED     | 38       |
+| NOT-STARTED        | 26       |
 | NO-ACTION-REQUIRED | 6        |
 | SCOPED-OUT         | 1        |
 | ACCEPTED-RISK      | 1        |
@@ -23,7 +23,7 @@ Every finding names the deduplicated root cause it belongs to. A finding the tax
 | Root cause                                                                                         | Priority        | Findings | Fixed | Remaining |
 | -------------------------------------------------------------------------------------------------- | --------------- | -------- | ----- | --------- |
 | **MAR-001** — Cross-tenant resource authorization is not parent-bound everywhere                   | P0              | 23       | 15    | 8         |
-| **MAR-002** — Studio materializer has no universal creator-ownership safety boundary               | P0              | 5        | 3     | 2         |
+| **MAR-002** — Studio materializer has no universal creator-ownership safety boundary               | P0              | 5        | 5     | 0         |
 | **MAR-003** — No single clean canonical product acceptance run exists                              | P0-release-gate | 3        | 0     | 3         |
 | **MAR-004** — Generation has no durable project-scoped single-flight and idempotent start identity | P1              | 3        | 3     | 0         |
 | **MAR-005** — State transitions have no unified durable CAS/version authority                      | P1              | 3        | 3     | 0         |
@@ -77,8 +77,8 @@ One defect shape: the identifier the caller was authorized for is not the thing 
 | **SEC-MAR001-REMAINING-GAPS-001** — MAR-001 has fifteen operations left where nothing canonical protects the resource                                                     | P1       | CONFIRMED | NOT-STARTED                                                                                           |
 | **SEC-STUDIO-SCRIPT-OVERWRITE-001** — The plugin destroyed and overwrote creator-authored scripts without checking ownership                                              | P1       | CONFIRMED | FIXED-UNMERGED (fix/mar-002-script-ownership @ b99bb1a4c83642f8259902cd8f4bccd749962808)              |
 | **SEC-STUDIO-SCRIPT-PLACEMENT-001** — An unrecognised script root fell back to the container that replicates to every client                                              | P1       | CONFIRMED | FIXED-UNMERGED (fix/mar-002-script-ownership @ b99bb1a4c83642f8259902cd8f4bccd749962808)              |
-| **SEC-STUDIO-SWEEP-PROVENANCE-001** — The materializer sweep removes any managed instance, including another project's                                                    | P1       | CONFIRMED | NOT-STARTED                                                                                           |
-| **SEC-STUDIO-PROVENANCE-CONTRACT-001** — The materializer contract carries no project identity to scope ownership against                                                 | P1       | CONFIRMED | NOT-STARTED                                                                                           |
+| **SEC-STUDIO-SWEEP-PROVENANCE-001** — The materializer sweep removes any managed instance, including another project's                                                    | P1       | CONFIRMED | FIXED-UNMERGED (fix/mar-002-script-ownership @ 6d9386cea687f46fb7ccfce0cdd122904ea1f7d5)              |
+| **SEC-STUDIO-PROVENANCE-CONTRACT-001** — The materializer contract carries no project identity to scope ownership against                                                 | P1       | CONFIRMED | FIXED-UNMERGED (fix/mar-002-script-ownership @ 6d9386cea687f46fb7ccfce0cdd122904ea1f7d5)              |
 | **AUDIT-BODY-SUPPLIED-BLUEPRINT-001** — Eight operations authorize against an identifier inside a caller-supplied body object                                             | P2       | CONFIRMED | NOT-STARTED                                                                                           |
 | **SEC-STUDIO-PROTOCOL-DISCLOSURE-001** — The command disclosure closed on the REST path was still reachable over the protocol transport                                   | P2       | CONFIRMED | FIXED-UNMERGED (fix/mar-001-studio-protocol-binding @ 74b987129b549eca3fdde294e3e3cf603af81c7d)       |
 | **SEC-STUDIO-STATUS-COUNT-001** — GET /status reported a platform-wide Studio session count                                                                               | P2       | CONFIRMED | FIXED-UNMERGED (fix/mar-001-studio-protocol-binding @ 74b987129b549eca3fdde294e3e3cf603af81c7d)       |

@@ -1220,32 +1220,36 @@
       "title": "The materializer sweep removes any managed instance, including another project's",
       "severity": "P1",
       "status": "CONFIRMED",
-      "disposition": "NOT-STARTED",
+      "disposition": "FIXED-UNMERGED",
       "area": "security",
       "remediationGroup": "authorization-object-binding",
       "mar": "MAR-002",
       "evidence": [
         "studio-plugin/src/utils/UITreeMaterializer.lua",
         "studio-plugin/src/utils/WorldSceneMaterializer.lua",
-        "server/src/__tests__/mar002.materializer-provenance.test.ts"
+        "server/src/__tests__/mar002.provenance-contract.test.ts"
       ],
-      "notes": "isManaged reads one boolean attribute, which answers whether AI Studio made the instance and not whether this project did. The sweep removes every managed child the current delivery did not name, so a place file that has hosted two projects loses the first project's screens to the second project's export. Reproduced: a screen created by one delivery is destroyed by the next. The replace path is NOT affected and is deliberately untouched here, because it already runs an ownership precheck before constructing anything and refuses a collision with unmanaged work. Not fixed in this pass: materialize(content, stageFolder) receives no project identity, so the correct behaviour is not merely unenforced but unrepresentable. The contract has to change first, which is SEC-STUDIO-PROVENANCE-CONTRACT-001."
+      "notes": "isManaged reads one boolean attribute, which answers whether AI Studio made the instance and not whether this project did. The sweep removes every managed child the current delivery did not name, so a place file that has hosted two projects loses the first project's screens to the second project's export. Reproduced: a screen created by one delivery is destroyed by the next. The replace path is NOT affected and is deliberately untouched here, because it already runs an ownership precheck before constructing anything and refuses a collision with unmanaged work. Not fixed in this pass: materialize(content, stageFolder) receives no project identity, so the correct behaviour is not merely unenforced but unrepresentable. The contract has to change first, which is SEC-STUDIO-PROVENANCE-CONTRACT-001. Fixed. materialize now takes a project and delivery, stamps both on every instance it creates, and gates replace and sweep on a matching project; the loader carries the pair. An instance with the mark and no project is treated as foreign, with no migration and no heuristic attribution, because guessing in the permissive direction is the finding. The baseline file that recorded the defect was removed rather than inverted: its two defect assertions no longer describe anything, and its other assertions are covered by the contract file.",
+      "owningBranch": "fix/mar-002-script-ownership",
+      "owningSha": "6d9386cea687f46fb7ccfce0cdd122904ea1f7d5"
     },
     {
       "id": "SEC-STUDIO-PROVENANCE-CONTRACT-001",
       "title": "The materializer contract carries no project identity to scope ownership against",
       "severity": "P1",
       "status": "CONFIRMED",
-      "disposition": "NOT-STARTED",
+      "disposition": "FIXED-UNMERGED",
       "area": "security",
       "remediationGroup": "authorization-object-binding",
       "mar": "MAR-002",
       "evidence": [
         "studio-plugin/src/utils/UITreeMaterializer.lua",
         "studio-plugin/src/utils/ArtifactLoader.lua",
-        "server/src/__tests__/mar002.materializer-provenance.test.ts"
+        "server/src/__tests__/mar002.provenance-contract.test.ts"
       ],
-      "notes": "UITreeMaterializer.materialize and WorldSceneMaterializer.materialize take content and a stage folder. Neither the arguments nor the content carry a project, and the loader that calls them does not pass one, so no destructive decision can be scoped to the delivery it belongs to. Smallest contract that closes it: stamp two attributes beside AIStudioManaged when an instance is created, one naming the project and one naming the delivery that produced it, and pass the expected pair into materialize. Replace and sweep then require managed AND a matching project, treating a managed instance from elsewhere exactly as they already treat unmanaged work: refuse rather than destroy. An instance carrying the mark but no project attribute is from a build before this change and must be treated as foreign, because guessing in the permissive direction is what the finding is about."
+      "notes": "UITreeMaterializer.materialize and WorldSceneMaterializer.materialize take content and a stage folder. Neither the arguments nor the content carry a project, and the loader that calls them does not pass one, so no destructive decision can be scoped to the delivery it belongs to. Smallest contract that closes it: stamp two attributes beside AIStudioManaged when an instance is created, one naming the project and one naming the delivery that produced it, and pass the expected pair into materialize. Replace and sweep then require managed AND a matching project, treating a managed instance from elsewhere exactly as they already treat unmanaged work: refuse rather than destroy. An instance carrying the mark but no project attribute is from a build before this change and must be treated as foreign, because guessing in the permissive direction is what the finding is about. Fixed. materialize now takes a project and delivery, stamps both on every instance it creates, and gates replace and sweep on a matching project; the loader carries the pair. An instance with the mark and no project is treated as foreign, with no migration and no heuristic attribution, because guessing in the permissive direction is the finding. The baseline file that recorded the defect was removed rather than inverted: its two defect assertions no longer describe anything, and its other assertions are covered by the contract file.",
+      "owningBranch": "fix/mar-002-script-ownership",
+      "owningSha": "6d9386cea687f46fb7ccfce0cdd122904ea1f7d5"
     },
     {
       "id": "SUPPLYCHAIN-WASMOON-DEVDEP-001",

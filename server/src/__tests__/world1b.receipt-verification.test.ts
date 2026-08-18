@@ -423,8 +423,14 @@ describe("WORLD-1B plugin-side guarantees", () => {
 
   it("refuses to replace an instance it does not own", () => {
     expect(MATERIALIZER).toContain("Refusing to replace");
-    expect(MATERIALIZER).toContain("not isManaged(existingZone)");
-    expect(MATERIALIZER).toContain("not isManaged(existingEntity)");
+    // MAR-002: the predicate now requires a matching project as well as the
+    // managed mark, which is strictly stronger than what this pinned before.
+    expect(MATERIALIZER).toContain(
+      "not isOwnedBy(existingZone, provenance.projectId)",
+    );
+    expect(MATERIALIZER).toContain(
+      "not isOwnedBy(existingEntity, provenance.projectId)",
+    );
   });
 
   it("builds detached and discards roots that never attached", () => {

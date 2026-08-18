@@ -22,7 +22,20 @@ function ArtifactLoader.new(errorReporter)
     local self = setmetatable({}, ArtifactLoader)
     self._errors = errorReporter
     self._loaded = {}
+    self._provenance = nil
     return self
+end
+
+--[[
+    MAR-002. The project and delivery this loader is materializing for.
+
+    Every managed instance is stamped with these, and replace and sweep will
+    only touch instances stamped with the same project. Set by the sync manager
+    before artifacts are loaded; without it the materializers refuse, which is
+    the fail-closed direction.
+]]
+function ArtifactLoader:setProvenance(projectId, deliveryId)
+    self._provenance = { projectId = projectId, deliveryId = deliveryId }
 end
 
 function ArtifactLoader:load(artifact)
@@ -112,7 +125,11 @@ end
 function ArtifactLoader:_loadUITreeArtifact(artifact)
     local stageFolder = self:_ensureStageFolder(artifact.stage or "UI_GENERATION")
 
-    local delivered, err = UITreeMaterializer.materialize(artifact.content, stageFolder)
+    local delivered, err = UITreeMaterializer.materialize(
+        artifact.content,
+        stageFolder,
+        self._provenance
+    )
     if not delivered then
         -- Level 0: `err` is already a complete operator message, and the outer
         -- handler wraps it again. A position prefix would point at this
@@ -153,7 +170,11 @@ end
 function ArtifactLoader:_loadWorldSceneArtifact(artifact)
     local stageFolder = self:_ensureStageFolder(artifact.stage or "WORLD_MODEL")
 
-    local delivered, err = WorldSceneMaterializer.materialize(artifact.content.scene, stageFolder)
+    local delivered, err = WorldSceneMaterializer.materialize(
+        artifact.content.scene,
+        stageFolder,
+        self._provenance
+    )
     if not delivered then
         -- Level 0: `err` is already a complete operator message and the outer
         -- handler wraps it again.
