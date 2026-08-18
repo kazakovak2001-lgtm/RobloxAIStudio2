@@ -2,7 +2,7 @@
 
 # Master audit remediation plan
 
-Generated from `config/audit/master-audit-register.json` (76 findings). Severity is the register's; ordering is by the worst severity in each group, except that re-verification comes first and verified controls come last.
+Generated from `config/audit/master-audit-register.json` (77 findings). Severity is the register's; ordering is by the worst severity in each group, except that re-verification comes first and verified controls come last.
 
 Findings are grouped by shared architectural root rather than by symptom. Several of these are the same defect seen from different places, and repairing them one at a time would mean repairing the root several times.
 
@@ -10,7 +10,7 @@ Findings are grouped by shared architectural root rather than by symptom. Severa
 
 | Disposition        | Findings |
 | ------------------ | -------- |
-| FIXED-UNMERGED     | 42       |
+| FIXED-UNMERGED     | 43       |
 | NOT-STARTED        | 26       |
 | NO-ACTION-REQUIRED | 6        |
 | SCOPED-OUT         | 1        |
@@ -25,7 +25,7 @@ Every finding names the deduplicated root cause it belongs to. A finding the tax
 | **MAR-001** — Cross-tenant resource authorization is not parent-bound everywhere                   | P0              | 23       | 15    | 8         |
 | **MAR-002** — Studio materializer has no universal creator-ownership safety boundary               | P0              | 8        | 8     | 0         |
 | **MAR-003** — No single clean canonical product acceptance run exists                              | P0-release-gate | 3        | 0     | 3         |
-| **MAR-004** — Generation has no durable project-scoped single-flight and idempotent start identity | P1              | 4        | 4     | 0         |
+| **MAR-004** — Generation has no durable project-scoped single-flight and idempotent start identity | P1              | 5        | 5     | 0         |
 | **MAR-005** — State transitions have no unified durable CAS/version authority                      | P1              | 3        | 3     | 0         |
 | **MAR-010** — No authoritative Luau compile/type and generated-code policy gate                    | P1              | 2        | 1     | 1         |
 | **MAR-012** — Runtime gameplay acceptance is missing as a machine-measured capability              | P1              | 9        | 6     | 3         |
@@ -95,14 +95,15 @@ One defect shape: the identifier the caller was authorized for is not the thing 
 
 Everything that decides whether a generation may begin and under whose identity. Two of these are already fixed on branches and the rest share their entry point.
 
-| Finding                                                                                                                   | Severity | Status    | Disposition                                                                              |
-| ------------------------------------------------------------------------------------------------------------------------- | -------- | --------- | ---------------------------------------------------------------------------------------- |
-| **AUDIT-START-ATOMICITY-001** — Generation start wrote project, execution and history as three independent durable writes | P1       | CONFIRMED | FIXED-UNMERGED (integration/wave-0 @ 3696a1f31b86cff8ce97e09f5a5da581d2a3ba01)           |
-| **AUDIT-ID-EXEC-001** — Execution identity derived from Date.now collided within a millisecond                            | P1       | CONFIRMED | FIXED-UNMERGED (integration/wave-0 @ 2d5d2d7da28c7edd230acc2e5b93a41b7fe8066a)           |
-| **AUDIT-DUP-GENERATION-001** — No suppression of a second concurrent generation for the same project                      | P1       | CONFIRMED | FIXED-UNMERGED (integration/wave-0 @ e0d800d273b3c618d4af07d9ffbbe2873da49937)           |
-| **AUDIT-OUTCOME-LAST-WRITER-001** — An older overlapping run can overwrite a newer run's terminal project state           | P1       | CONFIRMED | FIXED-UNMERGED (integration/wave-0 @ e0d800d273b3c618d4af07d9ffbbe2873da49937)           |
-| **QUOTA-ENFORCEMENT-001** — Generation does not enforce tier limits before starting                                       | P1       | CONFIRMED | NOT-STARTED                                                                              |
-| **GEN-START-IDEMPOTENCY-001** — A start request whose response was lost could not be retried safely                       | P1       | CONFIRMED | FIXED-UNMERGED (fix/mar-004-idempotent-start @ 7761c2665c31273c49214ec7b96f4858a8f61e93) |
+| Finding                                                                                                                             | Severity | Status    | Disposition                                                                              |
+| ----------------------------------------------------------------------------------------------------------------------------------- | -------- | --------- | ---------------------------------------------------------------------------------------- |
+| **AUDIT-START-ATOMICITY-001** — Generation start wrote project, execution and history as three independent durable writes           | P1       | CONFIRMED | FIXED-UNMERGED (integration/wave-0 @ 3696a1f31b86cff8ce97e09f5a5da581d2a3ba01)           |
+| **AUDIT-ID-EXEC-001** — Execution identity derived from Date.now collided within a millisecond                                      | P1       | CONFIRMED | FIXED-UNMERGED (integration/wave-0 @ 2d5d2d7da28c7edd230acc2e5b93a41b7fe8066a)           |
+| **AUDIT-DUP-GENERATION-001** — No suppression of a second concurrent generation for the same project                                | P1       | CONFIRMED | FIXED-UNMERGED (integration/wave-0 @ e0d800d273b3c618d4af07d9ffbbe2873da49937)           |
+| **AUDIT-OUTCOME-LAST-WRITER-001** — An older overlapping run can overwrite a newer run's terminal project state                     | P1       | CONFIRMED | FIXED-UNMERGED (integration/wave-0 @ e0d800d273b3c618d4af07d9ffbbe2873da49937)           |
+| **QUOTA-ENFORCEMENT-001** — Generation does not enforce tier limits before starting                                                 | P1       | CONFIRMED | NOT-STARTED                                                                              |
+| **GEN-START-IDEMPOTENCY-001** — A start request whose response was lost could not be retried safely                                 | P1       | CONFIRMED | FIXED-UNMERGED (fix/mar-004-idempotent-start @ 7761c2665c31273c49214ec7b96f4858a8f61e93) |
+| **GEN-START-IDEMPOTENCY-KEY-SCOPE-001** — An idempotency key partitioned per project could not detect its own reuse across projects | P2       | CONFIRMED | FIXED-UNMERGED (fix/mar-004-idempotent-start @ pending)                                  |
 
 ## 4. pipeline-outcome-truth — worst severity P1
 

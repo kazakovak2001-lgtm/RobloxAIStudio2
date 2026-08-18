@@ -205,6 +205,89 @@ describe("MAR-004 one key means one request", () => {
   });
 });
 
+describe("MAR-004 a key names one request across the whole system", () => {
+  const OTHER_PROJECT = "project-beta";
+
+  /**
+   * Two projects sharing one storage instance, each with its own coordinator.
+   * The key is deliberately reused across them: if the record were partitioned
+   * by project, the two calls would simply never see each other and this test
+   * would prove nothing.
+   */
+  function twoProjectFixture() {
+    const storage = new InMemoryStorageProvider();
+    storage.set<StoredProject>(PROJECTS, PROJECT, {
+      id: PROJECT,
+      generationCount: 0,
+      status: "draft",
+    });
+    storage.set<StoredProject>(PROJECTS, OTHER_PROJECT, {
+      id: OTHER_PROJECT,
+      generationCount: 0,
+      status: "draft",
+    });
+
+    const projects = {
+      get: (projectId: string) =>
+        storage.get<StoredProject>(PROJECTS, projectId),
+      updateDurable: async () => {
+        throw new Error("start() must not use the standalone project write");
+      },
+    };
+    const coordinator = new ProjectGenerationStartCoordinator(
+      projects,
+      storage,
+    );
+
+    const startIn = (
+      projectId: string,
+      executionId: string,
+      request: { key: string; principal: string; fingerprint: string },
+    ) =>
+      coordinator.start(
+        projectId,
+        async () => ({
+          execution: { ...execution(executionId), project_id: projectId },
+        }),
+        ({ execution: record }) => [
+          {
+            operation: "set" as const,
+            collection: EXECUTIONS,
+            id: record.id,
+            data: record,
+          },
+        ],
+        ({ execution: record }) => record.id,
+        () => undefined,
+        {
+          ...request,
+          replay: async (resolvedId: string) => ({
+            execution:
+              storage.get<GenerationExecution>(EXECUTIONS, resolvedId) ??
+              execution(resolvedId),
+          }),
+        },
+      );
+
+    return { storage, startIn };
+  }
+
+  it("refuses the same key reused for a different project", async () => {
+    const f = twoProjectFixture();
+    await f.startIn(PROJECT, "exec-1", REQUEST);
+
+    // Nothing about REQUEST names a project explicitly; only which project
+    // start() is called against does. Reusing the key against a different
+    // project has to collide, not quietly succeed as an unrelated run.
+    await expect(
+      f.startIn(OTHER_PROJECT, "exec-2", REQUEST),
+    ).rejects.toBeInstanceOf(IdempotencyConflictError);
+    expect(f.storage.get(PROJECTS, OTHER_PROJECT)).toMatchObject({
+      generationCount: 0,
+    });
+  });
+});
+
 describe("MAR-004 single-flight is unchanged", () => {
   it("still refuses a different request while a run is active", async () => {
     const f = fixture();

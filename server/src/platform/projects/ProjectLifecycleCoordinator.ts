@@ -322,16 +322,6 @@ export class GenerationOutcomeCoordinator {
   }
 }
 
-/**
- * Scoped by project and key, not by principal.
- *
- * A different principal reusing a key has to collide with the existing record
- * rather than quietly getting its own, or the same key would mean two runs.
- */
-function startRequestId(projectId: string, key: string): string {
-  return `${projectId}:${key}`;
-}
-
 export class ProjectGenerationStartCoordinator {
   constructor(
     private readonly projects: GenerationProjectRepository,
@@ -375,16 +365,23 @@ export class ProjectGenerationStartCoordinator {
       // MAR-004. Answered before anything is prepared, so a replay costs no
       // provider budget and schedules no work. Read from storage rather than
       // from memory, so a second process and a restarted one answer alike.
-      const requestId = request
-        ? startRequestId(projectId, request.key)
-        : undefined;
-      if (request && requestId) {
+      //
+      // Keyed by `request.key` alone, not `${projectId}:${key}`. The key is
+      // meant to name one logical request no matter what it is pointed at, so
+      // the same key surfacing against a different project has to collide with
+      // the first record and fail closed — a caller bug worth surfacing, not
+      // two unrelated projects each quietly getting their own start under a
+      // key that was supposed to be unique. Partitioning storage by project
+      // would have made that collision structurally impossible to detect,
+      // because the two requests would simply never look at the same record.
+      if (request) {
         const recorded = this.storage.get<GenerationStartRequestRecord>(
           GENERATION_START_REQUESTS,
-          requestId,
+          request.key,
         );
         if (recorded) {
           if (
+            recorded.projectId !== projectId ||
             recorded.principal !== request.principal ||
             recorded.fingerprint !== request.fingerprint
           ) {
@@ -439,12 +436,12 @@ export class ProjectGenerationStartCoordinator {
           // written outside it would answer a later retry with an execution
           // that was never created, and one written after the response would
           // leave the crash window this exists to close.
-          ...(request && requestId
+          ...(request
             ? ([
                 {
                   operation: "set",
                   collection: GENERATION_START_REQUESTS,
-                  id: requestId,
+                  id: request.key,
                   data: {
                     key: request.key,
                     projectId,
@@ -460,6 +457,16 @@ export class ProjectGenerationStartCoordinator {
         ]);
       } catch (error) {
         if (error instanceof DurableStorageConflictError) {
+          // Which `requireAbsent` lost the race decides which conflict this
+          // is. Both share this catch because both come out of the same
+          // batch, but they are different facts: the claim conflicting means
+          // another execution already owns this project, while the request
+          // record conflicting means this exact key was claimed by a
+          // concurrent call — possibly for a different project — before this
+          // one committed.
+          if (request && error.collection === GENERATION_START_REQUESTS) {
+            throw new IdempotencyConflictError(request.key, projectId);
+          }
           const active = this.storage.get<GenerationActiveClaim>(
             GENERATION_ACTIVE_CLAIMS,
             projectId,

@@ -11,6 +11,7 @@ import type {
 import type { ProjectRuntime } from "./projects";
 import {
   ActiveGenerationConflictError,
+  IdempotencyConflictError,
   ProjectGenerationStartCoordinator,
 } from "../platform/projects/ProjectLifecycleCoordinator";
 import { DurableStorageError } from "../platform/storage/StorageProvider";
@@ -334,6 +335,25 @@ export function createGameGenerationRouter(
       if (!(await access.requireProjectAccess(req, res, projectId))) return;
       const userId = await access.getRequestUserId(req);
       if (!userId) return;
+
+      // MAR-004. An explicit client-supplied header, checked once the caller is
+      // known, so a caller with no key gets a clear contract rather than a
+      // request that silently cannot be retried safely. Header rather than a
+      // server-generated value: the server cannot mint a key that names "the
+      // same request" before the request has arrived, and generating one on
+      // miss would make every retry look like a fresh request — exactly the
+      // defect this closes. Required rather than optional, because an optional
+      // key leaves the exact hole open for whichever caller forgets to send
+      // one.
+      const idempotencyKey = req.header("Idempotency-Key");
+      if (!idempotencyKey || !idempotencyKey.trim()) {
+        res.status(400).json({
+          success: false,
+          error: "Idempotency-Key header is required",
+        });
+        return;
+      }
+
       const { blueprintId } = req.body;
 
       // SEC-GENERATION-BLUEPRINT-001. `blueprintId` is caller-supplied and was
@@ -454,6 +474,40 @@ export function createGameGenerationRouter(
           studioManager.activateProjectExecution(projectId, execution.id);
           gameService.enqueueGeneration(execution, blueprint, userId);
         },
+        {
+          key: idempotencyKey,
+          principal: userId,
+          // MAR-004. What makes two requests "the same request": the caller,
+          // and the one field of the body that changes what gets generated. A
+          // repeat with a different blueprintId is a different request wearing
+          // the same key, not a retry, and must not replay someone else's
+          // answer.
+          fingerprint: JSON.stringify({ blueprintId: blueprintId ?? null }),
+          // On a replay nothing was prepared and afterCommit does not run, so
+          // no second execution, no re-enqueue, and no second
+          // activateProjectExecution call. The response is rebuilt from the
+          // execution the first request already created. `blueprint` and
+          // `versionMutations` are shaped to match what `prepare` would have
+          // returned only because the type is shared with it; the route below
+          // reads nothing but `execution.id` from a replay result.
+          replay: async (executionId) => {
+            const execution = await gameService.getExecution(executionId);
+            if (!execution) {
+              throw new Error(
+                `Idempotent replay could not find execution ${executionId}`,
+              );
+            }
+            const blueprint = await gameService.getBlueprint(
+              execution.blueprint_id,
+            );
+            if (!blueprint) {
+              throw new Error(
+                `Idempotent replay could not find blueprint ${execution.blueprint_id}`,
+              );
+            }
+            return { execution, blueprint, versionMutations: [] };
+          },
+        },
       );
       res.json({
         success: true,
@@ -470,6 +524,20 @@ export function createGameGenerationRouter(
           success: false,
           error: "A generation is already running for this project",
           executionId: error.activeExecutionId,
+          code: "active_generation_conflict",
+        });
+        return;
+      }
+      // MAR-004. Two different requests claiming one Idempotency-Key. Answering
+      // with the first request's execution would hand one caller's run to
+      // another or substitute a different payload's result, so this is a
+      // distinct conflict from the one above rather than a variant of it.
+      if (error instanceof IdempotencyConflictError) {
+        res.status(409).json({
+          success: false,
+          error:
+            "Idempotency-Key was already used for a different request on this project",
+          code: "idempotency_key_conflict",
         });
         return;
       }

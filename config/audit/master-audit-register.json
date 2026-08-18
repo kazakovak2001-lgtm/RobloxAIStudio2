@@ -1335,9 +1335,29 @@
       "owningSha": "7761c2665c31273c49214ec7b96f4858a8f61e93",
       "evidence": [
         "server/src/platform/projects/ProjectLifecycleCoordinator.ts",
-        "server/src/__tests__/mar004.idempotent-start.test.ts"
+        "server/src/__tests__/mar004.idempotent-start.test.ts",
+        "server/src/routes/game-generation.ts",
+        "server/src/__tests__/mar004.generate-route-idempotency.test.ts"
       ],
-      "notes": "Single-flight was already durable, so the gap was request identity rather than admission. A start that succeeded on the server and whose response never reached the caller is indistinguishable from one that never arrived, and repeating it produced one of two wrong answers. Reproduced against the baseline: while the run was active the retry got ActiveGenerationConflictError naming an execution the caller could not identify as its own, and once the run had finished and released its claim the same retry silently started a second generation, incrementing the count and spending provider budget again. A durable record keyed by project and idempotency key is now committed in the same applyDurableBatch as the start evidence and the claim, so a repeat returns the original execution without preparing, enqueueing or counting anything. The same key with a different principal or payload is refused rather than answered, because two requests claiming one identity cannot be resolved by guessing. The coordinator does not fabricate the caller's result on a replay; the caller supplies a resolver, since nothing was prepared. Reverse-proved separately for the replay, for the conflict check and for committing the record inside the transaction rather than beside it. No crash window remains between the record, the claim, the execution and the history: they are one batch whose contract is that a rejection preserves the exact pre-transaction state."
+      "notes": "Single-flight was already durable, so the gap was request identity rather than admission. A start that succeeded on the server and whose response never reached the caller is indistinguishable from one that never arrived, and repeating it produced one of two wrong answers. Reproduced against the baseline: while the run was active the retry got ActiveGenerationConflictError naming an execution the caller could not identify as its own, and once the run had finished and released its claim the same retry silently started a second generation, incrementing the count and spending provider budget again. A durable record keyed by project and idempotency key is now committed in the same applyDurableBatch as the start evidence and the claim, so a repeat returns the original execution without preparing, enqueueing or counting anything. The same key with a different principal or payload is refused rather than answered, because two requests claiming one identity cannot be resolved by guessing. The coordinator does not fabricate the caller's result on a replay; the caller supplies a resolver, since nothing was prepared. Reverse-proved separately for the replay, for the conflict check and for committing the record inside the transaction rather than beside it. No crash window remains between the record, the claim, the execution and the history: they are one batch whose contract is that a rejection preserves the exact pre-transaction state. Integrated into the request path in a follow-up commit on the same branch. The key arrives as a required `Idempotency-Key` request header rather than a server-generated value, because the server cannot mint a value that names 'the same request' before the request exists, and minting one on a miss would make every retry look like a fresh request. Required rather than optional: an optional key leaves the same hole open for whichever caller forgets one, so a missing header is a 400 answered before any blueprint lookup or durable work. It is bound to the principal, the project, and a fingerprint of the one body field that changes what gets generated. Two conflict shapes are distinguished on the wire by a `code` field, because 'someone else is already generating' and 'you reused a key for a different request' need different client responses. Reverse-proved at the route level in four separate reverts: removing the required-header check fails only the missing-key case, collapsing the fingerprint fails only the changed-payload case, restoring per-project key scoping fails only the two cross-project cases, and unwiring the request object entirely fails all four replay and conflict cases."
+    },
+    {
+      "id": "GEN-START-IDEMPOTENCY-KEY-SCOPE-001",
+      "title": "An idempotency key partitioned per project could not detect its own reuse across projects",
+      "severity": "P2",
+      "status": "CONFIRMED",
+      "disposition": "FIXED-UNMERGED",
+      "area": "generation",
+      "remediationGroup": "generation-start-admission",
+      "mar": "MAR-004",
+      "owningBranch": "fix/mar-004-idempotent-start",
+      "owningSha": "pending",
+      "evidence": [
+        "server/src/platform/projects/ProjectLifecycleCoordinator.ts",
+        "server/src/__tests__/mar004.idempotent-start.test.ts",
+        "server/src/__tests__/mar004.generate-route-idempotency.test.ts"
+      ],
+      "notes": "The first implementation keyed the durable record by `${projectId}:${key}`. A key is supposed to name one logical request, so the same key surfacing against a different project has to fail closed as a caller defect. Partitioning by project made that collision structurally undetectable: the two requests would never read the same record, and each project would quietly get its own start under a key that was meant to be unique. Found while writing the route contract rather than by review, because the invariant 'same key + different project => conflict' had no test until the HTTP contract was pinned. The record is now keyed by the key alone with the project stored as a checked field. Reverse-proved by restoring the per-project id, which fails exactly the two cross-project tests and nothing else."
     }
   ]
 }
