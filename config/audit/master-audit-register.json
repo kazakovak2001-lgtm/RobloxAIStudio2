@@ -1003,15 +1003,35 @@
       "title": "The shared project access control distinguishes another tenant's project from one that does not exist",
       "severity": "P2",
       "status": "CONFIRMED",
-      "disposition": "NOT-STARTED",
+      "disposition": "FIXED-UNMERGED",
       "area": "security",
       "remediationGroup": "authorization-object-binding",
       "mar": "MAR-001",
       "evidence": [
         "server/src/routes/projects.ts",
-        "server/src/__tests__/mar001.studio-surface-closure.test.ts"
+        "server/src/routes/resourceAuthorization.ts",
+        "server/src/__tests__/mar001.resource-authorization.test.ts"
       ],
-      "notes": "requireProjectAccess answers 404 Project not found for an unknown id and 403 Access denied for a project that exists and belongs to someone else, so any caller can enumerate which project ids are real. Confirmed behaviourally: the same request pair returned 403 and 404 respectively. This is the disclosure closed for Studio commands and Studio clients, one level down, in the control every project-scoped route depends on. Deliberately not fixed alongside the Studio work: hasProjectAccess already returns a bare boolean and is what concealing callers use, so the repair belongs to the canonical MAR-001 helper rather than to another route. Changing requireProjectAccess in isolation would also alter responses across every route that uses it, which needs its own slice and its own evidence."
+      "notes": "requireProjectAccess answers 404 Project not found for an unknown id and 403 Access denied for a project that exists and belongs to someone else, so any caller can enumerate which project ids are real. Confirmed behaviourally: the same request pair returned 403 and 404 respectively. This is the disclosure closed for Studio commands and Studio clients, one level down, in the control every project-scoped route depends on. Deliberately not fixed alongside the Studio work: hasProjectAccess already returns a bare boolean and is what concealing callers use, so the repair belongs to the canonical MAR-001 helper rather than to another route. Changing requireProjectAccess in isolation would also alter responses across every route that uses it, which needs its own slice and its own evidence. Fixed through the canonical helper rather than in place. requireProjectAccess now resolves the project through requireOwned, so a project that exists and is not the caller's and one that does not exist produce the same status and the same body. Baseline reproduced before the change: the same request pair returned 403 and 404. Authentication is unaffected, because an absent caller is not a concealed resource: an unauthenticated request still answers 401. Three existing tests pinned the disclosing behaviour and were updated to assert the stronger property instead, including one written during the blueprint slice whose purpose was to guard that this control had not changed.",
+      "owningBranch": "fix/mar-001-resource-authorization-helper",
+      "owningSha": "81ad71e35ed11284f7a6292f0b56963969750fb5"
+    },
+    {
+      "id": "SEC-RESOURCE-AUTHORIZATION-HELPER-001",
+      "title": "Route-level authorization had no canonical mechanism, so each route decided separately what to authorize and what to disclose",
+      "severity": "P1",
+      "status": "CONFIRMED",
+      "disposition": "FIXED-UNMERGED",
+      "area": "security",
+      "remediationGroup": "authorization-object-binding",
+      "mar": "MAR-001",
+      "owningBranch": "fix/mar-001-resource-authorization-helper",
+      "owningSha": "81ad71e35ed11284f7a6292f0b56963969750fb5",
+      "evidence": [
+        "server/src/routes/resourceAuthorization.ts",
+        "server/src/__tests__/mar001.resource-authorization.test.ts"
+      ],
+      "notes": "Four Studio findings shared one shape: the identifier the caller was authorized for was not the thing the operation acted on. requireOwned takes the resource's own id and a loader, and derives the authoritative project from what the loader returned. It has no parameter for a caller-supplied project, so the mismatch is unrepresentable rather than discouraged; a helper that accepted a project alongside a resource id would be a tidier spelling of the same defect. denyAsAbsent builds the refusal from the resource name rather than the resource, so a denial has nothing of the refused object in it to leak. filterOwned was designed and deliberately not built: this slice has no list endpoint to migrate, and the existing per-route filters already work. Only SEC-PROJECT-ACCESS-DISCLOSURE-001 is migrated here; the remaining 93 unreviewed bindings are later slices."
     }
   ]
 }

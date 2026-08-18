@@ -2,7 +2,7 @@
 
 # Master audit remediation plan
 
-Generated from `config/audit/master-audit-register.json` (57 findings). Severity is the register's; ordering is by the worst severity in each group, except that re-verification comes first and verified controls come last.
+Generated from `config/audit/master-audit-register.json` (58 findings). Severity is the register's; ordering is by the worst severity in each group, except that re-verification comes first and verified controls come last.
 
 Findings are grouped by shared architectural root rather than by symptom. Several of these are the same defect seen from different places, and repairing them one at a time would mean repairing the root several times.
 
@@ -10,8 +10,8 @@ Findings are grouped by shared architectural root rather than by symptom. Severa
 
 | Disposition        | Findings |
 | ------------------ | -------- |
-| FIXED-UNMERGED     | 26       |
-| NOT-STARTED        | 26       |
+| FIXED-UNMERGED     | 28       |
+| NOT-STARTED        | 25       |
 | NO-ACTION-REQUIRED | 4        |
 | SCOPED-OUT         | 1        |
 
@@ -21,7 +21,7 @@ Every finding names the deduplicated root cause it belongs to. A finding the tax
 
 | Root cause                                                                                         | Priority        | Findings | Fixed | Remaining |
 | -------------------------------------------------------------------------------------------------- | --------------- | -------- | ----- | --------- |
-| **MAR-001** — Cross-tenant resource authorization is not parent-bound everywhere                   | P0              | 14       | 8     | 6         |
+| **MAR-001** — Cross-tenant resource authorization is not parent-bound everywhere                   | P0              | 15       | 10    | 5         |
 | **MAR-003** — No single clean canonical product acceptance run exists                              | P0-release-gate | 3        | 0     | 3         |
 | **MAR-004** — Generation has no durable project-scoped single-flight and idempotent start identity | P1              | 3        | 3     | 0         |
 | **MAR-005** — State transitions have no unified durable CAS/version authority                      | P1              | 3        | 3     | 0         |
@@ -63,17 +63,18 @@ Nothing else should be repaired against these until they are re-established as f
 
 One defect shape: the identifier the caller was authorized for is not the thing the operation acts on. Fixing the sweep and the evidence together is what stops the next instance.
 
-| Finding                                                                                                                                         | Severity | Status    | Disposition                                                                                        |
-| ----------------------------------------------------------------------------------------------------------------------------------------------- | -------- | --------- | -------------------------------------------------------------------------------------------------- |
-| **SEC-GENERATION-BLUEPRINT-001** — Generation accepted a blueprint id belonging to another project                                              | P1       | CONFIRMED | FIXED-UNMERGED (integration/wave-0 @ 04482f16c5249d864020f05e8f59d1c7224f4ed7)                     |
-| **AUDIT-CROSS-TENANT-EVIDENCE-001** — Cross-tenant denial is essentially unevidenced across the API                                             | P1       | CONFIRMED | NOT-STARTED                                                                                        |
-| **AUDIT-BINDING-UNREVIEWED-001** — Ninety-eight operations still have no object-binding verdict                                                 | P1       | OPEN      | SCOPED-OUT                                                                                         |
-| **SEC-STUDIO-COMMAND-DISCLOSURE-001** — Refusing another tenant's Studio command disclosed that it existed and what state it was in             | P1       | CONFIRMED | FIXED-UNMERGED (fix/mar-001-studio-command-concealment @ 4f81c75251d4972396b16602fae1cf17c4ae9b11) |
-| **SEC-STUDIO-PROTOCOL-BINDING-001** — Studio protocol messages were authorized against a project the caller chose, not the client they acted on | P1       | CONFIRMED | FIXED-UNMERGED (fix/mar-001-studio-protocol-binding @ 74b987129b549eca3fdde294e3e3cf603af81c7d)    |
-| **AUDIT-BODY-SUPPLIED-BLUEPRINT-001** — Eight operations authorize against an identifier inside a caller-supplied body object                   | P2       | CONFIRMED | NOT-STARTED                                                                                        |
-| **SEC-STUDIO-PROTOCOL-DISCLOSURE-001** — The command disclosure closed on the REST path was still reachable over the protocol transport         | P2       | CONFIRMED | FIXED-UNMERGED (fix/mar-001-studio-protocol-binding @ 74b987129b549eca3fdde294e3e3cf603af81c7d)    |
-| **SEC-STUDIO-STATUS-COUNT-001** — GET /status reported a platform-wide Studio session count                                                     | P2       | CONFIRMED | FIXED-UNMERGED (fix/mar-001-studio-protocol-binding @ 74b987129b549eca3fdde294e3e3cf603af81c7d)    |
-| **SEC-PROJECT-ACCESS-DISCLOSURE-001** — The shared project access control distinguishes another tenant's project from one that does not exist   | P2       | CONFIRMED | NOT-STARTED                                                                                        |
+| Finding                                                                                                                                                                   | Severity | Status    | Disposition                                                                                           |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------- | --------- | ----------------------------------------------------------------------------------------------------- |
+| **SEC-GENERATION-BLUEPRINT-001** — Generation accepted a blueprint id belonging to another project                                                                        | P1       | CONFIRMED | FIXED-UNMERGED (integration/wave-0 @ 04482f16c5249d864020f05e8f59d1c7224f4ed7)                        |
+| **AUDIT-CROSS-TENANT-EVIDENCE-001** — Cross-tenant denial is essentially unevidenced across the API                                                                       | P1       | CONFIRMED | NOT-STARTED                                                                                           |
+| **AUDIT-BINDING-UNREVIEWED-001** — Ninety-eight operations still have no object-binding verdict                                                                           | P1       | OPEN      | SCOPED-OUT                                                                                            |
+| **SEC-STUDIO-COMMAND-DISCLOSURE-001** — Refusing another tenant's Studio command disclosed that it existed and what state it was in                                       | P1       | CONFIRMED | FIXED-UNMERGED (fix/mar-001-studio-command-concealment @ 4f81c75251d4972396b16602fae1cf17c4ae9b11)    |
+| **SEC-STUDIO-PROTOCOL-BINDING-001** — Studio protocol messages were authorized against a project the caller chose, not the client they acted on                           | P1       | CONFIRMED | FIXED-UNMERGED (fix/mar-001-studio-protocol-binding @ 74b987129b549eca3fdde294e3e3cf603af81c7d)       |
+| **SEC-RESOURCE-AUTHORIZATION-HELPER-001** — Route-level authorization had no canonical mechanism, so each route decided separately what to authorize and what to disclose | P1       | CONFIRMED | FIXED-UNMERGED (fix/mar-001-resource-authorization-helper @ 81ad71e35ed11284f7a6292f0b56963969750fb5) |
+| **AUDIT-BODY-SUPPLIED-BLUEPRINT-001** — Eight operations authorize against an identifier inside a caller-supplied body object                                             | P2       | CONFIRMED | NOT-STARTED                                                                                           |
+| **SEC-STUDIO-PROTOCOL-DISCLOSURE-001** — The command disclosure closed on the REST path was still reachable over the protocol transport                                   | P2       | CONFIRMED | FIXED-UNMERGED (fix/mar-001-studio-protocol-binding @ 74b987129b549eca3fdde294e3e3cf603af81c7d)       |
+| **SEC-STUDIO-STATUS-COUNT-001** — GET /status reported a platform-wide Studio session count                                                                               | P2       | CONFIRMED | FIXED-UNMERGED (fix/mar-001-studio-protocol-binding @ 74b987129b549eca3fdde294e3e3cf603af81c7d)       |
+| **SEC-PROJECT-ACCESS-DISCLOSURE-001** — The shared project access control distinguishes another tenant's project from one that does not exist                             | P2       | CONFIRMED | FIXED-UNMERGED (fix/mar-001-resource-authorization-helper @ 81ad71e35ed11284f7a6292f0b56963969750fb5) |
 
 ## 3. pipeline-outcome-truth — worst severity P1
 
