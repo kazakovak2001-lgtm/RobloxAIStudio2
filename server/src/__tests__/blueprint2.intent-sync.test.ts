@@ -93,6 +93,11 @@ async function harness() {
   }
   const base = `http://127.0.0.1:${address.port}/api/generation`;
 
+  // MAR-004 made Idempotency-Key required. Each call here is a distinct
+  // logical "press generate again" from the user, so each gets its own key —
+  // reusing one would make the second call replay the first rather than start
+  // the new run these tests are about.
+  let nextIdempotencyKey = 0;
   return {
     storage,
     runtime,
@@ -104,6 +109,7 @@ async function harness() {
         headers: {
           "content-type": "application/json",
           authorization: `Bearer ${TOKEN}`,
+          "idempotency-key": `key-${(nextIdempotencyKey += 1)}`,
         },
         body: JSON.stringify({}),
       }),

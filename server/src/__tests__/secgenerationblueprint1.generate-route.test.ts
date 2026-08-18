@@ -134,16 +134,23 @@ describe("SEC-GENERATION-BLUEPRINT-001 POST /:projectId/generate", () => {
     }
     const base = `http://127.0.0.1:${address.port}/api/generation`;
 
+    // MAR-004 made Idempotency-Key required. A fresh key per call keeps every
+    // call here a distinct logical request, which is what this file's cases
+    // are about; idempotency itself is covered in
+    // mar004.generate-route-idempotency.test.ts.
+    let nextIdempotencyKey = 0;
     const generate = (
       projectId: string,
       body: Record<string, unknown>,
       token?: string,
+      idempotencyKey = `key-${(nextIdempotencyKey += 1)}`,
     ) =>
       fetch(`${base}/${projectId}/generate`, {
         method: "POST",
         headers: {
           "content-type": "application/json",
           ...(token ? { authorization: `Bearer ${token}` } : {}),
+          "idempotency-key": idempotencyKey,
         },
         body: JSON.stringify(body),
       });
