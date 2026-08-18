@@ -1066,6 +1066,55 @@
         "server/src/routes/projects.ts"
       ],
       "notes": "Found while migrating the conversation routes, not by review. hasProjectAccess is optional on ProjectAccessControl, and requireOwned failed closed when it was absent, so a route wired to a control that omitted it refused every request as absent. An existing durability test caught it, which is the only reason it did not reach production as a silent outage. The helper now takes the check as a required argument rather than reaching into an access control for it, and ProjectRuntime declares that what it hands out provides it, so the situation cannot be constructed at a migration site."
+    },
+    {
+      "id": "SEC-JOB-DISCLOSURE-001",
+      "title": "Refusing another tenant's execution job disclosed that the job existed",
+      "severity": "P2",
+      "status": "CONFIRMED",
+      "disposition": "FIXED-UNMERGED",
+      "area": "security",
+      "remediationGroup": "authorization-object-binding",
+      "mar": "MAR-001",
+      "owningBranch": "fix/mar-001-job-ownership",
+      "owningSha": "68e11109d5c2e28ff8a79d27754ce1905d6f1b6f",
+      "evidence": [
+        "server/src/routes/distributed.ts",
+        "server/src/__tests__/mar001.job-ownership.test.ts"
+      ],
+      "notes": "The job routes loaded the job and authorized the job's own project, so no caller could read or retry another tenant's. A job that did not exist answered 'Job not found' while another tenant's fell through to the project control and answered 'Project not found', so the pair revealed which job ids were real. Reproduced against the baseline. It mattered most beside POST /retry, which re-queues work and therefore spends compute; the regression test asserts the refused job stays in the dead-letter queue rather than only checking the status."
+    },
+    {
+      "id": "SEC-JOB-DOUBLE-RESPONSE-001",
+      "title": "The job status route answered a second time after the access check had already refused",
+      "severity": "P2",
+      "status": "CONFIRMED",
+      "disposition": "FIXED-UNMERGED",
+      "area": "security",
+      "remediationGroup": "authorization-object-binding",
+      "mar": "MAR-001",
+      "owningBranch": "fix/mar-001-job-ownership",
+      "owningSha": "68e11109d5c2e28ff8a79d27754ce1905d6f1b6f",
+      "evidence": [
+        "server/src/routes/distributed.ts",
+        "server/src/__tests__/mar001.job-ownership.test.ts"
+      ],
+      "notes": "GET /job/:id wrote its own 404 after requireJobProjectAccess had already answered, so every denied request threw ERR_HTTP_HEADERS_SENT. The refusal reached the caller intact, but on the server it surfaced as an unhandled rejection rather than as a refusal, which turns a routine denial into log noise that hides real faults. Pre-existing, not introduced by the migration: the same errors appear in the baseline run. The first attempt to pin it listened for uncaughtException and passed with the defect restored; it catches the fault only as an unhandled rejection, which is what the test now asserts."
+    },
+    {
+      "id": "AUDIT-PLAN-BINDING-VERIFIED-001",
+      "title": "Plan access was correct and unexercised",
+      "severity": "P3",
+      "status": "VERIFIED-CONTROL",
+      "disposition": "NO-ACTION-REQUIRED",
+      "area": "security",
+      "remediationGroup": "verified-controls",
+      "mar": "MAR-001",
+      "evidence": [
+        "server/src/routes/planning.ts",
+        "server/src/__tests__/mar001.job-ownership.test.ts"
+      ],
+      "notes": "The plan routes derive the project from the stored plan, conceal a foreign plan as an absent one, and authorize before POST /execute runs any agent. Execution options take the project from plan.goal.projectId rather than from the request. Recorded as a verified control rather than migrated: rewriting a correct check to resemble the others would carry a migration's risk for no change in behaviour. What it lacked was evidence, which it now has."
     }
   ]
 }
