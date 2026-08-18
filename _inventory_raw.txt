@@ -577,6 +577,7 @@ server/src/__tests__/intent2.requirement-traceability.test.ts
 server/src/__tests__/llmlog1.payload-redaction.test.ts
 server/src/__tests__/llmparser1.balanced-extraction.test.ts
 server/src/__tests__/mar001.studio-command-concealment.test.ts
+server/src/__tests__/mar001.studio-protocol-binding.test.ts
 server/src/__tests__/novelty1.gameDna.test.ts
 server/src/__tests__/novelty2.verdict.test.ts
 server/src/__tests__/performance.test.ts

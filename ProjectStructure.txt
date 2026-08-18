@@ -676,6 +676,7 @@
 │   │   │   ├── llmlog1.payload-redaction.test.ts
 │   │   │   ├── llmparser1.balanced-extraction.test.ts
 │   │   │   ├── mar001.studio-command-concealment.test.ts
+│   │   │   ├── mar001.studio-protocol-binding.test.ts
 │   │   │   ├── novelty1.gameDna.test.ts
 │   │   │   ├── novelty2.verdict.test.ts
 │   │   │   ├── performance.test.ts

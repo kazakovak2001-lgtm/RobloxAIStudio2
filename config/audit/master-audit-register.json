@@ -997,6 +997,21 @@
         "server/src/__tests__/mar001.studio-protocol-binding.test.ts"
       ],
       "notes": "Every other field in the response was filtered to the caller's authorized clients, while sessionCount came from an unfiltered platform-wide listing. The session listing route already did the correct filtering, so the fix reuses it rather than introducing a rule. Low severity on its own: it exposes a count, not identities or content."
+    },
+    {
+      "id": "SEC-PROJECT-ACCESS-DISCLOSURE-001",
+      "title": "The shared project access control distinguishes another tenant's project from one that does not exist",
+      "severity": "P2",
+      "status": "CONFIRMED",
+      "disposition": "NOT-STARTED",
+      "area": "security",
+      "remediationGroup": "authorization-object-binding",
+      "mar": "MAR-001",
+      "evidence": [
+        "server/src/routes/projects.ts",
+        "server/src/__tests__/mar001.studio-surface-closure.test.ts"
+      ],
+      "notes": "requireProjectAccess answers 404 Project not found for an unknown id and 403 Access denied for a project that exists and belongs to someone else, so any caller can enumerate which project ids are real. Confirmed behaviourally: the same request pair returned 403 and 404 respectively. This is the disclosure closed for Studio commands and Studio clients, one level down, in the control every project-scoped route depends on. Deliberately not fixed alongside the Studio work: hasProjectAccess already returns a bare boolean and is what concealing callers use, so the repair belongs to the canonical MAR-001 helper rather than to another route. Changing requireProjectAccess in isolation would also alter responses across every route that uses it, which needs its own slice and its own evidence."
     }
   ]
 }
