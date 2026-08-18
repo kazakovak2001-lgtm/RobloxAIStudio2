@@ -103,7 +103,7 @@ Everything that decides whether a generation may begin and under whose identity.
 | **AUDIT-OUTCOME-LAST-WRITER-001** — An older overlapping run can overwrite a newer run's terminal project state                     | P1       | CONFIRMED | FIXED-UNMERGED (integration/wave-0 @ e0d800d273b3c618d4af07d9ffbbe2873da49937)           |
 | **QUOTA-ENFORCEMENT-001** — Generation does not enforce tier limits before starting                                                 | P1       | CONFIRMED | NOT-STARTED                                                                              |
 | **GEN-START-IDEMPOTENCY-001** — A start request whose response was lost could not be retried safely                                 | P1       | CONFIRMED | FIXED-UNMERGED (fix/mar-004-idempotent-start @ 7761c2665c31273c49214ec7b96f4858a8f61e93) |
-| **GEN-START-IDEMPOTENCY-KEY-SCOPE-001** — An idempotency key partitioned per project could not detect its own reuse across projects | P2       | CONFIRMED | FIXED-UNMERGED (fix/mar-004-idempotent-start @ pending)                                  |
+| **GEN-START-IDEMPOTENCY-KEY-SCOPE-001** — An idempotency key partitioned per project could not detect its own reuse across projects | P2       | CONFIRMED | FIXED-UNMERGED (fix/mar-004-idempotent-start @ f8a5d8dbdd093fca5b3bc3286aeb337b106b2903) |
 
 ## 4. pipeline-outcome-truth — worst severity P1
 
