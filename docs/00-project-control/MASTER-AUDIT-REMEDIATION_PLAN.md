@@ -2,7 +2,7 @@
 
 # Master audit remediation plan
 
-Generated from `config/audit/master-audit-register.json` (58 findings). Severity is the register's; ordering is by the worst severity in each group, except that re-verification comes first and verified controls come last.
+Generated from `config/audit/master-audit-register.json` (60 findings). Severity is the register's; ordering is by the worst severity in each group, except that re-verification comes first and verified controls come last.
 
 Findings are grouped by shared architectural root rather than by symptom. Several of these are the same defect seen from different places, and repairing them one at a time would mean repairing the root several times.
 
@@ -10,7 +10,7 @@ Findings are grouped by shared architectural root rather than by symptom. Severa
 
 | Disposition        | Findings |
 | ------------------ | -------- |
-| FIXED-UNMERGED     | 28       |
+| FIXED-UNMERGED     | 30       |
 | NOT-STARTED        | 25       |
 | NO-ACTION-REQUIRED | 4        |
 | SCOPED-OUT         | 1        |
@@ -21,7 +21,7 @@ Every finding names the deduplicated root cause it belongs to. A finding the tax
 
 | Root cause                                                                                         | Priority        | Findings | Fixed | Remaining |
 | -------------------------------------------------------------------------------------------------- | --------------- | -------- | ----- | --------- |
-| **MAR-001** — Cross-tenant resource authorization is not parent-bound everywhere                   | P0              | 15       | 10    | 5         |
+| **MAR-001** — Cross-tenant resource authorization is not parent-bound everywhere                   | P0              | 17       | 12    | 5         |
 | **MAR-003** — No single clean canonical product acceptance run exists                              | P0-release-gate | 3        | 0     | 3         |
 | **MAR-004** — Generation has no durable project-scoped single-flight and idempotent start identity | P1              | 3        | 3     | 0         |
 | **MAR-005** — State transitions have no unified durable CAS/version authority                      | P1              | 3        | 3     | 0         |
@@ -75,6 +75,8 @@ One defect shape: the identifier the caller was authorized for is not the thing 
 | **SEC-STUDIO-PROTOCOL-DISCLOSURE-001** — The command disclosure closed on the REST path was still reachable over the protocol transport                                   | P2       | CONFIRMED | FIXED-UNMERGED (fix/mar-001-studio-protocol-binding @ 74b987129b549eca3fdde294e3e3cf603af81c7d)       |
 | **SEC-STUDIO-STATUS-COUNT-001** — GET /status reported a platform-wide Studio session count                                                                               | P2       | CONFIRMED | FIXED-UNMERGED (fix/mar-001-studio-protocol-binding @ 74b987129b549eca3fdde294e3e3cf603af81c7d)       |
 | **SEC-PROJECT-ACCESS-DISCLOSURE-001** — The shared project access control distinguishes another tenant's project from one that does not exist                             | P2       | CONFIRMED | FIXED-UNMERGED (fix/mar-001-resource-authorization-helper @ 81ad71e35ed11284f7a6292f0b56963969750fb5) |
+| **SEC-CONVERSATION-DISCLOSURE-001** — Refusing another tenant's conversation disclosed that the conversation existed                                                      | P2       | CONFIRMED | FIXED-UNMERGED (fix/mar-001-conversation-ownership @ b1eee9f0c43fa9926f5a195b66401da1558e9ced)        |
+| **SEC-CONCEALING-CHECK-OPTIONAL-001** — The canonical helper depended on an access-control method the interface marked optional                                           | P2       | CONFIRMED | FIXED-UNMERGED (fix/mar-001-conversation-ownership @ b1eee9f0c43fa9926f5a195b66401da1558e9ced)        |
 
 ## 3. pipeline-outcome-truth — worst severity P1
 

@@ -1032,6 +1032,40 @@
         "server/src/__tests__/mar001.resource-authorization.test.ts"
       ],
       "notes": "Four Studio findings shared one shape: the identifier the caller was authorized for was not the thing the operation acted on. requireOwned takes the resource's own id and a loader, and derives the authoritative project from what the loader returned. It has no parameter for a caller-supplied project, so the mismatch is unrepresentable rather than discouraged; a helper that accepted a project alongside a resource id would be a tidier spelling of the same defect. denyAsAbsent builds the refusal from the resource name rather than the resource, so a denial has nothing of the refused object in it to leak. filterOwned was designed and deliberately not built: this slice has no list endpoint to migrate, and the existing per-route filters already work. Only SEC-PROJECT-ACCESS-DISCLOSURE-001 is migrated here; the remaining 93 unreviewed bindings are later slices."
+    },
+    {
+      "id": "SEC-CONVERSATION-DISCLOSURE-001",
+      "title": "Refusing another tenant's conversation disclosed that the conversation existed",
+      "severity": "P2",
+      "status": "CONFIRMED",
+      "disposition": "FIXED-UNMERGED",
+      "area": "security",
+      "remediationGroup": "authorization-object-binding",
+      "mar": "MAR-001",
+      "owningBranch": "fix/mar-001-conversation-ownership",
+      "owningSha": "b1eee9f0c43fa9926f5a195b66401da1558e9ced",
+      "evidence": [
+        "server/src/routes/chatPersistence.ts",
+        "server/src/__tests__/mar001.conversation-ownership.test.ts"
+      ],
+      "notes": "The conversation routes resolved correctly and no caller could read or delete another tenant's conversation, but a missing conversation answered 'Conversation not found' while another tenant's answered 'Project not found', so the two bodies revealed which conversation ids were real. Reproduced against the baseline before the change. Migrated to requireOwned, which loads the conversation, derives the project from it and answers both through denyAsAbsent. POST /message carries a conversationId and a projectId together, the shape that produced SEC-STUDIO-PROTOCOL-BINDING-001; here the service already ignored the body projectId whenever a conversation was named, and a test now pins that rather than trusting it."
+    },
+    {
+      "id": "SEC-CONCEALING-CHECK-OPTIONAL-001",
+      "title": "The canonical helper depended on an access-control method the interface marked optional",
+      "severity": "P2",
+      "status": "CONFIRMED",
+      "disposition": "FIXED-UNMERGED",
+      "area": "security",
+      "remediationGroup": "authorization-object-binding",
+      "mar": "MAR-001",
+      "owningBranch": "fix/mar-001-conversation-ownership",
+      "owningSha": "b1eee9f0c43fa9926f5a195b66401da1558e9ced",
+      "evidence": [
+        "server/src/routes/resourceAuthorization.ts",
+        "server/src/routes/projects.ts"
+      ],
+      "notes": "Found while migrating the conversation routes, not by review. hasProjectAccess is optional on ProjectAccessControl, and requireOwned failed closed when it was absent, so a route wired to a control that omitted it refused every request as absent. An existing durability test caught it, which is the only reason it did not reach production as a silent outage. The helper now takes the check as a required argument rather than reaching into an access control for it, and ProjectRuntime declares that what it hands out provides it, so the situation cannot be constructed at a migration site."
     }
   ]
 }
