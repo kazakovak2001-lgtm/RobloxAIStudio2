@@ -369,19 +369,7 @@ export class ArtifactStore {
   getPackageCommit(
     projectId: string,
     pipelineId: string,
-  ): GenerationPackageCommit | null;
-  getPackageCommit(pipelineId: string): GenerationPackageCommit | null;
-  getPackageCommit(
-    projectIdOrPipelineId: string,
-    maybePipelineId?: string,
   ): GenerationPackageCommit | null {
-    const pipelineId = maybePipelineId ?? projectIdOrPipelineId;
-    const projectId =
-      maybePipelineId === undefined
-        ? this.resolveSingleProjectId(pipelineId)
-        : projectIdOrPipelineId;
-    if (!projectId) return null;
-
     const key = packageCommitKey(projectId, pipelineId);
     const cached = this.packageCommits.get(key);
     if (cached) {
@@ -415,38 +403,8 @@ export class ArtifactStore {
   getDeliverableArtifacts(
     projectId: string,
     pipelineId: string,
-  ): PipelineArtifact[];
-  getDeliverableArtifacts(pipelineId: string): PipelineArtifact[];
-  getDeliverableArtifacts(
-    projectIdOrPipelineId: string,
-    maybePipelineId?: string,
   ): PipelineArtifact[] {
-    const pipelineId = maybePipelineId ?? projectIdOrPipelineId;
     const allArtifacts = this.getByPipeline(pipelineId);
-    const explicitProject = maybePipelineId !== undefined;
-    const projectId = explicitProject
-      ? projectIdOrPipelineId
-      : this.resolveSingleProjectId(pipelineId);
-
-    if (!projectId) {
-      // Historical artifacts can predate the project envelope. Preserve that
-      // one-argument compatibility path only when no artifact claims a tenant.
-      if (allArtifacts.some((artifact) => artifact.projectId !== undefined)) {
-        return [];
-      }
-      try {
-        const declaresMode = allArtifacts.some(
-          (artifact) =>
-            (artifact.stage === "WORLD_MODEL" ||
-              artifact.stage === "VALIDATION") &&
-            resolveWorldRuntimeModeFromContent(artifact.content).explicit,
-        );
-        return declaresMode ? [] : allArtifacts;
-      } catch {
-        return [];
-      }
-    }
-
     const artifacts = allArtifacts.filter(
       (artifact) => artifact.projectId === projectId,
     );
@@ -658,15 +616,6 @@ export class ArtifactStore {
 
   private get storage(): ArtifactStorageProvider | undefined {
     return this.injectedStorage ?? configuredArtifactStorageFactory?.();
-  }
-
-  private resolveSingleProjectId(pipelineId: string): string | null {
-    const projectIds = new Set<string>();
-    for (const artifact of this.getByPipeline(pipelineId)) {
-      if (artifact.projectId) projectIds.add(artifact.projectId);
-      if (projectIds.size > 1) return null;
-    }
-    return projectIds.size === 1 ? [...projectIds][0]! : null;
   }
 
   private async mutate(

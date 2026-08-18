@@ -237,15 +237,18 @@ describe("WORLD-1C historical packages stay deliverable", () => {
       { projectId: PROJECT_ID, producer: deterministicProducer("world-model") },
     );
 
-    expect(store.getPackageCommit("legacy-exec")).toBeNull();
+    expect(store.getPackageCommit(PROJECT_ID, "legacy-exec")).toBeNull();
     expect(
       store
-        .getDeliverableArtifacts("legacy-exec")
+        .getDeliverableArtifacts(PROJECT_ID, "legacy-exec")
         .map((a) => a.stage)
         .sort(),
     ).toEqual(["LUA_GENERATION", "WORLD_MODEL"]);
     expect(
-      new ArtifactTransferManager(store).getArtifactRefs("legacy-exec"),
+      new ArtifactTransferManager(store).getArtifactRefsForProject(
+        PROJECT_ID,
+        "legacy-exec",
+      ),
     ).toHaveLength(2);
   });
 });
@@ -273,7 +276,9 @@ describe("WORLD-1C explicit packages are publishable only through the marker", (
     // The artifacts exist and stay inspectable — this is a delivery rule, not
     // a storage rule.
     expect(store.getByPipeline("uncommitted-exec")).toHaveLength(2);
-    expect(store.getDeliverableArtifacts("uncommitted-exec")).toEqual([]);
+    expect(
+      store.getDeliverableArtifacts(PROJECT_ID, "uncommitted-exec"),
+    ).toEqual([]);
   });
 
   it("refuses when only a stage written after the world model states a mode", async () => {
@@ -298,7 +303,9 @@ describe("WORLD-1C explicit packages are publishable only through the marker", (
       { projectId: PROJECT_ID, producer: deterministicProducer("world-model") },
     );
 
-    expect(store.getDeliverableArtifacts("later-silent-exec")).toEqual([]);
+    expect(
+      store.getDeliverableArtifacts(PROJECT_ID, "later-silent-exec"),
+    ).toEqual([]);
   });
 
   it("refuses a package whose commit names an artifact that is not there", async () => {
@@ -331,7 +338,9 @@ describe("WORLD-1C explicit packages are publishable only through the marker", (
       ],
     });
 
-    expect(store.getDeliverableArtifacts("phantom-exec")).toEqual([]);
+    expect(store.getDeliverableArtifacts(PROJECT_ID, "phantom-exec")).toEqual(
+      [],
+    );
   });
 
   it("refuses to commit a package missing a required stage", async () => {
@@ -353,7 +362,7 @@ describe("WORLD-1C explicit packages are publishable only through the marker", (
         artifacts: [lua],
       }),
     ).rejects.toThrow(/WORLD_MODEL and LUA_GENERATION/);
-    expect(store.getPackageCommit("no-world-exec")).toBeNull();
+    expect(store.getPackageCommit(PROJECT_ID, "no-world-exec")).toBeNull();
   });
 
   it("refuses a commit whose stated mode contradicts the world model", async () => {
@@ -498,7 +507,7 @@ describe("WORLD-1C package commits are tenant-scoped", () => {
 
     // The compatibility one-argument path cannot choose a tenant when the raw
     // pipeline namespace is ambiguous, so it fails closed rather than leaking.
-    expect(store.getDeliverableArtifacts(pipelineId)).toEqual([]);
+    // Tenant-implicit delivery is intentionally unavailable.
 
     const afterRestart = new ArtifactStore(storage);
     expect(afterRestart.getPackageCommit(projectA, pipelineId)?.projectId).toBe(
@@ -536,9 +545,9 @@ describe("WORLD-1C a mutated package stops being deliverable", () => {
       { worldRuntimeMode: "lua-owned" },
     );
     const transfer = new ArtifactTransferManager(store);
-    expect(transfer.getArtifactRefs("mutated-exec").length).toBe(
-      recorded.length,
-    );
+    expect(
+      transfer.getArtifactRefsForProject(PROJECT_ID, "mutated-exec").length,
+    ).toBe(recorded.length);
 
     const world = recorded.find(
       (artifact) => artifact.stage === "WORLD_MODEL",
@@ -547,12 +556,26 @@ describe("WORLD-1C a mutated package stops being deliverable", () => {
 
     // Not just the edited artifact: the commit described a set, and one member
     // no longer being what the marker named makes the set incoherent.
-    expect(store.getDeliverableArtifacts("mutated-exec")).toEqual([]);
-    expect(transfer.getArtifactRefs("mutated-exec")).toEqual([]);
-    expect(transfer.transfer(recorded.map((a) => a.id)).artifacts).toEqual([]);
-    expect(transfer.transfer(recorded.map((a) => a.id)).missing.length).toBe(
-      recorded.length,
+    expect(store.getDeliverableArtifacts(PROJECT_ID, "mutated-exec")).toEqual(
+      [],
     );
+    expect(
+      transfer.getArtifactRefsForProject(PROJECT_ID, "mutated-exec"),
+    ).toEqual([]);
+    expect(
+      transfer.transferForProject(
+        PROJECT_ID,
+        "mutated-exec",
+        recorded.map((a) => a.id),
+      ).artifacts,
+    ).toEqual([]);
+    expect(
+      transfer.transferForProject(
+        PROJECT_ID,
+        "mutated-exec",
+        recorded.map((a) => a.id),
+      ).missing.length,
+    ).toBe(recorded.length);
   });
 
   it("keeps the artifacts themselves readable after invalidation", async () => {
@@ -567,7 +590,9 @@ describe("WORLD-1C a mutated package stops being deliverable", () => {
     const lua = recorded.find((a) => a.stage === "LUA_GENERATION")!;
     await store.edit(lua.id, { scripts: [] }, "studio-sync");
 
-    expect(store.getDeliverableArtifacts("inspectable-exec")).toEqual([]);
+    expect(
+      store.getDeliverableArtifacts(PROJECT_ID, "inspectable-exec"),
+    ).toEqual([]);
     expect(store.getById(lua.id)?.reviewStatus).toBe("edited");
     expect(store.getByPipeline("inspectable-exec").length).toBe(
       recorded.length,
@@ -607,7 +632,7 @@ describe("WORLD-1C generation commits one coherent package", () => {
       { worldRuntimeMode: "lua-owned" },
     );
 
-    const commit = store.getPackageCommit("marker-order-exec")!;
+    const commit = store.getPackageCommit(PROJECT_ID, "marker-order-exec")!;
     expect(commit.artifacts.map((ref) => ref.artifactId)).toEqual(
       recorded.map((artifact) => artifact.id),
     );
@@ -633,12 +658,14 @@ describe("WORLD-1C generation commits one coherent package", () => {
       ),
     ).rejects.toThrow(/deterministic validation/);
 
-    expect(store.getPackageCommit("rejected-exec")).toBeNull();
+    expect(store.getPackageCommit(PROJECT_ID, "rejected-exec")).toBeNull();
     // The report saying why is still there, and is still not deliverable.
     expect(store.getByPipeline("rejected-exec").map((a) => a.stage)).toEqual([
       "VALIDATION",
     ]);
-    expect(store.getDeliverableArtifacts("rejected-exec")).toEqual([]);
+    expect(store.getDeliverableArtifacts(PROJECT_ID, "rejected-exec")).toEqual(
+      [],
+    );
   });
 
   it("defaults to lua-owned when a caller states no mode", async () => {
@@ -649,9 +676,9 @@ describe("WORLD-1C generation commits one coherent package", () => {
       PROJECT_ID,
     );
 
-    expect(store.getPackageCommit("defaulted-exec")!.worldRuntimeMode).toBe(
-      "lua-owned",
-    );
+    expect(
+      store.getPackageCommit(PROJECT_ID, "defaulted-exec")!.worldRuntimeMode,
+    ).toBe("lua-owned");
   });
 });
 
@@ -761,12 +788,12 @@ describe("WORLD-1C repair carries the mode without widening it", () => {
     };
     const { store, newExecutionId } = await runRepair(world);
 
-    const commit = store.getPackageCommit(newExecutionId);
+    const commit = store.getPackageCommit(PROJECT_ID, newExecutionId);
     expect(commit).not.toBeNull();
     expect(commit!.worldRuntimeMode).toBe("lua-owned");
     expect(commit!.source).toBe("repair");
 
-    const delivered = store.getDeliverableArtifacts(newExecutionId);
+    const delivered = store.getDeliverableArtifacts(PROJECT_ID, newExecutionId);
     expect(delivered.map((a) => a.stage).sort()).toEqual([
       "GAME_DNA",
       "LUA_GENERATION",
@@ -796,8 +823,10 @@ describe("WORLD-1C repair carries the mode without widening it", () => {
     };
     const { store, newExecutionId } = await runRepair(world);
 
-    expect(store.getPackageCommit(newExecutionId)).toBeNull();
-    expect(store.getDeliverableArtifacts(newExecutionId)).toEqual([]);
+    expect(store.getPackageCommit(PROJECT_ID, newExecutionId)).toBeNull();
+    expect(store.getDeliverableArtifacts(PROJECT_ID, newExecutionId)).toEqual(
+      [],
+    );
     // The repair itself still ran and still persisted what it produced.
     expect(store.getByPipeline(newExecutionId).map((a) => a.stage)).toContain(
       "LUA_GENERATION",
@@ -822,13 +851,18 @@ describe("WORLD-1C repair carries the mode without widening it", () => {
     };
     const { store, newExecutionId } = await runRepair(world);
 
-    const parentDelivered = store.getDeliverableArtifacts("repair-parent");
+    const parentDelivered = store.getDeliverableArtifacts(
+      PROJECT_ID,
+      "repair-parent",
+    );
     expect(parentDelivered.map((a) => a.stage).sort()).toEqual([
       "LUA_GENERATION",
       "VALIDATION",
       "WORLD_MODEL",
     ]);
-    expect(store.getDeliverableArtifacts(newExecutionId).length).toBe(4);
+    expect(
+      store.getDeliverableArtifacts(PROJECT_ID, newExecutionId).length,
+    ).toBe(4);
   }, 30000);
 });
 
@@ -964,5 +998,48 @@ describe("WORLD-1C Studio delivery refuses an incoherent package", () => {
     if (queued.success) return;
     expect(queued.reason).toBe("no_artifacts");
     expect(runtime.bridge.getPendingCommandCount(clientId)).toBe(0);
+  });
+
+  it("does not leak another project's sync metadata when this project has no execution", async () => {
+    const { runtime, clientId } = await connectedRuntime();
+    const recorded = await new GenerationArtifactRecorder(
+      runtime.artifacts,
+    ).record("metadata-leak-exec", playableNodes(), PROJECT_ID, {
+      worldRuntimeMode: "lua-owned",
+    });
+    const lua = recorded.find(
+      (artifact) => artifact.stage === "LUA_GENERATION",
+    )!;
+
+    const queued = await runtime.queueProjectExport(
+      clientId,
+      PROJECT_ID,
+      "metadata-leak-exec",
+    );
+    expect(queued.success).toBe(true);
+
+    // Give project A real sync activity: a version bump, a pending-change
+    // count and (potentially) a conflict, all held on the shared
+    // ProjectSyncManager instance rather than per project.
+    const result = await runtime.processProjectSyncRequest(PROJECT_ID, [
+      {
+        changeId: "change-metadata-leak",
+        artifactId: lua.id,
+        artifactType: "lua",
+        changeType: "update",
+        content: { scripts: [] },
+        timestamp: Date.now() + 1000,
+      },
+    ]);
+    expect(result?.status).toBe("applied");
+
+    const projectBId = "metadata-leak-project-b";
+    expect(runtime.getSyncStatus(projectBId)).toEqual({
+      lastSyncTimestamp: null,
+      pendingChanges: 0,
+      conflictCount: 0,
+      currentVersion: "0.0.0",
+      projectId: projectBId,
+    });
   });
 });

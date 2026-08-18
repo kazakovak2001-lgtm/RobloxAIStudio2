@@ -46,7 +46,11 @@ describe("ArtifactTransferManager — transfer()", () => {
 
   // Requirement 2.1, 2.3 — empty list path
   it("returns empty artifacts array when given an empty ID list", () => {
-    const result = manager.transfer([]);
+    const result = manager.transferForProject(
+      ARTIFACT_TEST_PROJECT,
+      "empty-pipeline",
+      [],
+    );
 
     expect(result.artifacts).toHaveLength(0);
     expect(result.missing).toHaveLength(0);
@@ -60,7 +64,11 @@ describe("ArtifactTransferManager — transfer()", () => {
     const content = { script: "print('hello')", lineCount: 1 };
     const stored = await seedArtifact(store, pipelineId, content);
 
-    const result = manager.transfer([stored.id]);
+    const result = manager.transferForProject(
+      ARTIFACT_TEST_PROJECT,
+      pipelineId,
+      [stored.id],
+    );
 
     expect(result.artifacts).toHaveLength(1);
     expect(result.missing).toHaveLength(0);
@@ -81,7 +89,11 @@ describe("ArtifactTransferManager — transfer()", () => {
   it("places an unknown artifact ID in the missing list", () => {
     const unknownId = "does-not-exist-abc123";
 
-    const result = manager.transfer([unknownId]);
+    const result = manager.transferForProject(
+      ARTIFACT_TEST_PROJECT,
+      "unknown-pipeline",
+      [unknownId],
+    );
 
     expect(result.artifacts).toHaveLength(0);
     expect(result.missing).toContain(unknownId);
@@ -130,7 +142,11 @@ describe("ArtifactTransferManager — transfer()", () => {
       },
     );
 
-    const result = manager.transfer([a1.id, a2.id, a3.id]);
+    const result = manager.transferForProject(
+      ARTIFACT_TEST_PROJECT,
+      pipelineId,
+      [a1.id, a2.id, a3.id],
+    );
 
     expect(result.artifacts).toHaveLength(3);
     expect(result.missing).toHaveLength(0);
@@ -172,12 +188,11 @@ describe("ArtifactTransferManager — transfer()", () => {
     const unknownId1 = "ghost-id-aaa";
     const unknownId2 = "ghost-id-bbb";
 
-    const result = manager.transfer([
-      known1.id,
-      unknownId1,
-      known2.id,
-      unknownId2,
-    ]);
+    const result = manager.transferForProject(
+      ARTIFACT_TEST_PROJECT,
+      pipelineId,
+      [known1.id, unknownId1, known2.id, unknownId2],
+    );
 
     // Known artifacts are returned
     expect(result.artifacts).toHaveLength(2);
@@ -199,7 +214,11 @@ describe("ArtifactTransferManager — transfer()", () => {
     const content = { data: "x".repeat(100) };
     const stored = await seedArtifact(store, pipelineId, content);
 
-    const result = manager.transfer([stored.id]);
+    const result = manager.transferForProject(
+      ARTIFACT_TEST_PROJECT,
+      pipelineId,
+      [stored.id],
+    );
 
     expect(result.totalSize).toBeGreaterThan(0);
     // totalSize should equal the byte length of the serialised content
@@ -214,6 +233,11 @@ describe("ArtifactTransferManager — transfer()", () => {
 
     // Behaviour is implementation-defined; we only assert no exception is thrown
     // and that the result is structurally valid.
-    expect(() => manager.transfer([stored.id, stored.id])).not.toThrow();
+    expect(() =>
+      manager.transferForProject(ARTIFACT_TEST_PROJECT, pipelineId, [
+        stored.id,
+        stored.id,
+      ]),
+    ).not.toThrow();
   });
 });

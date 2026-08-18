@@ -318,8 +318,11 @@ describe("STUDIO-1a canonical artifact lineage", () => {
     // does not disturb the package, while an edit replaces content the
     // committed package was accepted over.
     const syncBeforeEdit = new ProjectSyncManager(new ArtifactStore(storage));
-    const snapshotBeforeEdit = syncBeforeEdit.getProjectSnapshot(executionId);
-    expect(snapshotBeforeEdit?.projectId).toBe(executionId);
+    const snapshotBeforeEdit = syncBeforeEdit.getProjectSnapshotForProject(
+      ARTIFACT_TEST_PROJECT,
+      executionId,
+    );
+    expect(snapshotBeforeEdit?.projectId).toBe(ARTIFACT_TEST_PROJECT);
     // The security report and the structural fingerprint travel with the
     // export like every other non-Lua artifact, so a creator can read them in
     // Studio. ARTIFACT-1 names them by stage, so repeated exports replace
@@ -331,7 +334,10 @@ describe("STUDIO-1a canonical artifact lineage", () => {
 
     const transferBeforeEdit = syncBeforeEdit
       .getTransferManager()
-      .transfer([luaArtifact!.id, exportArtifact!.id]);
+      .transferForProject(ARTIFACT_TEST_PROJECT, executionId, [
+        luaArtifact!.id,
+        exportArtifact!.id,
+      ]);
     expect(transferBeforeEdit.missing).toEqual([]);
     expect(transferBeforeEdit.payloadExceeded).toBe(false);
     expect(transferBeforeEdit.artifacts).toHaveLength(2);
@@ -380,11 +386,19 @@ describe("STUDIO-1a canonical artifact lineage", () => {
     // edited package still exported. Restoring the original content restores
     // the hash, and therefore deliverability.
     const syncManager = new ProjectSyncManager(storeAfterRestart);
-    expect(syncManager.getProjectSnapshot(executionId)?.artifactCount).toBe(0);
+    expect(
+      syncManager.getProjectSnapshotForProject(
+        ARTIFACT_TEST_PROJECT,
+        executionId,
+      )?.artifactCount,
+    ).toBe(0);
     expect(
       syncManager
         .getTransferManager()
-        .transfer([luaArtifact!.id, exportArtifact!.id]).artifacts,
+        .transferForProject(ARTIFACT_TEST_PROJECT, executionId, [
+          luaArtifact!.id,
+          exportArtifact!.id,
+        ]).artifacts,
     ).toEqual([]);
   });
 });
