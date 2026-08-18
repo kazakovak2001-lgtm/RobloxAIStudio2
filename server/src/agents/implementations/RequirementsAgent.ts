@@ -71,6 +71,21 @@ export class RequirementsAgent extends BaseAgent {
       difficulty,
     });
 
+    // INTENT-DEFAULT-CONTAMINATION-001. Some of the fields below may be system
+    // defaults rather than anything the user chose. Saying so keeps the model
+    // from hardening an assumption into a requirement, which is how a project
+    // with no stated genre ended up being designed as the default one.
+    const assumed = Array.isArray(bp?.assumed_fields)
+      ? (bp.assumed_fields as string[])
+      : [];
+    const assumptionNote =
+      assumed.length > 0
+        ? `\n\nThe user did not state these fields; the values shown are system ` +
+          `defaults, not requirements: ${assumed.join(", ")}. ` +
+          `Do not treat them as constraints the user asked for, and do not ` +
+          `build the design around them.`
+        : "";
+
     const inlinePrompt =
       "You are a game requirements analyst for Roblox. " +
       "Extract structured functional requirements, constraints, and success criteria. " +
@@ -78,7 +93,7 @@ export class RequirementsAgent extends BaseAgent {
       '"non_functional": object, "constraints": string[], "success_criteria": string[] } }\n\n' +
       `Name: ${name}\nGenre: ${genre}\nGame Type: ${gameType}\n` +
       `Description: ${description}\nTarget Audience: ${targetAudience}\n` +
-      `Difficulty: ${difficulty}\n\nReturn only valid JSON.`;
+      `Difficulty: ${difficulty}${assumptionNote}\n\nReturn only valid JSON.`;
 
     const prompt = registryPrompt ?? inlinePrompt;
 

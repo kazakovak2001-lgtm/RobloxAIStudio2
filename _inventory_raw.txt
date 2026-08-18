@@ -569,6 +569,7 @@ server/src/__tests__/gensingleflight1.active-claim.test.ts
 server/src/__tests__/harden2a.auth-contract.test.ts
 server/src/__tests__/identityAccess.test.ts
 server/src/__tests__/integration.test.ts
+server/src/__tests__/intent1.default-contamination.test.ts
 server/src/__tests__/novelty1.gameDna.test.ts
 server/src/__tests__/novelty2.verdict.test.ts
 server/src/__tests__/performance.test.ts

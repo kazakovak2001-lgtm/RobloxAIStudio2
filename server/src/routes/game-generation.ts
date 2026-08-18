@@ -46,31 +46,66 @@ interface StudioSyncResult extends StudioConnectionInfo {
   commandId?: string;
 }
 
-/** Preserve user-authored project intent when creating the first blueprint. */
+/**
+ * Preserve user-authored project intent when creating the first blueprint.
+ *
+ * INTENT-DEFAULT-CONTAMINATION-001. This function has to fill gaps, because the
+ * blueprint contract requires a game type, a genre, a difficulty and a player
+ * count. What it must not do is present those fills as things the user asked
+ * for. Every gap it closes is named in `assumed_fields`, so a downstream reader
+ * can tell a choice from a default.
+ *
+ * The invented description is gone. A project with no brief used to arrive
+ * downstream carrying "Create a complete playable adventure Roblox experience",
+ * which reads exactly like a user requirement and is not one. An empty
+ * description is the honest representation of an empty brief, and the validator
+ * does not require one.
+ */
 export function buildProjectBlueprintInput(
   project: SaaSProject,
 ): CreateBlueprintInput {
-  const gameType = project.gameType?.trim() || project.genre || "adventure";
+  const assumedFields: string[] = [];
+
+  const statedGameType = project.gameType?.trim();
+  const gameType = statedGameType || project.genre || "adventure";
+  if (!statedGameType) assumedFields.push("game_type");
+
   const difficulty = isBlueprintDifficulty(project.difficulty)
     ? project.difficulty
     : "medium";
+  if (!isBlueprintDifficulty(project.difficulty)) {
+    assumedFields.push("difficulty");
+  }
+
+  const statedPlayers =
+    project.players === "solo" ||
+    project.players === "large-group" ||
+    project.players === "mmo";
   const estimatedPlayers =
     project.players === "solo"
       ? "solo"
       : project.players === "large-group" || project.players === "mmo"
         ? project.players
         : "small-group";
+  if (!statedPlayers) assumedFields.push("estimated_players");
+
+  if (!project.genre) assumedFields.push("genre");
+
+  const description = (project.description ?? "").trim();
+  if (!description) assumedFields.push("description");
+
+  const targetAudience = project.targetAudience?.trim();
+  if (!targetAudience) assumedFields.push("target_audience");
 
   return {
     project_id: project.id,
     user_id: project.ownerId,
     name: project.name,
-    description:
-      (project.description ?? "").trim() ||
-      `Create a complete playable ${gameType} Roblox experience.`,
+    description,
+    assumed_fields: assumedFields,
     game_type: gameType,
     genre: [project.genre || gameType],
-    target_audience: project.targetAudience || "general Roblox players",
+    target_audience: targetAudience || "general Roblox players",
     difficulty,
     estimated_players: estimatedPlayers,
     gameplay: {

@@ -129,6 +129,17 @@ export interface GameBlueprint {
   status: BlueprintStatus;
   version: number;
 
+  /**
+   * INTENT-DEFAULT-CONTAMINATION-001. Fields the system filled in because the
+   * user did not state them, listed by blueprint field name.
+   *
+   * A project created without a genre used to arrive downstream indistinguishable
+   * from one where the user chose that genre deliberately, so an assumption was
+   * consumed as a requirement. Anything naming these fields as user intent must
+   * consult this first; an empty or absent list means every value was stated.
+   */
+  assumed_fields?: string[];
+
   // Core Design
   name: string;
   description: string;
