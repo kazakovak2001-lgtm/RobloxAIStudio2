@@ -148,6 +148,71 @@ export function getPlayableLuaIssues(
   if (/:InsertService\s*\(/i.test(`${serverSource}\n${clientSource}`)) {
     issues.push("runtime code must not call the invalid InsertService API");
   }
+
+  // Execution-side invariants.
+  //
+  // Path prefix already decides which side a script runs on, but nothing
+  // checked that its code belongs there. A generated artifact passed every
+  // other check while calling Players.LocalPlayer and OnClientEvent from a
+  // server Script — both nil/absent on the server, so the "playable" package
+  // would have errored the moment Play started.
+  //
+  // Read from the comment- and string-stripped sources above, so a name that
+  // merely appears in a comment or string literal is not a violation.
+  server.forEach((script, index) => {
+    const source = serverSources[index] ?? "";
+    if (/\bLocalPlayer\b/.test(source)) {
+      issues.push(
+        `${script.path} is a server Script and must not use LocalPlayer, which exists only on the client`,
+      );
+    }
+    if (/\bOnClientEvent\b/.test(source)) {
+      issues.push(
+        `${script.path} is a server Script and must not subscribe with OnClientEvent, which exists only on the client`,
+      );
+    }
+  });
+
+  client.forEach((script, index) => {
+    const source = clientSources[index] ?? "";
+    if (
+      /\bFireClient\s*\(/.test(source) ||
+      /\bFireAllClients\s*\(/.test(source)
+    ) {
+      issues.push(
+        `${script.path} is a client LocalScript and must not call FireClient or FireAllClients, which exist only on the server`,
+      );
+    }
+  });
+
+  // Shared ModuleScripts are execution-neutral.
+  //
+  // They normalize to ReplicatedStorage/Shared as ModuleScripts and either side
+  // may require them, but nothing in the pipeline declares which side a given
+  // module is for. A module that touches LocalPlayer or connects OnClientEvent
+  // therefore errors whenever the other side requires it. Until an explicit
+  // side contract exists, the safe shape is the one the prompt already asks
+  // for: shared modules export functions and data, and the server or client
+  // entry script performs the side-specific work.
+  const SIDE_SPECIFIC_IN_SHARED: ReadonlyArray<[RegExp, string]> = [
+    [/\bLocalPlayer\b/, "LocalPlayer"],
+    [/\bPlayerGui\b/, "PlayerGui"],
+    [/\bOnClientEvent\b/, "OnClientEvent"],
+    [/\bFireClient\s*\(/, "FireClient"],
+    [/\bFireAllClients\s*\(/, "FireAllClients"],
+  ];
+  for (const script of scripts) {
+    if (!script.path.startsWith("ReplicatedStorage/Shared/")) continue;
+    const source = stripLuaStrings(stripLuaComments(script.content));
+    const found = SIDE_SPECIFIC_IN_SHARED.filter(([pattern]) =>
+      pattern.test(source),
+    ).map(([, label]) => label);
+    if (found.length > 0) {
+      issues.push(
+        `${script.path} is a shared ModuleScript and must not use side-specific APIs (${found.join(", ")}); export functions for the server or client script to call instead`,
+      );
+    }
+  }
   if (/GetService\s*\(\s*["']GamePassService["']\s*\)/i.test(serverSource)) {
     issues.push("server code must not request the nonexistent GamePassService");
   }
@@ -206,14 +271,49 @@ export function getPlayableLuaIssues(
     );
   }
 
+  /** Either form real Roblox code uses to reach the player's PlayerGui. */
+  const PLAYER_GUI_EXPRESSION =
+    /(?:WaitForChild\s*\(\s*["']PlayerGui["']\s*\)|\.PlayerGui\b)/;
+
+  /**
+   * Whether the ScreenGui ends up under the local player's PlayerGui.
+   *
+   * Checked behaviourally rather than by idiom. An earlier version required a
+   * local literally named `playerGui`, which rejected the equally correct
+   * `gui.Parent = Players.LocalPlayer.PlayerGui`. What matters is where the
+   * ScreenGui is parented, not what the intermediate variable is called.
+   */
+  const parentsScreenGuiToPlayerGui = (source: string): boolean => {
+    const direct = new RegExp(
+      String.raw`\.Parent\s*=\s*[^\r\n]*` + PLAYER_GUI_EXPRESSION.source,
+    );
+    if (direct.test(source)) return true;
+
+    // Indirect: the PlayerGui was bound to a local of any name first.
+    const bindings = source.matchAll(
+      new RegExp(
+        String.raw`\blocal\s+([A-Za-z_][A-Za-z0-9_]*)\s*=\s*[^\r\n]*` +
+          PLAYER_GUI_EXPRESSION.source,
+        "g",
+      ),
+    );
+    for (const match of bindings) {
+      const assigned = new RegExp(
+        String.raw`\.Parent\s*=\s*` + match[1] + String.raw`\b`,
+      );
+      if (assigned.test(source)) return true;
+    }
+    return false;
+  };
+
   const hasSelfContainedClientHud = clientSources.some((source) => {
     const guiIndex = source.search(/Instance\.new\s*\(\s*["']ScreenGui["']/);
     const listenerIndex = source.search(/\bOnClientEvent\s*:\s*Connect\s*\(/);
     return (
       guiIndex >= 0 &&
       listenerIndex > guiIndex &&
-      /WaitForChild\s*\(\s*["']PlayerGui["']\s*\)/.test(source) &&
-      /\.Parent\s*=\s*playerGui\b/i.test(source)
+      /\bLocalPlayer\b/.test(source) &&
+      parentsScreenGuiToPlayerGui(source)
     );
   });
   if (!hasSelfContainedClientHud) {

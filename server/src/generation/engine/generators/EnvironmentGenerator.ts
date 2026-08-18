@@ -11,6 +11,12 @@ import {
   type GeneratorOutput,
   type GeneratorMetadata,
 } from "../BaseGenerator";
+import type {
+  SpatialMapType,
+  SpatialObjectType,
+  SpatialSpawnType,
+  SpatialZoneType,
+} from "../../../validation/spatialDesign";
 
 export interface EnvironmentManifest {
   maps: MapDefinition[];
@@ -19,10 +25,16 @@ export interface EnvironmentManifest {
   environmentObjects: EnvironmentObjectDefinition[];
 }
 
+// FIRST-PLAYABLE-1 (FP-1A). The kind vocabulary below is defined once, in the
+// shared spatial contract, and imported here. These types predate that
+// contract; keeping a second copy would let the generated level and this
+// generator drift apart on what counts as, say, an `interactive` object.
+// Shapes are unchanged — only the string unions are now shared.
+
 export interface MapDefinition {
   id: string;
   name: string;
-  type: "main" | "lobby" | "arena" | "dungeon" | "stage";
+  type: SpatialMapType;
   size: { x: number; y: number; z: number };
   theme: string;
   zones: string[];
@@ -32,7 +44,7 @@ export interface ZoneDefinition {
   id: string;
   name: string;
   mapId: string;
-  type: "safe" | "combat" | "puzzle" | "exploration" | "transition";
+  type: SpatialZoneType;
   bounds: { minX: number; minZ: number; maxX: number; maxZ: number };
   properties: Record<string, unknown>;
 }
@@ -41,15 +53,14 @@ export interface SpawnPointDefinition {
   id: string;
   name: string;
   position: { x: number; y: number; z: number };
-  type: "initial" | "checkpoint" | "respawn" | "team";
+  type: SpatialSpawnType;
   mapId: string;
 }
 
 export interface EnvironmentObjectDefinition {
   id: string;
   name: string;
-  objectType:
-    "terrain" | "structure" | "decoration" | "interactive" | "barrier";
+  objectType: SpatialObjectType;
   position: { x: number; y: number; z: number };
   properties: Record<string, unknown>;
   mapId: string;
