@@ -1,4 +1,9 @@
 import type { LLMProvider, LLMOptions, LLMResponse } from "../types/llm";
+import {
+  logProviderCall,
+  payloadLoggingEnabled,
+  previewForDebug,
+} from "./providerTelemetry";
 import { LLMError } from "../types/llm";
 import { fetchWithTimeout, withRetry } from "./llmUtils";
 
@@ -47,9 +52,12 @@ export class OllamaProvider implements LLMProvider {
           },
         };
 
-        console.log(`[ollama-debug] URL: ${url}`);
-        console.log(`[ollama-debug] Method: POST`);
-        console.log(`[ollama-debug] Body: ${JSON.stringify(requestBody)}`);
+        // LLM-LOG-DATA-001. The request body carries the user brief and the
+        // internal prompt, so it is never logged. Only a bounded preview is
+        // available, and only outside production with the flag set.
+        if (payloadLoggingEnabled()) {
+          console.log(`[ollama-debug] prompt: ${previewForDebug(prompt)}`);
+        }
 
         let response: Response;
         try {
@@ -63,18 +71,14 @@ export class OllamaProvider implements LLMProvider {
             timeout,
           );
         } catch (fetchErr) {
-          console.error(`[ollama-debug] fetch() threw:`, fetchErr);
           console.error(
-            `[ollama-debug] Stack:`,
-            fetchErr instanceof Error ? fetchErr.stack : "none",
+            `[llm] provider=ollama model=${model} request failed:`,
+            fetchErr instanceof Error ? fetchErr.message : fetchErr,
           );
           throw fetchErr;
         }
 
-        console.log(`[ollama-debug] HTTP status: ${response.status}`);
-
         const rawText = await response.text();
-        console.log(`[ollama-debug] Raw response body: ${rawText}`);
 
         if (!response.ok) {
           throw new LLMError(
@@ -92,16 +96,24 @@ export class OllamaProvider implements LLMProvider {
             eval_count?: number;
           };
         } catch (parseErr) {
-          console.error(`[ollama-debug] JSON parse failed:`, parseErr);
+          // The body is the generated content, so the failure is reported by
+          // its size and the parser error, never by echoing it.
+          console.error(
+            `[llm] provider=ollama model=${model} response was not json ` +
+              `(${rawText.length} chars): ${previewForDebug(rawText)}`,
+          );
           throw parseErr;
         }
 
-        console.log(
-          `[ollama-debug] Parsed keys: ${Object.keys(data).join(", ")}`,
-        );
-        console.log(
-          `[ollama-debug] response length: ${data.response?.length ?? 0}`,
-        );
+        logProviderCall({
+          provider: "ollama",
+          model,
+          status: response.status,
+          durationMs: Date.now() - start,
+          responseChars: data.response?.length ?? 0,
+          tokensUsed: data.eval_count,
+          finishReason: "complete",
+        });
 
         return {
           content: data.response ?? "",

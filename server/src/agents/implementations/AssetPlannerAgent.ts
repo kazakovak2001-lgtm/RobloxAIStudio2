@@ -1,4 +1,5 @@
 import { BaseAgent, type AgentConfig } from "../core/BaseAgent";
+import { summariseForPrompt } from "../../ai/promptValues";
 import type { AgentInput, GameDesignSeed } from "../../types";
 
 export class AssetPlannerAgent extends BaseAgent {
@@ -35,11 +36,11 @@ export class AssetPlannerAgent extends BaseAgent {
     const theme = seed?.theme ?? "fantasy";
 
     const mechanicsArr = (gameplay as any)?.mechanics;
+    // SERIALIZATION-001. A mechanic without a name used to stringify to
+    // `[object Object]`, telling the model a system existed and nothing about
+    // it. Now its content travels instead.
     const systemsSummary = Array.isArray(mechanicsArr)
-      ? mechanicsArr
-          .slice(0, 4)
-          .map((m: any) => String(m?.name ?? m))
-          .join(", ")
+      ? summariseForPrompt(mechanicsArr.slice(0, 4), "core gameplay")
       : "core gameplay";
 
     const fallback: Record<string, unknown> = {

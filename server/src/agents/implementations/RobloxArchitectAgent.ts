@@ -1,4 +1,5 @@
 import { BaseAgent, type AgentConfig } from "../core/BaseAgent";
+import { summariseForPrompt } from "../../ai/promptValues";
 import type { AgentInput } from "../../types";
 
 export class RobloxArchitectAgent extends BaseAgent {
@@ -37,11 +38,10 @@ export class RobloxArchitectAgent extends BaseAgent {
     const estimatedPlayers = String(bp?.estimated_players ?? "small-group");
 
     const mechanicsArr = (gameplay as any)?.mechanics;
+    // SERIALIZATION-001. Same fallback, same loss: an unnamed mechanic became
+    // `[object Object]` in the prompt that designs the architecture.
     const systemsSummary = Array.isArray(mechanicsArr)
-      ? mechanicsArr
-          .slice(0, 5)
-          .map((m: any) => String(m?.name ?? m))
-          .join(", ")
+      ? summariseForPrompt(mechanicsArr.slice(0, 5), "core gameplay systems")
       : "core gameplay systems";
 
     const fallback: Record<string, unknown> = {

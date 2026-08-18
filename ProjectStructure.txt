@@ -673,6 +673,8 @@
 │   │   │   ├── integration.test.ts
 │   │   │   ├── intent1.default-contamination.test.ts
 │   │   │   ├── intent2.requirement-traceability.test.ts
+│   │   │   ├── llmlog1.payload-redaction.test.ts
+│   │   │   ├── llmparser1.balanced-extraction.test.ts
 │   │   │   ├── novelty1.gameDna.test.ts
 │   │   │   ├── novelty2.verdict.test.ts
 │   │   │   ├── performance.test.ts
@@ -1405,7 +1407,8 @@
 │   │   │   ├── ollama.ts
 │   │   │   ├── openai.ts
 │   │   │   ├── openrouter.ts
-│   │   │   └── providerFactory.ts
+│   │   │   ├── providerFactory.ts
+│   │   │   └── providerTelemetry.ts
 │   │   ├── repair
 │   │   │   ├── __tests__
 │   │   │   │   ├── RepairEngine.test.ts
