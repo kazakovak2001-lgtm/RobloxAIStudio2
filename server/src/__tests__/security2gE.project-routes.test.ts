@@ -59,7 +59,7 @@ describe("SECURITY-2G-E direct project route guards", () => {
     const handler = routeHandler("post", "/:projectId/generate");
 
     const mismatchGuard = handler.indexOf("requested.project_id !== projectId");
-    const scheduling = handler.indexOf("startGeneration");
+    const scheduling = handler.indexOf("prepareGeneration");
 
     expect(mismatchGuard).toBeGreaterThanOrEqual(0);
     expect(scheduling).toBeGreaterThan(mismatchGuard);
@@ -68,10 +68,12 @@ describe("SECURITY-2G-E direct project route guards", () => {
 
   it("passes the authorized project to the service as the expected owner", () => {
     const handler = routeHandler("post", "/:projectId/generate");
-    // The service refuses to record an execution for any other project, so the
-    // invariant is not protected by the route alone.
+    // The service refuses to build an execution for any other project, so the
+    // invariant is not protected by the route alone. The call became
+    // prepareGeneration when the start path was split so the execution could
+    // share one durable transaction with the rest of the start evidence.
     expect(handler).toMatch(
-      /startGeneration\(\s*blueprintId \|\| projectId,\s*userId,\s*projectId,?\s*\)/,
+      /prepareGeneration\(\s*blueprintId \|\| projectId,\s*userId,\s*projectId,?\s*\)/,
     );
   });
 });

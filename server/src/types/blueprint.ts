@@ -223,6 +223,13 @@ export interface GenerationExecution {
   }>;
   total_duration_ms?: number;
   error_message?: string;
+  /**
+   * AUDIT-RECOVERY-001. Set when startup reconciliation closed this execution
+   * because a restart left it `running` with no worker. The status is `failed`
+   * so existing consumers behave correctly, and this distinguishes "the process
+   * died" from "the generation failed on its merits".
+   */
+  restart_interrupted_at?: number;
   retry_count: number;
   /**
    * How this execution's content was produced.

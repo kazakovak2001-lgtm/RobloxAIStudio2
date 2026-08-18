@@ -1,6 +1,7 @@
 import type { GenerationExecution } from "../../types/blueprint";
 import {
   DurableStorageConflictError,
+  type DurableMutation,
   type StorageProvider,
 } from "../storage/StorageProvider";
 
@@ -23,7 +24,38 @@ interface GenerationProjectRepository {
 const PROJECTS = "projects";
 const GENERATION_HISTORY = "generation_history";
 const GENERATION_EXECUTIONS = "generation_executions";
+/**
+ * AUDIT-DUP-GENERATION-001 and AUDIT-OUTCOME-LAST-WRITER-001.
+ *
+ * One record per project naming the generation that currently owns it. Written
+ * with `requireAbsent` inside the start transaction, so a second start for the
+ * same project is refused by durable storage rather than by a process-local
+ * lock — which is what makes the invariant hold across instances. Released by
+ * the run that owns it when it reaches a terminal state.
+ */
+const GENERATION_ACTIVE_CLAIMS = "generation_active_claims";
 const projectQueues = new Map<string, Promise<void>>();
+
+/** Names the generation currently allowed to act on a project. */
+export interface GenerationActiveClaim {
+  executionId: string;
+  startedAt: number;
+}
+
+/** Raised when a project already has an active generation. */
+export class ActiveGenerationConflictError extends Error {
+  constructor(
+    readonly projectId: string,
+    readonly activeExecutionId?: string,
+  ) {
+    super(
+      `Project ${projectId} already has an active generation${
+        activeExecutionId ? ` (${activeExecutionId})` : ""
+      }`,
+    );
+    this.name = "ActiveGenerationConflictError";
+  }
+}
 
 function normalizeDate(value: Date | string): Date {
   return value instanceof Date ? value : new Date(value);
@@ -182,6 +214,22 @@ export class GenerationOutcomeCoordinator {
         aiCost: 0,
       };
 
+      // AUDIT-OUTCOME-LAST-WRITER-001. Two runs of one project can finish in
+      // either order. The run that still owns the project's claim is the
+      // authoritative one; an older run that finishes later may close its own
+      // record, but must not rewrite the project or release someone else's
+      // claim. Without this, a stale run silently overwrote the newer outcome.
+      const claim = this.storage.get<GenerationActiveClaim>(
+        GENERATION_ACTIVE_CLAIMS,
+        existing.project_id,
+      );
+      // Refuse only when the project is demonstrably owned by someone else. No
+      // claim at all is not evidence of foreign ownership: an execution started
+      // before this record existed, or through the path that persists an
+      // execution on its own, still has to be able to close out its project.
+      const ownsProject = !claim || claim.executionId === execution.id;
+      const holdsClaim = claim?.executionId === execution.id;
+
       await this.storage.applyDurableBatch([
         {
           operation: "set",
@@ -195,12 +243,25 @@ export class GenerationOutcomeCoordinator {
           id: execution.id,
           data: history,
         },
-        {
-          operation: "set",
-          collection: PROJECTS,
-          id: existing.project_id,
-          data: updatedProject,
-        },
+        ...(ownsProject
+          ? ([
+              {
+                operation: "set",
+                collection: PROJECTS,
+                id: existing.project_id,
+                data: updatedProject,
+              },
+            ] as const)
+          : []),
+        ...(holdsClaim
+          ? ([
+              {
+                operation: "delete",
+                collection: GENERATION_ACTIVE_CLAIMS,
+                id: existing.project_id,
+              },
+            ] as const)
+          : []),
       ]);
       return execution;
     });
@@ -208,12 +269,37 @@ export class GenerationOutcomeCoordinator {
 }
 
 export class ProjectGenerationStartCoordinator {
-  constructor(private readonly projects: GenerationProjectRepository) {}
+  constructor(
+    private readonly projects: GenerationProjectRepository,
+    private readonly storage: StorageProvider,
+  ) {}
 
+  /**
+   * AUDIT-START-ATOMICITY-001.
+   *
+   * Start evidence commits as one transaction. The previous implementation
+   * wrote the project (status/generationCount), then the execution, then the
+   * start history as three independent durable writes, so a rejection anywhere
+   * after the first left the project falsely claiming `generating` with an
+   * incremented count and no execution to ever repair it.
+   *
+   * `prepare` must not write anything durable and must not start process-local
+   * work. Everything durable goes through the single `applyDurableBatch` below,
+   * whose contract is that no cache change becomes visible unless every
+   * mutation commits and a rejection preserves the exact pre-transaction state.
+   * `afterCommit` runs only once that transaction has committed, which is where
+   * process-local work such as enqueueing the pipeline belongs.
+   *
+   * This mirrors `GenerationOutcomeCoordinator.commit` above, which already
+   * commits execution + history + project together; the start path was the
+   * asymmetric one.
+   */
   async start<T>(
     projectId: string,
-    schedule: () => Promise<T>,
-    recordHistory: (result: T) => Promise<void>,
+    prepare: () => Promise<T>,
+    buildStartEvidence: (result: T) => readonly DurableMutation[],
+    resolveExecutionId: (result: T) => string,
+    afterCommit?: (result: T) => void,
   ): Promise<T> {
     return withProjectLock(projectId, async () => {
       const project = this.projects.get(projectId);
@@ -221,13 +307,63 @@ export class ProjectGenerationStartCoordinator {
         throw new Error(`Project ${projectId} not found`);
       }
 
-      await this.projects.updateDurable(projectId, {
+      // Nothing durable yet: a rejection here leaves no state at all.
+      const result = await prepare();
+
+      // Spread the stored record so unrelated project fields survive, matching
+      // what SaaSProjectRepository.updateDurable would have preserved.
+      const stored =
+        this.storage.get<GenerationProjectState>(PROJECTS, projectId) ??
+        project;
+      const updatedProject: GenerationProjectState = {
+        ...stored,
         status: "generating",
         generationCount: project.generationCount + 1,
-      });
+        updatedAt: Date.now(),
+      };
 
-      const result = await schedule();
-      await recordHistory(result);
+      const claim: GenerationActiveClaim = {
+        executionId: resolveExecutionId(result),
+        startedAt: Date.now(),
+      };
+
+      try {
+        await this.storage.applyDurableBatch([
+          ...buildStartEvidence(result),
+          {
+            operation: "set",
+            collection: PROJECTS,
+            id: projectId,
+            data: updatedProject,
+          },
+          // Admission and evidence commit together. `requireAbsent` makes the
+          // second concurrent start fail the whole batch, so a duplicate leaves
+          // no execution, no history and no incremented count behind — and the
+          // decision is taken by durable storage, so a second process reaches
+          // the same answer.
+          {
+            operation: "set",
+            collection: GENERATION_ACTIVE_CLAIMS,
+            id: projectId,
+            data: claim,
+            requireAbsent: true,
+          },
+        ]);
+      } catch (error) {
+        if (error instanceof DurableStorageConflictError) {
+          const active = this.storage.get<GenerationActiveClaim>(
+            GENERATION_ACTIVE_CLAIMS,
+            projectId,
+          );
+          throw new ActiveGenerationConflictError(
+            projectId,
+            active?.executionId,
+          );
+        }
+        throw error;
+      }
+
+      afterCommit?.(result);
       return result;
     });
   }

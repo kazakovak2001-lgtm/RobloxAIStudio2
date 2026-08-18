@@ -6,7 +6,10 @@ import type {
   StudioProjectSession,
 } from "../studio/integration/types";
 import type { ProjectRuntime } from "./projects";
-import { ProjectGenerationStartCoordinator } from "../platform/projects/ProjectLifecycleCoordinator";
+import {
+  ActiveGenerationConflictError,
+  ProjectGenerationStartCoordinator,
+} from "../platform/projects/ProjectLifecycleCoordinator";
 import { DurableStorageError } from "../platform/storage/StorageProvider";
 import type { CreateBlueprintInput } from "../projects/types/blueprint";
 import type { SaaSProject } from "../platform/projects/SaaSProjectRepository";
@@ -92,9 +95,13 @@ export function createGameGenerationRouter(
   projectRuntime: ProjectRuntime,
 ): Router {
   const router = Router();
-  const { projectRepository, generationHistory, access } = projectRuntime;
+  // generationHistory is intentionally not destructured: the start-history
+  // entry is now written inside the coordinator's durable batch rather than as
+  // a separate follow-up write.
+  const { projectRepository, access, storage } = projectRuntime;
   const generationStartCoordinator = new ProjectGenerationStartCoordinator(
     projectRepository,
+    storage,
   );
   const generationOperatorUserIds = new Set(
     (process.env.GENERATION_OPERATOR_USER_IDS ?? "")
@@ -258,40 +265,73 @@ export function createGameGenerationRouter(
         );
       }
 
+      // AUDIT-START-ATOMICITY-001. The execution and its start-history entry
+      // are handed to the coordinator as durable mutations so they commit in
+      // the same transaction as the project's status/generationCount. The
+      // pipeline is only enqueued after that transaction commits.
       const result = await generationStartCoordinator.start(
         projectId,
-        // projectId is passed as the expected owner so the service refuses to
-        // record an execution for any other project, even if the identifier
-        // resolves elsewhere. The route check above and this are the same
-        // policy asserted at both boundaries, not two policies.
+        // SEC-GENERATION-BLUEPRINT-001. projectId is passed as the expected
+        // owner so the service refuses to build an execution for any other
+        // project, even if the identifier resolves elsewhere. The route check
+        // above and this are the same policy asserted at both boundaries, not
+        // two policies. It now runs inside prepare, before anything durable
+        // exists, so a refused request leaves no state at all.
         () =>
-          gameService.startGeneration(
+          gameService.prepareGeneration(
             blueprintId || projectId,
             userId,
             projectId,
           ),
-        async (execution) => {
-          studioManager.activateProjectExecution(projectId, execution.id);
-          await generationHistory.record({
+        ({ execution }) => [
+          {
+            operation: "set" as const,
+            collection: "generation_executions",
             id: execution.id,
-            projectId,
-            pipelineId: execution.id,
-            status: execution.status,
-            startedAt: execution.started_at.getTime(),
-            stagesCompleted: 0,
-            stagesTotal: 0,
-            failures: 0,
-            tokenUsage: 0,
-            aiCost: 0,
-          });
+            data: execution,
+          },
+          {
+            operation: "set" as const,
+            collection: "generation_history",
+            id: execution.id,
+            data: {
+              id: execution.id,
+              projectId,
+              pipelineId: execution.id,
+              status: execution.status,
+              startedAt: execution.started_at.getTime(),
+              stagesCompleted: 0,
+              stagesTotal: 0,
+              failures: 0,
+              tokenUsage: 0,
+              aiCost: 0,
+            },
+          },
+        ],
+        ({ execution }) => execution.id,
+        ({ execution, blueprint }) => {
+          studioManager.activateProjectExecution(projectId, execution.id);
+          gameService.enqueueGeneration(execution, blueprint, userId);
         },
       );
       res.json({
         success: true,
-        executionId: result.id,
+        executionId: result.execution.id,
         status: "generation_started",
       });
     } catch (error) {
+      // AUDIT-DUP-GENERATION-001. A project that already has a running
+      // generation is a conflict, not a server fault. Answering 500 here would
+      // read as "try again", which is exactly how a retry produced the second
+      // generation this refusal exists to prevent.
+      if (error instanceof ActiveGenerationConflictError) {
+        res.status(409).json({
+          success: false,
+          error: "A generation is already running for this project",
+          executionId: error.activeExecutionId,
+        });
+        return;
+      }
       const message =
         error instanceof Error ? error.message : "Generation failed";
       console.error("[generate] Error:", message);

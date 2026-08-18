@@ -113,7 +113,7 @@ describe("SEC-GENERATION-BLUEPRINT-001 POST /:projectId/generate", () => {
       blueprintInput(projectB.id, OWNER_B),
     );
 
-    const startGeneration = vi.spyOn(service, "startGeneration");
+    const prepareGeneration = vi.spyOn(service, "prepareGeneration");
     const recordExecution = vi.spyOn(repository, "recordExecution");
     const activateProjectExecution = vi.fn();
     const studioManager = {
@@ -154,7 +154,7 @@ describe("SEC-GENERATION-BLUEPRINT-001 POST /:projectId/generate", () => {
       projectB,
       blueprintA,
       blueprintB,
-      startGeneration,
+      prepareGeneration,
       recordExecution,
       activateProjectExecution,
       generate,
@@ -188,13 +188,19 @@ describe("SEC-GENERATION-BLUEPRINT-001 POST /:projectId/generate", () => {
       retry_count: 0,
       pipeline_steps: [],
     };
-    spy.mockResolvedValue(execution as never);
+    // prepareGeneration returns the blueprint alongside the execution, because
+    // the caller commits the execution in one transaction and then enqueues the
+    // pipeline with the blueprint it already resolved.
+    spy.mockResolvedValue({
+      execution,
+      blueprint: { id: blueprintId, project_id: projectId },
+    } as never);
     return execution;
   }
 
   it("A — accepts a blueprint that belongs to the authorized project", async () => {
     const h = await harness();
-    stubStart(h.startGeneration, h.projectA.id, h.blueprintA.id);
+    stubStart(h.prepareGeneration, h.projectA.id, h.blueprintA.id);
 
     const response = await h.generate(
       h.projectA.id,
@@ -209,7 +215,7 @@ describe("SEC-GENERATION-BLUEPRINT-001 POST /:projectId/generate", () => {
       status: "generation_started",
     });
     // Scheduling happened, bound to the authorized project.
-    expect(h.startGeneration).toHaveBeenCalledWith(
+    expect(h.prepareGeneration).toHaveBeenCalledWith(
       h.blueprintA.id,
       OWNER_A,
       h.projectA.id,
@@ -244,7 +250,7 @@ describe("SEC-GENERATION-BLUEPRINT-001 POST /:projectId/generate", () => {
 
     // Rejected before any work: no start, no execution, no project mutation,
     // no history, no Studio activation, for either project.
-    expect(h.startGeneration).not.toHaveBeenCalled();
+    expect(h.prepareGeneration).not.toHaveBeenCalled();
     expect(h.recordExecution).not.toHaveBeenCalled();
     expect(h.activateProjectExecution).not.toHaveBeenCalled();
     expect(JSON.stringify(h.project(h.projectA.id))).toBe(before.a);
@@ -268,20 +274,20 @@ describe("SEC-GENERATION-BLUEPRINT-001 POST /:projectId/generate", () => {
     // The project does own a blueprint, so the pre-fix resolution would have
     // silently generated from it. An explicitly supplied id must not be
     // quietly replaced by a different one.
-    expect(h.startGeneration).not.toHaveBeenCalled();
+    expect(h.prepareGeneration).not.toHaveBeenCalled();
     expect(h.project(h.projectA.id)?.status).toBe(h.projectA.status);
     expect(h.history(h.projectA.id)).toEqual([]);
   });
 
   it("C2 — still resolves the project's own blueprint when no id is supplied", async () => {
     const h = await harness();
-    stubStart(h.startGeneration, h.projectA.id, h.blueprintA.id);
+    stubStart(h.prepareGeneration, h.projectA.id, h.blueprintA.id);
 
     const response = await h.generate(h.projectA.id, {}, TOKEN_A);
 
     expect(response.status).toBe(200);
     // Unchanged contract: the omitted-id path still resolves by project.
-    expect(h.startGeneration).toHaveBeenCalledWith(
+    expect(h.prepareGeneration).toHaveBeenCalledWith(
       h.projectA.id,
       OWNER_A,
       h.projectA.id,
@@ -305,7 +311,7 @@ describe("SEC-GENERATION-BLUEPRINT-001 POST /:projectId/generate", () => {
     );
     expect(anonymous.status).toBe(401);
 
-    expect(h.startGeneration).not.toHaveBeenCalled();
+    expect(h.prepareGeneration).not.toHaveBeenCalled();
     expect(h.recordExecution).not.toHaveBeenCalled();
   });
 });

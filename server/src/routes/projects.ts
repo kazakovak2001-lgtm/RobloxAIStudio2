@@ -40,6 +40,12 @@ export interface ProjectRuntime {
   projectRepository: SaaSProjectRepository;
   generationHistory: GenerationHistoryRepository;
   access: ProjectAccessControl;
+  /**
+   * The provider both repositories above are built on. Exposed so a caller that
+   * must commit several collections in one transaction can reach
+   * `applyDurableBatch` instead of issuing independent writes.
+   */
+  storage: StorageProvider;
 }
 
 type RequestWithSession = Request & { user?: { userId?: string } };
@@ -136,6 +142,7 @@ export function createProjectRuntime(
   return {
     projectRepository,
     generationHistory,
+    storage,
     access: {
       getRequestUserId,
       requireAuthenticatedUser,

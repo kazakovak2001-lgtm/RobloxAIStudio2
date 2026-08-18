@@ -115,24 +115,31 @@ export class GameGenerationService {
   }
 
   /**
-   * SEC-GENERATION-BLUEPRINT-001.
+   * AUDIT-START-ATOMICITY-001 and SEC-GENERATION-BLUEPRINT-001.
    *
-   * `blueprintIdOrProjectId` is caller-supplied and is resolved against both
+   * Resolve the blueprint and build the execution record **without**
+   * persisting it and without starting any process-local work. Split out of
+   * `startGeneration` so a caller that must commit the execution together with
+   * other durable evidence — project state, start history and the active-run
+   * claim — can put them all in one `applyDurableBatch`.
+   *
+   * `blueprintIdOrProjectId` is caller-supplied and resolves against both
    * blueprint ids and project ids, so on its own it decides which project the
-   * resulting execution belongs to. A caller authorized for one project could
-   * therefore pass a blueprint id belonging to another and have the execution
-   * recorded against that other project.
+   * execution belongs to. A caller authorized for one project could otherwise
+   * pass a blueprint id belonging to another. `expectedProjectId` closes that:
+   * the resolved blueprint must belong to it.
    *
-   * `expectedProjectId` closes that: when supplied, the resolved blueprint must
-   * belong to it, asserted before any state is written. It is optional so
-   * existing internal callers that pass a project id keep working, but every
+   * The check moved here with the split, and is stricter for it. It used to
+   * sit before `recordExecution`; it now runs before anything durable exists
+   * at all, so a refused request leaves no state to reconcile. It stays
+   * optional so existing internal callers keep working, but every
    * request-driven caller is expected to pass it.
    */
-  async startGeneration(
+  async prepareGeneration(
     blueprintIdOrProjectId: string,
     userId: string,
     expectedProjectId?: string,
-  ): Promise<GenerationExecution> {
+  ): Promise<{ execution: GenerationExecution; blueprint: GameBlueprint }> {
     const blueprint =
       (await this.repository.getBlueprint(blueprintIdOrProjectId)) ??
       (await this.repository.getBlueprintByProjectId(blueprintIdOrProjectId));
@@ -169,8 +176,46 @@ export class GameGenerationService {
       pipeline_steps: [],
     };
 
-    await this.repository.recordExecution(execution);
+    return { execution, blueprint };
+  }
 
+  /**
+   * Persist the execution on its own and start it. Unchanged contract for
+   * callers that do not need the execution to share a transaction with other
+   * durable evidence.
+   *
+   * `expectedProjectId` is forwarded rather than re-checked: the ownership
+   * assertion belongs where the blueprint is resolved, and duplicating it here
+   * would give two places to keep in step.
+   */
+  async startGeneration(
+    blueprintIdOrProjectId: string,
+    userId: string,
+    expectedProjectId?: string,
+  ): Promise<GenerationExecution> {
+    const { execution, blueprint } = await this.prepareGeneration(
+      blueprintIdOrProjectId,
+      userId,
+      expectedProjectId,
+    );
+
+    await this.repository.recordExecution(execution);
+    this.enqueueGeneration(execution, blueprint, userId);
+    return execution;
+  }
+
+  /**
+   * Start the process-local pipeline for an execution that is already durable.
+   *
+   * Deliberately not async and deliberately last: it must only run after the
+   * durable start evidence has committed, so a failed commit never leaves a
+   * pipeline running for state that was rolled back.
+   */
+  enqueueGeneration(
+    execution: GenerationExecution,
+    blueprint: GameBlueprint,
+    userId: string,
+  ): void {
     setImmediate(
       () =>
         void this.executionQueue.add(async () => {
@@ -186,6 +231,11 @@ export class GameGenerationService {
           // its agents ran still knows how their content was produced, and
           // that is exactly when mislabelling it would be worst.
           let executedNodes: ReadonlyArray<{ output?: unknown }> = [];
+          // GEN-FAILURE-EVIDENCE-001. Held outside the try for the same
+          // reason as the two above: a run that fails after its agents ran
+          // still knows which steps completed, failed and were skipped, and
+          // that is exactly the run whose evidence used to be dropped.
+          let pipelineSteps: GenerationExecution["pipeline_steps"] = [];
 
           try {
             const gameDesignSeed = generateGameDesignSeed({
@@ -255,7 +305,7 @@ export class GameGenerationService {
               enrichedBlueprint.project_id,
             );
 
-            const pipelineSteps = result.graph.getAllNodes().map((node) => {
+            pipelineSteps = result.graph.getAllNodes().map((node) => {
               const status =
                 node.status === "done"
                   ? ("completed" as const)
@@ -313,6 +363,14 @@ export class GameGenerationService {
               error_message:
                 err instanceof Error ? err.message : "Unknown pipeline error",
               total_duration_ms: Date.now() - execution.started_at.getTime(),
+              // GEN-FAILURE-EVIDENCE-001. The success path recorded which steps
+              // ran; this path did not, and the coordinator falls back to the
+              // record's existing steps, which are the empty array written at
+              // start. A run whose recorder or validation failed after six
+              // agents therefore reported nothing completed, nothing failed and
+              // nothing known. It stays empty only when the failure came before
+              // any step was derived, where the shape genuinely is unknown.
+              pipeline_steps: pipelineSteps,
               ...pipelineProvenance,
               // How the content was produced is knowable whenever the agents
               // ran, even though the run failed afterwards — and `ai` still
@@ -333,8 +391,6 @@ export class GameGenerationService {
           }
         }),
     );
-
-    return execution;
   }
 
   async getExecution(id: string): Promise<GenerationExecution | null> {
@@ -446,9 +502,56 @@ export class GameGenerationService {
       }
     }
 
-    if (!this.outcomeCoordinator) {
-      return this.repository.updateExecution(executionId, updates);
+    const committed = this.outcomeCoordinator
+      ? await this.outcomeCoordinator.commit(executionId, updates)
+      : await this.repository.updateExecution(executionId, updates);
+
+    // GEN-LIFECYCLE-SPLIT-001. This is the only point at which a generation is
+    // finished in the canonical sense: the artifacts are recorded, validation
+    // has run, and the outcome is durably committed. `pipeline.completed` fires
+    // earlier and only means the agent DAG finished, so a consumer that treats
+    // it as completion can show a finished run for a generation that then
+    // failed. Emitted here, from one place, so both the success and the failure
+    // path announce the same truth as the record they just wrote.
+    if (committed) {
+      await this.emitTerminalGenerationEvent(committed);
     }
-    return this.outcomeCoordinator.commit(executionId, updates);
+    return committed;
+  }
+
+  private async emitTerminalGenerationEvent(
+    execution: GenerationExecution,
+  ): Promise<void> {
+    try {
+      await this.events.emit({
+        type:
+          execution.status === "completed"
+            ? "generation.completed"
+            : "generation.failed",
+        pipelineId: execution.id,
+        projectId: execution.project_id,
+        timestamp: execution.completed_at ?? new Date(),
+        data: {
+          executionId: execution.id,
+          status: execution.status,
+          ...(execution.error_message
+            ? { error: execution.error_message }
+            : {}),
+          completedSteps: execution.pipeline_steps.filter(
+            (step) => step.status === "completed",
+          ).length,
+          failedSteps: execution.pipeline_steps.filter(
+            (step) => step.status === "failed",
+          ).length,
+          totalSteps: execution.pipeline_steps.length,
+        },
+      });
+    } catch (error) {
+      // Announcing an outcome must never undo the outcome that was committed.
+      console.error(
+        `[GameGenerationService] failed to announce terminal state for ${execution.id}:`,
+        error,
+      );
+    }
   }
 }

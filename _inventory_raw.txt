@@ -74,9 +74,13 @@ E2E_PIPELINE_VALIDATION_REPORT.md
 FINAL_V1_RELEASE_SIGN_OFF.md
 MODULE_STATUS.md
 ProjectStructure.txt
+ProjectStructure.txt
+ProjectStructure.txt
 README.md
 RELEASE_HARDENING_REPORT.md
 V1_RELEASE_NOTES.md
+_inventory_raw.txt
+_inventory_raw.txt
 _inventory_raw.txt
 architecture.layer-debt.json
 architecture.manifest.json
@@ -549,6 +553,7 @@ server/src/__tests__/artifactcontract2.repair-lineage.test.ts
 server/src/__tests__/artifactcontract2.v2-pipeline.test.ts
 server/src/__tests__/assetfabric1.assetPlan.test.ts
 server/src/__tests__/auditidexec1.execution-identity.test.ts
+server/src/__tests__/auditstartatomicity1.generation-start.test.ts
 server/src/__tests__/autonomousPipelineExploration.test.ts
 server/src/__tests__/autonomousPipelineIntegration.test.ts
 server/src/__tests__/autonomousPipelinePreservation.test.ts
@@ -558,6 +563,8 @@ server/src/__tests__/core1b.postgres.integration.test.ts
 server/src/__tests__/cutover1c.origin-policy.test.ts
 server/src/__tests__/e2eGeneration.test.ts
 server/src/__tests__/generation-provenance.test.ts
+server/src/__tests__/genrecovery1.restart-reconciliation.test.ts
+server/src/__tests__/gensingleflight1.active-claim.test.ts
 server/src/__tests__/harden2a.auth-contract.test.ts
 server/src/__tests__/identityAccess.test.ts
 server/src/__tests__/integration.test.ts
@@ -567,6 +574,7 @@ server/src/__tests__/performance.test.ts
 server/src/__tests__/persistence.test.ts
 server/src/__tests__/pipeline1a.plan-definition.test.ts
 server/src/__tests__/pipeline1b.validation-report.test.ts
+server/src/__tests__/pipelinetruth1.completion-boundary.test.ts
 server/src/__tests__/platform.test.ts
 server/src/__tests__/playtesttruth1.evidence.test.ts
 server/src/__tests__/playtesttruth1.review.test.ts
@@ -1053,6 +1061,7 @@ server/src/platform/auth/TokenProvider.ts
 server/src/platform/auth/authServiceInstance.ts
 server/src/platform/auth/index.ts
 server/src/platform/index.ts
+server/src/platform/projects/GenerationRecovery.ts
 server/src/platform/projects/ProjectLifecycleCoordinator.test.ts
 server/src/platform/projects/ProjectLifecycleCoordinator.ts
 server/src/platform/projects/SaaSProjectRepository.ts
@@ -1109,6 +1118,8 @@ server/src/projects/repository/storageBlueprint.repository.durability.test.ts
 server/src/projects/repository/storageBlueprint.repository.ts
 server/src/projects/services/blueprint.validator.ts
 server/src/projects/services/controller-secret-status.service.ts
+server/src/projects/services/game-generation.service.ts
+server/src/projects/services/game-generation.service.ts
 server/src/projects/services/game-generation.service.ts
 server/src/projects/services/project.service.ts
 server/src/projects/types/blueprint.ts
@@ -1171,6 +1182,8 @@ server/src/routes/distributed.ts
 server/src/routes/domain.ts
 server/src/routes/economy.ts
 server/src/routes/evaluation.ts
+server/src/routes/game-generation.ts
+server/src/routes/game-generation.ts
 server/src/routes/game-generation.ts
 server/src/routes/gameArchitect.ts
 server/src/routes/generation-v2.ts

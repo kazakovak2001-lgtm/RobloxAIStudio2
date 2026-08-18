@@ -55,6 +55,7 @@ import {
   PostgresStorageProvider,
 } from "./platform/storage/postgres";
 import { runMigrations } from "./platform/storage/postgres/migrationRunner";
+import { reconcileInterruptedGenerations } from "./platform/projects/GenerationRecovery";
 const app: Express = express();
 const storageProvider = createStorageProvider();
 configureAuthService(storageProvider);
@@ -333,29 +334,18 @@ events.onEvent(async (evt) => {
         outputs: evt.data?.outputs,
         timestamp: evt.timestamp.toISOString(),
       };
-      if (evt.projectId) {
-        await projectRepository.updateDurable(evt.projectId, {
-          status: "ready",
-          qualityScore: 100,
-        });
-        const record = generationHistory.getByPipeline(evt.pipelineId);
-        if (record) {
-          const finishedAt = evt.timestamp.getTime();
-          const completed = Number(
-            evt.data?.completedSteps ?? record.stagesCompleted,
-          );
-          const failed = Number(evt.data?.failedSteps ?? record.failures);
-          await generationHistory.record({
-            ...record,
-            status: "completed",
-            finishedAt,
-            duration: finishedAt - record.startedAt,
-            stagesCompleted: completed,
-            stagesTotal: Math.max(record.stagesTotal, completed + failed),
-            failures: failed,
-          });
-        }
-      }
+      // GEN-LIFECYCLE-SPLIT-001. This fires when the agent DAG finishes, which
+      // is before the artifacts are recorded, before validation and before the
+      // canonical package is committed. It used to mark the project `ready`
+      // here, with a hardcoded quality score of 100, so a run whose recorder or
+      // validation then failed left the project claiming a finished, perfect
+      // generation while its durable execution said failed and no package
+      // existed.
+      //
+      // The terminal transition belongs to GenerationOutcomeCoordinator.commit,
+      // which runs after all of that and computes the score from the steps that
+      // actually ran. Nothing durable is written here any more: this event now
+      // means only that the DAG finished.
       console.log(
         "[pipeline-bridge] forwarding",
         "pipeline.completed",
@@ -665,6 +655,14 @@ import { createAutonomousRouter } from "./routes/autonomous";
 import { AutonomousOrchestrator } from "./orchestrator";
 const autonomousOrchestrator = new AutonomousOrchestrator(events);
 registerStoragePostInitializeHook(() => autonomousOrchestrator.ready());
+
+// AUDIT-RECOVERY-001. Canonical generation gets the same treatment on boot:
+// executions left `running` by a previous process are closed truthfully and
+// their projects released, so nothing stays generating forever and the next
+// generation can be admitted.
+registerStoragePostInitializeHook(async () => {
+  await reconcileInterruptedGenerations(storageProvider);
+});
 app.use(
   "/api/autonomous",
   createAutonomousRouter(events, access, autonomousOrchestrator),
@@ -820,6 +818,19 @@ async function shutdown(signal: "SIGTERM" | "SIGINT"): Promise<void> {
   await new Promise<void>((resolve) => {
     httpServer.close(() => resolve());
   });
+
+  // AUDIT-GRACEFUL-SHUTDOWN-001. The canonical generation queue is process
+  // local, so anything still running is about to lose its worker. Closing the
+  // HTTP server first means no new generation can be admitted; this then closes
+  // what is left truthfully instead of leaving it durably `running` for the
+  // next boot to find. It is the same reconciliation the next boot would run,
+  // done now while the reason is known.
+  try {
+    await reconcileInterruptedGenerations(storageProvider);
+  } catch (error) {
+    console.error("[shutdown] generation reconciliation failed:", error);
+  }
+
   await flushStorageProvider(storageProvider);
   await closeStorageProvider(storageProvider);
   console.log("✅ Server closed");

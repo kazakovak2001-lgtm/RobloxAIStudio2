@@ -647,6 +647,7 @@
 │   │   │   ├── artifactcontract2.v2-pipeline.test.ts
 │   │   │   ├── assetfabric1.assetPlan.test.ts
 │   │   │   ├── auditidexec1.execution-identity.test.ts
+│   │   │   ├── auditstartatomicity1.generation-start.test.ts
 │   │   │   ├── autonomousPipelineExploration.test.ts
 │   │   │   ├── autonomousPipelineIntegration.test.ts
 │   │   │   ├── autonomousPipelinePreservation.test.ts
@@ -656,6 +657,8 @@
 │   │   │   ├── cutover1c.origin-policy.test.ts
 │   │   │   ├── e2eGeneration.test.ts
 │   │   │   ├── generation-provenance.test.ts
+│   │   │   ├── genrecovery1.restart-reconciliation.test.ts
+│   │   │   ├── gensingleflight1.active-claim.test.ts
 │   │   │   ├── harden2a.auth-contract.test.ts
 │   │   │   ├── identityAccess.test.ts
 │   │   │   ├── integration.test.ts
@@ -665,6 +668,7 @@
 │   │   │   ├── persistence.test.ts
 │   │   │   ├── pipeline1a.plan-definition.test.ts
 │   │   │   ├── pipeline1b.validation-report.test.ts
+│   │   │   ├── pipelinetruth1.completion-boundary.test.ts
 │   │   │   ├── platform.test.ts
 │   │   │   ├── playtesttruth1.evidence.test.ts
 │   │   │   ├── playtesttruth1.review.test.ts
@@ -1275,6 +1279,7 @@
 │   │   │   │   └── TokenProvider.ts
 │   │   │   ├── index.ts
 │   │   │   ├── projects
+│   │   │   │   ├── GenerationRecovery.ts
 │   │   │   │   ├── index.ts
 │   │   │   │   ├── ProjectLifecycleCoordinator.test.ts
 │   │   │   │   ├── ProjectLifecycleCoordinator.ts
