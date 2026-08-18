@@ -2481,9 +2481,9 @@
       "capability": "project.studio.clients.read",
       "resourceScope": "authorized-project-set",
       "positiveEvidence": "server/src/__tests__/security2gE.studio-client-scope.test.ts",
-      "negativeEvidence": "server/src/__tests__/security2gE.studio-client-scope.test.ts",
-      "resourceBinding": "indirect-unreviewed",
-      "crossTenantEvidence": "none-recorded"
+      "negativeEvidence": "server/src/__tests__/mar001.studio-protocol-binding.test.ts",
+      "resourceBinding": "indirect-verified",
+      "crossTenantEvidence": "server/src/__tests__/mar001.studio-protocol-binding.test.ts"
     },
     {
       "transport": "rest",
@@ -2572,9 +2572,9 @@
       "capability": "project.studio.protocol.message.dispatch",
       "resourceScope": "resolved-message-project",
       "positiveEvidence": "server/src/__tests__/security2gE.studio-protocol-scope.test.ts",
-      "negativeEvidence": "server/src/__tests__/security2gE.studio-protocol-scope.test.ts",
-      "resourceBinding": "indirect-unreviewed",
-      "crossTenantEvidence": "none-recorded"
+      "negativeEvidence": "server/src/__tests__/mar001.studio-protocol-binding.test.ts",
+      "resourceBinding": "indirect-verified",
+      "crossTenantEvidence": "server/src/__tests__/mar001.studio-protocol-binding.test.ts"
     },
     {
       "transport": "rest",
