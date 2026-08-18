@@ -11,12 +11,69 @@ interface MatrixOperation {
   resourceScope: string;
   positiveEvidence: string;
   negativeEvidence: string;
+  /**
+   * Whether the identifier the caller was authorized for is the same thing the
+   * operation acts on. `resourceScope` records where the resource identifier
+   * comes from; this records whether the gap between the two is closed.
+   *
+   * - `path-scoped` — the authorized identifier is the path identifier; there
+   *   is no second object to bind.
+   * - `indirect-verified` — the object is resolved from storage and the handler
+   *   or a route-level resolver asserts that the object's project equals the
+   *   authorized project. Verified by reading the code.
+   * - `body-supplied-object` — the operation acts on an object taken from the
+   *   request body that is never resolved from storage, and authorizes against
+   *   an identifier inside that same body. There is no cross-tenant escape,
+   *   because the identifier must still resolve to a project the caller can
+   *   reach, but nothing binds the payload to stored state.
+   * - `indirect-unreviewed` — the identifier is indirect and the handler was
+   *   not read in this pass. Not a statement that it is safe.
+   * - `not-resource-scoped` — global or operator runtime scope with no
+   *   per-resource binding to make.
+   */
+  resourceBinding: string;
+  /**
+   * Evidence that a caller authorized for one tenant is actually denied another
+   * tenant's resource. Either a test path, or:
+   *
+   * - `static-source-only` — the only evidence asserts strings in the handler
+   *   source, which cannot show that a cross-owner request is refused.
+   * - `none-recorded` — no such evidence was found. Recorded as a gap rather
+   *   than filled in with a weaker test that happens to exist.
+   */
+  crossTenantEvidence: string;
+}
+
+/**
+ * An outbound server emission. These are not authorization operations: nothing
+ * authenticates a broadcast, so they carry no principal or capability. They are
+ * recorded separately because the matrix otherwise models only inbound
+ * authorization, and a globally broadcast payload reaches every connected
+ * socket regardless of how well the inbound side is guarded.
+ */
+interface MatrixBroadcast {
+  event: string;
+  source: string;
+  /**
+   * - `project-room` — addressed to one project's room.
+   * - `project-room-with-global-fallback` — scoped when a project is known and
+   *   broadcast to everyone when it is not.
+   * - `global-bypassing-available-scope` — broadcast to everyone from a site
+   *   where the project is in scope and a project-room emitter already exists.
+   * - `global-no-project-context` — broadcast to everyone from a site with no
+   *   project in scope, so scoping needs context plumbed in first.
+   * - `global-unreviewed` — discovered but not yet classified.
+   */
+  targeting: string;
+  /** Test proving a foreign socket does not receive the payload, or a gap marker. */
+  tenancyEvidence: string;
 }
 
 interface AuthorizationMatrix {
   version: number;
   controlId: string;
   operations: MatrixOperation[];
+  broadcasts: MatrixBroadcast[];
 }
 
 const repositoryRoot = process.cwd();
@@ -1416,6 +1473,183 @@ const overrides = new Map<
   ],
 ]);
 
+/**
+ * AUDIT object-binding sweep. Rules are matched most specific first and keyed by
+ * source plus resourceScope rather than by individual operation, so a route
+ * added to a family already reviewed inherits that family's verdict instead of
+ * silently defaulting to unreviewed.
+ *
+ * Only families whose handlers were actually read carry a verdict here. Every
+ * other family derives `indirect-unreviewed` and is recorded as an open gap.
+ */
+const bindingRules: ReadonlyArray<{
+  source?: string;
+  scope?: string;
+  binding: string;
+  crossTenantEvidence: string;
+}> = [
+  // concept.ts resolves both identifiers in router.param middleware
+  // (concept.ts:45-70): the pipeline or artifact is fetched, its owning project
+  // is derived, access is checked against that project, and denial is concealed
+  // as 404. The binding is real. Its only cross-owner evidence asserts strings
+  // in the router source, so it cannot show a cross-owner request being denied.
+  {
+    source: "server/src/routes/concept.ts",
+    scope: "resolved-pipeline-project",
+    binding: "indirect-verified",
+    crossTenantEvidence: "static-source-only",
+  },
+  {
+    source: "server/src/routes/concept.ts",
+    scope: "resolved-artifact-project",
+    binding: "indirect-verified",
+    crossTenantEvidence: "static-source-only",
+  },
+  // game-generation.ts blueprint reads resolve the blueprint first and then
+  // authorize against blueprint.project_id, which is the correct order.
+  {
+    source: "server/src/routes/game-generation.ts",
+    scope: "resolved-blueprint-project",
+    binding: "indirect-verified",
+    crossTenantEvidence: "none-recorded",
+  },
+  // economy, world, simulation, lifecycle and generation-v2 all take the whole
+  // blueprint from req.body and call requireProjectAccess(blueprint.id), using a
+  // field named like a blueprint identifier as a project identifier. lifecycle
+  // POST /tick is the only one that first asserts blueprint.id === gameId.
+  {
+    scope: "body-blueprint-project",
+    binding: "body-supplied-object",
+    crossTenantEvidence: "none-recorded",
+  },
+  // platform.ts user-self routes are exercised against a live server by
+  // security2gE.authorization-domains.test.ts, which issues a real foreign
+  // request rather than asserting source text.
+  {
+    source: "server/src/routes/platform.ts",
+    scope: "path-user",
+    binding: "path-scoped",
+    crossTenantEvidence:
+      "server/src/__tests__/security2gE.authorization-domains.test.ts",
+  },
+];
+
+function deriveResourceBinding(resourceScope: string): string {
+  if (resourceScope.startsWith("path-")) return "path-scoped";
+  if (resourceScope.startsWith("global-")) return "not-resource-scoped";
+  if (resourceScope === "authentication" || resourceScope === "public") {
+    return "not-resource-scoped";
+  }
+  return "indirect-unreviewed";
+}
+
+function bindingFor(
+  operation: Pick<MatrixOperation, "source"> & { resourceScope: string },
+): Pick<MatrixOperation, "resourceBinding" | "crossTenantEvidence"> {
+  const rule =
+    bindingRules.find(
+      (candidate) =>
+        candidate.source === operation.source &&
+        candidate.scope === operation.resourceScope,
+    ) ??
+    bindingRules.find(
+      (candidate) =>
+        candidate.source === undefined &&
+        candidate.scope === operation.resourceScope,
+    );
+
+  if (rule) {
+    return {
+      resourceBinding: rule.binding,
+      crossTenantEvidence: rule.crossTenantEvidence,
+    };
+  }
+  return {
+    resourceBinding: deriveResourceBinding(operation.resourceScope),
+    crossTenantEvidence: "none-recorded",
+  };
+}
+
+/**
+ * Outbound emissions are discovered rather than listed, so a new broadcast
+ * cannot be added without appearing here as `global-unreviewed`.
+ */
+function discoverBroadcasts(): MatrixBroadcast[] {
+  const discovered = new Map<string, MatrixBroadcast>();
+  // Matches io.emit("literal", …) and io.emit(identifier, …). Emissions sent
+  // through io.to(room).emit(…) are already scoped and are not global.
+  const pattern = /\bio\.emit\(\s*(?:["'`]([^"'`]+)["'`]|([A-Za-z_$][\w$]*))/g;
+
+  for (const file of listTypeScriptFiles(serverRoot)) {
+    const source = relativeSource(file);
+    for (const match of fs.readFileSync(file, "utf8").matchAll(pattern)) {
+      const event = match[1] ?? `dynamic:${match[2]}`;
+      const rule = broadcastRules.find(
+        (candidate) => candidate.source === source && candidate.event === event,
+      );
+      discovered.set(`${source}|${event}`, {
+        event,
+        source,
+        targeting: rule?.targeting ?? "global-unreviewed",
+        tenancyEvidence: rule?.tenancyEvidence ?? "none-recorded",
+      });
+    }
+  }
+
+  return [...discovered.values()].sort((left, right) =>
+    `${left.source}|${left.event}`.localeCompare(
+      `${right.source}|${right.event}`,
+    ),
+  );
+}
+
+const broadcastRules: ReadonlyArray<{
+  source: string;
+  event: string;
+  targeting: string;
+  tenancyEvidence: string;
+}> = [
+  // index.ts:263-272 emitForProject addresses project:<id> when evt.projectId is
+  // present and falls back to a global broadcast when it is not.
+  {
+    source: "server/src/index.ts",
+    event: "dynamic:eventName",
+    targeting: "project-room-with-global-fallback",
+    tenancyEvidence: "none-recorded",
+  },
+  // The evaluation, memory and planning branches sit in the same switch as
+  // emitForProject, with the same evt.projectId in scope, and broadcast anyway.
+  ...[
+    "evaluation.started",
+    "evaluation.completed",
+    "evaluation.failed",
+    "memory.created",
+    "memory.updated",
+    "memory.snapshot",
+    "memory.decision",
+    "planning.created",
+    "planning.updated",
+    "planning.step.selected",
+    "planning.replanned",
+    "planning.completed",
+    "planning.failed",
+  ].map((event) => ({
+    source: "server/src/index.ts",
+    event,
+    targeting: "global-bypassing-available-scope",
+    tenancyEvidence: "none-recorded",
+  })),
+  // index.ts:751 streams execution traces from an ExecutionTracer listener that
+  // receives no project, so the payload cannot be scoped without plumbing one
+  // through. It carries executionId, nodeId, agentId, evaluationScore and error.
+  {
+    source: "server/src/index.ts",
+    event: "trace.event",
+    targeting: "global-no-project-context",
+    tenancyEvidence: "none-recorded",
+  },
+];
+
 const current = JSON.parse(
   fs.readFileSync(matrixPath, "utf8"),
 ) as AuthorizationMatrix;
@@ -1425,27 +1659,37 @@ const currentByKey = new Map(
 
 const operations = discoverOperations().map((operation): MatrixOperation => {
   const override = overrides.get(operationKey(operation));
-  if (override) return { ...operation, ...override };
-
   const existing = currentByKey.get(operationKey(operation));
-  if (existing) return existing;
 
-  return {
-    ...operation,
-    classification: "unclassified",
-    principal: "unresolved",
-    capability: "unresolved",
-    resourceScope: "unresolved",
-    positiveEvidence: "missing",
-    negativeEvidence: "missing",
-  };
+  const resolved = override
+    ? { ...operation, ...override }
+    : existing
+      ? { ...existing }
+      : {
+          ...operation,
+          classification: "unclassified",
+          principal: "unresolved",
+          capability: "unresolved",
+          resourceScope: "unresolved",
+          positiveEvidence: "missing",
+          negativeEvidence: "missing",
+        };
+
+  // Recomputed on every run rather than carried over from the existing file, so
+  // a family's verdict cannot go stale once its rule changes.
+  return { ...resolved, ...bindingFor(resolved) } as MatrixOperation;
 });
+
+const broadcasts = discoverBroadcasts();
 
 const next: AuthorizationMatrix = {
   version: 1,
   controlId: "SECURITY-2G-E",
   operations,
+  broadcasts,
 };
 
 fs.writeFileSync(matrixPath, `${JSON.stringify(next, null, 2)}\n`);
-console.log(`Authorization matrix now tracks ${operations.length} operations.`);
+console.log(
+  `Authorization matrix now tracks ${operations.length} operations and ${broadcasts.length} global broadcasts.`,
+);

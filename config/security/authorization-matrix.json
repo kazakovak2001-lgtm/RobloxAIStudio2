@@ -11,7 +11,9 @@
       "capability": "system.api.v1.contracts.read",
       "resourceScope": "api-v1-metadata",
       "positiveEvidence": "server/src/__tests__/security2gE.api-v1-scope.test.ts",
-      "negativeEvidence": "server/src/__tests__/security2gE.api-v1-scope.test.ts"
+      "negativeEvidence": "server/src/__tests__/security2gE.api-v1-scope.test.ts",
+      "resourceBinding": "indirect-unreviewed",
+      "crossTenantEvidence": "none-recorded"
     },
     {
       "transport": "rest",
@@ -22,7 +24,9 @@
       "capability": "project.api.v1.plan.read",
       "resourceScope": "resolved-plan-project",
       "positiveEvidence": "server/src/__tests__/security2gE.api-v1-scope.test.ts",
-      "negativeEvidence": "server/src/__tests__/security2gE.api-v1-scope.test.ts"
+      "negativeEvidence": "server/src/__tests__/security2gE.api-v1-scope.test.ts",
+      "resourceBinding": "indirect-unreviewed",
+      "crossTenantEvidence": "none-recorded"
     },
     {
       "transport": "rest",
@@ -33,7 +37,9 @@
       "capability": "system.api.v1.status.read",
       "resourceScope": "api-v1-metadata",
       "positiveEvidence": "server/src/__tests__/security2gE.api-v1-scope.test.ts",
-      "negativeEvidence": "server/src/__tests__/security2gE.api-v1-scope.test.ts"
+      "negativeEvidence": "server/src/__tests__/security2gE.api-v1-scope.test.ts",
+      "resourceBinding": "indirect-unreviewed",
+      "crossTenantEvidence": "none-recorded"
     },
     {
       "transport": "rest",
@@ -44,7 +50,9 @@
       "capability": "project.api.v1.compile",
       "resourceScope": "body-project",
       "positiveEvidence": "server/src/__tests__/security2gE.api-v1-scope.test.ts",
-      "negativeEvidence": "server/src/__tests__/security2gE.api-v1-scope.test.ts"
+      "negativeEvidence": "server/src/__tests__/security2gE.api-v1-scope.test.ts",
+      "resourceBinding": "indirect-unreviewed",
+      "crossTenantEvidence": "none-recorded"
     },
     {
       "transport": "rest",
@@ -55,7 +63,9 @@
       "capability": "project.api.v1.plan.create",
       "resourceScope": "body-project",
       "positiveEvidence": "server/src/__tests__/security2gE.api-v1-scope.test.ts",
-      "negativeEvidence": "server/src/__tests__/security2gE.api-v1-scope.test.ts"
+      "negativeEvidence": "server/src/__tests__/security2gE.api-v1-scope.test.ts",
+      "resourceBinding": "indirect-unreviewed",
+      "crossTenantEvidence": "none-recorded"
     },
     {
       "transport": "rest",
@@ -66,7 +76,9 @@
       "capability": "project.api.v1.plan.execute",
       "resourceScope": "resolved-plan-project",
       "positiveEvidence": "server/src/__tests__/security2gE.api-v1-scope.test.ts",
-      "negativeEvidence": "server/src/__tests__/security2gE.api-v1-scope.test.ts"
+      "negativeEvidence": "server/src/__tests__/security2gE.api-v1-scope.test.ts",
+      "resourceBinding": "indirect-unreviewed",
+      "crossTenantEvidence": "none-recorded"
     },
     {
       "transport": "rest",
@@ -77,7 +89,9 @@
       "capability": "system.api.v2.status.read",
       "resourceScope": "api-v2-metadata",
       "positiveEvidence": "server/src/__tests__/security2gE.api-v2-scope.test.ts",
-      "negativeEvidence": "server/src/__tests__/security2gE.api-v2-scope.test.ts"
+      "negativeEvidence": "server/src/__tests__/security2gE.api-v2-scope.test.ts",
+      "resourceBinding": "indirect-unreviewed",
+      "crossTenantEvidence": "none-recorded"
     },
     {
       "transport": "rest",
@@ -88,7 +102,9 @@
       "capability": "project.api.v2.compile.stream",
       "resourceScope": "body-project",
       "positiveEvidence": "server/src/__tests__/security2gE.api-v2-scope.test.ts",
-      "negativeEvidence": "server/src/__tests__/security2gE.api-v2-scope.test.ts"
+      "negativeEvidence": "server/src/__tests__/security2gE.api-v2-scope.test.ts",
+      "resourceBinding": "indirect-unreviewed",
+      "crossTenantEvidence": "none-recorded"
     },
     {
       "transport": "rest",
@@ -99,7 +115,9 @@
       "capability": "project.api.v2.plan.dag.create",
       "resourceScope": "body-project",
       "positiveEvidence": "server/src/__tests__/security2gE.api-v2-scope.test.ts",
-      "negativeEvidence": "server/src/__tests__/security2gE.api-v2-scope.test.ts"
+      "negativeEvidence": "server/src/__tests__/security2gE.api-v2-scope.test.ts",
+      "resourceBinding": "indirect-unreviewed",
+      "crossTenantEvidence": "none-recorded"
     },
     {
       "transport": "rest",
@@ -110,7 +128,9 @@
       "capability": "system.root.read",
       "resourceScope": "system",
       "positiveEvidence": "server/src/__tests__/security2gE.authorization-domains.test.ts",
-      "negativeEvidence": "not-applicable-public"
+      "negativeEvidence": "not-applicable-public",
+      "resourceBinding": "indirect-unreviewed",
+      "crossTenantEvidence": "none-recorded"
     },
     {
       "transport": "rest",
@@ -121,7 +141,9 @@
       "capability": "system.health.read",
       "resourceScope": "system",
       "positiveEvidence": "server/src/__tests__/security2gE.authorization-domains.test.ts",
-      "negativeEvidence": "not-applicable-public"
+      "negativeEvidence": "not-applicable-public",
+      "resourceBinding": "indirect-unreviewed",
+      "crossTenantEvidence": "none-recorded"
     },
     {
       "transport": "rest",
@@ -132,7 +154,9 @@
       "capability": "system.health.database.read",
       "resourceScope": "system-operational-metadata",
       "positiveEvidence": "server/src/__tests__/security2gE.autonomous-health-scope.test.ts",
-      "negativeEvidence": "server/src/__tests__/security2gE.autonomous-health-scope.test.ts"
+      "negativeEvidence": "server/src/__tests__/security2gE.autonomous-health-scope.test.ts",
+      "resourceBinding": "indirect-unreviewed",
+      "crossTenantEvidence": "none-recorded"
     },
     {
       "transport": "rest",
@@ -143,7 +167,9 @@
       "capability": "system.health.storage.read",
       "resourceScope": "system-operational-metadata",
       "positiveEvidence": "server/src/__tests__/security2gE.autonomous-health-scope.test.ts",
-      "negativeEvidence": "server/src/__tests__/security2gE.autonomous-health-scope.test.ts"
+      "negativeEvidence": "server/src/__tests__/security2gE.autonomous-health-scope.test.ts",
+      "resourceBinding": "indirect-unreviewed",
+      "crossTenantEvidence": "none-recorded"
     },
     {
       "transport": "rest",
@@ -154,7 +180,9 @@
       "capability": "system.agent-collaboration.consensus.read",
       "resourceScope": "global-agent-collaboration-runtime",
       "positiveEvidence": "server/src/__tests__/security2gE.agent-collaboration-scope.test.ts",
-      "negativeEvidence": "server/src/__tests__/security2gE.agent-collaboration-scope.test.ts"
+      "negativeEvidence": "server/src/__tests__/security2gE.agent-collaboration-scope.test.ts",
+      "resourceBinding": "not-resource-scoped",
+      "crossTenantEvidence": "none-recorded"
     },
     {
       "transport": "rest",
@@ -165,7 +193,9 @@
       "capability": "system.agent-collaboration.messages.read",
       "resourceScope": "global-agent-collaboration-runtime",
       "positiveEvidence": "server/src/__tests__/security2gE.agent-collaboration-scope.test.ts",
-      "negativeEvidence": "server/src/__tests__/security2gE.agent-collaboration-scope.test.ts"
+      "negativeEvidence": "server/src/__tests__/security2gE.agent-collaboration-scope.test.ts",
+      "resourceBinding": "not-resource-scoped",
+      "crossTenantEvidence": "none-recorded"
     },
     {
       "transport": "rest",
@@ -176,7 +206,9 @@
       "capability": "system.agent-collaboration.metrics.read",
       "resourceScope": "global-agent-collaboration-runtime",
       "positiveEvidence": "server/src/__tests__/security2gE.agent-collaboration-scope.test.ts",
-      "negativeEvidence": "server/src/__tests__/security2gE.agent-collaboration-scope.test.ts"
+      "negativeEvidence": "server/src/__tests__/security2gE.agent-collaboration-scope.test.ts",
+      "resourceBinding": "not-resource-scoped",
+      "crossTenantEvidence": "none-recorded"
     },
     {
       "transport": "rest",
@@ -187,7 +219,9 @@
       "capability": "system.agent-collaboration.status.read",
       "resourceScope": "global-agent-collaboration-runtime",
       "positiveEvidence": "server/src/__tests__/security2gE.agent-collaboration-scope.test.ts",
-      "negativeEvidence": "server/src/__tests__/security2gE.agent-collaboration-scope.test.ts"
+      "negativeEvidence": "server/src/__tests__/security2gE.agent-collaboration-scope.test.ts",
+      "resourceBinding": "not-resource-scoped",
+      "crossTenantEvidence": "none-recorded"
     },
     {
       "transport": "rest",
@@ -198,7 +232,9 @@
       "capability": "project.agent-collaboration.run",
       "resourceScope": "body-project",
       "positiveEvidence": "server/src/__tests__/security2gE.agent-collaboration-scope.test.ts",
-      "negativeEvidence": "server/src/__tests__/security2gE.agent-collaboration-scope.test.ts"
+      "negativeEvidence": "server/src/__tests__/security2gE.agent-collaboration-scope.test.ts",
+      "resourceBinding": "indirect-unreviewed",
+      "crossTenantEvidence": "none-recorded"
     },
     {
       "transport": "rest",
@@ -209,7 +245,9 @@
       "capability": "user.ai-chat.execute",
       "resourceScope": "current-user-session",
       "positiveEvidence": "server/src/__tests__/security2gE.ai-chat-session-boundary.test.ts",
-      "negativeEvidence": "server/src/__tests__/security2gE.ai-chat-session-boundary.test.ts"
+      "negativeEvidence": "server/src/__tests__/security2gE.ai-chat-session-boundary.test.ts",
+      "resourceBinding": "indirect-unreviewed",
+      "crossTenantEvidence": "none-recorded"
     },
     {
       "transport": "rest",
@@ -220,7 +258,9 @@
       "capability": "system.analytics.agent.read",
       "resourceScope": "global-analytics-runtime",
       "positiveEvidence": "server/src/__tests__/security2gE.analytics-operator-boundary.test.ts",
-      "negativeEvidence": "server/src/__tests__/security2gE.analytics-operator-boundary.test.ts"
+      "negativeEvidence": "server/src/__tests__/security2gE.analytics-operator-boundary.test.ts",
+      "resourceBinding": "not-resource-scoped",
+      "crossTenantEvidence": "none-recorded"
     },
     {
       "transport": "rest",
@@ -231,7 +271,9 @@
       "capability": "system.analytics.agents.read",
       "resourceScope": "global-analytics-runtime",
       "positiveEvidence": "server/src/__tests__/security2gE.analytics-operator-boundary.test.ts",
-      "negativeEvidence": "server/src/__tests__/security2gE.analytics-operator-boundary.test.ts"
+      "negativeEvidence": "server/src/__tests__/security2gE.analytics-operator-boundary.test.ts",
+      "resourceBinding": "not-resource-scoped",
+      "crossTenantEvidence": "none-recorded"
     },
     {
       "transport": "rest",
@@ -242,7 +284,9 @@
       "capability": "system.analytics.execution.read",
       "resourceScope": "global-analytics-runtime",
       "positiveEvidence": "server/src/__tests__/security2gE.analytics-operator-boundary.test.ts",
-      "negativeEvidence": "server/src/__tests__/security2gE.analytics-operator-boundary.test.ts"
+      "negativeEvidence": "server/src/__tests__/security2gE.analytics-operator-boundary.test.ts",
+      "resourceBinding": "not-resource-scoped",
+      "crossTenantEvidence": "none-recorded"
     },
     {
       "transport": "rest",
@@ -253,7 +297,9 @@
       "capability": "system.analytics.rankings.lowest.read",
       "resourceScope": "global-analytics-runtime",
       "positiveEvidence": "server/src/__tests__/security2gE.analytics-operator-boundary.test.ts",
-      "negativeEvidence": "server/src/__tests__/security2gE.analytics-operator-boundary.test.ts"
+      "negativeEvidence": "server/src/__tests__/security2gE.analytics-operator-boundary.test.ts",
+      "resourceBinding": "not-resource-scoped",
+      "crossTenantEvidence": "none-recorded"
     },
     {
       "transport": "rest",
@@ -264,7 +310,9 @@
       "capability": "system.analytics.patterns.read",
       "resourceScope": "global-analytics-runtime",
       "positiveEvidence": "server/src/__tests__/security2gE.analytics-operator-boundary.test.ts",
-      "negativeEvidence": "server/src/__tests__/security2gE.analytics-operator-boundary.test.ts"
+      "negativeEvidence": "server/src/__tests__/security2gE.analytics-operator-boundary.test.ts",
+      "resourceBinding": "not-resource-scoped",
+      "crossTenantEvidence": "none-recorded"
     },
     {
       "transport": "rest",
@@ -275,7 +323,9 @@
       "capability": "system.analytics.signals.read",
       "resourceScope": "global-analytics-runtime",
       "positiveEvidence": "server/src/__tests__/security2gE.analytics-operator-boundary.test.ts",
-      "negativeEvidence": "server/src/__tests__/security2gE.analytics-operator-boundary.test.ts"
+      "negativeEvidence": "server/src/__tests__/security2gE.analytics-operator-boundary.test.ts",
+      "resourceBinding": "not-resource-scoped",
+      "crossTenantEvidence": "none-recorded"
     },
     {
       "transport": "rest",
@@ -286,7 +336,9 @@
       "capability": "system.analytics.rankings.slowest.read",
       "resourceScope": "global-analytics-runtime",
       "positiveEvidence": "server/src/__tests__/security2gE.analytics-operator-boundary.test.ts",
-      "negativeEvidence": "server/src/__tests__/security2gE.analytics-operator-boundary.test.ts"
+      "negativeEvidence": "server/src/__tests__/security2gE.analytics-operator-boundary.test.ts",
+      "resourceBinding": "not-resource-scoped",
+      "crossTenantEvidence": "none-recorded"
     },
     {
       "transport": "rest",
@@ -297,7 +349,9 @@
       "capability": "system.analytics.suggestions.read",
       "resourceScope": "global-analytics-runtime",
       "positiveEvidence": "server/src/__tests__/security2gE.analytics-operator-boundary.test.ts",
-      "negativeEvidence": "server/src/__tests__/security2gE.analytics-operator-boundary.test.ts"
+      "negativeEvidence": "server/src/__tests__/security2gE.analytics-operator-boundary.test.ts",
+      "resourceBinding": "not-resource-scoped",
+      "crossTenantEvidence": "none-recorded"
     },
     {
       "transport": "rest",
@@ -308,7 +362,9 @@
       "capability": "system.analytics.health.read",
       "resourceScope": "global-analytics-runtime",
       "positiveEvidence": "server/src/__tests__/security2gE.analytics-operator-boundary.test.ts",
-      "negativeEvidence": "server/src/__tests__/security2gE.analytics-operator-boundary.test.ts"
+      "negativeEvidence": "server/src/__tests__/security2gE.analytics-operator-boundary.test.ts",
+      "resourceBinding": "not-resource-scoped",
+      "crossTenantEvidence": "none-recorded"
     },
     {
       "transport": "rest",
@@ -319,7 +375,9 @@
       "capability": "system.analytics.cycle.execute",
       "resourceScope": "global-analytics-runtime",
       "positiveEvidence": "server/src/__tests__/security2gE.analytics-operator-boundary.test.ts",
-      "negativeEvidence": "server/src/__tests__/security2gE.analytics-operator-boundary.test.ts"
+      "negativeEvidence": "server/src/__tests__/security2gE.analytics-operator-boundary.test.ts",
+      "resourceBinding": "not-resource-scoped",
+      "crossTenantEvidence": "none-recorded"
     },
     {
       "transport": "rest",
@@ -330,7 +388,9 @@
       "capability": "project.autonomous.capabilities.read",
       "resourceScope": "resolved-session-project",
       "positiveEvidence": "server/src/__tests__/security2gE.indirect-session-routes.test.ts",
-      "negativeEvidence": "server/src/__tests__/security2gE.indirect-session-routes.test.ts"
+      "negativeEvidence": "server/src/__tests__/security2gE.indirect-session-routes.test.ts",
+      "resourceBinding": "indirect-unreviewed",
+      "crossTenantEvidence": "none-recorded"
     },
     {
       "transport": "rest",
@@ -341,7 +401,9 @@
       "capability": "project.autonomous.latest.read",
       "resourceScope": "path-project",
       "positiveEvidence": "server/src/__tests__/security2gE.autonomous-health-scope.test.ts",
-      "negativeEvidence": "server/src/__tests__/security2gE.autonomous-health-scope.test.ts"
+      "negativeEvidence": "server/src/__tests__/security2gE.autonomous-health-scope.test.ts",
+      "resourceBinding": "path-scoped",
+      "crossTenantEvidence": "none-recorded"
     },
     {
       "transport": "rest",
@@ -352,7 +414,9 @@
       "capability": "project.autonomous.session.read",
       "resourceScope": "resolved-session-project",
       "positiveEvidence": "server/src/__tests__/security2gE.indirect-session-routes.test.ts",
-      "negativeEvidence": "server/src/__tests__/security2gE.indirect-session-routes.test.ts"
+      "negativeEvidence": "server/src/__tests__/security2gE.indirect-session-routes.test.ts",
+      "resourceBinding": "indirect-unreviewed",
+      "crossTenantEvidence": "none-recorded"
     },
     {
       "transport": "rest",
@@ -363,7 +427,9 @@
       "capability": "project.autonomous.cancel",
       "resourceScope": "resolved-session-project",
       "positiveEvidence": "server/src/__tests__/security2gE.indirect-session-routes.test.ts",
-      "negativeEvidence": "server/src/__tests__/security2gE.indirect-session-routes.test.ts"
+      "negativeEvidence": "server/src/__tests__/security2gE.indirect-session-routes.test.ts",
+      "resourceBinding": "indirect-unreviewed",
+      "crossTenantEvidence": "none-recorded"
     },
     {
       "transport": "rest",
@@ -374,7 +440,9 @@
       "capability": "project.autonomous.pause",
       "resourceScope": "resolved-session-project",
       "positiveEvidence": "server/src/__tests__/security2gE.indirect-session-routes.test.ts",
-      "negativeEvidence": "server/src/__tests__/security2gE.indirect-session-routes.test.ts"
+      "negativeEvidence": "server/src/__tests__/security2gE.indirect-session-routes.test.ts",
+      "resourceBinding": "indirect-unreviewed",
+      "crossTenantEvidence": "none-recorded"
     },
     {
       "transport": "rest",
@@ -385,7 +453,9 @@
       "capability": "project.autonomous.recover",
       "resourceScope": "resolved-session-project",
       "positiveEvidence": "server/src/__tests__/security2gE.indirect-session-routes.test.ts",
-      "negativeEvidence": "server/src/__tests__/security2gE.indirect-session-routes.test.ts"
+      "negativeEvidence": "server/src/__tests__/security2gE.indirect-session-routes.test.ts",
+      "resourceBinding": "indirect-unreviewed",
+      "crossTenantEvidence": "none-recorded"
     },
     {
       "transport": "rest",
@@ -396,7 +466,9 @@
       "capability": "project.autonomous.resume",
       "resourceScope": "resolved-session-project",
       "positiveEvidence": "server/src/__tests__/security2gE.indirect-session-routes.test.ts",
-      "negativeEvidence": "server/src/__tests__/security2gE.indirect-session-routes.test.ts"
+      "negativeEvidence": "server/src/__tests__/security2gE.indirect-session-routes.test.ts",
+      "resourceBinding": "indirect-unreviewed",
+      "crossTenantEvidence": "none-recorded"
     },
     {
       "transport": "rest",
@@ -407,51 +479,9 @@
       "capability": "project.autonomous.run",
       "resourceScope": "body-project",
       "positiveEvidence": "server/src/__tests__/security2gE.autonomous-run-scope.test.ts",
-      "negativeEvidence": "server/src/__tests__/security2gE.autonomous-run-scope.test.ts"
-    },
-    {
-      "transport": "rest",
-      "source": "server/src/routes/chatPersistence.ts",
-      "operation": "DELETE /conversation/:id",
-      "classification": "project-owner",
-      "principal": "user-session",
-      "capability": "project.chat.conversation.delete",
-      "resourceScope": "resolved-conversation-project",
-      "positiveEvidence": "server/src/__tests__/security2gE.chat-persistence-scope.test.ts",
-      "negativeEvidence": "server/src/__tests__/security2gE.chat-persistence-scope.test.ts"
-    },
-    {
-      "transport": "rest",
-      "source": "server/src/routes/chatPersistence.ts",
-      "operation": "GET /:projectId/history",
-      "classification": "project-owner",
-      "principal": "user-session",
-      "capability": "project.chat.history.read",
-      "resourceScope": "path-project",
-      "positiveEvidence": "server/src/__tests__/security2gE.chat-persistence-scope.test.ts",
-      "negativeEvidence": "server/src/__tests__/security2gE.chat-persistence-scope.test.ts"
-    },
-    {
-      "transport": "rest",
-      "source": "server/src/routes/chatPersistence.ts",
-      "operation": "GET /conversation/:id",
-      "classification": "project-owner",
-      "principal": "user-session",
-      "capability": "project.chat.conversation.read",
-      "resourceScope": "resolved-conversation-project",
-      "positiveEvidence": "server/src/__tests__/security2gE.chat-persistence-scope.test.ts",
-      "negativeEvidence": "server/src/__tests__/security2gE.chat-persistence-scope.test.ts"
-    },
-    {
-      "transport": "rest",
-      "source": "server/src/routes/chatPersistence.ts",
-      "operation": "POST /message",
-      "classification": "project-owner",
-      "principal": "user-session",
-      "capability": "project.chat.message.create",
-      "resourceScope": "body-or-resolved-conversation-project",
-      "positiveEvidence": "server/src/__tests__/security2gE.chat-persistence-scope.test.ts",
-      "negativeEvidence": "server/src/__tests__/security2gE.chat-persistence-scope.test.ts"
+      "negativeEvidence": "server/src/__tests__/security2gE.autonomous-run-scope.test.ts",
+      "resourceBinding": "indirect-unreviewed",
+      "crossTenantEvidence": "none-recorded"
     },
     {
       "transport": "rest",
@@ -462,7 +492,9 @@
       "capability": "project.compile.execute",
       "resourceScope": "body-project",
       "positiveEvidence": "server/src/__tests__/security2gE.compile-scope.test.ts",
-      "negativeEvidence": "server/src/__tests__/security2gE.compile-scope.test.ts"
+      "negativeEvidence": "server/src/__tests__/security2gE.compile-scope.test.ts",
+      "resourceBinding": "indirect-unreviewed",
+      "crossTenantEvidence": "none-recorded"
     },
     {
       "transport": "rest",
@@ -473,7 +505,9 @@
       "capability": "user.concept.read",
       "resourceScope": "session-owned-concept",
       "positiveEvidence": "server/src/__tests__/security2gE.concept-entry-scope.test.ts",
-      "negativeEvidence": "server/src/__tests__/security2gE.concept-entry-scope.test.ts"
+      "negativeEvidence": "server/src/__tests__/security2gE.concept-entry-scope.test.ts",
+      "resourceBinding": "indirect-unreviewed",
+      "crossTenantEvidence": "none-recorded"
     },
     {
       "transport": "rest",
@@ -484,7 +518,9 @@
       "capability": "project.artifact.list",
       "resourceScope": "resolved-pipeline-project",
       "positiveEvidence": "server/src/__tests__/security2gE.concept-resource-resolvers.test.ts",
-      "negativeEvidence": "server/src/__tests__/security2gE.concept-resource-resolvers.test.ts"
+      "negativeEvidence": "server/src/__tests__/security2gE.concept-resource-resolvers.test.ts",
+      "resourceBinding": "indirect-verified",
+      "crossTenantEvidence": "static-source-only"
     },
     {
       "transport": "rest",
@@ -495,7 +531,9 @@
       "capability": "project.audit.read",
       "resourceScope": "resolved-pipeline-project",
       "positiveEvidence": "server/src/__tests__/security2gE.concept-resource-resolvers.test.ts",
-      "negativeEvidence": "server/src/__tests__/security2gE.concept-resource-resolvers.test.ts"
+      "negativeEvidence": "server/src/__tests__/security2gE.concept-resource-resolvers.test.ts",
+      "resourceBinding": "indirect-verified",
+      "crossTenantEvidence": "static-source-only"
     },
     {
       "transport": "rest",
@@ -506,7 +544,9 @@
       "capability": "project.metrics.read",
       "resourceScope": "resolved-pipeline-project",
       "positiveEvidence": "server/src/__tests__/security2gE.concept-resource-resolvers.test.ts",
-      "negativeEvidence": "server/src/__tests__/security2gE.concept-resource-resolvers.test.ts"
+      "negativeEvidence": "server/src/__tests__/security2gE.concept-resource-resolvers.test.ts",
+      "resourceBinding": "indirect-verified",
+      "crossTenantEvidence": "static-source-only"
     },
     {
       "transport": "rest",
@@ -517,7 +557,9 @@
       "capability": "project.review.read",
       "resourceScope": "resolved-pipeline-project",
       "positiveEvidence": "server/src/__tests__/security2gE.concept-resource-resolvers.test.ts",
-      "negativeEvidence": "server/src/__tests__/security2gE.concept-resource-resolvers.test.ts"
+      "negativeEvidence": "server/src/__tests__/security2gE.concept-resource-resolvers.test.ts",
+      "resourceBinding": "indirect-verified",
+      "crossTenantEvidence": "static-source-only"
     },
     {
       "transport": "rest",
@@ -528,7 +570,9 @@
       "capability": "project.artifact.read",
       "resourceScope": "resolved-artifact-project",
       "positiveEvidence": "server/src/__tests__/security2gE.concept-resource-resolvers.test.ts",
-      "negativeEvidence": "server/src/__tests__/security2gE.concept-resource-resolvers.test.ts"
+      "negativeEvidence": "server/src/__tests__/security2gE.concept-resource-resolvers.test.ts",
+      "resourceBinding": "indirect-verified",
+      "crossTenantEvidence": "static-source-only"
     },
     {
       "transport": "rest",
@@ -539,7 +583,9 @@
       "capability": "project.pipeline.history.read",
       "resourceScope": "filtered-project-set",
       "positiveEvidence": "server/src/__tests__/security2gE.concept-matrix-history.test.ts",
-      "negativeEvidence": "server/src/__tests__/security2gE.concept-matrix-history.test.ts"
+      "negativeEvidence": "server/src/__tests__/security2gE.concept-matrix-history.test.ts",
+      "resourceBinding": "indirect-unreviewed",
+      "crossTenantEvidence": "none-recorded"
     },
     {
       "transport": "rest",
@@ -550,7 +596,9 @@
       "capability": "project.pipeline.read",
       "resourceScope": "resolved-pipeline-project",
       "positiveEvidence": "server/src/__tests__/security2gE.concept-resource-resolvers.test.ts",
-      "negativeEvidence": "server/src/__tests__/security2gE.concept-resource-resolvers.test.ts"
+      "negativeEvidence": "server/src/__tests__/security2gE.concept-resource-resolvers.test.ts",
+      "resourceBinding": "indirect-verified",
+      "crossTenantEvidence": "static-source-only"
     },
     {
       "transport": "rest",
@@ -561,7 +609,9 @@
       "capability": "project.pipeline.cancel",
       "resourceScope": "resolved-pipeline-project",
       "positiveEvidence": "server/src/__tests__/security2gE.concept-resource-resolvers.test.ts",
-      "negativeEvidence": "server/src/__tests__/security2gE.concept-resource-resolvers.test.ts"
+      "negativeEvidence": "server/src/__tests__/security2gE.concept-resource-resolvers.test.ts",
+      "resourceBinding": "indirect-verified",
+      "crossTenantEvidence": "static-source-only"
     },
     {
       "transport": "rest",
@@ -572,7 +622,9 @@
       "capability": "project.pipeline.pause",
       "resourceScope": "resolved-pipeline-project",
       "positiveEvidence": "server/src/__tests__/security2gE.concept-resource-resolvers.test.ts",
-      "negativeEvidence": "server/src/__tests__/security2gE.concept-resource-resolvers.test.ts"
+      "negativeEvidence": "server/src/__tests__/security2gE.concept-resource-resolvers.test.ts",
+      "resourceBinding": "indirect-verified",
+      "crossTenantEvidence": "static-source-only"
     },
     {
       "transport": "rest",
@@ -583,7 +635,9 @@
       "capability": "project.pipeline.resume",
       "resourceScope": "resolved-pipeline-project",
       "positiveEvidence": "server/src/__tests__/security2gE.concept-resource-resolvers.test.ts",
-      "negativeEvidence": "server/src/__tests__/security2gE.concept-resource-resolvers.test.ts"
+      "negativeEvidence": "server/src/__tests__/security2gE.concept-resource-resolvers.test.ts",
+      "resourceBinding": "indirect-verified",
+      "crossTenantEvidence": "static-source-only"
     },
     {
       "transport": "rest",
@@ -594,7 +648,9 @@
       "capability": "project.pipeline.retry",
       "resourceScope": "resolved-pipeline-project",
       "positiveEvidence": "server/src/__tests__/security2gE.concept-resource-resolvers.test.ts",
-      "negativeEvidence": "server/src/__tests__/security2gE.concept-resource-resolvers.test.ts"
+      "negativeEvidence": "server/src/__tests__/security2gE.concept-resource-resolvers.test.ts",
+      "resourceBinding": "indirect-verified",
+      "crossTenantEvidence": "static-source-only"
     },
     {
       "transport": "rest",
@@ -605,7 +661,9 @@
       "capability": "project.pipeline.stage.retry",
       "resourceScope": "resolved-pipeline-project",
       "positiveEvidence": "server/src/__tests__/security2gE.concept-resource-resolvers.test.ts",
-      "negativeEvidence": "server/src/__tests__/security2gE.concept-resource-resolvers.test.ts"
+      "negativeEvidence": "server/src/__tests__/security2gE.concept-resource-resolvers.test.ts",
+      "resourceBinding": "indirect-verified",
+      "crossTenantEvidence": "static-source-only"
     },
     {
       "transport": "rest",
@@ -616,7 +674,9 @@
       "capability": "project.artifact.approve",
       "resourceScope": "resolved-artifact-project",
       "positiveEvidence": "server/src/__tests__/security2gE.concept-resource-resolvers.test.ts",
-      "negativeEvidence": "server/src/__tests__/security2gE.concept-resource-resolvers.test.ts"
+      "negativeEvidence": "server/src/__tests__/security2gE.concept-resource-resolvers.test.ts",
+      "resourceBinding": "indirect-verified",
+      "crossTenantEvidence": "static-source-only"
     },
     {
       "transport": "rest",
@@ -627,7 +687,9 @@
       "capability": "project.artifact.comment",
       "resourceScope": "resolved-artifact-project",
       "positiveEvidence": "server/src/__tests__/security2gE.concept-resource-resolvers.test.ts",
-      "negativeEvidence": "server/src/__tests__/security2gE.concept-resource-resolvers.test.ts"
+      "negativeEvidence": "server/src/__tests__/security2gE.concept-resource-resolvers.test.ts",
+      "resourceBinding": "indirect-verified",
+      "crossTenantEvidence": "static-source-only"
     },
     {
       "transport": "rest",
@@ -638,7 +700,9 @@
       "capability": "project.artifact.edit",
       "resourceScope": "resolved-artifact-project",
       "positiveEvidence": "server/src/__tests__/security2gE.concept-resource-resolvers.test.ts",
-      "negativeEvidence": "server/src/__tests__/security2gE.concept-resource-resolvers.test.ts"
+      "negativeEvidence": "server/src/__tests__/security2gE.concept-resource-resolvers.test.ts",
+      "resourceBinding": "indirect-verified",
+      "crossTenantEvidence": "static-source-only"
     },
     {
       "transport": "rest",
@@ -649,7 +713,9 @@
       "capability": "project.artifact.reject",
       "resourceScope": "resolved-artifact-project",
       "positiveEvidence": "server/src/__tests__/security2gE.concept-resource-resolvers.test.ts",
-      "negativeEvidence": "server/src/__tests__/security2gE.concept-resource-resolvers.test.ts"
+      "negativeEvidence": "server/src/__tests__/security2gE.concept-resource-resolvers.test.ts",
+      "resourceBinding": "indirect-verified",
+      "crossTenantEvidence": "static-source-only"
     },
     {
       "transport": "rest",
@@ -660,7 +726,9 @@
       "capability": "user.concept.pipeline.generate",
       "resourceScope": "session-owned-concept",
       "positiveEvidence": "server/src/__tests__/security2gE.concept-entry-scope.test.ts",
-      "negativeEvidence": "server/src/__tests__/security2gE.concept-entry-scope.test.ts"
+      "negativeEvidence": "server/src/__tests__/security2gE.concept-entry-scope.test.ts",
+      "resourceBinding": "indirect-unreviewed",
+      "crossTenantEvidence": "none-recorded"
     },
     {
       "transport": "rest",
@@ -671,7 +739,9 @@
       "capability": "project.concept.pipeline.generate-direct",
       "resourceScope": "body-project",
       "positiveEvidence": "server/src/__tests__/security2gE.concept-entry-scope.test.ts",
-      "negativeEvidence": "server/src/__tests__/security2gE.concept-entry-scope.test.ts"
+      "negativeEvidence": "server/src/__tests__/security2gE.concept-entry-scope.test.ts",
+      "resourceBinding": "indirect-unreviewed",
+      "crossTenantEvidence": "none-recorded"
     },
     {
       "transport": "rest",
@@ -682,7 +752,9 @@
       "capability": "user.concept.create",
       "resourceScope": "session-owned-concept",
       "positiveEvidence": "server/src/__tests__/security2gE.concept-entry-scope.test.ts",
-      "negativeEvidence": "server/src/__tests__/security2gE.concept-entry-scope.test.ts"
+      "negativeEvidence": "server/src/__tests__/security2gE.concept-entry-scope.test.ts",
+      "resourceBinding": "indirect-unreviewed",
+      "crossTenantEvidence": "none-recorded"
     },
     {
       "transport": "rest",
@@ -693,7 +765,9 @@
       "capability": "system.controller.decisions.module.read",
       "resourceScope": "global-controller-runtime",
       "positiveEvidence": "server/src/__tests__/security2gE.controller-operator-boundary.test.ts",
-      "negativeEvidence": "server/src/__tests__/security2gE.controller-operator-boundary.test.ts"
+      "negativeEvidence": "server/src/__tests__/security2gE.controller-operator-boundary.test.ts",
+      "resourceBinding": "not-resource-scoped",
+      "crossTenantEvidence": "none-recorded"
     },
     {
       "transport": "rest",
@@ -704,7 +778,9 @@
       "capability": "system.controller.decisions.rules.read",
       "resourceScope": "global-controller-runtime",
       "positiveEvidence": "server/src/__tests__/security2gE.controller-operator-boundary.test.ts",
-      "negativeEvidence": "server/src/__tests__/security2gE.controller-operator-boundary.test.ts"
+      "negativeEvidence": "server/src/__tests__/security2gE.controller-operator-boundary.test.ts",
+      "resourceBinding": "not-resource-scoped",
+      "crossTenantEvidence": "none-recorded"
     },
     {
       "transport": "rest",
@@ -715,7 +791,9 @@
       "capability": "system.controller.decisions.search",
       "resourceScope": "global-controller-runtime",
       "positiveEvidence": "server/src/__tests__/security2gE.controller-operator-boundary.test.ts",
-      "negativeEvidence": "server/src/__tests__/security2gE.controller-operator-boundary.test.ts"
+      "negativeEvidence": "server/src/__tests__/security2gE.controller-operator-boundary.test.ts",
+      "resourceBinding": "not-resource-scoped",
+      "crossTenantEvidence": "none-recorded"
     },
     {
       "transport": "rest",
@@ -726,7 +804,9 @@
       "capability": "system.controller.decisions.stats.read",
       "resourceScope": "global-controller-runtime",
       "positiveEvidence": "server/src/__tests__/security2gE.controller-operator-boundary.test.ts",
-      "negativeEvidence": "server/src/__tests__/security2gE.controller-operator-boundary.test.ts"
+      "negativeEvidence": "server/src/__tests__/security2gE.controller-operator-boundary.test.ts",
+      "resourceBinding": "not-resource-scoped",
+      "crossTenantEvidence": "none-recorded"
     },
     {
       "transport": "rest",
@@ -737,7 +817,9 @@
       "capability": "system.controller.graph.dependencies.read",
       "resourceScope": "global-controller-runtime",
       "positiveEvidence": "server/src/__tests__/security2gE.controller-operator-boundary.test.ts",
-      "negativeEvidence": "server/src/__tests__/security2gE.controller-operator-boundary.test.ts"
+      "negativeEvidence": "server/src/__tests__/security2gE.controller-operator-boundary.test.ts",
+      "resourceBinding": "not-resource-scoped",
+      "crossTenantEvidence": "none-recorded"
     },
     {
       "transport": "rest",
@@ -748,7 +830,9 @@
       "capability": "system.controller.graph.dependents.read",
       "resourceScope": "global-controller-runtime",
       "positiveEvidence": "server/src/__tests__/security2gE.controller-operator-boundary.test.ts",
-      "negativeEvidence": "server/src/__tests__/security2gE.controller-operator-boundary.test.ts"
+      "negativeEvidence": "server/src/__tests__/security2gE.controller-operator-boundary.test.ts",
+      "resourceBinding": "not-resource-scoped",
+      "crossTenantEvidence": "none-recorded"
     },
     {
       "transport": "rest",
@@ -759,7 +843,9 @@
       "capability": "system.controller.graph.impact.read",
       "resourceScope": "global-controller-runtime",
       "positiveEvidence": "server/src/__tests__/security2gE.controller-operator-boundary.test.ts",
-      "negativeEvidence": "server/src/__tests__/security2gE.controller-operator-boundary.test.ts"
+      "negativeEvidence": "server/src/__tests__/security2gE.controller-operator-boundary.test.ts",
+      "resourceBinding": "not-resource-scoped",
+      "crossTenantEvidence": "none-recorded"
     },
     {
       "transport": "rest",
@@ -770,7 +856,9 @@
       "capability": "system.controller.graph.stats.read",
       "resourceScope": "global-controller-runtime",
       "positiveEvidence": "server/src/__tests__/security2gE.controller-operator-boundary.test.ts",
-      "negativeEvidence": "server/src/__tests__/security2gE.controller-operator-boundary.test.ts"
+      "negativeEvidence": "server/src/__tests__/security2gE.controller-operator-boundary.test.ts",
+      "resourceBinding": "not-resource-scoped",
+      "crossTenantEvidence": "none-recorded"
     },
     {
       "transport": "rest",
@@ -781,7 +869,9 @@
       "capability": "system.controller.graph.location.suggest",
       "resourceScope": "global-controller-runtime",
       "positiveEvidence": "server/src/__tests__/security2gE.controller-operator-boundary.test.ts",
-      "negativeEvidence": "server/src/__tests__/security2gE.controller-operator-boundary.test.ts"
+      "negativeEvidence": "server/src/__tests__/security2gE.controller-operator-boundary.test.ts",
+      "resourceBinding": "not-resource-scoped",
+      "crossTenantEvidence": "none-recorded"
     },
     {
       "transport": "rest",
@@ -792,7 +882,9 @@
       "capability": "system.controller.health.read",
       "resourceScope": "global-controller-runtime",
       "positiveEvidence": "server/src/__tests__/security2gE.controller-operator-boundary.test.ts",
-      "negativeEvidence": "server/src/__tests__/security2gE.controller-operator-boundary.test.ts"
+      "negativeEvidence": "server/src/__tests__/security2gE.controller-operator-boundary.test.ts",
+      "resourceBinding": "not-resource-scoped",
+      "crossTenantEvidence": "none-recorded"
     },
     {
       "transport": "rest",
@@ -803,7 +895,9 @@
       "capability": "system.controller.knowledge.query",
       "resourceScope": "global-controller-runtime",
       "positiveEvidence": "server/src/__tests__/security2gE.controller-operator-boundary.test.ts",
-      "negativeEvidence": "server/src/__tests__/security2gE.controller-operator-boundary.test.ts"
+      "negativeEvidence": "server/src/__tests__/security2gE.controller-operator-boundary.test.ts",
+      "resourceBinding": "not-resource-scoped",
+      "crossTenantEvidence": "none-recorded"
     },
     {
       "transport": "rest",
@@ -814,7 +908,9 @@
       "capability": "system.controller.knowledge.stats.read",
       "resourceScope": "global-controller-runtime",
       "positiveEvidence": "server/src/__tests__/security2gE.controller-operator-boundary.test.ts",
-      "negativeEvidence": "server/src/__tests__/security2gE.controller-operator-boundary.test.ts"
+      "negativeEvidence": "server/src/__tests__/security2gE.controller-operator-boundary.test.ts",
+      "resourceBinding": "not-resource-scoped",
+      "crossTenantEvidence": "none-recorded"
     },
     {
       "transport": "rest",
@@ -825,7 +921,9 @@
       "capability": "system.controller.secrets.status.read",
       "resourceScope": "global-controller-runtime",
       "positiveEvidence": "server/src/__tests__/security2gE.controller-operator-boundary.test.ts",
-      "negativeEvidence": "server/src/__tests__/security2gE.controller-operator-boundary.test.ts"
+      "negativeEvidence": "server/src/__tests__/security2gE.controller-operator-boundary.test.ts",
+      "resourceBinding": "not-resource-scoped",
+      "crossTenantEvidence": "none-recorded"
     },
     {
       "transport": "rest",
@@ -836,7 +934,9 @@
       "capability": "system.controller.architecture.scan",
       "resourceScope": "global-controller-runtime",
       "positiveEvidence": "server/src/__tests__/security2gE.controller-operator-boundary.test.ts",
-      "negativeEvidence": "server/src/__tests__/security2gE.controller-operator-boundary.test.ts"
+      "negativeEvidence": "server/src/__tests__/security2gE.controller-operator-boundary.test.ts",
+      "resourceBinding": "not-resource-scoped",
+      "crossTenantEvidence": "none-recorded"
     },
     {
       "transport": "rest",
@@ -847,7 +947,9 @@
       "capability": "system.controller.duplicates.check",
       "resourceScope": "global-controller-runtime",
       "positiveEvidence": "server/src/__tests__/security2gE.controller-operator-boundary.test.ts",
-      "negativeEvidence": "server/src/__tests__/security2gE.controller-operator-boundary.test.ts"
+      "negativeEvidence": "server/src/__tests__/security2gE.controller-operator-boundary.test.ts",
+      "resourceBinding": "not-resource-scoped",
+      "crossTenantEvidence": "none-recorded"
     },
     {
       "transport": "rest",
@@ -858,7 +960,9 @@
       "capability": "system.controller.precheck.execute",
       "resourceScope": "global-controller-runtime",
       "positiveEvidence": "server/src/__tests__/security2gE.controller-operator-boundary.test.ts",
-      "negativeEvidence": "server/src/__tests__/security2gE.controller-operator-boundary.test.ts"
+      "negativeEvidence": "server/src/__tests__/security2gE.controller-operator-boundary.test.ts",
+      "resourceBinding": "not-resource-scoped",
+      "crossTenantEvidence": "none-recorded"
     },
     {
       "transport": "rest",
@@ -869,7 +973,9 @@
       "capability": "system.controller.code.review",
       "resourceScope": "global-controller-runtime",
       "positiveEvidence": "server/src/__tests__/security2gE.controller-operator-boundary.test.ts",
-      "negativeEvidence": "server/src/__tests__/security2gE.controller-operator-boundary.test.ts"
+      "negativeEvidence": "server/src/__tests__/security2gE.controller-operator-boundary.test.ts",
+      "resourceBinding": "not-resource-scoped",
+      "crossTenantEvidence": "none-recorded"
     },
     {
       "transport": "rest",
@@ -880,7 +986,9 @@
       "capability": "system.debug.execution.delete",
       "resourceScope": "global-debug-trace-store",
       "positiveEvidence": "server/src/__tests__/security2gE.debug-operator-boundary.test.ts",
-      "negativeEvidence": "server/src/__tests__/security2gE.debug-operator-boundary.test.ts"
+      "negativeEvidence": "server/src/__tests__/security2gE.debug-operator-boundary.test.ts",
+      "resourceBinding": "not-resource-scoped",
+      "crossTenantEvidence": "none-recorded"
     },
     {
       "transport": "rest",
@@ -891,7 +999,9 @@
       "capability": "system.debug.execution.compare",
       "resourceScope": "global-debug-trace-store",
       "positiveEvidence": "server/src/__tests__/security2gE.debug-operator-boundary.test.ts",
-      "negativeEvidence": "server/src/__tests__/security2gE.debug-operator-boundary.test.ts"
+      "negativeEvidence": "server/src/__tests__/security2gE.debug-operator-boundary.test.ts",
+      "resourceBinding": "not-resource-scoped",
+      "crossTenantEvidence": "none-recorded"
     },
     {
       "transport": "rest",
@@ -902,7 +1012,9 @@
       "capability": "system.debug.execution.read",
       "resourceScope": "global-debug-trace-store",
       "positiveEvidence": "server/src/__tests__/security2gE.debug-operator-boundary.test.ts",
-      "negativeEvidence": "server/src/__tests__/security2gE.debug-operator-boundary.test.ts"
+      "negativeEvidence": "server/src/__tests__/security2gE.debug-operator-boundary.test.ts",
+      "resourceBinding": "not-resource-scoped",
+      "crossTenantEvidence": "none-recorded"
     },
     {
       "transport": "rest",
@@ -913,7 +1025,9 @@
       "capability": "system.debug.executions.list",
       "resourceScope": "global-debug-trace-store",
       "positiveEvidence": "server/src/__tests__/security2gE.debug-operator-boundary.test.ts",
-      "negativeEvidence": "server/src/__tests__/security2gE.debug-operator-boundary.test.ts"
+      "negativeEvidence": "server/src/__tests__/security2gE.debug-operator-boundary.test.ts",
+      "resourceBinding": "not-resource-scoped",
+      "crossTenantEvidence": "none-recorded"
     },
     {
       "transport": "rest",
@@ -924,7 +1038,9 @@
       "capability": "system.debug.trace.export",
       "resourceScope": "global-debug-trace-store",
       "positiveEvidence": "server/src/__tests__/security2gE.debug-operator-boundary.test.ts",
-      "negativeEvidence": "server/src/__tests__/security2gE.debug-operator-boundary.test.ts"
+      "negativeEvidence": "server/src/__tests__/security2gE.debug-operator-boundary.test.ts",
+      "resourceBinding": "not-resource-scoped",
+      "crossTenantEvidence": "none-recorded"
     },
     {
       "transport": "rest",
@@ -935,7 +1051,9 @@
       "capability": "system.debug.graph.read",
       "resourceScope": "global-debug-trace-store",
       "positiveEvidence": "server/src/__tests__/security2gE.debug-operator-boundary.test.ts",
-      "negativeEvidence": "server/src/__tests__/security2gE.debug-operator-boundary.test.ts"
+      "negativeEvidence": "server/src/__tests__/security2gE.debug-operator-boundary.test.ts",
+      "resourceBinding": "not-resource-scoped",
+      "crossTenantEvidence": "none-recorded"
     },
     {
       "transport": "rest",
@@ -946,7 +1064,9 @@
       "capability": "system.debug.replay.read",
       "resourceScope": "global-debug-trace-store",
       "positiveEvidence": "server/src/__tests__/security2gE.debug-operator-boundary.test.ts",
-      "negativeEvidence": "server/src/__tests__/security2gE.debug-operator-boundary.test.ts"
+      "negativeEvidence": "server/src/__tests__/security2gE.debug-operator-boundary.test.ts",
+      "resourceBinding": "not-resource-scoped",
+      "crossTenantEvidence": "none-recorded"
     },
     {
       "transport": "rest",
@@ -957,7 +1077,9 @@
       "capability": "system.debug.timeline.read",
       "resourceScope": "global-debug-trace-store",
       "positiveEvidence": "server/src/__tests__/security2gE.debug-operator-boundary.test.ts",
-      "negativeEvidence": "server/src/__tests__/security2gE.debug-operator-boundary.test.ts"
+      "negativeEvidence": "server/src/__tests__/security2gE.debug-operator-boundary.test.ts",
+      "resourceBinding": "not-resource-scoped",
+      "crossTenantEvidence": "none-recorded"
     },
     {
       "transport": "rest",
@@ -968,7 +1090,9 @@
       "capability": "system.debug.trace.read",
       "resourceScope": "global-debug-trace-store",
       "positiveEvidence": "server/src/__tests__/security2gE.debug-operator-boundary.test.ts",
-      "negativeEvidence": "server/src/__tests__/security2gE.debug-operator-boundary.test.ts"
+      "negativeEvidence": "server/src/__tests__/security2gE.debug-operator-boundary.test.ts",
+      "resourceBinding": "not-resource-scoped",
+      "crossTenantEvidence": "none-recorded"
     },
     {
       "transport": "rest",
@@ -979,7 +1103,9 @@
       "capability": "system.distributed.cluster.read",
       "resourceScope": "global-distributed-runtime",
       "positiveEvidence": "server/src/__tests__/security2gE.distributed-scope.test.ts",
-      "negativeEvidence": "server/src/__tests__/security2gE.distributed-scope.test.ts"
+      "negativeEvidence": "server/src/__tests__/security2gE.distributed-scope.test.ts",
+      "resourceBinding": "not-resource-scoped",
+      "crossTenantEvidence": "none-recorded"
     },
     {
       "transport": "rest",
@@ -990,7 +1116,9 @@
       "capability": "project.distributed.dead-letter.list",
       "resourceScope": "owner-project-set",
       "positiveEvidence": "server/src/__tests__/security2gE.distributed-scope.test.ts",
-      "negativeEvidence": "server/src/__tests__/security2gE.distributed-scope.test.ts"
+      "negativeEvidence": "server/src/__tests__/security2gE.distributed-scope.test.ts",
+      "resourceBinding": "indirect-unreviewed",
+      "crossTenantEvidence": "none-recorded"
     },
     {
       "transport": "rest",
@@ -1001,7 +1129,9 @@
       "capability": "project.distributed.job.read",
       "resourceScope": "resolved-job-project",
       "positiveEvidence": "server/src/__tests__/security2gE.distributed-scope.test.ts",
-      "negativeEvidence": "server/src/__tests__/security2gE.distributed-scope.test.ts"
+      "negativeEvidence": "server/src/__tests__/security2gE.distributed-scope.test.ts",
+      "resourceBinding": "indirect-unreviewed",
+      "crossTenantEvidence": "none-recorded"
     },
     {
       "transport": "rest",
@@ -1012,7 +1142,9 @@
       "capability": "system.distributed.queue.read",
       "resourceScope": "global-distributed-runtime",
       "positiveEvidence": "server/src/__tests__/security2gE.distributed-scope.test.ts",
-      "negativeEvidence": "server/src/__tests__/security2gE.distributed-scope.test.ts"
+      "negativeEvidence": "server/src/__tests__/security2gE.distributed-scope.test.ts",
+      "resourceBinding": "not-resource-scoped",
+      "crossTenantEvidence": "none-recorded"
     },
     {
       "transport": "rest",
@@ -1023,7 +1155,9 @@
       "capability": "system.distributed.workers.read",
       "resourceScope": "global-distributed-runtime",
       "positiveEvidence": "server/src/__tests__/security2gE.distributed-scope.test.ts",
-      "negativeEvidence": "server/src/__tests__/security2gE.distributed-scope.test.ts"
+      "negativeEvidence": "server/src/__tests__/security2gE.distributed-scope.test.ts",
+      "resourceBinding": "not-resource-scoped",
+      "crossTenantEvidence": "none-recorded"
     },
     {
       "transport": "rest",
@@ -1034,7 +1168,9 @@
       "capability": "project.distributed.dead-letter.retry",
       "resourceScope": "resolved-job-project",
       "positiveEvidence": "server/src/__tests__/security2gE.distributed-scope.test.ts",
-      "negativeEvidence": "server/src/__tests__/security2gE.distributed-scope.test.ts"
+      "negativeEvidence": "server/src/__tests__/security2gE.distributed-scope.test.ts",
+      "resourceBinding": "indirect-unreviewed",
+      "crossTenantEvidence": "none-recorded"
     },
     {
       "transport": "rest",
@@ -1045,7 +1181,9 @@
       "capability": "system.distributed.scale.execute",
       "resourceScope": "global-distributed-runtime",
       "positiveEvidence": "server/src/__tests__/security2gE.distributed-scope.test.ts",
-      "negativeEvidence": "server/src/__tests__/security2gE.distributed-scope.test.ts"
+      "negativeEvidence": "server/src/__tests__/security2gE.distributed-scope.test.ts",
+      "resourceBinding": "not-resource-scoped",
+      "crossTenantEvidence": "none-recorded"
     },
     {
       "transport": "rest",
@@ -1056,7 +1194,9 @@
       "capability": "project.distributed.job.submit",
       "resourceScope": "body-project",
       "positiveEvidence": "server/src/__tests__/security2gE.distributed-scope.test.ts",
-      "negativeEvidence": "server/src/__tests__/security2gE.distributed-scope.test.ts"
+      "negativeEvidence": "server/src/__tests__/security2gE.distributed-scope.test.ts",
+      "resourceBinding": "indirect-unreviewed",
+      "crossTenantEvidence": "none-recorded"
     },
     {
       "transport": "rest",
@@ -1067,7 +1207,9 @@
       "capability": "system.domain.genres.list",
       "resourceScope": "domain-taxonomy",
       "positiveEvidence": "server/src/__tests__/security2gE.domain-scope.test.ts",
-      "negativeEvidence": "server/src/__tests__/security2gE.domain-scope.test.ts"
+      "negativeEvidence": "server/src/__tests__/security2gE.domain-scope.test.ts",
+      "resourceBinding": "indirect-unreviewed",
+      "crossTenantEvidence": "none-recorded"
     },
     {
       "transport": "rest",
@@ -1078,7 +1220,9 @@
       "capability": "system.domain.genre.read",
       "resourceScope": "domain-taxonomy",
       "positiveEvidence": "server/src/__tests__/security2gE.domain-scope.test.ts",
-      "negativeEvidence": "server/src/__tests__/security2gE.domain-scope.test.ts"
+      "negativeEvidence": "server/src/__tests__/security2gE.domain-scope.test.ts",
+      "resourceBinding": "indirect-unreviewed",
+      "crossTenantEvidence": "none-recorded"
     },
     {
       "transport": "rest",
@@ -1089,7 +1233,9 @@
       "capability": "system.domain.patterns.read",
       "resourceScope": "domain-knowledge",
       "positiveEvidence": "server/src/__tests__/security2gE.domain-scope.test.ts",
-      "negativeEvidence": "server/src/__tests__/security2gE.domain-scope.test.ts"
+      "negativeEvidence": "server/src/__tests__/security2gE.domain-scope.test.ts",
+      "resourceBinding": "indirect-unreviewed",
+      "crossTenantEvidence": "none-recorded"
     },
     {
       "transport": "rest",
@@ -1100,7 +1246,9 @@
       "capability": "system.domain.recommendations.read",
       "resourceScope": "domain-knowledge",
       "positiveEvidence": "server/src/__tests__/security2gE.domain-scope.test.ts",
-      "negativeEvidence": "server/src/__tests__/security2gE.domain-scope.test.ts"
+      "negativeEvidence": "server/src/__tests__/security2gE.domain-scope.test.ts",
+      "resourceBinding": "indirect-unreviewed",
+      "crossTenantEvidence": "none-recorded"
     },
     {
       "transport": "rest",
@@ -1111,7 +1259,9 @@
       "capability": "system.domain.analysis.execute",
       "resourceScope": "request-domain-input",
       "positiveEvidence": "server/src/__tests__/security2gE.domain-scope.test.ts",
-      "negativeEvidence": "server/src/__tests__/security2gE.domain-scope.test.ts"
+      "negativeEvidence": "server/src/__tests__/security2gE.domain-scope.test.ts",
+      "resourceBinding": "indirect-unreviewed",
+      "crossTenantEvidence": "none-recorded"
     },
     {
       "transport": "rest",
@@ -1122,7 +1272,9 @@
       "capability": "system.economy.report.metadata.read",
       "resourceScope": "placeholder-metadata",
       "positiveEvidence": "server/src/__tests__/security2gE.economy-scope.test.ts",
-      "negativeEvidence": "server/src/__tests__/security2gE.economy-scope.test.ts"
+      "negativeEvidence": "server/src/__tests__/security2gE.economy-scope.test.ts",
+      "resourceBinding": "indirect-unreviewed",
+      "crossTenantEvidence": "none-recorded"
     },
     {
       "transport": "rest",
@@ -1133,7 +1285,9 @@
       "capability": "project.economy.analyze",
       "resourceScope": "body-blueprint-project",
       "positiveEvidence": "server/src/__tests__/security2gE.economy-scope.test.ts",
-      "negativeEvidence": "server/src/__tests__/security2gE.economy-scope.test.ts"
+      "negativeEvidence": "server/src/__tests__/security2gE.economy-scope.test.ts",
+      "resourceBinding": "body-supplied-object",
+      "crossTenantEvidence": "none-recorded"
     },
     {
       "transport": "rest",
@@ -1144,7 +1298,9 @@
       "capability": "system.economy.balance.execute",
       "resourceScope": "request-economy-report",
       "positiveEvidence": "server/src/__tests__/security2gE.economy-scope.test.ts",
-      "negativeEvidence": "server/src/__tests__/security2gE.economy-scope.test.ts"
+      "negativeEvidence": "server/src/__tests__/security2gE.economy-scope.test.ts",
+      "resourceBinding": "indirect-unreviewed",
+      "crossTenantEvidence": "none-recorded"
     },
     {
       "transport": "rest",
@@ -1155,7 +1311,9 @@
       "capability": "project.economy.simulate",
       "resourceScope": "body-blueprint-project",
       "positiveEvidence": "server/src/__tests__/security2gE.economy-scope.test.ts",
-      "negativeEvidence": "server/src/__tests__/security2gE.economy-scope.test.ts"
+      "negativeEvidence": "server/src/__tests__/security2gE.economy-scope.test.ts",
+      "resourceBinding": "body-supplied-object",
+      "crossTenantEvidence": "none-recorded"
     },
     {
       "transport": "rest",
@@ -1166,7 +1324,9 @@
       "capability": "system.evaluation.alerts.read",
       "resourceScope": "global-evaluation-runtime",
       "positiveEvidence": "server/src/__tests__/security2gE.evaluation-operator-boundary.test.ts",
-      "negativeEvidence": "server/src/__tests__/security2gE.evaluation-operator-boundary.test.ts"
+      "negativeEvidence": "server/src/__tests__/security2gE.evaluation-operator-boundary.test.ts",
+      "resourceBinding": "not-resource-scoped",
+      "crossTenantEvidence": "none-recorded"
     },
     {
       "transport": "rest",
@@ -1177,7 +1337,9 @@
       "capability": "system.evaluation.history.read",
       "resourceScope": "global-evaluation-runtime",
       "positiveEvidence": "server/src/__tests__/security2gE.evaluation-operator-boundary.test.ts",
-      "negativeEvidence": "server/src/__tests__/security2gE.evaluation-operator-boundary.test.ts"
+      "negativeEvidence": "server/src/__tests__/security2gE.evaluation-operator-boundary.test.ts",
+      "resourceBinding": "not-resource-scoped",
+      "crossTenantEvidence": "none-recorded"
     },
     {
       "transport": "rest",
@@ -1188,7 +1350,9 @@
       "capability": "system.evaluation.score.read",
       "resourceScope": "global-evaluation-runtime",
       "positiveEvidence": "server/src/__tests__/security2gE.evaluation-operator-boundary.test.ts",
-      "negativeEvidence": "server/src/__tests__/security2gE.evaluation-operator-boundary.test.ts"
+      "negativeEvidence": "server/src/__tests__/security2gE.evaluation-operator-boundary.test.ts",
+      "resourceBinding": "not-resource-scoped",
+      "crossTenantEvidence": "none-recorded"
     },
     {
       "transport": "rest",
@@ -1199,7 +1363,9 @@
       "capability": "system.evaluation.suite.execute",
       "resourceScope": "global-evaluation-runtime",
       "positiveEvidence": "server/src/__tests__/security2gE.evaluation-operator-boundary.test.ts",
-      "negativeEvidence": "server/src/__tests__/security2gE.evaluation-operator-boundary.test.ts"
+      "negativeEvidence": "server/src/__tests__/security2gE.evaluation-operator-boundary.test.ts",
+      "resourceBinding": "not-resource-scoped",
+      "crossTenantEvidence": "none-recorded"
     },
     {
       "transport": "rest",
@@ -1210,7 +1376,9 @@
       "capability": "project.export.read",
       "resourceScope": "path-project",
       "positiveEvidence": "server/src/__tests__/security2gE.project-routes.test.ts",
-      "negativeEvidence": "server/src/__tests__/security2gE.project-routes.test.ts"
+      "negativeEvidence": "server/src/__tests__/security2gE.project-routes.test.ts",
+      "resourceBinding": "path-scoped",
+      "crossTenantEvidence": "none-recorded"
     },
     {
       "transport": "rest",
@@ -1221,7 +1389,9 @@
       "capability": "project.generation.read",
       "resourceScope": "path-project",
       "positiveEvidence": "server/src/__tests__/security2gE.project-routes.test.ts",
-      "negativeEvidence": "server/src/__tests__/security2gE.project-routes.test.ts"
+      "negativeEvidence": "server/src/__tests__/security2gE.project-routes.test.ts",
+      "resourceBinding": "path-scoped",
+      "crossTenantEvidence": "none-recorded"
     },
     {
       "transport": "rest",
@@ -1232,7 +1402,9 @@
       "capability": "project.studio.status.read",
       "resourceScope": "path-project",
       "positiveEvidence": "server/src/__tests__/security2gE.project-routes.test.ts",
-      "negativeEvidence": "server/src/__tests__/security2gE.project-routes.test.ts"
+      "negativeEvidence": "server/src/__tests__/security2gE.project-routes.test.ts",
+      "resourceBinding": "path-scoped",
+      "crossTenantEvidence": "none-recorded"
     },
     {
       "transport": "rest",
@@ -1243,7 +1415,9 @@
       "capability": "project.blueprint.read",
       "resourceScope": "resolved-blueprint-project",
       "positiveEvidence": "server/src/__tests__/security2gE.indirect-blueprint-routes.test.ts",
-      "negativeEvidence": "server/src/__tests__/security2gE.indirect-blueprint-routes.test.ts"
+      "negativeEvidence": "server/src/__tests__/security2gE.indirect-blueprint-routes.test.ts",
+      "resourceBinding": "indirect-verified",
+      "crossTenantEvidence": "none-recorded"
     },
     {
       "transport": "rest",
@@ -1254,7 +1428,9 @@
       "capability": "project.execution.list",
       "resourceScope": "resolved-blueprint-project",
       "positiveEvidence": "server/src/__tests__/security2gE.indirect-blueprint-routes.test.ts",
-      "negativeEvidence": "server/src/__tests__/security2gE.indirect-blueprint-routes.test.ts"
+      "negativeEvidence": "server/src/__tests__/security2gE.indirect-blueprint-routes.test.ts",
+      "resourceBinding": "indirect-verified",
+      "crossTenantEvidence": "none-recorded"
     },
     {
       "transport": "rest",
@@ -1265,7 +1441,9 @@
       "capability": "project.blueprint.validate",
       "resourceScope": "resolved-blueprint-project",
       "positiveEvidence": "server/src/__tests__/security2gE.indirect-blueprint-routes.test.ts",
-      "negativeEvidence": "server/src/__tests__/security2gE.indirect-blueprint-routes.test.ts"
+      "negativeEvidence": "server/src/__tests__/security2gE.indirect-blueprint-routes.test.ts",
+      "resourceBinding": "indirect-verified",
+      "crossTenantEvidence": "none-recorded"
     },
     {
       "transport": "rest",
@@ -1276,7 +1454,9 @@
       "capability": "project.generation.stream.read",
       "resourceScope": "query-project",
       "positiveEvidence": "server/src/__tests__/security2gE.game-generation-final-scope.test.ts",
-      "negativeEvidence": "server/src/__tests__/security2gE.game-generation-final-scope.test.ts"
+      "negativeEvidence": "server/src/__tests__/security2gE.game-generation-final-scope.test.ts",
+      "resourceBinding": "indirect-unreviewed",
+      "crossTenantEvidence": "none-recorded"
     },
     {
       "transport": "rest",
@@ -1287,7 +1467,9 @@
       "capability": "system.generation.cache-stats.read",
       "resourceScope": "global-generation-cache",
       "positiveEvidence": "server/src/__tests__/security2gE.game-generation-final-scope.test.ts",
-      "negativeEvidence": "server/src/__tests__/security2gE.game-generation-final-scope.test.ts"
+      "negativeEvidence": "server/src/__tests__/security2gE.game-generation-final-scope.test.ts",
+      "resourceBinding": "not-resource-scoped",
+      "crossTenantEvidence": "none-recorded"
     },
     {
       "transport": "rest",
@@ -1298,7 +1480,9 @@
       "capability": "project.blueprint.create",
       "resourceScope": "path-project",
       "positiveEvidence": "server/src/__tests__/security2gE.project-routes.test.ts",
-      "negativeEvidence": "server/src/__tests__/security2gE.project-routes.test.ts"
+      "negativeEvidence": "server/src/__tests__/security2gE.project-routes.test.ts",
+      "resourceBinding": "path-scoped",
+      "crossTenantEvidence": "none-recorded"
     },
     {
       "transport": "rest",
@@ -1309,7 +1493,9 @@
       "capability": "project.generation.start",
       "resourceScope": "path-project",
       "positiveEvidence": "server/src/__tests__/security2gE.project-routes.test.ts",
-      "negativeEvidence": "server/src/__tests__/security2gE.project-routes.test.ts"
+      "negativeEvidence": "server/src/__tests__/security2gE.project-routes.test.ts",
+      "resourceBinding": "path-scoped",
+      "crossTenantEvidence": "none-recorded"
     },
     {
       "transport": "rest",
@@ -1320,7 +1506,9 @@
       "capability": "project.studio.sync",
       "resourceScope": "path-project",
       "positiveEvidence": "server/src/__tests__/security2gE.project-routes.test.ts",
-      "negativeEvidence": "server/src/__tests__/security2gE.project-routes.test.ts"
+      "negativeEvidence": "server/src/__tests__/security2gE.project-routes.test.ts",
+      "resourceBinding": "path-scoped",
+      "crossTenantEvidence": "none-recorded"
     },
     {
       "transport": "rest",
@@ -1331,7 +1519,9 @@
       "capability": "system.game-architect.analysis.execute",
       "resourceScope": "request-game-idea",
       "positiveEvidence": "server/src/__tests__/security2gE.game-architect-scope.test.ts",
-      "negativeEvidence": "server/src/__tests__/security2gE.game-architect-scope.test.ts"
+      "negativeEvidence": "server/src/__tests__/security2gE.game-architect-scope.test.ts",
+      "resourceBinding": "indirect-unreviewed",
+      "crossTenantEvidence": "none-recorded"
     },
     {
       "transport": "rest",
@@ -1342,7 +1532,9 @@
       "capability": "system.game-architect.design.generate",
       "resourceScope": "request-game-idea",
       "positiveEvidence": "server/src/__tests__/security2gE.game-architect-scope.test.ts",
-      "negativeEvidence": "server/src/__tests__/security2gE.game-architect-scope.test.ts"
+      "negativeEvidence": "server/src/__tests__/security2gE.game-architect-scope.test.ts",
+      "resourceBinding": "indirect-unreviewed",
+      "crossTenantEvidence": "none-recorded"
     },
     {
       "transport": "rest",
@@ -1353,7 +1545,9 @@
       "capability": "system.game-architect.prompts.generate",
       "resourceScope": "request-game-idea",
       "positiveEvidence": "server/src/__tests__/security2gE.game-architect-scope.test.ts",
-      "negativeEvidence": "server/src/__tests__/security2gE.game-architect-scope.test.ts"
+      "negativeEvidence": "server/src/__tests__/security2gE.game-architect-scope.test.ts",
+      "resourceBinding": "indirect-unreviewed",
+      "crossTenantEvidence": "none-recorded"
     },
     {
       "transport": "rest",
@@ -1364,7 +1558,9 @@
       "capability": "system.generation.v2.blueprint.generate",
       "resourceScope": "request-generation-outputs",
       "positiveEvidence": "server/src/__tests__/security2gE.generation-v2-scope.test.ts",
-      "negativeEvidence": "server/src/__tests__/security2gE.generation-v2-scope.test.ts"
+      "negativeEvidence": "server/src/__tests__/security2gE.generation-v2-scope.test.ts",
+      "resourceBinding": "indirect-unreviewed",
+      "crossTenantEvidence": "none-recorded"
     },
     {
       "transport": "rest",
@@ -1375,7 +1571,9 @@
       "capability": "project.generation.v2.export.generate",
       "resourceScope": "body-blueprint-project",
       "positiveEvidence": "server/src/__tests__/security2gE.generation-v2-scope.test.ts",
-      "negativeEvidence": "server/src/__tests__/security2gE.generation-v2-scope.test.ts"
+      "negativeEvidence": "server/src/__tests__/security2gE.generation-v2-scope.test.ts",
+      "resourceBinding": "body-supplied-object",
+      "crossTenantEvidence": "none-recorded"
     },
     {
       "transport": "rest",
@@ -1386,7 +1584,9 @@
       "capability": "project.generation.v2.game.execute",
       "resourceScope": "body-project",
       "positiveEvidence": "server/src/__tests__/security2gE.generation-v2-scope.test.ts",
-      "negativeEvidence": "server/src/__tests__/security2gE.generation-v2-scope.test.ts"
+      "negativeEvidence": "server/src/__tests__/security2gE.generation-v2-scope.test.ts",
+      "resourceBinding": "indirect-unreviewed",
+      "crossTenantEvidence": "none-recorded"
     },
     {
       "transport": "rest",
@@ -1397,7 +1597,61 @@
       "capability": "project.generation.v2.lua.generate",
       "resourceScope": "body-blueprint-project",
       "positiveEvidence": "server/src/__tests__/security2gE.generation-v2-scope.test.ts",
-      "negativeEvidence": "server/src/__tests__/security2gE.generation-v2-scope.test.ts"
+      "negativeEvidence": "server/src/__tests__/security2gE.generation-v2-scope.test.ts",
+      "resourceBinding": "body-supplied-object",
+      "crossTenantEvidence": "none-recorded"
+    },
+    {
+      "transport": "rest",
+      "source": "server/src/routes/chatPersistence.ts",
+      "operation": "DELETE /conversation/:id",
+      "classification": "project-owner",
+      "principal": "user-session",
+      "capability": "project.chat.conversation.delete",
+      "resourceScope": "resolved-conversation-project",
+      "positiveEvidence": "server/src/__tests__/security2gE.chat-persistence-scope.test.ts",
+      "negativeEvidence": "server/src/__tests__/security2gE.chat-persistence-scope.test.ts",
+      "resourceBinding": "indirect-unreviewed",
+      "crossTenantEvidence": "none-recorded"
+    },
+    {
+      "transport": "rest",
+      "source": "server/src/routes/chatPersistence.ts",
+      "operation": "GET /:projectId/history",
+      "classification": "project-owner",
+      "principal": "user-session",
+      "capability": "project.chat.history.read",
+      "resourceScope": "path-project",
+      "positiveEvidence": "server/src/__tests__/security2gE.chat-persistence-scope.test.ts",
+      "negativeEvidence": "server/src/__tests__/security2gE.chat-persistence-scope.test.ts",
+      "resourceBinding": "path-scoped",
+      "crossTenantEvidence": "none-recorded"
+    },
+    {
+      "transport": "rest",
+      "source": "server/src/routes/chatPersistence.ts",
+      "operation": "GET /conversation/:id",
+      "classification": "project-owner",
+      "principal": "user-session",
+      "capability": "project.chat.conversation.read",
+      "resourceScope": "resolved-conversation-project",
+      "positiveEvidence": "server/src/__tests__/security2gE.chat-persistence-scope.test.ts",
+      "negativeEvidence": "server/src/__tests__/security2gE.chat-persistence-scope.test.ts",
+      "resourceBinding": "indirect-unreviewed",
+      "crossTenantEvidence": "none-recorded"
+    },
+    {
+      "transport": "rest",
+      "source": "server/src/routes/chatPersistence.ts",
+      "operation": "POST /message",
+      "classification": "project-owner",
+      "principal": "user-session",
+      "capability": "project.chat.message.create",
+      "resourceScope": "body-or-resolved-conversation-project",
+      "positiveEvidence": "server/src/__tests__/security2gE.chat-persistence-scope.test.ts",
+      "negativeEvidence": "server/src/__tests__/security2gE.chat-persistence-scope.test.ts",
+      "resourceBinding": "indirect-unreviewed",
+      "crossTenantEvidence": "none-recorded"
     },
     {
       "transport": "rest",
@@ -1408,7 +1662,9 @@
       "capability": "system.knowledge.patterns.read",
       "resourceScope": "knowledge-pattern-registry",
       "positiveEvidence": "server/src/__tests__/security2gE.knowledge-scope.test.ts",
-      "negativeEvidence": "server/src/__tests__/security2gE.knowledge-scope.test.ts"
+      "negativeEvidence": "server/src/__tests__/security2gE.knowledge-scope.test.ts",
+      "resourceBinding": "indirect-unreviewed",
+      "crossTenantEvidence": "none-recorded"
     },
     {
       "transport": "rest",
@@ -1419,7 +1675,9 @@
       "capability": "system.knowledge.prompts.read",
       "resourceScope": "knowledge-prompt-registry",
       "positiveEvidence": "server/src/__tests__/security2gE.knowledge-scope.test.ts",
-      "negativeEvidence": "server/src/__tests__/security2gE.knowledge-scope.test.ts"
+      "negativeEvidence": "server/src/__tests__/security2gE.knowledge-scope.test.ts",
+      "resourceBinding": "indirect-unreviewed",
+      "crossTenantEvidence": "none-recorded"
     },
     {
       "transport": "rest",
@@ -1430,7 +1688,9 @@
       "capability": "system.knowledge.recommendations.read",
       "resourceScope": "knowledge-runtime",
       "positiveEvidence": "server/src/__tests__/security2gE.knowledge-scope.test.ts",
-      "negativeEvidence": "server/src/__tests__/security2gE.knowledge-scope.test.ts"
+      "negativeEvidence": "server/src/__tests__/security2gE.knowledge-scope.test.ts",
+      "resourceBinding": "indirect-unreviewed",
+      "crossTenantEvidence": "none-recorded"
     },
     {
       "transport": "rest",
@@ -1441,7 +1701,9 @@
       "capability": "system.knowledge.search",
       "resourceScope": "knowledge-runtime",
       "positiveEvidence": "server/src/__tests__/security2gE.knowledge-scope.test.ts",
-      "negativeEvidence": "server/src/__tests__/security2gE.knowledge-scope.test.ts"
+      "negativeEvidence": "server/src/__tests__/security2gE.knowledge-scope.test.ts",
+      "resourceBinding": "indirect-unreviewed",
+      "crossTenantEvidence": "none-recorded"
     },
     {
       "transport": "rest",
@@ -1452,7 +1714,9 @@
       "capability": "project.knowledge.record.store",
       "resourceScope": "body-project",
       "positiveEvidence": "server/src/__tests__/security2gE.knowledge-scope.test.ts",
-      "negativeEvidence": "server/src/__tests__/security2gE.knowledge-scope.test.ts"
+      "negativeEvidence": "server/src/__tests__/security2gE.knowledge-scope.test.ts",
+      "resourceBinding": "indirect-unreviewed",
+      "crossTenantEvidence": "none-recorded"
     },
     {
       "transport": "rest",
@@ -1463,7 +1727,9 @@
       "capability": "project.lifecycle.status.read",
       "resourceScope": "path-game-project",
       "positiveEvidence": "server/src/__tests__/security2gE.lifecycle-scope.test.ts",
-      "negativeEvidence": "server/src/__tests__/security2gE.lifecycle-scope.test.ts"
+      "negativeEvidence": "server/src/__tests__/security2gE.lifecycle-scope.test.ts",
+      "resourceBinding": "path-scoped",
+      "crossTenantEvidence": "none-recorded"
     },
     {
       "transport": "rest",
@@ -1474,7 +1740,9 @@
       "capability": "project.lifecycle.patch",
       "resourceScope": "body-blueprint-project",
       "positiveEvidence": "server/src/__tests__/security2gE.lifecycle-scope.test.ts",
-      "negativeEvidence": "server/src/__tests__/security2gE.lifecycle-scope.test.ts"
+      "negativeEvidence": "server/src/__tests__/security2gE.lifecycle-scope.test.ts",
+      "resourceBinding": "body-supplied-object",
+      "crossTenantEvidence": "none-recorded"
     },
     {
       "transport": "rest",
@@ -1485,7 +1753,9 @@
       "capability": "project.lifecycle.start",
       "resourceScope": "body-game-project",
       "positiveEvidence": "server/src/__tests__/security2gE.lifecycle-scope.test.ts",
-      "negativeEvidence": "server/src/__tests__/security2gE.lifecycle-scope.test.ts"
+      "negativeEvidence": "server/src/__tests__/security2gE.lifecycle-scope.test.ts",
+      "resourceBinding": "indirect-unreviewed",
+      "crossTenantEvidence": "none-recorded"
     },
     {
       "transport": "rest",
@@ -1496,7 +1766,9 @@
       "capability": "project.lifecycle.tick",
       "resourceScope": "body-game-project",
       "positiveEvidence": "server/src/__tests__/security2gE.lifecycle-scope.test.ts",
-      "negativeEvidence": "server/src/__tests__/security2gE.lifecycle-scope.test.ts"
+      "negativeEvidence": "server/src/__tests__/security2gE.lifecycle-scope.test.ts",
+      "resourceBinding": "indirect-unreviewed",
+      "crossTenantEvidence": "none-recorded"
     },
     {
       "transport": "rest",
@@ -1507,7 +1779,9 @@
       "capability": "project.lua.experience.assemble",
       "resourceScope": "body-project",
       "positiveEvidence": "server/src/__tests__/security2gE.lua-generation-scope.test.ts",
-      "negativeEvidence": "server/src/__tests__/security2gE.lua-generation-scope.test.ts"
+      "negativeEvidence": "server/src/__tests__/security2gE.lua-generation-scope.test.ts",
+      "resourceBinding": "indirect-unreviewed",
+      "crossTenantEvidence": "none-recorded"
     },
     {
       "transport": "rest",
@@ -1518,7 +1792,9 @@
       "capability": "project.lua.generate",
       "resourceScope": "body-project",
       "positiveEvidence": "server/src/__tests__/security2gE.lua-generation-scope.test.ts",
-      "negativeEvidence": "server/src/__tests__/security2gE.lua-generation-scope.test.ts"
+      "negativeEvidence": "server/src/__tests__/security2gE.lua-generation-scope.test.ts",
+      "resourceBinding": "indirect-unreviewed",
+      "crossTenantEvidence": "none-recorded"
     },
     {
       "transport": "rest",
@@ -1529,7 +1805,9 @@
       "capability": "project.lua.assets.generate",
       "resourceScope": "body-project",
       "positiveEvidence": "server/src/__tests__/security2gE.lua-generation-scope.test.ts",
-      "negativeEvidence": "server/src/__tests__/security2gE.lua-generation-scope.test.ts"
+      "negativeEvidence": "server/src/__tests__/security2gE.lua-generation-scope.test.ts",
+      "resourceBinding": "indirect-unreviewed",
+      "crossTenantEvidence": "none-recorded"
     },
     {
       "transport": "rest",
@@ -1540,7 +1818,9 @@
       "capability": "project.lua.generate-full",
       "resourceScope": "body-project",
       "positiveEvidence": "server/src/__tests__/security2gE.lua-generation-scope.test.ts",
-      "negativeEvidence": "server/src/__tests__/security2gE.lua-generation-scope.test.ts"
+      "negativeEvidence": "server/src/__tests__/security2gE.lua-generation-scope.test.ts",
+      "resourceBinding": "indirect-unreviewed",
+      "crossTenantEvidence": "none-recorded"
     },
     {
       "transport": "rest",
@@ -1551,7 +1831,9 @@
       "capability": "project.memory.entries.read",
       "resourceScope": "query-project",
       "positiveEvidence": "server/src/__tests__/security2gE.memory-scope.test.ts",
-      "negativeEvidence": "server/src/__tests__/security2gE.memory-scope.test.ts"
+      "negativeEvidence": "server/src/__tests__/security2gE.memory-scope.test.ts",
+      "resourceBinding": "indirect-unreviewed",
+      "crossTenantEvidence": "none-recorded"
     },
     {
       "transport": "rest",
@@ -1562,7 +1844,9 @@
       "capability": "system.memory.stats.read",
       "resourceScope": "global-memory-runtime",
       "positiveEvidence": "server/src/__tests__/security2gE.memory-scope.test.ts",
-      "negativeEvidence": "server/src/__tests__/security2gE.memory-scope.test.ts"
+      "negativeEvidence": "server/src/__tests__/security2gE.memory-scope.test.ts",
+      "resourceBinding": "not-resource-scoped",
+      "crossTenantEvidence": "none-recorded"
     },
     {
       "transport": "rest",
@@ -1573,7 +1857,9 @@
       "capability": "project.memory.search",
       "resourceScope": "body-project",
       "positiveEvidence": "server/src/__tests__/security2gE.memory-scope.test.ts",
-      "negativeEvidence": "server/src/__tests__/security2gE.memory-scope.test.ts"
+      "negativeEvidence": "server/src/__tests__/security2gE.memory-scope.test.ts",
+      "resourceBinding": "indirect-unreviewed",
+      "crossTenantEvidence": "none-recorded"
     },
     {
       "transport": "rest",
@@ -1584,7 +1870,9 @@
       "capability": "project.memory.entry.store",
       "resourceScope": "body-project",
       "positiveEvidence": "server/src/__tests__/security2gE.memory-scope.test.ts",
-      "negativeEvidence": "server/src/__tests__/security2gE.memory-scope.test.ts"
+      "negativeEvidence": "server/src/__tests__/security2gE.memory-scope.test.ts",
+      "resourceBinding": "indirect-unreviewed",
+      "crossTenantEvidence": "none-recorded"
     },
     {
       "transport": "rest",
@@ -1595,7 +1883,9 @@
       "capability": "project.planning.read",
       "resourceScope": "resolved-plan-project",
       "positiveEvidence": "server/src/__tests__/security2gE.planning-scope.test.ts",
-      "negativeEvidence": "server/src/__tests__/security2gE.planning-scope.test.ts"
+      "negativeEvidence": "server/src/__tests__/security2gE.planning-scope.test.ts",
+      "resourceBinding": "indirect-unreviewed",
+      "crossTenantEvidence": "none-recorded"
     },
     {
       "transport": "rest",
@@ -1606,7 +1896,9 @@
       "capability": "project.planning.create",
       "resourceScope": "body-project",
       "positiveEvidence": "server/src/__tests__/security2gE.planning-scope.test.ts",
-      "negativeEvidence": "server/src/__tests__/security2gE.planning-scope.test.ts"
+      "negativeEvidence": "server/src/__tests__/security2gE.planning-scope.test.ts",
+      "resourceBinding": "indirect-unreviewed",
+      "crossTenantEvidence": "none-recorded"
     },
     {
       "transport": "rest",
@@ -1617,7 +1909,9 @@
       "capability": "project.planning.execute",
       "resourceScope": "resolved-plan-project",
       "positiveEvidence": "server/src/__tests__/security2gE.planning-scope.test.ts",
-      "negativeEvidence": "server/src/__tests__/security2gE.planning-scope.test.ts"
+      "negativeEvidence": "server/src/__tests__/security2gE.planning-scope.test.ts",
+      "resourceBinding": "indirect-unreviewed",
+      "crossTenantEvidence": "none-recorded"
     },
     {
       "transport": "rest",
@@ -1628,7 +1922,9 @@
       "capability": "user.self.read",
       "resourceScope": "current-user",
       "positiveEvidence": "server/src/__tests__/security2gE.authorization-domains.test.ts",
-      "negativeEvidence": "server/src/__tests__/security2gE.authorization-domains.test.ts"
+      "negativeEvidence": "server/src/__tests__/security2gE.authorization-domains.test.ts",
+      "resourceBinding": "indirect-unreviewed",
+      "crossTenantEvidence": "none-recorded"
     },
     {
       "transport": "rest",
@@ -1639,7 +1935,9 @@
       "capability": "system.platform.registry.agents.list",
       "resourceScope": "platform-agent-registry",
       "positiveEvidence": "server/src/__tests__/security2gE.platform-remaining-scope.test.ts",
-      "negativeEvidence": "server/src/__tests__/security2gE.platform-remaining-scope.test.ts"
+      "negativeEvidence": "server/src/__tests__/security2gE.platform-remaining-scope.test.ts",
+      "resourceBinding": "indirect-unreviewed",
+      "crossTenantEvidence": "none-recorded"
     },
     {
       "transport": "rest",
@@ -1650,7 +1948,9 @@
       "capability": "system.platform.registry.agent.read",
       "resourceScope": "platform-agent-registry",
       "positiveEvidence": "server/src/__tests__/security2gE.platform-remaining-scope.test.ts",
-      "negativeEvidence": "server/src/__tests__/security2gE.platform-remaining-scope.test.ts"
+      "negativeEvidence": "server/src/__tests__/security2gE.platform-remaining-scope.test.ts",
+      "resourceBinding": "indirect-unreviewed",
+      "crossTenantEvidence": "none-recorded"
     },
     {
       "transport": "rest",
@@ -1661,7 +1961,9 @@
       "capability": "user.self.read",
       "resourceScope": "path-user",
       "positiveEvidence": "server/src/__tests__/security2gE.authorization-domains.test.ts",
-      "negativeEvidence": "server/src/__tests__/security2gE.authorization-domains.test.ts"
+      "negativeEvidence": "server/src/__tests__/security2gE.authorization-domains.test.ts",
+      "resourceBinding": "path-scoped",
+      "crossTenantEvidence": "server/src/__tests__/security2gE.authorization-domains.test.ts"
     },
     {
       "transport": "rest",
@@ -1672,7 +1974,9 @@
       "capability": "user.limits.read",
       "resourceScope": "path-user",
       "positiveEvidence": "server/src/__tests__/security2gE.authorization-domains.test.ts",
-      "negativeEvidence": "server/src/__tests__/security2gE.authorization-domains.test.ts"
+      "negativeEvidence": "server/src/__tests__/security2gE.authorization-domains.test.ts",
+      "resourceBinding": "path-scoped",
+      "crossTenantEvidence": "server/src/__tests__/security2gE.authorization-domains.test.ts"
     },
     {
       "transport": "rest",
@@ -1683,7 +1987,9 @@
       "capability": "user.preferences.read",
       "resourceScope": "path-user",
       "positiveEvidence": "server/src/__tests__/security2gE.authorization-domains.test.ts",
-      "negativeEvidence": "server/src/__tests__/security2gE.authorization-domains.test.ts"
+      "negativeEvidence": "server/src/__tests__/security2gE.authorization-domains.test.ts",
+      "resourceBinding": "path-scoped",
+      "crossTenantEvidence": "server/src/__tests__/security2gE.authorization-domains.test.ts"
     },
     {
       "transport": "rest",
@@ -1694,7 +2000,9 @@
       "capability": "project.versions.read",
       "resourceScope": "path-project",
       "positiveEvidence": "server/src/routes/__tests__/projects.runtime.test.ts",
-      "negativeEvidence": "server/src/routes/__tests__/projects.runtime.test.ts"
+      "negativeEvidence": "server/src/routes/__tests__/projects.runtime.test.ts",
+      "resourceBinding": "path-scoped",
+      "crossTenantEvidence": "none-recorded"
     },
     {
       "transport": "rest",
@@ -1705,7 +2013,9 @@
       "capability": "user.self.update",
       "resourceScope": "path-user",
       "positiveEvidence": "server/src/__tests__/security2gE.authorization-domains.test.ts",
-      "negativeEvidence": "server/src/__tests__/security2gE.authorization-domains.test.ts"
+      "negativeEvidence": "server/src/__tests__/security2gE.authorization-domains.test.ts",
+      "resourceBinding": "path-scoped",
+      "crossTenantEvidence": "server/src/__tests__/security2gE.authorization-domains.test.ts"
     },
     {
       "transport": "rest",
@@ -1716,7 +2026,9 @@
       "capability": "auth.forgot.password",
       "resourceScope": "authentication",
       "positiveEvidence": "server/src/__tests__/security2gE.authorization-domains.test.ts",
-      "negativeEvidence": "not-applicable-public"
+      "negativeEvidence": "not-applicable-public",
+      "resourceBinding": "not-resource-scoped",
+      "crossTenantEvidence": "none-recorded"
     },
     {
       "transport": "rest",
@@ -1727,7 +2039,9 @@
       "capability": "auth.login",
       "resourceScope": "authentication",
       "positiveEvidence": "server/src/__tests__/security2gE.authorization-domains.test.ts",
-      "negativeEvidence": "not-applicable-public"
+      "negativeEvidence": "not-applicable-public",
+      "resourceBinding": "not-resource-scoped",
+      "crossTenantEvidence": "none-recorded"
     },
     {
       "transport": "rest",
@@ -1738,7 +2052,9 @@
       "capability": "auth.logout",
       "resourceScope": "authentication",
       "positiveEvidence": "server/src/__tests__/security2gE.authorization-domains.test.ts",
-      "negativeEvidence": "not-applicable-public"
+      "negativeEvidence": "not-applicable-public",
+      "resourceBinding": "not-resource-scoped",
+      "crossTenantEvidence": "none-recorded"
     },
     {
       "transport": "rest",
@@ -1749,7 +2065,9 @@
       "capability": "auth.refresh",
       "resourceScope": "authentication",
       "positiveEvidence": "server/src/__tests__/security2gE.authorization-domains.test.ts",
-      "negativeEvidence": "not-applicable-public"
+      "negativeEvidence": "not-applicable-public",
+      "resourceBinding": "not-resource-scoped",
+      "crossTenantEvidence": "none-recorded"
     },
     {
       "transport": "rest",
@@ -1760,7 +2078,9 @@
       "capability": "auth.register",
       "resourceScope": "authentication",
       "positiveEvidence": "server/src/__tests__/security2gE.authorization-domains.test.ts",
-      "negativeEvidence": "not-applicable-public"
+      "negativeEvidence": "not-applicable-public",
+      "resourceBinding": "not-resource-scoped",
+      "crossTenantEvidence": "none-recorded"
     },
     {
       "transport": "rest",
@@ -1771,7 +2091,9 @@
       "capability": "system.platform.users.create",
       "resourceScope": "global-user-directory",
       "positiveEvidence": "server/src/__tests__/security2gE.platform-remaining-scope.test.ts",
-      "negativeEvidence": "server/src/__tests__/security2gE.platform-remaining-scope.test.ts"
+      "negativeEvidence": "server/src/__tests__/security2gE.platform-remaining-scope.test.ts",
+      "resourceBinding": "not-resource-scoped",
+      "crossTenantEvidence": "none-recorded"
     },
     {
       "transport": "rest",
@@ -1782,7 +2104,9 @@
       "capability": "project.versions.create",
       "resourceScope": "path-project",
       "positiveEvidence": "server/src/routes/__tests__/projects.runtime.test.ts",
-      "negativeEvidence": "server/src/routes/__tests__/projects.runtime.test.ts"
+      "negativeEvidence": "server/src/routes/__tests__/projects.runtime.test.ts",
+      "resourceBinding": "path-scoped",
+      "crossTenantEvidence": "none-recorded"
     },
     {
       "transport": "rest",
@@ -1793,7 +2117,9 @@
       "capability": "user.preferences.update",
       "resourceScope": "path-user",
       "positiveEvidence": "server/src/__tests__/security2gE.authorization-domains.test.ts",
-      "negativeEvidence": "server/src/__tests__/security2gE.authorization-domains.test.ts"
+      "negativeEvidence": "server/src/__tests__/security2gE.authorization-domains.test.ts",
+      "resourceBinding": "path-scoped",
+      "crossTenantEvidence": "server/src/__tests__/security2gE.authorization-domains.test.ts"
     },
     {
       "transport": "rest",
@@ -1804,7 +2130,9 @@
       "capability": "project.playtest.report.read",
       "resourceScope": "path-project",
       "positiveEvidence": "server/src/__tests__/security2gE.playtest-scope.test.ts",
-      "negativeEvidence": "server/src/__tests__/security2gE.playtest-scope.test.ts"
+      "negativeEvidence": "server/src/__tests__/security2gE.playtest-scope.test.ts",
+      "resourceBinding": "path-scoped",
+      "crossTenantEvidence": "none-recorded"
     },
     {
       "transport": "rest",
@@ -1815,7 +2143,9 @@
       "capability": "project.playtest.run",
       "resourceScope": "body-project",
       "positiveEvidence": "server/src/__tests__/security2gE.playtest-scope.test.ts",
-      "negativeEvidence": "server/src/__tests__/security2gE.playtest-scope.test.ts"
+      "negativeEvidence": "server/src/__tests__/security2gE.playtest-scope.test.ts",
+      "resourceBinding": "indirect-unreviewed",
+      "crossTenantEvidence": "none-recorded"
     },
     {
       "transport": "rest",
@@ -1826,7 +2156,9 @@
       "capability": "project.delete",
       "resourceScope": "path-project",
       "positiveEvidence": "server/src/__tests__/security2gE.projects-routes.test.ts",
-      "negativeEvidence": "server/src/__tests__/security2gE.projects-routes.test.ts"
+      "negativeEvidence": "server/src/__tests__/security2gE.projects-routes.test.ts",
+      "resourceBinding": "path-scoped",
+      "crossTenantEvidence": "none-recorded"
     },
     {
       "transport": "rest",
@@ -1837,7 +2169,9 @@
       "capability": "user.projects.list",
       "resourceScope": "owner-project-set",
       "positiveEvidence": "server/src/__tests__/security2gE.projects-routes.test.ts",
-      "negativeEvidence": "server/src/__tests__/security2gE.projects-routes.test.ts"
+      "negativeEvidence": "server/src/__tests__/security2gE.projects-routes.test.ts",
+      "resourceBinding": "indirect-unreviewed",
+      "crossTenantEvidence": "none-recorded"
     },
     {
       "transport": "rest",
@@ -1848,7 +2182,9 @@
       "capability": "project.read",
       "resourceScope": "path-project",
       "positiveEvidence": "server/src/__tests__/security2gE.projects-routes.test.ts",
-      "negativeEvidence": "server/src/__tests__/security2gE.projects-routes.test.ts"
+      "negativeEvidence": "server/src/__tests__/security2gE.projects-routes.test.ts",
+      "resourceBinding": "path-scoped",
+      "crossTenantEvidence": "none-recorded"
     },
     {
       "transport": "rest",
@@ -1859,7 +2195,9 @@
       "capability": "project.history.read",
       "resourceScope": "path-project",
       "positiveEvidence": "server/src/__tests__/security2gE.projects-routes.test.ts",
-      "negativeEvidence": "server/src/__tests__/security2gE.projects-routes.test.ts"
+      "negativeEvidence": "server/src/__tests__/security2gE.projects-routes.test.ts",
+      "resourceBinding": "path-scoped",
+      "crossTenantEvidence": "none-recorded"
     },
     {
       "transport": "rest",
@@ -1870,7 +2208,9 @@
       "capability": "user.projects.create",
       "resourceScope": "current-user",
       "positiveEvidence": "server/src/__tests__/security2gE.projects-routes.test.ts",
-      "negativeEvidence": "server/src/__tests__/security2gE.projects-routes.test.ts"
+      "negativeEvidence": "server/src/__tests__/security2gE.projects-routes.test.ts",
+      "resourceBinding": "indirect-unreviewed",
+      "crossTenantEvidence": "none-recorded"
     },
     {
       "transport": "rest",
@@ -1881,7 +2221,9 @@
       "capability": "project.update",
       "resourceScope": "path-project",
       "positiveEvidence": "server/src/__tests__/security2gE.projects-routes.test.ts",
-      "negativeEvidence": "server/src/__tests__/security2gE.projects-routes.test.ts"
+      "negativeEvidence": "server/src/__tests__/security2gE.projects-routes.test.ts",
+      "resourceBinding": "path-scoped",
+      "crossTenantEvidence": "none-recorded"
     },
     {
       "transport": "rest",
@@ -1892,40 +2234,9 @@
       "capability": "project.repair.session.read",
       "resourceScope": "path-project",
       "positiveEvidence": "server/src/__tests__/security2gE.repair-scope.test.ts",
-      "negativeEvidence": "server/src/__tests__/security2gE.repair-scope.test.ts"
-    },
-    {
-      "transport": "rest",
-      "source": "server/src/routes/repair.ts",
-      "operation": "GET /history/:projectId",
-      "classification": "project-owner",
-      "principal": "user-session",
-      "capability": "project.repair.history.read",
-      "resourceScope": "path-project",
-      "positiveEvidence": "server/src/__tests__/security2gE.repair-scope.test.ts",
-      "negativeEvidence": "server/src/__tests__/security2gE.repair-scope.test.ts"
-    },
-    {
-      "transport": "rest",
-      "source": "server/src/routes/repair.ts",
-      "operation": "POST /run",
-      "classification": "project-owner",
-      "principal": "user-session",
-      "capability": "project.repair.run",
-      "resourceScope": "body-project",
-      "positiveEvidence": "server/src/__tests__/security2gE.repair-scope.test.ts",
-      "negativeEvidence": "server/src/__tests__/security2gE.repair-scope.test.ts"
-    },
-    {
-      "transport": "rest",
-      "source": "server/src/routes/repair.ts",
-      "operation": "POST /:projectId/deliver",
-      "classification": "project-owner",
-      "principal": "user-session",
-      "capability": "project.repair.deliver",
-      "resourceScope": "path-project",
-      "positiveEvidence": "server/src/__tests__/security2gE.repair-scope.test.ts",
-      "negativeEvidence": "server/src/__tests__/security2gE.repair-scope.test.ts"
+      "negativeEvidence": "server/src/__tests__/security2gE.repair-scope.test.ts",
+      "resourceBinding": "path-scoped",
+      "crossTenantEvidence": "none-recorded"
     },
     {
       "transport": "rest",
@@ -1936,7 +2247,48 @@
       "capability": "project.repair.deliveries.read",
       "resourceScope": "path-project",
       "positiveEvidence": "server/src/__tests__/security2gE.repair-scope.test.ts",
-      "negativeEvidence": "server/src/__tests__/security2gE.repair-scope.test.ts"
+      "negativeEvidence": "server/src/__tests__/security2gE.repair-scope.test.ts",
+      "resourceBinding": "path-scoped",
+      "crossTenantEvidence": "none-recorded"
+    },
+    {
+      "transport": "rest",
+      "source": "server/src/routes/repair.ts",
+      "operation": "GET /history/:projectId",
+      "classification": "project-owner",
+      "principal": "user-session",
+      "capability": "project.repair.history.read",
+      "resourceScope": "path-project",
+      "positiveEvidence": "server/src/__tests__/security2gE.repair-scope.test.ts",
+      "negativeEvidence": "server/src/__tests__/security2gE.repair-scope.test.ts",
+      "resourceBinding": "path-scoped",
+      "crossTenantEvidence": "none-recorded"
+    },
+    {
+      "transport": "rest",
+      "source": "server/src/routes/repair.ts",
+      "operation": "POST /:projectId/deliver",
+      "classification": "project-owner",
+      "principal": "user-session",
+      "capability": "project.repair.deliver",
+      "resourceScope": "path-project",
+      "positiveEvidence": "server/src/__tests__/security2gE.repair-scope.test.ts",
+      "negativeEvidence": "server/src/__tests__/security2gE.repair-scope.test.ts",
+      "resourceBinding": "path-scoped",
+      "crossTenantEvidence": "none-recorded"
+    },
+    {
+      "transport": "rest",
+      "source": "server/src/routes/repair.ts",
+      "operation": "POST /run",
+      "classification": "project-owner",
+      "principal": "user-session",
+      "capability": "project.repair.run",
+      "resourceScope": "body-project",
+      "positiveEvidence": "server/src/__tests__/security2gE.repair-scope.test.ts",
+      "negativeEvidence": "server/src/__tests__/security2gE.repair-scope.test.ts",
+      "resourceBinding": "indirect-unreviewed",
+      "crossTenantEvidence": "none-recorded"
     },
     {
       "transport": "rest",
@@ -1947,7 +2299,9 @@
       "capability": "project.simulation.metrics.read",
       "resourceScope": "path-game-project",
       "positiveEvidence": "server/src/__tests__/security2gE.simulation-scope.test.ts",
-      "negativeEvidence": "server/src/__tests__/security2gE.simulation-scope.test.ts"
+      "negativeEvidence": "server/src/__tests__/security2gE.simulation-scope.test.ts",
+      "resourceBinding": "path-scoped",
+      "crossTenantEvidence": "none-recorded"
     },
     {
       "transport": "rest",
@@ -1958,7 +2312,9 @@
       "capability": "system.simulation.feedback.analyze",
       "resourceScope": "request-simulation-report",
       "positiveEvidence": "server/src/__tests__/security2gE.simulation-scope.test.ts",
-      "negativeEvidence": "server/src/__tests__/security2gE.simulation-scope.test.ts"
+      "negativeEvidence": "server/src/__tests__/security2gE.simulation-scope.test.ts",
+      "resourceBinding": "indirect-unreviewed",
+      "crossTenantEvidence": "none-recorded"
     },
     {
       "transport": "rest",
@@ -1969,7 +2325,9 @@
       "capability": "project.simulation.game.execute",
       "resourceScope": "body-blueprint-project",
       "positiveEvidence": "server/src/__tests__/security2gE.simulation-scope.test.ts",
-      "negativeEvidence": "server/src/__tests__/security2gE.simulation-scope.test.ts"
+      "negativeEvidence": "server/src/__tests__/security2gE.simulation-scope.test.ts",
+      "resourceBinding": "body-supplied-object",
+      "crossTenantEvidence": "none-recorded"
     },
     {
       "transport": "rest",
@@ -1980,7 +2338,9 @@
       "capability": "project.simulation.run.execute",
       "resourceScope": "body-blueprint-project",
       "positiveEvidence": "server/src/__tests__/security2gE.simulation-scope.test.ts",
-      "negativeEvidence": "server/src/__tests__/security2gE.simulation-scope.test.ts"
+      "negativeEvidence": "server/src/__tests__/security2gE.simulation-scope.test.ts",
+      "resourceBinding": "body-supplied-object",
+      "crossTenantEvidence": "none-recorded"
     },
     {
       "transport": "rest",
@@ -1991,7 +2351,9 @@
       "capability": "project.studio.commands.poll",
       "resourceScope": "resolved-client-project",
       "positiveEvidence": "server/src/__tests__/security2gE.studio-client-scope.test.ts",
-      "negativeEvidence": "server/src/__tests__/security2gE.studio-client-scope.test.ts"
+      "negativeEvidence": "server/src/__tests__/security2gE.studio-client-scope.test.ts",
+      "resourceBinding": "indirect-unreviewed",
+      "crossTenantEvidence": "none-recorded"
     },
     {
       "transport": "rest",
@@ -2002,7 +2364,9 @@
       "capability": "project.studio.command.read",
       "resourceScope": "resolved-client-project",
       "positiveEvidence": "server/src/__tests__/security2gE.studio-client-scope.test.ts",
-      "negativeEvidence": "server/src/__tests__/security2gE.studio-client-scope.test.ts"
+      "negativeEvidence": "server/src/__tests__/security2gE.studio-client-scope.test.ts",
+      "resourceBinding": "indirect-unreviewed",
+      "crossTenantEvidence": "none-recorded"
     },
     {
       "transport": "rest",
@@ -2013,7 +2377,9 @@
       "capability": "project.studio.events.read",
       "resourceScope": "authorized-project-set",
       "positiveEvidence": "server/src/__tests__/security2gE.studio-client-scope.test.ts",
-      "negativeEvidence": "server/src/__tests__/security2gE.studio-client-scope.test.ts"
+      "negativeEvidence": "server/src/__tests__/security2gE.studio-client-scope.test.ts",
+      "resourceBinding": "indirect-unreviewed",
+      "crossTenantEvidence": "none-recorded"
     },
     {
       "transport": "rest",
@@ -2024,7 +2390,9 @@
       "capability": "system.studio.protocol.info.read",
       "resourceScope": "static-system-metadata",
       "positiveEvidence": "server/src/__tests__/security2gE.studio-protocol-scope.test.ts",
-      "negativeEvidence": "server/src/__tests__/security2gE.studio-protocol-scope.test.ts"
+      "negativeEvidence": "server/src/__tests__/security2gE.studio-protocol-scope.test.ts",
+      "resourceBinding": "indirect-unreviewed",
+      "crossTenantEvidence": "none-recorded"
     },
     {
       "transport": "rest",
@@ -2035,7 +2403,9 @@
       "capability": "project.studio.protocol.log.read",
       "resourceScope": "resolved-client-session",
       "positiveEvidence": "server/src/__tests__/security2gE.studio-protocol-scope.test.ts",
-      "negativeEvidence": "server/src/__tests__/security2gE.studio-protocol-scope.test.ts"
+      "negativeEvidence": "server/src/__tests__/security2gE.studio-protocol-scope.test.ts",
+      "resourceBinding": "indirect-unreviewed",
+      "crossTenantEvidence": "none-recorded"
     },
     {
       "transport": "rest",
@@ -2046,7 +2416,9 @@
       "capability": "project.studio.sessions.read",
       "resourceScope": "authorized-project-set-or-client",
       "positiveEvidence": "server/src/__tests__/security2gE.studio-client-scope.test.ts",
-      "negativeEvidence": "server/src/__tests__/security2gE.studio-client-scope.test.ts"
+      "negativeEvidence": "server/src/__tests__/security2gE.studio-client-scope.test.ts",
+      "resourceBinding": "indirect-unreviewed",
+      "crossTenantEvidence": "none-recorded"
     },
     {
       "transport": "rest",
@@ -2057,7 +2429,9 @@
       "capability": "project.studio.clients.read",
       "resourceScope": "authorized-project-set",
       "positiveEvidence": "server/src/__tests__/security2gE.studio-client-scope.test.ts",
-      "negativeEvidence": "server/src/__tests__/security2gE.studio-client-scope.test.ts"
+      "negativeEvidence": "server/src/__tests__/security2gE.studio-client-scope.test.ts",
+      "resourceBinding": "indirect-unreviewed",
+      "crossTenantEvidence": "none-recorded"
     },
     {
       "transport": "rest",
@@ -2068,7 +2442,9 @@
       "capability": "project.studio.sync.status.read",
       "resourceScope": "query-project",
       "positiveEvidence": "server/src/__tests__/security2gE.studio-project-parity.test.ts",
-      "negativeEvidence": "server/src/__tests__/security2gE.studio-project-parity.test.ts"
+      "negativeEvidence": "server/src/__tests__/security2gE.studio-project-parity.test.ts",
+      "resourceBinding": "indirect-unreviewed",
+      "crossTenantEvidence": "none-recorded"
     },
     {
       "transport": "rest",
@@ -2079,7 +2455,9 @@
       "capability": "project.studio.command.acknowledge",
       "resourceScope": "resolved-client-project",
       "positiveEvidence": "server/src/__tests__/security2gE.studio-client-scope.test.ts",
-      "negativeEvidence": "server/src/__tests__/security2gE.studio-client-scope.test.ts"
+      "negativeEvidence": "server/src/__tests__/security2gE.studio-client-scope.test.ts",
+      "resourceBinding": "indirect-unreviewed",
+      "crossTenantEvidence": "none-recorded"
     },
     {
       "transport": "rest",
@@ -2090,7 +2468,9 @@
       "capability": "project.studio.command.report",
       "resourceScope": "resolved-client-project",
       "positiveEvidence": "server/src/__tests__/security2gE.studio-client-scope.test.ts",
-      "negativeEvidence": "server/src/__tests__/security2gE.studio-client-scope.test.ts"
+      "negativeEvidence": "server/src/__tests__/security2gE.studio-client-scope.test.ts",
+      "resourceBinding": "indirect-unreviewed",
+      "crossTenantEvidence": "none-recorded"
     },
     {
       "transport": "rest",
@@ -2101,7 +2481,9 @@
       "capability": "project.studio.connect",
       "resourceScope": "body-project",
       "positiveEvidence": "server/src/__tests__/security2gE.studio-project-parity.test.ts",
-      "negativeEvidence": "server/src/__tests__/security2gE.studio-project-parity.test.ts"
+      "negativeEvidence": "server/src/__tests__/security2gE.studio-project-parity.test.ts",
+      "resourceBinding": "indirect-unreviewed",
+      "crossTenantEvidence": "none-recorded"
     },
     {
       "transport": "rest",
@@ -2112,7 +2494,9 @@
       "capability": "project.studio.client.disconnect",
       "resourceScope": "resolved-client-project",
       "positiveEvidence": "server/src/__tests__/security2gE.studio-client-scope.test.ts",
-      "negativeEvidence": "server/src/__tests__/security2gE.studio-client-scope.test.ts"
+      "negativeEvidence": "server/src/__tests__/security2gE.studio-client-scope.test.ts",
+      "resourceBinding": "indirect-unreviewed",
+      "crossTenantEvidence": "none-recorded"
     },
     {
       "transport": "rest",
@@ -2123,7 +2507,9 @@
       "capability": "project.studio.client.heartbeat",
       "resourceScope": "resolved-client-project",
       "positiveEvidence": "server/src/__tests__/security2gE.studio-client-scope.test.ts",
-      "negativeEvidence": "server/src/__tests__/security2gE.studio-client-scope.test.ts"
+      "negativeEvidence": "server/src/__tests__/security2gE.studio-client-scope.test.ts",
+      "resourceBinding": "indirect-unreviewed",
+      "crossTenantEvidence": "none-recorded"
     },
     {
       "transport": "rest",
@@ -2134,7 +2520,9 @@
       "capability": "project.studio.protocol.message.dispatch",
       "resourceScope": "resolved-message-project",
       "positiveEvidence": "server/src/__tests__/security2gE.studio-protocol-scope.test.ts",
-      "negativeEvidence": "server/src/__tests__/security2gE.studio-protocol-scope.test.ts"
+      "negativeEvidence": "server/src/__tests__/security2gE.studio-protocol-scope.test.ts",
+      "resourceBinding": "indirect-unreviewed",
+      "crossTenantEvidence": "none-recorded"
     },
     {
       "transport": "rest",
@@ -2145,7 +2533,9 @@
       "capability": "project.studio.protocol.register",
       "resourceScope": "body-project",
       "positiveEvidence": "server/src/__tests__/security2gE.studio-protocol-scope.test.ts",
-      "negativeEvidence": "server/src/__tests__/security2gE.studio-protocol-scope.test.ts"
+      "negativeEvidence": "server/src/__tests__/security2gE.studio-protocol-scope.test.ts",
+      "resourceBinding": "indirect-unreviewed",
+      "crossTenantEvidence": "none-recorded"
     },
     {
       "transport": "rest",
@@ -2156,7 +2546,9 @@
       "capability": "project.studio.artifacts.transfer",
       "resourceScope": "body-project",
       "positiveEvidence": "server/src/__tests__/security2gE.studio-protocol-scope.test.ts",
-      "negativeEvidence": "server/src/__tests__/security2gE.studio-protocol-scope.test.ts"
+      "negativeEvidence": "server/src/__tests__/security2gE.studio-protocol-scope.test.ts",
+      "resourceBinding": "indirect-unreviewed",
+      "crossTenantEvidence": "none-recorded"
     },
     {
       "transport": "rest",
@@ -2167,7 +2559,9 @@
       "capability": "project.studio.snapshot.read",
       "resourceScope": "body-project",
       "positiveEvidence": "server/src/__tests__/security2gE.studio-project-parity.test.ts",
-      "negativeEvidence": "server/src/__tests__/security2gE.studio-project-parity.test.ts"
+      "negativeEvidence": "server/src/__tests__/security2gE.studio-project-parity.test.ts",
+      "resourceBinding": "indirect-unreviewed",
+      "crossTenantEvidence": "none-recorded"
     },
     {
       "transport": "rest",
@@ -2178,7 +2572,9 @@
       "capability": "system.platform.agents.list",
       "resourceScope": "governance-agent-registry",
       "positiveEvidence": "server/src/__tests__/security2gE.system-metadata-scope.test.ts",
-      "negativeEvidence": "server/src/__tests__/security2gE.system-metadata-scope.test.ts"
+      "negativeEvidence": "server/src/__tests__/security2gE.system-metadata-scope.test.ts",
+      "resourceBinding": "indirect-unreviewed",
+      "crossTenantEvidence": "none-recorded"
     },
     {
       "transport": "rest",
@@ -2189,7 +2585,9 @@
       "capability": "system.platform.agent.read",
       "resourceScope": "governance-agent-registry",
       "positiveEvidence": "server/src/__tests__/security2gE.system-metadata-scope.test.ts",
-      "negativeEvidence": "server/src/__tests__/security2gE.system-metadata-scope.test.ts"
+      "negativeEvidence": "server/src/__tests__/security2gE.system-metadata-scope.test.ts",
+      "resourceBinding": "indirect-unreviewed",
+      "crossTenantEvidence": "none-recorded"
     },
     {
       "transport": "rest",
@@ -2200,7 +2598,9 @@
       "capability": "system.platform.status.read",
       "resourceScope": "platform-runtime-metadata",
       "positiveEvidence": "server/src/__tests__/security2gE.system-metadata-scope.test.ts",
-      "negativeEvidence": "server/src/__tests__/security2gE.system-metadata-scope.test.ts"
+      "negativeEvidence": "server/src/__tests__/security2gE.system-metadata-scope.test.ts",
+      "resourceBinding": "indirect-unreviewed",
+      "crossTenantEvidence": "none-recorded"
     },
     {
       "transport": "rest",
@@ -2211,7 +2611,9 @@
       "capability": "system.world.emergence.metadata.read",
       "resourceScope": "placeholder-metadata",
       "positiveEvidence": "server/src/__tests__/security2gE.world-scope.test.ts",
-      "negativeEvidence": "server/src/__tests__/security2gE.world-scope.test.ts"
+      "negativeEvidence": "server/src/__tests__/security2gE.world-scope.test.ts",
+      "resourceBinding": "indirect-unreviewed",
+      "crossTenantEvidence": "none-recorded"
     },
     {
       "transport": "rest",
@@ -2222,7 +2624,9 @@
       "capability": "system.world.state.metadata.read",
       "resourceScope": "placeholder-metadata",
       "positiveEvidence": "server/src/__tests__/security2gE.world-scope.test.ts",
-      "negativeEvidence": "server/src/__tests__/security2gE.world-scope.test.ts"
+      "negativeEvidence": "server/src/__tests__/security2gE.world-scope.test.ts",
+      "resourceBinding": "indirect-unreviewed",
+      "crossTenantEvidence": "none-recorded"
     },
     {
       "transport": "rest",
@@ -2233,7 +2637,9 @@
       "capability": "project.world.simulate",
       "resourceScope": "body-blueprint-project",
       "positiveEvidence": "server/src/__tests__/security2gE.world-scope.test.ts",
-      "negativeEvidence": "server/src/__tests__/security2gE.world-scope.test.ts"
+      "negativeEvidence": "server/src/__tests__/security2gE.world-scope.test.ts",
+      "resourceBinding": "body-supplied-object",
+      "crossTenantEvidence": "none-recorded"
     },
     {
       "transport": "rest",
@@ -2244,7 +2650,9 @@
       "capability": "system.world.tick.metadata.read",
       "resourceScope": "placeholder-metadata",
       "positiveEvidence": "server/src/__tests__/security2gE.world-scope.test.ts",
-      "negativeEvidence": "server/src/__tests__/security2gE.world-scope.test.ts"
+      "negativeEvidence": "server/src/__tests__/security2gE.world-scope.test.ts",
+      "resourceBinding": "indirect-unreviewed",
+      "crossTenantEvidence": "none-recorded"
     },
     {
       "transport": "socket",
@@ -2255,7 +2663,9 @@
       "capability": "project.room.join",
       "resourceScope": "project",
       "positiveEvidence": "server/src/__tests__/harden2a.auth-contract.test.ts",
-      "negativeEvidence": "server/src/__tests__/harden2a.auth-contract.test.ts"
+      "negativeEvidence": "server/src/__tests__/harden2a.auth-contract.test.ts",
+      "resourceBinding": "indirect-unreviewed",
+      "crossTenantEvidence": "none-recorded"
     },
     {
       "transport": "socket",
@@ -2266,7 +2676,101 @@
       "capability": "project.room.leave",
       "resourceScope": "joined-project",
       "positiveEvidence": "server/src/__tests__/security2gE.socket-leave-parity.test.ts",
-      "negativeEvidence": "server/src/__tests__/security2gE.socket-leave-parity.test.ts"
+      "negativeEvidence": "server/src/__tests__/security2gE.socket-leave-parity.test.ts",
+      "resourceBinding": "indirect-unreviewed",
+      "crossTenantEvidence": "none-recorded"
+    }
+  ],
+  "broadcasts": [
+    {
+      "event": "dynamic:eventName",
+      "source": "server/src/index.ts",
+      "targeting": "project-room-with-global-fallback",
+      "tenancyEvidence": "none-recorded"
+    },
+    {
+      "event": "evaluation.completed",
+      "source": "server/src/index.ts",
+      "targeting": "global-bypassing-available-scope",
+      "tenancyEvidence": "none-recorded"
+    },
+    {
+      "event": "evaluation.failed",
+      "source": "server/src/index.ts",
+      "targeting": "global-bypassing-available-scope",
+      "tenancyEvidence": "none-recorded"
+    },
+    {
+      "event": "evaluation.started",
+      "source": "server/src/index.ts",
+      "targeting": "global-bypassing-available-scope",
+      "tenancyEvidence": "none-recorded"
+    },
+    {
+      "event": "memory.created",
+      "source": "server/src/index.ts",
+      "targeting": "global-bypassing-available-scope",
+      "tenancyEvidence": "none-recorded"
+    },
+    {
+      "event": "memory.decision",
+      "source": "server/src/index.ts",
+      "targeting": "global-bypassing-available-scope",
+      "tenancyEvidence": "none-recorded"
+    },
+    {
+      "event": "memory.snapshot",
+      "source": "server/src/index.ts",
+      "targeting": "global-bypassing-available-scope",
+      "tenancyEvidence": "none-recorded"
+    },
+    {
+      "event": "memory.updated",
+      "source": "server/src/index.ts",
+      "targeting": "global-bypassing-available-scope",
+      "tenancyEvidence": "none-recorded"
+    },
+    {
+      "event": "planning.completed",
+      "source": "server/src/index.ts",
+      "targeting": "global-bypassing-available-scope",
+      "tenancyEvidence": "none-recorded"
+    },
+    {
+      "event": "planning.created",
+      "source": "server/src/index.ts",
+      "targeting": "global-bypassing-available-scope",
+      "tenancyEvidence": "none-recorded"
+    },
+    {
+      "event": "planning.failed",
+      "source": "server/src/index.ts",
+      "targeting": "global-bypassing-available-scope",
+      "tenancyEvidence": "none-recorded"
+    },
+    {
+      "event": "planning.replanned",
+      "source": "server/src/index.ts",
+      "targeting": "global-bypassing-available-scope",
+      "tenancyEvidence": "none-recorded"
+    },
+    {
+      "event": "planning.step.selected",
+      "source": "server/src/index.ts",
+      "targeting": "global-bypassing-available-scope",
+      "tenancyEvidence": "none-recorded"
+    },
+    {
+      "event": "planning.updated",
+      "source": "server/src/index.ts",
+      "targeting": "global-bypassing-available-scope",
+      "tenancyEvidence": "none-recorded"
+    },
+    {
+      "event": "trace.event",
+      "source": "server/src/index.ts",
+      "targeting": "global-no-project-context",
+      "tenancyEvidence": "none-recorded"
     }
   ]
 }
