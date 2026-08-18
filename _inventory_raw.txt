@@ -574,6 +574,7 @@ server/src/__tests__/identityAccess.test.ts
 server/src/__tests__/integration.test.ts
 server/src/__tests__/intent1.default-contamination.test.ts
 server/src/__tests__/intent2.requirement-traceability.test.ts
+server/src/__tests__/llmlog1.payload-redaction.test.ts
 server/src/__tests__/llmparser1.balanced-extraction.test.ts
 server/src/__tests__/novelty1.gameDna.test.ts
 server/src/__tests__/novelty2.verdict.test.ts
@@ -1159,6 +1160,7 @@ server/src/providers/ollama.ts
 server/src/providers/openai.ts
 server/src/providers/openrouter.ts
 server/src/providers/providerFactory.ts
+server/src/providers/providerTelemetry.ts
 server/src/repair/RepairEngine.ts
 server/src/repair/RepairExecutor.ts
 server/src/repair/RepairInputAssembler.ts
