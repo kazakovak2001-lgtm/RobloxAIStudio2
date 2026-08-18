@@ -656,6 +656,7 @@
 │   │   │   ├── autonomousPipelineExploration.test.ts
 │   │   │   ├── autonomousPipelineIntegration.test.ts
 │   │   │   ├── autonomousPipelinePreservation.test.ts
+│   │   │   ├── blueprint1.immutable-snapshot.test.ts
 │   │   │   ├── bugConditionExploration.test.ts
 │   │   │   ├── core1b.persistence.test.ts
 │   │   │   ├── core1b.postgres.integration.test.ts

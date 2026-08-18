@@ -283,7 +283,11 @@ export function createGameGenerationRouter(
             userId,
             projectId,
           ),
-        ({ execution }) => [
+        ({ execution, versionMutations }) => [
+          // BLUEPRINT-STALE-001. The immutable snapshot this run is bound to
+          // commits with the execution that names it, so neither can exist
+          // without the other.
+          ...versionMutations,
           {
             operation: "set" as const,
             collection: "generation_executions",

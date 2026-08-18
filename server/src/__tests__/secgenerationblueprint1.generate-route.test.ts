@@ -194,6 +194,10 @@ describe("SEC-GENERATION-BLUEPRINT-001 POST /:projectId/generate", () => {
     spy.mockResolvedValue({
       execution,
       blueprint: { id: blueprintId, project_id: projectId },
+      // The immutable snapshot commits with the execution, so prepare returns
+      // its mutations for the caller's transaction. Empty here: this fixture is
+      // about the ownership binding, not about versioning.
+      versionMutations: [],
     } as never);
     return execution;
   }

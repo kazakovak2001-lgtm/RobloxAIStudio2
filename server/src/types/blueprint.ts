@@ -187,6 +187,16 @@ export interface BlueprintVersion {
   created_at: Date;
   created_by: string;
   snapshot: Partial<GameBlueprint>;
+  /**
+   * BLUEPRINT-STALE-001. Content hash of `snapshot`, using the same canonical
+   * JSON algorithm as artifact envelopes. It depends on the design content and
+   * nothing else, so an execution can state exactly which design it ran and a
+   * later edit to the mutable blueprint cannot rewrite that claim.
+   *
+   * Optional only for versions recorded before this field existed; a version
+   * without one has an unknown hash rather than a matching one.
+   */
+  snapshot_hash?: string;
   change_description?: string;
   is_active: boolean;
 }
@@ -230,6 +240,17 @@ export interface GenerationExecution {
    * died" from "the generation failed on its merits".
    */
   restart_interrupted_at?: number;
+  /**
+   * BLUEPRINT-STALE-001. The immutable blueprint version this run consumed, and
+   * the content hash of that snapshot. Generation used to reference the mutable
+   * blueprint, so editing the design after a run silently changed what that run
+   * appeared to have been generated from. These record what it actually ran.
+   *
+   * Absent on executions recorded before the binding existed, where the design
+   * that produced them is genuinely unknown rather than assumed to be current.
+   */
+  blueprint_version_id?: string;
+  blueprint_snapshot_hash?: string;
   retry_count: number;
   /**
    * How this execution's content was produced.

@@ -1,4 +1,5 @@
 import { randomUUID } from "crypto";
+import { computeContentHash } from "../../pipeline/v2/artifactEnvelope";
 import type {
   DurableMutation,
   StorageProvider,
@@ -165,47 +166,81 @@ export class StorageBlueprintRepository implements IBlueprintRepository {
     return { items: items.slice(offset, offset + limit), total };
   }
 
+  /**
+   * BLUEPRINT-STALE-001. Build the version and its mutations without writing.
+   *
+   * Shared with `saveVersion` below so there is one definition of what a
+   * version is, and one place where the snapshot hash is computed.
+   */
+  async prepareVersion(
+    blueprintId: string,
+    userId: string,
+    description?: string,
+  ): Promise<{ version: BlueprintVersion; mutations: DurableMutation[] }> {
+    const blueprint = await this.getBlueprint(blueprintId);
+    if (!blueprint) throw new Error(`Blueprint ${blueprintId} not found`);
+
+    const activeVersions = this.storage.list<BlueprintVersion>(
+      VERSIONS,
+      (candidate) =>
+        candidate.blueprint_id === blueprintId && candidate.is_active,
+    );
+    const snapshot = { ...blueprint };
+    const version: BlueprintVersion = {
+      id: `blueprint-version-${randomUUID()}`,
+      blueprint_id: blueprintId,
+      version_number: blueprint.version,
+      created_at: new Date(),
+      created_by: userId,
+      snapshot,
+      // Depends on the design content and nothing else, so the same design
+      // hashes the same whoever snapshotted it and whenever.
+      //
+      // The JSON round-trip is deliberate. `computeContentHash` is built for
+      // artifact content, where an explicit `undefined` is an error worth
+      // refusing; a blueprint has optional fields that are legitimately
+      // undefined, so hashing it directly would throw on almost every start.
+      // Round-tripping drops those keys and renders dates as ISO strings, which
+      // is the right meaning here: an absent field and an explicitly undefined
+      // one are the same design. Key order still does not matter, because the
+      // shared algorithm sorts keys itself.
+      snapshot_hash: computeContentHash(
+        JSON.parse(JSON.stringify(snapshot)) as unknown,
+      ),
+      change_description: description,
+      is_active: true,
+    };
+    const mutations: DurableMutation[] = [
+      ...activeVersions.map((activeVersion) => ({
+        operation: "set" as const,
+        collection: VERSIONS,
+        id: activeVersion.id,
+        data: {
+          ...this.hydrateVersion(activeVersion),
+          is_active: false,
+        },
+      })),
+      {
+        operation: "set" as const,
+        collection: VERSIONS,
+        id: version.id,
+        data: version,
+      },
+    ];
+    return { version, mutations };
+  }
+
   async saveVersion(
     blueprintId: string,
     userId: string,
     description?: string,
   ): Promise<BlueprintVersion> {
     return this.withBlueprintMutationLock(blueprintId, async () => {
-      const blueprint = await this.getBlueprint(blueprintId);
-      if (!blueprint) throw new Error(`Blueprint ${blueprintId} not found`);
-
-      const activeVersions = this.storage.list<BlueprintVersion>(
-        VERSIONS,
-        (candidate) =>
-          candidate.blueprint_id === blueprintId && candidate.is_active,
+      const { version, mutations } = await this.prepareVersion(
+        blueprintId,
+        userId,
+        description,
       );
-      const version: BlueprintVersion = {
-        id: `blueprint-version-${randomUUID()}`,
-        blueprint_id: blueprintId,
-        version_number: blueprint.version,
-        created_at: new Date(),
-        created_by: userId,
-        snapshot: { ...blueprint },
-        change_description: description,
-        is_active: true,
-      };
-      const mutations: DurableMutation[] = [
-        ...activeVersions.map((activeVersion) => ({
-          operation: "set" as const,
-          collection: VERSIONS,
-          id: activeVersion.id,
-          data: {
-            ...this.hydrateVersion(activeVersion),
-            is_active: false,
-          },
-        })),
-        {
-          operation: "set",
-          collection: VERSIONS,
-          id: version.id,
-          data: version,
-        },
-      ];
 
       await this.storage.applyDurableBatch(mutations);
       return this.hydrateVersion(version);

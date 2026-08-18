@@ -1,4 +1,7 @@
-import type { StorageProvider } from "../../platform/storage/StorageProvider";
+import type {
+  DurableMutation,
+  StorageProvider,
+} from "../../platform/storage/StorageProvider";
 import { InMemoryStorageProvider } from "../../platform/storage/StorageProvider";
 import { getConfiguredStorageProvider } from "../../platform/storage/StorageFactory";
 import type {
@@ -31,6 +34,21 @@ export interface IBlueprintRepository {
     userId: string,
     description?: string,
   ): Promise<BlueprintVersion>;
+  /**
+   * BLUEPRINT-STALE-001. Build an immutable version snapshot and the durable
+   * mutations that record it, without writing anything.
+   *
+   * `saveVersion` above writes on its own, which is right for an explicit
+   * "save a version" action but wrong for generation start, where the snapshot
+   * has to commit in the same transaction as the execution that references it.
+   * A snapshot without its execution, or an execution referencing a snapshot
+   * that never committed, are both states nothing could repair.
+   */
+  prepareVersion(
+    blueprintId: string,
+    userId: string,
+    description?: string,
+  ): Promise<{ version: BlueprintVersion; mutations: DurableMutation[] }>;
   getVersion(
     blueprintId: string,
     versionNumber: number,

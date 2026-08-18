@@ -24,6 +24,7 @@ import { deriveNoveltyVerdict } from "../../validation/noveltyVerdict";
 import type { GameDnaReport } from "../../validation/gameDna";
 import { GenerationArtifactRecorder } from "../../studio/artifacts/GenerationArtifactRecorder";
 import { getConfiguredStorageProvider } from "../../platform/storage/StorageFactory";
+import type { DurableMutation } from "../../platform/storage/StorageProvider";
 import { GenerationOutcomeCoordinator } from "../../platform/projects/ProjectLifecycleCoordinator";
 
 /**
@@ -139,7 +140,17 @@ export class GameGenerationService {
     blueprintIdOrProjectId: string,
     userId: string,
     expectedProjectId?: string,
-  ): Promise<{ execution: GenerationExecution; blueprint: GameBlueprint }> {
+  ): Promise<{
+    execution: GenerationExecution;
+    blueprint: GameBlueprint;
+    /**
+     * BLUEPRINT-STALE-001. Durable mutations recording the immutable snapshot
+     * this run is bound to. The caller commits them in the same transaction as
+     * the execution: a snapshot without its execution, or an execution naming a
+     * snapshot that never committed, are both unrepairable states.
+     */
+    versionMutations: DurableMutation[];
+  }> {
     const blueprint =
       (await this.repository.getBlueprint(blueprintIdOrProjectId)) ??
       (await this.repository.getBlueprintByProjectId(blueprintIdOrProjectId));
@@ -158,6 +169,17 @@ export class GameGenerationService {
       );
     }
 
+    // BLUEPRINT-STALE-001. Freeze the design this run will consume. Generation
+    // used to reference the mutable blueprint, so editing the brief after a run
+    // silently changed what that run appeared to have been generated from, and
+    // two runs of "the same" blueprint could be two different designs.
+    const { version, mutations: versionMutations } =
+      await this.repository.prepareVersion(
+        blueprint.id,
+        userId,
+        `Snapshot taken for generation of project ${blueprint.project_id}`,
+      );
+
     const now = new Date();
     const execution: GenerationExecution = {
       // AUDIT-ID-EXEC-001. `exec-${Date.now()}` collided whenever two starts
@@ -172,11 +194,13 @@ export class GameGenerationService {
       user_id: userId,
       started_at: now,
       status: "running",
+      blueprint_version_id: version.id,
+      blueprint_snapshot_hash: version.snapshot_hash,
       retry_count: 0,
       pipeline_steps: [],
     };
 
-    return { execution, blueprint };
+    return { execution, blueprint, versionMutations };
   }
 
   /**
