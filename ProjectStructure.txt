@@ -673,6 +673,7 @@
 │   │   │   ├── integration.test.ts
 │   │   │   ├── intent1.default-contamination.test.ts
 │   │   │   ├── intent2.requirement-traceability.test.ts
+│   │   │   ├── llmparser1.balanced-extraction.test.ts
 │   │   │   ├── novelty1.gameDna.test.ts
 │   │   │   ├── novelty2.verdict.test.ts
 │   │   │   ├── performance.test.ts
