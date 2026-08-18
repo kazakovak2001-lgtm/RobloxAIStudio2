@@ -742,7 +742,8 @@
 │   │   │   ├── studioIntegration.test.ts
 │   │   │   ├── world1a.cross-artifact-validation.test.ts
 │   │   │   ├── world1b.receipt-verification.test.ts
-│   │   │   └── world1b.scene-contract.test.ts
+│   │   │   ├── world1b.scene-contract.test.ts
+│   │   │   └── world1c.package-commit.test.ts
 │   │   ├── agents
 │   │   │   ├── collaboration
 │   │   │   │   ├── AgentCoordinator.ts
@@ -1533,7 +1534,8 @@
 │   │   │   ├── llm.ts
 │   │   │   ├── novelty.ts
 │   │   │   ├── pipeline-events.ts
-│   │   │   └── playableLua.ts
+│   │   │   ├── playableLua.ts
+│   │   │   └── worldRuntimeMode.ts
 │   │   ├── ui-gen
 │   │   │   ├── __tests__
 │   │   │   │   ├── UIGeneration.test.ts

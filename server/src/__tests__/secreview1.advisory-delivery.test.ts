@@ -121,7 +121,8 @@ describe("an advisory finding does not negate delivery", () => {
 
   it("still transfers the reviewed Lua to Studio", async () => {
     const { store } = await recordExploitableGeneration("exec-advisory-sync");
-    const snapshot = new ProjectSyncManager(store).getProjectSnapshot(
+    const snapshot = new ProjectSyncManager(store).getProjectSnapshotForProject(
+      ARTIFACT_TEST_PROJECT,
       "exec-advisory-sync",
     );
 
@@ -191,7 +192,9 @@ describe("the enforcement contract survives persistence and transfer", () => {
     const { store } = await recordExploitableGeneration("exec-advisory-studio");
     const transfer = new ProjectSyncManager(store)
       .getTransferManager()
-      .transfer(
+      .transferForProject(
+        ARTIFACT_TEST_PROJECT,
+        "exec-advisory-studio",
         store
           .getByPipeline("exec-advisory-studio")
           .filter((a) => a.stage === "SECURITY_REVIEW")

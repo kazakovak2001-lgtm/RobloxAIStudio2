@@ -2,7 +2,7 @@
 
 # WORLD-1C — Canonical Runtime World Ownership
 
-**Status:** Scoped and unblocked; implementation is not started. The operator-observed prerequisite was satisfied on August 15, 2026.
+**Status:** Scoped and unblocked. **One preparatory slice is implemented; the ownership switch is not.** The operator-observed prerequisite was satisfied on August 15, 2026. See [Implemented so far](#implemented-so-far).
 **Depends on:** `WORLD-1A` and complete `WORLD-1B`, including operator-observed Studio acceptance.
 **Does not depend on:** `STUDIO-2F-E`. WORLD-1C moves world structure only and leaves the HUD contract untouched.
 
@@ -112,6 +112,82 @@ WORLD-1C therefore needs a real commit boundary: a durable marker written last t
 ## Studio evidence ceiling
 
 Structural contract evidence for plugin Lua is not runtime evidence. WORLD-1C cannot be recorded as done on structural tests, and switching canonical ownership on structural evidence alone is what this record exists to prevent.
+
+## Implemented so far
+
+**August 15, 2026 — the first vertical slice, and only that.** It makes runtime
+world ownership *stated* and makes an artifact package *publishable as a unit*.
+It does not move ownership, and no path in the repository produces
+`materialized-world`.
+
+### What landed
+
+1. **Explicit `worldRuntimeMode`.** `lua-owned | materialized-world`, on the
+   durable `GenerationExecution`, on the `WORLD_MODEL` artifact and on the
+   `VALIDATION` report (`schemaVersion` 2). Resolution is one helper:
+   **absence** means the historical `lua-owned` mode and is reported as
+   `explicit: false`; an **unrecognised** value throws rather than degrading to
+   `lua-owned`, so a record written by a newer or corrupted schema can never be
+   read back as a historical one.
+2. **A durable package commit boundary.** `ArtifactStore.commitPackage()` writes
+   one marker to the `generation_package_commits` collection **after** every
+   member artifact is durably acknowledged, naming each member by id, stage and
+   content hash. It refuses a package missing `WORLD_MODEL` or `LUA_GENERATION`,
+   refuses a stated mode that contradicts the world model, and refuses a
+   generation package without a passing `VALIDATION`. This is the real commit
+   boundary section [Artifact atomicity](#artifact-atomicity) says the staging
+   mechanism is not.
+3. **Delivery reads through the marker.** `getDeliverableArtifacts()` is what
+   Studio sync now uses. A package whose artifacts declare **no** mode is
+   returned exactly as before, marker or not — historical executions stay
+   readable, re-deliverable and valid. Once **any** `WORLD_MODEL` or
+   `VALIDATION` artifact declares a mode, the package is deliverable only
+   through a marker whose every reference still resolves to the same id, stage,
+   project and content hash. `StudioRuntime.queueProjectExport` additionally
+   refuses to queue when the transfer did not carry the whole snapshot.
+4. **Repair preserves the mode and does not widen it.** A repaired execution
+   carries the parent's `WORLD_MODEL` forward unchanged, so the mode travels
+   with it, and commits its own package. A `materialized-world` parent is
+   deliberately **not** committed: repair still accepts regenerated Lua on
+   `getPlayableLuaIssues`, which is the `lua-owned` contract and would accept
+   world-building Lua beside a materialized world. Until that gate is
+   mode-aware, such a repair persists its artifacts and delivery withholds them.
+
+### What did not land, and is still required
+
+- No mode-aware playability contract. `getPlayableLuaIssues` is unchanged, and
+  the three world-ownership rules in [The playability contract](#1-the-playability-contract)
+  are untouched. This is the prerequisite for anything to legitimately be
+  `materialized-world`.
+- Nothing sets `materialized-world`. The value exists in the type and is refused
+  or withheld everywhere it could reach delivery.
+- No mode-aware sweeping on delivery, so the rollback hazard in
+  [Studio delivery and rollback](#7-studio-delivery-and-rollback) is unaddressed.
+- `crossValidateWorld` still asks only whether Lua *constructs* what a role
+  requires.
+- `LuaGeneratorAgent`, its prompt and its `playableFallback` still build the
+  world.
+- **No runtime evidence.** Nothing in this slice was observed in a Roblox Studio
+  session, and the [Studio evidence ceiling](#studio-evidence-ceiling) is
+  unchanged.
+
+### Behaviour change a consumer can observe
+
+Editing the **content** of an artifact belonging to a committed package makes
+that whole package undeliverable until the content hashes back to what the
+marker named. Approval and comment change review state, not bytes, and do not
+disturb the package. Before this slice an edited package still exported. This is
+deliberate — a package is the set of bytes its validation report was computed
+over — and `studio1.artifact-lineage.test.ts` was updated to assert the stronger
+rule rather than the weaker one it previously encoded.
+
+### The v2 concept pipeline
+
+`PipelineEngine` / `PipelineExecutor` (the `concept` route) writes a `VALIDATION`
+report that now declares a mode, and never calls `commitPackage`. Its pipeline
+ids are not generation execution ids and nothing routes them to Studio delivery,
+so no delivery path is affected today. It is recorded here as a known gap rather
+than fixed, because giving that pipeline a package commit is outside this slice.
 
 ## Out of scope
 
