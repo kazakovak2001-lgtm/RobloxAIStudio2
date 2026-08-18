@@ -308,7 +308,12 @@ describe("ProjectGenerationStartCoordinator", () => {
     },
   ];
 
-  it("serializes concurrent starts and increments the count once each", async () => {
+  // AUDIT-DUP-GENERATION-001 changed this contract deliberately. It previously
+  // asserted that two concurrent starts both succeed and increment the count
+  // twice, which was the duplicate-generation defect stated as an expectation.
+  // Serialization is still asserted; what changed is that the second start is
+  // now refused rather than admitted.
+  it("serializes concurrent starts and refuses the duplicate", async () => {
     const { coordinator, project } = startFixture();
     const order: string[] = [];
 
@@ -319,6 +324,7 @@ describe("ProjectGenerationStartCoordinator", () => {
         return "one";
       },
       (id) => evidenceFor(id),
+      (id) => String(id),
       (id) => order.push(`enqueue-${id}`),
     );
     const second = coordinator.start(
@@ -328,19 +334,18 @@ describe("ProjectGenerationStartCoordinator", () => {
         return "two";
       },
       (id) => evidenceFor(id),
+      (id) => String(id),
       (id) => order.push(`enqueue-${id}`),
     );
 
-    await expect(Promise.all([first, second])).resolves.toEqual(["one", "two"]);
+    const results = await Promise.allSettled([first, second]);
+    expect(results[0]).toMatchObject({ status: "fulfilled", value: "one" });
+    expect(results[1]).toMatchObject({ status: "rejected" });
 
-    // Serialized: the second start never interleaves inside the first.
-    expect(order).toEqual([
-      "prepare-one",
-      "enqueue-one",
-      "prepare-two",
-      "enqueue-two",
-    ]);
-    expect(project()?.generationCount).toBe(2);
+    // Serialized: the second start never interleaves inside the first, and it
+    // never reaches the enqueue step because its transaction was rejected.
+    expect(order).toEqual(["prepare-one", "enqueue-one", "prepare-two"]);
+    expect(project()?.generationCount).toBe(1);
     expect(project()?.status).toBe("generating");
   });
 
@@ -359,6 +364,7 @@ describe("ProjectGenerationStartCoordinator", () => {
       PROJECT,
       async () => "execution",
       (id) => evidenceFor(id),
+      (id) => String(id),
     );
     void operation.then(
       () => (settled = true),
@@ -382,6 +388,8 @@ describe("ProjectGenerationStartCoordinator", () => {
         PROJECT,
         async () => "execution",
         (id) => evidenceFor(id),
+        (id) => String(id),
+        (id) => String(id),
       ),
     ).rejects.toThrow();
   });
@@ -397,6 +405,8 @@ describe("ProjectGenerationStartCoordinator", () => {
         PROJECT,
         async () => "execution",
         (id) => evidenceFor(id),
+        (id) => String(id),
+        (id) => String(id),
         () => {
           enqueued = true;
         },

@@ -118,6 +118,7 @@ function fixture(
           },
         },
       ],
+      ({ execution }) => execution.id,
       ({ execution }) => {
         order.push("enqueue");
         enqueued.push(execution.id);
@@ -166,6 +167,7 @@ describe("AUDIT-START-ATOMICITY-001 Test B — prepare/schedule throws", () => {
           throw new Error("injected schedule rejection");
         },
         () => [],
+        () => "exec-never-created",
         () => undefined,
       ),
     ).rejects.toThrow("injected schedule rejection");
@@ -220,16 +222,22 @@ describe("AUDIT-START-ATOMICITY-001 Test E — concurrent start attempts", () =>
   it("keeps count, status and history consistent across concurrent starts", async () => {
     const f = fixture();
 
-    await Promise.all([f.startOnce("exec-e1"), f.startOnce("exec-e2")]);
+    const results = await Promise.allSettled([
+      f.startOnce("exec-e1"),
+      f.startOnce("exec-e2"),
+    ]);
 
-    // Duplicate-generation suppression is out of this slice, so two starts
-    // legitimately produce two executions. What must hold is that the
-    // bookkeeping is not lost or double-counted.
-    expect(f.project()?.generationCount).toBe(2);
+    // This assertion changed with AUDIT-DUP-GENERATION-001. It previously
+    // expected two executions and a count of two, and said in so many words
+    // that duplicate suppression was out of scope. It is in scope now: the
+    // second start is refused, and the bookkeeping still must not be lost or
+    // double-counted, which is what the rest of this asserts.
+    expect(results.filter((r) => r.status === "fulfilled")).toHaveLength(1);
+    expect(f.project()?.generationCount).toBe(1);
     expect(f.project()?.status).toBe("generating");
-    expect(f.executions()).toHaveLength(2);
-    expect(f.history()).toHaveLength(2);
-    expect(f.enqueued).toEqual(["exec-e1", "exec-e2"]);
+    expect(f.executions()).toHaveLength(1);
+    expect(f.history()).toHaveLength(1);
+    expect(f.enqueued).toEqual(["exec-e1"]);
   });
 
   it("keeps failure compensation consistent when a concurrent start fails", async () => {

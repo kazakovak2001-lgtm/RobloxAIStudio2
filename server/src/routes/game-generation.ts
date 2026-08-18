@@ -6,7 +6,10 @@ import type {
   StudioProjectSession,
 } from "../studio/integration/types";
 import type { ProjectRuntime } from "./projects";
-import { ProjectGenerationStartCoordinator } from "../platform/projects/ProjectLifecycleCoordinator";
+import {
+  ActiveGenerationConflictError,
+  ProjectGenerationStartCoordinator,
+} from "../platform/projects/ProjectLifecycleCoordinator";
 import { DurableStorageError } from "../platform/storage/StorageProvider";
 import type { CreateBlueprintInput } from "../projects/types/blueprint";
 import type { SaaSProject } from "../platform/projects/SaaSProjectRepository";
@@ -275,6 +278,7 @@ export function createGameGenerationRouter(
             },
           },
         ],
+        ({ execution }) => execution.id,
         ({ execution, blueprint }) => {
           studioManager.activateProjectExecution(projectId, execution.id);
           gameService.enqueueGeneration(execution, blueprint, userId);
@@ -286,6 +290,18 @@ export function createGameGenerationRouter(
         status: "generation_started",
       });
     } catch (error) {
+      // AUDIT-DUP-GENERATION-001. A project that already has a running
+      // generation is a conflict, not a server fault. Answering 500 here would
+      // read as "try again", which is exactly how a retry produced the second
+      // generation this refusal exists to prevent.
+      if (error instanceof ActiveGenerationConflictError) {
+        res.status(409).json({
+          success: false,
+          error: "A generation is already running for this project",
+          executionId: error.activeExecutionId,
+        });
+        return;
+      }
       const message =
         error instanceof Error ? error.message : "Generation failed";
       console.error("[generate] Error:", message);
