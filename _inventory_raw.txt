@@ -576,6 +576,7 @@ server/src/__tests__/productionQuality.test.ts
 server/src/__tests__/repair-delivery.test.ts
 server/src/__tests__/saasFoundation.test.ts
 server/src/__tests__/secreview1.advisory-delivery.test.ts
+server/src/__tests__/secrt1b.trace-tenancy.test.ts
 server/src/__tests__/security.test.ts
 server/src/__tests__/security2gE.agent-collaboration-scope.test.ts
 server/src/__tests__/security2gE.ai-chat-session-boundary.test.ts

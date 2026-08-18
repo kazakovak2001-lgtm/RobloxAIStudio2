@@ -747,9 +747,21 @@ app.get("/", (_req: Request, res: Response) => {
 
 // ─── Observability: Live execution trace streaming via Socket.io ────────────
 const tracer = ExecutionTracer.instance();
+// SEC-REALTIME-TRACE-001. Traces name the execution, the node, the agent, its
+// evaluation score and its errors, so they are addressed to the room of the
+// project the execution belongs to. An execution started without a project
+// cannot be addressed to anyone entitled to it and is dropped rather than
+// broadcast to every connected socket.
 tracer.addListener((event) => {
-  io.emit("trace.event", {
+  if (!event.projectId) {
+    console.warn(
+      `[trace] dropped trace.event with no project scope executionId=${event.executionId}`,
+    );
+    return;
+  }
+  io.to(`project:${event.projectId}`).emit("trace.event", {
     executionId: event.executionId,
+    projectId: event.projectId,
     nodeId: event.nodeId,
     agentId: event.agentId,
     eventType: event.eventType,
