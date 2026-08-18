@@ -40,6 +40,13 @@ export interface LLMOptions {
   temperature?: number;
   maxTokens?: number;
   model?: string;
+  /**
+   * JSON Schema the response must conform to, for providers that support
+   * constrained decoding. Mirrors `LLMOptions.responseSchema` in types/llm.ts;
+   * this interface is the narrower agent-facing seam. Providers without the
+   * capability ignore it.
+   */
+  responseSchema?: Record<string, unknown>;
 }
 
 /** Shared registry instance — one per process, lazily initialised. */

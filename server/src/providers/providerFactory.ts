@@ -33,6 +33,23 @@ export interface ProviderFactoryResult {
 /** Default localhost endpoint used when Ollama is requested without a URL. */
 const OLLAMA_DEFAULT_URL = "http://127.0.0.1:11434";
 
+/**
+ * Request timeout for Ollama, in milliseconds.
+ *
+ * Local models generate far more slowly than hosted ones, and a single
+ * completion can legitimately outlast the provider's own default. This is
+ * scoped to Ollama on purpose: no other provider's timeout is changed, and an
+ * unset or unusable value falls through to the provider default rather than
+ * silently disabling the deadline.
+ */
+function resolveOllamaTimeout(): number | undefined {
+  const raw = process.env.OLLAMA_TIMEOUT_MS?.trim();
+  if (!raw) return undefined;
+  const parsed = Number(raw);
+  if (!Number.isFinite(parsed) || parsed <= 0) return undefined;
+  return parsed;
+}
+
 /** Every provider name DEFAULT_PROVIDER accepts, excluding the "none" stub. */
 const KNOWN_PROVIDER_MODES = new Set<ProviderMode>([
   "openai",
@@ -246,6 +263,7 @@ export class LLMProviderFactory {
         provider: new OllamaProvider({
           baseURL: ollamaUrl.trim(),
           model: ollamaModel,
+          timeout: resolveOllamaTimeout(),
         }),
         mode: "ollama",
         model: ollamaModel,
@@ -260,6 +278,7 @@ export class LLMProviderFactory {
         provider: new OllamaProvider({
           baseURL: localUrl,
           model: ollamaModel,
+          timeout: resolveOllamaTimeout(),
         }),
         mode: "ollama",
         model: ollamaModel,
@@ -357,7 +376,11 @@ export class LLMProviderFactory {
           break;
         }
         return {
-          provider: new OllamaProvider({ baseURL: url, model: m }),
+          provider: new OllamaProvider({
+            baseURL: url,
+            model: m,
+            timeout: resolveOllamaTimeout(),
+          }),
           mode: "ollama",
           model: m,
           info: `Ollama (forced, url: ${url}, model: ${m})`,

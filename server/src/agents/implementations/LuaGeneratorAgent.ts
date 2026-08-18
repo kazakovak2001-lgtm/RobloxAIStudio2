@@ -4,6 +4,10 @@ import {
   assertPlayableLuaScripts,
   normalizeLuaScripts,
 } from "../../types/playableLua";
+import {
+  buildSpatialDesign,
+  describeSpatialDesign,
+} from "../../validation/spatialDesign";
 
 const DEFAULT_SERVICES = ["GameManager", "DataService", "PlayerService"];
 
@@ -195,7 +199,28 @@ function buildConstrainedPlayableRepairPrompt(
   name: string,
   description: string,
   reason: string,
+  spatialDesign: string,
 ): string {
+  // The designed level, carried into the last attempt. Without it this prompt
+  // asked for a game with no level, so a response that passed validation was a
+  // generic minimal slice with no terrain, spawn or designed geometry — the
+  // world silently disappeared on the third try. Same `describeSpatialDesign`
+  // text the primary prompt uses; no second spatial representation exists.
+  const level = spatialDesign
+    ? `
+Level to build (preserve this exactly):
+${spatialDesign}
+
+World requirements:
+- Build the level above. Keep its coordinates, extents, orientations and materials.
+- Simplify the code structure, never the world: fewer functions and less abstraction is fine, dropping designed terrain, objects or spawns is not.
+- Do not invent replacement coordinates or unrelated world content.
+- Do not omit a required spatial element to make validation pass.
+- Build terrain with workspace.Terrain:Clear() then :FillBlock(CFrame.new(x,y,z), Vector3.new(sx,sy,sz), Enum.Material.NAME), :FillBall(Vector3.new(x,y,z), radius, Enum.Material.NAME) or :FillCylinder(CFrame.new(x,y,z), height, radius, Enum.Material.NAME).
+- Create a SpawnLocation at each stated spawn, and build each object as an anchored Part or Model with its stated Size, CFrame and Material.
+- Wire the objective to the objects of type interactive, preserving the original objective.
+`
+    : "";
   return `You are repairing Roblox Luau that failed a strict playability check.
 Return one valid JSON object only, with this exact shape:
 { "lua_generator": { "server": [{"name":"Game.server.lua","code":"..."}], "client": [{"name":"HUD.client.lua","code":"..."}], "shared": [] } }
@@ -203,6 +228,7 @@ Return one valid JSON object only, with this exact shape:
 Game: ${name}
 Brief: ${description}
 Validation failure: ${reason}
+${level}
 
 Replace the previous solution completely. Keep the implementation small and use these exact runtime patterns:
 - Output exactly one server entry and exactly one client entry. Keep shared empty. Do not split the playable loop across scripts.
@@ -235,14 +261,52 @@ export class LuaGeneratorAgent extends BaseAgent {
     },
   };
 
-  public readonly outputSchema: Record<string, unknown> = {
-    type: "object",
-    properties: {
-      generatedCode: { type: "object" },
-      lua_generator: { type: "object" },
-    },
-    required: ["lua_generator"],
-  };
+  /**
+   * The raw response contract, described completely.
+   *
+   * This is handed to providers that support constrained decoding, so anything
+   * this schema permits is a shape the model can actually emit. An earlier
+   * version declared `lua_generator: { type: "object" }`, which permitted any
+   * nesting at all: constrained decoding then produced syntactically valid but
+   * structurally degenerate output (a lone truncated code string followed by
+   * junk keys). Describing the real shape is what closes that.
+   *
+   * Matches `normalizeLuaScripts`, which accepts each entry as either
+   * `{ path, content }` or `{ name, code }`. This pins the `{ name, code }`
+   * form because that is what the lua_generator prompt template asks for and
+   * a grammar needs one concrete shape — a strict subset of the parser
+   * contract, not a second representation. `shared` is genuinely optional and
+   * maps to ReplicatedStorage/Shared; the `modules` alias the normalizer also
+   * accepts is deliberately not offered, since no prompt requests it.
+   */
+  public readonly outputSchema: Record<string, unknown> = (() => {
+    const scriptEntry = {
+      type: "object",
+      additionalProperties: false,
+      required: ["name", "code"],
+      properties: {
+        name: { type: "string", minLength: 1 },
+        code: { type: "string", minLength: 1 },
+      },
+    };
+    return {
+      type: "object",
+      additionalProperties: false,
+      required: ["lua_generator"],
+      properties: {
+        lua_generator: {
+          type: "object",
+          additionalProperties: false,
+          required: ["server", "client"],
+          properties: {
+            server: { type: "array", minItems: 1, items: scriptEntry },
+            client: { type: "array", minItems: 1, items: scriptEntry },
+            shared: { type: "array", items: scriptEntry },
+          },
+        },
+      },
+    };
+  })();
 
   constructor(config?: Partial<AgentConfig>) {
     super({ maxRetries: 1, ...config });
@@ -260,6 +324,13 @@ export class LuaGeneratorAgent extends BaseAgent {
     );
     const services = arch?.services ?? {};
     const serviceNames = extractServiceNames(services);
+    // FIRST-PLAYABLE-1 (FP-1C diagnostic). These names come from the
+    // architect's own component list, not from Roblox. Presenting them as a
+    // bare service list made models call game:GetService on them, so the
+    // boundary is stated here rather than left to inference.
+    const architectureSummary =
+      serviceNames.map((n) => `logical component "${n}"`).join(", ") +
+      ". Each is a responsibility implemented inside the generated game code. None of them is a Roblox service: never pass any of these names to game:GetService().";
 
     const mechanicsArr = (gameplay as any)?.mechanics;
     const systemsSummary = Array.isArray(mechanicsArr)
@@ -276,12 +347,30 @@ export class LuaGeneratorAgent extends BaseAgent {
     const codingStandards =
       "PascalCase modules, camelCase functions, server-authoritative, RemoteEvents for client communication";
 
+    // FIRST-PLAYABLE-1 (FP-1B). The level the architect designed, rendered as
+    // instructions. Read from the architect's output on the input the executor
+    // already accumulated from that dependency — no new plumbing.
+    //
+    // An absent or unreadable design leaves this empty, and the prompt tells
+    // the model to lay out its own small level in that case. That is the
+    // pre-FP-1 behaviour, so a stage that answered in the wrong shape degrades
+    // to what the platform did before rather than failing the generation.
+    const spatialResult = buildSpatialDesign(
+      (arch as Record<string, unknown> | undefined)?.spatialDesign ??
+        (input.spatialDesign as unknown),
+    );
+    const spatialDesignText =
+      spatialResult.outcome === "designed"
+        ? describeSpatialDesign(spatialResult.design)
+        : "";
+
     const registryPrompt = this.buildPrompt({
       name,
       description,
-      architecture_summary: serviceNames.join(", "),
+      architecture_summary: architectureSummary,
       systems_summary: systemsSummary,
       coding_standards: codingStandards,
+      spatial_design: spatialDesignText,
     });
 
     const inlinePrompt =
@@ -289,19 +378,28 @@ export class LuaGeneratorAgent extends BaseAgent {
       "Respond with a single JSON object:\n" +
       '{ "lua_generator": { "server": Array<{name,code}>, "client": Array<{name,code}>, ' +
       '"shared": Array<{name,code}>, "patterns": string[] } }\n\n' +
-      `Game Name: ${name}\nServices: ${serviceNames.join(", ")}\n` +
+      `Game Name: ${name}\nServices: ${architectureSummary}\n` +
       `Game Brief: ${description}\n` +
-      `Gameplay Systems: ${systemsSummary}\nCoding Standards: ${codingStandards}\n\n` +
+      `Gameplay Systems: ${systemsSummary}\nCoding Standards: ${codingStandards}\n` +
+      (spatialDesignText ? `\nLevel to build:\n${spatialDesignText}\n` : "") +
+      "\n" +
       "Generate a playable vertical slice for a blank Baseplate: server code must create visible world parts and connect a Touched, Activated, Triggered, or MouseClick gameplay objective; client code must create a visible ScreenGui under PlayerGui. " +
+      (spatialDesignText
+        ? "Build exactly the level above using its coordinates, extents and materials. Call workspace.Terrain:Clear() once, then build terrain with workspace.Terrain:FillBlock(CFrame.new(x,y,z), Vector3.new(sx,sy,sz), Enum.Material.NAME), :FillBall(Vector3.new(x,y,z), radius, Enum.Material.NAME) and :FillCylinder(CFrame.new(x,y,z), height, radius, Enum.Material.NAME). Create a SpawnLocation at each stated spawn, and build each object as an anchored Part or Model with its stated Size, CFrame, Material and orientation, parented under a named Folder in workspace. Wire the objective to the objects of type interactive. "
+        : "") +
       "Server/client entries are runnable Scripts, not modules, so they must not end with return. Shared entries may return modules. Never use TODOs, placeholders, empty functions, or comments instead of behavior. Return only valid JSON.";
 
     const prompt = registryPrompt ?? inlinePrompt;
 
     let result: Record<string, unknown>;
     try {
+      // A playable slice is a whole server Script plus a whole client
+      // LocalScript. At the previous budgets the response was being truncated
+      // mid-string, which is unparseable no matter how well-formed the rest is.
+      // Scoped to this agent; the generic provider default is unchanged.
       result = await this.generateLua(prompt, {
         temperature: 0.4,
-        maxTokens: 3000,
+        maxTokens: 6000,
       });
       assertPlayableLuaScripts(normalizeLuaScripts(result));
     } catch (error) {
@@ -309,7 +407,7 @@ export class LuaGeneratorAgent extends BaseAgent {
       try {
         result = await this.generateLua(
           `${prompt}\n\nREPAIR REQUIRED: ${reason}. Replace the entire response with complete executable code satisfying every runtime requirement.`,
-          { temperature: 0.1, maxTokens: 4000 },
+          { temperature: 0.1, maxTokens: 8000 },
         );
         assertPlayableLuaScripts(normalizeLuaScripts(result));
       } catch (repairError) {
@@ -324,8 +422,9 @@ export class LuaGeneratorAgent extends BaseAgent {
               name,
               description,
               repairReason,
+              spatialDesignText,
             ),
-            { temperature: 0, maxTokens: 4000 },
+            { temperature: 0, maxTokens: 8000 },
           );
           assertPlayableLuaScripts(normalizeLuaScripts(result));
         } catch (finalRepairError) {
@@ -356,7 +455,15 @@ export class LuaGeneratorAgent extends BaseAgent {
   ): Promise<Record<string, unknown>> {
     if (!this.llm) throw new Error("Lua LLM provider is unavailable");
     const { LLMOutputParser } = await import("../../ai/outputParser");
-    const raw = await this.llm.generate(prompt, options);
+    // This agent's own declared output contract, handed to the provider so a
+    // provider that supports constrained decoding cannot return unparseable
+    // JSON. Providers without the capability ignore it, so nothing else about
+    // this call changes. Applies to the repair attempts too, since they route
+    // through here.
+    const raw = await this.llm.generate(prompt, {
+      ...options,
+      responseSchema: this.outputSchema,
+    });
     let parsed = LLMOutputParser.extractJSON(raw);
     if (!parsed) {
       const normalizedBackticks = normalizeBacktickLuaCode(raw);

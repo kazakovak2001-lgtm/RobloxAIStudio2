@@ -27,9 +27,9 @@
         "owner": "security-owner",
         "rationale": "A public Git commit boundary was misclassified as a generic API key.",
         "compensatingControl": "The exception is exact-fingerprint scoped and all reports remain fully redacted.",
-        "approvalReference": "issue #152",
-        "createdAt": "2026-08-01",
-        "expiresAt": "2026-08-15"
+        "approvalReference": "issue #244",
+        "createdAt": "2026-08-18",
+        "expiresAt": "2026-08-31"
       },
       {
         "controlId": "SECURITY-2G-C",
@@ -39,9 +39,9 @@
         "owner": "security-owner",
         "rationale": "A public Git commit boundary in a deterministic fixture was misclassified as a generic API key.",
         "compensatingControl": "The exception is exact-fingerprint scoped and all reports remain fully redacted.",
-        "approvalReference": "issue #152",
-        "createdAt": "2026-08-01",
-        "expiresAt": "2026-08-15"
+        "approvalReference": "issue #244",
+        "createdAt": "2026-08-18",
+        "expiresAt": "2026-08-31"
       }
     ],
     "exceptions": []

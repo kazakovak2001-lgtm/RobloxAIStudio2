@@ -654,6 +654,14 @@
 │   │   │   ├── core1b.postgres.integration.test.ts
 │   │   │   ├── cutover1c.origin-policy.test.ts
 │   │   │   ├── e2eGeneration.test.ts
+│   │   │   ├── firstplayable1.clientHudContract.test.ts
+│   │   │   ├── firstplayable1.constrainedRepairSpatial.test.ts
+│   │   │   ├── firstplayable1.executionSide.test.ts
+│   │   │   ├── firstplayable1.luaOutputSchema.test.ts
+│   │   │   ├── firstplayable1.luaTokenBudget.test.ts
+│   │   │   ├── firstplayable1.spatialDesign.test.ts
+│   │   │   ├── firstplayable1.spatialLuaContract.test.ts
+│   │   │   ├── firstplayable1.spatialWiring.test.ts
 │   │   │   ├── generation-provenance.test.ts
 │   │   │   ├── harden2a.auth-contract.test.ts
 │   │   │   ├── identityAccess.test.ts
@@ -1355,6 +1363,8 @@
 │   │   ├── providers
 │   │   │   ├── __tests__
 │   │   │   │   ├── groq.test.ts
+│   │   │   │   ├── ollamaStructuredOutput.test.ts
+│   │   │   │   ├── ollamaTimeout.test.ts
 │   │   │   │   ├── providerFactory.test.ts
 │   │   │   │   └── providers.test.ts
 │   │   │   ├── ai
@@ -1554,6 +1564,7 @@
 │   │   │   ├── generationValidation.ts
 │   │   │   ├── luaSecurityReview.ts
 │   │   │   ├── noveltyVerdict.ts
+│   │   │   ├── spatialDesign.ts
 │   │   │   ├── worldCrossValidation.ts
 │   │   │   ├── worldModel.ts
 │   │   │   ├── worldSceneBuilder.ts
