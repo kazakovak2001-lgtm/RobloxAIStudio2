@@ -213,6 +213,36 @@ export interface BlueprintVersion {
 }
 
 /**
+ * INTENT-FIDELITY-001. One requirement, with an identity that survives the run.
+ *
+ * Requirements were plain strings passed downstream as an opaque object, so
+ * nothing could ask whether a particular one had been satisfied. An identifier
+ * makes that question answerable, and `source` keeps the answer honest: a
+ * requirement derived from a system default is not something the user asked
+ * for, and must not be reported as though it were.
+ */
+export interface RequirementSpec {
+  /** Stable within a run, of the form R-001. */
+  id: string;
+  text: string;
+  kind: "functional" | "non_functional" | "constraint" | "success_criterion";
+  source: "user-stated" | "derived";
+}
+
+/**
+ * What a run can show about the requirements it was given.
+ *
+ * `uncovered` is the point of this record. A run that cannot show evidence for
+ * a requirement has not satisfied it, whatever its prose says, and naming those
+ * is more useful than a percentage.
+ */
+export interface RequirementCoverage {
+  total: number;
+  covered: number;
+  uncoveredIds: string[];
+}
+
+/**
  * CHAT-BLUEPRINT-DISCONNECT-001. A proposed change to a blueprint's design.
  *
  * The Define conversation persisted messages and nothing else, so an assistant
@@ -289,6 +319,12 @@ export interface GenerationExecution {
    */
   blueprint_version_id?: string;
   blueprint_snapshot_hash?: string;
+  /**
+   * INTENT-FIDELITY-001. What this run could show about the requirements it
+   * was given. Absent when no requirements were produced, which is different
+   * from having produced some and traced none.
+   */
+  requirement_coverage?: RequirementCoverage;
   retry_count: number;
   /**
    * How this execution's content was produced.

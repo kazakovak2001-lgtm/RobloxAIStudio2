@@ -672,6 +672,7 @@
 │   │   │   ├── identityAccess.test.ts
 │   │   │   ├── integration.test.ts
 │   │   │   ├── intent1.default-contamination.test.ts
+│   │   │   ├── intent2.requirement-traceability.test.ts
 │   │   │   ├── novelty1.gameDna.test.ts
 │   │   │   ├── novelty2.verdict.test.ts
 │   │   │   ├── performance.test.ts
@@ -1577,6 +1578,7 @@
 │   │   │   ├── generationValidation.ts
 │   │   │   ├── luaSecurityReview.ts
 │   │   │   ├── noveltyVerdict.ts
+│   │   │   ├── requirementTraceability.ts
 │   │   │   ├── worldCrossValidation.ts
 │   │   │   ├── worldModel.ts
 │   │   │   ├── worldSceneBuilder.ts

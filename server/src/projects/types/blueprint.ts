@@ -8,6 +8,8 @@ export type {
   BlueprintQueryOptions,
   BlueprintVersion,
   BlueprintChangeProposal,
+  RequirementSpec,
+  RequirementCoverage,
   GenerationExecution,
   BlueprintStatus,
   GameplaySystem,

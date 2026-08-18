@@ -5,6 +5,7 @@ import type {
   BlueprintChangeProposal,
   BlueprintVersion,
   CreateBlueprintInput,
+  RequirementSpec,
   GenerationExecution,
 } from "../types/blueprint";
 
@@ -27,6 +28,7 @@ import type { GameDnaReport } from "../../validation/gameDna";
 import { GenerationArtifactRecorder } from "../../studio/artifacts/GenerationArtifactRecorder";
 import { getConfiguredStorageProvider } from "../../platform/storage/StorageFactory";
 import type { DurableMutation } from "../../platform/storage/StorageProvider";
+import { evaluateRequirementCoverage } from "../../validation/requirementTraceability";
 import { GenerationOutcomeCoordinator } from "../../platform/projects/ProjectLifecycleCoordinator";
 
 /**
@@ -529,6 +531,7 @@ export class GameGenerationService {
               ...pipelineProvenance,
               ...this.resolveProvenance(result.graph.getAllNodes()),
               ...this.resolveNovelty(execution.id, recordedArtifacts),
+              ...this.resolveRequirementCoverage(result.graph.getAllNodes()),
             });
           } catch (err) {
             console.error(
@@ -637,6 +640,46 @@ export class GameGenerationService {
    * passed deterministic validation must not fail because a judgement about
    * its structure could not be formed.
    */
+  /**
+   * INTENT-FIDELITY-001. Record what this run could show about its requirements.
+   *
+   * The requirements agent gives each requirement an identifier; coverage asks
+   * which of those identifiers appear anywhere in what the run produced. Today
+   * the answer is mostly none, because the chain does not carry them yet, and
+   * that is exactly why it is recorded: the gap becomes a number on the run
+   * instead of an assumption about it.
+   *
+   * Never throws. A run that produced a package must not be failed because a
+   * measurement about it could not be taken.
+   */
+  private resolveRequirementCoverage(
+    nodes: ReadonlyArray<{ output?: unknown }>,
+  ): Pick<GenerationExecution, "requirement_coverage"> {
+    try {
+      const outputs = nodes
+        .map((node) => node.output)
+        .filter((output): output is Record<string, unknown> =>
+          Boolean(output && typeof output === "object"),
+        );
+      const specs = outputs.flatMap((output) =>
+        Array.isArray(output.requirement_specs)
+          ? (output.requirement_specs as RequirementSpec[])
+          : [],
+      );
+      if (specs.length === 0) return {};
+
+      // The requirements output itself is excluded: a requirement appearing in
+      // its own definition is not evidence that anything downstream honoured it.
+      const downstream = outputs.filter(
+        (output) => !Array.isArray(output.requirement_specs),
+      );
+      return {
+        requirement_coverage: evaluateRequirementCoverage(specs, downstream),
+      };
+    } catch {
+      return {};
+    }
+  }
   private resolveNovelty(
     executionId: string,
     artifacts: readonly { stage: string; content: unknown }[],
