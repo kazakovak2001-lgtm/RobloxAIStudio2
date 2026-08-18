@@ -1351,7 +1351,7 @@
       "remediationGroup": "generation-start-admission",
       "mar": "MAR-004",
       "owningBranch": "fix/mar-004-idempotent-start",
-      "owningSha": "pending",
+      "owningSha": "f8a5d8dbdd093fca5b3bc3286aeb337b106b2903",
       "evidence": [
         "server/src/platform/projects/ProjectLifecycleCoordinator.ts",
         "server/src/__tests__/mar004.idempotent-start.test.ts",
