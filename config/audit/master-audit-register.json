@@ -1294,7 +1294,7 @@
       "remediationGroup": "authorization-object-binding",
       "mar": "MAR-002",
       "owningBranch": "fix/mar-002-script-ownership",
-      "owningSha": "pending",
+      "owningSha": "e73296e2ec3e7c20ccb5ade0a7878a2f9ffbab39",
       "evidence": [
         "studio-plugin/src/services/SyncManager.lua",
         "studio-plugin/src/utils/ArtifactLoader.lua",
