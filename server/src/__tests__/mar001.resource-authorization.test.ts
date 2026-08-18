@@ -177,12 +177,10 @@ describe("MAR-001 requireOwned derives the project from the resource", () => {
 
   it("authorizes the project the resource records, not one it is handed", async () => {
     const seen: string[] = [];
-    const requireOwned = createResourceAuthorizer({
-      hasProjectAccess: async (_req, projectId) => {
-        seen.push(projectId);
-        return projectId === "project-allowed";
-      },
-    } as never);
+    const requireOwned = createResourceAuthorizer(async (_req, projectId) => {
+      seen.push(projectId);
+      return projectId === "project-allowed";
+    });
     const { res } = fakeResponse();
 
     const loaded = await requireOwned(request, res, {
@@ -200,9 +198,9 @@ describe("MAR-001 requireOwned derives the project from the resource", () => {
   });
 
   it("returns the resource when its project is the caller's", async () => {
-    const requireOwned = createResourceAuthorizer({
-      hasProjectAccess: async (_req, projectId) => projectId === "project-mine",
-    } as never);
+    const requireOwned = createResourceAuthorizer(
+      async (_req, projectId) => projectId === "project-mine",
+    );
     const { res } = fakeResponse();
 
     const loaded = await requireOwned(request, res, {
@@ -216,9 +214,7 @@ describe("MAR-001 requireOwned derives the project from the resource", () => {
   });
 
   it("refuses a missing resource and a forbidden one with one answer", async () => {
-    const requireOwned = createResourceAuthorizer({
-      hasProjectAccess: async () => false,
-    } as never);
+    const requireOwned = createResourceAuthorizer(async () => false);
 
     const missing = fakeResponse();
     await requireOwned(request, missing.res, {
@@ -240,22 +236,11 @@ describe("MAR-001 requireOwned derives the project from the resource", () => {
     expect(missing.calls.status).toBe(404);
   });
 
-  it("refuses when the deployment has no concealing access control", async () => {
-    const requireOwned = createResourceAuthorizer(undefined);
-    const { res, calls } = fakeResponse();
-
-    // Fail closed. Falling back to a control that answers differently for
-    // absent and foreign resources would reintroduce the disclosure.
-    const loaded = await requireOwned(request, res, {
-      resource: "Command",
-      id: "command-1",
-      load: () => ({ projectId: "project-any" }),
-      projectOf: (command) => command.projectId,
-    });
-
-    expect(loaded).toBeNull();
-    expect(calls.status).toBe(404);
-  });
+  // There is no test for "the deployment has no concealing check". That branch
+  // existed while the helper accepted a whole access control whose
+  // hasProjectAccess was optional, and a route wired to a control that omitted
+  // it refused everything as absent — a silent outage. The check is now a
+  // required argument, so the situation cannot be constructed.
 
   it("builds the refusal from the resource name, not the resource", () => {
     const { res, calls } = fakeResponse();

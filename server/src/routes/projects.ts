@@ -16,7 +16,10 @@ import {
 } from "../projects/repository/generationHistory.repository";
 import { getTokenFromCookies } from "../common/middleware/cookies";
 import { getRequestApiKeyPrincipal } from "../common/middleware/security";
-import { createResourceAuthorizer } from "./resourceAuthorization";
+import {
+  createResourceAuthorizer,
+  type ProjectAccessCheck,
+} from "./resourceAuthorization";
 
 export interface ProjectAccessControl {
   getRequestUserId(req: Request): Promise<string | null>;
@@ -34,10 +37,22 @@ export interface ProjectAccessControl {
   ): Promise<boolean>;
 }
 
+/**
+ * A project access control that provides the concealing check.
+ *
+ * `hasProjectAccess` is optional on the interface because older callers only
+ * ever needed `requireProjectAccess`. Anything built by `createProjectRuntime`
+ * always provides it, and routes that conceal resource existence depend on it,
+ * so the runtime states that rather than leaving each route to hope.
+ */
+export type ConcealingProjectAccess = ProjectAccessControl & {
+  hasProjectAccess: ProjectAccessCheck;
+};
+
 export interface ProjectRuntime {
   projectRepository: SaaSProjectRepository;
   generationHistory: GenerationHistoryRepository;
-  access: ProjectAccessControl;
+  access: ConcealingProjectAccess;
   /**
    * The provider both repositories above are built on. Exposed so a caller that
    * must commit several collections in one transaction can reach
@@ -146,9 +161,7 @@ export function createProjectRuntime(
   // Built on the concealing check above, and referenced by requireProjectAccess
   // which is declared earlier: both are only ever invoked per request, long
   // after this module has finished initialising.
-  const requireOwned = createResourceAuthorizer({
-    hasProjectAccess,
-  } as ProjectAccessControl);
+  const requireOwned = createResourceAuthorizer(hasProjectAccess);
 
   return {
     projectRepository,

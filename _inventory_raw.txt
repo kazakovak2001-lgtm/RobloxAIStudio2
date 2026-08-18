@@ -576,6 +576,7 @@ server/src/__tests__/intent1.default-contamination.test.ts
 server/src/__tests__/intent2.requirement-traceability.test.ts
 server/src/__tests__/llmlog1.payload-redaction.test.ts
 server/src/__tests__/llmparser1.balanced-extraction.test.ts
+server/src/__tests__/mar001.resource-authorization.test.ts
 server/src/__tests__/mar001.studio-command-concealment.test.ts
 server/src/__tests__/mar001.studio-protocol-binding.test.ts
 server/src/__tests__/mar001.studio-surface-closure.test.ts
@@ -1210,6 +1211,7 @@ server/src/routes/platform.ts
 server/src/routes/playtest.ts
 server/src/routes/projects.ts
 server/src/routes/repair.ts
+server/src/routes/resourceAuthorization.ts
 server/src/routes/simulation.ts
 server/src/routes/studio.ts
 server/src/routes/system.ts

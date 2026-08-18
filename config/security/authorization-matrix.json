@@ -1662,9 +1662,9 @@
       "capability": "project.chat.conversation.delete",
       "resourceScope": "resolved-conversation-project",
       "positiveEvidence": "server/src/__tests__/security2gE.chat-persistence-scope.test.ts",
-      "negativeEvidence": "server/src/__tests__/security2gE.chat-persistence-scope.test.ts",
-      "resourceBinding": "indirect-unreviewed",
-      "crossTenantEvidence": "none-recorded"
+      "negativeEvidence": "server/src/__tests__/mar001.conversation-ownership.test.ts",
+      "resourceBinding": "indirect-verified",
+      "crossTenantEvidence": "server/src/__tests__/mar001.conversation-ownership.test.ts"
     },
     {
       "transport": "rest",
@@ -1688,9 +1688,9 @@
       "capability": "project.chat.conversation.read",
       "resourceScope": "resolved-conversation-project",
       "positiveEvidence": "server/src/__tests__/security2gE.chat-persistence-scope.test.ts",
-      "negativeEvidence": "server/src/__tests__/security2gE.chat-persistence-scope.test.ts",
-      "resourceBinding": "indirect-unreviewed",
-      "crossTenantEvidence": "none-recorded"
+      "negativeEvidence": "server/src/__tests__/mar001.conversation-ownership.test.ts",
+      "resourceBinding": "indirect-verified",
+      "crossTenantEvidence": "server/src/__tests__/mar001.conversation-ownership.test.ts"
     },
     {
       "transport": "rest",
@@ -1701,9 +1701,9 @@
       "capability": "project.chat.message.create",
       "resourceScope": "body-or-resolved-conversation-project",
       "positiveEvidence": "server/src/__tests__/security2gE.chat-persistence-scope.test.ts",
-      "negativeEvidence": "server/src/__tests__/security2gE.chat-persistence-scope.test.ts",
-      "resourceBinding": "indirect-unreviewed",
-      "crossTenantEvidence": "none-recorded"
+      "negativeEvidence": "server/src/__tests__/mar001.conversation-ownership.test.ts",
+      "resourceBinding": "indirect-verified",
+      "crossTenantEvidence": "server/src/__tests__/mar001.conversation-ownership.test.ts"
     },
     {
       "transport": "rest",

@@ -27,6 +27,21 @@ type AccessRequest = Parameters<
   ProjectAccessControl["requireProjectAccess"]
 >[0];
 
+/**
+ * The concealing check, which answers with a bare boolean and so cannot say
+ * whether a resource exists.
+ *
+ * The helper takes this function rather than the whole access control, and
+ * takes it as a requirement rather than an option. `hasProjectAccess` is
+ * optional on `ProjectAccessControl`, and a route migrated to `requireOwned`
+ * whose control happened to omit it would refuse every request as absent — a
+ * silent outage discovered in production rather than at compile time. Demanding
+ * the function makes that impossible to write.
+ */
+export type ProjectAccessCheck = NonNullable<
+  ProjectAccessControl["hasProjectAccess"]
+>;
+
 export interface OwnedResourceSpec<T> {
   /**
    * How the resource is named in the refusal, e.g. "Project" or "Command".
@@ -65,10 +80,10 @@ export function denyAsAbsent(res: Response, resource: string): void {
  * Load a resource and return it only if the caller may have it.
  *
  * Returns null after answering the request, so a route can `if (!x) return;`.
- * Fails closed: a missing access control, a resource with no project, and a
- * denied project all refuse the same way.
+ * A resource that does not exist, one whose project cannot be determined, and
+ * one the caller may not have all refuse the same way.
  */
-export function createResourceAuthorizer(access?: ProjectAccessControl) {
+export function createResourceAuthorizer(hasProjectAccess: ProjectAccessCheck) {
   return async function requireOwned<T>(
     req: AccessRequest,
     res: Response,
@@ -87,14 +102,7 @@ export function createResourceAuthorizer(access?: ProjectAccessControl) {
       return null;
     }
 
-    // A deployment without the concealing check must refuse, not fall back to
-    // one that answers differently for absent and foreign resources.
-    if (!access?.hasProjectAccess) {
-      denyAsAbsent(res, spec.resource);
-      return null;
-    }
-
-    if (!(await access.hasProjectAccess(req, projectId, spec.capability))) {
+    if (!(await hasProjectAccess(req, projectId, spec.capability))) {
       denyAsAbsent(res, spec.resource);
       return null;
     }
