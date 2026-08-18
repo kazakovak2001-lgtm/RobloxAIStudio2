@@ -20,7 +20,7 @@
       "status": "CONFIRMED",
       "disposition": "FIXED-UNMERGED",
       "area": "security",
-      "owningBranch": "fix/sec-generation-blueprint-001",
+      "owningBranch": "integration/wave-0",
       "owningSha": "04482f16c5249d864020f05e8f59d1c7224f4ed7",
       "evidence": ["server/src/routes/game-generation.ts"],
       "notes": "Authorized the URL projectId but resolved a body-supplied blueprintId. Reproduced against the baseline: the cross-project request answered 200 and a pipeline started for the other project's blueprint. Fixed at both the route and the service boundary.",
@@ -33,7 +33,7 @@
       "status": "CONFIRMED",
       "disposition": "FIXED-UNMERGED",
       "area": "durability",
-      "owningBranch": "fix/audit-start-atomicity-001",
+      "owningBranch": "integration/wave-0",
       "owningSha": "3696a1f31b86cff8ce97e09f5a5da581d2a3ba01",
       "evidence": [
         "server/src/platform/projects/ProjectLifecycleCoordinator.ts"
@@ -48,7 +48,7 @@
       "status": "CONFIRMED",
       "disposition": "FIXED-UNMERGED",
       "area": "durability",
-      "owningBranch": "fix/audit-id-exec-001",
+      "owningBranch": "integration/wave-0",
       "owningSha": "2d5d2d7da28c7edd230acc2e5b93a41b7fe8066a",
       "evidence": ["server/src/projects/services/game-generation.service.ts"],
       "notes": "generation_executions is keyed by execution id alone across every project and recordExecution writes through a blind upsert, so a collision destroyed the other project's execution. Reproduced: two starts left one record instead of two.",
@@ -61,7 +61,7 @@
       "status": "CONFIRMED",
       "disposition": "FIXED-UNMERGED",
       "area": "supply-chain",
-      "owningBranch": "fix/sec-scanner-exception-clock-001",
+      "owningBranch": "integration/wave-0",
       "owningSha": "d7d1cca0",
       "evidence": ["package.json"],
       "notes": "The validate:security-scanners policy compares expiry against a hardcoded 2026-08-01, so exceptions that expired on 2026-08-15 still pass on this baseline. The fix injects a real UTC clock and turns the gate red until the exceptions are renewed or removed.",
@@ -72,49 +72,57 @@
       "title": "No suppression of a second concurrent generation for the same project",
       "severity": "P1",
       "status": "CONFIRMED",
-      "disposition": "NOT-STARTED",
+      "disposition": "FIXED-UNMERGED",
       "area": "concurrency",
       "evidence": ["server/src/projects/services/game-generation.service.ts"],
       "notes": "The project lock covers only the short start critical section. Two starts legitimately produce two executions and two generation-count increments. Deliberately left out of the start-atomicity slice.",
-      "remediationGroup": "generation-start-admission"
+      "remediationGroup": "generation-start-admission",
+      "owningBranch": "integration/wave-0",
+      "owningSha": "e0d800d273b3c618d4af07d9ffbbe2873da49937"
     },
     {
       "id": "AUDIT-OUTCOME-LAST-WRITER-001",
       "title": "An older overlapping run can overwrite a newer run's terminal project state",
       "severity": "P1",
       "status": "CONFIRMED",
-      "disposition": "NOT-STARTED",
+      "disposition": "FIXED-UNMERGED",
       "area": "concurrency",
       "evidence": [
         "server/src/platform/projects/ProjectLifecycleCoordinator.ts"
       ],
       "notes": "Nothing restricts terminal project updates to the current execution. Depends on AUDIT-DUP-GENERATION-001 for its main trigger.",
-      "remediationGroup": "generation-start-admission"
+      "remediationGroup": "generation-start-admission",
+      "owningBranch": "integration/wave-0",
+      "owningSha": "e0d800d273b3c618d4af07d9ffbbe2873da49937"
     },
     {
       "id": "AUDIT-RECOVERY-001",
       "title": "Canonical generation is not resumed or reconciled after restart",
       "severity": "P1",
       "status": "CONFIRMED",
-      "disposition": "NOT-STARTED",
+      "disposition": "FIXED-UNMERGED",
       "area": "durability",
       "evidence": [
         "server/src/execution/executionQueue.ts",
         "config/runtime/runtime-ownership.json"
       ],
       "notes": "The execution record is durable but the worker queue is process-local, so a restart leaves executions durably running with no owner. AutonomousOrchestrator already implements persisted sessions, recovery claims and idempotent recovery and is the pattern to reuse.",
-      "remediationGroup": "canonical-generation-recovery"
+      "remediationGroup": "canonical-generation-recovery",
+      "owningBranch": "integration/wave-0",
+      "owningSha": "186d1a08a76d3261d9aecd2183c4286b676b29ec"
     },
     {
       "id": "AUDIT-GRACEFUL-SHUTDOWN-001",
       "title": "Shutdown does not drain the canonical generation queue",
       "severity": "P1",
       "status": "CONFIRMED",
-      "disposition": "NOT-STARTED",
+      "disposition": "FIXED-UNMERGED",
       "area": "durability",
       "evidence": ["server/src/execution/executionQueue.ts"],
       "notes": "Same root as AUDIT-RECOVERY-001. SIGTERM can end the process mid-generation and leave a durable running execution.",
-      "remediationGroup": "canonical-generation-recovery"
+      "remediationGroup": "canonical-generation-recovery",
+      "owningBranch": "integration/wave-0",
+      "owningSha": "186d1a08a76d3261d9aecd2183c4286b676b29ec"
     },
     {
       "id": "AUDIT-QUEUE-DISCONNECTED-001",
@@ -149,61 +157,71 @@
       "title": "Realtime reports a pipeline completed before artifact and validation stages run",
       "severity": "P1",
       "status": "CONFIRMED",
-      "disposition": "NOT-STARTED",
+      "disposition": "FIXED-UNMERGED",
       "area": "truthfulness",
       "evidence": ["server/src/planning/execution/PlanExecutor.ts"],
       "notes": "An agent DAG completing is not canonical generation completing. If the artifact stage then fails, realtime says completed while the durable execution says failed.",
-      "remediationGroup": "pipeline-outcome-truth"
+      "remediationGroup": "pipeline-outcome-truth",
+      "owningBranch": "integration/wave-0",
+      "owningSha": "683b49a4ed288e8d95fa1829e8e057fe9a48eda8"
     },
     {
       "id": "AUDIT-FAILURE-STEPS-LOSS-001",
       "title": "Terminal failure records lose pipeline_steps recorded before the failure",
       "severity": "P1",
       "status": "CONFIRMED",
-      "disposition": "NOT-STARTED",
+      "disposition": "FIXED-UNMERGED",
       "area": "durability",
       "evidence": ["server/src/projects/services/game-generation.service.ts"],
       "notes": "After an artifact recorder failure the terminal execution is written without complete steps, so a refreshed client sees zero completed, zero failed and zero known even though agents ran.",
-      "remediationGroup": "pipeline-outcome-truth"
+      "remediationGroup": "pipeline-outcome-truth",
+      "owningBranch": "integration/wave-0",
+      "owningSha": "683b49a4ed288e8d95fa1829e8e057fe9a48eda8"
     },
     {
       "id": "SEC-REALTIME-GLOBAL-001",
       "title": "Evaluation, memory and planning events broadcast to every connected socket",
       "severity": "P1",
       "status": "CONFIRMED",
-      "disposition": "NOT-STARTED",
+      "disposition": "FIXED-UNMERGED",
       "area": "security",
       "evidence": [
         "server/src/index.ts",
         "config/security/authorization-matrix.json"
       ],
       "notes": "Thirteen emissions sit in the same switch as the project-room emitter with the same project identifier in scope and broadcast past it anyway. Client-side filtering is not a security boundary: the unauthorized socket already received the payload. Now tracked as global-bypassing-available-scope in the matrix broadcasts section.",
-      "remediationGroup": "realtime-tenancy"
+      "remediationGroup": "realtime-tenancy",
+      "owningBranch": "integration/wave-0",
+      "owningSha": "fee5b8c3655cfb9a68722cc9ce34358caf071556"
     },
     {
       "id": "SEC-REALTIME-TRACE-001",
       "title": "Execution traces broadcast globally from a listener with no project context",
       "severity": "P1",
       "status": "CONFIRMED",
-      "disposition": "NOT-STARTED",
+      "disposition": "FIXED-UNMERGED",
       "area": "security",
       "evidence": [
         "server/src/index.ts",
         "config/security/authorization-matrix.json"
       ],
       "notes": "Payload carries executionId, nodeId, agentId, evaluationScore and error. Distinct remediation from SEC-REALTIME-GLOBAL-001: the tracer listener receives no project, so scoping requires plumbing context in first. Tracked as global-no-project-context.",
-      "remediationGroup": "realtime-tenancy"
+      "remediationGroup": "realtime-tenancy",
+      "owningBranch": "integration/wave-0",
+      "owningSha": "71e011f7024ba36a646bb79546b98ab236816d02"
     },
     {
       "id": "SEC-REALTIME-PIPELINE-FALLBACK-001",
       "title": "Pipeline events fall back to a global broadcast when no project is known",
       "severity": "P2",
       "status": "CONFIRMED",
-      "disposition": "NOT-STARTED",
+      "disposition": "FIXED-UNMERGED",
       "area": "security",
       "evidence": ["server/src/index.ts"],
       "notes": "emitForProject addresses the project room when evt.projectId is present and broadcasts to everyone when it is not. The fallback should fail closed rather than widen the audience.",
-      "remediationGroup": "realtime-tenancy"
+      "remediationGroup": "realtime-tenancy",
+      "owningBranch": "integration/wave-0",
+      "owningSha": "fee5b8c3655cfb9a68722cc9ce34358caf071556"
     },
     {
       "id": "AUDIT-CROSS-TENANT-EVIDENCE-001",
@@ -216,7 +234,7 @@
         "config/security/authorization-matrix.json",
         "server/src/__tests__/security2gE.authorization-inventory.test.ts"
       ],
-      "notes": "Of 206 operations, five have a test that issues a real foreign request, fifteen have evidence that only asserts strings in handler source, and 186 have none recorded. The existing negativeEvidence column mostly proves missing authentication, which is a weaker property than cross-owner denial.",
+      "notes": "Of 206 operations, five have a test that issues a real foreign request, fifteen have evidence that only asserts strings in handler source, and 186 have none recorded. The existing negativeEvidence column mostly proves missing authentication, which is a weaker property than cross-owner denial. One family, body-blueprint-project, now has a behavioural harness on integration/wave-0 (a5ca5fe3); the rest of the inventory is still unevidenced, so this stays open.",
       "remediationGroup": "authorization-object-binding"
     },
     {
@@ -389,7 +407,7 @@
       "disposition": "NOT-STARTED",
       "area": "test-authority",
       "evidence": ["server/src/__tests__/persistence.test.ts"],
-      "notes": "It asserts that the execution record still exists after restart. It does not require a running execution to be resumed or reconciled to a terminal state, so it passes with a permanently orphaned execution.",
+      "notes": "It asserts that the execution record still exists after restart. It does not require a running execution to be resumed or reconciled to a terminal state, so it passes with a permanently orphaned execution. A reconciliation test now proves the workflow is closed rather than merely persisted (186d1a08), but the original weak restart test is unchanged, so this stays open.",
       "remediationGroup": "canonical-generation-recovery"
     },
     {
@@ -562,13 +580,15 @@
       "title": "The user-self authorization test fails intermittently under parallel load",
       "severity": "P2",
       "status": "CONFIRMED",
-      "disposition": "NOT-STARTED",
+      "disposition": "FIXED-UNMERGED",
       "area": "test-authority",
       "remediationGroup": "pipeline-outcome-truth",
       "evidence": [
         "server/src/__tests__/security2gE.authorization-domains.test.ts"
       ],
-      "notes": "It passes in isolation and times out at about five seconds when the full security suite runs in parallel. Reproduced twice in this session, once on a clean baseline with all local changes removed, so it is a baseline flake rather than a regression. It matters more than an ordinary flake because it is one of only five operations in the matrix with real behavioural cross-tenant evidence, so when it flakes that evidence is unreliable."
+      "notes": "It passes in isolation and times out at about five seconds when the full security suite runs in parallel. Reproduced twice in this session, once on a clean baseline with all local changes removed, so it is a baseline flake rather than a regression. It matters more than an ordinary flake because it is one of only five operations in the matrix with real behavioural cross-tenant evidence, so when it flakes that evidence is unreliable.",
+      "owningBranch": "integration/wave-0",
+      "owningSha": "f5b9772bfa99ebcfb70b853b6e4c90d67c0dd503"
     }
   ],
   "remediationGroups": [

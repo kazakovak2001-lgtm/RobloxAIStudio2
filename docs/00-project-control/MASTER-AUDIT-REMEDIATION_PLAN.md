@@ -10,8 +10,8 @@ Findings are grouped by shared architectural root rather than by symptom. Severa
 
 | Disposition        | Findings |
 | ------------------ | -------- |
-| NOT-STARTED        | 38       |
-| FIXED-UNMERGED     | 4        |
+| NOT-STARTED        | 28       |
+| FIXED-UNMERGED     | 14       |
 | NO-ACTION-REQUIRED | 4        |
 | SCOPED-OUT         | 1        |
 
@@ -28,59 +28,59 @@ Nothing else should be repaired against these until they are re-established as f
 
 What the system reports about a run does not always match what happened. This is where green signals hide red states.
 
-| Finding                                                                                                               | Severity | Status    | Disposition |
-| --------------------------------------------------------------------------------------------------------------------- | -------- | --------- | ----------- |
-| **AUDIT-LIFECYCLE-SPLIT-BRAIN-001** — Realtime reports a pipeline completed before artifact and validation stages run | P1       | CONFIRMED | NOT-STARTED |
-| **AUDIT-FAILURE-STEPS-LOSS-001** — Terminal failure records lose pipeline_steps recorded before the failure           | P1       | CONFIRMED | NOT-STARTED |
-| **AUDIT-E2E-TRUTH-001** — The production contract test accepts a failed generation                                    | P1       | CONFIRMED | NOT-STARTED |
-| **CI-PROD-CONTRACT-FIDELITY-001** — The production contract runs against in-memory storage                            | P2       | CONFIRMED | NOT-STARTED |
-| **AUDIT-FLAKY-AUTH-TEST-001** — The user-self authorization test fails intermittently under parallel load             | P2       | CONFIRMED | NOT-STARTED |
-| **AUDIT-SCRIPTS-UNTYPED-001** — Validator and generator scripts are outside the typecheck boundary                    | P3       | CONFIRMED | NOT-STARTED |
+| Finding                                                                                                               | Severity | Status    | Disposition                                                                    |
+| --------------------------------------------------------------------------------------------------------------------- | -------- | --------- | ------------------------------------------------------------------------------ |
+| **AUDIT-LIFECYCLE-SPLIT-BRAIN-001** — Realtime reports a pipeline completed before artifact and validation stages run | P1       | CONFIRMED | FIXED-UNMERGED (integration/wave-0 @ 683b49a4ed288e8d95fa1829e8e057fe9a48eda8) |
+| **AUDIT-FAILURE-STEPS-LOSS-001** — Terminal failure records lose pipeline_steps recorded before the failure           | P1       | CONFIRMED | FIXED-UNMERGED (integration/wave-0 @ 683b49a4ed288e8d95fa1829e8e057fe9a48eda8) |
+| **AUDIT-E2E-TRUTH-001** — The production contract test accepts a failed generation                                    | P1       | CONFIRMED | NOT-STARTED                                                                    |
+| **CI-PROD-CONTRACT-FIDELITY-001** — The production contract runs against in-memory storage                            | P2       | CONFIRMED | NOT-STARTED                                                                    |
+| **AUDIT-FLAKY-AUTH-TEST-001** — The user-self authorization test fails intermittently under parallel load             | P2       | CONFIRMED | FIXED-UNMERGED (integration/wave-0 @ f5b9772bfa99ebcfb70b853b6e4c90d67c0dd503) |
+| **AUDIT-SCRIPTS-UNTYPED-001** — Validator and generator scripts are outside the typecheck boundary                    | P3       | CONFIRMED | NOT-STARTED                                                                    |
 
 ## 3. generation-start-admission — worst severity P1
 
 Everything that decides whether a generation may begin and under whose identity. Two of these are already fixed on branches and the rest share their entry point.
 
-| Finding                                                                                                                   | Severity | Status    | Disposition                                                                               |
-| ------------------------------------------------------------------------------------------------------------------------- | -------- | --------- | ----------------------------------------------------------------------------------------- |
-| **AUDIT-START-ATOMICITY-001** — Generation start wrote project, execution and history as three independent durable writes | P1       | CONFIRMED | FIXED-UNMERGED (fix/audit-start-atomicity-001 @ 3696a1f31b86cff8ce97e09f5a5da581d2a3ba01) |
-| **AUDIT-ID-EXEC-001** — Execution identity derived from Date.now collided within a millisecond                            | P1       | CONFIRMED | FIXED-UNMERGED (fix/audit-id-exec-001 @ 2d5d2d7da28c7edd230acc2e5b93a41b7fe8066a)         |
-| **AUDIT-DUP-GENERATION-001** — No suppression of a second concurrent generation for the same project                      | P1       | CONFIRMED | NOT-STARTED                                                                               |
-| **AUDIT-OUTCOME-LAST-WRITER-001** — An older overlapping run can overwrite a newer run's terminal project state           | P1       | CONFIRMED | NOT-STARTED                                                                               |
-| **QUOTA-ENFORCEMENT-001** — Generation does not enforce tier limits before starting                                       | P1       | CONFIRMED | NOT-STARTED                                                                               |
+| Finding                                                                                                                   | Severity | Status    | Disposition                                                                    |
+| ------------------------------------------------------------------------------------------------------------------------- | -------- | --------- | ------------------------------------------------------------------------------ |
+| **AUDIT-START-ATOMICITY-001** — Generation start wrote project, execution and history as three independent durable writes | P1       | CONFIRMED | FIXED-UNMERGED (integration/wave-0 @ 3696a1f31b86cff8ce97e09f5a5da581d2a3ba01) |
+| **AUDIT-ID-EXEC-001** — Execution identity derived from Date.now collided within a millisecond                            | P1       | CONFIRMED | FIXED-UNMERGED (integration/wave-0 @ 2d5d2d7da28c7edd230acc2e5b93a41b7fe8066a) |
+| **AUDIT-DUP-GENERATION-001** — No suppression of a second concurrent generation for the same project                      | P1       | CONFIRMED | FIXED-UNMERGED (integration/wave-0 @ e0d800d273b3c618d4af07d9ffbbe2873da49937) |
+| **AUDIT-OUTCOME-LAST-WRITER-001** — An older overlapping run can overwrite a newer run's terminal project state           | P1       | CONFIRMED | FIXED-UNMERGED (integration/wave-0 @ e0d800d273b3c618d4af07d9ffbbe2873da49937) |
+| **QUOTA-ENFORCEMENT-001** — Generation does not enforce tier limits before starting                                       | P1       | CONFIRMED | NOT-STARTED                                                                    |
 
 ## 4. authorization-object-binding — worst severity P1
 
 One defect shape: the identifier the caller was authorized for is not the thing the operation acts on. Fixing the sweep and the evidence together is what stops the next instance.
 
-| Finding                                                                                                                       | Severity | Status    | Disposition                                                                                  |
-| ----------------------------------------------------------------------------------------------------------------------------- | -------- | --------- | -------------------------------------------------------------------------------------------- |
-| **SEC-GENERATION-BLUEPRINT-001** — Generation accepted a blueprint id belonging to another project                            | P1       | CONFIRMED | FIXED-UNMERGED (fix/sec-generation-blueprint-001 @ 04482f16c5249d864020f05e8f59d1c7224f4ed7) |
-| **AUDIT-CROSS-TENANT-EVIDENCE-001** — Cross-tenant denial is essentially unevidenced across the API                           | P1       | CONFIRMED | NOT-STARTED                                                                                  |
-| **AUDIT-BINDING-UNREVIEWED-001** — Ninety-eight operations still have no object-binding verdict                               | P1       | OPEN      | SCOPED-OUT                                                                                   |
-| **AUDIT-BODY-SUPPLIED-BLUEPRINT-001** — Eight operations authorize against an identifier inside a caller-supplied body object | P2       | CONFIRMED | NOT-STARTED                                                                                  |
+| Finding                                                                                                                       | Severity | Status    | Disposition                                                                    |
+| ----------------------------------------------------------------------------------------------------------------------------- | -------- | --------- | ------------------------------------------------------------------------------ |
+| **SEC-GENERATION-BLUEPRINT-001** — Generation accepted a blueprint id belonging to another project                            | P1       | CONFIRMED | FIXED-UNMERGED (integration/wave-0 @ 04482f16c5249d864020f05e8f59d1c7224f4ed7) |
+| **AUDIT-CROSS-TENANT-EVIDENCE-001** — Cross-tenant denial is essentially unevidenced across the API                           | P1       | CONFIRMED | NOT-STARTED                                                                    |
+| **AUDIT-BINDING-UNREVIEWED-001** — Ninety-eight operations still have no object-binding verdict                               | P1       | OPEN      | SCOPED-OUT                                                                     |
+| **AUDIT-BODY-SUPPLIED-BLUEPRINT-001** — Eight operations authorize against an identifier inside a caller-supplied body object | P2       | CONFIRMED | NOT-STARTED                                                                    |
 
 ## 5. canonical-generation-recovery — worst severity P1
 
 Canonical generation survives as a durable record but not as running work. The queue choice, the shutdown path and the weak restart test are the same gap seen three ways.
 
-| Finding                                                                                          | Severity | Status    | Disposition |
-| ------------------------------------------------------------------------------------------------ | -------- | --------- | ----------- |
-| **AUDIT-RECOVERY-001** — Canonical generation is not resumed or reconciled after restart         | P1       | CONFIRMED | NOT-STARTED |
-| **AUDIT-GRACEFUL-SHUTDOWN-001** — Shutdown does not drain the canonical generation queue         | P1       | CONFIRMED | NOT-STARTED |
-| **AUDIT-RESTART-TEST-WEAK-001** — The restart test proves durability, not recovery               | P1       | CONFIRMED | NOT-STARTED |
-| **AUDIT-QUEUE-DISCONNECTED-001** — The mature generation queue has no production consumer at all | P2       | CONFIRMED | NOT-STARTED |
+| Finding                                                                                          | Severity | Status    | Disposition                                                                    |
+| ------------------------------------------------------------------------------------------------ | -------- | --------- | ------------------------------------------------------------------------------ |
+| **AUDIT-RECOVERY-001** — Canonical generation is not resumed or reconciled after restart         | P1       | CONFIRMED | FIXED-UNMERGED (integration/wave-0 @ 186d1a08a76d3261d9aecd2183c4286b676b29ec) |
+| **AUDIT-GRACEFUL-SHUTDOWN-001** — Shutdown does not drain the canonical generation queue         | P1       | CONFIRMED | FIXED-UNMERGED (integration/wave-0 @ 186d1a08a76d3261d9aecd2183c4286b676b29ec) |
+| **AUDIT-RESTART-TEST-WEAK-001** — The restart test proves durability, not recovery               | P1       | CONFIRMED | NOT-STARTED                                                                    |
+| **AUDIT-QUEUE-DISCONNECTED-001** — The mature generation queue has no production consumer at all | P2       | CONFIRMED | NOT-STARTED                                                                    |
 
 ## 6. realtime-tenancy — worst severity P1
 
 Outbound emissions ignore the project boundary that the inbound side enforces. Two distinct repairs sit inside this group, one cheap and one needing context plumbed through.
 
-| Finding                                                                                                           | Severity | Status    | Disposition |
-| ----------------------------------------------------------------------------------------------------------------- | -------- | --------- | ----------- |
-| **SEC-REALTIME-GLOBAL-001** — Evaluation, memory and planning events broadcast to every connected socket          | P1       | CONFIRMED | NOT-STARTED |
-| **SEC-REALTIME-TRACE-001** — Execution traces broadcast globally from a listener with no project context          | P1       | CONFIRMED | NOT-STARTED |
-| **SEC-REALTIME-PIPELINE-FALLBACK-001** — Pipeline events fall back to a global broadcast when no project is known | P2       | CONFIRMED | NOT-STARTED |
-| **AUDIT-REALTIME-ROOM-001** — Room membership on project switch is not proven to be exclusive                     | P2       | LIKELY    | NOT-STARTED |
+| Finding                                                                                                           | Severity | Status    | Disposition                                                                    |
+| ----------------------------------------------------------------------------------------------------------------- | -------- | --------- | ------------------------------------------------------------------------------ |
+| **SEC-REALTIME-GLOBAL-001** — Evaluation, memory and planning events broadcast to every connected socket          | P1       | CONFIRMED | FIXED-UNMERGED (integration/wave-0 @ fee5b8c3655cfb9a68722cc9ce34358caf071556) |
+| **SEC-REALTIME-TRACE-001** — Execution traces broadcast globally from a listener with no project context          | P1       | CONFIRMED | FIXED-UNMERGED (integration/wave-0 @ 71e011f7024ba36a646bb79546b98ab236816d02) |
+| **SEC-REALTIME-PIPELINE-FALLBACK-001** — Pipeline events fall back to a global broadcast when no project is known | P2       | CONFIRMED | FIXED-UNMERGED (integration/wave-0 @ fee5b8c3655cfb9a68722cc9ce34358caf071556) |
+| **AUDIT-REALTIME-ROOM-001** — Room membership on project switch is not proven to be exclusive                     | P2       | LIKELY    | NOT-STARTED                                                                    |
 
 ## 7. generation-fidelity — worst severity P1
 
@@ -96,10 +96,10 @@ The generated artifact does not reliably match the stated requirement, in transp
 
 Reproducibility and exception hygiene in the build and scanning path.
 
-| Finding                                                                                               | Severity | Status    | Disposition                                                     |
-| ----------------------------------------------------------------------------------------------------- | -------- | --------- | --------------------------------------------------------------- |
-| **SEC-SCANNER-EXCEPTION-CLOCK-001** — Security exception expiry validated against a frozen audit date | P1       | CONFIRMED | FIXED-UNMERGED (fix/sec-scanner-exception-clock-001 @ d7d1cca0) |
-| **SUPPLYCHAIN-ACTIONS-001** — Actions and base images are pinned by tag rather than digest            | P2       | CONFIRMED | NOT-STARTED                                                     |
+| Finding                                                                                               | Severity | Status    | Disposition                                    |
+| ----------------------------------------------------------------------------------------------------- | -------- | --------- | ---------------------------------------------- |
+| **SEC-SCANNER-EXCEPTION-CLOCK-001** — Security exception expiry validated against a frozen audit date | P1       | CONFIRMED | FIXED-UNMERGED (integration/wave-0 @ d7d1cca0) |
+| **SUPPLYCHAIN-ACTIONS-001** — Actions and base images are pinned by tag rather than digest            | P2       | CONFIRMED | NOT-STARTED                                    |
 
 ## 9. data-handling — worst severity P1
 

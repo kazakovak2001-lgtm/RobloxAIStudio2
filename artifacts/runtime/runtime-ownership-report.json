@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "status": "PASS",
-  "generatedAt": "2026-08-17T22:12:40.959Z",
+  "generatedAt": "2026-08-18T02:23:23.462Z",
   "registryPath": "config/runtime/runtime-ownership.json",
   "counts": {
     "entries": 34,
@@ -11,7 +11,7 @@
     "deprecated": 2,
     "removed": 0,
     "discoveredEntrypoints": 34,
-    "productionFilesScanned": 576,
+    "productionFilesScanned": 578,
     "registeredImports": 83,
     "acknowledgedPreviewImports": 16
   },
