@@ -363,9 +363,10 @@ describePostgres("CORE-1b PostgreSQL restart acceptance", () => {
       luaArtifact.content,
     );
     expect(
-      new ProjectSyncManager(artifactsAfterRestart).getProjectSnapshot(
-        execution.id,
-      )?.artifactCount,
+      new ProjectSyncManager(
+        artifactsAfterRestart,
+      ).getProjectSnapshotForProject(ARTIFACT_TEST_PROJECT, execution.id)
+        ?.artifactCount,
     ).toBe(1);
     expect(
       chatAfterRestart.getConversation(firstMessage.conversationId)?.messages,

@@ -40,9 +40,9 @@ describe("ProjectSyncManager properties", () => {
               }),
             );
           }
-          const snapshot = new ProjectSyncManager(store).getProjectSnapshot(
-            "pipeline",
-          );
+          const snapshot = new ProjectSyncManager(
+            store,
+          ).getProjectSnapshotForProject(ARTIFACT_TEST_PROJECT, "pipeline");
           expect(snapshot?.artifactCount).toBe(stored.length);
           for (const artifact of stored) {
             expect(snapshot?.artifacts).toEqual(
@@ -84,9 +84,15 @@ describe("ProjectSyncManager properties", () => {
             },
           );
           const manager = new ProjectSyncManager(store);
-          const first = manager.getProjectSnapshot("pipeline")?.version;
+          const first = manager.getProjectSnapshotForProject(
+            ARTIFACT_TEST_PROJECT,
+            "pipeline",
+          )?.version;
           await store.edit(artifact.id, after, "property-test");
-          const second = manager.getProjectSnapshot("pipeline")?.version;
+          const second = manager.getProjectSnapshotForProject(
+            ARTIFACT_TEST_PROJECT,
+            "pipeline",
+          )?.version;
           expect(second).not.toBe(first);
         },
       ),
@@ -115,6 +121,7 @@ describe("ProjectSyncManager properties", () => {
           content,
         );
         const result = await new ProjectSyncManager(store).processSyncRequest(
+          ARTIFACT_TEST_PROJECT,
           "pipeline",
           [change],
         );
@@ -147,6 +154,7 @@ describe("ProjectSyncManager properties", () => {
           content,
         );
         const result = await new ProjectSyncManager(store).processSyncRequest(
+          ARTIFACT_TEST_PROJECT,
           "pipeline",
           [change],
         );
@@ -175,9 +183,11 @@ describe("ProjectSyncManager properties", () => {
           },
         );
         const before = structuredClone(store.getById(artifact.id));
-        new ProjectSyncManager(store).validateOnly("pipeline", [
-          updateChange(artifact.id, artifact.createdAt + 1, content),
-        ]);
+        new ProjectSyncManager(store).validateOnly(
+          ARTIFACT_TEST_PROJECT,
+          "pipeline",
+          [updateChange(artifact.id, artifact.createdAt + 1, content)],
+        );
         expect(store.getById(artifact.id)).toEqual(before);
       }),
       { numRuns: 100 },

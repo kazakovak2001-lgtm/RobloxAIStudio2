@@ -9,6 +9,15 @@
   - Backend must be running at BACKEND_URL
 ]]
 
+local RunService = game:GetService("RunService")
+
+-- Local plugin models can be present in the Play data model while Studio
+-- starts its server and client contexts. They must remain inert there: HTTP,
+-- toolbars, dock widgets, and the `plugin` global belong to Edit mode only.
+if not RunService:IsEdit() or plugin == nil then
+    return
+end
+
 local Config = require(script.Parent.src.core.Config)
 local Events = require(script.Parent.src.core.Events)
 local StudioConnector = require(script.Parent.src.services.StudioConnector)

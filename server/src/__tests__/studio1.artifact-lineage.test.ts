@@ -311,6 +311,40 @@ describe("STUDIO-1a canonical artifact lineage", () => {
     expect(luaArtifact).toBeDefined();
     expect(exportArtifact).toBeDefined();
     await storeBeforeRestart.approve(luaArtifact!.id, "quality-controller");
+
+    // The delivery view reconstructs from storage alone. Taken before the
+    // content edit below, because WORLD-1C makes that edit a publication
+    // event: approval changes review state and leaves the bytes alone, so it
+    // does not disturb the package, while an edit replaces content the
+    // committed package was accepted over.
+    const syncBeforeEdit = new ProjectSyncManager(new ArtifactStore(storage));
+    const snapshotBeforeEdit = syncBeforeEdit.getProjectSnapshotForProject(
+      ARTIFACT_TEST_PROJECT,
+      executionId,
+    );
+    expect(snapshotBeforeEdit?.projectId).toBe(ARTIFACT_TEST_PROJECT);
+    // The security report and the structural fingerprint travel with the
+    // export like every other non-Lua artifact, so a creator can read them in
+    // Studio. ARTIFACT-1 names them by stage, so repeated exports replace
+    // rather than accumulate them.
+    expect(snapshotBeforeEdit?.artifactCount).toBe(6);
+    expect(
+      snapshotBeforeEdit?.artifacts.map((artifact) => artifact.id),
+    ).toEqual(expect.arrayContaining([luaArtifact!.id, exportArtifact!.id]));
+
+    const transferBeforeEdit = syncBeforeEdit
+      .getTransferManager()
+      .transferForProject(ARTIFACT_TEST_PROJECT, executionId, [
+        luaArtifact!.id,
+        exportArtifact!.id,
+      ]);
+    expect(transferBeforeEdit.missing).toEqual([]);
+    expect(transferBeforeEdit.payloadExceeded).toBe(false);
+    expect(transferBeforeEdit.artifacts).toHaveLength(2);
+    expect(transferBeforeEdit.artifacts[0]?.content).toEqual(
+      luaArtifact!.content,
+    );
+
     await storeBeforeRestart.edit(
       exportArtifact!.id,
       { package: "reviewed", artifactCount: 1 },
@@ -345,24 +379,26 @@ describe("STUDIO-1a canonical artifact lineage", () => {
       allApproved: false,
     });
 
+    // WORLD-1C. The edit is durable and inspectable, and the package is no
+    // longer deliverable, because the committed package named the bytes the
+    // validation report was computed over and one member is no longer those
+    // bytes. This is a deliberate change from the earlier behaviour, where an
+    // edited package still exported. Restoring the original content restores
+    // the hash, and therefore deliverability.
     const syncManager = new ProjectSyncManager(storeAfterRestart);
-    const snapshot = syncManager.getProjectSnapshot(executionId);
-    expect(snapshot?.projectId).toBe(executionId);
-    // The security report and the structural fingerprint travel with the
-    // export like every other non-Lua artifact, so a creator can read them in
-    // Studio. ARTIFACT-1 names them by stage, so repeated exports replace
-    // rather than accumulate them.
-    expect(snapshot?.artifactCount).toBe(6);
-    expect(snapshot?.artifacts.map((artifact) => artifact.id)).toEqual(
-      expect.arrayContaining([luaArtifact!.id, exportArtifact!.id]),
-    );
-
-    const transfer = syncManager
-      .getTransferManager()
-      .transfer([luaArtifact!.id, exportArtifact!.id]);
-    expect(transfer.missing).toEqual([]);
-    expect(transfer.payloadExceeded).toBe(false);
-    expect(transfer.artifacts).toHaveLength(2);
-    expect(transfer.artifacts[0]?.content).toEqual(luaArtifact!.content);
+    expect(
+      syncManager.getProjectSnapshotForProject(
+        ARTIFACT_TEST_PROJECT,
+        executionId,
+      )?.artifactCount,
+    ).toBe(0);
+    expect(
+      syncManager
+        .getTransferManager()
+        .transferForProject(ARTIFACT_TEST_PROJECT, executionId, [
+          luaArtifact!.id,
+          exportArtifact!.id,
+        ]).artifacts,
+    ).toEqual([]);
   });
 });

@@ -23,6 +23,7 @@ import type { GameDnaReport } from "../../validation/gameDna";
 import { GenerationArtifactRecorder } from "../../studio/artifacts/GenerationArtifactRecorder";
 import { getConfiguredStorageProvider } from "../../platform/storage/StorageFactory";
 import { GenerationOutcomeCoordinator } from "../../platform/projects/ProjectLifecycleCoordinator";
+import { LEGACY_WORLD_RUNTIME_MODE } from "../../types/worldRuntimeMode";
 
 /**
  * Public-safe description of the AI provider backing this service. Carries
@@ -136,6 +137,7 @@ export class GameGenerationService {
       status: "running",
       retry_count: 0,
       pipeline_steps: [],
+      worldRuntimeMode: LEGACY_WORLD_RUNTIME_MODE,
     };
 
     await this.repository.recordExecution(execution);
@@ -222,6 +224,7 @@ export class GameGenerationService {
               execution.id,
               result.graph.getAllNodes(),
               enrichedBlueprint.project_id,
+              { worldRuntimeMode: execution.worldRuntimeMode },
             );
 
             const pipelineSteps = result.graph.getAllNodes().map((node) => {

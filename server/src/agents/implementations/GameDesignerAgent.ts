@@ -1,6 +1,34 @@
 import { BaseAgent, type AgentConfig } from "../core/BaseAgent";
 import type { AgentInput, GameDesignSeed } from "../../types";
 
+function asRecord(value: unknown): Record<string, unknown> | undefined {
+  return typeof value === "object" && value !== null && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : undefined;
+}
+
+function readMechanicName(value: unknown): string | undefined {
+  if (typeof value === "string") {
+    const name = value.trim();
+    return name.length > 0 ? name : undefined;
+  }
+  const mechanic = asRecord(value);
+  const candidate = mechanic?.name ?? mechanic?.title;
+  if (typeof candidate !== "string") return undefined;
+  const name = candidate.trim();
+  return name.length > 0 ? name : undefined;
+}
+
+export function readBlueprintMechanicNames(
+  blueprint: Record<string, unknown> | undefined,
+): string[] {
+  const gameplay = asRecord(blueprint?.gameplay);
+  if (!Array.isArray(gameplay?.mechanics)) return [];
+  return gameplay.mechanics
+    .map(readMechanicName)
+    .filter((name): name is string => name !== undefined);
+}
+
 export class GameDesignerAgent extends BaseAgent {
   public readonly name = "GameDesigner";
   public readonly description =
@@ -44,15 +72,17 @@ export class GameDesignerAgent extends BaseAgent {
       : String(bp?.genre ?? "Adventure");
     const coreLoop = seed?.coreLoop ?? "explore → engage → reward";
     const theme = seed?.theme ?? "fantasy";
-    const mechanics =
-      seed?.mechanics?.join(", ") ?? "movement, interaction, progression";
+    const blueprintMechanics = readBlueprintMechanicNames(bp);
+    const designMechanics =
+      blueprintMechanics.length > 0
+        ? blueprintMechanics
+        : (seed?.mechanics ?? ["exploration", "combat", "progression"]);
+    const mechanics = designMechanics.join(", ");
     const innovations = seed?.innovationModifiers?.join("; ") ?? "";
 
     const fallback: Record<string, unknown> = {
       gameplay: {
-        mechanics: (
-          seed?.mechanics ?? ["exploration", "combat", "progression"]
-        ).map((m: string) => ({
+        mechanics: designMechanics.map((m: string) => ({
           name: m,
           description: `Core mechanic: ${m}`,
           parameters: {},
@@ -66,7 +96,7 @@ export class GameDesignerAgent extends BaseAgent {
         balance: {
           winCondition: "Complete the core loop objective",
           loseCondition: "Fail to maintain the progression constraints",
-          interactionSystems: seed?.mechanics?.slice(0, 5) ?? [],
+          interactionSystems: designMechanics.slice(0, 5),
           economyOrScoring: "Points earned from successful interactions",
           theme,
         },
@@ -75,7 +105,7 @@ export class GameDesignerAgent extends BaseAgent {
       winCondition: "Complete the core loop objective",
       loseCondition: "Fail to maintain the progression constraints",
       progressionModel: "Milestone-based unlocking with escalating difficulty",
-      interactionSystems: seed?.mechanics?.slice(0, 5) ?? [],
+      interactionSystems: designMechanics.slice(0, 5),
       economyOrScoring: "Points earned from successful interactions",
     };
 

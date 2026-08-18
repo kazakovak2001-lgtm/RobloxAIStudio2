@@ -356,9 +356,9 @@ describe("ARTIFACT-CONTRACT-2 Studio delivery is unchanged", () => {
     const lua = byStage(recorded, "LUA_GENERATION");
 
     const manager = new ArtifactTransferManager(store);
-    const transfer = manager.transfer([lua.id]);
+    const transfer = manager.transferForProject(PROJECT, EXECUTION, [lua.id]);
     const ref = manager
-      .getArtifactRefs(EXECUTION)
+      .getArtifactRefsForProject(PROJECT, EXECUTION)
       .find((entry) => entry.id === lua.id);
 
     expect(transfer.artifacts).toHaveLength(1);
@@ -370,7 +370,7 @@ describe("ARTIFACT-CONTRACT-2 Studio delivery is unchanged", () => {
     expect(ref?.hash).toHaveLength(16);
   });
 
-  it("delivers a historical artifact without claiming metadata it never had", () => {
+  it("refuses project-bound delivery for a historical artifact with no project ownership", () => {
     const store = new ArtifactStore();
     const legacy: PipelineArtifact = {
       id: "artifact-legacy-transfer",
@@ -393,9 +393,14 @@ describe("ARTIFACT-CONTRACT-2 Studio delivery is unchanged", () => {
       [legacy.id],
     );
 
-    const transfer = new ArtifactTransferManager(store).transfer([legacy.id]);
+    const transfer = new ArtifactTransferManager(store).transferForProject(
+      PROJECT,
+      EXECUTION,
+      [legacy.id],
+    );
 
-    expect(transfer.artifacts).toHaveLength(1);
+    expect(transfer.artifacts).toHaveLength(0);
+    expect(transfer.missing).toContain(legacy.id);
     expect(store.getById(legacy.id)?.schemaVersion).toBeUndefined();
     expect(store.getById(legacy.id)?.contentHash).toBeUndefined();
   });

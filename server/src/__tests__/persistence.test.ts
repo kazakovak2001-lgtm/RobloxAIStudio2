@@ -2,7 +2,7 @@
  * Persistence Layer Tests — Verifies both InMemory and Postgres providers pass the same suite.
  */
 
-import { describe, it, expect, beforeEach } from "vitest";
+import { describe, it, expect, beforeEach, vi } from "vitest";
 import { InMemoryStorageProvider } from "../platform/storage/StorageProvider";
 import { PostgresStorageProvider } from "../platform/storage/postgres/PostgresStorageProvider";
 import { createStorageProvider } from "../platform/storage/StorageFactory";
@@ -120,6 +120,13 @@ describe("Persistence Infrastructure", async () => {
 
   it("health check returns status", async () => {
     const provider = new PostgresStorageProvider();
+    vi.spyOn(provider, "healthCheck").mockResolvedValue({
+      connected: false,
+      latencyMs: 0,
+      poolSize: 0,
+      pendingTransactions: 0,
+    });
+
     const health = new DatabaseHealthCheck(provider);
     const status = await health.check();
 

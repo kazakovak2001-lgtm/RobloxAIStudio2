@@ -29,6 +29,20 @@ describe("STUDIO-1d canonical Roblox plugin contract", () => {
     expect(entry).not.toContain("RuntimeValidator.new()");
   });
 
+  it("keeps the plugin inert outside the Studio Edit plugin context", () => {
+    const entry = readPluginFile("plugin.lua");
+    const guardIndex = entry.indexOf(
+      "if not RunService:IsEdit() or plugin == nil then",
+    );
+    const firstModuleIndex = entry.indexOf("local Config = require(");
+    const toolbarIndex = entry.indexOf("plugin:CreateToolbar");
+
+    expect(entry).toContain('game:GetService("RunService")');
+    expect(guardIndex).toBeGreaterThan(-1);
+    expect(guardIndex).toBeLessThan(firstModuleIndex);
+    expect(guardIndex).toBeLessThan(toolbarIndex);
+  });
+
   it("uses the existing REST command queue and acknowledgement lifecycle", () => {
     const connector = readPluginFile("src/services/StudioConnector.lua");
     const sync = readPluginFile("src/services/SyncManager.lua");
@@ -95,7 +109,12 @@ describe("STUDIO-1d canonical Roblox plugin contract", () => {
     expect(panel).toContain('self:_textBox(frame, "Project ID"');
     expect(panel).toContain('self:_updateStatus("Project ID required"');
     expect(panel).toContain('GetSetting("AIStudioApiKey")');
-    expect(panel).toContain('SetSetting("AIStudioApiKey", apiKey)');
+    expect(panel).toContain('SetSetting("AIStudioApiKey", enteredApiKey)');
+    expect(panel).toContain("self._savedApiKey");
+    expect(panel).toContain("self:_secretTextBox(frame, apiKeyPlaceholder, 3)");
+    expect(panel).toContain('self._elements.apiKeyInput.Text = ""');
+    expect(panel).toContain("input.TextTransparency = 1");
+    expect(panel).not.toContain("defaultApiKey");
     expect(connector).toContain('headers["X-API-Key"] = self._apiKey');
     expect(connector).not.toContain("Config.API_KEY");
     expect(connector).toContain("payload.projectId = self._projectId");
@@ -118,7 +137,21 @@ describe("STUDIO-1d canonical Roblox plugin contract", () => {
     expect(panel).not.toContain("end:updaeSt");
     expect(panel).not.toContain("self._statusLabel");
     expect(panel).toContain('self:_updateStatus("Verified"');
-    expect(config).toContain('Config.PLUGIN_VERSION = "1.11.0"');
+    expect(config).toContain('Config.PLUGIN_VERSION = "1.11.2"');
     expect(config).toContain("Config.COMMAND_POLL_INTERVAL = 2");
+  });
+
+  it("does not cancel the active heartbeat thread during reconnect", () => {
+    const connection = readPluginFile("src/services/ConnectionManager.lua");
+
+    expect(connection).toContain(
+      "if self._heartbeatThread == heartbeatThread then",
+    );
+    expect(connection).toContain("self._heartbeatThread = nil");
+    expect(connection).toContain("heartbeatThread ~= coroutine.running()");
+    expect(connection).toContain('coroutine.status(heartbeatThread) ~= "dead"');
+    expect(connection.indexOf("self._heartbeatThread = nil")).toBeLessThan(
+      connection.indexOf("self:_attemptReconnect()"),
+    );
   });
 });

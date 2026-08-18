@@ -698,7 +698,8 @@ describe("ASSET-FABRIC-1 in the pipeline", () => {
     const store = new ArtifactStore();
     await record(store, "exec-studio", agentOutput());
 
-    const snapshot = new ProjectSyncManager(store).getProjectSnapshot(
+    const snapshot = new ProjectSyncManager(store).getProjectSnapshotForProject(
+      PROJECT,
       "exec-studio",
     );
     const asset = snapshot?.artifacts.find((a) => a.stage === "ASSET_PLANNING");
