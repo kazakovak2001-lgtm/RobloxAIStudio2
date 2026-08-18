@@ -745,6 +745,7 @@
 │   │   │   ├── studio2fa.allowlist-parity.test.ts
 │   │   │   ├── studio2fa.receipt-verification.test.ts
 │   │   │   ├── studioIntegration.test.ts
+│   │   │   ├── testevidence1.auth-event-loop.test.ts
 │   │   │   ├── world1a.cross-artifact-validation.test.ts
 │   │   │   ├── world1b.receipt-verification.test.ts
 │   │   │   └── world1b.scene-contract.test.ts
