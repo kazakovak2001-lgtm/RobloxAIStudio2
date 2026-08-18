@@ -583,6 +583,7 @@ server/src/__tests__/mar001.resource-authorization.test.ts
 server/src/__tests__/mar001.studio-command-concealment.test.ts
 server/src/__tests__/mar001.studio-protocol-binding.test.ts
 server/src/__tests__/mar001.studio-surface-closure.test.ts
+server/src/__tests__/mar002.script-placement-ownership.test.ts
 server/src/__tests__/novelty1.gameDna.test.ts
 server/src/__tests__/novelty2.verdict.test.ts
 server/src/__tests__/performance.test.ts
@@ -670,6 +671,8 @@ server/src/__tests__/studio1.runtime-consolidation.test.ts
 server/src/__tests__/studio2fa.allowlist-parity.test.ts
 server/src/__tests__/studio2fa.receipt-verification.test.ts
 server/src/__tests__/studioIntegration.test.ts
+server/src/__tests__/support/robloxStub.lua
+server/src/__tests__/support/studioPluginHarness.ts
 server/src/__tests__/testevidence1.auth-event-loop.test.ts
 server/src/__tests__/world1a.cross-artifact-validation.test.ts
 server/src/__tests__/world1b.receipt-verification.test.ts

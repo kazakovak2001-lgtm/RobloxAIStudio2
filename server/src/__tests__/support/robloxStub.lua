@@ -18,6 +18,15 @@
 local Instance = {}
 local instanceMeta = {}
 
+-- Opt-in tracing for diagnosing a fixture, off unless a test turns it on.
+-- Lives here rather than in the plugin because instrumenting the code under
+-- test would change what is being measured.
+local trace = { on = false, events = {} }
+local function record(kind, subject, detail)
+    if not trace.on then return end
+    table.insert(trace.events, kind .. " " .. tostring(subject) .. (detail and (" -> " .. tostring(detail)) or ""))
+end
+
 local SERVICES = {
     "HttpService",
     "ReplicatedStorage",
@@ -59,6 +68,7 @@ local function newInstance(className, name)
         end,
         __newindex = function(self, key, value)
             if key == "Parent" then
+                record("parent", fields.Name, value and getmetatable(value).__fields.Name or "nil")
                 local previous = fields._parent
                 if previous then
                     for index, child in ipairs(previous._children) do
@@ -127,6 +137,7 @@ function instanceMeta:GetDescendants()
 end
 
 function instanceMeta:Destroy()
+    record("destroy", fieldsOf(self).Name)
     self.Parent = nil
     fieldsOf(self)._destroyed = true
     for _, child in ipairs(self:GetChildren()) do child:Destroy() end
@@ -159,6 +170,7 @@ function instanceMeta:IsDestroyed()
 end
 
 Instance.new = function(className)
+    record("create", className)
     if not INHERITS[className] then
         error("stub: refusing to create an unmodelled class: " .. tostring(className))
     end
@@ -185,6 +197,7 @@ function game:GetService(name)
 end
 
 return {
+    trace = trace,
     Instance = Instance,
     game = game,
     services = services,

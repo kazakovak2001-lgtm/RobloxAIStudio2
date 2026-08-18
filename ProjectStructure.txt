@@ -682,6 +682,7 @@
 │   │   │   ├── mar001.studio-command-concealment.test.ts
 │   │   │   ├── mar001.studio-protocol-binding.test.ts
 │   │   │   ├── mar001.studio-surface-closure.test.ts
+│   │   │   ├── mar002.script-placement-ownership.test.ts
 │   │   │   ├── novelty1.gameDna.test.ts
 │   │   │   ├── novelty2.verdict.test.ts
 │   │   │   ├── performance.test.ts
@@ -769,6 +770,9 @@
 │   │   │   ├── studio2fa.allowlist-parity.test.ts
 │   │   │   ├── studio2fa.receipt-verification.test.ts
 │   │   │   ├── studioIntegration.test.ts
+│   │   │   ├── support
+│   │   │   │   ├── robloxStub.lua
+│   │   │   │   └── studioPluginHarness.ts
 │   │   │   ├── testevidence1.auth-event-loop.test.ts
 │   │   │   ├── world1a.cross-artifact-validation.test.ts
 │   │   │   ├── world1b.receipt-verification.test.ts

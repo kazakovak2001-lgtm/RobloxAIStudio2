@@ -2,7 +2,7 @@
 
 # Master audit remediation plan
 
-Generated from `config/audit/master-audit-register.json` (69 findings). Severity is the register's; ordering is by the worst severity in each group, except that re-verification comes first and verified controls come last.
+Generated from `config/audit/master-audit-register.json` (72 findings). Severity is the register's; ordering is by the worst severity in each group, except that re-verification comes first and verified controls come last.
 
 Findings are grouped by shared architectural root rather than by symptom. Several of these are the same defect seen from different places, and repairing them one at a time would mean repairing the root several times.
 
@@ -11,9 +11,10 @@ Findings are grouped by shared architectural root rather than by symptom. Severa
 | Disposition        | Findings |
 | ------------------ | -------- |
 | FIXED-UNMERGED     | 36       |
-| NOT-STARTED        | 26       |
+| NOT-STARTED        | 28       |
 | NO-ACTION-REQUIRED | 6        |
 | SCOPED-OUT         | 1        |
+| ACCEPTED-RISK      | 1        |
 
 ## Root-cause coverage
 
@@ -22,7 +23,7 @@ Every finding names the deduplicated root cause it belongs to. A finding the tax
 | Root cause                                                                                         | Priority        | Findings | Fixed | Remaining |
 | -------------------------------------------------------------------------------------------------- | --------------- | -------- | ----- | --------- |
 | **MAR-001** — Cross-tenant resource authorization is not parent-bound everywhere                   | P0              | 23       | 15    | 8         |
-| **MAR-002** — Studio materializer has no universal creator-ownership safety boundary               | P0              | 3        | 3     | 0         |
+| **MAR-002** — Studio materializer has no universal creator-ownership safety boundary               | P0              | 5        | 3     | 2         |
 | **MAR-003** — No single clean canonical product acceptance run exists                              | P0-release-gate | 3        | 0     | 3         |
 | **MAR-004** — Generation has no durable project-scoped single-flight and idempotent start identity | P1              | 3        | 3     | 0         |
 | **MAR-005** — State transitions have no unified durable CAS/version authority                      | P1              | 3        | 3     | 0         |
@@ -34,7 +35,7 @@ Every finding names the deduplicated root cause it belongs to. A finding the tax
 | **MAR-018** — Execution-level and tenant-level FinOps control plane is missing                     | P1              | 1        | 0     | 1         |
 | **MAR-020** — Raw user content can enter logs without central redaction                            | P1/P2           | 1        | 1     | 0         |
 | **MAR-023** — Frontend main governance does not protect CI authority                               | P1              | 2        | 0     | 2         |
-| **MAR-024** — Supply-chain release authority is not immutable end-to-end                           | P1/P2           | 2        | 1     | 1         |
+| **MAR-024** — Supply-chain release authority is not immutable end-to-end                           | P1/P2           | 3        | 1     | 2         |
 | **MAR-032** — Architecture has ownership abstractions without a complete authority map             | P2              | 2        | 0     | 2         |
 | **MAR-033** — Fuzz and property testing are systematically missing                                 | P2              | 1        | 0     | 1         |
 | **MAR-036** — Dead and legacy code, and naming drift                                               | P3              | 1        | 0     | 1         |
@@ -76,6 +77,8 @@ One defect shape: the identifier the caller was authorized for is not the thing 
 | **SEC-MAR001-REMAINING-GAPS-001** — MAR-001 has fifteen operations left where nothing canonical protects the resource                                                     | P1       | CONFIRMED | NOT-STARTED                                                                                           |
 | **SEC-STUDIO-SCRIPT-OVERWRITE-001** — The plugin destroyed and overwrote creator-authored scripts without checking ownership                                              | P1       | CONFIRMED | FIXED-UNMERGED (fix/mar-002-script-ownership @ b99bb1a4c83642f8259902cd8f4bccd749962808)              |
 | **SEC-STUDIO-SCRIPT-PLACEMENT-001** — An unrecognised script root fell back to the container that replicates to every client                                              | P1       | CONFIRMED | FIXED-UNMERGED (fix/mar-002-script-ownership @ b99bb1a4c83642f8259902cd8f4bccd749962808)              |
+| **SEC-STUDIO-SWEEP-PROVENANCE-001** — The materializer sweep removes any managed instance, including another project's                                                    | P1       | CONFIRMED | NOT-STARTED                                                                                           |
+| **SEC-STUDIO-PROVENANCE-CONTRACT-001** — The materializer contract carries no project identity to scope ownership against                                                 | P1       | CONFIRMED | NOT-STARTED                                                                                           |
 | **AUDIT-BODY-SUPPLIED-BLUEPRINT-001** — Eight operations authorize against an identifier inside a caller-supplied body object                                             | P2       | CONFIRMED | NOT-STARTED                                                                                           |
 | **SEC-STUDIO-PROTOCOL-DISCLOSURE-001** — The command disclosure closed on the REST path was still reachable over the protocol transport                                   | P2       | CONFIRMED | FIXED-UNMERGED (fix/mar-001-studio-protocol-binding @ 74b987129b549eca3fdde294e3e3cf603af81c7d)       |
 | **SEC-STUDIO-STATUS-COUNT-001** — GET /status reported a platform-wide Studio session count                                                                               | P2       | CONFIRMED | FIXED-UNMERGED (fix/mar-001-studio-protocol-binding @ 74b987129b549eca3fdde294e3e3cf603af81c7d)       |
@@ -156,7 +159,17 @@ Generation runs against mutable, sometimes stale design input, and design change
 | **BLUEPRINT-SNAPSHOT-001** — A generation run read the live blueprint rather than an immutable snapshot | P1       | CONFIRMED | FIXED-UNMERGED (integration/wave-0 @ c1aca8a8bcec3654b35c86e06689f7be682f8635) |
 | **INTENT-DEFAULT-CONTAMINATION-001** — System defaults were presented downstream as user-stated intent  | P1       | CONFIRMED | FIXED-UNMERGED (integration/wave-0 @ 63132fff1bb0148886d6c967ddc2199af3378b17) |
 
-## 9. assurance-not-performed — worst severity P1
+## 9. supply-chain-hardening — worst severity P1
+
+Reproducibility and exception hygiene in the build and scanning path.
+
+| Finding                                                                                                    | Severity | Status           | Disposition                                    |
+| ---------------------------------------------------------------------------------------------------------- | -------- | ---------------- | ---------------------------------------------- |
+| **SEC-SCANNER-EXCEPTION-CLOCK-001** — Security exception expiry validated against a frozen audit date      | P1       | CONFIRMED        | FIXED-UNMERGED (integration/wave-0 @ d7d1cca0) |
+| **SUPPLYCHAIN-ACTIONS-001** — Actions and base images are pinned by tag rather than digest                 | P2       | CONFIRMED        | NOT-STARTED                                    |
+| **SUPPLYCHAIN-WASMOON-DEVDEP-001** — Lua runtime added as a development dependency for Studio plugin tests | P3       | VERIFIED-CONTROL | ACCEPTED-RISK                                  |
+
+## 10. assurance-not-performed — worst severity P1
 
 Whole classes of assurance have not been run. Listed so their absence is explicit rather than implied by silence.
 
@@ -165,15 +178,6 @@ Whole classes of assurance have not been run. Listed so their absence is explici
 | **STUDIO-PLAY-ACCEPTANCE-001** — No end-to-end proof from generation to Roblox Play with runtime evidence | P1       | OPEN      | NOT-STARTED                                                                              |
 | **AUDIT-DYNAMIC-ASSURANCE-001** — Dynamic assurance has not been performed                                | P1       | OPEN      | NOT-STARTED                                                                              |
 | **AUDIT-STUDIO-PLUGIN-UNTESTABLE-001** — The Studio plugin had no executable test path                    | P1       | CONFIRMED | FIXED-UNMERGED (fix/mar-002-script-ownership @ b99bb1a4c83642f8259902cd8f4bccd749962808) |
-
-## 10. supply-chain-hardening — worst severity P1
-
-Reproducibility and exception hygiene in the build and scanning path.
-
-| Finding                                                                                               | Severity | Status    | Disposition                                    |
-| ----------------------------------------------------------------------------------------------------- | -------- | --------- | ---------------------------------------------- |
-| **SEC-SCANNER-EXCEPTION-CLOCK-001** — Security exception expiry validated against a frozen audit date | P1       | CONFIRMED | FIXED-UNMERGED (integration/wave-0 @ d7d1cca0) |
-| **SUPPLYCHAIN-ACTIONS-001** — Actions and base images are pinned by tag rather than digest            | P2       | CONFIRMED | NOT-STARTED                                    |
 
 ## 11. data-handling — worst severity P1
 

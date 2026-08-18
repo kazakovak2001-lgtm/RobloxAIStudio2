@@ -1214,6 +1214,54 @@
         "server/src/__tests__/mar002.script-placement-ownership.test.ts"
       ],
       "notes": "Every claim about the plugin was a string search over its source, which cannot show that a creator's script survived a generation or that a bad root was refused. That is the same weak evidence MAR-001 spent four slices replacing, and it would have made every MAR-002 fix unprovable. A Lua runtime was added as a dev dependency and a Roblox instance stub written for it, so the plugin's own modules run and their effects are observed. The stub models Parent reassignment, Destroy, attributes and IsA, and raises on any class or service it does not model, because a stub that quietly returns nil turns a real defect into a passing test."
+    },
+    {
+      "id": "SEC-STUDIO-SWEEP-PROVENANCE-001",
+      "title": "The materializer sweep removes any managed instance, including another project's",
+      "severity": "P1",
+      "status": "CONFIRMED",
+      "disposition": "NOT-STARTED",
+      "area": "security",
+      "remediationGroup": "authorization-object-binding",
+      "mar": "MAR-002",
+      "evidence": [
+        "studio-plugin/src/utils/UITreeMaterializer.lua",
+        "studio-plugin/src/utils/WorldSceneMaterializer.lua",
+        "server/src/__tests__/mar002.materializer-provenance.test.ts"
+      ],
+      "notes": "isManaged reads one boolean attribute, which answers whether AI Studio made the instance and not whether this project did. The sweep removes every managed child the current delivery did not name, so a place file that has hosted two projects loses the first project's screens to the second project's export. Reproduced: a screen created by one delivery is destroyed by the next. The replace path is NOT affected and is deliberately untouched here, because it already runs an ownership precheck before constructing anything and refuses a collision with unmanaged work. Not fixed in this pass: materialize(content, stageFolder) receives no project identity, so the correct behaviour is not merely unenforced but unrepresentable. The contract has to change first, which is SEC-STUDIO-PROVENANCE-CONTRACT-001."
+    },
+    {
+      "id": "SEC-STUDIO-PROVENANCE-CONTRACT-001",
+      "title": "The materializer contract carries no project identity to scope ownership against",
+      "severity": "P1",
+      "status": "CONFIRMED",
+      "disposition": "NOT-STARTED",
+      "area": "security",
+      "remediationGroup": "authorization-object-binding",
+      "mar": "MAR-002",
+      "evidence": [
+        "studio-plugin/src/utils/UITreeMaterializer.lua",
+        "studio-plugin/src/utils/ArtifactLoader.lua",
+        "server/src/__tests__/mar002.materializer-provenance.test.ts"
+      ],
+      "notes": "UITreeMaterializer.materialize and WorldSceneMaterializer.materialize take content and a stage folder. Neither the arguments nor the content carry a project, and the loader that calls them does not pass one, so no destructive decision can be scoped to the delivery it belongs to. Smallest contract that closes it: stamp two attributes beside AIStudioManaged when an instance is created, one naming the project and one naming the delivery that produced it, and pass the expected pair into materialize. Replace and sweep then require managed AND a matching project, treating a managed instance from elsewhere exactly as they already treat unmanaged work: refuse rather than destroy. An instance carrying the mark but no project attribute is from a build before this change and must be treated as foreign, because guessing in the permissive direction is what the finding is about."
+    },
+    {
+      "id": "SUPPLYCHAIN-WASMOON-DEVDEP-001",
+      "title": "Lua runtime added as a development dependency for Studio plugin tests",
+      "severity": "P3",
+      "status": "VERIFIED-CONTROL",
+      "disposition": "ACCEPTED-RISK",
+      "area": "supply-chain",
+      "remediationGroup": "supply-chain-hardening",
+      "mar": "MAR-024",
+      "evidence": [
+        "package.json",
+        "package-lock.json",
+        "server/src/__tests__/support/studioPluginHarness.ts"
+      ],
+      "notes": "wasmoon@1.16.0, reviewed as a devDependency for a public repository. Verdict SAFE_WITH_CONDITIONS, no blocker. No advisories in OSV, GHSA or the npm bulk endpoint for this version; no malware signal; valid registry signature; MIT; no install scripts, with the WASM binary shipped pre-built inside the tarball rather than fetched at install time. Its real transitive footprint is one types-only package. Condition: 1.16.0 dates from December 2023 with no later 1.x release and development moved to a 2.0 prerelease, so the caret range will not pick up a patch that does not exist and the version needs checking by hand rather than assumed current. Review gaps recorded rather than glossed: no Endor data was available, no dedicated malware feed was queried, the bundled binary was not diffed against a reproducible build, and the maintainer account's 2FA posture could not be verified."
     }
   ]
 }
