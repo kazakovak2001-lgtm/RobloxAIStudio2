@@ -569,6 +569,7 @@ server/src/__tests__/performance.test.ts
 server/src/__tests__/persistence.test.ts
 server/src/__tests__/pipeline1a.plan-definition.test.ts
 server/src/__tests__/pipeline1b.validation-report.test.ts
+server/src/__tests__/pipelinetruth1.completion-boundary.test.ts
 server/src/__tests__/platform.test.ts
 server/src/__tests__/playtesttruth1.evidence.test.ts
 server/src/__tests__/playtesttruth1.review.test.ts

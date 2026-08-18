@@ -198,6 +198,11 @@ export class GameGenerationService {
           // its agents ran still knows how their content was produced, and
           // that is exactly when mislabelling it would be worst.
           let executedNodes: ReadonlyArray<{ output?: unknown }> = [];
+          // GEN-FAILURE-EVIDENCE-001. Held outside the try for the same
+          // reason as the two above: a run that fails after its agents ran
+          // still knows which steps completed, failed and were skipped, and
+          // that is exactly the run whose evidence used to be dropped.
+          let pipelineSteps: GenerationExecution["pipeline_steps"] = [];
 
           try {
             const gameDesignSeed = generateGameDesignSeed({
@@ -267,7 +272,7 @@ export class GameGenerationService {
               enrichedBlueprint.project_id,
             );
 
-            const pipelineSteps = result.graph.getAllNodes().map((node) => {
+            pipelineSteps = result.graph.getAllNodes().map((node) => {
               const status =
                 node.status === "done"
                   ? ("completed" as const)
@@ -325,6 +330,14 @@ export class GameGenerationService {
               error_message:
                 err instanceof Error ? err.message : "Unknown pipeline error",
               total_duration_ms: Date.now() - execution.started_at.getTime(),
+              // GEN-FAILURE-EVIDENCE-001. The success path recorded which steps
+              // ran; this path did not, and the coordinator falls back to the
+              // record's existing steps, which are the empty array written at
+              // start. A run whose recorder or validation failed after six
+              // agents therefore reported nothing completed, nothing failed and
+              // nothing known. It stays empty only when the failure came before
+              // any step was derived, where the shape genuinely is unknown.
+              pipeline_steps: pipelineSteps,
               ...pipelineProvenance,
               // How the content was produced is knowable whenever the agents
               // ran, even though the run failed afterwards — and `ai` still
@@ -456,9 +469,56 @@ export class GameGenerationService {
       }
     }
 
-    if (!this.outcomeCoordinator) {
-      return this.repository.updateExecution(executionId, updates);
+    const committed = this.outcomeCoordinator
+      ? await this.outcomeCoordinator.commit(executionId, updates)
+      : await this.repository.updateExecution(executionId, updates);
+
+    // GEN-LIFECYCLE-SPLIT-001. This is the only point at which a generation is
+    // finished in the canonical sense: the artifacts are recorded, validation
+    // has run, and the outcome is durably committed. `pipeline.completed` fires
+    // earlier and only means the agent DAG finished, so a consumer that treats
+    // it as completion can show a finished run for a generation that then
+    // failed. Emitted here, from one place, so both the success and the failure
+    // path announce the same truth as the record they just wrote.
+    if (committed) {
+      await this.emitTerminalGenerationEvent(committed);
     }
-    return this.outcomeCoordinator.commit(executionId, updates);
+    return committed;
+  }
+
+  private async emitTerminalGenerationEvent(
+    execution: GenerationExecution,
+  ): Promise<void> {
+    try {
+      await this.events.emit({
+        type:
+          execution.status === "completed"
+            ? "generation.completed"
+            : "generation.failed",
+        pipelineId: execution.id,
+        projectId: execution.project_id,
+        timestamp: execution.completed_at ?? new Date(),
+        data: {
+          executionId: execution.id,
+          status: execution.status,
+          ...(execution.error_message
+            ? { error: execution.error_message }
+            : {}),
+          completedSteps: execution.pipeline_steps.filter(
+            (step) => step.status === "completed",
+          ).length,
+          failedSteps: execution.pipeline_steps.filter(
+            (step) => step.status === "failed",
+          ).length,
+          totalSteps: execution.pipeline_steps.length,
+        },
+      });
+    } catch (error) {
+      // Announcing an outcome must never undo the outcome that was committed.
+      console.error(
+        `[GameGenerationService] failed to announce terminal state for ${execution.id}:`,
+        error,
+      );
+    }
   }
 }

@@ -667,6 +667,7 @@
 │   │   │   ├── persistence.test.ts
 │   │   │   ├── pipeline1a.plan-definition.test.ts
 │   │   │   ├── pipeline1b.validation-report.test.ts
+│   │   │   ├── pipelinetruth1.completion-boundary.test.ts
 │   │   │   ├── platform.test.ts
 │   │   │   ├── playtesttruth1.evidence.test.ts
 │   │   │   ├── playtesttruth1.review.test.ts

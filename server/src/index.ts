@@ -334,29 +334,18 @@ events.onEvent(async (evt) => {
         outputs: evt.data?.outputs,
         timestamp: evt.timestamp.toISOString(),
       };
-      if (evt.projectId) {
-        await projectRepository.updateDurable(evt.projectId, {
-          status: "ready",
-          qualityScore: 100,
-        });
-        const record = generationHistory.getByPipeline(evt.pipelineId);
-        if (record) {
-          const finishedAt = evt.timestamp.getTime();
-          const completed = Number(
-            evt.data?.completedSteps ?? record.stagesCompleted,
-          );
-          const failed = Number(evt.data?.failedSteps ?? record.failures);
-          await generationHistory.record({
-            ...record,
-            status: "completed",
-            finishedAt,
-            duration: finishedAt - record.startedAt,
-            stagesCompleted: completed,
-            stagesTotal: Math.max(record.stagesTotal, completed + failed),
-            failures: failed,
-          });
-        }
-      }
+      // GEN-LIFECYCLE-SPLIT-001. This fires when the agent DAG finishes, which
+      // is before the artifacts are recorded, before validation and before the
+      // canonical package is committed. It used to mark the project `ready`
+      // here, with a hardcoded quality score of 100, so a run whose recorder or
+      // validation then failed left the project claiming a finished, perfect
+      // generation while its durable execution said failed and no package
+      // existed.
+      //
+      // The terminal transition belongs to GenerationOutcomeCoordinator.commit,
+      // which runs after all of that and computes the score from the steps that
+      // actually ran. Nothing durable is written here any more: this event now
+      // means only that the DAG finished.
       console.log(
         "[pipeline-bridge] forwarding",
         "pipeline.completed",
