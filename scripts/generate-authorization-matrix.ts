@@ -234,6 +234,8 @@ const autonomousRunScopeEvidence =
   "server/src/__tests__/security2gE.autonomous-run-scope.test.ts";
 const gameGenerationFinalScopeEvidence =
   "server/src/__tests__/security2gE.game-generation-final-scope.test.ts";
+const blueprintProposalEvidence =
+  "server/src/__tests__/definechat1.proposal-routes.test.ts";
 const socketLeaveParityEvidence =
   "server/src/__tests__/security2gE.socket-leave-parity.test.ts";
 const directProjectRouteEvidence =
@@ -1460,6 +1462,39 @@ const overrides = new Map<
       gameGenerationFinalScopeEvidence,
     ),
   ],
+  ...(
+    [
+      [
+        "GET /:projectId/blueprint/proposals",
+        "project.blueprint.proposals.read",
+      ],
+      [
+        "POST /:projectId/blueprint/proposals",
+        "project.blueprint.proposals.create",
+      ],
+      [
+        "POST /:projectId/blueprint/proposals/:proposalId/accept",
+        "project.blueprint.proposals.accept",
+      ],
+      [
+        "POST /:projectId/blueprint/proposals/:proposalId/reject",
+        "project.blueprint.proposals.reject",
+      ],
+    ] as const
+  ).map(
+    ([operation, capability]) =>
+      [
+        `rest|server/src/routes/game-generation.ts|${operation}`,
+        classified(
+          "project-owner",
+          "user-session",
+          capability,
+          "path-project",
+          blueprintProposalEvidence,
+          blueprintProposalEvidence,
+        ),
+      ] as const,
+  ),
   [
     "socket|server/src/socket/index.ts|project:leave",
     classified(

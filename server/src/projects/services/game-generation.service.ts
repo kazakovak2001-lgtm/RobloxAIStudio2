@@ -2,7 +2,10 @@ import { randomUUID } from "crypto";
 
 import type {
   GameBlueprint,
+  BlueprintChangeProposal,
+  BlueprintVersion,
   CreateBlueprintInput,
+  RequirementSpec,
   GenerationExecution,
 } from "../types/blueprint";
 
@@ -24,6 +27,8 @@ import { deriveNoveltyVerdict } from "../../validation/noveltyVerdict";
 import type { GameDnaReport } from "../../validation/gameDna";
 import { GenerationArtifactRecorder } from "../../studio/artifacts/GenerationArtifactRecorder";
 import { getConfiguredStorageProvider } from "../../platform/storage/StorageFactory";
+import type { DurableMutation } from "../../platform/storage/StorageProvider";
+import { evaluateRequirementCoverage } from "../../validation/requirementTraceability";
 import { GenerationOutcomeCoordinator } from "../../platform/projects/ProjectLifecycleCoordinator";
 
 /**
@@ -35,6 +40,14 @@ export interface GenerationProviderInfo {
   provider: string | null;
   /** Model name, when a provider resolved. */
   model?: string;
+}
+
+/** Refusal from the blueprint proposal review path. */
+export class BlueprintProposalError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "BlueprintProposalError";
+  }
 }
 
 export class GameGenerationService {
@@ -115,6 +128,150 @@ export class GameGenerationService {
   }
 
   /**
+   * CHAT-BLUEPRINT-DISCONNECT-001. Record a proposed design change.
+   *
+   * A proposal changes nothing. The Define conversation could previously state
+   * that it had altered the design while the next generation still consumed the
+   * old blueprint, because nothing connected the two. Writing the claim down as
+   * a pending, field-level proposal makes it reviewable and, until accepted,
+   * inert.
+   */
+  async proposeBlueprintChange(
+    blueprintId: string,
+    proposedBy: string,
+    changes: Partial<GameBlueprint>,
+    rationale?: string,
+  ): Promise<BlueprintChangeProposal> {
+    const blueprint = await this.repository.getBlueprint(blueprintId);
+    if (!blueprint) {
+      throw new Error(`Blueprint ${blueprintId} not found`);
+    }
+    const editable = this.editableChanges(changes);
+    if (Object.keys(editable).length === 0) {
+      throw new BlueprintProposalError(
+        "A proposal must change at least one design field",
+      );
+    }
+
+    const proposal: BlueprintChangeProposal = {
+      id: `blueprint-proposal-${randomUUID()}`,
+      project_id: blueprint.project_id,
+      blueprint_id: blueprint.id,
+      proposed_by: proposedBy,
+      created_at: new Date(),
+      changes: editable,
+      ...(rationale ? { rationale } : {}),
+      status: "pending",
+    };
+    return this.repository.saveProposal(proposal);
+  }
+
+  async listBlueprintProposals(
+    projectId: string,
+    status?: BlueprintChangeProposal["status"],
+  ): Promise<BlueprintChangeProposal[]> {
+    return this.repository.listProposals(projectId, status);
+  }
+
+  /**
+   * Apply a proposal and version the result, in one transaction.
+   *
+   * The updated blueprint, the version recording it and the proposal's decision
+   * commit together. Applying the change without recording the version would
+   * leave a design nothing could trace; recording a version for a change that
+   * did not commit would claim a design that never existed.
+   */
+  async acceptBlueprintProposal(
+    proposalId: string,
+    decidedBy: string,
+  ): Promise<{ blueprint: GameBlueprint; version: BlueprintVersion }> {
+    const proposal = this.repository.getProposal(proposalId);
+    if (!proposal) throw new BlueprintProposalError("Proposal not found");
+    if (proposal.status !== "pending") {
+      throw new BlueprintProposalError(
+        `Proposal ${proposalId} is already ${proposal.status}`,
+      );
+    }
+
+    const blueprint = await this.repository.getBlueprint(proposal.blueprint_id);
+    if (!blueprint) throw new BlueprintProposalError("Blueprint not found");
+
+    const updated: GameBlueprint = {
+      ...blueprint,
+      ...this.editableChanges(proposal.changes),
+      id: blueprint.id,
+      project_id: blueprint.project_id,
+      user_id: blueprint.user_id,
+      created_at: blueprint.created_at,
+      updated_at: new Date(),
+      version: blueprint.version + 1,
+    };
+
+    const { version, mutations } = await this.repository.prepareVersion(
+      blueprint.id,
+      decidedBy,
+      `Accepted proposal ${proposal.id}`,
+      updated,
+    );
+
+    await this.repository.commitProposalAcceptance(updated, mutations, {
+      ...proposal,
+      status: "accepted",
+      decided_at: new Date(),
+      decided_by: decidedBy,
+      applied_version_id: version.id,
+    });
+
+    this.cache.set(updated.project_id, updated);
+    return { blueprint: updated, version };
+  }
+
+  async rejectBlueprintProposal(
+    proposalId: string,
+    decidedBy: string,
+  ): Promise<BlueprintChangeProposal> {
+    const proposal = this.repository.getProposal(proposalId);
+    if (!proposal) throw new BlueprintProposalError("Proposal not found");
+    if (proposal.status !== "pending") {
+      throw new BlueprintProposalError(
+        `Proposal ${proposalId} is already ${proposal.status}`,
+      );
+    }
+
+    const rejected: BlueprintChangeProposal = {
+      ...proposal,
+      status: "rejected",
+      decided_at: new Date(),
+      decided_by: decidedBy,
+    };
+    return this.repository.saveProposal(rejected);
+  }
+
+  /**
+   * Keep a proposal to design fields.
+   *
+   * Identity, ownership and lifecycle bookkeeping are not design, and a
+   * proposal that could rewrite them would be a way to move a blueprint between
+   * projects through the review path.
+   */
+  private editableChanges(
+    changes: Partial<GameBlueprint>,
+  ): Partial<GameBlueprint> {
+    const forbidden = new Set([
+      "id",
+      "project_id",
+      "user_id",
+      "created_at",
+      "updated_at",
+      "version",
+      "status",
+    ]);
+    return Object.fromEntries(
+      Object.entries(changes).filter(([field]) => !forbidden.has(field)),
+    ) as Partial<GameBlueprint>;
+  }
+
+  /**
    * AUDIT-START-ATOMICITY-001 and SEC-GENERATION-BLUEPRINT-001.
    *
    * Resolve the blueprint and build the execution record **without**
@@ -139,7 +296,17 @@ export class GameGenerationService {
     blueprintIdOrProjectId: string,
     userId: string,
     expectedProjectId?: string,
-  ): Promise<{ execution: GenerationExecution; blueprint: GameBlueprint }> {
+  ): Promise<{
+    execution: GenerationExecution;
+    blueprint: GameBlueprint;
+    /**
+     * BLUEPRINT-STALE-001. Durable mutations recording the immutable snapshot
+     * this run is bound to. The caller commits them in the same transaction as
+     * the execution: a snapshot without its execution, or an execution naming a
+     * snapshot that never committed, are both unrepairable states.
+     */
+    versionMutations: DurableMutation[];
+  }> {
     const blueprint =
       (await this.repository.getBlueprint(blueprintIdOrProjectId)) ??
       (await this.repository.getBlueprintByProjectId(blueprintIdOrProjectId));
@@ -158,6 +325,17 @@ export class GameGenerationService {
       );
     }
 
+    // BLUEPRINT-STALE-001. Freeze the design this run will consume. Generation
+    // used to reference the mutable blueprint, so editing the brief after a run
+    // silently changed what that run appeared to have been generated from, and
+    // two runs of "the same" blueprint could be two different designs.
+    const { version, mutations: versionMutations } =
+      await this.repository.prepareVersion(
+        blueprint.id,
+        userId,
+        `Snapshot taken for generation of project ${blueprint.project_id}`,
+      );
+
     const now = new Date();
     const execution: GenerationExecution = {
       // AUDIT-ID-EXEC-001. `exec-${Date.now()}` collided whenever two starts
@@ -172,11 +350,13 @@ export class GameGenerationService {
       user_id: userId,
       started_at: now,
       status: "running",
+      blueprint_version_id: version.id,
+      blueprint_snapshot_hash: version.snapshot_hash,
       retry_count: 0,
       pipeline_steps: [],
     };
 
-    return { execution, blueprint };
+    return { execution, blueprint, versionMutations };
   }
 
   /**
@@ -351,6 +531,7 @@ export class GameGenerationService {
               ...pipelineProvenance,
               ...this.resolveProvenance(result.graph.getAllNodes()),
               ...this.resolveNovelty(execution.id, recordedArtifacts),
+              ...this.resolveRequirementCoverage(result.graph.getAllNodes()),
             });
           } catch (err) {
             console.error(
@@ -459,6 +640,46 @@ export class GameGenerationService {
    * passed deterministic validation must not fail because a judgement about
    * its structure could not be formed.
    */
+  /**
+   * INTENT-FIDELITY-001. Record what this run could show about its requirements.
+   *
+   * The requirements agent gives each requirement an identifier; coverage asks
+   * which of those identifiers appear anywhere in what the run produced. Today
+   * the answer is mostly none, because the chain does not carry them yet, and
+   * that is exactly why it is recorded: the gap becomes a number on the run
+   * instead of an assumption about it.
+   *
+   * Never throws. A run that produced a package must not be failed because a
+   * measurement about it could not be taken.
+   */
+  private resolveRequirementCoverage(
+    nodes: ReadonlyArray<{ output?: unknown }>,
+  ): Pick<GenerationExecution, "requirement_coverage"> {
+    try {
+      const outputs = nodes
+        .map((node) => node.output)
+        .filter((output): output is Record<string, unknown> =>
+          Boolean(output && typeof output === "object"),
+        );
+      const specs = outputs.flatMap((output) =>
+        Array.isArray(output.requirement_specs)
+          ? (output.requirement_specs as RequirementSpec[])
+          : [],
+      );
+      if (specs.length === 0) return {};
+
+      // The requirements output itself is excluded: a requirement appearing in
+      // its own definition is not evidence that anything downstream honoured it.
+      const downstream = outputs.filter(
+        (output) => !Array.isArray(output.requirement_specs),
+      );
+      return {
+        requirement_coverage: evaluateRequirementCoverage(specs, downstream),
+      };
+    } catch {
+      return {};
+    }
+  }
   private resolveNovelty(
     executionId: string,
     artifacts: readonly { stage: string; content: unknown }[],

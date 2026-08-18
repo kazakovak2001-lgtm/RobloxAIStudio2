@@ -557,10 +557,14 @@ server/src/__tests__/auditstartatomicity1.generation-start.test.ts
 server/src/__tests__/autonomousPipelineExploration.test.ts
 server/src/__tests__/autonomousPipelineIntegration.test.ts
 server/src/__tests__/autonomousPipelinePreservation.test.ts
+server/src/__tests__/blueprint1.immutable-snapshot.test.ts
+server/src/__tests__/blueprint2.intent-sync.test.ts
 server/src/__tests__/bugConditionExploration.test.ts
 server/src/__tests__/core1b.persistence.test.ts
 server/src/__tests__/core1b.postgres.integration.test.ts
 server/src/__tests__/cutover1c.origin-policy.test.ts
+server/src/__tests__/definechat1.blueprint-proposals.test.ts
+server/src/__tests__/definechat1.proposal-routes.test.ts
 server/src/__tests__/e2eGeneration.test.ts
 server/src/__tests__/generation-provenance.test.ts
 server/src/__tests__/genrecovery1.restart-reconciliation.test.ts
@@ -568,6 +572,8 @@ server/src/__tests__/gensingleflight1.active-claim.test.ts
 server/src/__tests__/harden2a.auth-contract.test.ts
 server/src/__tests__/identityAccess.test.ts
 server/src/__tests__/integration.test.ts
+server/src/__tests__/intent1.default-contamination.test.ts
+server/src/__tests__/intent2.requirement-traceability.test.ts
 server/src/__tests__/novelty1.gameDna.test.ts
 server/src/__tests__/novelty2.verdict.test.ts
 server/src/__tests__/performance.test.ts
@@ -1289,6 +1295,7 @@ server/src/validation/gameDna.ts
 server/src/validation/generationValidation.ts
 server/src/validation/luaSecurityReview.ts
 server/src/validation/noveltyVerdict.ts
+server/src/validation/requirementTraceability.ts
 server/src/validation/worldCrossValidation.ts
 server/src/validation/worldModel.ts
 server/src/validation/worldSceneBuilder.ts

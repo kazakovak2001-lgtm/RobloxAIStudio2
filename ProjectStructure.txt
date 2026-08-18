@@ -656,10 +656,14 @@
 │   │   │   ├── autonomousPipelineExploration.test.ts
 │   │   │   ├── autonomousPipelineIntegration.test.ts
 │   │   │   ├── autonomousPipelinePreservation.test.ts
+│   │   │   ├── blueprint1.immutable-snapshot.test.ts
+│   │   │   ├── blueprint2.intent-sync.test.ts
 │   │   │   ├── bugConditionExploration.test.ts
 │   │   │   ├── core1b.persistence.test.ts
 │   │   │   ├── core1b.postgres.integration.test.ts
 │   │   │   ├── cutover1c.origin-policy.test.ts
+│   │   │   ├── definechat1.blueprint-proposals.test.ts
+│   │   │   ├── definechat1.proposal-routes.test.ts
 │   │   │   ├── e2eGeneration.test.ts
 │   │   │   ├── generation-provenance.test.ts
 │   │   │   ├── genrecovery1.restart-reconciliation.test.ts
@@ -667,6 +671,8 @@
 │   │   │   ├── harden2a.auth-contract.test.ts
 │   │   │   ├── identityAccess.test.ts
 │   │   │   ├── integration.test.ts
+│   │   │   ├── intent1.default-contamination.test.ts
+│   │   │   ├── intent2.requirement-traceability.test.ts
 │   │   │   ├── novelty1.gameDna.test.ts
 │   │   │   ├── novelty2.verdict.test.ts
 │   │   │   ├── performance.test.ts
@@ -1572,6 +1578,7 @@
 │   │   │   ├── generationValidation.ts
 │   │   │   ├── luaSecurityReview.ts
 │   │   │   ├── noveltyVerdict.ts
+│   │   │   ├── requirementTraceability.ts
 │   │   │   ├── worldCrossValidation.ts
 │   │   │   ├── worldModel.ts
 │   │   │   ├── worldSceneBuilder.ts

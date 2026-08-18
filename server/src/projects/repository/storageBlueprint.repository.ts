@@ -1,9 +1,11 @@
 import { randomUUID } from "crypto";
+import { computeContentHash } from "../../pipeline/v2/artifactEnvelope";
 import type {
   DurableMutation,
   StorageProvider,
 } from "../../platform/storage/StorageProvider";
 import type {
+  BlueprintChangeProposal,
   BlueprintQueryOptions,
   BlueprintVersion,
   CreateBlueprintInput,
@@ -16,6 +18,7 @@ import type { IBlueprintRepository } from "./blueprint.repository";
 const BLUEPRINTS = "game_blueprints";
 const VERSIONS = "blueprint_versions";
 const EXECUTIONS = "generation_executions";
+const PROPOSALS = "blueprint_change_proposals";
 
 /**
  * Durable blueprint repository backed by the process-wide StorageProvider.
@@ -165,47 +168,158 @@ export class StorageBlueprintRepository implements IBlueprintRepository {
     return { items: items.slice(offset, offset + limit), total };
   }
 
+  /**
+   * BLUEPRINT-STALE-001. Build the version and its mutations without writing.
+   *
+   * Shared with `saveVersion` below so there is one definition of what a
+   * version is, and one place where the snapshot hash is computed.
+   */
+  async prepareVersion(
+    blueprintId: string,
+    userId: string,
+    description?: string,
+    /**
+     * The design to record, when it is not the blueprint as currently stored.
+     *
+     * Accepting a change has to version the result of the change, not the state
+     * before it, and both have to commit together. Passing the intended design
+     * here is what lets the caller do that in one transaction.
+     */
+    snapshotOverride?: GameBlueprint,
+  ): Promise<{ version: BlueprintVersion; mutations: DurableMutation[] }> {
+    const blueprint =
+      snapshotOverride ?? (await this.getBlueprint(blueprintId));
+    if (!blueprint) throw new Error(`Blueprint ${blueprintId} not found`);
+
+    const activeVersions = this.storage.list<BlueprintVersion>(
+      VERSIONS,
+      (candidate) =>
+        candidate.blueprint_id === blueprintId && candidate.is_active,
+    );
+    const snapshot = { ...blueprint };
+    const version: BlueprintVersion = {
+      id: `blueprint-version-${randomUUID()}`,
+      blueprint_id: blueprintId,
+      version_number: blueprint.version,
+      created_at: new Date(),
+      created_by: userId,
+      snapshot,
+      // Depends on the design content and nothing else, so the same design
+      // hashes the same whoever snapshotted it and whenever.
+      //
+      // The JSON round-trip is deliberate. `computeContentHash` is built for
+      // artifact content, where an explicit `undefined` is an error worth
+      // refusing; a blueprint has optional fields that are legitimately
+      // undefined, so hashing it directly would throw on almost every start.
+      // Round-tripping drops those keys and renders dates as ISO strings, which
+      // is the right meaning here: an absent field and an explicitly undefined
+      // one are the same design. Key order still does not matter, because the
+      // shared algorithm sorts keys itself.
+      snapshot_hash: computeContentHash(
+        JSON.parse(JSON.stringify(snapshot)) as unknown,
+      ),
+      change_description: description,
+      is_active: true,
+    };
+    const mutations: DurableMutation[] = [
+      ...activeVersions.map((activeVersion) => ({
+        operation: "set" as const,
+        collection: VERSIONS,
+        id: activeVersion.id,
+        data: {
+          ...this.hydrateVersion(activeVersion),
+          is_active: false,
+        },
+      })),
+      {
+        operation: "set" as const,
+        collection: VERSIONS,
+        id: version.id,
+        data: version,
+      },
+    ];
+    return { version, mutations };
+  }
+
+  /**
+   * CHAT-BLUEPRINT-DISCONNECT-001. Proposal storage lives here because it is
+   * durable blueprint state, and because accepting one has to write the
+   * blueprint, its version and the decision in a single transaction.
+   */
+  async saveProposal(
+    proposal: BlueprintChangeProposal,
+  ): Promise<BlueprintChangeProposal> {
+    await this.storage.setDurable(PROPOSALS, proposal.id, proposal);
+    return this.hydrateProposal(proposal);
+  }
+
+  getProposal(proposalId: string): BlueprintChangeProposal | null {
+    const proposal = this.storage.get<BlueprintChangeProposal>(
+      PROPOSALS,
+      proposalId,
+    );
+    return proposal ? this.hydrateProposal(proposal) : null;
+  }
+
+  listProposals(
+    projectId: string,
+    status?: BlueprintChangeProposal["status"],
+  ): BlueprintChangeProposal[] {
+    return this.storage
+      .list<BlueprintChangeProposal>(
+        PROPOSALS,
+        (candidate) =>
+          candidate.project_id === projectId &&
+          (status === undefined || candidate.status === status),
+      )
+      .map((proposal) => this.hydrateProposal(proposal));
+  }
+
+  /** Apply the blueprint, its version and the decision together. */
+  async commitProposalAcceptance(
+    blueprint: GameBlueprint,
+    versionMutations: DurableMutation[],
+    proposal: BlueprintChangeProposal,
+  ): Promise<void> {
+    await this.storage.applyDurableBatch([
+      ...versionMutations,
+      {
+        operation: "set",
+        collection: BLUEPRINTS,
+        id: blueprint.id,
+        data: blueprint,
+      },
+      {
+        operation: "set",
+        collection: PROPOSALS,
+        id: proposal.id,
+        data: proposal,
+      },
+    ]);
+  }
+
+  private hydrateProposal(
+    proposal: BlueprintChangeProposal,
+  ): BlueprintChangeProposal {
+    return {
+      ...proposal,
+      created_at: new Date(proposal.created_at),
+      ...(proposal.decided_at
+        ? { decided_at: new Date(proposal.decided_at) }
+        : {}),
+    };
+  }
   async saveVersion(
     blueprintId: string,
     userId: string,
     description?: string,
   ): Promise<BlueprintVersion> {
     return this.withBlueprintMutationLock(blueprintId, async () => {
-      const blueprint = await this.getBlueprint(blueprintId);
-      if (!blueprint) throw new Error(`Blueprint ${blueprintId} not found`);
-
-      const activeVersions = this.storage.list<BlueprintVersion>(
-        VERSIONS,
-        (candidate) =>
-          candidate.blueprint_id === blueprintId && candidate.is_active,
+      const { version, mutations } = await this.prepareVersion(
+        blueprintId,
+        userId,
+        description,
       );
-      const version: BlueprintVersion = {
-        id: `blueprint-version-${randomUUID()}`,
-        blueprint_id: blueprintId,
-        version_number: blueprint.version,
-        created_at: new Date(),
-        created_by: userId,
-        snapshot: { ...blueprint },
-        change_description: description,
-        is_active: true,
-      };
-      const mutations: DurableMutation[] = [
-        ...activeVersions.map((activeVersion) => ({
-          operation: "set" as const,
-          collection: VERSIONS,
-          id: activeVersion.id,
-          data: {
-            ...this.hydrateVersion(activeVersion),
-            is_active: false,
-          },
-        })),
-        {
-          operation: "set",
-          collection: VERSIONS,
-          id: version.id,
-          data: version,
-        },
-      ];
 
       await this.storage.applyDurableBatch(mutations);
       return this.hydrateVersion(version);
