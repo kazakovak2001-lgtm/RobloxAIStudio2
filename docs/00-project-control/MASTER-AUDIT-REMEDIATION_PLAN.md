@@ -95,14 +95,14 @@ One defect shape: the identifier the caller was authorized for is not the thing 
 
 Everything that decides whether a generation may begin and under whose identity. Two of these are already fixed on branches and the rest share their entry point.
 
-| Finding                                                                                                                   | Severity | Status    | Disposition                                                                    |
-| ------------------------------------------------------------------------------------------------------------------------- | -------- | --------- | ------------------------------------------------------------------------------ |
-| **AUDIT-START-ATOMICITY-001** — Generation start wrote project, execution and history as three independent durable writes | P1       | CONFIRMED | FIXED-UNMERGED (integration/wave-0 @ 3696a1f31b86cff8ce97e09f5a5da581d2a3ba01) |
-| **AUDIT-ID-EXEC-001** — Execution identity derived from Date.now collided within a millisecond                            | P1       | CONFIRMED | FIXED-UNMERGED (integration/wave-0 @ 2d5d2d7da28c7edd230acc2e5b93a41b7fe8066a) |
-| **AUDIT-DUP-GENERATION-001** — No suppression of a second concurrent generation for the same project                      | P1       | CONFIRMED | FIXED-UNMERGED (integration/wave-0 @ e0d800d273b3c618d4af07d9ffbbe2873da49937) |
-| **AUDIT-OUTCOME-LAST-WRITER-001** — An older overlapping run can overwrite a newer run's terminal project state           | P1       | CONFIRMED | FIXED-UNMERGED (integration/wave-0 @ e0d800d273b3c618d4af07d9ffbbe2873da49937) |
-| **QUOTA-ENFORCEMENT-001** — Generation does not enforce tier limits before starting                                       | P1       | CONFIRMED | NOT-STARTED                                                                    |
-| **GEN-START-IDEMPOTENCY-001** — A start request whose response was lost could not be retried safely                       | P1       | CONFIRMED | FIXED-UNMERGED (fix/mar-004-idempotent-start @ pending)                        |
+| Finding                                                                                                                   | Severity | Status    | Disposition                                                                              |
+| ------------------------------------------------------------------------------------------------------------------------- | -------- | --------- | ---------------------------------------------------------------------------------------- |
+| **AUDIT-START-ATOMICITY-001** — Generation start wrote project, execution and history as three independent durable writes | P1       | CONFIRMED | FIXED-UNMERGED (integration/wave-0 @ 3696a1f31b86cff8ce97e09f5a5da581d2a3ba01)           |
+| **AUDIT-ID-EXEC-001** — Execution identity derived from Date.now collided within a millisecond                            | P1       | CONFIRMED | FIXED-UNMERGED (integration/wave-0 @ 2d5d2d7da28c7edd230acc2e5b93a41b7fe8066a)           |
+| **AUDIT-DUP-GENERATION-001** — No suppression of a second concurrent generation for the same project                      | P1       | CONFIRMED | FIXED-UNMERGED (integration/wave-0 @ e0d800d273b3c618d4af07d9ffbbe2873da49937)           |
+| **AUDIT-OUTCOME-LAST-WRITER-001** — An older overlapping run can overwrite a newer run's terminal project state           | P1       | CONFIRMED | FIXED-UNMERGED (integration/wave-0 @ e0d800d273b3c618d4af07d9ffbbe2873da49937)           |
+| **QUOTA-ENFORCEMENT-001** — Generation does not enforce tier limits before starting                                       | P1       | CONFIRMED | NOT-STARTED                                                                              |
+| **GEN-START-IDEMPOTENCY-001** — A start request whose response was lost could not be retried safely                       | P1       | CONFIRMED | FIXED-UNMERGED (fix/mar-004-idempotent-start @ 7761c2665c31273c49214ec7b96f4858a8f61e93) |
 
 ## 4. pipeline-outcome-truth — worst severity P1
 
