@@ -2,7 +2,7 @@
 
 # Master audit remediation plan
 
-Generated from `config/audit/master-audit-register.json` (75 findings). Severity is the register's; ordering is by the worst severity in each group, except that re-verification comes first and verified controls come last.
+Generated from `config/audit/master-audit-register.json` (76 findings). Severity is the register's; ordering is by the worst severity in each group, except that re-verification comes first and verified controls come last.
 
 Findings are grouped by shared architectural root rather than by symptom. Several of these are the same defect seen from different places, and repairing them one at a time would mean repairing the root several times.
 
@@ -10,7 +10,7 @@ Findings are grouped by shared architectural root rather than by symptom. Severa
 
 | Disposition        | Findings |
 | ------------------ | -------- |
-| FIXED-UNMERGED     | 41       |
+| FIXED-UNMERGED     | 42       |
 | NOT-STARTED        | 26       |
 | NO-ACTION-REQUIRED | 6        |
 | SCOPED-OUT         | 1        |
@@ -25,7 +25,7 @@ Every finding names the deduplicated root cause it belongs to. A finding the tax
 | **MAR-001** — Cross-tenant resource authorization is not parent-bound everywhere                   | P0              | 23       | 15    | 8         |
 | **MAR-002** — Studio materializer has no universal creator-ownership safety boundary               | P0              | 8        | 8     | 0         |
 | **MAR-003** — No single clean canonical product acceptance run exists                              | P0-release-gate | 3        | 0     | 3         |
-| **MAR-004** — Generation has no durable project-scoped single-flight and idempotent start identity | P1              | 3        | 3     | 0         |
+| **MAR-004** — Generation has no durable project-scoped single-flight and idempotent start identity | P1              | 4        | 4     | 0         |
 | **MAR-005** — State transitions have no unified durable CAS/version authority                      | P1              | 3        | 3     | 0         |
 | **MAR-010** — No authoritative Luau compile/type and generated-code policy gate                    | P1              | 2        | 1     | 1         |
 | **MAR-012** — Runtime gameplay acceptance is missing as a machine-measured capability              | P1              | 9        | 6     | 3         |
@@ -91,7 +91,20 @@ One defect shape: the identifier the caller was authorized for is not the thing 
 | **SEC-JOB-DISCLOSURE-001** — Refusing another tenant's execution job disclosed that the job existed                                                                       | P2       | CONFIRMED | FIXED-UNMERGED (fix/mar-001-job-ownership @ 68e11109d5c2e28ff8a79d27754ce1905d6f1b6f)                 |
 | **SEC-JOB-DOUBLE-RESPONSE-001** — The job status route answered a second time after the access check had already refused                                                  | P2       | CONFIRMED | FIXED-UNMERGED (fix/mar-001-job-ownership @ 68e11109d5c2e28ff8a79d27754ce1905d6f1b6f)                 |
 
-## 3. pipeline-outcome-truth — worst severity P1
+## 3. generation-start-admission — worst severity P1
+
+Everything that decides whether a generation may begin and under whose identity. Two of these are already fixed on branches and the rest share their entry point.
+
+| Finding                                                                                                                   | Severity | Status    | Disposition                                                                    |
+| ------------------------------------------------------------------------------------------------------------------------- | -------- | --------- | ------------------------------------------------------------------------------ |
+| **AUDIT-START-ATOMICITY-001** — Generation start wrote project, execution and history as three independent durable writes | P1       | CONFIRMED | FIXED-UNMERGED (integration/wave-0 @ 3696a1f31b86cff8ce97e09f5a5da581d2a3ba01) |
+| **AUDIT-ID-EXEC-001** — Execution identity derived from Date.now collided within a millisecond                            | P1       | CONFIRMED | FIXED-UNMERGED (integration/wave-0 @ 2d5d2d7da28c7edd230acc2e5b93a41b7fe8066a) |
+| **AUDIT-DUP-GENERATION-001** — No suppression of a second concurrent generation for the same project                      | P1       | CONFIRMED | FIXED-UNMERGED (integration/wave-0 @ e0d800d273b3c618d4af07d9ffbbe2873da49937) |
+| **AUDIT-OUTCOME-LAST-WRITER-001** — An older overlapping run can overwrite a newer run's terminal project state           | P1       | CONFIRMED | FIXED-UNMERGED (integration/wave-0 @ e0d800d273b3c618d4af07d9ffbbe2873da49937) |
+| **QUOTA-ENFORCEMENT-001** — Generation does not enforce tier limits before starting                                       | P1       | CONFIRMED | NOT-STARTED                                                                    |
+| **GEN-START-IDEMPOTENCY-001** — A start request whose response was lost could not be retried safely                       | P1       | CONFIRMED | FIXED-UNMERGED (fix/mar-004-idempotent-start @ pending)                        |
+
+## 4. pipeline-outcome-truth — worst severity P1
 
 What the system reports about a run does not always match what happened. This is where green signals hide red states.
 
@@ -104,7 +117,7 @@ What the system reports about a run does not always match what happened. This is
 | **AUDIT-FLAKY-AUTH-TEST-001** — The user-self authorization test fails intermittently under parallel load             | P2       | CONFIRMED | FIXED-UNMERGED (integration/wave-0 @ f5b9772bfa99ebcfb70b853b6e4c90d67c0dd503) |
 | **AUDIT-SCRIPTS-UNTYPED-001** — Validator and generator scripts are outside the typecheck boundary                    | P3       | CONFIRMED | NOT-STARTED                                                                    |
 
-## 4. generation-fidelity — worst severity P1
+## 5. generation-fidelity — worst severity P1
 
 The generated artifact does not reliably match the stated requirement, in transport, in intent and in world content.
 
@@ -116,18 +129,6 @@ The generated artifact does not reliably match the stated requirement, in transp
 | **INTENT-FIDELITY-001** — Requirements carried no identity, so no run could show which ones it satisfied | P1       | CONFIRMED | FIXED-UNMERGED (integration/wave-0 @ 2edb5d687e0e079c72cef5d515561c4e4fd782a8) |
 | **LLM-PARSER-001** — Valid JSON was discarded when a model added prose after it                          | P1       | CONFIRMED | FIXED-UNMERGED (integration/wave-0 @ fb0a213f6c2321c283f1616784311cc0fe031b0b) |
 | **SERIALIZATION-001** — Structures reached generation prompts as the literal text [object Object]        | P1       | CONFIRMED | FIXED-UNMERGED (integration/wave-0 @ 0abaf874a487506a72d16d2b22e3f25977ac331f) |
-
-## 5. generation-start-admission — worst severity P1
-
-Everything that decides whether a generation may begin and under whose identity. Two of these are already fixed on branches and the rest share their entry point.
-
-| Finding                                                                                                                   | Severity | Status    | Disposition                                                                    |
-| ------------------------------------------------------------------------------------------------------------------------- | -------- | --------- | ------------------------------------------------------------------------------ |
-| **AUDIT-START-ATOMICITY-001** — Generation start wrote project, execution and history as three independent durable writes | P1       | CONFIRMED | FIXED-UNMERGED (integration/wave-0 @ 3696a1f31b86cff8ce97e09f5a5da581d2a3ba01) |
-| **AUDIT-ID-EXEC-001** — Execution identity derived from Date.now collided within a millisecond                            | P1       | CONFIRMED | FIXED-UNMERGED (integration/wave-0 @ 2d5d2d7da28c7edd230acc2e5b93a41b7fe8066a) |
-| **AUDIT-DUP-GENERATION-001** — No suppression of a second concurrent generation for the same project                      | P1       | CONFIRMED | FIXED-UNMERGED (integration/wave-0 @ e0d800d273b3c618d4af07d9ffbbe2873da49937) |
-| **AUDIT-OUTCOME-LAST-WRITER-001** — An older overlapping run can overwrite a newer run's terminal project state           | P1       | CONFIRMED | FIXED-UNMERGED (integration/wave-0 @ e0d800d273b3c618d4af07d9ffbbe2873da49937) |
-| **QUOTA-ENFORCEMENT-001** — Generation does not enforce tier limits before starting                                       | P1       | CONFIRMED | NOT-STARTED                                                                    |
 
 ## 6. canonical-generation-recovery — worst severity P1
 

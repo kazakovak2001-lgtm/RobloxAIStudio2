@@ -1321,6 +1321,23 @@
         "server/src/__tests__/mar002.world-and-idempotence.test.ts"
       ],
       "notes": "Every path the plugin writes through now stamps a project and a delivery and refuses to replace or sweep anything it cannot prove is this project's: scripts, metadata values, UI screens and world zones. Hand-built work, another project's work and work carrying the mark with no project all get the same refusal. Identity comes from the backend-authorized export command and travels per call, so there is no shared mutable state to go stale between imports. The world path was fixed alongside the UI one but only the UI one had been exercised; it now has its own sweep and replace tests, because fixing two things and proving one is how a regression ships in the half nobody looked at. Idempotence holds and is now evidenced in both directions: a command the backend verified is not applied twice, and one it never confirmed is retried, which is why the guard sits after verification rather than before it. Concurrency is deliberately excluded. Import-scoped provenance removed the mutable state a cross-project race needed, which is a design property rather than a measurement; real interleaving belongs to MAR-016. Remaining MAR-002 surface is Studio session and command lifecycle rather than creator ownership."
+    },
+    {
+      "id": "GEN-START-IDEMPOTENCY-001",
+      "title": "A start request whose response was lost could not be retried safely",
+      "severity": "P1",
+      "status": "CONFIRMED",
+      "disposition": "FIXED-UNMERGED",
+      "area": "generation",
+      "remediationGroup": "generation-start-admission",
+      "mar": "MAR-004",
+      "owningBranch": "fix/mar-004-idempotent-start",
+      "owningSha": "pending",
+      "evidence": [
+        "server/src/platform/projects/ProjectLifecycleCoordinator.ts",
+        "server/src/__tests__/mar004.idempotent-start.test.ts"
+      ],
+      "notes": "Single-flight was already durable, so the gap was request identity rather than admission. A start that succeeded on the server and whose response never reached the caller is indistinguishable from one that never arrived, and repeating it produced one of two wrong answers. Reproduced against the baseline: while the run was active the retry got ActiveGenerationConflictError naming an execution the caller could not identify as its own, and once the run had finished and released its claim the same retry silently started a second generation, incrementing the count and spending provider budget again. A durable record keyed by project and idempotency key is now committed in the same applyDurableBatch as the start evidence and the claim, so a repeat returns the original execution without preparing, enqueueing or counting anything. The same key with a different principal or payload is refused rather than answered, because two requests claiming one identity cannot be resolved by guessing. The coordinator does not fabricate the caller's result on a replay; the caller supplies a resolver, since nothing was prepared. Reverse-proved separately for the replay, for the conflict check and for committing the record inside the transaction rather than beside it. No crash window remains between the record, the claim, the execution and the history: they are one batch whose contract is that a rejection preserves the exact pre-transaction state."
     }
   ]
 }

@@ -34,12 +34,66 @@ const GENERATION_EXECUTIONS = "generation_executions";
  * the run that owns it when it reaches a terminal state.
  */
 const GENERATION_ACTIVE_CLAIMS = "generation_active_claims";
+const GENERATION_START_REQUESTS = "generation_start_requests";
 const projectQueues = new Map<string, Promise<void>>();
 
 /** Names the generation currently allowed to act on a project. */
 export interface GenerationActiveClaim {
   executionId: string;
   startedAt: number;
+}
+
+/**
+ * MAR-004. What a start request was, so a repeat of it can be recognised.
+ *
+ * Kept durably and committed with the start it identifies. A caller whose
+ * response was lost cannot tell a succeeded request from one that never
+ * arrived, and without this the only answers available were a conflict naming
+ * an execution they could not identify as their own, or — once the run had
+ * finished and released its claim — a silent second generation.
+ */
+export interface GenerationStartRequestRecord {
+  key: string;
+  projectId: string;
+  principal: string;
+  /** Distinguishes two different requests that reused one key. */
+  fingerprint: string;
+  executionId: string;
+  createdAt: number;
+}
+
+/** Identifies one start request for replay. */
+export interface GenerationStartRequest<T> {
+  key: string;
+  principal: string;
+  fingerprint: string;
+  /**
+   * Rebuilds the caller's result for an execution that already started.
+   *
+   * The coordinator does not invent it: on a replay nothing was prepared, so
+   * the only honest source for the caller's shape is the caller.
+   */
+  replay: (executionId: string) => Promise<T>;
+}
+
+/**
+ * Raised when one idempotency key is used for two different requests.
+ *
+ * Answering with the first execution would hand one caller's run to another, or
+ * silently substitute a different payload's result. Two requests claiming one
+ * identity is a caller defect, and guessing which one was meant is not
+ * something storage can do.
+ */
+export class IdempotencyConflictError extends Error {
+  constructor(
+    readonly key: string,
+    readonly projectId: string,
+  ) {
+    super(
+      `Idempotency key ${key} on project ${projectId} was already used for a different request`,
+    );
+    this.name = "IdempotencyConflictError";
+  }
 }
 
 /** Raised when a project already has an active generation. */
@@ -268,6 +322,16 @@ export class GenerationOutcomeCoordinator {
   }
 }
 
+/**
+ * Scoped by project and key, not by principal.
+ *
+ * A different principal reusing a key has to collide with the existing record
+ * rather than quietly getting its own, or the same key would mean two runs.
+ */
+function startRequestId(projectId: string, key: string): string {
+  return `${projectId}:${key}`;
+}
+
 export class ProjectGenerationStartCoordinator {
   constructor(
     private readonly projects: GenerationProjectRepository,
@@ -300,11 +364,34 @@ export class ProjectGenerationStartCoordinator {
     buildStartEvidence: (result: T) => readonly DurableMutation[],
     resolveExecutionId: (result: T) => string,
     afterCommit?: (result: T) => void,
+    request?: GenerationStartRequest<T>,
   ): Promise<T> {
     return withProjectLock(projectId, async () => {
       const project = this.projects.get(projectId);
       if (!project) {
         throw new Error(`Project ${projectId} not found`);
+      }
+
+      // MAR-004. Answered before anything is prepared, so a replay costs no
+      // provider budget and schedules no work. Read from storage rather than
+      // from memory, so a second process and a restarted one answer alike.
+      const requestId = request
+        ? startRequestId(projectId, request.key)
+        : undefined;
+      if (request && requestId) {
+        const recorded = this.storage.get<GenerationStartRequestRecord>(
+          GENERATION_START_REQUESTS,
+          requestId,
+        );
+        if (recorded) {
+          if (
+            recorded.principal !== request.principal ||
+            recorded.fingerprint !== request.fingerprint
+          ) {
+            throw new IdempotencyConflictError(request.key, projectId);
+          }
+          return request.replay(recorded.executionId);
+        }
       }
 
       // Nothing durable yet: a rejection here leaves no state at all.
@@ -348,6 +435,28 @@ export class ProjectGenerationStartCoordinator {
             data: claim,
             requireAbsent: true,
           },
+          // In the same transaction as the evidence and the claim. A record
+          // written outside it would answer a later retry with an execution
+          // that was never created, and one written after the response would
+          // leave the crash window this exists to close.
+          ...(request && requestId
+            ? ([
+                {
+                  operation: "set",
+                  collection: GENERATION_START_REQUESTS,
+                  id: requestId,
+                  data: {
+                    key: request.key,
+                    projectId,
+                    principal: request.principal,
+                    fingerprint: request.fingerprint,
+                    executionId: claim.executionId,
+                    createdAt: Date.now(),
+                  } satisfies GenerationStartRequestRecord,
+                  requireAbsent: true,
+                },
+              ] as const)
+            : []),
         ]);
       } catch (error) {
         if (error instanceof DurableStorageConflictError) {
