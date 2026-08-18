@@ -682,6 +682,7 @@
 │   │   │   ├── secgenerationblueprint1.project-binding.test.ts
 │   │   │   ├── secreview1.advisory-delivery.test.ts
 │   │   │   ├── secrt1a.realtime-tenancy.test.ts
+│   │   │   ├── secrt1b.trace-tenancy.test.ts
 │   │   │   ├── security.test.ts
 │   │   │   ├── security2gE.agent-collaboration-scope.test.ts
 │   │   │   ├── security2gE.ai-chat-session-boundary.test.ts

@@ -108,7 +108,13 @@ export class PlanExecutor {
     );
 
     // Emit trace: plan started
-    this.tracer.startExecution(planId, planId, graph.goal, graph.size);
+    this.tracer.startExecution(
+      planId,
+      planId,
+      graph.goal,
+      graph.size,
+      projectId,
+    );
     await this.emitPipelineStarted(planId, projectId);
 
     // Reset adaptive agent switch counts for this execution

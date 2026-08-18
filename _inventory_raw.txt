@@ -74,9 +74,13 @@ E2E_PIPELINE_VALIDATION_REPORT.md
 FINAL_V1_RELEASE_SIGN_OFF.md
 MODULE_STATUS.md
 ProjectStructure.txt
+ProjectStructure.txt
+ProjectStructure.txt
 README.md
 RELEASE_HARDENING_REPORT.md
 V1_RELEASE_NOTES.md
+_inventory_raw.txt
+_inventory_raw.txt
 _inventory_raw.txt
 architecture.layer-debt.json
 architecture.manifest.json
@@ -584,6 +588,7 @@ server/src/__tests__/secgenerationblueprint1.generate-route.test.ts
 server/src/__tests__/secgenerationblueprint1.project-binding.test.ts
 server/src/__tests__/secreview1.advisory-delivery.test.ts
 server/src/__tests__/secrt1a.realtime-tenancy.test.ts
+server/src/__tests__/secrt1b.trace-tenancy.test.ts
 server/src/__tests__/security.test.ts
 server/src/__tests__/security2gE.agent-collaboration-scope.test.ts
 server/src/__tests__/security2gE.ai-chat-session-boundary.test.ts
@@ -939,8 +944,6 @@ server/src/governance/GovernancePolicyEngine.ts
 server/src/governance/GovernanceValidator.ts
 server/src/governance/PolicyRegistry.ts
 server/src/governance/aiGovernance.ts
-server/src/index.ts
-server/src/index.ts
 server/src/index.ts
 server/src/integration/EndToEndValidator.ts
 server/src/integration/PlatformIntegrationManager.ts
