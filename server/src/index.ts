@@ -470,18 +470,34 @@ app.use((req: Request, res: Response) => {
 
 // Start server
 let PORT = parseInt(process.env.PORT || "5000", 10);
+// Bind dual-stack by default. Windows resolves "localhost" to ::1 first, so an
+// IPv4-only bind makes the documented plugin default http://localhost:5000 fail
+// with a transport-level ConnectFail even while the server is listening.
+let HOST = process.env.HOST || "::";
 
 const startServer = (port: number) => {
-  httpServer.listen(port, "0.0.0.0", () => {
+  httpServer.listen(port, HOST, () => {
     PORT = port;
     console.log(`\n🚀 Roblox AI Studio - Game Generation Engine`);
-    console.log(`📡 Server running on http://0.0.0.0:${port}`);
+    console.log(`📡 Server running on http://${HOST}:${port}`);
     console.log(`🔌 WebSocket connected via Socket.io`);
     console.log(`✅ Ready for incoming game generation requests\n`);
   });
 };
 
 httpServer.on("error", (error: NodeJS.ErrnoException) => {
+  if (
+    HOST === "::" &&
+    (error.code === "EAFNOSUPPORT" || error.code === "EADDRNOTAVAIL")
+  ) {
+    console.warn(
+      `⚠️ IPv6 is unavailable on this host. Falling back to IPv4 0.0.0.0.`,
+    );
+    HOST = "0.0.0.0";
+    startServer(PORT);
+    return;
+  }
+
   if (error.code === "EADDRINUSE") {
     const fallbackPort = PORT + 1;
     console.warn(

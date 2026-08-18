@@ -61,10 +61,13 @@ describe("ProjectSyncManager", () => {
     it("returns a valid snapshot with an empty artifact list for an empty pipeline", () => {
       const pipelineId = "empty-pipeline";
 
-      const snapshot = manager.getProjectSnapshot(pipelineId);
+      const snapshot = manager.getProjectSnapshotForProject(
+        ARTIFACT_TEST_PROJECT,
+        pipelineId,
+      );
 
       expect(snapshot).not.toBeNull();
-      expect(snapshot!.projectId).toBe(pipelineId);
+      expect(snapshot!.projectId).toBe(ARTIFACT_TEST_PROJECT);
       expect(snapshot!.artifacts).toHaveLength(0);
       expect(snapshot!.artifactCount).toBe(0);
       expect(snapshot!.version).toBeTruthy();
@@ -88,7 +91,10 @@ describe("ProjectSyncManager", () => {
         },
       );
 
-      const snapshot = manager.getProjectSnapshot(pipelineId);
+      const snapshot = manager.getProjectSnapshotForProject(
+        ARTIFACT_TEST_PROJECT,
+        pipelineId,
+      );
 
       expect(snapshot).not.toBeNull();
       expect(snapshot!.artifacts).toHaveLength(2);
@@ -106,7 +112,10 @@ describe("ProjectSyncManager", () => {
         key: "metadata-check",
       });
 
-      const snapshot = manager.getProjectSnapshot(pipelineId);
+      const snapshot = manager.getProjectSnapshotForProject(
+        ARTIFACT_TEST_PROJECT,
+        pipelineId,
+      );
       const ref = snapshot!.artifacts[0];
 
       expect(ref.id).toBe(stored.id);
@@ -119,7 +128,10 @@ describe("ProjectSyncManager", () => {
 
     // Requirements 1.3 — version is a non-empty string
     it("includes a non-empty version string in the snapshot", () => {
-      const snapshot = manager.getProjectSnapshot("any-pipeline");
+      const snapshot = manager.getProjectSnapshotForProject(
+        ARTIFACT_TEST_PROJECT,
+        "any-pipeline",
+      );
 
       expect(typeof snapshot!.version).toBe("string");
       expect(snapshot!.version.length).toBeGreaterThan(0);
@@ -131,7 +143,10 @@ describe("ProjectSyncManager", () => {
   describe("getSyncStatus()", () => {
     // Requirements 3.4 / design note — sentinel "0.0.0" when no snapshot
     it('returns currentVersion "0.0.0" when no snapshot has been computed', () => {
-      const status = manager.getSyncStatus("never-synced-pipeline");
+      const status = manager.getSyncStatus(
+        ARTIFACT_TEST_PROJECT,
+        "never-synced-pipeline",
+      );
 
       expect(status.currentVersion).toBe("0.0.0");
     });
@@ -144,9 +159,9 @@ describe("ProjectSyncManager", () => {
 
     it("returns the stored version after a snapshot has been computed", () => {
       const pipelineId = "pipe-version";
-      manager.getProjectSnapshot(pipelineId);
+      manager.getProjectSnapshotForProject(ARTIFACT_TEST_PROJECT, pipelineId);
 
-      const status = manager.getSyncStatus(pipelineId);
+      const status = manager.getSyncStatus(ARTIFACT_TEST_PROJECT, pipelineId);
 
       expect(status.currentVersion).not.toBe("0.0.0");
       expect(status.currentVersion).toMatch(/^1\.0\.0-/);
@@ -154,9 +169,9 @@ describe("ProjectSyncManager", () => {
 
     it("includes the correct projectId in the status", () => {
       const pipelineId = "specific-project";
-      const status = manager.getSyncStatus(pipelineId);
+      const status = manager.getSyncStatus(ARTIFACT_TEST_PROJECT, pipelineId);
 
-      expect(status.projectId).toBe(pipelineId);
+      expect(status.projectId).toBe(ARTIFACT_TEST_PROJECT);
     });
 
     it("returns projectId: null when called without an argument", () => {
@@ -174,7 +189,11 @@ describe("ProjectSyncManager", () => {
       const pipelineId = "pipe-zero";
       await seedArtifact(store, pipelineId);
 
-      const result = await manager.processSyncRequest(pipelineId, []);
+      const result = await manager.processSyncRequest(
+        ARTIFACT_TEST_PROJECT,
+        pipelineId,
+        [],
+      );
 
       expect(result.status).toBe("no_changes");
       expect(result.appliedChanges).toHaveLength(0);
@@ -183,9 +202,13 @@ describe("ProjectSyncManager", () => {
 
     it("includes the current version in the result when there are no changes", async () => {
       const pipelineId = "pipe-zero-version";
-      manager.getProjectSnapshot(pipelineId); // prime version
+      manager.getProjectSnapshotForProject(ARTIFACT_TEST_PROJECT, pipelineId); // prime version
 
-      const result = await manager.processSyncRequest(pipelineId, []);
+      const result = await manager.processSyncRequest(
+        ARTIFACT_TEST_PROJECT,
+        pipelineId,
+        [],
+      );
 
       expect(result.newVersion).toBeTruthy();
       expect(typeof result.newVersion).toBe("string");
@@ -211,7 +234,11 @@ describe("ProjectSyncManager", () => {
         timestamp: artifact.createdAt + 10_000,
       });
 
-      const result = await manager.processSyncRequest(pipelineId, [change]);
+      const result = await manager.processSyncRequest(
+        ARTIFACT_TEST_PROJECT,
+        pipelineId,
+        [change],
+      );
 
       expect(result.status).toBe("applied");
       expect(result.appliedChanges).toContain("c-apply-1");
@@ -223,8 +250,11 @@ describe("ProjectSyncManager", () => {
     it("sets a new version after applying changes", async () => {
       const pipelineId = "pipe-version-update";
       const artifact = await seedArtifact(store, pipelineId);
-      manager.getProjectSnapshot(pipelineId); // record baseline version
-      const beforeVersion = manager.getSyncStatus(pipelineId).currentVersion;
+      manager.getProjectSnapshotForProject(ARTIFACT_TEST_PROJECT, pipelineId); // record baseline version
+      const beforeVersion = manager.getSyncStatus(
+        ARTIFACT_TEST_PROJECT,
+        pipelineId,
+      ).currentVersion;
 
       const change = makeChange({
         changeId: "c-ver",
@@ -234,9 +264,14 @@ describe("ProjectSyncManager", () => {
         timestamp: artifact.createdAt + 5_000,
       });
 
-      await manager.processSyncRequest(pipelineId, [change]);
+      await manager.processSyncRequest(ARTIFACT_TEST_PROJECT, pipelineId, [
+        change,
+      ]);
 
-      const afterVersion = manager.getSyncStatus(pipelineId).currentVersion;
+      const afterVersion = manager.getSyncStatus(
+        ARTIFACT_TEST_PROJECT,
+        pipelineId,
+      ).currentVersion;
       expect(afterVersion).not.toBe(beforeVersion);
       expect(afterVersion).toMatch(/^1\.0\.0-/);
     });
@@ -274,7 +309,11 @@ describe("ProjectSyncManager", () => {
         }),
       ];
 
-      const result = await manager.processSyncRequest(pipelineId, changes);
+      const result = await manager.processSyncRequest(
+        ARTIFACT_TEST_PROJECT,
+        pipelineId,
+        changes,
+      );
 
       expect(result.status).toBe("applied");
       expect(result.appliedChanges).toContain("c-multi-1");
@@ -302,7 +341,11 @@ describe("ProjectSyncManager", () => {
         timestamp: artifact.createdAt - 5_000,
       });
 
-      const result = await manager.processSyncRequest(pipelineId, [change]);
+      const result = await manager.processSyncRequest(
+        ARTIFACT_TEST_PROJECT,
+        pipelineId,
+        [change],
+      );
 
       expect(result.status).toBe("conflict");
       expect(result.conflicts).toHaveLength(1);
@@ -323,7 +366,11 @@ describe("ProjectSyncManager", () => {
         timestamp: artifact.createdAt - 1_000,
       });
 
-      const result = await manager.processSyncRequest(pipelineId, [change]);
+      const result = await manager.processSyncRequest(
+        ARTIFACT_TEST_PROJECT,
+        pipelineId,
+        [change],
+      );
 
       expect(result.status).toBe("conflict");
       expect(
@@ -345,7 +392,11 @@ describe("ProjectSyncManager", () => {
         timestamp: staleTimestamp,
       });
 
-      const result = await manager.processSyncRequest(pipelineId, [change]);
+      const result = await manager.processSyncRequest(
+        ARTIFACT_TEST_PROJECT,
+        pipelineId,
+        [change],
+      );
       const conflict = result.conflicts[0];
 
       expect(conflict.artifactId).toBe(artifact.id);
@@ -396,10 +447,11 @@ describe("ProjectSyncManager", () => {
         timestamp: staleArtifact.createdAt - 1_000,
       });
 
-      const result = await manager.processSyncRequest(pipelineId, [
-        cleanChange,
-        conflictingChange,
-      ]);
+      const result = await manager.processSyncRequest(
+        ARTIFACT_TEST_PROJECT,
+        pipelineId,
+        [cleanChange, conflictingChange],
+      );
 
       // Overall status is "conflict" because at least one conflict exists
       expect(result.status).toBe("conflict");
@@ -429,9 +481,11 @@ describe("ProjectSyncManager", () => {
         timestamp: 1, // extremely old timestamp — create should never conflict
       });
 
-      const result = await manager.processSyncRequest(pipelineId, [
-        createChange,
-      ]);
+      const result = await manager.processSyncRequest(
+        ARTIFACT_TEST_PROJECT,
+        pipelineId,
+        [createChange],
+      );
 
       // Should not appear in conflicts
       expect(result.conflicts.some((c) => c.changeId === "c-create")).toBe(
@@ -457,7 +511,7 @@ describe("ProjectSyncManager", () => {
         timestamp: artifact.createdAt + 5_000,
       });
 
-      manager.validateOnly(pipelineId, [change]);
+      manager.validateOnly(ARTIFACT_TEST_PROJECT, pipelineId, [change]);
 
       expect(store.count).toBe(countBefore);
     });
@@ -475,7 +529,7 @@ describe("ProjectSyncManager", () => {
         timestamp: artifact.createdAt + 5_000,
       });
 
-      manager.validateOnly(pipelineId, [change]);
+      manager.validateOnly(ARTIFACT_TEST_PROJECT, pipelineId, [change]);
 
       const storedArtifact = store.getById(artifact.id);
       expect(storedArtifact!.content).toEqual(originalContent);
@@ -493,7 +547,9 @@ describe("ProjectSyncManager", () => {
         timestamp: artifact.createdAt + 1_000,
       });
 
-      const result = manager.validateOnly(pipelineId, [change]);
+      const result = manager.validateOnly(ARTIFACT_TEST_PROJECT, pipelineId, [
+        change,
+      ]);
 
       expect(result.valid).toBe(true);
       expect(result.errors).toHaveLength(0);
@@ -513,7 +569,9 @@ describe("ProjectSyncManager", () => {
         timestamp: Date.now(),
       });
 
-      const result = manager.validateOnly(pipelineId, [invalidChange]);
+      const result = manager.validateOnly(ARTIFACT_TEST_PROJECT, pipelineId, [
+        invalidChange,
+      ]);
 
       expect(result.valid).toBe(false);
       expect(result.errors.length).toBeGreaterThan(0);
@@ -524,8 +582,11 @@ describe("ProjectSyncManager", () => {
     it("does not change project version after validateOnly", async () => {
       const pipelineId = "pipe-validate-version";
       const artifact = await seedArtifact(store, pipelineId);
-      manager.getProjectSnapshot(pipelineId);
-      const versionBefore = manager.getSyncStatus(pipelineId).currentVersion;
+      manager.getProjectSnapshotForProject(ARTIFACT_TEST_PROJECT, pipelineId);
+      const versionBefore = manager.getSyncStatus(
+        ARTIFACT_TEST_PROJECT,
+        pipelineId,
+      ).currentVersion;
 
       const change = makeChange({
         changeId: "c-val-ver",
@@ -535,11 +596,11 @@ describe("ProjectSyncManager", () => {
         timestamp: artifact.createdAt + 1_000,
       });
 
-      manager.validateOnly(pipelineId, [change]);
+      manager.validateOnly(ARTIFACT_TEST_PROJECT, pipelineId, [change]);
 
-      expect(manager.getSyncStatus(pipelineId).currentVersion).toBe(
-        versionBefore,
-      );
+      expect(
+        manager.getSyncStatus(ARTIFACT_TEST_PROJECT, pipelineId).currentVersion,
+      ).toBe(versionBefore);
     });
   });
 });

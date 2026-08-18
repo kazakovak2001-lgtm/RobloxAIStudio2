@@ -20,9 +20,11 @@ describe("ArtifactTransferManager properties", () => {
           content,
           { projectId: ARTIFACT_TEST_PROJECT },
         );
-        const result = new ArtifactTransferManager(store).transfer([
-          artifact.id,
-        ]);
+        const result = new ArtifactTransferManager(store).transferForProject(
+          ARTIFACT_TEST_PROJECT,
+          "pipeline",
+          [artifact.id],
+        );
         expect(result.artifacts).toHaveLength(1);
         expect(result.artifacts[0]).toMatchObject({
           id: artifact.id,
@@ -45,7 +47,7 @@ describe("ArtifactTransferManager properties", () => {
       fc.property(fc.uuid(), (unknownId) => {
         const result = new ArtifactTransferManager(
           new ArtifactStore(),
-        ).transfer([unknownId]);
+        ).transferForProject(ARTIFACT_TEST_PROJECT, "pipeline", [unknownId]);
         expect(result.missing).toContain(unknownId);
         expect(
           result.artifacts.some((artifact) => artifact.id === unknownId),
@@ -72,9 +74,11 @@ describe("ArtifactTransferManager properties", () => {
               producer: deterministicProducer("generation-validation"),
             },
           );
-          const result = new ArtifactTransferManager(store).transfer([
-            artifact.id,
-          ]);
+          const result = new ArtifactTransferManager(store).transferForProject(
+            ARTIFACT_TEST_PROJECT,
+            "pipeline",
+            [artifact.id],
+          );
           expect(result.payloadExceeded).toBe(true);
           expect(result.artifacts).toHaveLength(0);
         },

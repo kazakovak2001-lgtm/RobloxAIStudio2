@@ -30,6 +30,7 @@ import { getConfiguredStorageProvider } from "../../platform/storage/StorageFact
 import type { DurableMutation } from "../../platform/storage/StorageProvider";
 import { evaluateRequirementCoverage } from "../../validation/requirementTraceability";
 import { GenerationOutcomeCoordinator } from "../../platform/projects/ProjectLifecycleCoordinator";
+import { LEGACY_WORLD_RUNTIME_MODE } from "../../types/worldRuntimeMode";
 
 /**
  * Public-safe description of the AI provider backing this service. Carries
@@ -354,6 +355,7 @@ export class GameGenerationService {
       blueprint_snapshot_hash: version.snapshot_hash,
       retry_count: 0,
       pipeline_steps: [],
+      worldRuntimeMode: LEGACY_WORLD_RUNTIME_MODE,
     };
 
     return { execution, blueprint, versionMutations };
@@ -483,6 +485,7 @@ export class GameGenerationService {
               execution.id,
               result.graph.getAllNodes(),
               enrichedBlueprint.project_id,
+              { worldRuntimeMode: execution.worldRuntimeMode },
             );
 
             pipelineSteps = result.graph.getAllNodes().map((node) => {

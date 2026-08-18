@@ -185,6 +185,7 @@
 │   │   ├── STUDIO-1G_DESKTOP_ACCEPTANCE_RESULT.md
 │   │   ├── STUDIO-2F-A_SCOPE.md
 │   │   ├── STUDIO-ACCEPT-1_DESKTOP_ACCEPTANCE_RESULT.md
+│   │   ├── STUDIO-DEFERRED-ACCEPTANCE_RESULT.md
 │   │   ├── WORLD-1B_SCOPE.md
 │   │   └── WORLD-1C_SCOPE.md
 │   ├── 01-architecture
@@ -787,6 +788,7 @@
 │   │   │   ├── serialization1.prompt-values.test.ts
 │   │   │   ├── simtruth1.evidence.test.ts
 │   │   │   ├── studio.acceptance-runner.test.ts
+│   │   │   ├── studio.backend-dualstack-bind.test.ts
 │   │   │   ├── studio.desktop-mcp.test.ts
 │   │   │   ├── studio1.artifact-lineage.test.ts
 │   │   │   ├── studio1.import-acknowledgement.test.ts
@@ -802,7 +804,8 @@
 │   │   │   ├── testevidence1.auth-event-loop.test.ts
 │   │   │   ├── world1a.cross-artifact-validation.test.ts
 │   │   │   ├── world1b.receipt-verification.test.ts
-│   │   │   └── world1b.scene-contract.test.ts
+│   │   │   ├── world1b.scene-contract.test.ts
+│   │   │   └── world1c.package-commit.test.ts
 │   │   ├── agents
 │   │   │   ├── collaboration
 │   │   │   │   ├── AgentCoordinator.ts
@@ -823,6 +826,7 @@
 │   │   │   │   ├── DebugAgent.ts
 │   │   │   │   ├── DocumentationAgent.ts
 │   │   │   │   ├── DuplicationDetectionAgent.ts
+│   │   │   │   ├── GameDesignerAgent.test.ts
 │   │   │   │   ├── GameDesignerAgent.ts
 │   │   │   │   ├── LuaGeneratorAgent.test.ts
 │   │   │   │   ├── LuaGeneratorAgent.ts
@@ -1599,7 +1603,8 @@
 │   │   │   ├── llm.ts
 │   │   │   ├── novelty.ts
 │   │   │   ├── pipeline-events.ts
-│   │   │   └── playableLua.ts
+│   │   │   ├── playableLua.ts
+│   │   │   └── worldRuntimeMode.ts
 │   │   ├── ui-gen
 │   │   │   ├── __tests__
 │   │   │   │   ├── UIGeneration.test.ts

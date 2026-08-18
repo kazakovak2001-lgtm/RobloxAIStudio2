@@ -23,7 +23,7 @@ import type { StudioPluginPackageManifest } from "../../../scripts/package-studi
 const manifest: StudioPluginPackageManifest = {
   formatVersion: 1,
   pluginName: "RobloxAIStudioPlugin",
-  pluginVersion: "1.11.0",
+  pluginVersion: "1.11.1",
   protocolVersion: "1.0.0",
   entrypoint: "plugin.lua",
   bundleFile: "plugin.rbxmx",
@@ -80,7 +80,7 @@ describe("Roblox Studio acceptance runner", () => {
       "local loader = __ARTIFACT_LOADER_SOURCE__",
     ].join("\n");
     const rendered = renderStudioSmokeScript(template, manifest, sources);
-    expect(rendered).toContain('local version = "1.11.0"');
+    expect(rendered).toContain('local version = "1.11.1"');
     expect(rendered).toContain("return { value = ']]' }");
     expect(rendered).not.toMatch(/__[A-Z0-9_]+__/);
     expect(asLuauLongString("]]")).toBe("[=[]]]=]");
@@ -91,7 +91,7 @@ describe("Roblox Studio acceptance runner", () => {
       schemaVersion: 1,
       status: "PASS",
       scope: "studio-engine-plugin-runtime",
-      pluginVersion: "1.11.0",
+      pluginVersion: "1.11.1",
       checks: REQUIRED_STUDIO_ACCEPTANCE_CHECK_NAMES.map((name) => ({
         name,
         status: "PASS",

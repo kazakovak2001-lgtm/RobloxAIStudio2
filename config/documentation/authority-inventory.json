@@ -22,9 +22,9 @@
         "`REPAIR-1` | Artifact-applying repair, redelivery, and revalidation | High | `complete` — backend 1A/1B/1C plus the Frontend repair UI",
         "`PROVIDER-1A` | Truthful AI provider configuration and generation provenance | High | `complete` — backend PR #193",
         "`PROVIDER-1A` is complete through merged backend PR #193 at `ecae9bb59f1639d2e382e7221a956aa96460b3e9`",
-        "`STUDIO-2F-A` | Generated GUI materialization as real Studio instances | Medium | `code_complete_evidence_pending` — backend PR #195/#196/#197 merged; runtime validation outstanding",
+        "`STUDIO-2F-A` | Generated GUI materialization as real Studio instances | Medium | `complete` — backend PR #195/#196/#197 plus authenticated Explorer",
         "`PROVIDER-1B` | Fallback provenance completeness after a provider call | High | `complete` — backend PR #200",
-        "`ARTIFACT-1` | Deterministic Studio identity for delivered artifacts | Medium | `code_complete_evidence_pending` — backend PR #199 merged",
+        "`ARTIFACT-1` | Deterministic Studio identity for delivered artifacts | Medium | `complete` — backend PR #199 plus repeat authenticated Studio export",
         "`SECREVIEW-1` | Advisory deterministic Luau trust-boundary review | High | `complete` — backend PR #201;",
         "`SECURITY-REVIEW-B` | Blocking security gate over a high-confidence subset | Medium | `blocked` — and not scoped",
         "`PIPELINE-1A` | Generation plan as server-owned validated data | High | `complete` — backend PR #203",
@@ -34,8 +34,8 @@
         "77976a7818695cfdccdea253794acc0cd3c79b91",
         "b91ebdba613ca0d8f01a5fb33de355ae97588601",
         "`WORLD-1A` | Semantic world model and cross-artifact validation against generated Lua | High | `complete` — backend PR #207",
-        "`WORLD-1B` | Design-time Studio materialization of the world model | Medium | `code_complete_evidence_pending` — backend PR #209 merged",
-        "`WORLD-1C` | Canonical ownership of the world by the materialized scene | Medium | `blocked` — scoped, and blocked",
+        "`WORLD-1B` | Design-time Studio materialization of the world model | Medium | `complete` — real Studio materialization",
+        "`WORLD-1C` | Canonical ownership of the world by the materialized scene | Medium | `in progress` — one preparatory slice landed",
         "`AGENT-CONTRACT-1` | Versioned server-owned definitions for every runtime agent | Medium | `complete` — backend PR #212; foundation only, and every policy field is enforced",
         "Wall-clock timeout, monetary cost and input-token ceilings are deliberately absent because nothing enforces them today",
         "release/cutover-1e-candidate@77976a7818695cfdccdea253794acc0cd3c79b91",
@@ -100,14 +100,14 @@
         "This removes a fabricated measurement; it adds no capability.",
         "`PLAYTEST-2` is untouched and remains `unscoped` strategic direction.",
         "PROVIDER-1A completed through backend PR #193, merged `ecae9bb59f1639d2e382e7221a956aa96460b3e9`",
-        "STUDIO-2F-A code complete but not done (backend PR #195/#196/#197",
+        "`STUDIO-2F-A` complete (backend PR #195/#196/#197 plus authenticated Explorer",
         "`PIPELINE-1A` and `PIPELINE-1B` complete (backend PR #203/#205",
         "`PROVIDER-1B` and `SECREVIEW-1` complete (backend PR #200/#201",
-        "`ARTIFACT-1` code complete but not done (backend PR #199",
+        "`ARTIFACT-1` complete (backend PR #199 plus repeat authenticated Studio export",
         "deterministic Luau trust-boundary review that never negates delivery",
         "`WORLD-1A` complete (backend PR #207",
-        "`WORLD-1B` code complete but not done (backend PR #209",
-        "`WORLD-1C` scoped and blocked",
+        "`WORLD-1B` complete ([result](./STUDIO-DEFERRED-ACCEPTANCE_RESULT.md)",
+        "`WORLD-1C` in progress, one preparatory slice",
         "`AGENT-CONTRACT-1` complete (backend PR #212",
         "`title` carried as a human-readable label that nothing reads",
         "`ARTIFACT-CONTRACT-2` complete (backend PR #214",
@@ -220,7 +220,7 @@
       "requiredClaims": [
         "WORLD-1B",
         "The live world is therefore built imperatively into",
-        "Operator-observed Studio acceptance is outstanding",
+        "Code, contract tests, and operator-observed Studio acceptance passed",
         "No script class, and no"
       ],
       "forbiddenClaims": []
@@ -232,11 +232,18 @@
       "status": "supporting",
       "requiredClaims": [
         "WORLD-1C",
-        "must not be implemented until",
+        "The operator-observed prerequisite was satisfied on August 15, 2026",
         "Today the Lua world is the safety net.",
-        "exactly one component owns runtime world structure"
+        "exactly one component owns runtime world structure",
+        "One preparatory slice is implemented; the ownership switch is not.",
+        "No mode-aware playability contract",
+        "Nothing sets `materialized-world`"
       ],
-      "forbiddenClaims": []
+      "forbiddenClaims": [
+        "WORLD-1C is complete",
+        "canonical ownership has moved",
+        "operator-observed Studio acceptance of WORLD-1C"
+      ]
     },
     {
       "path": "docs/00-project-control/AGENT-CONTRACT-1_SCOPE.md",
@@ -403,6 +410,24 @@
         "No claim about real player engagement, fun, quality or balance"
       ],
       "forbiddenClaims": []
+    },
+    {
+      "path": "docs/00-project-control/STUDIO-DEFERRED-ACCEPTANCE_RESULT.md",
+      "owner": "project-control",
+      "rank": 19,
+      "status": "current",
+      "requiredClaims": [
+        "`ARTIFACT-1`, `STUDIO-2F-A`, and `WORLD-1B` complete",
+        "`mechanic5Swept true`",
+        "used the platform's deterministic fallback",
+        "Changed design sweeps a disappeared managed world entity",
+        "prerequisite blocking `WORLD-1C` is removed",
+        "No credential value, digest, or reusable token is present"
+      ],
+      "forbiddenClaims": [
+        "`WORLD-1B` retains one evidence gap",
+        "production deployment completed"
+      ]
     }
   ],
   "historical": [
@@ -494,6 +519,14 @@
     {
       "source": "docs/00-project-control/ROADMAP_STATUS.md",
       "target": "docs/00-project-control/SIM-TRUTH-1_SCOPE.md"
+    },
+    {
+      "source": "docs/00-project-control/ROADMAP_STATUS.md",
+      "target": "docs/00-project-control/STUDIO-DEFERRED-ACCEPTANCE_RESULT.md"
+    },
+    {
+      "source": "docs/00-project-control/CURRENT_STATE.md",
+      "target": "docs/00-project-control/STUDIO-DEFERRED-ACCEPTANCE_RESULT.md"
     }
   ]
 }

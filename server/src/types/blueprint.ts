@@ -355,6 +355,14 @@ export interface GenerationExecution {
    */
   pipeline_version?: number;
   /**
+   * WORLD-1C. Which component owns runtime world structure for this execution.
+   *
+   * Absent historical executions are `lua-owned` by construction. Consumers
+   * must resolve absence through the compatibility helper rather than guessing
+   * that a historical execution used the current mode.
+   */
+  worldRuntimeMode?: import("./worldRuntimeMode").WorldRuntimeMode;
+  /**
    * NOVELTY-2. Whether this generation repeats a structure the project has
    * produced before, and the evidence for that answer.
    *
