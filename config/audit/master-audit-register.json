@@ -1277,7 +1277,7 @@
       "remediationGroup": "authorization-object-binding",
       "mar": "MAR-002",
       "owningBranch": "fix/mar-002-script-ownership",
-      "owningSha": "411618ce6eb327f40047ea8a8a02fcaa39336c2b",
+      "owningSha": "cd6cdff0162b0a80959074f115b60bb8270af541",
       "evidence": [
         "studio-plugin/src/utils/ArtifactLoader.lua",
         "server/src/__tests__/mar002.loader-provenance.test.ts"
