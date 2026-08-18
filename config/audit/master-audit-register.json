@@ -1266,6 +1266,23 @@
         "server/src/__tests__/support/studioPluginHarness.ts"
       ],
       "notes": "wasmoon@1.16.0, reviewed as a devDependency for a public repository. Verdict SAFE_WITH_CONDITIONS, no blocker. No advisories in OSV, GHSA or the npm bulk endpoint for this version; no malware signal; valid registry signature; MIT; no install scripts, with the WASM binary shipped pre-built inside the tarball rather than fetched at install time. Its real transitive footprint is one types-only package. Condition: 1.16.0 dates from December 2023 with no later 1.x release and development moved to a 2.0 prerelease, so the caret range will not pick up a patch that does not exist and the version needs checking by hand rather than assumed current. Review gaps recorded rather than glossed: no Endor data was available, no dedicated malware feed was queried, the bundled binary was not diffed against a reproducible build, and the maintainer account's 2FA posture could not be verified."
+    },
+    {
+      "id": "SEC-STUDIO-LOADER-PROVENANCE-001",
+      "title": "Scripts and metadata values were owned by AI Studio but not by any project",
+      "severity": "P1",
+      "status": "CONFIRMED",
+      "disposition": "FIXED-UNMERGED",
+      "area": "security",
+      "remediationGroup": "authorization-object-binding",
+      "mar": "MAR-002",
+      "owningBranch": "fix/mar-002-script-ownership",
+      "owningSha": "411618ce6eb327f40047ea8a8a02fcaa39336c2b",
+      "evidence": [
+        "studio-plugin/src/utils/ArtifactLoader.lua",
+        "server/src/__tests__/mar002.loader-provenance.test.ts"
+      ],
+      "notes": "The materializers were given a project and delivery, but the two instance kinds the loader writes itself, scripts and the metadata StringValue, still decided ownership from the managed mark alone. The boundary therefore held for a generated screen and not for the script beside it, and the weaker half decides the boundary. Both now stamp the same three attributes and gate replacement on a matching project, with an unattributed managed instance treated as foreign exactly as elsewhere. Reproduced against the baseline: eight assertions failed before the change, including a script and a metadata value belonging to another project being silently overwritten. Reverse-proved separately for stamping, for the ownership check and for the missing-provenance guard; each revert fails a distinct set. A stub gap surfaced during the baseline rather than being papered over: HttpService had no JSONEncode, and the stub raised instead of returning nil, which is why it was noticed."
     }
   ]
 }

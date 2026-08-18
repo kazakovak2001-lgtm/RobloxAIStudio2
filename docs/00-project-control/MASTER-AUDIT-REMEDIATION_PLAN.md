@@ -2,7 +2,7 @@
 
 # Master audit remediation plan
 
-Generated from `config/audit/master-audit-register.json` (72 findings). Severity is the register's; ordering is by the worst severity in each group, except that re-verification comes first and verified controls come last.
+Generated from `config/audit/master-audit-register.json` (73 findings). Severity is the register's; ordering is by the worst severity in each group, except that re-verification comes first and verified controls come last.
 
 Findings are grouped by shared architectural root rather than by symptom. Several of these are the same defect seen from different places, and repairing them one at a time would mean repairing the root several times.
 
@@ -10,7 +10,7 @@ Findings are grouped by shared architectural root rather than by symptom. Severa
 
 | Disposition        | Findings |
 | ------------------ | -------- |
-| FIXED-UNMERGED     | 38       |
+| FIXED-UNMERGED     | 39       |
 | NOT-STARTED        | 26       |
 | NO-ACTION-REQUIRED | 6        |
 | SCOPED-OUT         | 1        |
@@ -23,7 +23,7 @@ Every finding names the deduplicated root cause it belongs to. A finding the tax
 | Root cause                                                                                         | Priority        | Findings | Fixed | Remaining |
 | -------------------------------------------------------------------------------------------------- | --------------- | -------- | ----- | --------- |
 | **MAR-001** — Cross-tenant resource authorization is not parent-bound everywhere                   | P0              | 23       | 15    | 8         |
-| **MAR-002** — Studio materializer has no universal creator-ownership safety boundary               | P0              | 5        | 5     | 0         |
+| **MAR-002** — Studio materializer has no universal creator-ownership safety boundary               | P0              | 6        | 6     | 0         |
 | **MAR-003** — No single clean canonical product acceptance run exists                              | P0-release-gate | 3        | 0     | 3         |
 | **MAR-004** — Generation has no durable project-scoped single-flight and idempotent start identity | P1              | 3        | 3     | 0         |
 | **MAR-005** — State transitions have no unified durable CAS/version authority                      | P1              | 3        | 3     | 0         |
@@ -79,6 +79,7 @@ One defect shape: the identifier the caller was authorized for is not the thing 
 | **SEC-STUDIO-SCRIPT-PLACEMENT-001** — An unrecognised script root fell back to the container that replicates to every client                                              | P1       | CONFIRMED | FIXED-UNMERGED (fix/mar-002-script-ownership @ b99bb1a4c83642f8259902cd8f4bccd749962808)              |
 | **SEC-STUDIO-SWEEP-PROVENANCE-001** — The materializer sweep removes any managed instance, including another project's                                                    | P1       | CONFIRMED | FIXED-UNMERGED (fix/mar-002-script-ownership @ ddf7169c0164d1b729083ee13f186fd3536b467f)              |
 | **SEC-STUDIO-PROVENANCE-CONTRACT-001** — The materializer contract carries no project identity to scope ownership against                                                 | P1       | CONFIRMED | FIXED-UNMERGED (fix/mar-002-script-ownership @ ddf7169c0164d1b729083ee13f186fd3536b467f)              |
+| **SEC-STUDIO-LOADER-PROVENANCE-001** — Scripts and metadata values were owned by AI Studio but not by any project                                                         | P1       | CONFIRMED | FIXED-UNMERGED (fix/mar-002-script-ownership @ 411618ce6eb327f40047ea8a8a02fcaa39336c2b)              |
 | **AUDIT-BODY-SUPPLIED-BLUEPRINT-001** — Eight operations authorize against an identifier inside a caller-supplied body object                                             | P2       | CONFIRMED | NOT-STARTED                                                                                           |
 | **SEC-STUDIO-PROTOCOL-DISCLOSURE-001** — The command disclosure closed on the REST path was still reachable over the protocol transport                                   | P2       | CONFIRMED | FIXED-UNMERGED (fix/mar-001-studio-protocol-binding @ 74b987129b549eca3fdde294e3e3cf603af81c7d)       |
 | **SEC-STUDIO-STATUS-COUNT-001** — GET /status reported a platform-wide Studio session count                                                                               | P2       | CONFIRMED | FIXED-UNMERGED (fix/mar-001-studio-protocol-binding @ 74b987129b549eca3fdde294e3e3cf603af81c7d)       |

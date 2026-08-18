@@ -682,6 +682,7 @@
 │   │   │   ├── mar001.studio-command-concealment.test.ts
 │   │   │   ├── mar001.studio-protocol-binding.test.ts
 │   │   │   ├── mar001.studio-surface-closure.test.ts
+│   │   │   ├── mar002.provenance-contract.test.ts
 │   │   │   ├── mar002.script-placement-ownership.test.ts
 │   │   │   ├── novelty1.gameDna.test.ts
 │   │   │   ├── novelty2.verdict.test.ts

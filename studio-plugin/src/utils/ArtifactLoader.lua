@@ -14,6 +14,11 @@ local StarterPlayer = game:GetService("StarterPlayer")
 local Workspace = game:GetService("Workspace")
 
 local MANAGED_ATTRIBUTE = "AIStudioManaged"
+-- MAR-002. The same pair the materializers stamp. Managed says AI Studio made
+-- the instance; these say which project it was made for and which delivery
+-- produced it, which is what a destructive decision actually needs.
+local PROJECT_ATTRIBUTE = "AIStudioProject"
+local DELIVERY_ATTRIBUTE = "AIStudioDelivery"
 
 local ArtifactLoader = {}
 ArtifactLoader.__index = ArtifactLoader
@@ -36,6 +41,45 @@ end
 ]]
 function ArtifactLoader:setProvenance(projectId, deliveryId)
     self._provenance = { projectId = projectId, deliveryId = deliveryId }
+end
+
+--[[
+    The provenance to write and to check against, or an error.
+
+    Fail closed. Writing an unattributed instance would create exactly the
+    legacy shape the ownership rule treats as foreign, so the loader would be
+    manufacturing work that nothing could ever claim.
+]]
+function ArtifactLoader:_requireProvenance()
+    local provenance = self._provenance
+    if type(provenance) ~= "table"
+        or type(provenance.projectId) ~= "string"
+        or provenance.projectId == ""
+        or type(provenance.deliveryId) ~= "string"
+        or provenance.deliveryId == ""
+    then
+        error("Refusing to load artifacts without a project and delivery identity", 0)
+    end
+    return provenance
+end
+
+--[[
+    Whether this project may replace the instance.
+
+    An instance carrying the mark but no project comes from a build before
+    provenance existed and counts as foreign, because claiming an unattributed
+    instance is the permissive guess this rule prevents.
+]]
+local function isOwnedBy(instance, projectId)
+    if instance:GetAttribute(MANAGED_ATTRIBUTE) ~= true then return false end
+    local owner = instance:GetAttribute(PROJECT_ATTRIBUTE)
+    return type(owner) == "string" and owner == projectId
+end
+
+local function stampProvenance(instance, provenance)
+    instance:SetAttribute(MANAGED_ATTRIBUTE, true)
+    instance:SetAttribute(PROJECT_ATTRIBUTE, provenance.projectId)
+    instance:SetAttribute(DELIVERY_ATTRIBUTE, provenance.deliveryId)
 end
 
 function ArtifactLoader:load(artifact)
@@ -292,6 +336,7 @@ function ArtifactLoader:_removeLegacyIdNamedValues(stageFolder)
 end
 
 function ArtifactLoader:_loadMetadataArtifact(artifact)
+    local provenance = self:_requireProvenance()
     local stageFolder = self:_ensureStageFolder(artifact.stage or "OTHER")
     local stageName = tostring(artifact.stage or "OTHER")
     local valueName = self:_metadataInstanceName(artifact)
@@ -300,9 +345,12 @@ function ArtifactLoader:_loadMetadataArtifact(artifact)
     -- Same ownership rule the UI path follows: never destroy something the
     -- creator made. A stable name makes a collision plausible in a way the
     -- old random id never was, so this fails the export instead of guessing.
-    if value and (not value:IsA("StringValue") or value:GetAttribute("AIStudioManaged") ~= true) then
+    if value
+        and (not value:IsA("StringValue")
+            or not isOwnedBy(value, provenance.projectId))
+    then
         error(string.format(
-            "Refusing to replace %s: an instance with that name exists and is not managed by AI Studio",
+            "Refusing to replace %s: an instance with that name exists and is not managed by AI Studio for this project",
             value:GetFullName()
         ))
     end
@@ -310,9 +358,9 @@ function ArtifactLoader:_loadMetadataArtifact(artifact)
     if not value then
         value = Instance.new("StringValue")
         value.Name = valueName
-        value:SetAttribute("AIStudioManaged", true)
         value.Parent = stageFolder
     end
+    stampProvenance(value, provenance)
 
     local encoded = artifact.content
     if type(encoded) ~= "string" then
@@ -333,6 +381,7 @@ function ArtifactLoader:_loadMetadataArtifact(artifact)
 end
 
 function ArtifactLoader:_upsertScript(path, source)
+    local provenance = self:_requireProvenance()
     local segments = self:_splitPath(path)
     if #segments == 0 then error("Script path is empty") end
 
@@ -352,7 +401,7 @@ function ArtifactLoader:_upsertScript(path, source)
     end
 
     local existing = parent:FindFirstChild(instanceName)
-    if existing and existing:GetAttribute(MANAGED_ATTRIBUTE) ~= true then
+    if existing and not isOwnedBy(existing, provenance.projectId) then
         -- MAR-002. This used to destroy the instance on a class mismatch and
         -- overwrite its source otherwise, without asking whose it was. A name
         -- collision with a person's work is a reason to stop, not a reason to
@@ -360,7 +409,7 @@ function ArtifactLoader:_upsertScript(path, source)
         -- regenerate theirs.
         error(
             "Refusing to replace " .. existing:GetFullName()
-                .. ": it was not created by AI Studio"
+                .. ": it was not created by AI Studio for this project"
         )
     end
     if existing and existing.ClassName ~= className then
@@ -378,7 +427,7 @@ function ArtifactLoader:_upsertScript(path, source)
     -- Marked so the next run can tell its own output from a person's. Scripts
     -- were the one artifact kind created without a mark, which is what left the
     -- ownership check above with nothing to read.
-    instance:SetAttribute(MANAGED_ATTRIBUTE, true)
+    stampProvenance(instance, provenance)
     instance.Source = source
     return instance
 end

@@ -361,7 +361,11 @@ describe("STUDIO-2F-A ArtifactLoader routing", () => {
   });
 
   it("refuses to overwrite a metadata name it does not own", () => {
-    expect(LOADER).toContain('value:GetAttribute("AIStudioManaged") ~= true');
-    expect(LOADER).toContain('value:SetAttribute("AIStudioManaged", true)');
+    // MAR-002 narrowed this from the managed mark alone to a matching project,
+    // and moved the stamping into a helper that writes all three attributes.
+    // Both are strictly stronger than what this pinned before; the behaviour is
+    // proved in mar002.loader-provenance.test.ts.
+    expect(LOADER).toContain("not isOwnedBy(value, provenance.projectId)");
+    expect(LOADER).toContain("stampProvenance(value, provenance)");
   });
 });

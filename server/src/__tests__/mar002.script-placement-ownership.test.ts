@@ -48,6 +48,10 @@ function withLoader(body: string) {
     local loader = ArtifactLoader.new({
       report = function(_, message) table.insert(reported, message) end,
     })
+    -- MAR-002 made provenance mandatory. These cases are about placement and
+    -- creator ownership, so they carry one identity throughout; the
+    -- project-scoping rules have their own file.
+    loader:setProvenance("project-a", "delivery-1")
     local services = _G.__stub.services
     ${body}
   `);

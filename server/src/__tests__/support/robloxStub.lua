@@ -187,6 +187,34 @@ for _, name in ipairs({ "StarterPlayerScripts", "StarterCharacterScripts" }) do
     container.Parent = services.StarterPlayer
 end
 
+--[[
+  HttpService, only the two encoders the loader uses.
+
+  Deliberately not a real JSON implementation: the loader writes the encoded
+  string into a StringValue and nothing under test reads it back as structured
+  data, so a faithful round-trip would be precision nothing depends on. It is
+  stable and inspectable, which is what the assertions need.
+]]
+local function encodeValue(value)
+    local kind = type(value)
+    if kind == "table" then
+        local parts = {}
+        local keys = {}
+        for key in pairs(value) do table.insert(keys, tostring(key)) end
+        table.sort(keys)
+        for _, key in ipairs(keys) do
+            table.insert(parts, string.format("%q:%s", key, encodeValue(value[key])))
+        end
+        return "{" .. table.concat(parts, ",") .. "}"
+    end
+    if kind == "string" then return string.format("%q", value) end
+    return tostring(value)
+end
+
+services.HttpService.JSONEncode = function(_, value)
+    return encodeValue(value)
+end
+
 local game = {}
 function game:GetService(name)
     local service = services[name]
