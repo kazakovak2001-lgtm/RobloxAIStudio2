@@ -140,10 +140,20 @@ describe("Studio project-scoped API key access", () => {
     );
 
     expect((await connect(url, project.id)).status).toBe(401);
+    // Whether the credential may be used for this kind of operation is a fact
+    // about the credential, so it stays an explicit refusal.
     expect((await connect(url, project.id, wrongCapability.key)).status).toBe(
       403,
     );
-    expect((await connect(url, project.id, wrongScope.key)).status).toBe(403);
+
+    // SEC-PROJECT-ACCESS-DISCLOSURE-001. A key scoped to a different project
+    // asked about this one. That used to answer 403, which confirmed the
+    // project existed; it is now indistinguishable from asking about a project
+    // that does not exist.
+    const outOfScope = await connect(url, project.id, wrongScope.key);
+    const nonexistent = await connect(url, "project-nope", wrongScope.key);
+    expect(outOfScope.status).toBe(404);
+    expect(await outOfScope.json()).toEqual(await nonexistent.json());
   });
 
   it("connects with the exact Studio capability and project scope", async () => {

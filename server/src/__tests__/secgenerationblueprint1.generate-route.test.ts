@@ -298,7 +298,7 @@ describe("SEC-GENERATION-BLUEPRINT-001 POST /:projectId/generate", () => {
     );
   });
 
-  it("D — leaves requireProjectAccess behaviour unchanged", async () => {
+  it("D — refuses a foreign project and starts no work", async () => {
     const h = await harness();
 
     const foreign = await h.generate(
@@ -306,7 +306,12 @@ describe("SEC-GENERATION-BLUEPRINT-001 POST /:projectId/generate", () => {
       { blueprintId: h.blueprintB.id },
       TOKEN_A,
     );
-    expect(foreign.status).toBe(403);
+    // This asserted 403 when it was written, to show that the blueprint slice
+    // had not disturbed requireProjectAccess. SEC-PROJECT-ACCESS-DISCLOSURE-001
+    // then changed that control deliberately: a foreign project is now answered
+    // as an absent one, so a caller cannot learn which project ids are real.
+    // What this test guards is unchanged — the route refuses and does no work.
+    expect(foreign.status).toBe(404);
 
     const anonymous = await h.generate(
       h.projectA.id,

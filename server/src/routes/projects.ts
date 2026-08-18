@@ -15,10 +15,8 @@ import {
   type GenerationHistoryRepository,
 } from "../projects/repository/generationHistory.repository";
 import { getTokenFromCookies } from "../common/middleware/cookies";
-import {
-  getRequestApiKeyPrincipal,
-  requireApiKeyCapability,
-} from "../common/middleware/security";
+import { getRequestApiKeyPrincipal } from "../common/middleware/security";
+import { createResourceAuthorizer } from "./resourceAuthorization";
 
 export interface ProjectAccessControl {
   getRequestUserId(req: Request): Promise<string | null>;
@@ -84,37 +82,43 @@ export function createProjectRuntime(
     projectId: string,
     apiKeyCapability?: string,
   ): Promise<boolean> => {
-    if (getRequestApiKeyPrincipal(req)) {
-      if (!apiKeyCapability) {
+    const principal = getRequestApiKeyPrincipal(req);
+    if (principal) {
+      // Whether the credential may be used for this kind of operation at all is
+      // a fact about the credential, not about any project, so it stays a plain
+      // 403. It tells the caller nothing about what exists.
+      if (
+        !apiKeyCapability ||
+        !principal.capabilities.includes(apiKeyCapability)
+      ) {
         res.status(403).json({
           success: false,
           error: "API key is not permitted for this route",
         });
         return false;
       }
-      if (!requireApiKeyCapability(req, res, apiKeyCapability, projectId)) {
-        return false;
-      }
-      if (!projectRepository.get(projectId)) {
-        res.status(404).json({ success: false, error: "Project not found" });
-        return false;
-      }
-      return true;
+    } else {
+      const userId = await requireAuthenticatedUser(req, res);
+      if (!userId) return false;
     }
 
-    const userId = await requireAuthenticatedUser(req, res);
-    if (!userId) return false;
-
-    const project = projectRepository.get(projectId);
-    if (!project) {
-      res.status(404).json({ success: false, error: "Project not found" });
-      return false;
-    }
-    if (!projectRepository.verifyOwnership(projectId, userId)) {
-      res.status(403).json({ success: false, error: "Access denied" });
-      return false;
-    }
-    return true;
+    // SEC-PROJECT-ACCESS-DISCLOSURE-001. This used to answer 404 for a project
+    // that did not exist and 403 for one that existed and belonged to someone
+    // else, so any authenticated caller could enumerate real project ids
+    // through the control every project-scoped route depends on. Routed through
+    // the canonical helper, both answer alike.
+    //
+    // The project is its own authoritative project, which is the degenerate
+    // case of the helper's rule. The rule still holds: what gets authorized is
+    // what the loader returned, not the string the caller sent.
+    const project = await requireOwned(req, res, {
+      resource: "Project",
+      id: projectId,
+      load: (id: string) => projectRepository.get(id),
+      projectOf: (loaded) => loaded.id,
+      capability: apiKeyCapability,
+    });
+    return project !== null;
   };
 
   const hasProjectAccess = async (
@@ -138,6 +142,13 @@ export function createProjectRuntime(
       projectRepository.verifyOwnership(projectId, userId),
     );
   };
+
+  // Built on the concealing check above, and referenced by requireProjectAccess
+  // which is declared earlier: both are only ever invoked per request, long
+  // after this module has finished initialising.
+  const requireOwned = createResourceAuthorizer({
+    hasProjectAccess,
+  } as ProjectAccessControl);
 
   return {
     projectRepository,
