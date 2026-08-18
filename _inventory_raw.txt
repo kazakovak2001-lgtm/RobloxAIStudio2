@@ -586,6 +586,7 @@ server/src/__tests__/mar001.studio-surface-closure.test.ts
 server/src/__tests__/mar002.loader-provenance.test.ts
 server/src/__tests__/mar002.provenance-contract.test.ts
 server/src/__tests__/mar002.script-placement-ownership.test.ts
+server/src/__tests__/mar002.sync-provenance.test.ts
 server/src/__tests__/novelty1.gameDna.test.ts
 server/src/__tests__/novelty2.verdict.test.ts
 server/src/__tests__/performance.test.ts

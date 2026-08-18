@@ -685,6 +685,7 @@
 │   │   │   ├── mar002.loader-provenance.test.ts
 │   │   │   ├── mar002.provenance-contract.test.ts
 │   │   │   ├── mar002.script-placement-ownership.test.ts
+│   │   │   ├── mar002.sync-provenance.test.ts
 │   │   │   ├── novelty1.gameDna.test.ts
 │   │   │   ├── novelty2.verdict.test.ts
 │   │   │   ├── performance.test.ts

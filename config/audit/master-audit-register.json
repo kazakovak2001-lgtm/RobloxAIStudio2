@@ -1301,6 +1301,26 @@
         "server/src/__tests__/mar002.sync-provenance.test.ts"
       ],
       "notes": "setProvenance had no caller anywhere in the plugin, so in a real session every import would have been refused by the rule meant to protect it: correct and unreachable, which is worse than either alone. It was also the wrong shape. One ArtifactLoader serves the whole plugin session, so identity stored on it outlives the import that set it; a later call that forgot would write under whichever project went last, and an import interleaved across the HTTP yields inside a poll could write under the other. Rather than clearing the field, the field was removed: provenance is passed per loadArtifact call and is import-scoped by construction, so there is no stale state to clear and no window to race. SyncManager derives it from the queued EXPORT_PROJECT payload, which the backend authorized and which is validated for a non-empty project and execution before anything is written, rather than from the connector's own project. Reverse-proved twice: dropping the argument fails three assertions, and sourcing the project from the connector instead of the payload fails two."
+    },
+    {
+      "id": "AUDIT-STUDIO-OWNERSHIP-CLOSURE-001",
+      "title": "Studio creator-ownership boundary closed locally across every path that writes",
+      "severity": "P1",
+      "status": "CONFIRMED",
+      "disposition": "FIXED-UNMERGED",
+      "area": "security",
+      "remediationGroup": "authorization-object-binding",
+      "mar": "MAR-002",
+      "owningBranch": "fix/mar-002-script-ownership",
+      "owningSha": "pending",
+      "evidence": [
+        "studio-plugin/src/utils/ArtifactLoader.lua",
+        "studio-plugin/src/utils/UITreeMaterializer.lua",
+        "studio-plugin/src/utils/WorldSceneMaterializer.lua",
+        "studio-plugin/src/services/SyncManager.lua",
+        "server/src/__tests__/mar002.world-and-idempotence.test.ts"
+      ],
+      "notes": "Every path the plugin writes through now stamps a project and a delivery and refuses to replace or sweep anything it cannot prove is this project's: scripts, metadata values, UI screens and world zones. Hand-built work, another project's work and work carrying the mark with no project all get the same refusal. Identity comes from the backend-authorized export command and travels per call, so there is no shared mutable state to go stale between imports. The world path was fixed alongside the UI one but only the UI one had been exercised; it now has its own sweep and replace tests, because fixing two things and proving one is how a regression ships in the half nobody looked at. Idempotence holds and is now evidenced in both directions: a command the backend verified is not applied twice, and one it never confirmed is retried, which is why the guard sits after verification rather than before it. Concurrency is deliberately excluded. Import-scoped provenance removed the mutable state a cross-project race needed, which is a design property rather than a measurement; real interleaving belongs to MAR-016. Remaining MAR-002 surface is Studio session and command lifecycle rather than creator ownership."
     }
   ]
 }
