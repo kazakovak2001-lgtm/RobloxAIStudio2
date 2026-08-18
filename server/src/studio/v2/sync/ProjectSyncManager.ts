@@ -24,27 +24,14 @@ export class ProjectSyncManager {
   private pendingChanges: SyncChange[] = [];
   private conflicts: SyncConflict[] = [];
 
+  private projectPipelineKey(projectId: string, pipelineId: string): string {
+    return `${projectId}:${pipelineId}`;
+  }
+
   constructor(artifactStore: ArtifactStore) {
     this.artifactStore = artifactStore;
     this.validator = new SyncValidator();
     this.transferManager = new ArtifactTransferManager(artifactStore);
-  }
-
-  /**
-   * Generate a project snapshot (metadata + artifact refs).
-   */
-  getProjectSnapshot(pipelineId: string): ProjectSnapshot | null {
-    const refs = this.transferManager.getArtifactRefs(pipelineId);
-    const version = this.generateVersion(pipelineId, refs);
-    this.versions.set(pipelineId, version);
-
-    return {
-      projectId: pipelineId,
-      version,
-      artifacts: refs,
-      generatedAt: Date.now(),
-      artifactCount: refs.length,
-    };
   }
 
   /**
@@ -58,8 +45,9 @@ export class ProjectSyncManager {
       projectId,
       pipelineId,
     );
-    const version = this.generateVersion(pipelineId, refs);
-    this.versions.set(pipelineId, version);
+    const versionKey = this.projectPipelineKey(projectId, pipelineId);
+    const version = this.generateVersion(versionKey, refs);
+    this.versions.set(versionKey, version);
 
     return {
       projectId,
@@ -75,11 +63,15 @@ export class ProjectSyncManager {
    * durably acknowledged.
    */
   async processSyncRequest(
+    projectId: string,
     pipelineId: string,
     changes: SyncChange[],
   ): Promise<SyncResult> {
     if (changes.length === 0) {
-      const currentVersion = this.getProjectSnapshot(pipelineId)?.version;
+      const currentVersion = this.getProjectSnapshotForProject(
+        projectId,
+        pipelineId,
+      )?.version;
       return {
         status: "no_changes",
         appliedChanges: [],
@@ -90,10 +82,10 @@ export class ProjectSyncManager {
       };
     }
 
-    // Validate changes
     const knownIds = this.artifactStore
       .getByPipeline(pipelineId)
-      .map((a) => a.id);
+      .filter((artifact) => artifact.projectId === projectId)
+      .map((artifact) => artifact.id);
     const validation = this.validator.validate(changes, knownIds);
 
     if (!validation.valid) {
@@ -102,7 +94,9 @@ export class ProjectSyncManager {
         appliedChanges: [],
         conflicts: [],
         errors: validation.errors.map((e) => `[${e.changeId}] ${e.error}`),
-        newVersion: this.getProjectSnapshot(pipelineId)?.version ?? "0.0.0",
+        newVersion:
+          this.getProjectSnapshotForProject(projectId, pipelineId)?.version ??
+          "0.0.0",
         timestamp: Date.now(),
       };
     }
@@ -113,7 +107,7 @@ export class ProjectSyncManager {
     );
     if (unsupported.length > 0) {
       const detectedConflicts = changes
-        .map((change) => this.detectConflict(pipelineId, change))
+        .map((change) => this.detectConflict(projectId, pipelineId, change))
         .filter((conflict): conflict is SyncConflict => conflict !== null);
       this.conflicts = detectedConflicts;
       return {
@@ -124,28 +118,29 @@ export class ProjectSyncManager {
           (change) =>
             `[${change.changeId}] ${change.changeType} is not supported by the canonical ArtifactStore`,
         ),
-        newVersion: this.getProjectSnapshot(pipelineId)?.version ?? "0.0.0",
+        newVersion:
+          this.getProjectSnapshotForProject(projectId, pipelineId)?.version ??
+          "0.0.0",
         timestamp: Date.now(),
       };
     }
 
-    // Detect conflicts and apply changes
     const appliedChanges: string[] = [];
     const detectedConflicts: SyncConflict[] = [];
 
     for (const change of changes) {
-      const conflict = this.detectConflict(pipelineId, change);
+      const conflict = this.detectConflict(projectId, pipelineId, change);
       if (conflict) {
         detectedConflicts.push(conflict);
       } else {
-        await this.applyChange(pipelineId, change);
+        await this.applyChange(projectId, pipelineId, change);
         appliedChanges.push(change.changeId);
       }
     }
 
-    // Publish the new version only after all accepted artifact mutations are
-    // acknowledged.
-    const newVersion = this.getProjectSnapshot(pipelineId)?.version ?? "0.0.0";
+    const newVersion =
+      this.getProjectSnapshotForProject(projectId, pipelineId)?.version ??
+      "0.0.0";
     this.lastSyncTimestamp = Date.now();
     this.conflicts = detectedConflicts;
 
@@ -162,24 +157,37 @@ export class ProjectSyncManager {
   /**
    * Validate changes without applying (dry run).
    */
-  validateOnly(pipelineId: string, changes: SyncChange[]): ValidationResult {
+  validateOnly(
+    projectId: string,
+    pipelineId: string,
+    changes: SyncChange[],
+  ): ValidationResult {
     const knownIds = this.artifactStore
       .getByPipeline(pipelineId)
-      .map((a) => a.id);
+      .filter((artifact) => artifact.projectId === projectId)
+      .map((artifact) => artifact.id);
     return this.validator.validate(changes, knownIds);
   }
 
   /**
    * Get current sync status.
    */
-  getSyncStatus(pipelineId?: string): SyncStatus {
+  getSyncStatus(): SyncStatus;
+  getSyncStatus(projectId: string, pipelineId: string): SyncStatus;
+  getSyncStatus(projectId?: string, pipelineId?: string): SyncStatus {
+    const versionKey =
+      projectId !== undefined && pipelineId !== undefined
+        ? this.projectPipelineKey(projectId, pipelineId)
+        : null;
+
     return {
       lastSyncTimestamp: this.lastSyncTimestamp,
       pendingChanges: this.pendingChanges.length,
       conflictCount: this.conflicts.length,
-      currentVersion:
-        (pipelineId ? this.versions.get(pipelineId) : null) ?? "0.0.0",
-      projectId: pipelineId ?? null,
+      currentVersion: versionKey
+        ? (this.versions.get(versionKey) ?? "0.0.0")
+        : "0.0.0",
+      projectId: projectId ?? null,
     };
   }
 
@@ -191,13 +199,18 @@ export class ProjectSyncManager {
   }
 
   private detectConflict(
-    _pipelineId: string,
+    projectId: string,
+    pipelineId: string,
     change: SyncChange,
   ): SyncConflict | null {
-    // For update/delete, check if the artifact was modified since the change timestamp
     if (change.changeType === "update" || change.changeType === "delete") {
       const artifact = this.artifactStore.getById(change.artifactId);
-      if (artifact && artifact.createdAt > change.timestamp) {
+      if (
+        artifact &&
+        artifact.projectId === projectId &&
+        artifact.pipelineId === pipelineId &&
+        artifact.createdAt > change.timestamp
+      ) {
         return {
           changeId: change.changeId,
           artifactId: change.artifactId,
@@ -211,10 +224,20 @@ export class ProjectSyncManager {
   }
 
   private async applyChange(
-    _pipelineId: string,
+    projectId: string,
+    pipelineId: string,
     change: SyncChange,
   ): Promise<void> {
     if (change.changeType === "update") {
+      const artifact = this.artifactStore.getById(change.artifactId);
+      if (
+        !artifact ||
+        artifact.projectId !== projectId ||
+        artifact.pipelineId !== pipelineId
+      ) {
+        throw new Error("Artifact does not belong to the requested project");
+      }
+
       await this.artifactStore.edit(
         change.artifactId,
         change.content,

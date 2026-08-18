@@ -185,10 +185,24 @@ export class StudioRuntime {
     return snapshot && snapshot.artifactCount > 0 ? snapshot : null;
   }
 
-  getSyncStatus(projectOrExecutionId?: string): SyncStatus {
-    if (!projectOrExecutionId) return this.sync.getSyncStatus();
-    const executionId = this.resolveExecutionId(projectOrExecutionId);
-    return this.sync.getSyncStatus(executionId ?? projectOrExecutionId);
+  getSyncStatus(projectId?: string): SyncStatus {
+    if (!projectId) return this.sync.getSyncStatus();
+
+    const executionId = this.resolveExecutionId(projectId);
+    if (!executionId) {
+      // No execution to scope to yet — the instance-global sync fields
+      // belong to whichever project last synced, not to this one. Returning
+      // them here would leak another tenant's sync metadata.
+      return {
+        lastSyncTimestamp: null,
+        pendingChanges: 0,
+        conflictCount: 0,
+        currentVersion: "0.0.0",
+        projectId,
+      };
+    }
+
+    return this.sync.getSyncStatus(projectId, executionId);
   }
 
   transferProjectArtifacts(
@@ -203,21 +217,21 @@ export class StudioRuntime {
   }
 
   async processProjectSyncRequest(
-    projectOrExecutionId: string,
+    projectId: string,
     changes: SyncChange[],
   ): Promise<SyncResult | null> {
-    const executionId = this.resolveExecutionId(projectOrExecutionId);
+    const executionId = this.resolveExecutionId(projectId);
     if (!executionId) return null;
-    return this.sync.processSyncRequest(executionId, changes);
+    return this.sync.processSyncRequest(projectId, executionId, changes);
   }
 
   validateProjectChanges(
-    projectOrExecutionId: string,
+    projectId: string,
     changes: SyncChange[],
   ): ValidationResult | null {
-    const executionId = this.resolveExecutionId(projectOrExecutionId);
+    const executionId = this.resolveExecutionId(projectId);
     if (!executionId) return null;
-    return this.sync.validateOnly(executionId, changes);
+    return this.sync.validateOnly(projectId, executionId, changes);
   }
 
   async getCommand(commandId: string): Promise<StudioCommand | null> {

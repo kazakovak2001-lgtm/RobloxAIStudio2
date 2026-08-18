@@ -63,7 +63,7 @@ describe("Studio sync REST and protocol integration", () => {
       null,
       "print('a')",
       {
-        projectId: ARTIFACT_TEST_PROJECT,
+        projectId: "project-a",
         producer: deterministicProducer("generation-validation"),
       },
     );
@@ -108,7 +108,7 @@ describe("Studio sync REST and protocol integration", () => {
       null,
       "print('own')",
       {
-        projectId: ARTIFACT_TEST_PROJECT,
+        projectId: "project-a",
         producer: deterministicProducer("generation-validation"),
       },
     );
@@ -118,7 +118,7 @@ describe("Studio sync REST and protocol integration", () => {
       null,
       "print('foreign')",
       {
-        projectId: ARTIFACT_TEST_PROJECT,
+        projectId: "project-b",
         producer: deterministicProducer("generation-validation"),
       },
     );
@@ -153,7 +153,7 @@ describe("Studio sync REST and protocol integration", () => {
       null,
       "x".repeat(1_048_576),
       {
-        projectId: ARTIFACT_TEST_PROJECT,
+        projectId: "project-a",
         producer: deterministicProducer("generation-validation"),
       },
     );
@@ -171,7 +171,7 @@ describe("Studio sync REST and protocol integration", () => {
       null,
       "print('before')",
       {
-        projectId: ARTIFACT_TEST_PROJECT,
+        projectId: "project-a",
         producer: deterministicProducer("generation-validation"),
       },
     );
@@ -230,7 +230,7 @@ describe("Studio sync REST and protocol integration", () => {
       null,
       "print('before export')",
       {
-        projectId: ARTIFACT_TEST_PROJECT,
+        projectId,
         producer: deterministicProducer("generation-validation"),
       },
     );
@@ -240,7 +240,7 @@ describe("Studio sync REST and protocol integration", () => {
     await expect(snapshot.json()).resolves.toMatchObject({
       success: true,
       data: {
-        projectId: executionId,
+        projectId,
         artifacts: [{ id: artifact.id }],
       },
     });
@@ -279,7 +279,7 @@ describe("Studio sync REST and protocol integration", () => {
       null,
       "print('before')",
       {
-        projectId: ARTIFACT_TEST_PROJECT,
+        projectId: "project-a",
         producer: deterministicProducer("generation-validation"),
       },
     );
@@ -306,7 +306,7 @@ describe("Studio sync REST and protocol integration", () => {
       null,
       "print('before')",
       {
-        projectId: ARTIFACT_TEST_PROJECT,
+        projectId: "project-a",
         producer: deterministicProducer("generation-validation"),
       },
     );
