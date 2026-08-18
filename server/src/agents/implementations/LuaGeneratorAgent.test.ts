@@ -66,8 +66,17 @@ describe("LuaGeneratorAgent playable runtime contract", () => {
     expect(result.success).toBe(true);
     expect(generate).toHaveBeenCalledTimes(2);
     expect(generate.mock.calls[0]?.[0]).toContain("Collect crystals");
+    // FP-1C: architecture component names are presented as logical components,
+    // not as a bare service list. Models were reading a bare list as Roblox
+    // services and emitting game:GetService("WorldService").
     expect(generate.mock.calls[0]?.[0]).toContain(
-      "WorldService, CollectibleService",
+      'logical component "WorldService"',
+    );
+    expect(generate.mock.calls[0]?.[0]).toContain(
+      'logical component "CollectibleService"',
+    );
+    expect(generate.mock.calls[0]?.[0]).toContain(
+      "never pass any of these names to game:GetService()",
     );
     expect(generate.mock.calls[0]?.[0]).not.toContain("Architecture: 0, 1");
     expect(generate.mock.calls[1]?.[0]).toContain("REPAIR REQUIRED");

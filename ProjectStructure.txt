@@ -8,27 +8,15 @@
 │   ├── agents
 │   │   ├── architecture-auditor.md
 │   │   ├── autonomous-orchestrator-engineer.md
-│   │   ├── frontend-contract-reviewer.md
 │   │   ├── persistence-engineer.md
-│   │   ├── project-mapper.md
 │   │   ├── release-reviewer.md
 │   │   ├── security-reviewer.md
 │   │   ├── studio-acceptance-engineer.md
 │   │   ├── studio-operator.md
 │   │   └── test-engineer.md
-│   ├── rules
-│   │   ├── frontend-contract.md
-│   │   ├── persistence.md
-│   │   ├── pipeline-v2.md
-│   │   ├── security.md
-│   │   └── studio.md
 │   ├── settings.json
 │   └── skills
 │       ├── data-202b-audit
-│       │   └── SKILL.md
-│       ├── robloxaistudio-backend-slice
-│       │   └── SKILL.md
-│       ├── robloxaistudio-frontend-contract
 │       │   └── SKILL.md
 │       ├── studio-acceptance
 │       │   └── SKILL.md
@@ -114,7 +102,6 @@
 ├── artifacts
 │   └── runtime
 │       └── runtime-ownership-report.json
-├── CLAUDE.md
 ├── commitlint.config.js
 ├── config
 │   ├── cleanup
@@ -667,6 +654,14 @@
 │   │   │   ├── core1b.postgres.integration.test.ts
 │   │   │   ├── cutover1c.origin-policy.test.ts
 │   │   │   ├── e2eGeneration.test.ts
+│   │   │   ├── firstplayable1.clientHudContract.test.ts
+│   │   │   ├── firstplayable1.constrainedRepairSpatial.test.ts
+│   │   │   ├── firstplayable1.executionSide.test.ts
+│   │   │   ├── firstplayable1.luaOutputSchema.test.ts
+│   │   │   ├── firstplayable1.luaTokenBudget.test.ts
+│   │   │   ├── firstplayable1.spatialDesign.test.ts
+│   │   │   ├── firstplayable1.spatialLuaContract.test.ts
+│   │   │   ├── firstplayable1.spatialWiring.test.ts
 │   │   │   ├── generation-provenance.test.ts
 │   │   │   ├── harden2a.auth-contract.test.ts
 │   │   │   ├── identityAccess.test.ts
@@ -1368,6 +1363,8 @@
 │   │   ├── providers
 │   │   │   ├── __tests__
 │   │   │   │   ├── groq.test.ts
+│   │   │   │   ├── ollamaStructuredOutput.test.ts
+│   │   │   │   ├── ollamaTimeout.test.ts
 │   │   │   │   ├── providerFactory.test.ts
 │   │   │   │   └── providers.test.ts
 │   │   │   ├── ai
@@ -1567,6 +1564,7 @@
 │   │   │   ├── generationValidation.ts
 │   │   │   ├── luaSecurityReview.ts
 │   │   │   ├── noveltyVerdict.ts
+│   │   │   ├── spatialDesign.ts
 │   │   │   ├── worldCrossValidation.ts
 │   │   │   ├── worldModel.ts
 │   │   │   ├── worldSceneBuilder.ts

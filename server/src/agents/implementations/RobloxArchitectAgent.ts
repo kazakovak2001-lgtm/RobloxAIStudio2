@@ -20,6 +20,13 @@ export class RobloxArchitectAgent extends BaseAgent {
     properties: {
       architecture: { type: "object" },
       roblox_architect: { type: "object" },
+      // FIRST-PLAYABLE-1 (FP-1A). The generated level this architecture is
+      // for. Not in `required`: a run whose model omits it still produces a
+      // valid architecture, and the Lua generator falls back to the
+      // unpositioned slice it built before this slice existed. Failing the
+      // whole stage on a missing level would make every generation depend on
+      // one more thing the model has to get right in a single response.
+      spatialDesign: { type: "object" },
     },
     required: ["architecture", "roblox_architect"],
   };
@@ -33,6 +40,12 @@ export class RobloxArchitectAgent extends BaseAgent {
     const gameplay = input.gameplay as Record<string, unknown> | undefined;
 
     const name = String(bp?.name ?? "Unnamed Game");
+    // FP-1A. The level is designed from what the player asked for, so the
+    // brief has to reach this stage; without it the architect can only lay out
+    // a map for a game it cannot describe.
+    const description = String(
+      bp?.description ?? "Create a playable Roblox game",
+    );
     const gameType = String(bp?.game_type ?? "adventure");
     const estimatedPlayers = String(bp?.estimated_players ?? "small-group");
 
@@ -92,6 +105,7 @@ export class RobloxArchitectAgent extends BaseAgent {
 
     const registryPrompt = this.buildPrompt({
       name,
+      description,
       game_type: gameType,
       estimated_players: estimatedPlayers,
       systems_summary: systemsSummary,
