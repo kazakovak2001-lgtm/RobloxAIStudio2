@@ -1312,7 +1312,7 @@
       "remediationGroup": "authorization-object-binding",
       "mar": "MAR-002",
       "owningBranch": "fix/mar-002-script-ownership",
-      "owningSha": "pending",
+      "owningSha": "d0a727d9b555609876b80d2a622393630c62b732",
       "evidence": [
         "studio-plugin/src/utils/ArtifactLoader.lua",
         "studio-plugin/src/utils/UITreeMaterializer.lua",
