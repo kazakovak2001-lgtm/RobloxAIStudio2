@@ -22,10 +22,18 @@ interface RegisterFinding {
   disposition: string;
   area: string;
   remediationGroup: string;
+  mar: string;
+  marNote?: string;
   evidence: string[];
   owningBranch?: string;
   owningSha?: string;
   notes?: string;
+}
+
+interface MarRootCause {
+  id: string;
+  priority: string;
+  title: string;
 }
 
 interface AuditRegister {
@@ -36,8 +44,19 @@ interface AuditRegister {
   severities: string[];
   statuses: string[];
   dispositions: string[];
+  marRootCauses: MarRootCause[];
   findings: RegisterFinding[];
 }
+
+/**
+ * A finding that the deduplicated root-cause taxonomy does not cover.
+ *
+ * This is a real answer, not a missing one. Filing such a finding under an
+ * approximate neighbour would make the taxonomy look complete while quietly
+ * losing the finding; saying `unmapped` and explaining why keeps the gap
+ * visible as a fact about the taxonomy.
+ */
+const UNMAPPED = "unmapped";
 
 const root = process.cwd();
 const registerPath = join(root, "config/audit/master-audit-register.json");
@@ -95,6 +114,32 @@ function validate(): { errors: string[]; warnings: string[]; total: number } {
     errors.push("Audit register must declare its remediation groups.");
   }
 
+  // The root causes are the audit's own vocabulary. Declaring them here is what
+  // lets a finding's `mar` be checked rather than merely recorded.
+  const rootCauses = Array.isArray(register.marRootCauses)
+    ? register.marRootCauses
+    : [];
+  if (!rootCauses.length) {
+    errors.push("Audit register must declare its root-cause taxonomy.");
+  }
+  const marIds = new Set<string>();
+  for (const rootCause of rootCauses) {
+    if (!isNonEmptyString(rootCause.id)) {
+      errors.push("A root cause has no id.");
+      continue;
+    }
+    if (marIds.has(rootCause.id)) {
+      errors.push(`Duplicate root cause id: ${rootCause.id}`);
+    }
+    marIds.add(rootCause.id);
+    if (!isNonEmptyString(rootCause.title)) {
+      errors.push(`Root cause ${rootCause.id} has no title.`);
+    }
+    if (!isNonEmptyString(rootCause.priority)) {
+      errors.push(`Root cause ${rootCause.id} has no priority.`);
+    }
+  }
+
   const findings = Array.isArray(register.findings) ? register.findings : [];
   if (!findings.length) {
     errors.push("Audit register must contain at least one finding.");
@@ -130,6 +175,17 @@ function validate(): { errors: string[]; warnings: string[]; total: number } {
     }
     if (!statuses.has(finding.status)) {
       errors.push(`Finding ${label} has unknown status: ${finding.status}`);
+    }
+    // Without a root cause the finding cannot be scheduled against the audit's
+    // remediation order, which is the order the work actually follows.
+    if (finding.mar === UNMAPPED) {
+      if (!isNonEmptyString(finding.marNote)) {
+        errors.push(
+          `Finding ${label} claims no root cause covers it without saying why.`,
+        );
+      }
+    } else if (!marIds.has(finding.mar)) {
+      errors.push(`Finding ${label} has unknown root cause: ${finding.mar}`);
     }
     // The disposition is what stops a finding from being recorded and then
     // forgotten: it must say what was done, even when the answer is nothing.

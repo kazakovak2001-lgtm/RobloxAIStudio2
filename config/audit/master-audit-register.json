@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "controlId": "AUDIT-MASTER-REGISTER",
-  "statement": "One record per audit finding. A finding may honestly be open, unreviewed or accepted, but it may not be absent, and it may not carry a disposition without evidence. Status describes what is known about the defect; disposition describes what has been done about it. Neither implies the other.",
+  "statement": "One record per audit finding. A finding may honestly be open, unreviewed or accepted, but it may not be absent, and it may not carry a disposition without evidence. Status describes what is known about the defect; disposition describes what has been done about it. Neither implies the other. Each finding also names the deduplicated root cause it belongs to, so the register and the audit's remediation order use one vocabulary. A finding the taxonomy does not cover says so, rather than being filed under an approximate neighbour.",
   "severities": ["P0", "P1", "P2", "P3"],
   "statuses": ["CONFIRMED", "LIKELY", "OPEN", "VERIFIED-CONTROL"],
   "dispositions": [
@@ -11,589 +11,6 @@
     "ACCEPTED-RISK",
     "SUPERSEDED",
     "NO-ACTION-REQUIRED"
-  ],
-  "findings": [
-    {
-      "id": "SEC-GENERATION-BLUEPRINT-001",
-      "title": "Generation accepted a blueprint id belonging to another project",
-      "severity": "P1",
-      "status": "CONFIRMED",
-      "disposition": "FIXED-UNMERGED",
-      "area": "security",
-      "owningBranch": "integration/wave-0",
-      "owningSha": "04482f16c5249d864020f05e8f59d1c7224f4ed7",
-      "evidence": ["server/src/routes/game-generation.ts"],
-      "notes": "Authorized the URL projectId but resolved a body-supplied blueprintId. Reproduced against the baseline: the cross-project request answered 200 and a pipeline started for the other project's blueprint. Fixed at both the route and the service boundary.",
-      "remediationGroup": "authorization-object-binding"
-    },
-    {
-      "id": "AUDIT-START-ATOMICITY-001",
-      "title": "Generation start wrote project, execution and history as three independent durable writes",
-      "severity": "P1",
-      "status": "CONFIRMED",
-      "disposition": "FIXED-UNMERGED",
-      "area": "durability",
-      "owningBranch": "integration/wave-0",
-      "owningSha": "3696a1f31b86cff8ce97e09f5a5da581d2a3ba01",
-      "evidence": [
-        "server/src/platform/projects/ProjectLifecycleCoordinator.ts"
-      ],
-      "notes": "A rejection after the first write left a project falsely generating with an incremented count and no execution able to repair it. Fixed by committing all three in one applyDurableBatch, mirroring GenerationOutcomeCoordinator.",
-      "remediationGroup": "generation-start-admission"
-    },
-    {
-      "id": "AUDIT-ID-EXEC-001",
-      "title": "Execution identity derived from Date.now collided within a millisecond",
-      "severity": "P1",
-      "status": "CONFIRMED",
-      "disposition": "FIXED-UNMERGED",
-      "area": "durability",
-      "owningBranch": "integration/wave-0",
-      "owningSha": "2d5d2d7da28c7edd230acc2e5b93a41b7fe8066a",
-      "evidence": ["server/src/projects/services/game-generation.service.ts"],
-      "notes": "generation_executions is keyed by execution id alone across every project and recordExecution writes through a blind upsert, so a collision destroyed the other project's execution. Reproduced: two starts left one record instead of two.",
-      "remediationGroup": "generation-start-admission"
-    },
-    {
-      "id": "SEC-SCANNER-EXCEPTION-CLOCK-001",
-      "title": "Security exception expiry validated against a frozen audit date",
-      "severity": "P1",
-      "status": "CONFIRMED",
-      "disposition": "FIXED-UNMERGED",
-      "area": "supply-chain",
-      "owningBranch": "integration/wave-0",
-      "owningSha": "d7d1cca0",
-      "evidence": ["package.json"],
-      "notes": "The validate:security-scanners policy compares expiry against a hardcoded 2026-08-01, so exceptions that expired on 2026-08-15 still pass on this baseline. The fix injects a real UTC clock and turns the gate red until the exceptions are renewed or removed.",
-      "remediationGroup": "supply-chain-hardening"
-    },
-    {
-      "id": "AUDIT-DUP-GENERATION-001",
-      "title": "No suppression of a second concurrent generation for the same project",
-      "severity": "P1",
-      "status": "CONFIRMED",
-      "disposition": "FIXED-UNMERGED",
-      "area": "concurrency",
-      "evidence": ["server/src/projects/services/game-generation.service.ts"],
-      "notes": "The project lock covers only the short start critical section. Two starts legitimately produce two executions and two generation-count increments. Deliberately left out of the start-atomicity slice.",
-      "remediationGroup": "generation-start-admission",
-      "owningBranch": "integration/wave-0",
-      "owningSha": "e0d800d273b3c618d4af07d9ffbbe2873da49937"
-    },
-    {
-      "id": "AUDIT-OUTCOME-LAST-WRITER-001",
-      "title": "An older overlapping run can overwrite a newer run's terminal project state",
-      "severity": "P1",
-      "status": "CONFIRMED",
-      "disposition": "FIXED-UNMERGED",
-      "area": "concurrency",
-      "evidence": [
-        "server/src/platform/projects/ProjectLifecycleCoordinator.ts"
-      ],
-      "notes": "Nothing restricts terminal project updates to the current execution. Depends on AUDIT-DUP-GENERATION-001 for its main trigger.",
-      "remediationGroup": "generation-start-admission",
-      "owningBranch": "integration/wave-0",
-      "owningSha": "e0d800d273b3c618d4af07d9ffbbe2873da49937"
-    },
-    {
-      "id": "AUDIT-RECOVERY-001",
-      "title": "Canonical generation is not resumed or reconciled after restart",
-      "severity": "P1",
-      "status": "CONFIRMED",
-      "disposition": "FIXED-UNMERGED",
-      "area": "durability",
-      "evidence": [
-        "server/src/execution/executionQueue.ts",
-        "config/runtime/runtime-ownership.json"
-      ],
-      "notes": "The execution record is durable but the worker queue is process-local, so a restart leaves executions durably running with no owner. AutonomousOrchestrator already implements persisted sessions, recovery claims and idempotent recovery and is the pattern to reuse.",
-      "remediationGroup": "canonical-generation-recovery",
-      "owningBranch": "integration/wave-0",
-      "owningSha": "186d1a08a76d3261d9aecd2183c4286b676b29ec"
-    },
-    {
-      "id": "AUDIT-GRACEFUL-SHUTDOWN-001",
-      "title": "Shutdown does not drain the canonical generation queue",
-      "severity": "P1",
-      "status": "CONFIRMED",
-      "disposition": "FIXED-UNMERGED",
-      "area": "durability",
-      "evidence": ["server/src/execution/executionQueue.ts"],
-      "notes": "Same root as AUDIT-RECOVERY-001. SIGTERM can end the process mid-generation and leave a durable running execution.",
-      "remediationGroup": "canonical-generation-recovery",
-      "owningBranch": "integration/wave-0",
-      "owningSha": "186d1a08a76d3261d9aecd2183c4286b676b29ec"
-    },
-    {
-      "id": "AUDIT-QUEUE-DISCONNECTED-001",
-      "title": "The mature generation queue has no production consumer at all",
-      "severity": "P2",
-      "status": "CONFIRMED",
-      "disposition": "NOT-STARTED",
-      "area": "architecture",
-      "evidence": [
-        "server/src/platform/queue/GenerationQueue.ts",
-        "config/runtime/runtime-ownership.json"
-      ],
-      "notes": "Found while mapping runtime ownership. GenerationQueue offers status tracking, priority and retry counters, but its only importer is its own barrel and nothing imports that barrel; its only other reference is a test. Canonical generation uses a serial in-memory queue with an effective concurrency of one, so one long run blocks every other generation.",
-      "remediationGroup": "canonical-generation-recovery"
-    },
-    {
-      "id": "AUDIT-LEGACY-GENERATION-ISLAND-001",
-      "title": "An unreferenced legacy generation pipeline cluster remains in the tree",
-      "severity": "P3",
-      "status": "CONFIRMED",
-      "disposition": "NOT-STARTED",
-      "area": "architecture",
-      "evidence": [
-        "server/src/generation/GenerationPipeline.ts",
-        "config/runtime/runtime-ownership.json"
-      ],
-      "notes": "GenerationPipeline.ts has zero production importers, and GenerationRegistry.ts, GenerationManifest.ts and GenerationReport.ts are imported only by it, so the cluster is reachable from nothing. GenerationBlueprint.ts in the same directory has 13 importers and is a shared contract that must not be removed with the island.",
-      "remediationGroup": "architecture-deadwood"
-    },
-    {
-      "id": "AUDIT-LIFECYCLE-SPLIT-BRAIN-001",
-      "title": "Realtime reports a pipeline completed before artifact and validation stages run",
-      "severity": "P1",
-      "status": "CONFIRMED",
-      "disposition": "FIXED-UNMERGED",
-      "area": "truthfulness",
-      "evidence": ["server/src/planning/execution/PlanExecutor.ts"],
-      "notes": "An agent DAG completing is not canonical generation completing. If the artifact stage then fails, realtime says completed while the durable execution says failed.",
-      "remediationGroup": "pipeline-outcome-truth",
-      "owningBranch": "integration/wave-0",
-      "owningSha": "683b49a4ed288e8d95fa1829e8e057fe9a48eda8"
-    },
-    {
-      "id": "AUDIT-FAILURE-STEPS-LOSS-001",
-      "title": "Terminal failure records lose pipeline_steps recorded before the failure",
-      "severity": "P1",
-      "status": "CONFIRMED",
-      "disposition": "FIXED-UNMERGED",
-      "area": "durability",
-      "evidence": ["server/src/projects/services/game-generation.service.ts"],
-      "notes": "After an artifact recorder failure the terminal execution is written without complete steps, so a refreshed client sees zero completed, zero failed and zero known even though agents ran.",
-      "remediationGroup": "pipeline-outcome-truth",
-      "owningBranch": "integration/wave-0",
-      "owningSha": "683b49a4ed288e8d95fa1829e8e057fe9a48eda8"
-    },
-    {
-      "id": "SEC-REALTIME-GLOBAL-001",
-      "title": "Evaluation, memory and planning events broadcast to every connected socket",
-      "severity": "P1",
-      "status": "CONFIRMED",
-      "disposition": "FIXED-UNMERGED",
-      "area": "security",
-      "evidence": [
-        "server/src/index.ts",
-        "config/security/authorization-matrix.json"
-      ],
-      "notes": "Thirteen emissions sit in the same switch as the project-room emitter with the same project identifier in scope and broadcast past it anyway. Client-side filtering is not a security boundary: the unauthorized socket already received the payload. Now tracked as global-bypassing-available-scope in the matrix broadcasts section.",
-      "remediationGroup": "realtime-tenancy",
-      "owningBranch": "integration/wave-0",
-      "owningSha": "fee5b8c3655cfb9a68722cc9ce34358caf071556"
-    },
-    {
-      "id": "SEC-REALTIME-TRACE-001",
-      "title": "Execution traces broadcast globally from a listener with no project context",
-      "severity": "P1",
-      "status": "CONFIRMED",
-      "disposition": "FIXED-UNMERGED",
-      "area": "security",
-      "evidence": [
-        "server/src/index.ts",
-        "config/security/authorization-matrix.json"
-      ],
-      "notes": "Payload carries executionId, nodeId, agentId, evaluationScore and error. Distinct remediation from SEC-REALTIME-GLOBAL-001: the tracer listener receives no project, so scoping requires plumbing context in first. Tracked as global-no-project-context.",
-      "remediationGroup": "realtime-tenancy",
-      "owningBranch": "integration/wave-0",
-      "owningSha": "71e011f7024ba36a646bb79546b98ab236816d02"
-    },
-    {
-      "id": "SEC-REALTIME-PIPELINE-FALLBACK-001",
-      "title": "Pipeline events fall back to a global broadcast when no project is known",
-      "severity": "P2",
-      "status": "CONFIRMED",
-      "disposition": "FIXED-UNMERGED",
-      "area": "security",
-      "evidence": ["server/src/index.ts"],
-      "notes": "emitForProject addresses the project room when evt.projectId is present and broadcasts to everyone when it is not. The fallback should fail closed rather than widen the audience.",
-      "remediationGroup": "realtime-tenancy",
-      "owningBranch": "integration/wave-0",
-      "owningSha": "fee5b8c3655cfb9a68722cc9ce34358caf071556"
-    },
-    {
-      "id": "AUDIT-CROSS-TENANT-EVIDENCE-001",
-      "title": "Cross-tenant denial is essentially unevidenced across the API",
-      "severity": "P1",
-      "status": "CONFIRMED",
-      "disposition": "NOT-STARTED",
-      "area": "security",
-      "evidence": [
-        "config/security/authorization-matrix.json",
-        "server/src/__tests__/security2gE.authorization-inventory.test.ts"
-      ],
-      "notes": "Of 206 operations, five have a test that issues a real foreign request, fifteen have evidence that only asserts strings in handler source, and 186 have none recorded. The existing negativeEvidence column mostly proves missing authentication, which is a weaker property than cross-owner denial. One family, body-blueprint-project, now has a behavioural harness on integration/wave-0 (a5ca5fe3); the rest of the inventory is still unevidenced, so this stays open.",
-      "remediationGroup": "authorization-object-binding"
-    },
-    {
-      "id": "AUDIT-BINDING-UNREVIEWED-001",
-      "title": "Ninety-eight operations still have no object-binding verdict",
-      "severity": "P1",
-      "status": "OPEN",
-      "disposition": "SCOPED-OUT",
-      "area": "security",
-      "evidence": ["config/security/authorization-matrix.json"],
-      "notes": "This pass reviewed the concept pipeline and artifact families, the game-generation blueprint reads and the body-blueprint family. Operator and global-runtime endpoints were deliberately excluded by scope decision. Everything else is recorded as indirect-unreviewed, which is a gap and not a safety claim.",
-      "remediationGroup": "authorization-object-binding"
-    },
-    {
-      "id": "AUDIT-BODY-SUPPLIED-BLUEPRINT-001",
-      "title": "Eight operations authorize against an identifier inside a caller-supplied body object",
-      "severity": "P2",
-      "status": "CONFIRMED",
-      "disposition": "NOT-STARTED",
-      "area": "security",
-      "evidence": [
-        "server/src/routes/economy.ts",
-        "server/src/routes/world.ts",
-        "server/src/routes/simulation.ts",
-        "config/security/authorization-matrix.json"
-      ],
-      "notes": "economy, world, simulation, lifecycle and generation-v2 take the whole blueprint from req.body and pass blueprint.id to requireProjectAccess, using a field named like a blueprint identifier as a project identifier. There is no cross-tenant escape today because the identifier must resolve to a reachable project, but nothing binds the payload to stored state, and the naming confusion becomes a real hole if the two identifier spaces ever overlap. lifecycle POST /tick is the one variant that first asserts blueprint.id equals gameId.",
-      "remediationGroup": "authorization-object-binding"
-    },
-    {
-      "id": "AUDIT-REVIEW-ATTRIBUTION-001",
-      "title": "Artifact review attribution is taken from the request body",
-      "severity": "P2",
-      "status": "CONFIRMED",
-      "disposition": "NOT-STARTED",
-      "area": "truthfulness",
-      "evidence": ["server/src/routes/concept.ts"],
-      "notes": "approve, reject and comment record reviewedBy from req.body with a fallback to the literal user, rather than from the authenticated session, so approval evidence is caller-asserted. Authorization itself is sound: router.param resolves the artifact to its project and conceals denial as 404.",
-      "remediationGroup": "data-handling"
-    },
-    {
-      "id": "AUDIT-REALTIME-ROOM-001",
-      "title": "Room membership on project switch is not proven to be exclusive",
-      "severity": "P2",
-      "status": "LIKELY",
-      "disposition": "NOT-STARTED",
-      "area": "security",
-      "evidence": ["server/src/socket/index.ts"],
-      "notes": "Leaving the previous project room is not clearly guaranteed when a socket moves between projects, so a socket may remain in several rooms.",
-      "remediationGroup": "realtime-tenancy"
-    },
-    {
-      "id": "AUDIT-BLUEPRINT-STALE-001",
-      "title": "Editing a project does not update its existing blueprint",
-      "severity": "P1",
-      "status": "CONFIRMED",
-      "disposition": "FIXED-UNMERGED",
-      "area": "correctness",
-      "evidence": ["server/src/projects/services/game-generation.service.ts"],
-      "notes": "Create, generate, edit the brief, generate again can reuse the old blueprint. Generation also references a mutable blueprint rather than an immutable versioned snapshot, which weakens reproducibility, forensic traceability and rollback.",
-      "remediationGroup": "blueprint-provenance",
-      "owningBranch": "integration/wave-0",
-      "owningSha": "ed47c74ae92c5d98ddf6458cf1fe64637e822be9"
-    },
-    {
-      "id": "CHAT-BLUEPRINT-DISCONNECT-001",
-      "title": "Design chat does not change the canonical blueprint",
-      "severity": "P1",
-      "status": "CONFIRMED",
-      "disposition": "FIXED-UNMERGED",
-      "area": "correctness",
-      "evidence": ["server/src/routes/chatPersistence.ts"],
-      "notes": "Chat persists the conversation but a design change agreed in chat is not a blueprint change, so the assistant can state that the design was updated while the next generation still uses the old blueprint.",
-      "remediationGroup": "blueprint-provenance",
-      "owningBranch": "integration/wave-0",
-      "owningSha": "31c81c013dce25619b5638614161902a6fcad86c"
-    },
-    {
-      "id": "FP-E2E-LLM-JSON",
-      "title": "Structured Lua generation output is not reliably parseable",
-      "severity": "P1",
-      "status": "CONFIRMED",
-      "disposition": "NOT-STARTED",
-      "area": "generation",
-      "evidence": ["server/src/agents/implementations/LuaGeneratorAgent.ts"],
-      "notes": "Two canonical end-to-end runs failed to produce a package. Native structured output, token budgets and constrained repair were addressed on other branches; whole-response repair remains the main truncation risk.",
-      "remediationGroup": "generation-fidelity"
-    },
-    {
-      "id": "FP-E2E-INTENT-001",
-      "title": "Explicit user intent is not authoritative across agents",
-      "severity": "P1",
-      "status": "CONFIRMED",
-      "disposition": "NOT-STARTED",
-      "area": "generation",
-      "evidence": ["server/src/execution/gameDiversityEngine.ts"],
-      "notes": "Frontend project creation defaults genre and game type, the backend stores those defaults as explicit metadata, and downstream agents treat the random design seed with more authority than the stated requirement. The result is a coherent but different game. Requirements now carry identity where they are produced and each run records which of them it can show evidence for (2edb5d68). The chain does not yet carry identifiers past the requirements stage, so the recorded coverage is low by design and this stays open until downstream agents cite them.",
-      "remediationGroup": "generation-fidelity"
-    },
-    {
-      "id": "FP-E2E-SPATIAL-COVERAGE",
-      "title": "No cardinality gate between a stated requirement and the generated world",
-      "severity": "P1",
-      "status": "CONFIRMED",
-      "disposition": "NOT-STARTED",
-      "area": "generation",
-      "evidence": ["server/src/types/playableLua.ts"],
-      "notes": "A requirement for exactly three objectives produced two. Validation is structural, syntactic and playability oriented; it does not assert that the system built what was asked for.",
-      "remediationGroup": "generation-fidelity"
-    },
-    {
-      "id": "SIM-RUNTIME-TRUTH-001",
-      "title": "Simulation is not a Roblox runtime",
-      "severity": "P2",
-      "status": "VERIFIED-CONTROL",
-      "disposition": "NO-ACTION-REQUIRED",
-      "area": "truthfulness",
-      "evidence": [
-        "server/src/simulation/core/GameSimulationEngine.ts",
-        "config/runtime/runtime-ownership.json"
-      ],
-      "notes": "The limitation is real but it is now stated rather than hidden. The engine is registered as canonical for blueprint-simulation only, its responsibility says it is not a Roblox runtime, and PlaytestAgent explicitly records when no real runtime test occurred. What remains open is the absence of a runtime playtest capability, tracked as STUDIO-PLAY-ACCEPTANCE-001.",
-      "remediationGroup": "verified-controls"
-    },
-    {
-      "id": "LIFECYCLE-NONFUNCTIONAL-001",
-      "title": "Autonomous lifecycle stays fail-closed without server-owned evidence",
-      "severity": "P2",
-      "status": "VERIFIED-CONTROL",
-      "disposition": "NO-ACTION-REQUIRED",
-      "area": "truthfulness",
-      "evidence": ["server/src/lifecycle/core/GameLifecycleController.ts"],
-      "notes": "Remaining in CREATED without evidence is the correct behaviour. It also demonstrates that the lifecycle is not yet a working end-to-end capability, which is a roadmap fact rather than a defect.",
-      "remediationGroup": "verified-controls"
-    },
-    {
-      "id": "AUDIT-ARTIFACT-STORE-CONTROL",
-      "title": "Project-scoped artifact store ownership and commit marker semantics",
-      "severity": "P3",
-      "status": "VERIFIED-CONTROL",
-      "disposition": "NO-ACTION-REQUIRED",
-      "area": "durability",
-      "evidence": ["server/src/pipeline/v2/ArtifactStore.ts"],
-      "notes": "Requires project ownership, writes the commit marker last, checks project, pipeline, stage and hash, and requires both a world model and Lua before a generation package is valid.",
-      "remediationGroup": "verified-controls"
-    },
-    {
-      "id": "AUDIT-AUTONOMOUS-RECOVERY-CONTROL",
-      "title": "Autonomous orchestrator implements real restart recovery",
-      "severity": "P3",
-      "status": "VERIFIED-CONTROL",
-      "disposition": "NO-ACTION-REQUIRED",
-      "area": "durability",
-      "evidence": ["server/src/orchestrator/AutonomousOrchestrator.ts"],
-      "notes": "Persisted sessions, readiness, interruption marking, recovery claims and idempotent recovery. This is the pattern canonical generation should reuse for AUDIT-RECOVERY-001.",
-      "remediationGroup": "verified-controls"
-    },
-    {
-      "id": "AUDIT-E2E-TRUTH-001",
-      "title": "The production contract test accepts a failed generation",
-      "severity": "P1",
-      "status": "CONFIRMED",
-      "disposition": "NOT-STARTED",
-      "area": "test-authority",
-      "evidence": ["config/testing/vitest.backend.config.ts"],
-      "notes": "The contract allows canonical generation to end completed or failed and continues, and the Studio portion asserts a disconnected response rather than package, transfer, import and play. Green CI therefore does not imply a working product vertical.",
-      "remediationGroup": "pipeline-outcome-truth"
-    },
-    {
-      "id": "AUDIT-RESTART-TEST-WEAK-001",
-      "title": "The restart test proves durability, not recovery",
-      "severity": "P1",
-      "status": "CONFIRMED",
-      "disposition": "NOT-STARTED",
-      "area": "test-authority",
-      "evidence": ["server/src/__tests__/persistence.test.ts"],
-      "notes": "It asserts that the execution record still exists after restart. It does not require a running execution to be resumed or reconciled to a terminal state, so it passes with a permanently orphaned execution. A reconciliation test now proves the workflow is closed rather than merely persisted (186d1a08), but the original weak restart test is unchanged, so this stays open.",
-      "remediationGroup": "canonical-generation-recovery"
-    },
-    {
-      "id": "CI-PROD-CONTRACT-FIDELITY-001",
-      "title": "The production contract runs against in-memory storage",
-      "severity": "P2",
-      "status": "CONFIRMED",
-      "disposition": "NOT-STARTED",
-      "area": "test-authority",
-      "evidence": ["config/testing/vitest.backend.config.ts"],
-      "notes": "A contract named production that sets the storage provider to in-memory is not a production-equivalent persistence test.",
-      "remediationGroup": "pipeline-outcome-truth"
-    },
-    {
-      "id": "AUDIT-SCRIPTS-UNTYPED-001",
-      "title": "Validator and generator scripts are outside the typecheck boundary",
-      "severity": "P3",
-      "status": "CONFIRMED",
-      "disposition": "NOT-STARTED",
-      "area": "test-authority",
-      "evidence": ["package.json"],
-      "notes": "The typecheck script covers server/tsconfig.json only, so the scripts that enforce the control gates are checked by eslint and by running them, but never type-checked. Found while extending the authorization matrix generator.",
-      "remediationGroup": "pipeline-outcome-truth"
-    },
-    {
-      "id": "CONFIG-LLM-RELEASE-001",
-      "title": "A release can start healthy without a real AI provider",
-      "severity": "P1",
-      "status": "CONFIRMED",
-      "disposition": "NOT-STARTED",
-      "area": "release",
-      "evidence": ["server/src/providers/providerFactory.ts"],
-      "notes": "The checked-in production configuration does not require a provider, so the backend can start in a deterministic fallback and still present itself as healthy without its main capability.",
-      "remediationGroup": "release-capability-truth"
-    },
-    {
-      "id": "AUDIT-READINESS-001",
-      "title": "Health is liveness rather than readiness",
-      "severity": "P2",
-      "status": "CONFIRMED",
-      "disposition": "NOT-STARTED",
-      "area": "release",
-      "evidence": ["server/src/index.ts"],
-      "notes": "It does not sufficiently verify durable storage state, provider availability or generation capability.",
-      "remediationGroup": "release-capability-truth"
-    },
-    {
-      "id": "LLM-LOG-DATA-001",
-      "title": "Provider logging can write prompts and generated code to backend logs",
-      "severity": "P1",
-      "status": "CONFIRMED",
-      "disposition": "NOT-STARTED",
-      "area": "privacy",
-      "evidence": ["server/src/providers/ollama.ts"],
-      "notes": "User briefs, prompts, AI context and generated Lua reaching logs is a privacy, intellectual property and retention problem.",
-      "remediationGroup": "data-handling"
-    },
-    {
-      "id": "QUOTA-ENFORCEMENT-001",
-      "title": "Generation does not enforce tier limits before starting",
-      "severity": "P1",
-      "status": "CONFIRMED",
-      "disposition": "NOT-STARTED",
-      "area": "abuse",
-      "evidence": ["server/src/routes/game-generation.ts"],
-      "notes": "Combined with duplicate generation, long provider calls and a single serial queue, this allows resource amplification and denial of wallet.",
-      "remediationGroup": "generation-start-admission"
-    },
-    {
-      "id": "AUTH-EMAIL-IDENTITY-001",
-      "title": "Profile email can diverge from the password credential key",
-      "severity": "P1",
-      "status": "CONFIRMED",
-      "disposition": "NOT-STARTED",
-      "area": "auth",
-      "evidence": ["server/src/platform/auth/AuthService.ts"],
-      "notes": "The credential is looked up by normalized email, so a profile change that does not atomically migrate the credential breaks password login.",
-      "remediationGroup": "auth-credential-lifecycle"
-    },
-    {
-      "id": "AUTH-PASSWORD-RESET-001",
-      "title": "Password reset is not implemented behind an interface that claims it is",
-      "severity": "P1",
-      "status": "CONFIRMED",
-      "disposition": "NOT-STARTED",
-      "area": "auth",
-      "evidence": ["server/src/platform/auth/AuthService.ts"],
-      "notes": "The endpoint accepts the request without token issuance, expiry, one-time semantics or credential replacement, while the interface can tell the user to check their inbox.",
-      "remediationGroup": "auth-credential-lifecycle"
-    },
-    {
-      "id": "VERSION-HISTORY-PERSIST-001",
-      "title": "Project version history is process-local",
-      "severity": "P1",
-      "status": "CONFIRMED",
-      "disposition": "NOT-STARTED",
-      "area": "durability",
-      "evidence": ["config/runtime/runtime-ownership.json"],
-      "notes": "Version history held in a process-local map is erased by restart, which is a severe mismatch for a system that generates autonomously and offers rollback.",
-      "remediationGroup": "durable-product-state"
-    },
-    {
-      "id": "USER-PREF-PERSIST-001",
-      "title": "Preferences are documented as persisted but held in memory",
-      "severity": "P2",
-      "status": "CONFIRMED",
-      "disposition": "NOT-STARTED",
-      "area": "durability",
-      "evidence": ["config/runtime/runtime-ownership.json"],
-      "notes": "Restart loses them.",
-      "remediationGroup": "durable-product-state"
-    },
-    {
-      "id": "SUPPLYCHAIN-ACTIONS-001",
-      "title": "Actions and base images are pinned by tag rather than digest",
-      "severity": "P2",
-      "status": "CONFIRMED",
-      "disposition": "NOT-STARTED",
-      "area": "supply-chain",
-      "evidence": [".github/workflows"],
-      "notes": "Major version tags and floating image tags are a reproducibility and supply-chain hardening gap rather than an active vulnerability.",
-      "remediationGroup": "supply-chain-hardening"
-    },
-    {
-      "id": "AUDIT-CI-FAILURE-SET-001",
-      "title": "The current backend CI failure set must be re-established before remediation",
-      "severity": "P1",
-      "status": "OPEN",
-      "disposition": "NOT-STARTED",
-      "area": "test-authority",
-      "evidence": [".github/workflows"],
-      "notes": "The audit history contains two different explanations of the same failure, stale project-ownership fixtures and a Studio runtime closed to exported transition. Neither may be treated as current until re-verified against the present head. Recorded so no remediation is planned against a stale failure.",
-      "remediationGroup": "must-reverify-before-remediation"
-    },
-    {
-      "id": "AUDIT-REPO-GOVERNANCE-001",
-      "title": "Repository visibility and branch protection must be established as fact",
-      "severity": "P1",
-      "status": "OPEN",
-      "disposition": "NOT-STARTED",
-      "area": "governance",
-      "evidence": ["docs/00-project-control/CURRENT_STATE.md"],
-      "notes": "Both repositories were public during the audit and the effective rulesets could not be read unambiguously. If the code is intended to be proprietary this is a governance risk. Requires an authenticated check rather than inference.",
-      "remediationGroup": "must-reverify-before-remediation"
-    },
-    {
-      "id": "STUDIO-PLAY-ACCEPTANCE-001",
-      "title": "No end-to-end proof from generation to Roblox Play with runtime evidence",
-      "severity": "P1",
-      "status": "OPEN",
-      "disposition": "NOT-STARTED",
-      "area": "acceptance",
-      "evidence": ["docs/00-project-control/RUNTIME-PLAYTEST-1_RESULT.md"],
-      "notes": "The required chain is fresh project, canonical generation, package, transfer, import, scene materialized, scripts placed, play, objective works, evidence captured. Until it exists the platform is not proven end to end.",
-      "remediationGroup": "assurance-not-performed"
-    },
-    {
-      "id": "AUDIT-DYNAMIC-ASSURANCE-001",
-      "title": "Dynamic assurance has not been performed",
-      "severity": "P1",
-      "status": "OPEN",
-      "disposition": "NOT-STARTED",
-      "area": "assurance",
-      "evidence": ["docs/00-project-control/CURRENT_STATE.md"],
-      "notes": "Penetration testing, AI red teaming, chaos and fault injection, load and soak testing, a real backup and restore drill with measured objectives, full accessibility review, browser compatibility, database index and migration review, and project deletion and privacy behaviour are all unperformed. Recorded as one open block so their absence is visible rather than implied.",
-      "remediationGroup": "assurance-not-performed"
-    },
-    {
-      "id": "AUDIT-FLAKY-AUTH-TEST-001",
-      "title": "The user-self authorization test fails intermittently under parallel load",
-      "severity": "P2",
-      "status": "CONFIRMED",
-      "disposition": "FIXED-UNMERGED",
-      "area": "test-authority",
-      "remediationGroup": "pipeline-outcome-truth",
-      "evidence": [
-        "server/src/__tests__/security2gE.authorization-domains.test.ts"
-      ],
-      "notes": "It passes in isolation and times out at about five seconds when the full security suite runs in parallel. Reproduced twice in this session, once on a clean baseline with all local changes removed, so it is a baseline flake rather than a regression. It matters more than an ordinary flake because it is one of only five operations in the matrix with real behavioural cross-tenant evidence, so when it flakes that evidence is unreliable.",
-      "owningBranch": "integration/wave-0",
-      "owningSha": "f5b9772bfa99ebcfb70b853b6e4c90d67c0dd503"
-    }
   ],
   "remediationGroups": [
     "must-reverify-before-remediation",
@@ -612,5 +29,906 @@
     "architecture-deadwood",
     "assurance-not-performed",
     "verified-controls"
+  ],
+  "marRootCauses": [
+    {
+      "id": "MAR-001",
+      "priority": "P0",
+      "title": "Cross-tenant resource authorization is not parent-bound everywhere"
+    },
+    {
+      "id": "MAR-002",
+      "priority": "P0",
+      "title": "Studio materializer has no universal creator-ownership safety boundary"
+    },
+    {
+      "id": "MAR-003",
+      "priority": "P0-release-gate",
+      "title": "No single clean canonical product acceptance run exists"
+    },
+    {
+      "id": "MAR-004",
+      "priority": "P1",
+      "title": "Generation has no durable project-scoped single-flight and idempotent start identity"
+    },
+    {
+      "id": "MAR-005",
+      "priority": "P1",
+      "title": "State transitions have no unified durable CAS/version authority"
+    },
+    {
+      "id": "MAR-006",
+      "priority": "P1",
+      "title": "Process-local PostgreSQL cache is not multi-instance coherent"
+    },
+    {
+      "id": "MAR-007",
+      "priority": "P1",
+      "title": "Project deletion is not a data-erasure lifecycle"
+    },
+    {
+      "id": "MAR-008",
+      "priority": "P1",
+      "title": "AI memory has no correct tenant/project isolation boundary"
+    },
+    {
+      "id": "MAR-009",
+      "priority": "P1",
+      "title": "Generated Lua security evidence is not a blocking production gate"
+    },
+    {
+      "id": "MAR-010",
+      "priority": "P1",
+      "title": "No authoritative Luau compile/type and generated-code policy gate"
+    },
+    {
+      "id": "MAR-011",
+      "priority": "P1",
+      "title": "Untrusted AI input has no complete instruction/data security boundary"
+    },
+    {
+      "id": "MAR-012",
+      "priority": "P1",
+      "title": "Runtime gameplay acceptance is missing as a machine-measured capability"
+    },
+    {
+      "id": "MAR-013",
+      "priority": "P1",
+      "title": "Spatial and multiplayer invariants are not runtime-proven"
+    },
+    {
+      "id": "MAR-014",
+      "priority": "P1",
+      "title": "World ownership still has an unfinished canonical transition"
+    },
+    {
+      "id": "MAR-015",
+      "priority": "P1",
+      "title": "Runtime release-pair authority can drift"
+    },
+    {
+      "id": "MAR-016",
+      "priority": "P1",
+      "title": "Chaos and recovery are not tested on real failure boundaries"
+    },
+    {
+      "id": "MAR-017",
+      "priority": "P1",
+      "title": "Backup, restore and PITR are not a production capability"
+    },
+    {
+      "id": "MAR-018",
+      "priority": "P1",
+      "title": "Execution-level and tenant-level FinOps control plane is missing"
+    },
+    {
+      "id": "MAR-019",
+      "priority": "P1/P2",
+      "title": "Privacy lifecycle is incomplete"
+    },
+    {
+      "id": "MAR-020",
+      "priority": "P1/P2",
+      "title": "Raw user content can enter logs without central redaction"
+    },
+    {
+      "id": "MAR-021",
+      "priority": "P1/P2",
+      "title": "Observability has no common end-to-end identity envelope"
+    },
+    {
+      "id": "MAR-022",
+      "priority": "P1/P2",
+      "title": "Incident-response control plane is undefined"
+    },
+    {
+      "id": "MAR-023",
+      "priority": "P1",
+      "title": "Frontend main governance does not protect CI authority"
+    },
+    {
+      "id": "MAR-024",
+      "priority": "P1/P2",
+      "title": "Supply-chain release authority is not immutable end-to-end"
+    },
+    {
+      "id": "MAR-025",
+      "priority": "P2",
+      "title": "Database operational governance is incomplete"
+    },
+    {
+      "id": "MAR-026",
+      "priority": "P2",
+      "title": "Global storage write serialization and fairness are not capacity-proven"
+    },
+    {
+      "id": "MAR-027",
+      "priority": "P2",
+      "title": "Production performance envelope is unknown"
+    },
+    {
+      "id": "MAR-028",
+      "priority": "P2",
+      "title": "Browser lifecycle compatibility is not cross-engine proven"
+    },
+    {
+      "id": "MAR-029",
+      "priority": "P2",
+      "title": "WCAG 2.2 AA is not an acceptance gate"
+    },
+    {
+      "id": "MAR-030",
+      "priority": "P2",
+      "title": "Supply-chain compliance and provenance are incomplete"
+    },
+    {
+      "id": "MAR-031",
+      "priority": "P2",
+      "title": "GitHub governance has further unclosed controls"
+    },
+    {
+      "id": "MAR-032",
+      "priority": "P2",
+      "title": "Architecture has ownership abstractions without a complete authority map"
+    },
+    {
+      "id": "MAR-033",
+      "priority": "P2",
+      "title": "Fuzz and property testing are systematically missing"
+    },
+    {
+      "id": "MAR-034",
+      "priority": "P2",
+      "title": "Mutation testing is not a general quality gate"
+    },
+    {
+      "id": "MAR-035",
+      "priority": "P2/P3",
+      "title": "CSRF protection is not formally closed"
+    },
+    {
+      "id": "MAR-036",
+      "priority": "P3",
+      "title": "Dead and legacy code, and naming drift"
+    },
+    {
+      "id": "MAR-037",
+      "priority": "P3",
+      "title": "Policy and documentation cleanup"
+    }
+  ],
+  "findings": [
+    {
+      "id": "SEC-GENERATION-BLUEPRINT-001",
+      "title": "Generation accepted a blueprint id belonging to another project",
+      "severity": "P1",
+      "status": "CONFIRMED",
+      "disposition": "FIXED-UNMERGED",
+      "area": "security",
+      "remediationGroup": "authorization-object-binding",
+      "mar": "MAR-001",
+      "owningBranch": "integration/wave-0",
+      "owningSha": "04482f16c5249d864020f05e8f59d1c7224f4ed7",
+      "evidence": ["server/src/routes/game-generation.ts"],
+      "notes": "Authorized the URL projectId but resolved a body-supplied blueprintId. Reproduced against the baseline: the cross-project request answered 200 and a pipeline started for the other project's blueprint. Fixed at both the route and the service boundary."
+    },
+    {
+      "id": "AUDIT-START-ATOMICITY-001",
+      "title": "Generation start wrote project, execution and history as three independent durable writes",
+      "severity": "P1",
+      "status": "CONFIRMED",
+      "disposition": "FIXED-UNMERGED",
+      "area": "durability",
+      "remediationGroup": "generation-start-admission",
+      "mar": "MAR-004",
+      "owningBranch": "integration/wave-0",
+      "owningSha": "3696a1f31b86cff8ce97e09f5a5da581d2a3ba01",
+      "evidence": [
+        "server/src/platform/projects/ProjectLifecycleCoordinator.ts"
+      ],
+      "notes": "A rejection after the first write left a project falsely generating with an incremented count and no execution able to repair it. Fixed by committing all three in one applyDurableBatch, mirroring GenerationOutcomeCoordinator."
+    },
+    {
+      "id": "AUDIT-ID-EXEC-001",
+      "title": "Execution identity derived from Date.now collided within a millisecond",
+      "severity": "P1",
+      "status": "CONFIRMED",
+      "disposition": "FIXED-UNMERGED",
+      "area": "durability",
+      "remediationGroup": "generation-start-admission",
+      "mar": "MAR-004",
+      "owningBranch": "integration/wave-0",
+      "owningSha": "2d5d2d7da28c7edd230acc2e5b93a41b7fe8066a",
+      "evidence": ["server/src/projects/services/game-generation.service.ts"],
+      "notes": "generation_executions is keyed by execution id alone across every project and recordExecution writes through a blind upsert, so a collision destroyed the other project's execution. Reproduced: two starts left one record instead of two."
+    },
+    {
+      "id": "SEC-SCANNER-EXCEPTION-CLOCK-001",
+      "title": "Security exception expiry validated against a frozen audit date",
+      "severity": "P1",
+      "status": "CONFIRMED",
+      "disposition": "FIXED-UNMERGED",
+      "area": "supply-chain",
+      "remediationGroup": "supply-chain-hardening",
+      "mar": "MAR-024",
+      "owningBranch": "integration/wave-0",
+      "owningSha": "d7d1cca0",
+      "evidence": ["package.json"],
+      "notes": "The validate:security-scanners policy compares expiry against a hardcoded 2026-08-01, so exceptions that expired on 2026-08-15 still pass on this baseline. The fix injects a real UTC clock and turns the gate red until the exceptions are renewed or removed."
+    },
+    {
+      "id": "AUDIT-DUP-GENERATION-001",
+      "title": "No suppression of a second concurrent generation for the same project",
+      "severity": "P1",
+      "status": "CONFIRMED",
+      "disposition": "FIXED-UNMERGED",
+      "area": "concurrency",
+      "remediationGroup": "generation-start-admission",
+      "mar": "MAR-004",
+      "owningBranch": "integration/wave-0",
+      "owningSha": "e0d800d273b3c618d4af07d9ffbbe2873da49937",
+      "evidence": ["server/src/projects/services/game-generation.service.ts"],
+      "notes": "The project lock covers only the short start critical section. Two starts legitimately produce two executions and two generation-count increments. Deliberately left out of the start-atomicity slice."
+    },
+    {
+      "id": "AUDIT-OUTCOME-LAST-WRITER-001",
+      "title": "An older overlapping run can overwrite a newer run's terminal project state",
+      "severity": "P1",
+      "status": "CONFIRMED",
+      "disposition": "FIXED-UNMERGED",
+      "area": "concurrency",
+      "remediationGroup": "generation-start-admission",
+      "mar": "MAR-005",
+      "owningBranch": "integration/wave-0",
+      "owningSha": "e0d800d273b3c618d4af07d9ffbbe2873da49937",
+      "evidence": [
+        "server/src/platform/projects/ProjectLifecycleCoordinator.ts"
+      ],
+      "notes": "Nothing restricts terminal project updates to the current execution. Depends on AUDIT-DUP-GENERATION-001 for its main trigger."
+    },
+    {
+      "id": "AUDIT-RECOVERY-001",
+      "title": "Canonical generation is not resumed or reconciled after restart",
+      "severity": "P1",
+      "status": "CONFIRMED",
+      "disposition": "FIXED-UNMERGED",
+      "area": "durability",
+      "remediationGroup": "canonical-generation-recovery",
+      "mar": "MAR-016",
+      "owningBranch": "integration/wave-0",
+      "owningSha": "186d1a08a76d3261d9aecd2183c4286b676b29ec",
+      "evidence": [
+        "server/src/execution/executionQueue.ts",
+        "config/runtime/runtime-ownership.json"
+      ],
+      "notes": "The execution record is durable but the worker queue is process-local, so a restart leaves executions durably running with no owner. AutonomousOrchestrator already implements persisted sessions, recovery claims and idempotent recovery and is the pattern to reuse."
+    },
+    {
+      "id": "AUDIT-GRACEFUL-SHUTDOWN-001",
+      "title": "Shutdown does not drain the canonical generation queue",
+      "severity": "P1",
+      "status": "CONFIRMED",
+      "disposition": "FIXED-UNMERGED",
+      "area": "durability",
+      "remediationGroup": "canonical-generation-recovery",
+      "mar": "MAR-016",
+      "owningBranch": "integration/wave-0",
+      "owningSha": "186d1a08a76d3261d9aecd2183c4286b676b29ec",
+      "evidence": ["server/src/execution/executionQueue.ts"],
+      "notes": "Same root as AUDIT-RECOVERY-001. SIGTERM can end the process mid-generation and leave a durable running execution."
+    },
+    {
+      "id": "AUDIT-QUEUE-DISCONNECTED-001",
+      "title": "The mature generation queue has no production consumer at all",
+      "severity": "P2",
+      "status": "CONFIRMED",
+      "disposition": "NOT-STARTED",
+      "area": "architecture",
+      "remediationGroup": "canonical-generation-recovery",
+      "mar": "MAR-032",
+      "evidence": [
+        "server/src/platform/queue/GenerationQueue.ts",
+        "config/runtime/runtime-ownership.json"
+      ],
+      "notes": "Found while mapping runtime ownership. GenerationQueue offers status tracking, priority and retry counters, but its only importer is its own barrel and nothing imports that barrel; its only other reference is a test. Canonical generation uses a serial in-memory queue with an effective concurrency of one, so one long run blocks every other generation."
+    },
+    {
+      "id": "AUDIT-LEGACY-GENERATION-ISLAND-001",
+      "title": "An unreferenced legacy generation pipeline cluster remains in the tree",
+      "severity": "P3",
+      "status": "CONFIRMED",
+      "disposition": "NOT-STARTED",
+      "area": "architecture",
+      "remediationGroup": "architecture-deadwood",
+      "mar": "MAR-036",
+      "evidence": [
+        "server/src/generation/GenerationPipeline.ts",
+        "config/runtime/runtime-ownership.json"
+      ],
+      "notes": "GenerationPipeline.ts has zero production importers, and GenerationRegistry.ts, GenerationManifest.ts and GenerationReport.ts are imported only by it, so the cluster is reachable from nothing. GenerationBlueprint.ts in the same directory has 13 importers and is a shared contract that must not be removed with the island."
+    },
+    {
+      "id": "AUDIT-LIFECYCLE-SPLIT-BRAIN-001",
+      "title": "Realtime reports a pipeline completed before artifact and validation stages run",
+      "severity": "P1",
+      "status": "CONFIRMED",
+      "disposition": "FIXED-UNMERGED",
+      "area": "truthfulness",
+      "remediationGroup": "pipeline-outcome-truth",
+      "mar": "MAR-005",
+      "owningBranch": "integration/wave-0",
+      "owningSha": "683b49a4ed288e8d95fa1829e8e057fe9a48eda8",
+      "evidence": ["server/src/planning/execution/PlanExecutor.ts"],
+      "notes": "An agent DAG completing is not canonical generation completing. If the artifact stage then fails, realtime says completed while the durable execution says failed."
+    },
+    {
+      "id": "AUDIT-FAILURE-STEPS-LOSS-001",
+      "title": "Terminal failure records lose pipeline_steps recorded before the failure",
+      "severity": "P1",
+      "status": "CONFIRMED",
+      "disposition": "FIXED-UNMERGED",
+      "area": "durability",
+      "remediationGroup": "pipeline-outcome-truth",
+      "mar": "MAR-005",
+      "owningBranch": "integration/wave-0",
+      "owningSha": "683b49a4ed288e8d95fa1829e8e057fe9a48eda8",
+      "evidence": ["server/src/projects/services/game-generation.service.ts"],
+      "notes": "After an artifact recorder failure the terminal execution is written without complete steps, so a refreshed client sees zero completed, zero failed and zero known even though agents ran."
+    },
+    {
+      "id": "SEC-REALTIME-GLOBAL-001",
+      "title": "Evaluation, memory and planning events broadcast to every connected socket",
+      "severity": "P1",
+      "status": "CONFIRMED",
+      "disposition": "FIXED-UNMERGED",
+      "area": "security",
+      "remediationGroup": "realtime-tenancy",
+      "mar": "MAR-001",
+      "owningBranch": "integration/wave-0",
+      "owningSha": "fee5b8c3655cfb9a68722cc9ce34358caf071556",
+      "evidence": [
+        "server/src/index.ts",
+        "config/security/authorization-matrix.json"
+      ],
+      "notes": "Thirteen emissions sit in the same switch as the project-room emitter with the same project identifier in scope and broadcast past it anyway. Client-side filtering is not a security boundary: the unauthorized socket already received the payload. Now tracked as global-bypassing-available-scope in the matrix broadcasts section."
+    },
+    {
+      "id": "SEC-REALTIME-TRACE-001",
+      "title": "Execution traces broadcast globally from a listener with no project context",
+      "severity": "P1",
+      "status": "CONFIRMED",
+      "disposition": "FIXED-UNMERGED",
+      "area": "security",
+      "remediationGroup": "realtime-tenancy",
+      "mar": "MAR-001",
+      "owningBranch": "integration/wave-0",
+      "owningSha": "71e011f7024ba36a646bb79546b98ab236816d02",
+      "evidence": [
+        "server/src/index.ts",
+        "config/security/authorization-matrix.json"
+      ],
+      "notes": "Payload carries executionId, nodeId, agentId, evaluationScore and error. Distinct remediation from SEC-REALTIME-GLOBAL-001: the tracer listener receives no project, so scoping requires plumbing context in first. Tracked as global-no-project-context."
+    },
+    {
+      "id": "SEC-REALTIME-PIPELINE-FALLBACK-001",
+      "title": "Pipeline events fall back to a global broadcast when no project is known",
+      "severity": "P2",
+      "status": "CONFIRMED",
+      "disposition": "FIXED-UNMERGED",
+      "area": "security",
+      "remediationGroup": "realtime-tenancy",
+      "mar": "MAR-001",
+      "owningBranch": "integration/wave-0",
+      "owningSha": "fee5b8c3655cfb9a68722cc9ce34358caf071556",
+      "evidence": ["server/src/index.ts"],
+      "notes": "emitForProject addresses the project room when evt.projectId is present and broadcasts to everyone when it is not. The fallback should fail closed rather than widen the audience."
+    },
+    {
+      "id": "AUDIT-CROSS-TENANT-EVIDENCE-001",
+      "title": "Cross-tenant denial is essentially unevidenced across the API",
+      "severity": "P1",
+      "status": "CONFIRMED",
+      "disposition": "NOT-STARTED",
+      "area": "security",
+      "remediationGroup": "authorization-object-binding",
+      "mar": "MAR-001",
+      "evidence": [
+        "config/security/authorization-matrix.json",
+        "server/src/__tests__/security2gE.authorization-inventory.test.ts"
+      ],
+      "notes": "Of 206 operations, five have a test that issues a real foreign request, fifteen have evidence that only asserts strings in handler source, and 186 have none recorded. The existing negativeEvidence column mostly proves missing authentication, which is a weaker property than cross-owner denial. One family, body-blueprint-project, now has a behavioural harness on integration/wave-0 (a5ca5fe3); the rest of the inventory is still unevidenced, so this stays open."
+    },
+    {
+      "id": "AUDIT-BINDING-UNREVIEWED-001",
+      "title": "Ninety-eight operations still have no object-binding verdict",
+      "severity": "P1",
+      "status": "OPEN",
+      "disposition": "SCOPED-OUT",
+      "area": "security",
+      "remediationGroup": "authorization-object-binding",
+      "mar": "MAR-001",
+      "evidence": ["config/security/authorization-matrix.json"],
+      "notes": "This pass reviewed the concept pipeline and artifact families, the game-generation blueprint reads and the body-blueprint family. Operator and global-runtime endpoints were deliberately excluded by scope decision. Everything else is recorded as indirect-unreviewed, which is a gap and not a safety claim."
+    },
+    {
+      "id": "AUDIT-BODY-SUPPLIED-BLUEPRINT-001",
+      "title": "Eight operations authorize against an identifier inside a caller-supplied body object",
+      "severity": "P2",
+      "status": "CONFIRMED",
+      "disposition": "NOT-STARTED",
+      "area": "security",
+      "remediationGroup": "authorization-object-binding",
+      "mar": "MAR-001",
+      "evidence": [
+        "server/src/routes/economy.ts",
+        "server/src/routes/world.ts",
+        "server/src/routes/simulation.ts",
+        "config/security/authorization-matrix.json"
+      ],
+      "notes": "economy, world, simulation, lifecycle and generation-v2 take the whole blueprint from req.body and pass blueprint.id to requireProjectAccess, using a field named like a blueprint identifier as a project identifier. There is no cross-tenant escape today because the identifier must resolve to a reachable project, but nothing binds the payload to stored state, and the naming confusion becomes a real hole if the two identifier spaces ever overlap. lifecycle POST /tick is the one variant that first asserts blueprint.id equals gameId."
+    },
+    {
+      "id": "AUDIT-REVIEW-ATTRIBUTION-001",
+      "title": "Artifact review attribution is taken from the request body",
+      "severity": "P2",
+      "status": "CONFIRMED",
+      "disposition": "NOT-STARTED",
+      "area": "truthfulness",
+      "remediationGroup": "data-handling",
+      "mar": "MAR-001",
+      "evidence": ["server/src/routes/concept.ts"],
+      "notes": "approve, reject and comment record reviewedBy from req.body with a fallback to the literal user, rather than from the authenticated session, so approval evidence is caller-asserted. Authorization itself is sound: router.param resolves the artifact to its project and conceals denial as 404."
+    },
+    {
+      "id": "AUDIT-REALTIME-ROOM-001",
+      "title": "Room membership on project switch is not proven to be exclusive",
+      "severity": "P2",
+      "status": "LIKELY",
+      "disposition": "NOT-STARTED",
+      "area": "security",
+      "remediationGroup": "realtime-tenancy",
+      "mar": "MAR-001",
+      "evidence": ["server/src/socket/index.ts"],
+      "notes": "Leaving the previous project room is not clearly guaranteed when a socket moves between projects, so a socket may remain in several rooms."
+    },
+    {
+      "id": "AUDIT-BLUEPRINT-STALE-001",
+      "title": "Editing a project does not update its existing blueprint",
+      "severity": "P1",
+      "status": "CONFIRMED",
+      "disposition": "FIXED-UNMERGED",
+      "area": "correctness",
+      "remediationGroup": "blueprint-provenance",
+      "mar": "MAR-012",
+      "owningBranch": "integration/wave-0",
+      "owningSha": "ed47c74ae92c5d98ddf6458cf1fe64637e822be9",
+      "evidence": ["server/src/projects/services/game-generation.service.ts"],
+      "notes": "Create, generate, edit the brief, generate again can reuse the old blueprint. Generation also references a mutable blueprint rather than an immutable versioned snapshot, which weakens reproducibility, forensic traceability and rollback."
+    },
+    {
+      "id": "CHAT-BLUEPRINT-DISCONNECT-001",
+      "title": "Design chat does not change the canonical blueprint",
+      "severity": "P1",
+      "status": "CONFIRMED",
+      "disposition": "FIXED-UNMERGED",
+      "area": "correctness",
+      "remediationGroup": "blueprint-provenance",
+      "mar": "MAR-012",
+      "owningBranch": "integration/wave-0",
+      "owningSha": "31c81c013dce25619b5638614161902a6fcad86c",
+      "evidence": ["server/src/routes/chatPersistence.ts"],
+      "notes": "Chat persists the conversation but a design change agreed in chat is not a blueprint change, so the assistant can state that the design was updated while the next generation still uses the old blueprint."
+    },
+    {
+      "id": "FP-E2E-LLM-JSON",
+      "title": "Structured Lua generation output is not reliably parseable",
+      "severity": "P1",
+      "status": "CONFIRMED",
+      "disposition": "NOT-STARTED",
+      "area": "generation",
+      "remediationGroup": "generation-fidelity",
+      "mar": "MAR-010",
+      "evidence": ["server/src/agents/implementations/LuaGeneratorAgent.ts"],
+      "notes": "Two canonical end-to-end runs failed to produce a package. Native structured output, token budgets and constrained repair were addressed on other branches; whole-response repair remains the main truncation risk."
+    },
+    {
+      "id": "FP-E2E-INTENT-001",
+      "title": "Explicit user intent is not authoritative across agents",
+      "severity": "P1",
+      "status": "CONFIRMED",
+      "disposition": "NOT-STARTED",
+      "area": "generation",
+      "remediationGroup": "generation-fidelity",
+      "mar": "MAR-012",
+      "evidence": ["server/src/execution/gameDiversityEngine.ts"],
+      "notes": "Frontend project creation defaults genre and game type, the backend stores those defaults as explicit metadata, and downstream agents treat the random design seed with more authority than the stated requirement. The result is a coherent but different game. Requirements now carry identity where they are produced and each run records which of them it can show evidence for (2edb5d68). The chain does not yet carry identifiers past the requirements stage, so the recorded coverage is low by design and this stays open until downstream agents cite them."
+    },
+    {
+      "id": "FP-E2E-SPATIAL-COVERAGE",
+      "title": "No cardinality gate between a stated requirement and the generated world",
+      "severity": "P1",
+      "status": "CONFIRMED",
+      "disposition": "NOT-STARTED",
+      "area": "generation",
+      "remediationGroup": "generation-fidelity",
+      "mar": "MAR-013",
+      "evidence": ["server/src/types/playableLua.ts"],
+      "notes": "A requirement for exactly three objectives produced two. Validation is structural, syntactic and playability oriented; it does not assert that the system built what was asked for."
+    },
+    {
+      "id": "SIM-RUNTIME-TRUTH-001",
+      "title": "Simulation is not a Roblox runtime",
+      "severity": "P2",
+      "status": "VERIFIED-CONTROL",
+      "disposition": "NO-ACTION-REQUIRED",
+      "area": "truthfulness",
+      "remediationGroup": "verified-controls",
+      "mar": "MAR-012",
+      "evidence": [
+        "server/src/simulation/core/GameSimulationEngine.ts",
+        "config/runtime/runtime-ownership.json"
+      ],
+      "notes": "The limitation is real but it is now stated rather than hidden. The engine is registered as canonical for blueprint-simulation only, its responsibility says it is not a Roblox runtime, and PlaytestAgent explicitly records when no real runtime test occurred. What remains open is the absence of a runtime playtest capability, tracked as STUDIO-PLAY-ACCEPTANCE-001."
+    },
+    {
+      "id": "LIFECYCLE-NONFUNCTIONAL-001",
+      "title": "Autonomous lifecycle stays fail-closed without server-owned evidence",
+      "severity": "P2",
+      "status": "VERIFIED-CONTROL",
+      "disposition": "NO-ACTION-REQUIRED",
+      "area": "truthfulness",
+      "remediationGroup": "verified-controls",
+      "mar": "MAR-032",
+      "evidence": ["server/src/lifecycle/core/GameLifecycleController.ts"],
+      "notes": "Remaining in CREATED without evidence is the correct behaviour. It also demonstrates that the lifecycle is not yet a working end-to-end capability, which is a roadmap fact rather than a defect."
+    },
+    {
+      "id": "AUDIT-ARTIFACT-STORE-CONTROL",
+      "title": "Project-scoped artifact store ownership and commit marker semantics",
+      "severity": "P3",
+      "status": "VERIFIED-CONTROL",
+      "disposition": "NO-ACTION-REQUIRED",
+      "area": "durability",
+      "remediationGroup": "verified-controls",
+      "mar": "MAR-014",
+      "evidence": ["server/src/pipeline/v2/ArtifactStore.ts"],
+      "notes": "Requires project ownership, writes the commit marker last, checks project, pipeline, stage and hash, and requires both a world model and Lua before a generation package is valid."
+    },
+    {
+      "id": "AUDIT-AUTONOMOUS-RECOVERY-CONTROL",
+      "title": "Autonomous orchestrator implements real restart recovery",
+      "severity": "P3",
+      "status": "VERIFIED-CONTROL",
+      "disposition": "NO-ACTION-REQUIRED",
+      "area": "durability",
+      "remediationGroup": "verified-controls",
+      "mar": "MAR-016",
+      "evidence": ["server/src/orchestrator/AutonomousOrchestrator.ts"],
+      "notes": "Persisted sessions, readiness, interruption marking, recovery claims and idempotent recovery. This is the pattern canonical generation should reuse for AUDIT-RECOVERY-001."
+    },
+    {
+      "id": "AUDIT-E2E-TRUTH-001",
+      "title": "The production contract test accepts a failed generation",
+      "severity": "P1",
+      "status": "CONFIRMED",
+      "disposition": "NOT-STARTED",
+      "area": "test-authority",
+      "remediationGroup": "pipeline-outcome-truth",
+      "mar": "MAR-003",
+      "evidence": ["config/testing/vitest.backend.config.ts"],
+      "notes": "The contract allows canonical generation to end completed or failed and continues, and the Studio portion asserts a disconnected response rather than package, transfer, import and play. Green CI therefore does not imply a working product vertical."
+    },
+    {
+      "id": "AUDIT-RESTART-TEST-WEAK-001",
+      "title": "The restart test proves durability, not recovery",
+      "severity": "P1",
+      "status": "CONFIRMED",
+      "disposition": "NOT-STARTED",
+      "area": "test-authority",
+      "remediationGroup": "canonical-generation-recovery",
+      "mar": "MAR-016",
+      "evidence": ["server/src/__tests__/persistence.test.ts"],
+      "notes": "It asserts that the execution record still exists after restart. It does not require a running execution to be resumed or reconciled to a terminal state, so it passes with a permanently orphaned execution. A reconciliation test now proves the workflow is closed rather than merely persisted (186d1a08), but the original weak restart test is unchanged, so this stays open."
+    },
+    {
+      "id": "CI-PROD-CONTRACT-FIDELITY-001",
+      "title": "The production contract runs against in-memory storage",
+      "severity": "P2",
+      "status": "CONFIRMED",
+      "disposition": "NOT-STARTED",
+      "area": "test-authority",
+      "remediationGroup": "pipeline-outcome-truth",
+      "mar": "MAR-003",
+      "evidence": ["config/testing/vitest.backend.config.ts"],
+      "notes": "A contract named production that sets the storage provider to in-memory is not a production-equivalent persistence test."
+    },
+    {
+      "id": "AUDIT-SCRIPTS-UNTYPED-001",
+      "title": "Validator and generator scripts are outside the typecheck boundary",
+      "severity": "P3",
+      "status": "CONFIRMED",
+      "disposition": "NOT-STARTED",
+      "area": "test-authority",
+      "remediationGroup": "pipeline-outcome-truth",
+      "mar": "unmapped",
+      "marNote": "No MAR root cause covers build and typecheck coverage of tooling.",
+      "evidence": ["package.json"],
+      "notes": "The typecheck script covers server/tsconfig.json only, so the scripts that enforce the control gates are checked by eslint and by running them, but never type-checked. Found while extending the authorization matrix generator."
+    },
+    {
+      "id": "CONFIG-LLM-RELEASE-001",
+      "title": "A release can start healthy without a real AI provider",
+      "severity": "P1",
+      "status": "CONFIRMED",
+      "disposition": "NOT-STARTED",
+      "area": "release",
+      "remediationGroup": "release-capability-truth",
+      "mar": "MAR-003",
+      "evidence": ["server/src/providers/providerFactory.ts"],
+      "notes": "The checked-in production configuration does not require a provider, so the backend can start in a deterministic fallback and still present itself as healthy without its main capability."
+    },
+    {
+      "id": "AUDIT-READINESS-001",
+      "title": "Health is liveness rather than readiness",
+      "severity": "P2",
+      "status": "CONFIRMED",
+      "disposition": "NOT-STARTED",
+      "area": "release",
+      "remediationGroup": "release-capability-truth",
+      "mar": "unmapped",
+      "marNote": "No MAR root cause covers service health and readiness semantics. MAR-021 is observability identity, which is a different concern.",
+      "evidence": ["server/src/index.ts"],
+      "notes": "It does not sufficiently verify durable storage state, provider availability or generation capability."
+    },
+    {
+      "id": "LLM-LOG-DATA-001",
+      "title": "Provider logging can write prompts and generated code to backend logs",
+      "severity": "P1",
+      "status": "CONFIRMED",
+      "disposition": "FIXED-UNMERGED",
+      "area": "privacy",
+      "remediationGroup": "data-handling",
+      "mar": "MAR-020",
+      "owningBranch": "integration/wave-0",
+      "owningSha": "2d6023ebecd7c9db83f5e4f914bdc2f62b3c6f75",
+      "evidence": [
+        "server/src/providers/ollama.ts",
+        "server/src/providers/providerTelemetry.ts"
+      ],
+      "notes": "User briefs, prompts, AI context and generated Lua reaching logs is a privacy, intellectual property and retention problem. Fixed by shape rather than by discipline: the telemetry helper takes measurements, not payloads, and payload previews are bounded and unavailable in production whatever the flag says."
+    },
+    {
+      "id": "QUOTA-ENFORCEMENT-001",
+      "title": "Generation does not enforce tier limits before starting",
+      "severity": "P1",
+      "status": "CONFIRMED",
+      "disposition": "NOT-STARTED",
+      "area": "abuse",
+      "remediationGroup": "generation-start-admission",
+      "mar": "MAR-018",
+      "evidence": ["server/src/routes/game-generation.ts"],
+      "notes": "Combined with duplicate generation, long provider calls and a single serial queue, this allows resource amplification and denial of wallet."
+    },
+    {
+      "id": "AUTH-EMAIL-IDENTITY-001",
+      "title": "Profile email can diverge from the password credential key",
+      "severity": "P1",
+      "status": "CONFIRMED",
+      "disposition": "NOT-STARTED",
+      "area": "auth",
+      "remediationGroup": "auth-credential-lifecycle",
+      "mar": "unmapped",
+      "marNote": "The MAR taxonomy has no auth credential lifecycle root cause. The nearest neighbours are MAR-019 privacy lifecycle and MAR-022 incident response, and neither covers verified email identity.",
+      "evidence": ["server/src/platform/auth/AuthService.ts"],
+      "notes": "The credential is looked up by normalized email, so a profile change that does not atomically migrate the credential breaks password login."
+    },
+    {
+      "id": "AUTH-PASSWORD-RESET-001",
+      "title": "Password reset is not implemented behind an interface that claims it is",
+      "severity": "P1",
+      "status": "CONFIRMED",
+      "disposition": "NOT-STARTED",
+      "area": "auth",
+      "remediationGroup": "auth-credential-lifecycle",
+      "mar": "unmapped",
+      "marNote": "Same taxonomy gap as AUTH-EMAIL-IDENTITY-001: no MAR root cause covers credential recovery as a product capability.",
+      "evidence": ["server/src/platform/auth/AuthService.ts"],
+      "notes": "The endpoint accepts the request without token issuance, expiry, one-time semantics or credential replacement, while the interface can tell the user to check their inbox."
+    },
+    {
+      "id": "VERSION-HISTORY-PERSIST-001",
+      "title": "Project version history is process-local",
+      "severity": "P1",
+      "status": "CONFIRMED",
+      "disposition": "NOT-STARTED",
+      "area": "durability",
+      "remediationGroup": "durable-product-state",
+      "mar": "unmapped",
+      "marNote": "No MAR root cause covers durable product state that is neither a tenancy nor a deletion concern. MAR-025 is database governance, which is a different claim.",
+      "evidence": ["config/runtime/runtime-ownership.json"],
+      "notes": "Version history held in a process-local map is erased by restart, which is a severe mismatch for a system that generates autonomously and offers rollback."
+    },
+    {
+      "id": "USER-PREF-PERSIST-001",
+      "title": "Preferences are documented as persisted but held in memory",
+      "severity": "P2",
+      "status": "CONFIRMED",
+      "disposition": "NOT-STARTED",
+      "area": "durability",
+      "remediationGroup": "durable-product-state",
+      "mar": "unmapped",
+      "marNote": "Same taxonomy gap as VERSION-HISTORY-PERSIST-001.",
+      "evidence": ["config/runtime/runtime-ownership.json"],
+      "notes": "Restart loses them."
+    },
+    {
+      "id": "SUPPLYCHAIN-ACTIONS-001",
+      "title": "Actions and base images are pinned by tag rather than digest",
+      "severity": "P2",
+      "status": "CONFIRMED",
+      "disposition": "NOT-STARTED",
+      "area": "supply-chain",
+      "remediationGroup": "supply-chain-hardening",
+      "mar": "MAR-024",
+      "evidence": [".github/workflows"],
+      "notes": "Major version tags and floating image tags are a reproducibility and supply-chain hardening gap rather than an active vulnerability."
+    },
+    {
+      "id": "AUDIT-CI-FAILURE-SET-001",
+      "title": "The current backend CI failure set must be re-established before remediation",
+      "severity": "P1",
+      "status": "OPEN",
+      "disposition": "NOT-STARTED",
+      "area": "test-authority",
+      "remediationGroup": "must-reverify-before-remediation",
+      "mar": "MAR-023",
+      "evidence": [".github/workflows"],
+      "notes": "The audit history contains two different explanations of the same failure, stale project-ownership fixtures and a Studio runtime closed to exported transition. Neither may be treated as current until re-verified against the present head. Recorded so no remediation is planned against a stale failure."
+    },
+    {
+      "id": "AUDIT-REPO-GOVERNANCE-001",
+      "title": "Repository visibility and branch protection must be established as fact",
+      "severity": "P1",
+      "status": "OPEN",
+      "disposition": "NOT-STARTED",
+      "area": "governance",
+      "remediationGroup": "must-reverify-before-remediation",
+      "mar": "MAR-023",
+      "evidence": ["docs/00-project-control/CURRENT_STATE.md"],
+      "notes": "Both repositories were public during the audit and the effective rulesets could not be read unambiguously. If the code is intended to be proprietary this is a governance risk. Requires an authenticated check rather than inference."
+    },
+    {
+      "id": "STUDIO-PLAY-ACCEPTANCE-001",
+      "title": "No end-to-end proof from generation to Roblox Play with runtime evidence",
+      "severity": "P1",
+      "status": "OPEN",
+      "disposition": "NOT-STARTED",
+      "area": "acceptance",
+      "remediationGroup": "assurance-not-performed",
+      "mar": "MAR-012",
+      "evidence": ["docs/00-project-control/RUNTIME-PLAYTEST-1_RESULT.md"],
+      "notes": "The required chain is fresh project, canonical generation, package, transfer, import, scene materialized, scripts placed, play, objective works, evidence captured. Until it exists the platform is not proven end to end."
+    },
+    {
+      "id": "AUDIT-DYNAMIC-ASSURANCE-001",
+      "title": "Dynamic assurance has not been performed",
+      "severity": "P1",
+      "status": "OPEN",
+      "disposition": "NOT-STARTED",
+      "area": "assurance",
+      "remediationGroup": "assurance-not-performed",
+      "mar": "MAR-033",
+      "evidence": ["docs/00-project-control/CURRENT_STATE.md"],
+      "notes": "Penetration testing, AI red teaming, chaos and fault injection, load and soak testing, a real backup and restore drill with measured objectives, full accessibility review, browser compatibility, database index and migration review, and project deletion and privacy behaviour are all unperformed. Recorded as one open block so their absence is visible rather than implied."
+    },
+    {
+      "id": "AUDIT-FLAKY-AUTH-TEST-001",
+      "title": "The user-self authorization test fails intermittently under parallel load",
+      "severity": "P2",
+      "status": "CONFIRMED",
+      "disposition": "FIXED-UNMERGED",
+      "area": "test-authority",
+      "remediationGroup": "pipeline-outcome-truth",
+      "mar": "unmapped",
+      "marNote": "Test-suite determinism is not a MAR root cause. It is recorded because a flaky test is evidence that cannot be relied on.",
+      "owningBranch": "integration/wave-0",
+      "owningSha": "f5b9772bfa99ebcfb70b853b6e4c90d67c0dd503",
+      "evidence": [
+        "server/src/__tests__/security2gE.authorization-domains.test.ts"
+      ],
+      "notes": "It passes in isolation and times out at about five seconds when the full security suite runs in parallel. Reproduced twice in this session, once on a clean baseline with all local changes removed, so it is a baseline flake rather than a regression. It matters more than an ordinary flake because it is one of only five operations in the matrix with real behavioural cross-tenant evidence, so when it flakes that evidence is unreliable."
+    },
+    {
+      "id": "BLUEPRINT-SNAPSHOT-001",
+      "title": "A generation run read the live blueprint rather than an immutable snapshot",
+      "severity": "P1",
+      "status": "CONFIRMED",
+      "disposition": "FIXED-UNMERGED",
+      "area": "generation",
+      "remediationGroup": "blueprint-provenance",
+      "mar": "MAR-012",
+      "owningBranch": "integration/wave-0",
+      "owningSha": "c1aca8a8bcec3654b35c86e06689f7be682f8635",
+      "evidence": [
+        "server/src/projects/repository/storageBlueprint.repository.ts"
+      ],
+      "notes": "An edit landing mid-run changed what the run was building. Each execution now binds to a versioned snapshot with a content hash, so what a run consumed stays recoverable after the fact."
+    },
+    {
+      "id": "INTENT-DEFAULT-CONTAMINATION-001",
+      "title": "System defaults were presented downstream as user-stated intent",
+      "severity": "P1",
+      "status": "CONFIRMED",
+      "disposition": "FIXED-UNMERGED",
+      "area": "generation",
+      "remediationGroup": "blueprint-provenance",
+      "mar": "MAR-012",
+      "owningBranch": "integration/wave-0",
+      "owningSha": "63132fff1bb0148886d6c967ddc2199af3378b17",
+      "evidence": ["server/src/projects/services/game-generation.service.ts"],
+      "notes": "Fields the system filled in were indistinguishable from fields the user chose, so a generated game could satisfy a requirement nobody asked for. Assumed fields are now marked as such, and requirements derived from them are not reported as user-stated."
+    },
+    {
+      "id": "INTENT-FIDELITY-001",
+      "title": "Requirements carried no identity, so no run could show which ones it satisfied",
+      "severity": "P1",
+      "status": "CONFIRMED",
+      "disposition": "FIXED-UNMERGED",
+      "area": "generation",
+      "remediationGroup": "generation-fidelity",
+      "mar": "MAR-012",
+      "owningBranch": "integration/wave-0",
+      "owningSha": "2edb5d687e0e079c72cef5d515561c4e4fd782a8",
+      "evidence": ["server/src/validation/requirementTraceability.ts"],
+      "notes": "Requirements reached downstream agents as opaque strings, so the only available answer about coverage was prose. Requirements now carry identifiers and a run reports which of them it can show evidence for. The measured number is deliberately low: the chain does not yet carry identifiers past the requirements stage, and that gap is now a recorded number rather than an assumption about it."
+    },
+    {
+      "id": "LLM-PARSER-001",
+      "title": "Valid JSON was discarded when a model added prose after it",
+      "severity": "P1",
+      "status": "CONFIRMED",
+      "disposition": "FIXED-UNMERGED",
+      "area": "generation",
+      "remediationGroup": "generation-fidelity",
+      "mar": "MAR-010",
+      "owningBranch": "integration/wave-0",
+      "owningSha": "fb0a213f6c2321c283f1616784311cc0fe031b0b",
+      "evidence": ["server/src/ai/outputParser.ts"],
+      "notes": "The bracket-scan fallback sliced from the first bracket to the end of the string, so any trailing explanation destroyed a perfectly good response and the run fell back to canned content. Extraction now scans to the matching close, tracking string literals because generated Luau is delivered inside JSON strings and is full of braces. A response truncated before its closing bracket returns null rather than parsing a fragment."
+    },
+    {
+      "id": "SERIALIZATION-001",
+      "title": "Structures reached generation prompts as the literal text [object Object]",
+      "severity": "P1",
+      "status": "CONFIRMED",
+      "disposition": "FIXED-UNMERGED",
+      "area": "generation",
+      "remediationGroup": "generation-fidelity",
+      "mar": "MAR-012",
+      "owningBranch": "integration/wave-0",
+      "owningSha": "0abaf874a487506a72d16d2b22e3f25977ac331f",
+      "evidence": ["server/src/ai/promptValues.ts"],
+      "notes": "Five agents summarised structures with a name-or-item fallback. An item without a name stringified to a placeholder, so the model was told a mechanic or system existed and given nothing about it, including in the prompt that generates the Lua. Values are now described so the content survives when there is no name."
+    }
   ]
 }

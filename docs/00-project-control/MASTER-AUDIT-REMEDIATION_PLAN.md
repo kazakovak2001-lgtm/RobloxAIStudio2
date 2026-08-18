@@ -2,7 +2,7 @@
 
 # Master audit remediation plan
 
-Generated from `config/audit/master-audit-register.json` (47 findings). Severity is the register's; ordering is by the worst severity in each group, except that re-verification comes first and verified controls come last.
+Generated from `config/audit/master-audit-register.json` (52 findings). Severity is the register's; ordering is by the worst severity in each group, except that re-verification comes first and verified controls come last.
 
 Findings are grouped by shared architectural root rather than by symptom. Several of these are the same defect seen from different places, and repairing them one at a time would mean repairing the root several times.
 
@@ -10,10 +10,45 @@ Findings are grouped by shared architectural root rather than by symptom. Severa
 
 | Disposition        | Findings |
 | ------------------ | -------- |
-| NOT-STARTED        | 26       |
-| FIXED-UNMERGED     | 16       |
+| NOT-STARTED        | 25       |
+| FIXED-UNMERGED     | 22       |
 | NO-ACTION-REQUIRED | 4        |
 | SCOPED-OUT         | 1        |
+
+## Root-cause coverage
+
+Every finding names the deduplicated root cause it belongs to. A finding the taxonomy does not cover is recorded as unmapped with a reason, rather than filed under an approximate neighbour, so a gap in the taxonomy stays visible as a gap.
+
+| Root cause                                                                                         | Priority        | Findings | Fixed | Remaining |
+| -------------------------------------------------------------------------------------------------- | --------------- | -------- | ----- | --------- |
+| **MAR-001** — Cross-tenant resource authorization is not parent-bound everywhere                   | P0              | 9        | 4     | 5         |
+| **MAR-003** — No single clean canonical product acceptance run exists                              | P0-release-gate | 3        | 0     | 3         |
+| **MAR-004** — Generation has no durable project-scoped single-flight and idempotent start identity | P1              | 3        | 3     | 0         |
+| **MAR-005** — State transitions have no unified durable CAS/version authority                      | P1              | 3        | 3     | 0         |
+| **MAR-010** — No authoritative Luau compile/type and generated-code policy gate                    | P1              | 2        | 1     | 1         |
+| **MAR-012** — Runtime gameplay acceptance is missing as a machine-measured capability              | P1              | 9        | 6     | 3         |
+| **MAR-013** — Spatial and multiplayer invariants are not runtime-proven                            | P1              | 1        | 0     | 1         |
+| **MAR-014** — World ownership still has an unfinished canonical transition                         | P1              | 1        | 0     | 1         |
+| **MAR-016** — Chaos and recovery are not tested on real failure boundaries                         | P1              | 4        | 2     | 2         |
+| **MAR-018** — Execution-level and tenant-level FinOps control plane is missing                     | P1              | 1        | 0     | 1         |
+| **MAR-020** — Raw user content can enter logs without central redaction                            | P1/P2           | 1        | 1     | 0         |
+| **MAR-023** — Frontend main governance does not protect CI authority                               | P1              | 2        | 0     | 2         |
+| **MAR-024** — Supply-chain release authority is not immutable end-to-end                           | P1/P2           | 2        | 1     | 1         |
+| **MAR-032** — Architecture has ownership abstractions without a complete authority map             | P2              | 2        | 0     | 2         |
+| **MAR-033** — Fuzz and property testing are systematically missing                                 | P2              | 1        | 0     | 1         |
+| **MAR-036** — Dead and legacy code, and naming drift                                               | P3              | 1        | 0     | 1         |
+
+21 of 37 root causes have no finding recorded against them yet: MAR-002, MAR-006, MAR-007, MAR-008, MAR-009, MAR-011, MAR-015, MAR-017, MAR-019, MAR-021, MAR-022, MAR-025, MAR-026, MAR-027, MAR-028, MAR-029, MAR-030, MAR-031, MAR-034, MAR-035, MAR-037. The register under-covers the audit by that much.
+
+### 7 findings the taxonomy does not cover
+
+- **AUDIT-SCRIPTS-UNTYPED-001** — No MAR root cause covers build and typecheck coverage of tooling.
+- **AUDIT-READINESS-001** — No MAR root cause covers service health and readiness semantics. MAR-021 is observability identity, which is a different concern.
+- **AUTH-EMAIL-IDENTITY-001** — The MAR taxonomy has no auth credential lifecycle root cause. The nearest neighbours are MAR-019 privacy lifecycle and MAR-022 incident response, and neither covers verified email identity.
+- **AUTH-PASSWORD-RESET-001** — Same taxonomy gap as AUTH-EMAIL-IDENTITY-001: no MAR root cause covers credential recovery as a product capability.
+- **VERSION-HISTORY-PERSIST-001** — No MAR root cause covers durable product state that is neither a tenancy nor a deletion concern. MAR-025 is database governance, which is a different claim.
+- **USER-PREF-PERSIST-001** — Same taxonomy gap as VERSION-HISTORY-PERSIST-001.
+- **AUDIT-FLAKY-AUTH-TEST-001** — Test-suite determinism is not a MAR root cause. It is recorded because a flaky test is evidence that cannot be relied on.
 
 ## 1. must-reverify-before-remediation — worst severity P1
 
@@ -37,7 +72,20 @@ What the system reports about a run does not always match what happened. This is
 | **AUDIT-FLAKY-AUTH-TEST-001** — The user-self authorization test fails intermittently under parallel load             | P2       | CONFIRMED | FIXED-UNMERGED (integration/wave-0 @ f5b9772bfa99ebcfb70b853b6e4c90d67c0dd503) |
 | **AUDIT-SCRIPTS-UNTYPED-001** — Validator and generator scripts are outside the typecheck boundary                    | P3       | CONFIRMED | NOT-STARTED                                                                    |
 
-## 3. generation-start-admission — worst severity P1
+## 3. generation-fidelity — worst severity P1
+
+The generated artifact does not reliably match the stated requirement, in transport, in intent and in world content.
+
+| Finding                                                                                                  | Severity | Status    | Disposition                                                                    |
+| -------------------------------------------------------------------------------------------------------- | -------- | --------- | ------------------------------------------------------------------------------ |
+| **FP-E2E-LLM-JSON** — Structured Lua generation output is not reliably parseable                         | P1       | CONFIRMED | NOT-STARTED                                                                    |
+| **FP-E2E-INTENT-001** — Explicit user intent is not authoritative across agents                          | P1       | CONFIRMED | NOT-STARTED                                                                    |
+| **FP-E2E-SPATIAL-COVERAGE** — No cardinality gate between a stated requirement and the generated world   | P1       | CONFIRMED | NOT-STARTED                                                                    |
+| **INTENT-FIDELITY-001** — Requirements carried no identity, so no run could show which ones it satisfied | P1       | CONFIRMED | FIXED-UNMERGED (integration/wave-0 @ 2edb5d687e0e079c72cef5d515561c4e4fd782a8) |
+| **LLM-PARSER-001** — Valid JSON was discarded when a model added prose after it                          | P1       | CONFIRMED | FIXED-UNMERGED (integration/wave-0 @ fb0a213f6c2321c283f1616784311cc0fe031b0b) |
+| **SERIALIZATION-001** — Structures reached generation prompts as the literal text [object Object]        | P1       | CONFIRMED | FIXED-UNMERGED (integration/wave-0 @ 0abaf874a487506a72d16d2b22e3f25977ac331f) |
+
+## 4. generation-start-admission — worst severity P1
 
 Everything that decides whether a generation may begin and under whose identity. Two of these are already fixed on branches and the rest share their entry point.
 
@@ -49,7 +97,7 @@ Everything that decides whether a generation may begin and under whose identity.
 | **AUDIT-OUTCOME-LAST-WRITER-001** — An older overlapping run can overwrite a newer run's terminal project state           | P1       | CONFIRMED | FIXED-UNMERGED (integration/wave-0 @ e0d800d273b3c618d4af07d9ffbbe2873da49937) |
 | **QUOTA-ENFORCEMENT-001** — Generation does not enforce tier limits before starting                                       | P1       | CONFIRMED | NOT-STARTED                                                                    |
 
-## 4. authorization-object-binding — worst severity P1
+## 5. authorization-object-binding — worst severity P1
 
 One defect shape: the identifier the caller was authorized for is not the thing the operation acts on. Fixing the sweep and the evidence together is what stops the next instance.
 
@@ -60,7 +108,7 @@ One defect shape: the identifier the caller was authorized for is not the thing 
 | **AUDIT-BINDING-UNREVIEWED-001** — Ninety-eight operations still have no object-binding verdict                               | P1       | OPEN      | SCOPED-OUT                                                                     |
 | **AUDIT-BODY-SUPPLIED-BLUEPRINT-001** — Eight operations authorize against an identifier inside a caller-supplied body object | P2       | CONFIRMED | NOT-STARTED                                                                    |
 
-## 5. canonical-generation-recovery — worst severity P1
+## 6. canonical-generation-recovery — worst severity P1
 
 Canonical generation survives as a durable record but not as running work. The queue choice, the shutdown path and the weak restart test are the same gap seen three ways.
 
@@ -71,7 +119,7 @@ Canonical generation survives as a durable record but not as running work. The q
 | **AUDIT-RESTART-TEST-WEAK-001** — The restart test proves durability, not recovery               | P1       | CONFIRMED | NOT-STARTED                                                                    |
 | **AUDIT-QUEUE-DISCONNECTED-001** — The mature generation queue has no production consumer at all | P2       | CONFIRMED | NOT-STARTED                                                                    |
 
-## 6. realtime-tenancy — worst severity P1
+## 7. realtime-tenancy — worst severity P1
 
 Outbound emissions ignore the project boundary that the inbound side enforces. Two distinct repairs sit inside this group, one cheap and one needing context plumbed through.
 
@@ -82,17 +130,18 @@ Outbound emissions ignore the project boundary that the inbound side enforces. T
 | **SEC-REALTIME-PIPELINE-FALLBACK-001** — Pipeline events fall back to a global broadcast when no project is known | P2       | CONFIRMED | FIXED-UNMERGED (integration/wave-0 @ fee5b8c3655cfb9a68722cc9ce34358caf071556) |
 | **AUDIT-REALTIME-ROOM-001** — Room membership on project switch is not proven to be exclusive                     | P2       | LIKELY    | NOT-STARTED                                                                    |
 
-## 7. generation-fidelity — worst severity P1
+## 8. blueprint-provenance — worst severity P1
 
-The generated artifact does not reliably match the stated requirement, in transport, in intent and in world content.
+Generation runs against mutable, sometimes stale design input, and design changes agreed elsewhere never reach it.
 
-| Finding                                                                                                | Severity | Status    | Disposition |
-| ------------------------------------------------------------------------------------------------------ | -------- | --------- | ----------- |
-| **FP-E2E-LLM-JSON** — Structured Lua generation output is not reliably parseable                       | P1       | CONFIRMED | NOT-STARTED |
-| **FP-E2E-INTENT-001** — Explicit user intent is not authoritative across agents                        | P1       | CONFIRMED | NOT-STARTED |
-| **FP-E2E-SPATIAL-COVERAGE** — No cardinality gate between a stated requirement and the generated world | P1       | CONFIRMED | NOT-STARTED |
+| Finding                                                                                                 | Severity | Status    | Disposition                                                                    |
+| ------------------------------------------------------------------------------------------------------- | -------- | --------- | ------------------------------------------------------------------------------ |
+| **AUDIT-BLUEPRINT-STALE-001** — Editing a project does not update its existing blueprint                | P1       | CONFIRMED | FIXED-UNMERGED (integration/wave-0 @ ed47c74ae92c5d98ddf6458cf1fe64637e822be9) |
+| **CHAT-BLUEPRINT-DISCONNECT-001** — Design chat does not change the canonical blueprint                 | P1       | CONFIRMED | FIXED-UNMERGED (integration/wave-0 @ 31c81c013dce25619b5638614161902a6fcad86c) |
+| **BLUEPRINT-SNAPSHOT-001** — A generation run read the live blueprint rather than an immutable snapshot | P1       | CONFIRMED | FIXED-UNMERGED (integration/wave-0 @ c1aca8a8bcec3654b35c86e06689f7be682f8635) |
+| **INTENT-DEFAULT-CONTAMINATION-001** — System defaults were presented downstream as user-stated intent  | P1       | CONFIRMED | FIXED-UNMERGED (integration/wave-0 @ 63132fff1bb0148886d6c967ddc2199af3378b17) |
 
-## 8. supply-chain-hardening — worst severity P1
+## 9. supply-chain-hardening — worst severity P1
 
 Reproducibility and exception hygiene in the build and scanning path.
 
@@ -101,23 +150,14 @@ Reproducibility and exception hygiene in the build and scanning path.
 | **SEC-SCANNER-EXCEPTION-CLOCK-001** — Security exception expiry validated against a frozen audit date | P1       | CONFIRMED | FIXED-UNMERGED (integration/wave-0 @ d7d1cca0) |
 | **SUPPLYCHAIN-ACTIONS-001** — Actions and base images are pinned by tag rather than digest            | P2       | CONFIRMED | NOT-STARTED                                    |
 
-## 9. data-handling — worst severity P1
+## 10. data-handling — worst severity P1
 
 Sensitive content reaches places it should not, and evidence records an identity the caller asserted rather than one the server knows.
 
-| Finding                                                                                       | Severity | Status    | Disposition |
-| --------------------------------------------------------------------------------------------- | -------- | --------- | ----------- |
-| **LLM-LOG-DATA-001** — Provider logging can write prompts and generated code to backend logs  | P1       | CONFIRMED | NOT-STARTED |
-| **AUDIT-REVIEW-ATTRIBUTION-001** — Artifact review attribution is taken from the request body | P2       | CONFIRMED | NOT-STARTED |
-
-## 10. blueprint-provenance — worst severity P1
-
-Generation runs against mutable, sometimes stale design input, and design changes agreed elsewhere never reach it.
-
-| Finding                                                                                  | Severity | Status    | Disposition                                                                    |
-| ---------------------------------------------------------------------------------------- | -------- | --------- | ------------------------------------------------------------------------------ |
-| **AUDIT-BLUEPRINT-STALE-001** — Editing a project does not update its existing blueprint | P1       | CONFIRMED | FIXED-UNMERGED (integration/wave-0 @ ed47c74ae92c5d98ddf6458cf1fe64637e822be9) |
-| **CHAT-BLUEPRINT-DISCONNECT-001** — Design chat does not change the canonical blueprint  | P1       | CONFIRMED | FIXED-UNMERGED (integration/wave-0 @ 31c81c013dce25619b5638614161902a6fcad86c) |
+| Finding                                                                                       | Severity | Status    | Disposition                                                                    |
+| --------------------------------------------------------------------------------------------- | -------- | --------- | ------------------------------------------------------------------------------ |
+| **LLM-LOG-DATA-001** — Provider logging can write prompts and generated code to backend logs  | P1       | CONFIRMED | FIXED-UNMERGED (integration/wave-0 @ 2d6023ebecd7c9db83f5e4f914bdc2f62b3c6f75) |
+| **AUDIT-REVIEW-ATTRIBUTION-001** — Artifact review attribution is taken from the request body | P2       | CONFIRMED | NOT-STARTED                                                                    |
 
 ## 11. release-capability-truth — worst severity P1
 

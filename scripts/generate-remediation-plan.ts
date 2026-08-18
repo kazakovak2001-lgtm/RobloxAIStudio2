@@ -19,14 +19,23 @@ interface RegisterFinding {
   disposition: string;
   area: string;
   remediationGroup: string;
+  mar: string;
+  marNote?: string;
   owningBranch?: string;
   owningSha?: string;
   notes?: string;
 }
 
+interface MarRootCause {
+  id: string;
+  priority: string;
+  title: string;
+}
+
 interface AuditRegister {
   controlId: string;
   remediationGroups: string[];
+  marRootCauses: MarRootCause[];
   findings: RegisterFinding[];
 }
 
@@ -139,6 +148,60 @@ for (const [disposition, total] of Object.entries(counts).sort(
   lines.push(`| ${disposition} | ${total} |`);
 }
 lines.push("");
+
+// The root-cause view, which is the axis the remediation order actually
+// follows. It is reported separately from the groups above because the two
+// answer different questions: a group is one repair, a root cause is one
+// reason. A root cause with no findings is not an omission — it means the
+// register has not yet enumerated anything under it, and saying so is the
+// point of listing it.
+lines.push("## Root-cause coverage");
+lines.push("");
+lines.push(
+  "Every finding names the deduplicated root cause it belongs to. A finding the taxonomy does not cover is recorded as unmapped with a reason, rather than filed under an approximate neighbour, so a gap in the taxonomy stays visible as a gap.",
+);
+lines.push("");
+
+const byRootCause = new Map<string, RegisterFinding[]>();
+for (const finding of register.findings) {
+  const list = byRootCause.get(finding.mar) ?? [];
+  list.push(finding);
+  byRootCause.set(finding.mar, list);
+}
+
+lines.push("| Root cause | Priority | Findings | Fixed | Remaining |");
+lines.push("| --- | --- | --- | --- | --- |");
+for (const rootCause of register.marRootCauses) {
+  const findings = byRootCause.get(rootCause.id) ?? [];
+  if (findings.length === 0) continue;
+  const fixed = findings.filter(
+    (finding) => finding.disposition === "FIXED-UNMERGED",
+  ).length;
+  lines.push(
+    `| **${rootCause.id}** — ${rootCause.title} | ${rootCause.priority} | ${findings.length} | ${fixed} | ${findings.length - fixed} |`,
+  );
+}
+lines.push("");
+
+const unenumerated = register.marRootCauses.filter(
+  (rootCause) => !byRootCause.has(rootCause.id),
+);
+if (unenumerated.length > 0) {
+  lines.push(
+    `${unenumerated.length} of ${register.marRootCauses.length} root causes have no finding recorded against them yet: ${unenumerated.map((rootCause) => rootCause.id).join(", ")}. The register under-covers the audit by that much.`,
+  );
+  lines.push("");
+}
+
+const unmapped = byRootCause.get("unmapped") ?? [];
+if (unmapped.length > 0) {
+  lines.push(`### ${unmapped.length} findings the taxonomy does not cover`);
+  lines.push("");
+  for (const finding of unmapped) {
+    lines.push(`- **${finding.id}** — ${finding.marNote}`);
+  }
+  lines.push("");
+}
 
 let order = 0;
 for (const [group, findings] of ordered) {
