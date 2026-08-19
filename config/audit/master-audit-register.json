@@ -1368,6 +1368,43 @@
         "server/src/__tests__/mar004.generate-route-idempotency.test.ts"
       ],
       "notes": "The first implementation keyed the durable record by `${projectId}:${key}`. A key is supposed to name one logical request, so the same key surfacing against a different project has to fail closed as a caller defect. Partitioning by project made that collision structurally undetectable: the two requests would never read the same record, and each project would quietly get its own start under a key that was meant to be unique. Found while writing the route contract rather than by review, because the invariant 'same key + different project => conflict' had no test until the HTTP contract was pinned. The record is now keyed by the key alone with the project stored as a checked field. Reverse-proved by restoring the per-project id, which fails exactly the two cross-project tests and nothing else."
+    },
+    {
+      "id": "GEN-LUA-POLICY-GATE-001",
+      "title": "GameValidationEngine duplicated a weaker ad hoc Lua policy scanner instead of the canonical compile/type/policy validator",
+      "severity": "P1",
+      "status": "CONFIRMED",
+      "disposition": "FIXED-UNMERGED",
+      "area": "generation",
+      "remediationGroup": "generation-fidelity",
+      "mar": "MAR-010",
+      "owningBranch": "fix/mar-009-010-authoritative-luau-gates",
+      "owningSha": "1fe8d53ee2086c757f75d85ed4dd8f28f531ea07",
+      "evidence": [
+        "server/src/generation/validation/GameValidationEngine.ts",
+        "server/src/generation/lua/LuaCodeValidator.ts",
+        "server/src/generation/validation/__tests__/GameValidationEngine.gates.test.ts"
+      ],
+      "notes": "GameValidationEngine.checkLuaSyntax re-implemented a second, weaker forbidden-API and balanced-block scanner (loadstring/getfenv/setfenv, ad hoc function/end counting) instead of reusing LuaCodeValidator, the repo's canonical compile/type/policy validator already used by LuaGenerationEngine and LuaArtifactBuilder for the same purpose. checkLuaSyntax now delegates to LuaCodeValidator directly; its errors stay blocking (severity:\"error\") and its warnings stay non-blocking, closing the duplicate-validator gap this root cause names. Separately, routes/generation-v2.ts's /generate/game handler computed GameValidationEngine's result without gating export on validation.passed while routes/compile.ts did gate on the same engine — a fail-open route bug on the base branch (PR #250, fix/generation-output-viability-2 @ 63fc28db) that this change stacks on; that fix is not part of this commit because it was already present on the base. Regression fixtures cover a valid minimal playable generation passing, an unbalanced-block script failing closed, and a loadstring-containing script failing closed."
+    },
+    {
+      "id": "GEN-LUA-SECURITY-ADVISORY-001",
+      "title": "Generated Lua security evidence is reused and now visible in the validation report, but remains a non-blocking advisory signal",
+      "severity": "P1",
+      "status": "CONFIRMED",
+      "disposition": "SCOPED-OUT",
+      "area": "generation",
+      "remediationGroup": "generation-fidelity",
+      "mar": "MAR-009",
+      "owningBranch": "fix/mar-009-010-authoritative-luau-gates",
+      "owningSha": "1fe8d53ee2086c757f75d85ed4dd8f28f531ea07",
+      "evidence": [
+        "server/src/generation/validation/GameValidationEngine.ts",
+        "server/src/validation/luaSecurityReview.ts",
+        "docs/00-project-control/SECURITY-REVIEW-B_PROMOTION_CRITERIA.md",
+        "server/src/generation/validation/__tests__/GameValidationEngine.gates.test.ts"
+      ],
+      "notes": "reviewLuaSecurity (SECREVIEW-1), the repo's deep trust-boundary scanner, was never consulted by this legacy LuaGenerator/GameValidationEngine pipeline at all, so an exploit shape it exists to catch (client-awarded currency, unvalidated teleports, dynamic code execution reached through a RemoteEvent handler) produced no signal here whatsoever. It is now reused and its findings are attached to the validation result as severity:\"info\" issues, so they are visible in the report for the first time on this pipeline. This root cause's title is that this evidence is not a blocking production gate, and that remains true: findings are attached with severity:\"info\" only, never \"error\", so they cannot fail validation.passed and generation is not blocked on them. This is a deliberate, not incidental, choice: docs/00-project-control/SECURITY-REVIEW-B_PROMOTION_CRITERIA.md states the reviewer must stay advisory ('a finding never negates generation, delivery or release') until seven unmet criteria are satisfied (measured false-positive rate on real generations, no known high-severity false negative, an override/human-approval path, the policy's own contract tests, etc.), and that promoting it to blocking 'must not be folded into an unrelated slice.' None of those criteria were evaluated as part of this change. Recorded SCOPED-OUT rather than FIXED-UNMERGED or NOT-STARTED: reuse and visibility are real, incremental progress on this root cause, but the defect the title names — the evidence is not a blocking gate — is unresolved by design pending a separately-scoped SECURITY-REVIEW-B delivery."
     }
   ]
 }
