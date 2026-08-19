@@ -10,7 +10,7 @@
     },
     "frontend": {
       "repository": "kazakovak2001-lgtm/Frontend",
-      "commit": "e8278bd25488b68c3851709234c39a69e0e67b4a",
+      "controlBranch": "fix/mar-004-generate-idempotency-key",
       "runtimeCommit": "53eddd8b52ced75a6cd65328ab7e9eec146fd4a7"
     }
   },
