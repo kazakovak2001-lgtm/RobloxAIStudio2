@@ -140,6 +140,18 @@ jobs:
   production-contract:
     name: Frontend Production Contract
     runs-on: ubuntu-latest
+    # CI-FRONTEND-CONTRACT-1. The E2E contract script (Frontend
+    # scripts/e2e-backend.mjs) can throw on a genuine failure — e.g. the
+    # current Idempotency-Key contract drift — after opening a Socket.IO
+    # client it never reaches the code path that disconnects. `run().catch()`
+    # sets `process.exitCode` without forcing exit, so the open socket keeps
+    # Node's event loop alive and the step never returns, leaving this job
+    # "in_progress" until GitHub's platform default (6h) kills it — which
+    # reads as permanently pending to any human or branch-protection check.
+    # This bound turns that into a real, fast failure instead. Fixing the
+    # underlying hang lives in the Frontend repo's E2E script, out of scope
+    # here.
+    timeout-minutes: 10
     permissions:
       contents: read
     env:

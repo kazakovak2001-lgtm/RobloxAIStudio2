@@ -26,6 +26,7 @@
 .eslintrc.json
 .github/copilot-instructions.md
 .github/workflows/ci.yml
+.github/workflows/release-pair-freshness.yml
 .github/workflows/security-consolidated-gate.yml
 .github/workflows/security-image-sbom.yml
 .github/workflows/security-sast-credential-scan.yml
