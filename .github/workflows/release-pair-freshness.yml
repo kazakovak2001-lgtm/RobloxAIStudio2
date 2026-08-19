@@ -1,0 +1,108 @@
+name: Release Pair Freshness
+
+on:
+  pull_request:
+  push:
+    branches: [release/cutover-1e-candidate, feature/plugin-merge]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-pair-freshness-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify-pair:
+    name: Exact Runtime Pair Authority
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout backend control head
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Resolve canonical pair
+        id: pair
+        shell: bash
+        run: |
+          set -euo pipefail
+          manifest=config/cutover/release-baseline.inventory.json
+          backend_runtime="$(jq -r '.runtimePair.backend.commit' "$manifest")"
+          frontend_control="$(jq -r '.runtimePair.frontend.commit' "$manifest")"
+          frontend_runtime="$(jq -r '.runtimePair.frontend.runtimeCommit' "$manifest")"
+          frontend_release="$(jq -r '.frontendRelease.commit' "$manifest")"
+          pair_id="$(jq -r '.runtimePair.id' "$manifest")"
+
+          for sha in "$backend_runtime" "$frontend_control" "$frontend_runtime" "$frontend_release"; do
+            [[ "$sha" =~ ^[0-9a-f]{40}$ ]] || { echo "Invalid pair SHA: $sha"; exit 1; }
+          done
+
+          test "$frontend_control" = "$frontend_release" || {
+            echo "RELEASE PAIR DRIFT: runtimePair.frontend.commit != frontendRelease.commit"
+            exit 1
+          }
+
+          git merge-base --is-ancestor "$backend_runtime" HEAD || {
+            echo "RELEASE PAIR DRIFT: backend runtime $backend_runtime is not an ancestor of control head $(git rev-parse HEAD)"
+            exit 1
+          }
+
+          echo "backend_runtime=$backend_runtime" >> "$GITHUB_OUTPUT"
+          echo "frontend_control=$frontend_control" >> "$GITHUB_OUTPUT"
+          echo "frontend_runtime=$frontend_runtime" >> "$GITHUB_OUTPUT"
+          echo "pair_id=$pair_id" >> "$GITHUB_OUTPUT"
+
+      - name: Checkout exact Frontend control commit
+        uses: actions/checkout@v4
+        with:
+          repository: kazakovak2001-lgtm/Frontend
+          ref: ${{ steps.pair.outputs.frontend_control }}
+          path: paired-frontend
+          persist-credentials: false
+          fetch-depth: 0
+
+      - name: Verify reciprocal Frontend manifest
+        shell: bash
+        env:
+          EXPECTED_BACKEND_RUNTIME: ${{ steps.pair.outputs.backend_runtime }}
+          EXPECTED_FRONTEND_RUNTIME: ${{ steps.pair.outputs.frontend_runtime }}
+          EXPECTED_FRONTEND_CONTROL: ${{ steps.pair.outputs.frontend_control }}
+          PAIR_ID: ${{ steps.pair.outputs.pair_id }}
+        run: |
+          set -euo pipefail
+          manifest=paired-frontend/config/integration/paired-release.json
+          actual_control="$(git -C paired-frontend rev-parse HEAD)"
+          frontend_runtime="$(jq -r '.frontend.runtimeSha' "$manifest")"
+          backend_runtime="$(jq -r '.backend.runtimeSha' "$manifest")"
+          backend_candidate="$(jq -r '.backend.candidateSha' "$manifest")"
+
+          test "$actual_control" = "$EXPECTED_FRONTEND_CONTROL" || {
+            echo "RELEASE PAIR DRIFT: wrong Frontend control commit"
+            exit 1
+          }
+          test "$frontend_runtime" = "$EXPECTED_FRONTEND_RUNTIME" || {
+            echo "RELEASE PAIR DRIFT: Frontend runtime mismatch"
+            exit 1
+          }
+          test "$backend_runtime" = "$EXPECTED_BACKEND_RUNTIME" || {
+            echo "RELEASE PAIR DRIFT: backend runtime mismatch"
+            exit 1
+          }
+          test "$backend_candidate" = "$EXPECTED_BACKEND_RUNTIME" || {
+            echo "RELEASE PAIR DRIFT: Frontend backend candidate does not equal canonical backend runtime"
+            exit 1
+          }
+          git -C paired-frontend merge-base --is-ancestor "$EXPECTED_FRONTEND_RUNTIME" HEAD || {
+            echo "RELEASE PAIR DRIFT: Frontend runtime is not an ancestor of Frontend control commit"
+            exit 1
+          }
+
+          printf '%s\n' \
+            "pair=$PAIR_ID" \
+            "backendRuntime=$EXPECTED_BACKEND_RUNTIME" \
+            "backendControl=$(git rev-parse HEAD)" \
+            "frontendRuntime=$EXPECTED_FRONTEND_RUNTIME" \
+            "frontendControl=$EXPECTED_FRONTEND_CONTROL" \
+            "status=PASS"
