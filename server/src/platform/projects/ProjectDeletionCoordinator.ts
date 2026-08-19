@@ -26,9 +26,11 @@ export interface ProjectDeletionChild {
  * this deletion boundary, as a single atomic transaction.
  *
  * The previous delete removed only the "projects" record; blueprint, blueprint
- * version, generation execution, blueprint change proposal and generation
- * history records referencing the project by id all survived as orphans no
- * project-scoped read path could reach again, but that nothing swept either.
+ * version, generation execution, blueprint change proposal, generation
+ * history, and (PROJECT-ERASURE-2) generation active-claim and generation
+ * start-request records referencing the project by id all survived as
+ * orphans no project-scoped read path could reach again, but that nothing
+ * swept either.
  *
  * Committing every child mutation and the project delete in one
  * `applyDurableBatch` call — rather than deleting children first and the
