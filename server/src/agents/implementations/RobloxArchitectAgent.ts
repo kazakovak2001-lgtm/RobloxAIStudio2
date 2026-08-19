@@ -103,13 +103,14 @@ export class RobloxArchitectAgent extends BaseAgent {
 
     if (!this.llm) return fallback;
 
-    const registryPrompt = this.buildPrompt({
+    const promptVars = {
       name,
       description,
       game_type: gameType,
       estimated_players: estimatedPlayers,
       systems_summary: systemsSummary,
-    });
+    };
+    const registryPrompt = this.buildPrompt(promptVars);
 
     const inlinePrompt =
       "You are a Roblox Studio technical architect. " +
@@ -130,7 +131,11 @@ export class RobloxArchitectAgent extends BaseAgent {
       prompt,
       ["architecture", "roblox_architect"],
       fallback,
-      { temperature: 0.3, maxTokens: 1800 },
+      {
+        temperature: 0.3,
+        maxTokens: 1800,
+        system: this.systemPromptFor(promptVars) ?? undefined,
+      },
     );
   }
 }

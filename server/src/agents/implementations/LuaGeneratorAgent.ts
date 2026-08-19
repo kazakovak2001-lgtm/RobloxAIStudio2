@@ -365,14 +365,16 @@ export class LuaGeneratorAgent extends BaseAgent {
         ? describeSpatialDesign(spatialResult.design)
         : "";
 
-    const registryPrompt = this.buildPrompt({
+    const promptVars = {
       name,
       description,
       architecture_summary: architectureSummary,
       systems_summary: systemsSummary,
       coding_standards: codingStandards,
       spatial_design: spatialDesignText,
-    });
+    };
+    const registryPrompt = this.buildPrompt(promptVars);
+    const systemPrompt = this.systemPromptFor(promptVars) ?? undefined;
 
     const inlinePrompt =
       "You are a Roblox Luau developer. Generate structured module code. " +
@@ -401,6 +403,7 @@ export class LuaGeneratorAgent extends BaseAgent {
       result = await this.generateLua(prompt, {
         temperature: 0.4,
         maxTokens: 6000,
+        system: systemPrompt,
       });
       assertPlayableLuaScripts(normalizeLuaScripts(result));
     } catch (error) {
@@ -408,7 +411,7 @@ export class LuaGeneratorAgent extends BaseAgent {
       try {
         result = await this.generateLua(
           `${prompt}\n\nREPAIR REQUIRED: ${reason}. Replace the entire response with complete executable code satisfying every runtime requirement.`,
-          { temperature: 0.1, maxTokens: 8000 },
+          { temperature: 0.1, maxTokens: 8000, system: systemPrompt },
         );
         assertPlayableLuaScripts(normalizeLuaScripts(result));
       } catch (repairError) {
@@ -425,7 +428,7 @@ export class LuaGeneratorAgent extends BaseAgent {
               repairReason,
               spatialDesignText,
             ),
-            { temperature: 0, maxTokens: 8000 },
+            { temperature: 0, maxTokens: 8000, system: systemPrompt },
           );
           assertPlayableLuaScripts(normalizeLuaScripts(result));
         } catch (finalRepairError) {
@@ -452,7 +455,7 @@ export class LuaGeneratorAgent extends BaseAgent {
 
   private async generateLua(
     prompt: string,
-    options: { temperature: number; maxTokens: number },
+    options: { temperature: number; maxTokens: number; system?: string },
   ): Promise<Record<string, unknown>> {
     if (!this.llm) throw new Error("Lua LLM provider is unavailable");
     const { LLMOutputParser } = await import("../../ai/outputParser");

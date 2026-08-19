@@ -19,6 +19,20 @@ export interface LLMOptions {
    * so setting it is always safe.
    */
   responseSchema?: Record<string, unknown>;
+  /**
+   * Server-authored instruction/policy text, sent through the provider's own
+   * system-role channel (Anthropic's `system` field, OpenAI-compatible
+   * `role: "system"` message, Gemini's `systemInstruction`, Ollama's
+   * `system`) instead of being concatenated into the user-role prompt.
+   *
+   * This is what actually separates trusted instruction authority from
+   * untrusted project/blueprint/memory content at the model boundary: a
+   * single flat prompt string gives an attacker-controlled value the same
+   * standing as the agent's own instructions, because nothing distinguishes
+   * them once joined. Never build this from request-supplied or generated
+   * content — it must be static, server-authored text.
+   */
+  system?: string;
 }
 
 export interface LLMResponse {

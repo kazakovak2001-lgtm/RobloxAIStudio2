@@ -47,6 +47,11 @@ export class GeminiProvider implements LLMProvider {
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
               contents: [{ parts: [{ text: prompt }] }],
+              ...(options?.system
+                ? {
+                    systemInstruction: { parts: [{ text: options.system }] },
+                  }
+                : {}),
               generationConfig: {
                 temperature: options?.temperature ?? 0.7,
                 maxOutputTokens: options?.maxTokens ?? 4096,
