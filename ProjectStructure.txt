@@ -822,6 +822,8 @@
 │   │   │   ├── contract
 │   │   │   │   └── agentContract.ts
 │   │   │   ├── core
+│   │   │   │   ├── __tests__
+│   │   │   │   │   └── promptTrustBoundary.test.ts
 │   │   │   │   ├── AgentRegistry.ts
 │   │   │   │   └── BaseAgent.ts
 │   │   │   ├── implementations
@@ -1437,7 +1439,8 @@
 │   │   │   │   ├── ollamaStructuredOutput.test.ts
 │   │   │   │   ├── ollamaTimeout.test.ts
 │   │   │   │   ├── providerFactory.test.ts
-│   │   │   │   └── providers.test.ts
+│   │   │   │   ├── providers.test.ts
+│   │   │   │   └── systemRoleSeparation.test.ts
 │   │   │   ├── ai
 │   │   │   │   ├── __tests__
 │   │   │   │   │   └── ProviderIntegration.test.ts
