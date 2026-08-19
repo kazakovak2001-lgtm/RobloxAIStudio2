@@ -126,6 +126,9 @@ function operationKey(
   return `${operation.transport}|${operation.source}|${operation.operation}`;
 }
 
+function stableCompare(left: string, right: string): number {
+  return left < right ? -1 : left > right ? 1 : 0;
+}
 function discoverOperations(): Array<
   Pick<MatrixOperation, "transport" | "source" | "operation">
 > {
@@ -162,7 +165,7 @@ function discoverOperations(): Array<
   }
 
   return [...discovered.values()].sort((left, right) =>
-    operationKey(left).localeCompare(operationKey(right)),
+    stableCompare(operationKey(left), operationKey(right)),
   );
 }
 
@@ -1839,7 +1842,8 @@ function discoverBroadcasts(): MatrixBroadcast[] {
   }
 
   return [...discovered.values()].sort((left, right) =>
-    `${left.source}|${left.event}`.localeCompare(
+    stableCompare(
+      `${left.source}|${left.event}`,
       `${right.source}|${right.event}`,
     ),
   );
