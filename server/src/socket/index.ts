@@ -53,6 +53,23 @@ export class RealtimeServer {
         }
 
         projectId = projectId.trim();
+
+        if (player.projectId === projectId) {
+          socket.emit("project:joined", { projectId });
+          return;
+        }
+
+        if (player.projectId) {
+          const previousProjectId = player.projectId;
+          socket.leave(`project:${previousProjectId}`);
+          this.untrackProjectRoom(previousProjectId, socket.id);
+          player.projectId = undefined;
+          socket.to(`project:${previousProjectId}`).emit("player:left", {
+            userId: player.userId,
+            projectId: previousProjectId,
+          });
+        }
+
         player.projectId = projectId;
         socket.join(`project:${projectId}`);
         this.trackProjectRoom(projectId, socket.id);

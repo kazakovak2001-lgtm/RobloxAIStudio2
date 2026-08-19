@@ -10,8 +10,8 @@ Findings are grouped by shared architectural root rather than by symptom. Severa
 
 | Disposition        | Findings |
 | ------------------ | -------- |
-| FIXED-UNMERGED     | 43       |
-| NOT-STARTED        | 26       |
+| FIXED-UNMERGED     | 44       |
+| NOT-STARTED        | 25       |
 | NO-ACTION-REQUIRED | 6        |
 | SCOPED-OUT         | 1        |
 | ACCEPTED-RISK      | 1        |
@@ -22,7 +22,7 @@ Every finding names the deduplicated root cause it belongs to. A finding the tax
 
 | Root cause                                                                                         | Priority        | Findings | Fixed | Remaining |
 | -------------------------------------------------------------------------------------------------- | --------------- | -------- | ----- | --------- |
-| **MAR-001** — Cross-tenant resource authorization is not parent-bound everywhere                   | P0              | 23       | 15    | 8         |
+| **MAR-001** — Cross-tenant resource authorization is not parent-bound everywhere                   | P0              | 23       | 16    | 7         |
 | **MAR-002** — Studio materializer has no universal creator-ownership safety boundary               | P0              | 8        | 8     | 0         |
 | **MAR-003** — No single clean canonical product acceptance run exists                              | P0-release-gate | 3        | 0     | 3         |
 | **MAR-004** — Generation has no durable project-scoped single-flight and idempotent start identity | P1              | 5        | 5     | 0         |
@@ -146,12 +146,12 @@ Canonical generation survives as a durable record but not as running work. The q
 
 Outbound emissions ignore the project boundary that the inbound side enforces. Two distinct repairs sit inside this group, one cheap and one needing context plumbed through.
 
-| Finding                                                                                                           | Severity | Status    | Disposition                                                                    |
-| ----------------------------------------------------------------------------------------------------------------- | -------- | --------- | ------------------------------------------------------------------------------ |
-| **SEC-REALTIME-GLOBAL-001** — Evaluation, memory and planning events broadcast to every connected socket          | P1       | CONFIRMED | FIXED-UNMERGED (integration/wave-0 @ fee5b8c3655cfb9a68722cc9ce34358caf071556) |
-| **SEC-REALTIME-TRACE-001** — Execution traces broadcast globally from a listener with no project context          | P1       | CONFIRMED | FIXED-UNMERGED (integration/wave-0 @ 71e011f7024ba36a646bb79546b98ab236816d02) |
-| **SEC-REALTIME-PIPELINE-FALLBACK-001** — Pipeline events fall back to a global broadcast when no project is known | P2       | CONFIRMED | FIXED-UNMERGED (integration/wave-0 @ fee5b8c3655cfb9a68722cc9ce34358caf071556) |
-| **AUDIT-REALTIME-ROOM-001** — Room membership on project switch is not proven to be exclusive                     | P2       | LIKELY    | NOT-STARTED                                                                    |
+| Finding                                                                                                           | Severity | Status    | Disposition                                                                               |
+| ----------------------------------------------------------------------------------------------------------------- | -------- | --------- | ----------------------------------------------------------------------------------------- |
+| **SEC-REALTIME-GLOBAL-001** — Evaluation, memory and planning events broadcast to every connected socket          | P1       | CONFIRMED | FIXED-UNMERGED (integration/wave-0 @ fee5b8c3655cfb9a68722cc9ce34358caf071556)            |
+| **SEC-REALTIME-TRACE-001** — Execution traces broadcast globally from a listener with no project context          | P1       | CONFIRMED | FIXED-UNMERGED (integration/wave-0 @ 71e011f7024ba36a646bb79546b98ab236816d02)            |
+| **SEC-REALTIME-PIPELINE-FALLBACK-001** — Pipeline events fall back to a global broadcast when no project is known | P2       | CONFIRMED | FIXED-UNMERGED (integration/wave-0 @ fee5b8c3655cfb9a68722cc9ce34358caf071556)            |
+| **AUDIT-REALTIME-ROOM-001** — Room membership on project switch is not proven to be exclusive                     | P2       | CONFIRMED | FIXED-UNMERGED (fix/realtime-room-isolation-1 @ 8a4a6b78627b96f2885421dff40e49b191774b3d) |
 
 ## 8. blueprint-provenance — worst severity P1
 
