@@ -503,3 +503,275 @@ describe("GEN-CANONICAL-FIDELITY-1 — real GameGenerationService/PlanExecutor p
     expect(getPlayableLuaIssues(normalizeLuaScripts(luaOutput))).toEqual([]);
   });
 });
+
+/**
+ * GEN-CANONICAL-FIDELITY-2. Primary generation and the first repair already
+ * preserved `gameplayContext`, but `buildConstrainedPlayableRepairPrompt`
+ * did not receive it and still instructed a generic single-collectible
+ * loop — a third-attempt success could pass playability while silently
+ * discarding every mechanic beyond one. These fixtures map all four
+ * generation/repair paths for the same rich fixture and prove the
+ * invariant: no successful path may downgrade a multi-objective design to
+ * generic gameplay.
+ */
+describe("GEN-CANONICAL-FIDELITY-2 — fidelity survives every repair/fallback path", () => {
+  const richInput = {
+    blueprint: {
+      name: "Ember Reach",
+      description: "Mine, craft and trade your way across the reach.",
+    },
+    architecture: {
+      services: ["WorldService", { name: "EconomyService" }],
+      spatialDesign: {
+        map: {
+          id: "map-1",
+          name: "Ember Reach Map",
+          type: "main",
+          size: { x: 384, y: 96, z: 384 },
+          theme: "canyon",
+        },
+        zones: [
+          {
+            id: "zone-a",
+            name: "Landing",
+            type: "safe",
+            bounds: { minX: -48, minZ: -48, maxX: 48, maxZ: 48 },
+            groundHeight: 7,
+          },
+        ],
+        spawns: [
+          {
+            id: "spawn-a",
+            name: "Landing Spawn",
+            type: "initial",
+            position: { x: 3, y: 17, z: 5 },
+          },
+        ],
+        terrain: [
+          {
+            id: "terrain-a",
+            shape: "ball",
+            material: "Sandstone",
+            position: { x: 11, y: 2, z: 13 },
+            size: { x: 37, y: 37, z: 37 },
+          },
+        ],
+        objects: [
+          {
+            id: "object-a",
+            name: "OrePile",
+            objectType: "interactive",
+            position: { x: 43, y: 47, z: 53 },
+          },
+        ],
+        paths: [],
+      },
+    },
+    gameplay: {
+      mechanics: [
+        { name: "mining", description: "Dig ore from deposits" },
+        { name: "crafting", description: "Turn ore into gear" },
+        { name: "trading", description: "Sell gear at the outpost" },
+      ],
+      progression: {
+        loop: "explore → gather → craft → trade",
+        unlocking_system: "reputation thresholds",
+      },
+      balance: {
+        economyOrScoring: "gems earned per completed trade route",
+      },
+    },
+  };
+  const MECHANICS = ["mining", "crafting", "trading"];
+
+  /**
+   * Same fidelity invariants required on every successful path (DO #7):
+   * every named mechanic present, ordered server-authoritative progression,
+   * authoritative reward state, and HUD state reaching the client.
+   *
+   * Spatial-design preservation (DO #3) is checked separately, at the
+   * *prompt* level (`toContain("(43, 47, 53)")` in the primary and
+   * constrained-repair tests below) rather than here: what actually ships
+   * on a given path is whatever content is supplied as the (mocked) model
+   * response, and the deterministic fallback — reused here as that content
+   * for every path so all four are compared on identical gameplay fidelity
+   * — has never built the designed spatial layout; it bootstraps its own
+   * generic world regardless of `spatialDesignText`. That is unchanged,
+   * pre-existing behaviour and out of scope for this fidelity invariant.
+   */
+  function assertRichFidelity(server: string, client: string): void {
+    for (const mechanic of MECHANICS) {
+      expect(server).toContain(mechanic);
+    }
+    // Ordered, server-authoritative progression.
+    expect(server.toLowerCase()).toMatch(/progress/);
+    // Authoritative reward/economy state, not print-only.
+    expect(server.toLowerCase()).toMatch(/reward|currency|balance/);
+    // HUD state reaches the client.
+    expect(client).toContain("OnClientEvent");
+  }
+
+  /** A fully playable, semantically rich response the agent's own stub mode builds. */
+  async function richPlayableResponse(): Promise<string> {
+    const playable = await new LuaGeneratorAgent().execute(richInput);
+    return JSON.stringify(playable.data);
+  }
+
+  /** A playable but single-mechanic response — faithful to a *different*, poorer design. */
+  async function genericPlayableResponse(): Promise<string> {
+    const generic = await new LuaGeneratorAgent().execute(input);
+    return JSON.stringify(generic.data);
+  }
+
+  const unplayable = JSON.stringify({
+    lua_generator: {
+      server: [{ name: "World.server.lua", code: "-- TODO implement here" }],
+      client: [{ name: "HUD.client.lua", code: "-- placeholder" }],
+      shared: [],
+    },
+  });
+
+  it("path 1/4 — primary success preserves mechanics, progression, economy, HUD and spatial design", async () => {
+    const generate = vi.fn().mockResolvedValue(await richPlayableResponse());
+    const agent = new LuaGeneratorAgent();
+    agent.setLLM({ generate });
+
+    const result = await agent.execute(richInput);
+
+    expect(result.success).toBe(true);
+    expect(result.usedFallback).toBeUndefined();
+    expect(generate).toHaveBeenCalledTimes(1);
+    const generated = (result.data as Record<string, unknown>)
+      .lua_generator as Record<string, unknown>;
+    expect(generated.generationMode).toBe("primary");
+    const server = (generated.server as Array<{ code: string }>)[0].code;
+    const client = (generated.client as Array<{ code: string }>)[0].code;
+    assertRichFidelity(server, client);
+
+    // The primary prompt itself preserves the spatial design and the
+    // gameplay depth requirements.
+    const prompt = generate.mock.calls[0]?.[0] as string;
+    expect(prompt).toContain("(43, 47, 53)");
+    expect(prompt).toContain("this design names 3 mechanics");
+  });
+
+  it("path 2/4 — first-repair success preserves fidelity", async () => {
+    const richResponse = await richPlayableResponse();
+    const generate = vi
+      .fn()
+      .mockResolvedValueOnce(unplayable)
+      .mockResolvedValueOnce(richResponse);
+    const agent = new LuaGeneratorAgent();
+    agent.setLLM({ generate });
+
+    const result = await agent.execute(richInput);
+
+    expect(result.success).toBe(true);
+    expect(result.usedFallback).toBeUndefined();
+    expect(generate).toHaveBeenCalledTimes(2);
+    const generated = (result.data as Record<string, unknown>)
+      .lua_generator as Record<string, unknown>;
+    expect(generated.generationMode).toBe("repaired");
+    const server = (generated.server as Array<{ code: string }>)[0].code;
+    const client = (generated.client as Array<{ code: string }>)[0].code;
+    assertRichFidelity(server, client);
+  });
+
+  it("path 3/4 — constrained-repair success preserves fidelity and spatial design", async () => {
+    const richResponse = await richPlayableResponse();
+    const generate = vi
+      .fn()
+      .mockResolvedValueOnce(unplayable)
+      .mockResolvedValueOnce(unplayable)
+      .mockResolvedValueOnce(richResponse);
+    const agent = new LuaGeneratorAgent();
+    agent.setLLM({ generate });
+
+    const result = await agent.execute(richInput);
+
+    expect(result.success).toBe(true);
+    expect(result.usedFallback).toBeUndefined();
+    expect(generate).toHaveBeenCalledTimes(3);
+    const generated = (result.data as Record<string, unknown>)
+      .lua_generator as Record<string, unknown>;
+    expect(generated.generationMode).toBe("constrained_repair");
+    const server = (generated.server as Array<{ code: string }>)[0].code;
+    const client = (generated.client as Array<{ code: string }>)[0].code;
+    assertRichFidelity(server, client);
+
+    // The constrained repair prompt itself: mechanics/progression/economy
+    // requirements AND the unmodified "preserve this exactly" spatial
+    // section both present, not one replacing the other.
+    const constrainedPrompt = generate.mock.calls[2]?.[0] as string;
+    expect(constrainedPrompt).toContain("this design names 3 mechanics");
+    expect(constrainedPrompt).toContain(
+      "Track each player's progress and reward balance in one authoritative server-side table",
+    );
+    expect(constrainedPrompt).toContain("preserve this exactly");
+    expect(constrainedPrompt).toContain("(43, 47, 53)");
+  });
+
+  it("path 4/4 — deterministic safe fallback preserves fidelity when every AI attempt fails", async () => {
+    const generate = vi.fn().mockResolvedValue(unplayable);
+    const agent = new LuaGeneratorAgent();
+    agent.setLLM({ generate });
+
+    const result = await agent.execute(richInput);
+
+    expect(result.success).toBe(true);
+    expect(result.usedFallback).toBe(true);
+    expect(generate).toHaveBeenCalledTimes(3);
+    const generated = (result.data as Record<string, unknown>)
+      .lua_generator as Record<string, unknown>;
+    expect(generated.generationMode).toBe("safe_repair");
+    const server = (generated.server as Array<{ code: string }>)[0].code;
+    const client = (generated.client as Array<{ code: string }>)[0].code;
+    assertRichFidelity(server, client);
+  });
+
+  it("adversarial (DO #8): a playable but generic one-objective response is never accepted for a multi-objective design", async () => {
+    const generic = await genericPlayableResponse();
+    // Every AI tier returns the same playable-but-generic response — proves
+    // the cascade retries on semantic fidelity, not just on playability,
+    // and that generic content is rejected at every AI tier in turn.
+    const generate = vi.fn().mockResolvedValue(generic);
+    const agent = new LuaGeneratorAgent();
+    agent.setLLM({ generate });
+
+    const result = await agent.execute(richInput);
+
+    // The generic response never gets accepted — every AI attempt is
+    // rejected for lacking two of the three named mechanics, and the run
+    // ends on the deterministic fallback, which does name all three.
+    expect(result.success).toBe(true);
+    expect(result.usedFallback).toBe(true);
+    expect(generate).toHaveBeenCalledTimes(3);
+    const generated = (result.data as Record<string, unknown>)
+      .lua_generator as Record<string, unknown>;
+    expect(generated.generationMode).toBe("safe_repair");
+    const server = (generated.server as Array<{ code: string }>)[0].code;
+    for (const mechanic of MECHANICS) {
+      expect(server).toContain(mechanic);
+    }
+    // The rejected generic response's mechanic must not be what shipped
+    // instead of the design's own mechanics.
+    expect(server).not.toContain("Crystal collection");
+  });
+
+  it("a single-mechanic design still accepts one generic objective (no false rejection)", async () => {
+    // Guards against over-tightening: assertSemanticFidelity must not
+    // reject a design that only ever named one mechanic to begin with.
+    const generate = vi.fn().mockResolvedValue(await genericPlayableResponse());
+    const agent = new LuaGeneratorAgent();
+    agent.setLLM({ generate });
+
+    const result = await agent.execute(input);
+
+    expect(result.success).toBe(true);
+    expect(result.usedFallback).toBeUndefined();
+    expect(generate).toHaveBeenCalledTimes(1);
+    const generated = (result.data as Record<string, unknown>)
+      .lua_generator as Record<string, unknown>;
+    expect(generated.generationMode).toBe("primary");
+  });
+});
