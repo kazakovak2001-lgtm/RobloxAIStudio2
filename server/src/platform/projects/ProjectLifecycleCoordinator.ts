@@ -274,6 +274,14 @@ export class GenerationOutcomeCoordinator {
       // authoritative one; an older run that finishes later may close its own
       // record, but must not rewrite the project or release someone else's
       // claim. Without this, a stale run silently overwrote the newer outcome.
+      //
+      // POSTGRES-COHERENCE-1. The claim this arbitrates on is read from this
+      // instance's process-local cache. If a different instance committed a
+      // newer claim (or released this one), that write is invisible here
+      // until refreshed — which would let a stale local view of "no claim"
+      // stand in for a foreign claim that actually exists in PostgreSQL,
+      // defeating the ownership check above.
+      await this.storage.refresh?.([GENERATION_ACTIVE_CLAIMS]);
       const claim = this.storage.get<GenerationActiveClaim>(
         GENERATION_ACTIVE_CLAIMS,
         existing.project_id,
@@ -363,6 +371,19 @@ export class ProjectGenerationStartCoordinator {
         throw new Error(`Project ${projectId} not found`);
       }
 
+      // POSTGRES-COHERENCE-1. `get` is a synchronous read of this instance's
+      // process-local cache; a durable write committed by a different
+      // instance is invisible here until that cache is refreshed. Without
+      // this, a start request that landed on the instance which did not
+      // commit the original run would read stale (usually empty) local
+      // copies of these three collections and reach the wrong admission
+      // decision instead of seeing what was actually just committed.
+      await this.storage.refresh?.([
+        GENERATION_START_REQUESTS,
+        GENERATION_ACTIVE_CLAIMS,
+        PROJECTS,
+      ]);
+
       // MAR-004. Answered before anything is prepared, so a replay costs no
       // provider budget and schedules no work. Read from storage rather than
       // from memory, so a second process and a restarted one answer alike.
@@ -403,7 +424,10 @@ export class ProjectGenerationStartCoordinator {
       const updatedProject: GenerationProjectState = {
         ...stored,
         status: "generating",
-        generationCount: project.generationCount + 1,
+        // POSTGRES-COHERENCE-1: increment the freshly-refreshed `stored`
+        // count, not `project` — `project` was read before the refresh
+        // above and may be behind a count another instance already wrote.
+        generationCount: stored.generationCount + 1,
         updatedAt: Date.now(),
       };
 
@@ -468,6 +492,9 @@ export class ProjectGenerationStartCoordinator {
           if (request && error.collection === GENERATION_START_REQUESTS) {
             throw new IdempotencyConflictError(request.key, projectId);
           }
+          // The conflicting claim was committed by whichever instance won
+          // the race; this instance's cache may not have it yet.
+          await this.storage.refresh?.([GENERATION_ACTIVE_CLAIMS]);
           const active = this.storage.get<GenerationActiveClaim>(
             GENERATION_ACTIVE_CLAIMS,
             projectId,
