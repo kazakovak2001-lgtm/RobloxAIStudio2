@@ -638,6 +638,7 @@
 │   ├── validate-artifact-contract.ts
 │   ├── validate-audit-register.ts
 │   ├── validate-boundaries.ts
+│   ├── validate-ci-job-timeout-guard.ts
 │   ├── validate-controller.ts
 │   ├── validate-documentation-authority.ts
 │   ├── validate-durable-writes.ts
@@ -727,6 +728,7 @@
 │   │   │   ├── preservationProperty.test.ts
 │   │   │   ├── productionQuality.test.ts
 │   │   │   ├── productLayer.test.ts
+│   │   │   ├── realtime-room-isolation.test.ts
 │   │   │   ├── repair-delivery.test.ts
 │   │   │   ├── saasFoundation.test.ts
 │   │   │   ├── secauthz1.cross-tenant-harness.test.ts
@@ -1248,6 +1250,8 @@
 │   │   │   ├── agents
 │   │   │   │   └── AgentMemoryBridge.ts
 │   │   │   ├── core
+│   │   │   │   ├── __tests__
+│   │   │   │   │   └── MemoryEngine.test.ts
 │   │   │   │   └── MemoryEngine.ts
 │   │   │   ├── indexing
 │   │   │   │   └── MemoryIndex.ts
@@ -1269,6 +1273,8 @@
 │   │   │   ├── ProjectContext.ts
 │   │   │   ├── ProjectMemory.ts
 │   │   │   ├── semantic
+│   │   │   │   ├── __tests__
+│   │   │   │   │   └── SemanticRetriever.test.ts
 │   │   │   │   └── SemanticRetriever.ts
 │   │   │   └── store
 │   │   │       └── MemoryStore.ts
@@ -1344,6 +1350,7 @@
 │   │   │   ├── projects
 │   │   │   │   ├── GenerationRecovery.ts
 │   │   │   │   ├── index.ts
+│   │   │   │   ├── ProjectDeletionCoordinator.ts
 │   │   │   │   ├── ProjectLifecycleCoordinator.test.ts
 │   │   │   │   ├── ProjectLifecycleCoordinator.ts
 │   │   │   │   └── SaaSProjectRepository.ts
@@ -1473,6 +1480,8 @@
 │   │   │   │   ├── game-generation-blueprint.test.ts
 │   │   │   │   ├── platform.durability.test.ts
 │   │   │   │   ├── platform.registration.durability.test.ts
+│   │   │   │   ├── projectErasure1.test.ts
+│   │   │   │   ├── projectErasure2.test.ts
 │   │   │   │   ├── projects.durability.test.ts
 │   │   │   │   ├── projects.runtime.test.ts
 │   │   │   │   ├── studioApiKeyAccess.test.ts

@@ -164,31 +164,49 @@ jobs:
         uses: actions/checkout@v4
         with:
           ref: ${{ env.INT201_BACKEND_SHA }}
+          fetch-depth: 0
           persist-credentials: false
-      - name: Resolve exact Frontend release commit
-        id: frontend-release
-        run: |
-          frontend_sha="$(jq --raw-output '.frontendRelease.commit' config/cutover/release-baseline.inventory.json)"
-          [[ "$frontend_sha" =~ ^[0-9a-f]{40}$ ]]
-          echo "sha=$frontend_sha" >> "$GITHUB_OUTPUT"
+      # CI-PRODUCTION-CONTRACT-CONTROL-HEAD-2. This job used to pin Frontend to
+      # the static `frontendRelease.commit` field, which #247 (Release Pair
+      # Freshness) never updates — it can go stale relative to the Frontend
+      # control branch while nothing here notices. Resolve the same
+      # `runtimePair` authority #247 established instead of a second one,
+      # through the shared scripts that authority now runs from
+      # (scripts/ci/*.sh — covered by scripts/ci/__tests__).
+      - name: Resolve canonical Frontend control head
+        id: pair
+        run: scripts/ci/resolve-frontend-control-head.sh config/cutover/release-baseline.inventory.json >> "$GITHUB_OUTPUT"
       - name: Checkout exact Frontend contract
         uses: actions/checkout@v4
         with:
-          repository: kazakovak2001-lgtm/Frontend
-          ref: ${{ steps.frontend-release.outputs.sha }}
+          repository: ${{ steps.pair.outputs.frontend_repo }}
+          ref: ${{ steps.pair.outputs.resolved_control }}
           path: standalone-frontend
+          fetch-depth: 0
           persist-credentials: false
       - name: Verify and record exact contract sources
         env:
-          INT201_FRONTEND_SHA: ${{ steps.frontend-release.outputs.sha }}
+          INT201_FRONTEND_SHA: ${{ steps.pair.outputs.resolved_control }}
+          EXPECTED_BACKEND_RUNTIME: ${{ steps.pair.outputs.backend_runtime }}
+          EXPECTED_FRONTEND_RUNTIME: ${{ steps.pair.outputs.frontend_runtime }}
+          PAIR_ID: ${{ steps.pair.outputs.pair_id }}
         run: |
+          set -euo pipefail
           test "$(git rev-parse HEAD)" = "$INT201_BACKEND_SHA"
           test "$(git -C standalone-frontend rev-parse HEAD)" = "$INT201_FRONTEND_SHA"
+
+          scripts/ci/verify-frontend-control-pair.sh \
+            standalone-frontend "$EXPECTED_FRONTEND_RUNTIME" "$EXPECTED_BACKEND_RUNTIME"
+
           mkdir -p artifacts/int-201
           printf '%s\n' \
             "contract=INT-201" \
+            "pairId=$PAIR_ID" \
             "backendSha=$INT201_BACKEND_SHA" \
+            "backendRuntimeSha=$EXPECTED_BACKEND_RUNTIME" \
             "frontendSha=$INT201_FRONTEND_SHA" \
+            "frontendRuntimeSha=$EXPECTED_FRONTEND_RUNTIME" \
+            "frontendControlBranch=${{ steps.pair.outputs.frontend_control_branch }}" \
             "nodeEnv=production" \
             "storageProvider=inmemory" \
             "frontendOrigin=$INT201_FRONTEND_ORIGIN" \
@@ -237,7 +255,7 @@ jobs:
           E2E_EVIDENCE_PATH: ${{ github.workspace }}/artifacts/int-201/contract.json
           E2E_CONTRACT_MODE: production
           E2E_BACKEND_SHA: ${{ env.INT201_BACKEND_SHA }}
-          E2E_FRONTEND_SHA: ${{ steps.frontend-release.outputs.sha }}
+          E2E_FRONTEND_SHA: ${{ steps.pair.outputs.resolved_control }}
           E2E_BACKEND_NODE_ENV: production
           E2E_STORAGE_PROVIDER: inmemory
           E2E_FRONTEND_ORIGIN: ${{ env.INT201_FRONTEND_ORIGIN }}

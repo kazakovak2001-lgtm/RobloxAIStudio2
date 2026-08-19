@@ -540,6 +540,7 @@ scripts/validate-architecture.ts
 scripts/validate-artifact-contract.ts
 scripts/validate-audit-register.ts
 scripts/validate-boundaries.ts
+scripts/validate-ci-job-timeout-guard.ts
 scripts/validate-controller.ts
 scripts/validate-documentation-authority.ts
 scripts/validate-durable-writes.ts
@@ -625,6 +626,7 @@ server/src/__tests__/pluginProtocol.test.ts
 server/src/__tests__/preservationProperty.test.ts
 server/src/__tests__/productLayer.test.ts
 server/src/__tests__/productionQuality.test.ts
+server/src/__tests__/realtime-room-isolation.test.ts
 server/src/__tests__/repair-delivery.test.ts
 server/src/__tests__/saasFoundation.test.ts
 server/src/__tests__/secauthz1.cross-tenant-harness.test.ts
@@ -1050,6 +1052,7 @@ server/src/memory/ProjectContext.ts
 server/src/memory/ProjectMemory.ts
 server/src/memory/agents/AgentMemoryBridge.ts
 server/src/memory/core/MemoryEngine.ts
+server/src/memory/core/__tests__/MemoryEngine.test.ts
 server/src/memory/indexing/MemoryIndex.ts
 server/src/memory/knowledge/ArtifactIndex.ts
 server/src/memory/knowledge/ContextResolver.ts
@@ -1061,6 +1064,7 @@ server/src/memory/knowledge/__tests__/MemorySystem.test.ts
 server/src/memory/knowledge/index.ts
 server/src/memory/knowledge/types.ts
 server/src/memory/semantic/SemanticRetriever.ts
+server/src/memory/semantic/__tests__/SemanticRetriever.test.ts
 server/src/memory/store/MemoryStore.ts
 server/src/orchestrator/AutonomousBoundedPhases.test.ts
 server/src/orchestrator/AutonomousOrchestrator.test.ts
@@ -1116,6 +1120,7 @@ server/src/platform/auth/authServiceInstance.ts
 server/src/platform/auth/index.ts
 server/src/platform/index.ts
 server/src/platform/projects/GenerationRecovery.ts
+server/src/platform/projects/ProjectDeletionCoordinator.ts
 server/src/platform/projects/ProjectLifecycleCoordinator.test.ts
 server/src/platform/projects/ProjectLifecycleCoordinator.ts
 server/src/platform/projects/SaaSProjectRepository.ts
@@ -1217,6 +1222,8 @@ server/src/repair/index.ts
 server/src/routes/__tests__/game-generation-blueprint.test.ts
 server/src/routes/__tests__/platform.durability.test.ts
 server/src/routes/__tests__/platform.registration.durability.test.ts
+server/src/routes/__tests__/projectErasure1.test.ts
+server/src/routes/__tests__/projectErasure2.test.ts
 server/src/routes/__tests__/projects.durability.test.ts
 server/src/routes/__tests__/projects.runtime.test.ts
 server/src/routes/__tests__/studioApiKeyAccess.test.ts
