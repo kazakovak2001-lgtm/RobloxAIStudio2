@@ -85,6 +85,18 @@ describe("LLM-LOG-1 payload previews", () => {
     expect(previewForDebug("short")).toBe("short");
   });
 
+  it("escapes newlines so a prompt cannot forge extra log lines", () => {
+    process.env.LLM_DEBUG_PAYLOADS = "true";
+
+    const preview = previewForDebug(
+      "line one\nFAKE ERROR: injected\r\nline three",
+    );
+
+    expect(preview).not.toContain("\n");
+    expect(preview).not.toContain("\r");
+    expect(preview).toBe("line one\\nFAKE ERROR: injected\\r\\nline three");
+  });
+
   it("bounds the preview even when enabled", () => {
     process.env.LLM_DEBUG_PAYLOADS = "true";
     const long = "x".repeat(5000);
