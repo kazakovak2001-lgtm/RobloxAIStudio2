@@ -141,3 +141,29 @@ jobs:
             "frontendRuntime=$EXPECTED_FRONTEND_RUNTIME" \
             "frontendControl=$EXPECTED_FRONTEND_CONTROL" \
             "status=PASS"
+
+      # FRONTEND-RELEASE-PIN-RECONCILIATION-1. `frontendRelease.commit` is the
+      # separate, manually-pinned field `Frontend Production Contract` actually
+      # checks out (config/cutover/release-baseline.inventory.json), distinct
+      # from `runtimePair.frontend.runtimeCommit` verified above. Nothing
+      # previously checked it against the live control branch, so it drifted
+      # silently behind three merged Frontend fixes until production-contract
+      # started failing on a header the pinned commit predates. This closes
+      # that gap using the same resolved control head already proven above,
+      # rather than adding a second resolution mechanism.
+      - name: Verify frontendRelease pin matches resolved control head
+        shell: bash
+        env:
+          EXPECTED_FRONTEND_CONTROL: ${{ steps.control.outputs.resolved_control }}
+        run: |
+          set -euo pipefail
+          manifest=config/cutover/release-baseline.inventory.json
+          pinned="$(jq -r '.frontendRelease.commit' "$manifest")"
+          [[ "$pinned" =~ ^[0-9a-f]{40}$ ]] || {
+            echo "RELEASE PAIR DRIFT: invalid frontendRelease.commit in $manifest: $pinned"
+            exit 1
+          }
+          test "$pinned" = "$EXPECTED_FRONTEND_CONTROL" || {
+            echo "RELEASE PAIR DRIFT: frontendRelease.commit ($pinned) does not match the resolved Frontend control head ($EXPECTED_FRONTEND_CONTROL) — Frontend Production Contract will check out a stale build"
+            exit 1
+          }
