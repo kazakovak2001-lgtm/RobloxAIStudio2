@@ -714,6 +714,9 @@
 │   │   │   ├── mar004.cors-idempotency-key.test.ts
 │   │   │   ├── mar004.generate-route-idempotency.test.ts
 │   │   │   ├── mar004.idempotent-start.test.ts
+│   │   │   ├── marbatch1.api-v1-plan-cross-tenant.test.ts
+│   │   │   ├── marbatch1.blueprint-project-access.test.ts
+│   │   │   ├── marbatch1.concept-session-ownership.test.ts
 │   │   │   ├── novelty1.gameDna.test.ts
 │   │   │   ├── novelty2.verdict.test.ts
 │   │   │   ├── performance.test.ts

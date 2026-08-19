@@ -612,6 +612,9 @@ server/src/__tests__/mar002.world-and-idempotence.test.ts
 server/src/__tests__/mar004.cors-idempotency-key.test.ts
 server/src/__tests__/mar004.generate-route-idempotency.test.ts
 server/src/__tests__/mar004.idempotent-start.test.ts
+server/src/__tests__/marbatch1.api-v1-plan-cross-tenant.test.ts
+server/src/__tests__/marbatch1.blueprint-project-access.test.ts
+server/src/__tests__/marbatch1.concept-session-ownership.test.ts
 server/src/__tests__/novelty1.gameDna.test.ts
 server/src/__tests__/novelty2.verdict.test.ts
 server/src/__tests__/performance.test.ts
