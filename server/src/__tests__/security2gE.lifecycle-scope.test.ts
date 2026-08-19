@@ -17,7 +17,13 @@ describe("SECURITY-2G-E lifecycle project scope", () => {
       "export function createLifecycleRouter(access: ProjectAccessControl): Router",
     );
     expect(routeSource.match(/access\.requireProjectAccess\(/g)).toHaveLength(
-      4,
+      3,
+    );
+    // AUDIT-BODY-SUPPLIED-BLUEPRINT-001: /patch has no gameId to cross-check
+    // against, so it authorizes blueprint.id through the same canonical
+    // helper the other body-only-blueprint routes use.
+    expect(routeSource).toContain(
+      "await requireProjectAccessForBlueprint(access, req, res, blueprint)",
     );
     expect(routeSource).toContain("blueprint.id !== gameId");
     expect(routeSource).toContain('error: "blueprint.id must match gameId"');

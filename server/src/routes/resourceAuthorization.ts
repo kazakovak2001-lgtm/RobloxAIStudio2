@@ -112,3 +112,54 @@ export function createResourceAuthorizer(hasProjectAccess: ProjectAccessCheck) {
 }
 
 export type ResourceAuthorizer = ReturnType<typeof createResourceAuthorizer>;
+
+/**
+ * AUDIT-BODY-SUPPLIED-BLUEPRINT-001.
+ *
+ * Several routes (economy, world, simulation, lifecycle, generation-v2)
+ * accept an ephemeral analysis blueprint straight from the request body —
+ * there is no stored resource behind it, so there is nothing to load and
+ * derive a project from the way `requireOwned` does. `blueprint.id` is the
+ * only project identity the request carries, and it is what gets authorized.
+ *
+ * That made each route write its own copy of "pull `blueprint.id`, hope it's
+ * there, pass it to `requireProjectAccess`" — eight near-identical call
+ * sites that could silently drift out of sync. This is the one place that
+ * pattern is allowed to live now, so a future change to how blueprint
+ * identity is bound only has to happen here.
+ *
+ * This is NOT the right helper for a route that loads a *stored* resource by
+ * a separate id (e.g. `blueprintId` route param resolved via a repository) —
+ * that case must derive its project from the loaded record via
+ * `requireOwned`/`createResourceAuthorizer`, per SEC-GENERATION-BLUEPRINT-001.
+ */
+export async function requireProjectAccessForBlueprint(
+  access: Pick<ProjectAccessControl, "requireProjectAccess">,
+  req: AccessRequest,
+  res: Response,
+  blueprint: { id?: string } | null | undefined,
+  options: { missingBlueprintMessage?: string; apiKeyCapability?: string } = {},
+): Promise<string | null> {
+  if (!blueprint?.id) {
+    if (!res.headersSent) {
+      res.status(400).json({
+        success: false,
+        error: options.missingBlueprintMessage ?? "Blueprint with id required",
+      });
+    }
+    return null;
+  }
+
+  if (
+    !(await access.requireProjectAccess(
+      req,
+      res,
+      blueprint.id,
+      options.apiKeyCapability,
+    ))
+  ) {
+    return null;
+  }
+
+  return blueprint.id;
+}

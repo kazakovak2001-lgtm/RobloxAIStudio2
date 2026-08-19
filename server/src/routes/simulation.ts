@@ -16,6 +16,7 @@ import { GenerationRefinementBridge } from "../simulation/bridge/GenerationRefin
 import type { RobloxGameBlueprint } from "../generation/blueprint/GameBlueprintEngine";
 import type { ProjectAccessControl } from "./projects";
 import { requireApiKeyCapability } from "../common/middleware/security";
+import { requireProjectAccessForBlueprint } from "./resourceAuthorization";
 
 export function createSimulationRouter(access: ProjectAccessControl): Router {
   const router = Router();
@@ -35,14 +36,11 @@ export function createSimulationRouter(access: ProjectAccessControl): Router {
   router.post("/game", async (req, res) => {
     try {
       const blueprint = req.body.blueprint as RobloxGameBlueprint;
-      if (!blueprint?.id) {
-        res
-          .status(400)
-          .json({ success: false, error: "Blueprint with id required" });
+      if (
+        !(await requireProjectAccessForBlueprint(access, req, res, blueprint))
+      ) {
         return;
       }
-
-      if (!(await access.requireProjectAccess(req, res, blueprint.id))) return;
 
       const ticks = req.body.ticks ?? 100;
 
@@ -101,13 +99,11 @@ export function createSimulationRouter(access: ProjectAccessControl): Router {
   router.post("/run", async (req, res) => {
     try {
       const blueprint = req.body.blueprint as RobloxGameBlueprint;
-      if (!blueprint?.id) {
-        res
-          .status(400)
-          .json({ success: false, error: "Blueprint with id required" });
+      if (
+        !(await requireProjectAccessForBlueprint(access, req, res, blueprint))
+      ) {
         return;
       }
-      if (!(await access.requireProjectAccess(req, res, blueprint.id))) return;
       const ticks = req.body.ticks ?? 50;
       const simulation = simEngine.simulateGame(blueprint, ticks);
       res.json({ success: true, data: simulation });

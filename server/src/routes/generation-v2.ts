@@ -16,6 +16,7 @@ import { PlanExecutor } from "../planning/execution/PlanExecutor";
 import { AgentRegistry } from "../agents/core/AgentRegistry";
 import type { ProjectAccessControl } from "./projects";
 import { requireApiKeyCapability } from "../common/middleware/security";
+import { requireProjectAccessForBlueprint } from "./resourceAuthorization";
 
 export function createGenerationV2Router(
   agentRegistry: AgentRegistry,
@@ -129,13 +130,11 @@ export function createGenerationV2Router(
   router.post("/lua", async (req, res) => {
     try {
       const blueprint = req.body.blueprint;
-      if (!blueprint?.id) {
-        res
-          .status(400)
-          .json({ success: false, error: "Blueprint with id required" });
+      if (
+        !(await requireProjectAccessForBlueprint(access, req, res, blueprint))
+      ) {
         return;
       }
-      if (!(await access.requireProjectAccess(req, res, blueprint.id))) return;
       const lua = luaGen.generate(blueprint);
       res.json({ success: true, data: lua });
     } catch (error) {
@@ -154,7 +153,11 @@ export function createGenerationV2Router(
         });
         return;
       }
-      if (!(await access.requireProjectAccess(req, res, blueprint.id))) return;
+      if (
+        !(await requireProjectAccessForBlueprint(access, req, res, blueprint))
+      ) {
+        return;
+      }
       const result = exporter.build(blueprint, lua, assets);
       res.json({ success: true, data: result });
     } catch (error) {

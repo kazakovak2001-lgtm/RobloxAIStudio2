@@ -39,19 +39,21 @@ describe("SECURITY-2G-E generation v2 scope", () => {
       route.indexOf('router.post("/lua"'),
       route.indexOf('router.post("/export"'),
     );
+    // AUDIT-BODY-SUPPLIED-BLUEPRINT-001: the body-supplied blueprint.id is
+    // authorized through the one canonical helper, not an inline call.
     expect(luaHandler).toContain(
-      "await access.requireProjectAccess(req, res, blueprint.id)",
+      "await requireProjectAccessForBlueprint(access, req, res, blueprint)",
     );
-    expect(
-      luaHandler.indexOf("requireProjectAccess(req, res, blueprint.id)"),
-    ).toBeLessThan(luaHandler.indexOf("luaGen.generate(blueprint)"));
+    expect(luaHandler.indexOf("requireProjectAccessForBlueprint")).toBeLessThan(
+      luaHandler.indexOf("luaGen.generate(blueprint)"),
+    );
 
     const exportHandler = route.slice(route.indexOf('router.post("/export"'));
     expect(exportHandler).toContain(
-      "await access.requireProjectAccess(req, res, blueprint.id)",
+      "await requireProjectAccessForBlueprint(access, req, res, blueprint)",
     );
     expect(
-      exportHandler.indexOf("requireProjectAccess(req, res, blueprint.id)"),
+      exportHandler.indexOf("requireProjectAccessForBlueprint"),
     ).toBeLessThan(
       exportHandler.indexOf("exporter.build(blueprint, lua, assets)"),
     );

@@ -16,12 +16,14 @@ describe("SECURITY-2G-E world scope", () => {
     expect(routeSource).toContain(
       "export function createWorldRouter(access: ProjectAccessControl): Router",
     );
+    // AUDIT-BODY-SUPPLIED-BLUEPRINT-001: the body-supplied blueprint.id is
+    // authorized through the one canonical helper, not an inline call.
     expect(routeSource).toContain(
-      "if (!(await access.requireProjectAccess(req, res, blueprint.id))) return;",
+      "await requireProjectAccessForBlueprint(access, req, res, blueprint",
     );
-    expect(routeSource.indexOf("requireProjectAccess")).toBeLessThan(
-      routeSource.indexOf("world.initialize"),
-    );
+    expect(
+      routeSource.indexOf("requireProjectAccessForBlueprint"),
+    ).toBeLessThan(routeSource.indexOf("world.initialize"));
     expect(indexSource).toContain(
       'app.use("/api/world", createWorldRouter(access));',
     );
