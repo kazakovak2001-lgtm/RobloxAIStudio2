@@ -2,6 +2,7 @@ import type {
   DurableMutation,
   StorageProvider,
 } from "../../platform/storage/StorageProvider";
+import type { ProjectDeletionChild } from "../../platform/projects/ProjectDeletionCoordinator";
 import { InMemoryStorageProvider } from "../../platform/storage/StorageProvider";
 import { getConfiguredStorageProvider } from "../../platform/storage/StorageFactory";
 import type {
@@ -15,7 +16,7 @@ import type {
 } from "../types/blueprint";
 import { StorageBlueprintRepository } from "./storageBlueprint.repository";
 
-export interface IBlueprintRepository {
+export interface IBlueprintRepository extends ProjectDeletionChild {
   createBlueprint(
     userId: string,
     input: CreateBlueprintInput,

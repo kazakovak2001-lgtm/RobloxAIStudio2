@@ -2,7 +2,10 @@
  * Generation History Repository — Stores generation run history per project.
  */
 
-import type { StorageProvider } from "../../platform/storage/StorageProvider";
+import type {
+  DurableMutation,
+  StorageProvider,
+} from "../../platform/storage/StorageProvider";
 
 export interface GenerationRecord {
   id: string;
@@ -54,6 +57,20 @@ export class StorageGenerationHistoryRepository implements GenerationHistoryRepo
     return this.storage
       .list<GenerationRecord>(COLLECTION)
       .sort((left, right) => right.startedAt - left.startedAt);
+  }
+
+  /** PROJECT-ERASURE-1. Every history record owned by this project, as mutations only. */
+  prepareProjectDeletion(projectId: string): DurableMutation[] {
+    return this.storage
+      .list<GenerationRecord>(
+        COLLECTION,
+        (entry) => entry.projectId === projectId,
+      )
+      .map((entry) => ({
+        operation: "delete" as const,
+        collection: COLLECTION,
+        id: entry.pipelineId,
+      }));
   }
 }
 

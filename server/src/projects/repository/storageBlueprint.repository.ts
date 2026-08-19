@@ -129,6 +129,64 @@ export class StorageBlueprintRepository implements IBlueprintRepository {
     });
   }
 
+  /**
+   * PROJECT-ERASURE-1. Every blueprint, version, execution and change
+   * proposal owned by this project, as mutations only — nothing is written.
+   *
+   * Lists every blueprint matching the project rather than reusing
+   * `getBlueprintByProjectId` (which returns only the most recently updated
+   * one), so a project that somehow accumulated more than one blueprint
+   * record still has all of them swept.
+   */
+  prepareProjectDeletion(projectId: string): DurableMutation[] {
+    const blueprints = this.storage.list<GameBlueprint>(
+      BLUEPRINTS,
+      (candidate) => candidate.project_id === projectId,
+    );
+    const mutations: DurableMutation[] = [];
+    for (const blueprint of blueprints) {
+      const versions = this.storage.list<BlueprintVersion>(
+        VERSIONS,
+        (candidate) => candidate.blueprint_id === blueprint.id,
+      );
+      const executions = this.storage.list<GenerationExecution>(
+        EXECUTIONS,
+        (candidate) => candidate.blueprint_id === blueprint.id,
+      );
+      mutations.push(
+        ...versions.map((version) => ({
+          operation: "delete" as const,
+          collection: VERSIONS,
+          id: version.id,
+        })),
+        ...executions.map((execution) => ({
+          operation: "delete" as const,
+          collection: EXECUTIONS,
+          id: execution.id,
+        })),
+        {
+          operation: "delete" as const,
+          collection: BLUEPRINTS,
+          id: blueprint.id,
+        },
+      );
+    }
+
+    const proposals = this.storage.list<BlueprintChangeProposal>(
+      PROPOSALS,
+      (candidate) => candidate.project_id === projectId,
+    );
+    mutations.push(
+      ...proposals.map((proposal) => ({
+        operation: "delete" as const,
+        collection: PROPOSALS,
+        id: proposal.id,
+      })),
+    );
+
+    return mutations;
+  }
+
   async listBlueprints(
     options: BlueprintQueryOptions,
   ): Promise<{ items: GameBlueprint[]; total: number }> {
