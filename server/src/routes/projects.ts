@@ -14,12 +14,15 @@ import {
   StorageGenerationHistoryRepository,
   type GenerationHistoryRepository,
 } from "../projects/repository/generationHistory.repository";
+import { StorageBlueprintRepository } from "../projects/repository/storageBlueprint.repository";
+import type { IBlueprintRepository } from "../projects/repository/blueprint.repository";
 import { getTokenFromCookies } from "../common/middleware/cookies";
 import { getRequestApiKeyPrincipal } from "../common/middleware/security";
 import {
   createResourceAuthorizer,
   type ProjectAccessCheck,
 } from "./resourceAuthorization";
+import { ProjectDeletionCoordinator } from "../platform/projects/ProjectDeletionCoordinator";
 
 export interface ProjectAccessControl {
   getRequestUserId(req: Request): Promise<string | null>;
@@ -52,6 +55,15 @@ export type ConcealingProjectAccess = ProjectAccessControl & {
 export interface ProjectRuntime {
   projectRepository: SaaSProjectRepository;
   generationHistory: GenerationHistoryRepository;
+  blueprintRepository: IBlueprintRepository;
+  /**
+   * PROJECT-ERASURE-1. Deletes a project and every directly project-owned
+   * durable record (blueprint, blueprint versions, generation executions,
+   * blueprint change proposals, generation history) as one atomic
+   * transaction. Routes must go through this rather than deleting the
+   * project record on its own.
+   */
+  deletion: ProjectDeletionCoordinator;
   access: ConcealingProjectAccess;
   /**
    * The provider both repositories above are built on. Exposed so a caller that
@@ -69,6 +81,11 @@ export function createProjectRuntime(
 ): ProjectRuntime {
   const projectRepository = new SaaSProjectRepository(storage);
   const generationHistory = new StorageGenerationHistoryRepository(storage);
+  const blueprintRepository = new StorageBlueprintRepository(storage);
+  const deletion = new ProjectDeletionCoordinator(storage, [
+    blueprintRepository,
+    generationHistory,
+  ]);
 
   const getRequestUserId = async (req: Request): Promise<string | null> => {
     const attachedUserId = (req as RequestWithSession).user?.userId;
@@ -166,6 +183,8 @@ export function createProjectRuntime(
   return {
     projectRepository,
     generationHistory,
+    blueprintRepository,
+    deletion,
     storage,
     access: {
       getRequestUserId,
@@ -183,7 +202,12 @@ export function createProjectRuntime(
  */
 export function createProjectsRouter(runtime: ProjectRuntime): Router {
   const router = Router();
-  const { projectRepository: projects, generationHistory, access } = runtime;
+  const {
+    projectRepository: projects,
+    generationHistory,
+    deletion,
+    access,
+  } = runtime;
 
   router.get("/", async (req, res) => {
     const userId = await access.requireAuthenticatedUser(req, res);
@@ -255,7 +279,7 @@ export function createProjectsRouter(runtime: ProjectRuntime): Router {
     if (!(await access.requireProjectAccess(req, res, req.params.id))) return;
 
     try {
-      const deleted = await projects.deleteDurable(req.params.id);
+      const deleted = await deletion.deleteProject(req.params.id);
       res.json({ success: true, data: { deleted } });
     } catch (error) {
       handleProjectInputError(error, res);
