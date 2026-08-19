@@ -508,13 +508,18 @@
       "id": "AUDIT-REALTIME-ROOM-001",
       "title": "Room membership on project switch is not proven to be exclusive",
       "severity": "P2",
-      "status": "LIKELY",
-      "disposition": "NOT-STARTED",
+      "status": "CONFIRMED",
+      "disposition": "FIXED-UNMERGED",
       "area": "security",
       "remediationGroup": "realtime-tenancy",
       "mar": "MAR-001",
-      "evidence": ["server/src/socket/index.ts"],
-      "notes": "Leaving the previous project room is not clearly guaranteed when a socket moves between projects, so a socket may remain in several rooms."
+      "owningBranch": "fix/realtime-room-isolation-1",
+      "owningSha": "8a4a6b78627b96f2885421dff40e49b191774b3d",
+      "evidence": [
+        "server/src/socket/index.ts",
+        "server/src/__tests__/realtime-room-isolation.test.ts"
+      ],
+      "notes": "Reproduced: project:join overwrote player.projectId and joined the new room without leaving the previous one, so a socket switching projects stayed subscribed to both rooms. Fixed by leaving/untracking the prior room before joining the new one; behavioral tests over real Socket.IO connections prove exclusive membership, single player:left/player:joined emission, denied switches leaving the prior room untouched, and idempotent same-project rejoin."
     },
     {
       "id": "AUDIT-BLUEPRINT-STALE-001",
