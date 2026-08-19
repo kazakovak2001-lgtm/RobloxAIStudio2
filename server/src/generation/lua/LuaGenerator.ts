@@ -112,6 +112,15 @@ export class LuaGenerator {
    * differentiation instead of one undifferentiated baseplate. Nothing here
    * is a placeholder — every line is instructions the server actually
    * executes when the place runs.
+   *
+   * GEN-FIDELITY-2. GameManager keeps no per-player state of its own.
+   * `playerProgress`/`playerCoins` here and `PlayerService.PlayerData`
+   * separately were two owners of the same facts, and `EconomyService`'s
+   * `Award`/`Spend` only printed — the "reward" was fake. GameManager now
+   * only decides *when* an objective completes (the ordering gate) and
+   * reads/advances state through `_G.PlayerService`, and pays through
+   * `_G.EconomyService`, which is what actually mutates the authoritative
+   * balance `_G.PlayerService` stores.
    */
   private generateGameManager(bp: RobloxGameBlueprint): LuaScript {
     const title = luaString(bp.title);
@@ -223,47 +232,37 @@ export class LuaGenerator {
       `local PROGRESSION_STAGES = {${stageEntries}}`,
       `local TOTAL_OBJECTIVES = #OBJECTIVES`,
       ``,
-      `local playerProgress = {}`,
-      `local playerCoins = {}`,
-      ``,
-      `Players.PlayerAdded:Connect(function(player)`,
-      `\tplayerProgress[player.UserId] = 1`,
-      `\tplayerCoins[player.UserId] = 0`,
-      `end)`,
-      ``,
-      `Players.PlayerRemoving:Connect(function(player)`,
-      `\tplayerProgress[player.UserId] = nil`,
-      `\tplayerCoins[player.UserId] = nil`,
-      `end)`,
-      ``,
       `local function stageForProgress(completedCount)`,
       `\tlocal ratio = completedCount / TOTAL_OBJECTIVES`,
       `\tlocal index = math.max(1, math.min(#PROGRESSION_STAGES, math.ceil(ratio * #PROGRESSION_STAGES)))`,
       `\treturn PROGRESSION_STAGES[index]`,
       `end`,
       ``,
-      `-- Server-authoritative: the client only touches a Part, the server`,
-      `-- alone decides whether that advances progress and what it pays out.`,
+      `-- Server-authoritative: the client only touches a Part. Progress and`,
+      `-- currency are not kept here — PlayerService is the single owner of`,
+      `-- that state; GameManager only reads and advances it through the`,
+      `-- service, and EconomyService is what actually mutates the balance.`,
       `local function onObjectiveTouched(player, objectiveIndex)`,
-      `\tlocal progress = playerProgress[player.UserId] or 1`,
+      `\tif not _G.PlayerService or not _G.EconomyService then`,
+      `\t\treturn`,
+      `\tend`,
+      `\tlocal progress = _G.PlayerService:GetProgress(player.UserId)`,
       `\tif objectiveIndex ~= progress then`,
       `\t\treturn`,
       `\tend`,
       `\tlocal objective = OBJECTIVES[objectiveIndex]`,
-      `\tplayerProgress[player.UserId] = progress + 1`,
-      `\tplayerCoins[player.UserId] = (playerCoins[player.UserId] or 0) + objective.reward`,
-      `\tif _G.EconomyService then`,
-      `\t\t_G.EconomyService.Award(player.UserId, objective.reward, objective.name)`,
-      `\tend`,
-      `\tlocal nextObjective = OBJECTIVES[progress + 1]`,
+      `\tlocal newProgress = _G.PlayerService:AdvanceProgress(player.UserId)`,
+      `\t_G.EconomyService.Award(player.UserId, objective.reward, objective.name)`,
+      `\tlocal balance = _G.PlayerService:GetCurrency(player.UserId)`,
+      `\tlocal nextObjective = OBJECTIVES[newProgress]`,
       `\tprogressEvent:FireClient(player, {`,
       `\t\tcompleted = objective.name,`,
       `\t\tloopStage = objective.loopStage,`,
-      `\t\tcompletedCount = progress,`,
+      `\t\tcompletedCount = objectiveIndex,`,
       `\t\ttotalObjectives = TOTAL_OBJECTIVES,`,
       `\t\tnextObjective = nextObjective and nextObjective.name or "complete",`,
-      `\t\tcoins = playerCoins[player.UserId],`,
-      `\t\tstage = stageForProgress(progress),`,
+      `\t\tcoins = balance,`,
+      `\t\tstage = stageForProgress(objectiveIndex),`,
       `\t})`,
       `end`,
       ``,
@@ -279,32 +278,92 @@ export class LuaGenerator {
     };
   }
 
+  /**
+   * GEN-FIDELITY-2. The single authoritative owner of per-player
+   * progression and currency. `GameManager` no longer keeps a competing
+   * `playerProgress`/`playerCoins` pair, and `EconomyService` no longer
+   * fakes its ledger by only printing — both read and mutate this table
+   * through the methods below, exposed at `_G.PlayerService` the same way
+   * `EconomyService` already published itself.
+   */
   private generatePlayerService(bp: RobloxGameBlueprint): LuaScript {
     return {
       name: "PlayerService",
       type: "server",
       path: "ServerScriptService/PlayerService",
       code: [
-        `-- PlayerService: manages player state`,
+        `-- PlayerService: single authoritative store of per-player state for ${luaString(bp.title)}`,
         `local Players = game:GetService("Players")`,
         `local PlayerService = {}`,
         ``,
+        `-- Authoritative: GameManager and EconomyService read and mutate`,
+        `-- through the methods below only. Neither keeps its own copy.`,
         `PlayerService.PlayerData = {}`,
         ``,
-        `function PlayerService:OnPlayerJoin(player)`,
-        `\tself.PlayerData[player.UserId] = {`,
-        `\t\tlevel = 1,`,
-        `\t\t["${luaString(bp.economy.currency)}"] = 0,`,
-        `\t\tstage = "${luaString(bp.progression.stages[0] ?? "")}"`,
-        `\t}`,
+        `local function ensureData(userId)`,
+        `\tlocal data = PlayerService.PlayerData[userId]`,
+        `\tif not data then`,
+        `\t\tdata = { progress = 1, currency = 0 }`,
+        `\t\tPlayerService.PlayerData[userId] = data`,
+        `\tend`,
+        `\treturn data`,
+        `end`,
+        ``,
+        `function PlayerService:Init(player)`,
+        `\tself.PlayerData[player.UserId] = { progress = 1, currency = 0 }`,
         `\tprint("[PlayerService] " .. player.Name .. " joined")`,
         `end`,
         ``,
-        `Players.PlayerAdded:Connect(function(p) PlayerService:OnPlayerJoin(p) end)`,
+        `function PlayerService:Remove(player)`,
+        `\tself.PlayerData[player.UserId] = nil`,
+        `\tprint("[PlayerService] " .. player.Name .. " left")`,
+        `end`,
+        ``,
+        `function PlayerService:GetProgress(userId)`,
+        `\treturn ensureData(userId).progress`,
+        `end`,
+        ``,
+        `function PlayerService:AdvanceProgress(userId)`,
+        `\tlocal data = ensureData(userId)`,
+        `\tdata.progress = data.progress + 1`,
+        `\treturn data.progress`,
+        `end`,
+        ``,
+        `function PlayerService:GetCurrency(userId)`,
+        `\treturn ensureData(userId).currency`,
+        `end`,
+        ``,
+        `function PlayerService:AddCurrency(userId, amount)`,
+        `\tlocal data = ensureData(userId)`,
+        `\tdata.currency = data.currency + amount`,
+        `\treturn data.currency`,
+        `end`,
+        ``,
+        `-- Refuses to overdraw: the balance is left unchanged and the caller`,
+        `-- is told the spend was denied, rather than going negative.`,
+        `function PlayerService:SpendCurrency(userId, amount)`,
+        `\tlocal data = ensureData(userId)`,
+        `\tif data.currency < amount then`,
+        `\t\treturn false, data.currency`,
+        `\tend`,
+        `\tdata.currency = data.currency - amount`,
+        `\treturn true, data.currency`,
+        `end`,
+        ``,
+        `Players.PlayerAdded:Connect(function(player) PlayerService:Init(player) end)`,
+        `Players.PlayerRemoving:Connect(function(player) PlayerService:Remove(player) end)`,
+        ``,
+        `_G.PlayerService = PlayerService`,
       ].join("\n"),
     };
   }
 
+  /**
+   * GEN-FIDELITY-2. `Award`/`Spend` used to only `print` — the reward was
+   * fake and nothing tracked a real balance. Both now mutate the
+   * authoritative balance `_G.PlayerService` owns; `Spend` reports whether
+   * the spend was actually applied so a caller cannot assume success.
+   */
   private generateEconomyService(bp: RobloxGameBlueprint): LuaScript {
     return {
       name: "EconomyService",
@@ -319,11 +378,25 @@ export class LuaGenerator {
         `EconomyService.SINKS = {${bp.economy.sinks.map((s) => `"${luaString(s)}"`).join(", ")}}`,
         ``,
         `function EconomyService.Award(playerId, amount, source)`,
-        `\tprint("[Economy] +" .. amount .. " " .. EconomyService.CURRENCY .. " from " .. source)`,
+        `\tif not _G.PlayerService then`,
+        `\t\treturn nil`,
+        `\tend`,
+        `\tlocal balance = _G.PlayerService:AddCurrency(playerId, amount)`,
+        `\tprint("[Economy] +" .. amount .. " " .. EconomyService.CURRENCY .. " from " .. source .. " (balance " .. tostring(balance) .. ")")`,
+        `\treturn balance`,
         `end`,
         ``,
         `function EconomyService.Spend(playerId, amount, sink)`,
-        `\tprint("[Economy] -" .. amount .. " " .. EconomyService.CURRENCY .. " on " .. sink)`,
+        `\tif not _G.PlayerService then`,
+        `\t\treturn false, 0`,
+        `\tend`,
+        `\tlocal ok, balance = _G.PlayerService:SpendCurrency(playerId, amount)`,
+        `\tif ok then`,
+        `\t\tprint("[Economy] -" .. amount .. " " .. EconomyService.CURRENCY .. " on " .. sink .. " (balance " .. tostring(balance) .. ")")`,
+        `\telse`,
+        `\t\tprint("[Economy] DENIED " .. amount .. " " .. EconomyService.CURRENCY .. " on " .. sink .. " -- balance " .. tostring(balance) .. " is insufficient")`,
+        `\tend`,
+        `\treturn ok, balance`,
         `end`,
         ``,
         `_G.EconomyService = EconomyService`,

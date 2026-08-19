@@ -108,10 +108,11 @@ describe("GEN-FIDELITY-1 — blueprint-driven playable loop", () => {
     }
 
     // Server-side ordering gate: an objective only advances progress when
-    // its index matches the player's current position.
+    // its index matches the player's current authoritative position, read
+    // from PlayerService (GEN-FIDELITY-2), not a local table.
     expect(gameManager.code).toContain("if objectiveIndex ~= progress then");
     expect(gameManager.code).toContain(
-      "playerProgress[player.UserId] = progress + 1",
+      "_G.PlayerService:AdvanceProgress(player.UserId)",
     );
 
     // Progression stages drive the reported stage, not a hardcoded string.
@@ -120,19 +121,20 @@ describe("GEN-FIDELITY-1 — blueprint-driven playable loop", () => {
         .map((s) => `"${s}"`)
         .join(", ")}}`,
     );
-    expect(gameManager.code).toContain("stageForProgress(progress)");
+    expect(gameManager.code).toContain("stageForProgress(objectiveIndex)");
   });
 
   it("pays server-authoritative rewards in the blueprint's economy currency", () => {
     const { gameManager } = generate(acceptanceFixture());
 
-    // Reward is decided and applied entirely server-side from data baked
-    // into OBJECTIVES at generation time — no client-supplied amount.
-    expect(gameManager.code).toContain(
-      "playerCoins[player.UserId] = (playerCoins[player.UserId] or 0) + objective.reward",
-    );
+    // Reward is decided server-side from data baked into OBJECTIVES at
+    // generation time — no client-supplied amount — and applied through
+    // EconomyService/PlayerService (GEN-FIDELITY-2), not a local table.
     expect(gameManager.code).toContain(
       "_G.EconomyService.Award(player.UserId, objective.reward, objective.name)",
+    );
+    expect(gameManager.code).toContain(
+      "_G.PlayerService:GetCurrency(player.UserId)",
     );
     // EconomyService.CURRENCY is the blueprint's currency (asserted below via
     // the EconomyService script), and GameManager pays through that service
