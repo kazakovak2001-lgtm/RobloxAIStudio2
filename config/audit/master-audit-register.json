@@ -287,8 +287,13 @@
       "mar": "MAR-004",
       "owningBranch": "integration/wave-0",
       "owningSha": "e0d800d273b3c618d4af07d9ffbbe2873da49937",
-      "evidence": ["server/src/projects/services/game-generation.service.ts"],
-      "notes": "The project lock covers only the short start critical section. Two starts legitimately produce two executions and two generation-count increments. Deliberately left out of the start-atomicity slice."
+      "evidence": [
+        "server/src/platform/projects/ProjectLifecycleCoordinator.ts",
+        "server/src/routes/game-generation.ts",
+        "server/src/__tests__/auditstartatomicity1.generation-start.test.ts",
+        "server/src/__tests__/gensingleflight1.active-claim.test.ts"
+      ],
+      "notes": "The project lock covered only the short start critical section, so a second start was admitted the moment it was released, and two starts legitimately produced two executions and two generation-count increments. Fixed by committing a claim record naming the owning execution with requireAbsent inside the same applyDurableBatch as the start evidence: a concurrent second start fails the whole batch rather than the project lock, which is what makes the refusal hold across instances. The route maps the resulting ActiveGenerationConflictError to 409, since answering 500 reads as try again and a retry is exactly how the second generation used to appear. Fixed by the same commit as GEN-START-IDEMPOTENCY-001's admission mechanism (e0d800d); GEN-START-IDEMPOTENCY-001 covers the separate request-identity gap this fix does not."
     },
     {
       "id": "AUDIT-OUTCOME-LAST-WRITER-001",
