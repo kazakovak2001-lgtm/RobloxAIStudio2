@@ -624,6 +624,8 @@
 │   ├── pre-check.ts
 │   ├── scan-imports.ts
 │   ├── studio-acceptance
+│   │   ├── generated-game-smoke.template.luau
+│   │   ├── run-generation-acceptance.ts
 │   │   ├── run-studio-acceptance.ts
 │   │   └── studio-smoke.template.luau
 │   ├── studio-desktop-mcp
@@ -1557,6 +1559,10 @@
 │   │   ├── studio
 │   │   │   ├── artifacts
 │   │   │   │   └── GenerationArtifactRecorder.ts
+│   │   │   ├── import
+│   │   │   │   ├── __tests__
+│   │   │   │   │   └── genviability2.studio-import-acceptance.test.ts
+│   │   │   │   └── RobloxExportArtifactAdapter.ts
 │   │   │   ├── integration
 │   │   │   │   ├── __tests__
 │   │   │   │   │   └── StudioIntegration.test.ts
