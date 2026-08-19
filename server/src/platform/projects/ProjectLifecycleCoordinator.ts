@@ -4,6 +4,7 @@ import {
   type DurableMutation,
   type StorageProvider,
 } from "../storage/StorageProvider";
+import type { ProjectDeletionChild } from "./ProjectDeletionCoordinator";
 
 interface GenerationProjectState {
   id?: string;
@@ -483,6 +484,51 @@ export class ProjectGenerationStartCoordinator {
       return result;
     });
   }
+}
+
+/**
+ * PROJECT-ERASURE-2.
+ *
+ * `generation_active_claims` is keyed directly by projectId, and
+ * `generation_start_requests` records carry a `projectId` field though they
+ * are keyed by idempotency key. Neither was covered by PROJECT-ERASURE-1's
+ * `ProjectDeletionCoordinator`, so a project deleted while holding an active
+ * claim — or one whose idempotency records had not yet been released by a
+ * completed run — left both behind, reachable by nothing since the project
+ * itself is gone and its id is never reused.
+ *
+ * Read-only: builds the mutations that would remove this project's claim and
+ * start-request records without writing anything, exactly like
+ * `IBlueprintRepository.prepareProjectDeletion`, so the coordinator commits
+ * them in the same transaction as every other project-owned delete.
+ */
+export function generationClaimProjectDeletion(
+  storage: StorageProvider,
+): ProjectDeletionChild {
+  return {
+    prepareProjectDeletion(projectId: string): DurableMutation[] {
+      const mutations: DurableMutation[] = [];
+      if (storage.get(GENERATION_ACTIVE_CLAIMS, projectId)) {
+        mutations.push({
+          operation: "delete",
+          collection: GENERATION_ACTIVE_CLAIMS,
+          id: projectId,
+        });
+      }
+      const startRequests = storage.list<GenerationStartRequestRecord>(
+        GENERATION_START_REQUESTS,
+        (record) => record.projectId === projectId,
+      );
+      mutations.push(
+        ...startRequests.map((record) => ({
+          operation: "delete" as const,
+          collection: GENERATION_START_REQUESTS,
+          id: record.key,
+        })),
+      );
+      return mutations;
+    },
+  };
 }
 
 export async function recordProjectOutcomeBestEffort(

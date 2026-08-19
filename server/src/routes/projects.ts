@@ -23,6 +23,7 @@ import {
   type ProjectAccessCheck,
 } from "./resourceAuthorization";
 import { ProjectDeletionCoordinator } from "../platform/projects/ProjectDeletionCoordinator";
+import { generationClaimProjectDeletion } from "../platform/projects/ProjectLifecycleCoordinator";
 
 export interface ProjectAccessControl {
   getRequestUserId(req: Request): Promise<string | null>;
@@ -57,9 +58,10 @@ export interface ProjectRuntime {
   generationHistory: GenerationHistoryRepository;
   blueprintRepository: IBlueprintRepository;
   /**
-   * PROJECT-ERASURE-1. Deletes a project and every directly project-owned
-   * durable record (blueprint, blueprint versions, generation executions,
-   * blueprint change proposals, generation history) as one atomic
+   * PROJECT-ERASURE-1 / PROJECT-ERASURE-2. Deletes a project and every
+   * directly project-owned durable record (blueprint, blueprint versions,
+   * generation executions, blueprint change proposals, generation history,
+   * generation active claim, generation start requests) as one atomic
    * transaction. Routes must go through this rather than deleting the
    * project record on its own.
    */
@@ -85,6 +87,7 @@ export function createProjectRuntime(
   const deletion = new ProjectDeletionCoordinator(storage, [
     blueprintRepository,
     generationHistory,
+    generationClaimProjectDeletion(storage),
   ]);
 
   const getRequestUserId = async (req: Request): Promise<string | null> => {
