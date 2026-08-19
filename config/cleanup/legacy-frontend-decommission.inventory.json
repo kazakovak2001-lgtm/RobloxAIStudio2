@@ -411,7 +411,8 @@
         "server/src/__tests__/world1b."
       ],
       "robloxArtifactRelative": [
-        "server/src/generation/export/RobloxExportBuilder.ts"
+        "server/src/generation/export/RobloxExportBuilder.ts",
+        "server/src/generation/__tests__/genviability1.minimal-package.test.ts"
       ],
       "backendRelative": ["server/tsconfig.json"],
       "dependencyPackageRelative": ["package-lock.json"]
