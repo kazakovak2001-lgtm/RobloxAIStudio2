@@ -84,13 +84,9 @@ E2E_PIPELINE_VALIDATION_REPORT.md
 FINAL_V1_RELEASE_SIGN_OFF.md
 MODULE_STATUS.md
 ProjectStructure.txt
-ProjectStructure.txt
-ProjectStructure.txt
 README.md
 RELEASE_HARDENING_REPORT.md
 V1_RELEASE_NOTES.md
-_inventory_raw.txt
-_inventory_raw.txt
 _inventory_raw.txt
 architecture.layer-debt.json
 architecture.manifest.json
@@ -611,6 +607,8 @@ server/src/__tests__/mar002.provenance-contract.test.ts
 server/src/__tests__/mar002.script-placement-ownership.test.ts
 server/src/__tests__/mar002.sync-provenance.test.ts
 server/src/__tests__/mar002.world-and-idempotence.test.ts
+server/src/__tests__/mar004.cors-idempotency-key.test.ts
+server/src/__tests__/mar004.generate-route-idempotency.test.ts
 server/src/__tests__/mar004.idempotent-start.test.ts
 server/src/__tests__/novelty1.gameDna.test.ts
 server/src/__tests__/novelty2.verdict.test.ts

@@ -422,7 +422,9 @@
       {
         "name": "socket.io-client",
         "expectedConsumersOutsideLegacyRoot": [
-          "scripts/cutover/verify-composed-release.mjs"
+          "scripts/cutover/verify-composed-release.mjs",
+          "server/src/__tests__/secrt1a.realtime-tenancy.test.ts",
+          "server/src/__tests__/secrt1b.trace-tenancy.test.ts"
         ],
         "reason": "required by composed HTTPS release Socket.IO verification"
       }

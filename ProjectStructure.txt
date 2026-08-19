@@ -709,6 +709,8 @@
 │   │   │   ├── mar002.script-placement-ownership.test.ts
 │   │   │   ├── mar002.sync-provenance.test.ts
 │   │   │   ├── mar002.world-and-idempotence.test.ts
+│   │   │   ├── mar004.cors-idempotency-key.test.ts
+│   │   │   ├── mar004.generate-route-idempotency.test.ts
 │   │   │   ├── mar004.idempotent-start.test.ts
 │   │   │   ├── novelty1.gameDna.test.ts
 │   │   │   ├── novelty2.verdict.test.ts
