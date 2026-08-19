@@ -58,8 +58,75 @@ const AGENT_STAGE_MAP: Readonly<Record<string, StageName>> = {
   orchestrator: "EXPORT",
 };
 
-interface StudioLuaArtifactContent {
+/**
+ * GEN-ARTIFACT-INTEGRITY-1. Durable content for the `LUA_GENERATION` stage.
+ *
+ * `generationMode` and `objectiveNames`/`objectiveCount` are optional and
+ * additive: every existing reader (`normalizeLuaScripts`, `RepairEngine`,
+ * `RepairInputAssembler`, the Studio import/export adapters) reads `scripts`
+ * and ignores unknown keys, so a consumer written before this slice sees
+ * exactly what it always saw. Absent, not defaulted — see
+ * `readLuaGenerationProvenance`.
+ */
+export interface StudioLuaArtifactContent {
   scripts: PlayableLuaScript[];
+  /** Which tier of LuaGeneratorAgent's repair cascade produced this Lua. */
+  generationMode?: LuaGenerationMode;
+  /** Compact semantic evidence: the objectives the accepted Lua actually names. */
+  objectiveNames?: readonly string[];
+  objectiveCount?: number;
+}
+
+const KNOWN_LUA_GENERATION_MODES = [
+  "primary",
+  "repaired",
+  "constrained_repair",
+  "safe_repair",
+] as const;
+type LuaGenerationMode = (typeof KNOWN_LUA_GENERATION_MODES)[number];
+
+function isKnownGenerationMode(value: unknown): value is LuaGenerationMode {
+  return (
+    typeof value === "string" &&
+    (KNOWN_LUA_GENERATION_MODES as readonly string[]).includes(value)
+  );
+}
+
+/**
+ * Read the provenance LuaGeneratorAgent stamped onto its own output, when it
+ * did.
+ *
+ * Fails closed on the label, not on the record: absent or unrecognized
+ * `generationMode` is omitted, never defaulted to `"primary"`. A durable
+ * artifact from before this slice, or from `RepairEngine`/the legacy Studio
+ * adapter (which write a bare `{scripts}` shape with no `lua_generator` at
+ * all), must read as *unknown* provenance, not as a claim this store cannot
+ * verify.
+ */
+function readLuaGenerationProvenance(
+  luaGenerator: unknown,
+): Pick<
+  StudioLuaArtifactContent,
+  "generationMode" | "objectiveNames" | "objectiveCount"
+> {
+  if (!isRecord(luaGenerator)) return {};
+
+  const provenance: Pick<
+    StudioLuaArtifactContent,
+    "generationMode" | "objectiveNames" | "objectiveCount"
+  > = {};
+
+  if (isKnownGenerationMode(luaGenerator.generationMode)) {
+    provenance.generationMode = luaGenerator.generationMode;
+  }
+
+  const names = luaGenerator.mechanicNames;
+  if (Array.isArray(names) && names.every((n) => typeof n === "string")) {
+    provenance.objectiveNames = names;
+    provenance.objectiveCount = names.length;
+  }
+
+  return provenance;
 }
 
 /**
@@ -430,6 +497,24 @@ export function getArtifactStage(agent: string): StageName | undefined {
   return AGENT_STAGE_MAP[agent];
 }
 
+/**
+ * GEN-ARTIFACT-INTEGRITY-1. Previously this discarded everything but
+ * `scripts`: `LuaGeneratorAgent`'s actual output is always
+ * `{ lua_generator: { server, client, shared, generationMode,
+ * mechanicNames, ... } }`, never a top-level `scripts` array, so every
+ * durable `LUA_GENERATION` artifact was rebuilt as bare `{ scripts }` and
+ * `generationMode`/`mechanicNames` never reached the store — proven by
+ * `GenerationArtifactRecorder.provenance.test.ts`. Downstream Studio,
+ * debug and audit consumers could not tell primary, repaired,
+ * constrained-repair or deterministic-fallback output apart, or see which
+ * mechanics the accepted Lua actually named.
+ *
+ * `scripts` itself is unchanged — same `normalizeLuaScripts` call, same
+ * `PlayableLuaScript[]` shape — so Studio materialization, which reads
+ * only `scripts`, sees byte-identical content. What changed is that the
+ * provenance already sitting on `output.lua_generator` is now preserved
+ * alongside it instead of being thrown away.
+ */
 export function normalizeLuaArtifactContent(
   output: unknown,
 ): StudioLuaArtifactContent | Record<string, unknown> {
@@ -439,7 +524,16 @@ export function normalizeLuaArtifactContent(
 
   const scripts = normalizeLuaScripts(output);
   assertPlayableLuaScripts(scripts);
-  return Array.isArray(output.scripts) ? output : { scripts };
+
+  // Already the canonical `{ scripts, ... }` shape — RepairEngine's
+  // re-stored Lua and the legacy Studio package adapter both write this
+  // directly, with no `lua_generator` to read provenance from. Preserved
+  // exactly, including whatever it already carries, rather than
+  // re-derived: this store must not invent provenance for a record that
+  // never stated any.
+  if (Array.isArray(output.scripts)) return output;
+
+  return { scripts, ...readLuaGenerationProvenance(output.lua_generator) };
 }
 
 /**
