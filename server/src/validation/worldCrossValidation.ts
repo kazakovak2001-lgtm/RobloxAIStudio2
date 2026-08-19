@@ -22,6 +22,7 @@ import {
   stripLuaStrings,
   type PlayableLuaScript,
 } from "../types/playableLua";
+import type { WorldRuntimeMode } from "../types/worldRuntimeMode";
 import type { WorldModel, WorldRole } from "./worldModel";
 
 export const WORLD_CROSS_VALIDATION_SCHEMA_VERSION = 1;
@@ -29,8 +30,19 @@ export const WORLD_CROSS_VALIDATION_SCHEMA_VERSION = 1;
 /**
  * How the comparison was made. Recorded on the evidence so a later, stronger
  * method cannot be read backwards onto findings produced by this one.
+ *
+ * WORLD-1C. `deterministic-pattern` asks whether the Lua *constructs* what a
+ * role requires. `deterministic-binding-pattern` asks whether it *references
+ * and interacts with* an already-materialized entity instead — a different
+ * evidence class, per `docs/00-project-control/WORLD-1C_SCOPE.md` ("Cross-
+ * artifact validation"). Recorded on every result so a `materialized-world`
+ * finding is never read as if it had been proven the `lua-owned` way, or vice
+ * versa.
  */
-export const WORLD_CROSS_ANALYSIS_MODES = ["deterministic-pattern"] as const;
+export const WORLD_CROSS_ANALYSIS_MODES = [
+  "deterministic-pattern",
+  "deterministic-binding-pattern",
+] as const;
 export type WorldCrossAnalysisMode =
   (typeof WORLD_CROSS_ANALYSIS_MODES)[number];
 
@@ -72,23 +84,24 @@ const LIMITS: readonly string[] = [
   "Absence of unsupported claims is not evidence that the world matches the design.",
 ];
 
+interface RoleEvidenceEntry {
+  expectation: string;
+  /** Undefined means no source-text evidence can settle this role. */
+  matches?: (source: WorldSources) => boolean;
+}
+
+type RoleEvidenceMap = Readonly<Record<WorldRole, RoleEvidenceEntry>>;
+
 /**
- * What each role requires the generated code to contain.
+ * What each role requires the generated code to contain when Lua owns and
+ * builds the world. Unchanged by WORLD-1C — see
+ * `docs/00-project-control/WORLD-1C_SCOPE.md`.
  *
  * Roles without an entry are unverifiable by construction, which is why the
  * map is exhaustive over `WorldRole`: adding a role forces a decision about
  * what would prove it, rather than letting it default to a pass.
  */
-const ROLE_EVIDENCE: Readonly<
-  Record<
-    WorldRole,
-    {
-      expectation: string;
-      /** Undefined means no source-text evidence can settle this role. */
-      matches?: (source: WorldSources) => boolean;
-    }
-  >
-> = {
+const LUA_OWNED_ROLE_EVIDENCE: RoleEvidenceMap = {
   "player-entry": {
     expectation: "server code places players into the world",
     matches: (source) =>
@@ -150,6 +163,50 @@ const ROLE_EVIDENCE: Readonly<
   },
 };
 
+/**
+ * What each role requires when the world is materialized and Lua only binds
+ * to it. Per `docs/00-project-control/WORLD-1C_SCOPE.md` ("Cross-artifact
+ * validation"): the question changes from whether Lua *constructs* what the
+ * role requires to whether it *references and interacts with* it. A string
+ * appearing in source is not proof of a binding, so evidence still requires a
+ * real lookup call (`WaitForChild`/`FindFirstChild`) — never presence of the
+ * claim's id or title alone.
+ *
+ * `player-entry` is the only role whose evidence changes. It is the one
+ * claim in this map that corresponds to the "world instances" rule
+ * `getPlayableLuaIssues` also replaces under this mode (the scope doc's
+ * "The playability contract" table). Every other role keeps exactly the
+ * `LUA_OWNED_ROLE_EVIDENCE` entry it already has, for the same reason the
+ * scope doc gives for the HUD and gameplay-interaction playability rules:
+ * `interactive-entity` (a `Connect` call) and `presentation` (a client
+ * surface) are not claims about who owns world *structure*, `progress-signal`
+ * and `persistence` cross the server/client boundary or reach a durable store
+ * regardless of who built the world, and `server-authority`/`descriptive`
+ * have no source-text evidence under either mode. Reusing the same object
+ * reference (not a re-declared duplicate) keeps that unchanged-ness provable
+ * by identity rather than by two copies staying in sync by hand.
+ */
+const MATERIALIZED_WORLD_ROLE_EVIDENCE: RoleEvidenceMap = {
+  "player-entry": {
+    expectation:
+      "server code binds to a materialized entry point and pivots the player there",
+    // `:PivotTo(` deliberately does not appear in `LUA_OWNED_ROLE_EVIDENCE`'s
+    // `player-entry` evidence (`LoadCharacter`/`MoveTo`/`CFrame=`), so a
+    // fixture built to satisfy only this evidence is never accidentally
+    // reported `supported` under `lua-owned` too — the two claims are
+    // evidence of different things, not the same thing spelled differently.
+    matches: (source) =>
+      /\b(?:WaitForChild|FindFirstChild)\s*\(/.test(source.server) &&
+      /:PivotTo\s*\(/.test(source.server),
+  },
+  "interactive-entity": LUA_OWNED_ROLE_EVIDENCE["interactive-entity"],
+  "progress-signal": LUA_OWNED_ROLE_EVIDENCE["progress-signal"],
+  presentation: LUA_OWNED_ROLE_EVIDENCE.presentation,
+  persistence: LUA_OWNED_ROLE_EVIDENCE.persistence,
+  "server-authority": LUA_OWNED_ROLE_EVIDENCE["server-authority"],
+  descriptive: LUA_OWNED_ROLE_EVIDENCE.descriptive,
+};
+
 interface WorldSources {
   readonly server: string;
   readonly client: string;
@@ -177,13 +234,25 @@ const PRESERVED_LITERALS: ReadonlySet<string> = new Set([
 /**
  * Compare a world model's claims against the Lua that was generated with it.
  *
- * Deliberately never throws and never blocks: unmatched claims are findings,
- * and a finding is not a verdict on the game.
+ * Deliberately never throws for an unmatched claim: unmatched claims are
+ * findings, and a finding is not a verdict on the game. `mode` is the one
+ * exception — an unrecognized world runtime mode fails closed rather than
+ * silently choosing an evidence class, per WORLD-1C's tenant/ownership
+ * invariants. `mode` defaults to `lua-owned` so every existing caller, which
+ * passes no third argument, is byte-for-byte unaffected.
  */
 export function crossValidateWorld(
   world: WorldModel,
   scripts: readonly PlayableLuaScript[],
+  mode: WorldRuntimeMode = "lua-owned",
 ): WorldCrossValidation {
+  if (mode !== "lua-owned" && mode !== "materialized-world") {
+    throw new Error(`Unknown world runtime mode: ${String(mode)}`);
+  }
+  const materialized = mode === "materialized-world";
+  const roleEvidence = materialized
+    ? MATERIALIZED_WORLD_ROLE_EVIDENCE
+    : LUA_OWNED_ROLE_EVIDENCE;
   const sources = collectSources(scripts);
 
   const claims: WorldClaimResult[] = [
@@ -198,7 +267,7 @@ export function crossValidateWorld(
       title: entity.title,
     })),
   ].map((claim) => {
-    const evidence = ROLE_EVIDENCE[claim.role];
+    const evidence = roleEvidence[claim.role];
     const status: WorldClaimStatus = !evidence.matches
       ? "unverifiable"
       : evidence.matches(sources)
@@ -209,7 +278,9 @@ export function crossValidateWorld(
 
   return {
     schemaVersion: WORLD_CROSS_VALIDATION_SCHEMA_VERSION,
-    analysisMode: WORLD_CROSS_ANALYSIS_MODE,
+    analysisMode: materialized
+      ? "deterministic-binding-pattern"
+      : WORLD_CROSS_ANALYSIS_MODE,
     claims,
     supported: claims.filter((claim) => claim.status === "supported").length,
     unsupported: claims.filter((claim) => claim.status === "unsupported")

@@ -710,6 +710,7 @@ server/src/__tests__/testevidence1.auth-event-loop.test.ts
 server/src/__tests__/world1a.cross-artifact-validation.test.ts
 server/src/__tests__/world1b.receipt-verification.test.ts
 server/src/__tests__/world1b.scene-contract.test.ts
+server/src/__tests__/world1c.mode-aware-validation.test.ts
 server/src/__tests__/world1c.package-commit.test.ts
 server/src/agents/collaboration/AgentCoordinator.ts
 server/src/agents/collaboration/AgentMessageBus.ts
