@@ -145,6 +145,7 @@ docs/00-project-control/STUDIO-1G_DESKTOP_ACCEPTANCE_RESULT.md
 docs/00-project-control/STUDIO-1_AUDIT.md
 docs/00-project-control/STUDIO-2F-A_SCOPE.md
 docs/00-project-control/STUDIO-ACCEPT-1_DESKTOP_ACCEPTANCE_RESULT.md
+docs/00-project-control/STUDIO-ACCEPTANCE-PREP-1_RUNBOOK.md
 docs/00-project-control/STUDIO-DEFERRED-ACCEPTANCE_RESULT.md
 docs/00-project-control/WORLD-1B_SCOPE.md
 docs/00-project-control/WORLD-1C_SCOPE.md
