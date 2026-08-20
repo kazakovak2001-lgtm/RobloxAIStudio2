@@ -1179,6 +1179,8 @@
 │   │   │   │   ├── LuaGenerator.ts
 │   │   │   │   └── LuaTemplateRegistry.ts
 │   │   │   └── validation
+│   │   │       ├── __tests__
+│   │   │       │   └── GameValidationEngine.gates.test.ts
 │   │   │       └── GameValidationEngine.ts
 │   │   ├── governance
 │   │   │   ├── aiGovernance.ts
