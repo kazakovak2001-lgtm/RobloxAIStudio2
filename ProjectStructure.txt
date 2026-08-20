@@ -1446,6 +1446,7 @@
 │   │   │   ├── __tests__
 │   │   │   │   ├── groq.test.ts
 │   │   │   │   ├── ollamaStructuredOutput.test.ts
+│   │   │   │   ├── ollamaThinkingBudget.test.ts
 │   │   │   │   ├── ollamaTimeout.test.ts
 │   │   │   │   ├── providerFactory.test.ts
 │   │   │   │   └── providers.test.ts
