@@ -199,7 +199,7 @@ export class GenerationArtifactRecorder {
         }
         if (!scripts) continue;
 
-        luaIssues = getPlayableLuaIssues(scripts);
+        luaIssues = getPlayableLuaIssues(scripts, worldRuntimeMode);
 
         // PIPELINE-1B. The contract used to throw from here. It no longer
         // does, so the remaining stages are still examined and their findings
@@ -207,7 +207,10 @@ export class GenerationArtifactRecorder {
         // must not reach delivery.
         if (luaIssues.length > 0) continue;
 
-        const content = normalizeLuaArtifactContent(node.output);
+        const content = normalizeLuaArtifactContent(
+          node.output,
+          worldRuntimeMode,
+        );
         luaScripts = scripts;
         pending.push({ stage, agent: node.agent, content });
 
@@ -310,7 +313,7 @@ export class GenerationArtifactRecorder {
       ui,
       world:
         luaScripts.length > 0
-          ? crossValidateWorld(world, luaScripts)
+          ? crossValidateWorld(world, luaScripts, worldRuntimeMode)
           : undefined,
       assets,
     });
@@ -517,13 +520,14 @@ export function getArtifactStage(agent: string): StageName | undefined {
  */
 export function normalizeLuaArtifactContent(
   output: unknown,
+  worldRuntimeMode: WorldRuntimeMode = LEGACY_WORLD_RUNTIME_MODE,
 ): StudioLuaArtifactContent | Record<string, unknown> {
   if (!isRecord(output)) {
     throw new Error("Lua generator output must be an object");
   }
 
   const scripts = normalizeLuaScripts(output);
-  assertPlayableLuaScripts(scripts);
+  assertPlayableLuaScripts(scripts, worldRuntimeMode);
 
   // Already the canonical `{ scripts, ... }` shape — RepairEngine's
   // re-stored Lua and the legacy Studio package adapter both write this
