@@ -408,7 +408,9 @@
         "scripts/studio-acceptance/run-studio-acceptance.ts",
         "server/src/__tests__/studio1.plugin",
         "server/src/__tests__/studio.acceptance-runner.test.ts",
-        "server/src/__tests__/world1b."
+        "server/src/__tests__/world1b.",
+        "server/src/studio/import/RobloxExportArtifactAdapter.ts",
+        "scripts/studio-acceptance/run-generation-acceptance.ts"
       ],
       "robloxArtifactRelative": [
         "server/src/generation/export/RobloxExportBuilder.ts",
