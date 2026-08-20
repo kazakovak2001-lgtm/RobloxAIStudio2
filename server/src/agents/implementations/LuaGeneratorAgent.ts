@@ -312,6 +312,83 @@ function isPlayableValidationError(error: unknown): boolean {
   );
 }
 
+const SEMANTIC_FIDELITY_ERROR_PREFIX =
+  "Lua generation is not semantically faithful:";
+
+function isSemanticFidelityError(error: unknown): boolean {
+  return (
+    error instanceof Error &&
+    error.message.startsWith(SEMANTIC_FIDELITY_ERROR_PREFIX)
+  );
+}
+
+/** Either failure class this agent's repair cascade retries on. */
+function isRetryableGenerationError(error: unknown): boolean {
+  return isPlayableValidationError(error) || isSemanticFidelityError(error);
+}
+
+/**
+ * GEN-CANONICAL-FIDELITY-2. `assertPlayableLuaScripts` proves a response is
+ * *runnable*; nothing proved it was *faithful* to the design. A model could
+ * satisfy every structural rule with one generic collectible while the
+ * design named several distinct mechanics — playable, but a silent
+ * downgrade. This is the narrowest possible check for that gap, scoped to
+ * this agent rather than added to `types/playableLua.ts`: it does not touch
+ * blueprint schema, world structure, or security, only whether every named
+ * mechanic actually appears in what was generated.
+ *
+ * A no-op when the design named fewer than two mechanics — a single
+ * generic objective is not a downgrade when there was nothing to lose.
+ * Checked against raw script content, not comment/string-stripped source:
+ * a mechanic's evidence here is legitimately a quoted Part name or an
+ * `OBJECTIVES` table entry, both of which live inside string literals.
+ */
+function assertSemanticFidelity(
+  scripts: ReadonlyArray<{ readonly content: string }>,
+  ctx: FallbackGameplayContext,
+): void {
+  if (ctx.mechanicNames.length < 2) return;
+  const combined = scripts
+    .map((script) => script.content)
+    .join("\n")
+    .toLowerCase();
+  const missing = ctx.mechanicNames.filter(
+    (mechanicName) => !combined.includes(mechanicName.toLowerCase()),
+  );
+  if (missing.length > 0) {
+    throw new Error(
+      `${SEMANTIC_FIDELITY_ERROR_PREFIX} the design named ${ctx.mechanicNames.length} mechanics ` +
+        `(${ctx.mechanicNames.join(", ")}), but the generated code has no objective for: ${missing.join(", ")}.`,
+    );
+  }
+}
+
+/**
+ * GEN-CANONICAL-FIDELITY-2. Stamps which tier of the repair cascade
+ * produced a successful AI response, reusing the exact `generationMode`
+ * field `safeRepairFallback` already stamps on its own output — not a new,
+ * parallel provenance system. Combined with `AgentResult.usedFallback`
+ * (true only for the deterministic tier), downstream evidence can tell
+ * primary success, first-repair success, constrained-repair success, and
+ * deterministic fallback apart.
+ */
+function withGenerationMode(
+  result: Record<string, unknown>,
+  mode: "primary" | "repaired" | "constrained_repair",
+): Record<string, unknown> {
+  const generated = result.lua_generator;
+  if (!generated || typeof generated !== "object" || Array.isArray(generated)) {
+    return result;
+  }
+  return {
+    ...result,
+    lua_generator: {
+      ...(generated as Record<string, unknown>),
+      generationMode: mode,
+    },
+  };
+}
+
 /**
  * Some local models emit multiline Lua code as JavaScript-style template
  * literals inside an otherwise JSON-shaped response. Normalize only an
@@ -353,11 +430,34 @@ export function normalizeBacktickLuaCode(raw: string): string | null {
   return normalized + raw.slice(cursor);
 }
 
+/**
+ * GEN-CANONICAL-FIDELITY-2. Now receives the same `gameplayContext` the
+ * primary prompt and the deterministic fallback already use. Previously
+ * this prompt was built from only `name`, `description`, `reason` and
+ * `spatialDesign` — no mechanic, progression or economy information
+ * reached the last AI attempt, so its own instructions asked for a single
+ * generic "collectible", and a response satisfying that literally could
+ * pass `assertPlayableLuaScripts` while silently discarding everything the
+ * design named beyond one mechanic.
+ *
+ * The single-objective runtime-pattern bullets are kept verbatim when the
+ * design named fewer than two mechanics — there is nothing to lose in that
+ * case, and the previously-tested exact wording stays exact. With two or
+ * more, those bullets switch to the multi-objective, server-authoritative
+ * shape, and `buildGameplayDepthInstructions` (the same block the primary
+ * prompt uses) is appended so the objective list, ordering, authoritative
+ * state and HUD requirements are stated identically everywhere this agent
+ * asks a model to generate.
+ *
+ * Spatial preservation is unchanged: the level section still says "preserve
+ * this exactly" and nothing here replaces or removes it.
+ */
 function buildConstrainedPlayableRepairPrompt(
   name: string,
   description: string,
   reason: string,
   spatialDesign: string,
+  gameplayContext: FallbackGameplayContext,
 ): string {
   // The designed level, carried into the last attempt. Without it this prompt
   // asked for a game with no level, so a response that passed validation was a
@@ -379,6 +479,18 @@ World requirements:
 - Wire the objective to the objects of type interactive, preserving the original objective.
 `
     : "";
+
+  const multiObjective = gameplayContext.mechanicNames.length >= 2;
+  const serverObjectivePattern = multiObjective
+    ? "- Server: create one distinct, positioned interactable Part per mechanic named below and connect each one's Touched:Connect(function(hit) ... end) to a shared completion handler."
+    : "- Server: create a collectible Part in workspace and connect collectible.Touched:Connect(function(hit) ... end).";
+  const serverRemotePattern = multiObjective
+    ? "- Server: create a RemoteEvent in ReplicatedStorage and call event:FireClient(player, data) with the completed objective's name, completed/total count, the next objective, and the current authoritative reward balance."
+    : "- Server: create a RemoteEvent in ReplicatedStorage and call event:FireClient(player, score, target) when the player touches the collectible.";
+  const clientUpdatePattern = multiObjective
+    ? "- Client: connect event.OnClientEvent:Connect(function(data) ... end) and update the TextLabel with the completed objective, progress count, next objective and reward balance."
+    : "- Client: connect event.OnClientEvent:Connect(function(score, target) ... end) and update the TextLabel.";
+
   return `You are repairing Roblox Luau that failed a strict playability check.
 Return one valid JSON object only, with this exact shape:
 { "lua_generator": { "server": [{"name":"Game.server.lua","code":"..."}], "client": [{"name":"HUD.client.lua","code":"..."}], "shared": [] } }
@@ -391,18 +503,18 @@ ${level}
 Replace the previous solution completely. Keep the implementation small and use these exact runtime patterns:
 - Output exactly one server entry and exactly one client entry. Keep shared empty. Do not split the playable loop across scripts.
 - Server: create at least one Folder or Part with Instance.new and parent the generated world to workspace.
-- Server: create a collectible Part in workspace and connect collectible.Touched:Connect(function(hit) ... end).
-- Server: create a RemoteEvent in ReplicatedStorage and call event:FireClient(player, score, target) when the player touches the collectible.
+${serverObjectivePattern}
+${serverRemotePattern}
 - Client: local playerGui = Players.LocalPlayer:WaitForChild("PlayerGui").
 - Client: local gui = Instance.new("ScreenGui"), then gui.Parent = playerGui.
 - Client: create a visible TextLabel and parent it to gui.
-- Client: connect event.OnClientEvent:Connect(function(score, target) ... end) and update the TextLabel.
+${clientUpdatePattern}
 - Create the HUD before connecting OnClientEvent so it is visible immediately when Play starts.
 - Create every runtime dependency yourself. Do not use require or assume Workspace children already exist.
 - Use game:GetService to access services. Never call InsertService or request GamePassService.
 - Use only Roblox Luau APIs. Do not use promises, :andThen, DataStoreService, TODOs, placeholders, or client-side FireClient.
 - Server and client entries must execute directly and must not return modules.
-Return only the JSON object, with complete code strings.`;
+Return only the JSON object, with complete code strings.${buildGameplayDepthInstructions(gameplayContext)}`;
 }
 
 export class LuaGeneratorAgent extends BaseAgent {
@@ -600,7 +712,15 @@ export class LuaGeneratorAgent extends BaseAgent {
         temperature: 0.4,
         maxTokens: 6000,
       });
-      assertPlayableLuaScripts(normalizeLuaScripts(result));
+      const scripts = normalizeLuaScripts(result);
+      assertPlayableLuaScripts(scripts);
+      // GEN-CANONICAL-FIDELITY-2. Playable is not the same claim as
+      // faithful: a response can satisfy every structural rule with one
+      // generic collectible while the design named several mechanics. A
+      // failure here is retried through the same cascade as a playability
+      // failure, below.
+      assertSemanticFidelity(scripts, gameplayContext);
+      result = withGenerationMode(result, "primary");
     } catch (error) {
       const reason = error instanceof Error ? error.message : String(error);
       try {
@@ -608,9 +728,12 @@ export class LuaGeneratorAgent extends BaseAgent {
           `${prompt}\n\nREPAIR REQUIRED: ${reason}. Replace the entire response with complete executable code satisfying every runtime requirement.`,
           { temperature: 0.1, maxTokens: 8000 },
         );
-        assertPlayableLuaScripts(normalizeLuaScripts(result));
+        const scripts = normalizeLuaScripts(result);
+        assertPlayableLuaScripts(scripts);
+        assertSemanticFidelity(scripts, gameplayContext);
+        result = withGenerationMode(result, "repaired");
       } catch (repairError) {
-        if (!isPlayableValidationError(repairError)) throw repairError;
+        if (!isRetryableGenerationError(repairError)) throw repairError;
         const repairReason =
           repairError instanceof Error
             ? repairError.message
@@ -622,12 +745,16 @@ export class LuaGeneratorAgent extends BaseAgent {
               description,
               repairReason,
               spatialDesignText,
+              gameplayContext,
             ),
             { temperature: 0, maxTokens: 8000 },
           );
-          assertPlayableLuaScripts(normalizeLuaScripts(result));
+          const scripts = normalizeLuaScripts(result);
+          assertPlayableLuaScripts(scripts);
+          assertSemanticFidelity(scripts, gameplayContext);
+          result = withGenerationMode(result, "constrained_repair");
         } catch (finalRepairError) {
-          if (!isPlayableValidationError(finalRepairError)) {
+          if (!isRetryableGenerationError(finalRepairError)) {
             throw finalRepairError;
           }
           const finalReason =
@@ -635,9 +762,12 @@ export class LuaGeneratorAgent extends BaseAgent {
               ? finalRepairError.message
               : String(finalRepairError);
           // Deterministic content of this agent's own making, substituted
-          // after the model's output failed the playability contract. It
-          // never passed through the parser, so provenance must be declared
-          // here or the execution would claim the model authored it.
+          // after every AI attempt failed playability or semantic fidelity.
+          // It never passed through the parser, so provenance must be
+          // declared here or the execution would claim the model authored
+          // it. `safeRepairFallback` stamps its own `generationMode:
+          // "safe_repair"` and, by construction, names every mechanic the
+          // design provided — no separate fidelity check is needed for it.
           this.markDeterministicFallback();
           result = safeRepairFallback(name, gameplayContext, finalReason);
           assertPlayableLuaScripts(normalizeLuaScripts(result));
