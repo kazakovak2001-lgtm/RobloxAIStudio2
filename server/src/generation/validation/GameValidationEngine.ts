@@ -9,6 +9,7 @@
 import type { RobloxGameBlueprint } from "../blueprint/GameBlueprintEngine";
 import type { LuaGenerationResult, LuaScript } from "../lua/LuaGenerator";
 import type { AssetLayout } from "../assets/AssetGenerator";
+import { getPlayableLuaIssues } from "../../types/playableLua";
 
 export interface ValidationIssue {
   severity: "error" | "warning" | "info";
@@ -131,6 +132,22 @@ export class GameValidationEngine {
     // Basic Lua syntax checks
     for (const script of lua.scripts) {
       this.checkLuaSyntax(script, issues);
+    }
+
+    // GEN-VIABILITY-2. A structurally valid, syntactically balanced script
+    // is not necessarily a runnable one: the game may still have no world,
+    // no spawn, no interaction, and no HUD. Reuse the same playable-Lua
+    // contract that already gates the other generation pipeline's Studio
+    // delivery, rather than inventing a second "is this actually a game"
+    // check with its own rules.
+    const playableIssues = getPlayableLuaIssues(
+      lua.scripts.map((script) => ({
+        path: script.path,
+        content: script.code,
+      })),
+    );
+    for (const issue of playableIssues) {
+      issues.push({ severity: "error", code: "NOT_PLAYABLE", message: issue });
     }
   }
 
