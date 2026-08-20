@@ -994,6 +994,7 @@ server/src/generation/lua/LuaGenerationTypes.ts
 server/src/generation/lua/LuaGenerator.ts
 server/src/generation/lua/LuaTemplateRegistry.ts
 server/src/generation/lua/__tests__/LuaGenerator.genFidelity1.test.ts
+server/src/generation/lua/__tests__/LuaGenerator.genFidelity2.test.ts
 server/src/generation/lua/index.ts
 server/src/generation/validation/GameValidationEngine.ts
 server/src/generation/validation/__tests__/GameValidationEngine.gates.test.ts
