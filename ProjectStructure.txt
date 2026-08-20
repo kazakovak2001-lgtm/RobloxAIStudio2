@@ -1171,6 +1171,8 @@
 │   │   │   ├── GenerationReport.ts
 │   │   │   ├── GenerationTypes.ts
 │   │   │   ├── lua
+│   │   │   │   ├── __tests__
+│   │   │   │   │   └── LuaGenerator.genFidelity1.test.ts
 │   │   │   │   ├── index.ts
 │   │   │   │   ├── LuaArtifactBuilder.ts
 │   │   │   │   ├── LuaCodeValidator.ts
