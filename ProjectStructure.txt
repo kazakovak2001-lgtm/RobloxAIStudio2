@@ -1089,6 +1089,8 @@
 │   │   │       ├── ExportManager.ts
 │   │   │       └── index.ts
 │   │   ├── generation
+│   │   │   ├── __tests__
+│   │   │   │   └── genviability1.minimal-package.test.ts
 │   │   │   ├── assets
 │   │   │   │   ├── AssetGenerationEngine.ts
 │   │   │   │   ├── AssetGenerator.ts

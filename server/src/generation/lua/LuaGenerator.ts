@@ -22,6 +22,19 @@ export interface LuaGenerationResult {
   totalLines: number;
 }
 
+/**
+ * Escape a value for embedding inside a double-quoted Luau string literal.
+ * Blueprint fields (title, genre, currency, mechanic/biome names, ...) are
+ * plan/AI output, not code the generator controls — an unescaped `"` or `\`
+ * in one of them currently produces a Lua file that fails to parse.
+ */
+function luaString(value: string): string {
+  return value
+    .replace(/\\/g, "\\\\")
+    .replace(/"/g, '\\"')
+    .replace(/\n/g, "\\n");
+}
+
 export class LuaGenerator {
   /**
    * Generate all Lua scripts from a game blueprint.
@@ -60,12 +73,14 @@ export class LuaGenerator {
   }
 
   private generateGameManager(bp: RobloxGameBlueprint): LuaScript {
-    const mechanics = bp.mechanics.map((m) => `\t["${m}"] = true,`).join("\n");
+    const mechanics = bp.mechanics
+      .map((m) => `\t["${luaString(m)}"] = true,`)
+      .join("\n");
     return {
       name: "GameManager",
       type: "server",
       path: "ServerScriptService/GameManager",
-      code: `-- GameManager: ${bp.title}\nlocal GameManager = {}\n\nGameManager.MECHANICS = {\n${mechanics}\n}\n\nfunction GameManager:Init()\n\tprint("[GameManager] ${bp.title} initialized")\nend\n\nfunction GameManager:GetCoreLoop()\n\treturn {${bp.coreLoop.map((s) => `"${s}"`).join(", ")}}\nend\n\nreturn GameManager`,
+      code: `-- GameManager: ${bp.title}\nlocal GameManager = {}\n\nGameManager.MECHANICS = {\n${mechanics}\n}\n\nfunction GameManager:Init()\n\tprint("[GameManager] ${luaString(bp.title)} initialized")\nend\n\nfunction GameManager:GetCoreLoop()\n\treturn {${bp.coreLoop.map((s) => `"${luaString(s)}"`).join(", ")}}\nend\n\nreturn GameManager`,
     };
   }
 
@@ -74,7 +89,7 @@ export class LuaGenerator {
       name: "PlayerService",
       type: "server",
       path: "ServerScriptService/PlayerService",
-      code: `-- PlayerService: manages player state\nlocal Players = game:GetService("Players")\nlocal PlayerService = {}\n\nPlayerService.PlayerData = {}\n\nfunction PlayerService:OnPlayerJoin(player)\n\tself.PlayerData[player.UserId] = {\n\t\tlevel = 1,\n\t\t${bp.economy.currency} = 0,\n\t\tstage = "${bp.progression.stages[0]}"\n\t}\n\tprint("[PlayerService] " .. player.Name .. " joined")\nend\n\nPlayers.PlayerAdded:Connect(function(p) PlayerService:OnPlayerJoin(p) end)\n\nreturn PlayerService`,
+      code: `-- PlayerService: manages player state\nlocal Players = game:GetService("Players")\nlocal PlayerService = {}\n\nPlayerService.PlayerData = {}\n\nfunction PlayerService:OnPlayerJoin(player)\n\tself.PlayerData[player.UserId] = {\n\t\tlevel = 1,\n\t\t["${luaString(bp.economy.currency)}"] = 0,\n\t\tstage = "${luaString(bp.progression.stages[0] ?? "")}"\n\t}\n\tprint("[PlayerService] " .. player.Name .. " joined")\nend\n\nPlayers.PlayerAdded:Connect(function(p) PlayerService:OnPlayerJoin(p) end)\n\nreturn PlayerService`,
     };
   }
 
@@ -83,7 +98,7 @@ export class LuaGenerator {
       name: "EconomyService",
       type: "server",
       path: "ServerScriptService/EconomyService",
-      code: `-- EconomyService: ${bp.economy.balanceStrategy}\nlocal EconomyService = {}\n\nEconomyService.CURRENCY = "${bp.economy.currency}"\nEconomyService.SOURCES = {${bp.economy.sources.map((s) => `"${s}"`).join(", ")}}\nEconomyService.SINKS = {${bp.economy.sinks.map((s) => `"${s}"`).join(", ")}}\n\nfunction EconomyService:Award(playerId, amount, source)\n\t-- Award currency to player\n\tprint("[Economy] +" .. amount .. " " .. self.CURRENCY .. " from " .. source)\nend\n\nfunction EconomyService:Spend(playerId, amount, sink)\n\t-- Deduct currency\n\tprint("[Economy] -" .. amount .. " " .. self.CURRENCY .. " on " .. sink)\nend\n\nreturn EconomyService`,
+      code: `-- EconomyService: ${bp.economy.balanceStrategy}\nlocal EconomyService = {}\n\nEconomyService.CURRENCY = "${luaString(bp.economy.currency)}"\nEconomyService.SOURCES = {${bp.economy.sources.map((s) => `"${luaString(s)}"`).join(", ")}}\nEconomyService.SINKS = {${bp.economy.sinks.map((s) => `"${luaString(s)}"`).join(", ")}}\n\nfunction EconomyService:Award(playerId, amount, source)\n\t-- Award currency to player\n\tprint("[Economy] +" .. amount .. " " .. self.CURRENCY .. " from " .. source)\nend\n\nfunction EconomyService:Spend(playerId, amount, sink)\n\t-- Deduct currency\n\tprint("[Economy] -" .. amount .. " " .. self.CURRENCY .. " on " .. sink)\nend\n\nreturn EconomyService`,
     };
   }
 
@@ -92,7 +107,7 @@ export class LuaGenerator {
       name: "ClientController",
       type: "client",
       path: "StarterPlayerScripts/ClientController",
-      code: `-- ClientController: ${bp.title}\nlocal ReplicatedStorage = game:GetService("ReplicatedStorage")\nlocal ClientController = {}\n\nfunction ClientController:Init()\n\tprint("[Client] ${bp.title} client ready")\nend\n\nClientController:Init()\n\nreturn ClientController`,
+      code: `-- ClientController: ${bp.title}\nlocal ReplicatedStorage = game:GetService("ReplicatedStorage")\nlocal ClientController = {}\n\nfunction ClientController:Init()\n\tprint("[Client] ${luaString(bp.title)} client ready")\nend\n\nClientController:Init()\n\nreturn ClientController`,
     };
   }
 
@@ -110,7 +125,7 @@ export class LuaGenerator {
       name: "GameConfig",
       type: "shared",
       path: "ReplicatedStorage/Shared/GameConfig",
-      code: `-- GameConfig: ${bp.title}\nlocal GameConfig = {\n\tTITLE = "${bp.title}",\n\tGENRE = "${bp.genre}",\n\tVERSION = "1.0.0",\n\tMAP_SIZE = "${bp.world.size}",\n\tMAX_NPCS = ${bp.npcs.length},\n}\n\nreturn GameConfig`,
+      code: `-- GameConfig: ${bp.title}\nlocal GameConfig = {\n\tTITLE = "${luaString(bp.title)}",\n\tGENRE = "${luaString(bp.genre)}",\n\tVERSION = "1.0.0",\n\tMAP_SIZE = "${luaString(bp.world.size)}",\n\tMAX_NPCS = ${bp.npcs.length},\n}\n\nreturn GameConfig`,
     };
   }
 
@@ -119,7 +134,7 @@ export class LuaGenerator {
       name: "Constants",
       type: "shared",
       path: "ReplicatedStorage/Shared/Constants",
-      code: `-- Constants: game-wide enums and values\nlocal Constants = {\n\tSTAGES = {${bp.progression.stages.map((s) => `"${s}"`).join(", ")}},\n\tBIOMES = {${bp.world.biomes.map((b) => `"${b}"`).join(", ")}},\n\tCURRENCY = "${bp.economy.currency}",\n}\n\nreturn Constants`,
+      code: `-- Constants: game-wide enums and values\nlocal Constants = {\n\tSTAGES = {${bp.progression.stages.map((s) => `"${luaString(s)}"`).join(", ")}},\n\tBIOMES = {${bp.world.biomes.map((b) => `"${luaString(b)}"`).join(", ")}},\n\tCURRENCY = "${luaString(bp.economy.currency)}",\n}\n\nreturn Constants`,
     };
   }
 }

@@ -926,6 +926,7 @@ server/src/generation/GenerationPipeline.ts
 server/src/generation/GenerationRegistry.ts
 server/src/generation/GenerationReport.ts
 server/src/generation/GenerationTypes.ts
+server/src/generation/__tests__/genviability1.minimal-package.test.ts
 server/src/generation/assets/AssetGenerationEngine.ts
 server/src/generation/assets/AssetGenerator.ts
 server/src/generation/assets/AssetManifestBuilder.ts
