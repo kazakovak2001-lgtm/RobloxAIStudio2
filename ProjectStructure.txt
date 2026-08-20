@@ -1563,6 +1563,8 @@
 │   │   │   └── streaming.ts
 │   │   ├── studio
 │   │   │   ├── artifacts
+│   │   │   │   ├── __tests__
+│   │   │   │   │   └── GenerationArtifactRecorder.provenance.test.ts
 │   │   │   │   └── GenerationArtifactRecorder.ts
 │   │   │   ├── import
 │   │   │   │   ├── __tests__

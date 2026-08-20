@@ -281,6 +281,11 @@ function playableFallback(
         "Runtime world bootstrap",
         "Client objective/progress/reward HUD",
       ],
+      // GEN-ARTIFACT-INTEGRITY-1. The objectives actually built — including
+      // the single generic "objective" substitution when the design named
+      // none — not `ctx.mechanicNames` verbatim, so this states what the
+      // generated code really contains.
+      mechanicNames: [...mechanicNames],
     },
   };
 }
@@ -371,10 +376,18 @@ function assertSemanticFidelity(
  * (true only for the deterministic tier), downstream evidence can tell
  * primary success, first-repair success, constrained-repair success, and
  * deterministic fallback apart.
+ *
+ * GEN-ARTIFACT-INTEGRITY-1. Also stamps `mechanicNames` — the same list
+ * `assertSemanticFidelity` just checked every entry of against the
+ * accepted scripts. This is the compact semantic evidence
+ * `GenerationArtifactRecorder` preserves into the durable artifact: not a
+ * second gameplay schema, just the mechanic identity already computed here
+ * exposed on the output that already carries it downstream.
  */
 function withGenerationMode(
   result: Record<string, unknown>,
   mode: "primary" | "repaired" | "constrained_repair",
+  ctx: FallbackGameplayContext,
 ): Record<string, unknown> {
   const generated = result.lua_generator;
   if (!generated || typeof generated !== "object" || Array.isArray(generated)) {
@@ -385,6 +398,7 @@ function withGenerationMode(
     lua_generator: {
       ...(generated as Record<string, unknown>),
       generationMode: mode,
+      mechanicNames: [...ctx.mechanicNames],
     },
   };
 }
@@ -720,7 +734,7 @@ export class LuaGeneratorAgent extends BaseAgent {
       // failure here is retried through the same cascade as a playability
       // failure, below.
       assertSemanticFidelity(scripts, gameplayContext);
-      result = withGenerationMode(result, "primary");
+      result = withGenerationMode(result, "primary", gameplayContext);
     } catch (error) {
       const reason = error instanceof Error ? error.message : String(error);
       try {
@@ -731,7 +745,7 @@ export class LuaGeneratorAgent extends BaseAgent {
         const scripts = normalizeLuaScripts(result);
         assertPlayableLuaScripts(scripts);
         assertSemanticFidelity(scripts, gameplayContext);
-        result = withGenerationMode(result, "repaired");
+        result = withGenerationMode(result, "repaired", gameplayContext);
       } catch (repairError) {
         if (!isRetryableGenerationError(repairError)) throw repairError;
         const repairReason =
@@ -752,7 +766,11 @@ export class LuaGeneratorAgent extends BaseAgent {
           const scripts = normalizeLuaScripts(result);
           assertPlayableLuaScripts(scripts);
           assertSemanticFidelity(scripts, gameplayContext);
-          result = withGenerationMode(result, "constrained_repair");
+          result = withGenerationMode(
+            result,
+            "constrained_repair",
+            gameplayContext,
+          );
         } catch (finalRepairError) {
           if (!isRetryableGenerationError(finalRepairError)) {
             throw finalRepairError;

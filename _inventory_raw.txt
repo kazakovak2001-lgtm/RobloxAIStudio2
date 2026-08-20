@@ -1293,6 +1293,7 @@ server/src/studio/StudioRealtimeSyncManager.ts
 server/src/studio/StudioSyncEngine.ts
 server/src/studio/StudioTypes.ts
 server/src/studio/artifacts/GenerationArtifactRecorder.ts
+server/src/studio/artifacts/__tests__/GenerationArtifactRecorder.provenance.test.ts
 server/src/studio/import/RobloxExportArtifactAdapter.ts
 server/src/studio/import/__tests__/genviability2.studio-import-acceptance.test.ts
 server/src/studio/integration/PackageSynchronizer.ts
