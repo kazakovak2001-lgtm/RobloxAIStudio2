@@ -47,6 +47,7 @@ export class AnthropicProvider implements LLMProvider {
           messages: [{ role: "user", content: prompt }],
         };
         if (options?.stop) body.stop_sequences = options.stop;
+        if (options?.system) body.system = options.system;
 
         const response = await fetchWithTimeout(
           `${this.baseUrl}/messages`,

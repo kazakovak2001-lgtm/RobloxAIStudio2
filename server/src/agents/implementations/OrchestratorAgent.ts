@@ -133,12 +133,13 @@ export class OrchestratorAgent extends BaseAgent {
       : "none";
 
     // PromptTemplateRegistry is the single source of truth.
-    const registryPrompt = this.buildPrompt({
+    const promptVars = {
       name,
       description,
       systems_built: systemsBuilt,
       modules_built: serverScripts,
-    });
+    };
+    const registryPrompt = this.buildPrompt(promptVars);
 
     const inlinePrompt =
       "You are the final synthesis stage of a Roblox game generation pipeline. " +
@@ -157,7 +158,11 @@ export class OrchestratorAgent extends BaseAgent {
       prompt,
       ["name", "world", "systems", "status"],
       fallback as Record<string, unknown>,
-      { temperature: 0.5, maxTokens: 2000 },
+      {
+        temperature: 0.5,
+        maxTokens: 2000,
+        system: this.systemPromptFor(promptVars) ?? undefined,
+      },
     );
 
     if (!result.status) result.status = "completed";

@@ -80,6 +80,7 @@ export class OllamaProvider implements LLMProvider {
         const requestBody = {
           model,
           prompt,
+          ...(options?.system ? { system: options.system } : {}),
           stream: true,
           ...(format === undefined ? {} : { format }),
           ...(think === undefined ? {} : { think }),

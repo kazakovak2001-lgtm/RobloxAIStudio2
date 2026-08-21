@@ -721,6 +721,7 @@ server/src/agents/collaboration/index.ts
 server/src/agents/contract/agentContract.ts
 server/src/agents/core/AgentRegistry.ts
 server/src/agents/core/BaseAgent.ts
+server/src/agents/core/__tests__/promptTrustBoundary.test.ts
 server/src/agents/implementations/ArchitectureControllerAgent.ts
 server/src/agents/implementations/AssetPlannerAgent.ts
 server/src/agents/implementations/CodeReviewControllerAgent.ts
@@ -1196,6 +1197,7 @@ server/src/providers/__tests__/ollamaThinkingBudget.test.ts
 server/src/providers/__tests__/ollamaTimeout.test.ts
 server/src/providers/__tests__/providerFactory.test.ts
 server/src/providers/__tests__/providers.test.ts
+server/src/providers/__tests__/systemRoleSeparation.test.ts
 server/src/providers/ai/BaseProvider.ts
 server/src/providers/ai/PromptBuilder.ts
 server/src/providers/ai/ProviderFactory.ts
