@@ -1,4 +1,5 @@
 import { BaseAgent, type AgentConfig } from "../core/BaseAgent";
+import { summariseForPrompt } from "../../ai/promptValues";
 import type { AgentInput } from "../../types";
 import {
   assertPlayableLuaScripts,
@@ -10,6 +11,89 @@ import {
 } from "../../validation/spatialDesign";
 
 const DEFAULT_SERVICES = ["GameManager", "DataService", "PlayerService"];
+
+/**
+ * GEN-CANONICAL-FIDELITY-1. What the design actually asked for, carried
+ * through this agent's own prompt enrichment and deterministic fallback.
+ *
+ * Independent of, and not derived from, `server/src/generation/lua/LuaGenerator.ts`
+ * (the legacy deterministic generator GEN-FIDELITY-1/2 improved). That
+ * generator is not on the canonical `POST /:projectId/generate` path and is
+ * not imported here — this agent's fallback is its own, smaller,
+ * purpose-built implementation of the same class of behavior: multiple
+ * ordered objectives, server-authoritative progress and reward, and a HUD
+ * that reports both.
+ */
+interface FallbackGameplayContext {
+  /** Mechanic names in design order. Empty means the design named none. */
+  readonly mechanicNames: readonly string[];
+  readonly progressionLoop: string;
+  readonly unlockingSystem: string;
+  readonly economySummary: string;
+}
+
+/** Escape a value for embedding inside a double-quoted Luau string literal. */
+function luaString(value: string): string {
+  return value
+    .replace(/\\/g, "\\\\")
+    .replace(/"/g, '\\"')
+    .replace(/\n/g, "\\n");
+}
+
+/** Deterministic colour cycle so multiple fallback objectives are visually distinct. */
+const OBJECTIVE_COLORS: ReadonlyArray<readonly [number, number, number]> = [
+  [255, 200, 40],
+  [230, 126, 34],
+  [231, 76, 60],
+  [26, 188, 156],
+  [155, 89, 182],
+];
+
+function color3(rgb: readonly [number, number, number]): string {
+  return `Color3.fromRGB(${rgb[0]}, ${rgb[1]}, ${rgb[2]})`;
+}
+
+/** Mechanic name from either a bare string or a `{name}`/`{title}` object, matching how GameDesignerAgent shapes `gameplay.mechanics`. */
+function readMechanicNames(mechanicsArr: unknown): string[] {
+  if (!Array.isArray(mechanicsArr)) return [];
+  return mechanicsArr
+    .map((m) => {
+      if (typeof m === "string") return m;
+      if (m && typeof m === "object") {
+        const record = m as Record<string, unknown>;
+        if (typeof record.name === "string") return record.name;
+        if (typeof record.title === "string") return record.title;
+      }
+      return "";
+    })
+    .map((s) => s.trim())
+    .filter(Boolean);
+}
+
+/**
+ * Extra prompt instructions asking the model for the same class of gameplay
+ * depth GEN-FIDELITY-1/2 built deterministically: multiple ordered
+ * objectives, server-authoritative progress and reward, and a HUD that
+ * reports all of it. Empty when the design named no mechanics, so a design
+ * with nothing to build multiple objectives from is not told to invent some.
+ */
+function buildGameplayDepthInstructions(ctx: FallbackGameplayContext): string {
+  if (ctx.mechanicNames.length === 0) return "";
+  const objectiveList = ctx.mechanicNames
+    .map((mechanicName, index) => `${index + 1}. ${mechanicName}`)
+    .join("\n");
+  const plural = ctx.mechanicNames.length === 1 ? "" : "s";
+  return `
+
+Gameplay depth requirements — this design names ${ctx.mechanicNames.length} mechanic${plural}. Build one distinct, positioned objective per mechanic below, not a single generic collectible:
+${objectiveList}
+- Gate completion server-side and in this exact order: an objective only advances a player's progress and pays a reward when it is that player's current objective. A client touching an out-of-order or already-completed objective must be a no-op — no reward, no progress change.
+- Track each player's progress and reward balance in one authoritative server-side table, read and mutated only by the code that decides completion. Never keep a second, competing copy of that state anywhere else.
+- Pay a reward for each completed objective by mutating that authoritative balance directly. Never only print or log a reward — that is not a reward.
+- This design's progression: ${ctx.progressionLoop}, unlocked via ${ctx.unlockingSystem}.
+- This design's reward/economy model: ${ctx.economySummary}.
+- Every completion must fire the progress RemoteEvent with the completed objective's name, how many objectives are complete out of the total, the next objective (or "complete"), and the current authoritative reward balance. The client HUD must render all of that, not only a mechanic name.`;
+}
 
 /** Extract stable architecture names from either array- or object-shaped output. */
 export function extractServiceNames(services: unknown): string[] {
@@ -33,106 +117,185 @@ export function extractServiceNames(services: unknown): string[] {
   return names.length > 0 ? names : DEFAULT_SERVICES;
 }
 
-function playableFallback(name: string): Record<string, unknown> {
+/**
+ * GEN-CANONICAL-FIDELITY-1. Deterministic fallback, used when there is no LLM
+ * at all and as the last resort after every AI attempt failed playability.
+ *
+ * Previously this always emitted "collect 5 golden orbs" regardless of what
+ * the design actually asked for — the richer mechanics, progression and
+ * economy a real generation produced were discarded the moment a fallback
+ * was needed. Now it builds one interactable objective per named mechanic
+ * (falling back to a single generic objective only when the design named
+ * none, same as before), gated to complete in order by one authoritative
+ * per-player server-side state table, paying a reward from that same table
+ * on each completion, and reporting the full objective/progress/reward
+ * state to the client HUD — the same class of behavior GEN-FIDELITY-1/2
+ * built for the legacy generator, reimplemented here independently.
+ */
+function playableFallback(
+  name: string,
+  ctx: FallbackGameplayContext,
+): Record<string, unknown> {
   const gameName = JSON.stringify(name);
+  const mechanicNames =
+    ctx.mechanicNames.length > 0 ? ctx.mechanicNames : ["objective"];
+
+  const objectiveEntries = mechanicNames.map(
+    (mechanicName, index) =>
+      `\t{ name = "${luaString(mechanicName)}", reward = ${(index + 1) * 10} },`,
+  );
+
+  const objectiveParts: string[] = [];
+  mechanicNames.forEach((mechanicName, index) => {
+    const varName = `objective${index + 1}`;
+    objectiveParts.push(
+      `local ${varName} = Instance.new("Part")`,
+      `${varName}.Name = "${luaString(mechanicName)}_Interactable"`,
+      `${varName}.Anchored = true`,
+      `${varName}.Shape = Enum.PartType.Ball`,
+      `${varName}.Size = Vector3.new(5, 5, 5)`,
+      `${varName}.Position = Vector3.new(${index * 8}, 5, 0)`,
+      `${varName}.Color = ${color3(OBJECTIVE_COLORS[index % OBJECTIVE_COLORS.length])}`,
+      `${varName}.Parent = world`,
+      `${varName}.Touched:Connect(function(hit)`,
+      `\tlocal player = Players:GetPlayerFromCharacter(hit.Parent)`,
+      `\tif not player then`,
+      `\t\treturn`,
+      `\tend`,
+      `\tonObjectiveTouched(player, ${index + 1})`,
+      `end)`,
+      ``,
+    );
+  });
+
+  const serverCode = [
+    `local Players = game:GetService("Players")`,
+    `local ReplicatedStorage = game:GetService("ReplicatedStorage")`,
+    ``,
+    `local event = ReplicatedStorage:FindFirstChild("ObjectiveProgress") or Instance.new("RemoteEvent")`,
+    `event.Name = "ObjectiveProgress"`,
+    `event.Parent = ReplicatedStorage`,
+    ``,
+    `local world = workspace:FindFirstChild("GeneratedAdventure") or Instance.new("Folder")`,
+    `world.Name = "GeneratedAdventure"`,
+    `world.Parent = workspace`,
+    ``,
+    `local startIsland = Instance.new("Part")`,
+    `startIsland.Name = "StartIsland"`,
+    `startIsland.Anchored = true`,
+    `startIsland.Size = Vector3.new(10, 1, 10)`,
+    `startIsland.Position = Vector3.new(0, 3, 0)`,
+    `startIsland.Color = Color3.fromRGB(72, 120, 72)`,
+    `startIsland.Parent = world`,
+    ``,
+    `-- Single authoritative store of per-player progress and reward. Read`,
+    `-- and mutated only here; the objective handlers below never keep a`,
+    `-- second, competing copy of this state.`,
+    `local PlayerState = {}`,
+    ``,
+    `local function ensureState(userId)`,
+    `\tlocal state = PlayerState[userId]`,
+    `\tif not state then`,
+    `\t\tstate = { progress = 1, currency = 0 }`,
+    `\t\tPlayerState[userId] = state`,
+    `\tend`,
+    `\treturn state`,
+    `end`,
+    ``,
+    `local OBJECTIVES = {`,
+    ...objectiveEntries,
+    `}`,
+    `local TOTAL_OBJECTIVES = #OBJECTIVES`,
+    ``,
+    `Players.PlayerAdded:Connect(function(player)`,
+    `\tPlayerState[player.UserId] = { progress = 1, currency = 0 }`,
+    `end)`,
+    ``,
+    `Players.PlayerRemoving:Connect(function(player)`,
+    `\tPlayerState[player.UserId] = nil`,
+    `end)`,
+    ``,
+    `-- Server-authoritative: an objective only advances progress and pays a`,
+    `-- reward when it is the touching player's current objective, in order.`,
+    `local function onObjectiveTouched(player, objectiveIndex)`,
+    `\tlocal state = ensureState(player.UserId)`,
+    `\tif objectiveIndex ~= state.progress then`,
+    `\t\treturn`,
+    `\tend`,
+    `\tlocal objective = OBJECTIVES[objectiveIndex]`,
+    `\tstate.progress = state.progress + 1`,
+    `\tstate.currency = state.currency + objective.reward`,
+    `\tlocal nextObjective = OBJECTIVES[state.progress]`,
+    `\tevent:FireClient(player, {`,
+    `\t\tcompleted = objective.name,`,
+    `\t\tcompletedCount = objectiveIndex,`,
+    `\t\ttotalObjectives = TOTAL_OBJECTIVES,`,
+    `\t\tnextObjective = nextObjective and nextObjective.name or "complete",`,
+    `\t\tcurrency = state.currency,`,
+    `\t})`,
+    `end`,
+    ``,
+    ...objectiveParts,
+  ].join("\n");
+
+  const clientCode = [
+    `local Players = game:GetService("Players")`,
+    `local ReplicatedStorage = game:GetService("ReplicatedStorage")`,
+    `local playerGui = Players.LocalPlayer:WaitForChild("PlayerGui")`,
+    ``,
+    `local gui = Instance.new("ScreenGui")`,
+    `gui.Name = "GeneratedAdventureHUD"`,
+    `gui.ResetOnSpawn = false`,
+    `gui.Parent = playerGui`,
+    ``,
+    `local objective = Instance.new("TextLabel")`,
+    `objective.Size = UDim2.fromOffset(420, 56)`,
+    `objective.Position = UDim2.fromOffset(24, 24)`,
+    `objective.BackgroundColor3 = Color3.fromRGB(20, 25, 35)`,
+    `objective.TextColor3 = Color3.new(1, 1, 1)`,
+    `objective.TextScaled = true`,
+    `objective.Text = ${gameName} .. ": 0/${mechanicNames.length} objectives"`,
+    `objective.Parent = gui`,
+    ``,
+    `ReplicatedStorage:WaitForChild("ObjectiveProgress").OnClientEvent:Connect(function(data)`,
+    `\tif typeof(data) ~= "table" then`,
+    `\t\treturn`,
+    `\tend`,
+    `\tobjective.Text = ${gameName} .. ": " .. tostring(data.completed) .. " (" .. tostring(data.completedCount) .. "/" .. tostring(data.totalObjectives) .. ") | Next: " .. tostring(data.nextObjective) .. " | Reward: " .. tostring(data.currency)`,
+    `end)`,
+  ].join("\n");
+
   return {
     lua_generator: {
-      server: [
-        {
-          name: "AdventureBootstrap.server.lua",
-          code: `local Players = game:GetService("Players")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
-
-local event = ReplicatedStorage:FindFirstChild("ObjectiveProgress") or Instance.new("RemoteEvent")
-event.Name = "ObjectiveProgress"
-event.Parent = ReplicatedStorage
-
-local world = workspace:FindFirstChild("GeneratedAdventure") or Instance.new("Folder")
-world.Name = "GeneratedAdventure"
-world.Parent = workspace
-
-local function makePart(name, position, color)
-  local part = Instance.new("Part")
-  part.Name = name
-  part.Anchored = true
-  part.Size = Vector3.new(5, 1, 5)
-  part.Position = position
-  part.Color = color
-  part.Parent = world
-  return part
-end
-
-makePart("StartIsland", Vector3.new(0, 3, 0), Color3.fromRGB(72, 120, 72))
-for index = 1, 5 do
-  local collectible = makePart("Collectible" .. index, Vector3.new(index * 8, 5, 0), Color3.fromRGB(255, 200, 40))
-  collectible.Shape = Enum.PartType.Ball
-  collectible.Touched:Connect(function(hit)
-    local player = Players:GetPlayerFromCharacter(hit.Parent)
-    if not player or not collectible.Parent then return end
-    local score = player:FindFirstChild("leaderstats") and player.leaderstats:FindFirstChild("Score")
-    if score then score.Value += 1 end
-    event:FireClient(player, score and score.Value or 0, 5)
-    collectible:Destroy()
-  end)
-end
-
-Players.PlayerAdded:Connect(function(player)
-  local leaderstats = Instance.new("Folder")
-  leaderstats.Name = "leaderstats"
-  leaderstats.Parent = player
-  local score = Instance.new("IntValue")
-  score.Name = "Score"
-  score.Parent = leaderstats
-end)`,
-        },
-      ],
-      client: [
-        {
-          name: "AdventureHUD.client.lua",
-          code: `local Players = game:GetService("Players")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local playerGui = Players.LocalPlayer:WaitForChild("PlayerGui")
-
-local gui = Instance.new("ScreenGui")
-gui.Name = "GeneratedAdventureHUD"
-gui.ResetOnSpawn = false
-gui.Parent = playerGui
-
-local objective = Instance.new("TextLabel")
-objective.Size = UDim2.fromOffset(420, 56)
-objective.Position = UDim2.fromOffset(24, 24)
-objective.BackgroundColor3 = Color3.fromRGB(20, 25, 35)
-objective.TextColor3 = Color3.new(1, 1, 1)
-objective.TextScaled = true
-objective.Text = ${gameName} .. ": collect 5 golden orbs (0/5)"
-objective.Parent = gui
-
-ReplicatedStorage:WaitForChild("ObjectiveProgress").OnClientEvent:Connect(function(score, target)
-  objective.Text = ${gameName} .. ": collect 5 golden orbs (" .. score .. "/" .. target .. ")"
-  if score >= target then objective.Text = "Objective complete!" end
-end)`,
-        },
-      ],
+      server: [{ name: "AdventureBootstrap.server.lua", code: serverCode }],
+      client: [{ name: "AdventureHUD.client.lua", code: clientCode }],
       shared: [
         {
           name: "GameConfig.lua",
-          code: `return { GAME_NAME = ${gameName}, COLLECTIBLE_TARGET = 5 }`,
+          code: `return { GAME_NAME = ${gameName}, OBJECTIVE_COUNT = ${mechanicNames.length} }`,
         },
       ],
       patterns: [
-        "Server-authoritative collectibles",
+        "Server-authoritative ordered objectives",
+        "Authoritative per-player progress and reward state",
         "Runtime world bootstrap",
-        "Client objective HUD",
+        "Client objective/progress/reward HUD",
       ],
+      // GEN-ARTIFACT-INTEGRITY-1. The objectives actually built — including
+      // the single generic "objective" substitution when the design named
+      // none — not `ctx.mechanicNames` verbatim, so this states what the
+      // generated code really contains.
+      mechanicNames: [...mechanicNames],
     },
   };
 }
 
 function safeRepairFallback(
   name: string,
+  ctx: FallbackGameplayContext,
   reason: string,
 ): Record<string, unknown> {
-  const fallback = playableFallback(name);
+  const fallback = playableFallback(name, ctx);
   const generated = fallback.lua_generator as Record<string, unknown>;
   const patterns = Array.isArray(generated.patterns) ? generated.patterns : [];
 
@@ -152,6 +315,92 @@ function isPlayableValidationError(error: unknown): boolean {
     error instanceof Error &&
     error.message.startsWith("Lua generation is not playable:")
   );
+}
+
+const SEMANTIC_FIDELITY_ERROR_PREFIX =
+  "Lua generation is not semantically faithful:";
+
+function isSemanticFidelityError(error: unknown): boolean {
+  return (
+    error instanceof Error &&
+    error.message.startsWith(SEMANTIC_FIDELITY_ERROR_PREFIX)
+  );
+}
+
+/** Either failure class this agent's repair cascade retries on. */
+function isRetryableGenerationError(error: unknown): boolean {
+  return isPlayableValidationError(error) || isSemanticFidelityError(error);
+}
+
+/**
+ * GEN-CANONICAL-FIDELITY-2. `assertPlayableLuaScripts` proves a response is
+ * *runnable*; nothing proved it was *faithful* to the design. A model could
+ * satisfy every structural rule with one generic collectible while the
+ * design named several distinct mechanics — playable, but a silent
+ * downgrade. This is the narrowest possible check for that gap, scoped to
+ * this agent rather than added to `types/playableLua.ts`: it does not touch
+ * blueprint schema, world structure, or security, only whether every named
+ * mechanic actually appears in what was generated.
+ *
+ * A no-op when the design named fewer than two mechanics — a single
+ * generic objective is not a downgrade when there was nothing to lose.
+ * Checked against raw script content, not comment/string-stripped source:
+ * a mechanic's evidence here is legitimately a quoted Part name or an
+ * `OBJECTIVES` table entry, both of which live inside string literals.
+ */
+function assertSemanticFidelity(
+  scripts: ReadonlyArray<{ readonly content: string }>,
+  ctx: FallbackGameplayContext,
+): void {
+  if (ctx.mechanicNames.length < 2) return;
+  const combined = scripts
+    .map((script) => script.content)
+    .join("\n")
+    .toLowerCase();
+  const missing = ctx.mechanicNames.filter(
+    (mechanicName) => !combined.includes(mechanicName.toLowerCase()),
+  );
+  if (missing.length > 0) {
+    throw new Error(
+      `${SEMANTIC_FIDELITY_ERROR_PREFIX} the design named ${ctx.mechanicNames.length} mechanics ` +
+        `(${ctx.mechanicNames.join(", ")}), but the generated code has no objective for: ${missing.join(", ")}.`,
+    );
+  }
+}
+
+/**
+ * GEN-CANONICAL-FIDELITY-2. Stamps which tier of the repair cascade
+ * produced a successful AI response, reusing the exact `generationMode`
+ * field `safeRepairFallback` already stamps on its own output — not a new,
+ * parallel provenance system. Combined with `AgentResult.usedFallback`
+ * (true only for the deterministic tier), downstream evidence can tell
+ * primary success, first-repair success, constrained-repair success, and
+ * deterministic fallback apart.
+ *
+ * GEN-ARTIFACT-INTEGRITY-1. Also stamps `mechanicNames` — the same list
+ * `assertSemanticFidelity` just checked every entry of against the
+ * accepted scripts. This is the compact semantic evidence
+ * `GenerationArtifactRecorder` preserves into the durable artifact: not a
+ * second gameplay schema, just the mechanic identity already computed here
+ * exposed on the output that already carries it downstream.
+ */
+function withGenerationMode(
+  result: Record<string, unknown>,
+  mode: "primary" | "repaired" | "constrained_repair",
+  ctx: FallbackGameplayContext,
+): Record<string, unknown> {
+  const generated = result.lua_generator;
+  if (!generated || typeof generated !== "object" || Array.isArray(generated)) {
+    return result;
+  }
+  return {
+    ...result,
+    lua_generator: {
+      ...(generated as Record<string, unknown>),
+      generationMode: mode,
+      mechanicNames: [...ctx.mechanicNames],
+    },
+  };
 }
 
 /**
@@ -195,11 +444,34 @@ export function normalizeBacktickLuaCode(raw: string): string | null {
   return normalized + raw.slice(cursor);
 }
 
+/**
+ * GEN-CANONICAL-FIDELITY-2. Now receives the same `gameplayContext` the
+ * primary prompt and the deterministic fallback already use. Previously
+ * this prompt was built from only `name`, `description`, `reason` and
+ * `spatialDesign` — no mechanic, progression or economy information
+ * reached the last AI attempt, so its own instructions asked for a single
+ * generic "collectible", and a response satisfying that literally could
+ * pass `assertPlayableLuaScripts` while silently discarding everything the
+ * design named beyond one mechanic.
+ *
+ * The single-objective runtime-pattern bullets are kept verbatim when the
+ * design named fewer than two mechanics — there is nothing to lose in that
+ * case, and the previously-tested exact wording stays exact. With two or
+ * more, those bullets switch to the multi-objective, server-authoritative
+ * shape, and `buildGameplayDepthInstructions` (the same block the primary
+ * prompt uses) is appended so the objective list, ordering, authoritative
+ * state and HUD requirements are stated identically everywhere this agent
+ * asks a model to generate.
+ *
+ * Spatial preservation is unchanged: the level section still says "preserve
+ * this exactly" and nothing here replaces or removes it.
+ */
 function buildConstrainedPlayableRepairPrompt(
   name: string,
   description: string,
   reason: string,
   spatialDesign: string,
+  gameplayContext: FallbackGameplayContext,
 ): string {
   // The designed level, carried into the last attempt. Without it this prompt
   // asked for a game with no level, so a response that passed validation was a
@@ -221,6 +493,18 @@ World requirements:
 - Wire the objective to the objects of type interactive, preserving the original objective.
 `
     : "";
+
+  const multiObjective = gameplayContext.mechanicNames.length >= 2;
+  const serverObjectivePattern = multiObjective
+    ? "- Server: create one distinct, positioned interactable Part per mechanic named below and connect each one's Touched:Connect(function(hit) ... end) to a shared completion handler."
+    : "- Server: create a collectible Part in workspace and connect collectible.Touched:Connect(function(hit) ... end).";
+  const serverRemotePattern = multiObjective
+    ? "- Server: create a RemoteEvent in ReplicatedStorage and call event:FireClient(player, data) with the completed objective's name, completed/total count, the next objective, and the current authoritative reward balance."
+    : "- Server: create a RemoteEvent in ReplicatedStorage and call event:FireClient(player, score, target) when the player touches the collectible.";
+  const clientUpdatePattern = multiObjective
+    ? "- Client: connect event.OnClientEvent:Connect(function(data) ... end) and update the TextLabel with the completed objective, progress count, next objective and reward balance."
+    : "- Client: connect event.OnClientEvent:Connect(function(score, target) ... end) and update the TextLabel.";
+
   return `You are repairing Roblox Luau that failed a strict playability check.
 Return one valid JSON object only, with this exact shape:
 { "lua_generator": { "server": [{"name":"Game.server.lua","code":"..."}], "client": [{"name":"HUD.client.lua","code":"..."}], "shared": [] } }
@@ -233,18 +517,18 @@ ${level}
 Replace the previous solution completely. Keep the implementation small and use these exact runtime patterns:
 - Output exactly one server entry and exactly one client entry. Keep shared empty. Do not split the playable loop across scripts.
 - Server: create at least one Folder or Part with Instance.new and parent the generated world to workspace.
-- Server: create a collectible Part in workspace and connect collectible.Touched:Connect(function(hit) ... end).
-- Server: create a RemoteEvent in ReplicatedStorage and call event:FireClient(player, score, target) when the player touches the collectible.
+${serverObjectivePattern}
+${serverRemotePattern}
 - Client: local playerGui = Players.LocalPlayer:WaitForChild("PlayerGui").
 - Client: local gui = Instance.new("ScreenGui"), then gui.Parent = playerGui.
 - Client: create a visible TextLabel and parent it to gui.
-- Client: connect event.OnClientEvent:Connect(function(score, target) ... end) and update the TextLabel.
+${clientUpdatePattern}
 - Create the HUD before connecting OnClientEvent so it is visible immediately when Play starts.
 - Create every runtime dependency yourself. Do not use require or assume Workspace children already exist.
 - Use game:GetService to access services. Never call InsertService or request GamePassService.
 - Use only Roblox Luau APIs. Do not use promises, :andThen, DataStoreService, TODOs, placeholders, or client-side FireClient.
 - Server and client entries must execute directly and must not return modules.
-Return only the JSON object, with complete code strings.`;
+Return only the JSON object, with complete code strings.${buildGameplayDepthInstructions(gameplayContext)}`;
 }
 
 export class LuaGeneratorAgent extends BaseAgent {
@@ -333,14 +617,49 @@ export class LuaGeneratorAgent extends BaseAgent {
       ". Each is a responsibility implemented inside the generated game code. None of them is a Roblox service: never pass any of these names to game:GetService().";
 
     const mechanicsArr = (gameplay as any)?.mechanics;
-    const systemsSummary = Array.isArray(mechanicsArr)
-      ? mechanicsArr
-          .slice(0, 4)
-          .map((m: any) => String(m?.name ?? m))
-          .join(", ")
+    // SERIALIZATION-001. This is the prompt that generates the Lua, so a
+    // mechanic reduced to `[object Object]` here is a system the generated
+    // game was asked to implement with no description of it.
+    const mechanicsDescription = Array.isArray(mechanicsArr)
+      ? summariseForPrompt(mechanicsArr.slice(0, 8), "core systems")
       : "core systems";
 
-    const fallback = playableFallback(name);
+    // GEN-CANONICAL-FIDELITY-1. GameDesignerAgent's output — this agent's own
+    // `gameplay` input — already carries progression and economy alongside
+    // mechanics (`gameplay.progression`, `gameplay.balance.economyOrScoring`).
+    // Neither reached this prompt before: only mechanics did, and only the
+    // first four of them. Both the prompt and the deterministic fallback below
+    // now read all three, the same fields GEN-FIDELITY-1/2 preserved on the
+    // legacy generator's blueprint path.
+    const mechanicNames = readMechanicNames(mechanicsArr);
+    const progression = (gameplay as any)?.progression as
+      Record<string, unknown> | undefined;
+    const progressionLoop = String(
+      progression?.loop ?? "discover → engage → reward → repeat",
+    );
+    const unlockingSystem = String(
+      progression?.unlocking_system ??
+        progression?.player_progression_model ??
+        "level thresholds",
+    );
+    const balance = (gameplay as any)?.balance as
+      Record<string, unknown> | undefined;
+    const economySummary = String(
+      balance?.economyOrScoring ?? "points earned from successful interactions",
+    );
+    const gameplayContext: FallbackGameplayContext = {
+      mechanicNames,
+      progressionLoop,
+      unlockingSystem,
+      economySummary,
+    };
+
+    const systemsSummary =
+      mechanicNames.length > 0
+        ? `${mechanicNames.length} ordered gameplay objectives — ${mechanicsDescription}. Progression: ${progressionLoop} via ${unlockingSystem}. Reward economy: ${economySummary}.`
+        : `${mechanicsDescription}. Progression: ${progressionLoop} via ${unlockingSystem}. Reward economy: ${economySummary}.`;
+
+    const fallback = playableFallback(name, gameplayContext);
 
     if (!this.llm) return fallback;
 
@@ -389,7 +708,13 @@ export class LuaGeneratorAgent extends BaseAgent {
         : "") +
       "Server/client entries are runnable Scripts, not modules, so they must not end with return. Shared entries may return modules. Never use TODOs, placeholders, empty functions, or comments instead of behavior. Return only valid JSON.";
 
-    const prompt = registryPrompt ?? inlinePrompt;
+    // GEN-CANONICAL-FIDELITY-1. Appended rather than templated: the registry
+    // prompt (`prompt-lua-generator-v1`) and the inline fallback prompt both
+    // stay as they are, and this names the concrete, per-request objective
+    // list, ordering, and reward/economy model neither of them can — they are
+    // static text, this is derived from the actual design.
+    const depthInstructions = buildGameplayDepthInstructions(gameplayContext);
+    const prompt = (registryPrompt ?? inlinePrompt) + depthInstructions;
 
     let result: Record<string, unknown>;
     try {
@@ -401,7 +726,15 @@ export class LuaGeneratorAgent extends BaseAgent {
         temperature: 0.4,
         maxTokens: 6000,
       });
-      assertPlayableLuaScripts(normalizeLuaScripts(result));
+      const scripts = normalizeLuaScripts(result);
+      assertPlayableLuaScripts(scripts);
+      // GEN-CANONICAL-FIDELITY-2. Playable is not the same claim as
+      // faithful: a response can satisfy every structural rule with one
+      // generic collectible while the design named several mechanics. A
+      // failure here is retried through the same cascade as a playability
+      // failure, below.
+      assertSemanticFidelity(scripts, gameplayContext);
+      result = withGenerationMode(result, "primary", gameplayContext);
     } catch (error) {
       const reason = error instanceof Error ? error.message : String(error);
       try {
@@ -409,9 +742,12 @@ export class LuaGeneratorAgent extends BaseAgent {
           `${prompt}\n\nREPAIR REQUIRED: ${reason}. Replace the entire response with complete executable code satisfying every runtime requirement.`,
           { temperature: 0.1, maxTokens: 8000 },
         );
-        assertPlayableLuaScripts(normalizeLuaScripts(result));
+        const scripts = normalizeLuaScripts(result);
+        assertPlayableLuaScripts(scripts);
+        assertSemanticFidelity(scripts, gameplayContext);
+        result = withGenerationMode(result, "repaired", gameplayContext);
       } catch (repairError) {
-        if (!isPlayableValidationError(repairError)) throw repairError;
+        if (!isRetryableGenerationError(repairError)) throw repairError;
         const repairReason =
           repairError instanceof Error
             ? repairError.message
@@ -423,12 +759,20 @@ export class LuaGeneratorAgent extends BaseAgent {
               description,
               repairReason,
               spatialDesignText,
+              gameplayContext,
             ),
             { temperature: 0, maxTokens: 8000 },
           );
-          assertPlayableLuaScripts(normalizeLuaScripts(result));
+          const scripts = normalizeLuaScripts(result);
+          assertPlayableLuaScripts(scripts);
+          assertSemanticFidelity(scripts, gameplayContext);
+          result = withGenerationMode(
+            result,
+            "constrained_repair",
+            gameplayContext,
+          );
         } catch (finalRepairError) {
-          if (!isPlayableValidationError(finalRepairError)) {
+          if (!isRetryableGenerationError(finalRepairError)) {
             throw finalRepairError;
           }
           const finalReason =
@@ -436,11 +780,14 @@ export class LuaGeneratorAgent extends BaseAgent {
               ? finalRepairError.message
               : String(finalRepairError);
           // Deterministic content of this agent's own making, substituted
-          // after the model's output failed the playability contract. It
-          // never passed through the parser, so provenance must be declared
-          // here or the execution would claim the model authored it.
+          // after every AI attempt failed playability or semantic fidelity.
+          // It never passed through the parser, so provenance must be
+          // declared here or the execution would claim the model authored
+          // it. `safeRepairFallback` stamps its own `generationMode:
+          // "safe_repair"` and, by construction, names every mechanic the
+          // design provided — no separate fidelity check is needed for it.
           this.markDeterministicFallback();
-          result = safeRepairFallback(name, finalReason);
+          result = safeRepairFallback(name, gameplayContext, finalReason);
           assertPlayableLuaScripts(normalizeLuaScripts(result));
         }
       }

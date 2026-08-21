@@ -1,8 +1,10 @@
 import type { GenerationExecution } from "../../types/blueprint";
 import {
   DurableStorageConflictError,
+  type DurableMutation,
   type StorageProvider,
 } from "../storage/StorageProvider";
+import type { ProjectDeletionChild } from "./ProjectDeletionCoordinator";
 
 interface GenerationProjectState {
   id?: string;
@@ -23,7 +25,92 @@ interface GenerationProjectRepository {
 const PROJECTS = "projects";
 const GENERATION_HISTORY = "generation_history";
 const GENERATION_EXECUTIONS = "generation_executions";
+/**
+ * AUDIT-DUP-GENERATION-001 and AUDIT-OUTCOME-LAST-WRITER-001.
+ *
+ * One record per project naming the generation that currently owns it. Written
+ * with `requireAbsent` inside the start transaction, so a second start for the
+ * same project is refused by durable storage rather than by a process-local
+ * lock — which is what makes the invariant hold across instances. Released by
+ * the run that owns it when it reaches a terminal state.
+ */
+const GENERATION_ACTIVE_CLAIMS = "generation_active_claims";
+const GENERATION_START_REQUESTS = "generation_start_requests";
 const projectQueues = new Map<string, Promise<void>>();
+
+/** Names the generation currently allowed to act on a project. */
+export interface GenerationActiveClaim {
+  executionId: string;
+  startedAt: number;
+}
+
+/**
+ * MAR-004. What a start request was, so a repeat of it can be recognised.
+ *
+ * Kept durably and committed with the start it identifies. A caller whose
+ * response was lost cannot tell a succeeded request from one that never
+ * arrived, and without this the only answers available were a conflict naming
+ * an execution they could not identify as their own, or — once the run had
+ * finished and released its claim — a silent second generation.
+ */
+export interface GenerationStartRequestRecord {
+  key: string;
+  projectId: string;
+  principal: string;
+  /** Distinguishes two different requests that reused one key. */
+  fingerprint: string;
+  executionId: string;
+  createdAt: number;
+}
+
+/** Identifies one start request for replay. */
+export interface GenerationStartRequest<T> {
+  key: string;
+  principal: string;
+  fingerprint: string;
+  /**
+   * Rebuilds the caller's result for an execution that already started.
+   *
+   * The coordinator does not invent it: on a replay nothing was prepared, so
+   * the only honest source for the caller's shape is the caller.
+   */
+  replay: (executionId: string) => Promise<T>;
+}
+
+/**
+ * Raised when one idempotency key is used for two different requests.
+ *
+ * Answering with the first execution would hand one caller's run to another, or
+ * silently substitute a different payload's result. Two requests claiming one
+ * identity is a caller defect, and guessing which one was meant is not
+ * something storage can do.
+ */
+export class IdempotencyConflictError extends Error {
+  constructor(
+    readonly key: string,
+    readonly projectId: string,
+  ) {
+    super(
+      `Idempotency key ${key} on project ${projectId} was already used for a different request`,
+    );
+    this.name = "IdempotencyConflictError";
+  }
+}
+
+/** Raised when a project already has an active generation. */
+export class ActiveGenerationConflictError extends Error {
+  constructor(
+    readonly projectId: string,
+    readonly activeExecutionId?: string,
+  ) {
+    super(
+      `Project ${projectId} already has an active generation${
+        activeExecutionId ? ` (${activeExecutionId})` : ""
+      }`,
+    );
+    this.name = "ActiveGenerationConflictError";
+  }
+}
 
 function normalizeDate(value: Date | string): Date {
   return value instanceof Date ? value : new Date(value);
@@ -182,6 +269,30 @@ export class GenerationOutcomeCoordinator {
         aiCost: 0,
       };
 
+      // AUDIT-OUTCOME-LAST-WRITER-001. Two runs of one project can finish in
+      // either order. The run that still owns the project's claim is the
+      // authoritative one; an older run that finishes later may close its own
+      // record, but must not rewrite the project or release someone else's
+      // claim. Without this, a stale run silently overwrote the newer outcome.
+      //
+      // POSTGRES-COHERENCE-1. The claim this arbitrates on is read from this
+      // instance's process-local cache. If a different instance committed a
+      // newer claim (or released this one), that write is invisible here
+      // until refreshed — which would let a stale local view of "no claim"
+      // stand in for a foreign claim that actually exists in PostgreSQL,
+      // defeating the ownership check above.
+      await this.storage.refresh?.([GENERATION_ACTIVE_CLAIMS]);
+      const claim = this.storage.get<GenerationActiveClaim>(
+        GENERATION_ACTIVE_CLAIMS,
+        existing.project_id,
+      );
+      // Refuse only when the project is demonstrably owned by someone else. No
+      // claim at all is not evidence of foreign ownership: an execution started
+      // before this record existed, or through the path that persists an
+      // execution on its own, still has to be able to close out its project.
+      const ownsProject = !claim || claim.executionId === execution.id;
+      const holdsClaim = claim?.executionId === execution.id;
+
       await this.storage.applyDurableBatch([
         {
           operation: "set",
@@ -195,12 +306,25 @@ export class GenerationOutcomeCoordinator {
           id: execution.id,
           data: history,
         },
-        {
-          operation: "set",
-          collection: PROJECTS,
-          id: existing.project_id,
-          data: updatedProject,
-        },
+        ...(ownsProject
+          ? ([
+              {
+                operation: "set",
+                collection: PROJECTS,
+                id: existing.project_id,
+                data: updatedProject,
+              },
+            ] as const)
+          : []),
+        ...(holdsClaim
+          ? ([
+              {
+                operation: "delete",
+                collection: GENERATION_ACTIVE_CLAIMS,
+                id: existing.project_id,
+              },
+            ] as const)
+          : []),
       ]);
       return execution;
     });
@@ -208,12 +332,38 @@ export class GenerationOutcomeCoordinator {
 }
 
 export class ProjectGenerationStartCoordinator {
-  constructor(private readonly projects: GenerationProjectRepository) {}
+  constructor(
+    private readonly projects: GenerationProjectRepository,
+    private readonly storage: StorageProvider,
+  ) {}
 
+  /**
+   * AUDIT-START-ATOMICITY-001.
+   *
+   * Start evidence commits as one transaction. The previous implementation
+   * wrote the project (status/generationCount), then the execution, then the
+   * start history as three independent durable writes, so a rejection anywhere
+   * after the first left the project falsely claiming `generating` with an
+   * incremented count and no execution to ever repair it.
+   *
+   * `prepare` must not write anything durable and must not start process-local
+   * work. Everything durable goes through the single `applyDurableBatch` below,
+   * whose contract is that no cache change becomes visible unless every
+   * mutation commits and a rejection preserves the exact pre-transaction state.
+   * `afterCommit` runs only once that transaction has committed, which is where
+   * process-local work such as enqueueing the pipeline belongs.
+   *
+   * This mirrors `GenerationOutcomeCoordinator.commit` above, which already
+   * commits execution + history + project together; the start path was the
+   * asymmetric one.
+   */
   async start<T>(
     projectId: string,
-    schedule: () => Promise<T>,
-    recordHistory: (result: T) => Promise<void>,
+    prepare: () => Promise<T>,
+    buildStartEvidence: (result: T) => readonly DurableMutation[],
+    resolveExecutionId: (result: T) => string,
+    afterCommit?: (result: T) => void,
+    request?: GenerationStartRequest<T>,
   ): Promise<T> {
     return withProjectLock(projectId, async () => {
       const project = this.projects.get(projectId);
@@ -221,16 +371,191 @@ export class ProjectGenerationStartCoordinator {
         throw new Error(`Project ${projectId} not found`);
       }
 
-      await this.projects.updateDurable(projectId, {
-        status: "generating",
-        generationCount: project.generationCount + 1,
-      });
+      // POSTGRES-COHERENCE-1. `get` is a synchronous read of this instance's
+      // process-local cache; a durable write committed by a different
+      // instance is invisible here until that cache is refreshed. Without
+      // this, a start request that landed on the instance which did not
+      // commit the original run would read stale (usually empty) local
+      // copies of these three collections and reach the wrong admission
+      // decision instead of seeing what was actually just committed.
+      await this.storage.refresh?.([
+        GENERATION_START_REQUESTS,
+        GENERATION_ACTIVE_CLAIMS,
+        PROJECTS,
+      ]);
 
-      const result = await schedule();
-      await recordHistory(result);
+      // MAR-004. Answered before anything is prepared, so a replay costs no
+      // provider budget and schedules no work. Read from storage rather than
+      // from memory, so a second process and a restarted one answer alike.
+      //
+      // Keyed by `request.key` alone, not `${projectId}:${key}`. The key is
+      // meant to name one logical request no matter what it is pointed at, so
+      // the same key surfacing against a different project has to collide with
+      // the first record and fail closed — a caller bug worth surfacing, not
+      // two unrelated projects each quietly getting their own start under a
+      // key that was supposed to be unique. Partitioning storage by project
+      // would have made that collision structurally impossible to detect,
+      // because the two requests would simply never look at the same record.
+      if (request) {
+        const recorded = this.storage.get<GenerationStartRequestRecord>(
+          GENERATION_START_REQUESTS,
+          request.key,
+        );
+        if (recorded) {
+          if (
+            recorded.projectId !== projectId ||
+            recorded.principal !== request.principal ||
+            recorded.fingerprint !== request.fingerprint
+          ) {
+            throw new IdempotencyConflictError(request.key, projectId);
+          }
+          return request.replay(recorded.executionId);
+        }
+      }
+
+      // Nothing durable yet: a rejection here leaves no state at all.
+      const result = await prepare();
+
+      // Spread the stored record so unrelated project fields survive, matching
+      // what SaaSProjectRepository.updateDurable would have preserved.
+      const stored =
+        this.storage.get<GenerationProjectState>(PROJECTS, projectId) ??
+        project;
+      const updatedProject: GenerationProjectState = {
+        ...stored,
+        status: "generating",
+        // POSTGRES-COHERENCE-1: increment the freshly-refreshed `stored`
+        // count, not `project` — `project` was read before the refresh
+        // above and may be behind a count another instance already wrote.
+        generationCount: stored.generationCount + 1,
+        updatedAt: Date.now(),
+      };
+
+      const claim: GenerationActiveClaim = {
+        executionId: resolveExecutionId(result),
+        startedAt: Date.now(),
+      };
+
+      try {
+        await this.storage.applyDurableBatch([
+          ...buildStartEvidence(result),
+          {
+            operation: "set",
+            collection: PROJECTS,
+            id: projectId,
+            data: updatedProject,
+          },
+          // Admission and evidence commit together. `requireAbsent` makes the
+          // second concurrent start fail the whole batch, so a duplicate leaves
+          // no execution, no history and no incremented count behind — and the
+          // decision is taken by durable storage, so a second process reaches
+          // the same answer.
+          {
+            operation: "set",
+            collection: GENERATION_ACTIVE_CLAIMS,
+            id: projectId,
+            data: claim,
+            requireAbsent: true,
+          },
+          // In the same transaction as the evidence and the claim. A record
+          // written outside it would answer a later retry with an execution
+          // that was never created, and one written after the response would
+          // leave the crash window this exists to close.
+          ...(request
+            ? ([
+                {
+                  operation: "set",
+                  collection: GENERATION_START_REQUESTS,
+                  id: request.key,
+                  data: {
+                    key: request.key,
+                    projectId,
+                    principal: request.principal,
+                    fingerprint: request.fingerprint,
+                    executionId: claim.executionId,
+                    createdAt: Date.now(),
+                  } satisfies GenerationStartRequestRecord,
+                  requireAbsent: true,
+                },
+              ] as const)
+            : []),
+        ]);
+      } catch (error) {
+        if (error instanceof DurableStorageConflictError) {
+          // Which `requireAbsent` lost the race decides which conflict this
+          // is. Both share this catch because both come out of the same
+          // batch, but they are different facts: the claim conflicting means
+          // another execution already owns this project, while the request
+          // record conflicting means this exact key was claimed by a
+          // concurrent call — possibly for a different project — before this
+          // one committed.
+          if (request && error.collection === GENERATION_START_REQUESTS) {
+            throw new IdempotencyConflictError(request.key, projectId);
+          }
+          // The conflicting claim was committed by whichever instance won
+          // the race; this instance's cache may not have it yet.
+          await this.storage.refresh?.([GENERATION_ACTIVE_CLAIMS]);
+          const active = this.storage.get<GenerationActiveClaim>(
+            GENERATION_ACTIVE_CLAIMS,
+            projectId,
+          );
+          throw new ActiveGenerationConflictError(
+            projectId,
+            active?.executionId,
+          );
+        }
+        throw error;
+      }
+
+      afterCommit?.(result);
       return result;
     });
   }
+}
+
+/**
+ * PROJECT-ERASURE-2.
+ *
+ * `generation_active_claims` is keyed directly by projectId, and
+ * `generation_start_requests` records carry a `projectId` field though they
+ * are keyed by idempotency key. Neither was covered by PROJECT-ERASURE-1's
+ * `ProjectDeletionCoordinator`, so a project deleted while holding an active
+ * claim — or one whose idempotency records had not yet been released by a
+ * completed run — left both behind, reachable by nothing since the project
+ * itself is gone and its id is never reused.
+ *
+ * Read-only: builds the mutations that would remove this project's claim and
+ * start-request records without writing anything, exactly like
+ * `IBlueprintRepository.prepareProjectDeletion`, so the coordinator commits
+ * them in the same transaction as every other project-owned delete.
+ */
+export function generationClaimProjectDeletion(
+  storage: StorageProvider,
+): ProjectDeletionChild {
+  return {
+    prepareProjectDeletion(projectId: string): DurableMutation[] {
+      const mutations: DurableMutation[] = [];
+      if (storage.get(GENERATION_ACTIVE_CLAIMS, projectId)) {
+        mutations.push({
+          operation: "delete",
+          collection: GENERATION_ACTIVE_CLAIMS,
+          id: projectId,
+        });
+      }
+      const startRequests = storage.list<GenerationStartRequestRecord>(
+        GENERATION_START_REQUESTS,
+        (record) => record.projectId === projectId,
+      );
+      mutations.push(
+        ...startRequests.map((record) => ({
+          operation: "delete" as const,
+          collection: GENERATION_START_REQUESTS,
+          id: record.key,
+        })),
+      );
+      return mutations;
+    },
+  };
 }
 
 export async function recordProjectOutcomeBestEffort(

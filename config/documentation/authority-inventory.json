@@ -236,7 +236,7 @@
         "Today the Lua world is the safety net.",
         "exactly one component owns runtime world structure",
         "One preparatory slice is implemented; the ownership switch is not.",
-        "No mode-aware playability contract",
+        "are now mode-aware",
         "Nothing sets `materialized-world`"
       ],
       "forbiddenClaims": [

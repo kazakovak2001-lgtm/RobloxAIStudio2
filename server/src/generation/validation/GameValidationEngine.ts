@@ -9,6 +9,9 @@
 import type { RobloxGameBlueprint } from "../blueprint/GameBlueprintEngine";
 import type { LuaGenerationResult, LuaScript } from "../lua/LuaGenerator";
 import type { AssetLayout } from "../assets/AssetGenerator";
+import { getPlayableLuaIssues } from "../../types/playableLua";
+import { LuaCodeValidator } from "../lua/LuaCodeValidator";
+import { reviewLuaSecurity } from "../../validation/luaSecurityReview";
 
 export interface ValidationIssue {
   severity: "error" | "warning" | "info";
@@ -27,6 +30,8 @@ export interface GameValidationResult {
 }
 
 export class GameValidationEngine {
+  private readonly luaCodeValidator = new LuaCodeValidator();
+
   /**
    * Run full validation on generated game content.
    */
@@ -132,43 +137,58 @@ export class GameValidationEngine {
     for (const script of lua.scripts) {
       this.checkLuaSyntax(script, issues);
     }
+
+    // GEN-VIABILITY-2. A structurally valid, syntactically balanced script
+    // is not necessarily a runnable one: the game may still have no world,
+    // no spawn, no interaction, and no HUD. Reuse the same playable-Lua
+    // contract that already gates the other generation pipeline's Studio
+    // delivery, rather than inventing a second "is this actually a game"
+    // check with its own rules.
+    const playableIssues = getPlayableLuaIssues(
+      lua.scripts.map((script) => ({
+        path: script.path,
+        content: script.code,
+      })),
+    );
+    for (const issue of playableIssues) {
+      issues.push({ severity: "error", code: "NOT_PLAYABLE", message: issue });
+    }
   }
 
+  /**
+   * Compile/type/policy gate for one generated script.
+   *
+   * Delegates to the repo's canonical `LuaCodeValidator` (forbidden APIs —
+   * `loadstring`, `getfenv`/`setfenv`, `rawset(_G, ...)`,
+   * `debug.setmetatable`, CoreGui injection — plus balanced-block syntax
+   * checking) instead of re-implementing a second, weaker pattern set here.
+   * `LuaCodeValidator` errors are blocking (`severity: "error"`); its
+   * warnings (deprecated APIs, oversized scripts, unyielded loops) are
+   * non-blocking, matching how it is already used elsewhere in the codebase
+   * (`LuaGenerationEngine`, `LuaArtifactBuilder`).
+   */
   private checkLuaSyntax(script: LuaScript, issues: ValidationIssue[]): void {
-    const code = script.code;
+    const report = this.luaCodeValidator.validate(script.name, script.code);
 
-    // Check for balanced keywords
-    const funcCount = (code.match(/\bfunction\b/g) ?? []).length;
-    const endCount = (code.match(/\bend\b/g) ?? []).length;
-    if (funcCount > endCount) {
+    for (const error of report.errors) {
       issues.push({
         severity: "error",
-        code: "UNBALANCED_FUNC",
-        message: `Unclosed function in ${script.name}`,
+        code: "LUA_CODE_ERROR",
+        message: `${script.name}: ${error}`,
         file: script.path,
       });
     }
-
-    // Check for dangerous patterns
-    if (code.includes("loadstring")) {
-      issues.push({
-        severity: "error",
-        code: "UNSAFE_LOADSTRING",
-        message: `loadstring() detected in ${script.name} — security risk`,
-        file: script.path,
-      });
-    }
-    if (code.includes("getfenv") || code.includes("setfenv")) {
+    for (const warning of report.warnings) {
       issues.push({
         severity: "warning",
-        code: "UNSAFE_ENV",
-        message: `Environment manipulation in ${script.name}`,
+        code: "LUA_CODE_WARNING",
+        message: `${script.name}: ${warning}`,
         file: script.path,
       });
     }
 
-    // Check for empty scripts
-    if (code.trim().length < 20) {
+    // Check for empty scripts — not covered by LuaCodeValidator.
+    if (script.code.trim().length < 20) {
       issues.push({
         severity: "warning",
         code: "EMPTY_SCRIPT",
@@ -237,6 +257,46 @@ export class GameValidationEngine {
           file: script.path,
         });
       }
+    }
+
+    this.attachSecurityReview(lua, issues);
+  }
+
+  /**
+   * SECREVIEW-1 trust-boundary review, reused rather than re-implemented.
+   *
+   * `reviewLuaSecurity` (server/src/validation/luaSecurityReview.ts) is the
+   * repo's canonical deep security scanner — it understands `OnServerEvent`/
+   * `OnServerInvoke` handlers, tracks which parameters are client-controlled,
+   * and catches exploit shapes this engine's own checks above do not (client
+   * -awarded currency, unvalidated teleports, dynamic code execution, etc.).
+   *
+   * Its findings are attached as `info`-severity issues only. Per
+   * `docs/00-project-control/SECURITY-REVIEW-B_PROMOTION_CRITERIA.md` the
+   * reviewer is deliberately advisory — "a finding never negates generation,
+   * delivery or release" — until the documented promotion criteria (measured
+   * false-positive rate, human override path, etc.) are satisfied. Promoting
+   * it to blocking is a separate, not-yet-scoped delivery and must not happen
+   * as a side effect here.
+   */
+  private attachSecurityReview(
+    lua: LuaGenerationResult,
+    issues: ValidationIssue[],
+  ): void {
+    const report = reviewLuaSecurity(
+      lua.scripts.map((script) => ({
+        path: script.path,
+        content: script.code,
+      })),
+    );
+
+    for (const finding of report.findings) {
+      issues.push({
+        severity: "info",
+        code: `SECURITY_REVIEW_${finding.code}`,
+        message: `[advisory, ${finding.severity}] ${finding.message}: ${finding.evidence}`,
+        file: finding.path,
+      });
     }
   }
 }

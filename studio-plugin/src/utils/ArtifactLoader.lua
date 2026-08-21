@@ -13,6 +13,13 @@ local StarterGui = game:GetService("StarterGui")
 local StarterPlayer = game:GetService("StarterPlayer")
 local Workspace = game:GetService("Workspace")
 
+local MANAGED_ATTRIBUTE = "AIStudioManaged"
+-- MAR-002. The same pair the materializers stamp. Managed says AI Studio made
+-- the instance; these say which project it was made for and which delivery
+-- produced it, which is what a destructive decision actually needs.
+local PROJECT_ATTRIBUTE = "AIStudioProject"
+local DELIVERY_ATTRIBUTE = "AIStudioDelivery"
+
 local ArtifactLoader = {}
 ArtifactLoader.__index = ArtifactLoader
 
@@ -23,29 +30,75 @@ function ArtifactLoader.new(errorReporter)
     return self
 end
 
-function ArtifactLoader:load(artifact)
-    return self:loadArtifact(artifact)
+--[[
+    The provenance to write and to check against, or an error.
+
+    Passed per call rather than held on the loader. One loader instance serves
+    the whole plugin session, so provenance stored on it would outlive the
+    import that set it: a later call that forgot to set it would silently write
+    under whichever project happened to go last, and an import interleaved
+    across the HTTP yields inside a poll could write under the other one.
+    Import-scoped by construction is cheaper than remembering to clear it.
+
+    Fail closed. Writing an unattributed instance would create exactly the
+    legacy shape the ownership rule treats as foreign, so the loader would be
+    manufacturing work that nothing could ever claim.
+]]
+function ArtifactLoader:_requireProvenance(provenance)
+    if type(provenance) ~= "table"
+        or type(provenance.projectId) ~= "string"
+        or provenance.projectId == ""
+        or type(provenance.deliveryId) ~= "string"
+        or provenance.deliveryId == ""
+    then
+        error("Refusing to load artifacts without a project and delivery identity", 0)
+    end
+    return provenance
 end
 
-function ArtifactLoader:loadArtifact(artifact)
+--[[
+    Whether this project may replace the instance.
+
+    An instance carrying the mark but no project comes from a build before
+    provenance existed and counts as foreign, because claiming an unattributed
+    instance is the permissive guess this rule prevents.
+]]
+local function isOwnedBy(instance, projectId)
+    if instance:GetAttribute(MANAGED_ATTRIBUTE) ~= true then return false end
+    local owner = instance:GetAttribute(PROJECT_ATTRIBUTE)
+    return type(owner) == "string" and owner == projectId
+end
+
+local function stampProvenance(instance, provenance)
+    instance:SetAttribute(MANAGED_ATTRIBUTE, true)
+    instance:SetAttribute(PROJECT_ATTRIBUTE, provenance.projectId)
+    instance:SetAttribute(DELIVERY_ATTRIBUTE, provenance.deliveryId)
+end
+
+function ArtifactLoader:load(artifact, provenance)
+    return self:loadArtifact(artifact, provenance)
+end
+
+function ArtifactLoader:loadArtifact(artifact, provenance)
     local success, result = pcall(function()
+        local scoped = self:_requireProvenance(provenance)
         if type(artifact) ~= "table" or type(artifact.id) ~= "string" then
             error("Artifact must include a string id")
         end
 
         if artifact.type == "lua" then
-            return self:_loadLuaArtifact(artifact)
+            return self:_loadLuaArtifact(artifact, scoped)
         end
         if artifact.type == "ui-layout" and self:_claimsUITreeSchema(artifact.content) then
-            return self:_loadUITreeArtifact(artifact)
+            return self:_loadUITreeArtifact(artifact, scoped)
         end
         -- WORLD-1B. Routed on the scene rather than the artifact type, so an
         -- older backend's content without a scene still takes the metadata
         -- path below and nothing claims a world was materialized.
         if self:_carriesWorldScene(artifact.content) then
-            return self:_loadWorldSceneArtifact(artifact)
+            return self:_loadWorldSceneArtifact(artifact, scoped)
         end
-        return self:_loadMetadataArtifact(artifact)
+        return self:_loadMetadataArtifact(artifact, scoped)
     end)
 
     if not success then
@@ -65,7 +118,7 @@ function ArtifactLoader:loadArtifact(artifact)
     return result
 end
 
-function ArtifactLoader:_loadLuaArtifact(artifact)
+function ArtifactLoader:_loadLuaArtifact(artifact, provenance)
     local content = artifact.content
     if type(content) ~= "table" or type(content.scripts) ~= "table" or #content.scripts == 0 then
         error("Lua artifact content must contain a non-empty scripts array")
@@ -83,7 +136,11 @@ function ArtifactLoader:_loadLuaArtifact(artifact)
             error("Lua script definition " .. tostring(index) .. " requires string content")
         end
 
-        local instance = self:_upsertScript(scriptDefinition.path, scriptDefinition.content)
+        local instance = self:_upsertScript(
+            scriptDefinition.path,
+            scriptDefinition.content,
+            provenance
+        )
         table.insert(instancePaths, instance:GetFullName())
     end
 
@@ -107,10 +164,14 @@ function ArtifactLoader:_claimsUITreeSchema(content)
     return type(content) == "table" and content.schemaVersion ~= nil
 end
 
-function ArtifactLoader:_loadUITreeArtifact(artifact)
+function ArtifactLoader:_loadUITreeArtifact(artifact, provenance)
     local stageFolder = self:_ensureStageFolder(artifact.stage or "UI_GENERATION")
 
-    local delivered, err = UITreeMaterializer.materialize(artifact.content, stageFolder)
+    local delivered, err = UITreeMaterializer.materialize(
+        artifact.content,
+        stageFolder,
+        provenance
+    )
     if not delivered then
         -- Level 0: `err` is already a complete operator message, and the outer
         -- handler wraps it again. A position prefix would point at this
@@ -148,10 +209,14 @@ function ArtifactLoader:_carriesWorldScene(content)
         and content.scene.sceneVersion == WorldSceneMaterializer.SCENE_VERSION
 end
 
-function ArtifactLoader:_loadWorldSceneArtifact(artifact)
+function ArtifactLoader:_loadWorldSceneArtifact(artifact, provenance)
     local stageFolder = self:_ensureStageFolder(artifact.stage or "WORLD_MODEL")
 
-    local delivered, err = WorldSceneMaterializer.materialize(artifact.content.scene, stageFolder)
+    local delivered, err = WorldSceneMaterializer.materialize(
+        artifact.content.scene,
+        stageFolder,
+        provenance
+    )
     if not delivered then
         -- Level 0: `err` is already a complete operator message and the outer
         -- handler wraps it again.
@@ -268,7 +333,8 @@ function ArtifactLoader:_removeLegacyIdNamedValues(stageFolder)
     end
 end
 
-function ArtifactLoader:_loadMetadataArtifact(artifact)
+function ArtifactLoader:_loadMetadataArtifact(artifact, provenance)
+    provenance = self:_requireProvenance(provenance)
     local stageFolder = self:_ensureStageFolder(artifact.stage or "OTHER")
     local stageName = tostring(artifact.stage or "OTHER")
     local valueName = self:_metadataInstanceName(artifact)
@@ -277,9 +343,12 @@ function ArtifactLoader:_loadMetadataArtifact(artifact)
     -- Same ownership rule the UI path follows: never destroy something the
     -- creator made. A stable name makes a collision plausible in a way the
     -- old random id never was, so this fails the export instead of guessing.
-    if value and (not value:IsA("StringValue") or value:GetAttribute("AIStudioManaged") ~= true) then
+    if value
+        and (not value:IsA("StringValue")
+            or not isOwnedBy(value, provenance.projectId))
+    then
         error(string.format(
-            "Refusing to replace %s: an instance with that name exists and is not managed by AI Studio",
+            "Refusing to replace %s: an instance with that name exists and is not managed by AI Studio for this project",
             value:GetFullName()
         ))
     end
@@ -287,9 +356,9 @@ function ArtifactLoader:_loadMetadataArtifact(artifact)
     if not value then
         value = Instance.new("StringValue")
         value.Name = valueName
-        value:SetAttribute("AIStudioManaged", true)
         value.Parent = stageFolder
     end
+    stampProvenance(value, provenance)
 
     local encoded = artifact.content
     if type(encoded) ~= "string" then
@@ -309,19 +378,38 @@ function ArtifactLoader:_loadMetadataArtifact(artifact)
     }
 end
 
-function ArtifactLoader:_upsertScript(path, source)
+function ArtifactLoader:_upsertScript(path, source, provenance)
+    provenance = self:_requireProvenance(provenance)
     local segments = self:_splitPath(path)
     if #segments == 0 then error("Script path is empty") end
 
+    local rootName = segments[1]
     local parent, startIndex = self:_resolveRoot(segments)
-    for index = startIndex, #segments - 1 do
-        parent = self:_ensureFolder(parent, segments[index])
+    if not parent then
+        error("Unknown script root: " .. tostring(rootName))
     end
 
     local fileName = segments[#segments]
     local instanceName = self:_scriptName(fileName)
     local className = self:_scriptClass(fileName)
+    self:_assertPlacement(rootName, className)
+
+    for index = startIndex, #segments - 1 do
+        parent = self:_ensureFolder(parent, segments[index])
+    end
+
     local existing = parent:FindFirstChild(instanceName)
+    if existing and not isOwnedBy(existing, provenance.projectId) then
+        -- MAR-002. This used to destroy the instance on a class mismatch and
+        -- overwrite its source otherwise, without asking whose it was. A name
+        -- collision with a person's work is a reason to stop, not a reason to
+        -- delete: the plugin can regenerate its own output and cannot
+        -- regenerate theirs.
+        error(
+            "Refusing to replace " .. existing:GetFullName()
+                .. ": it was not created by AI Studio for this project"
+        )
+    end
     if existing and existing.ClassName ~= className then
         existing:Destroy()
         existing = nil
@@ -334,6 +422,10 @@ function ArtifactLoader:_upsertScript(path, source)
         instance.Parent = parent
     end
 
+    -- Marked so the next run can tell its own output from a person's. Scripts
+    -- were the one artifact kind created without a mark, which is what left the
+    -- ownership check above with nothing to read.
+    stampProvenance(instance, provenance)
     instance.Source = source
     return instance
 end
@@ -353,7 +445,46 @@ function ArtifactLoader:_resolveRoot(segments)
         return StarterPlayer:WaitForChild("StarterCharacterScripts"), 2
     end
 
-    return ReplicatedStorage, 1
+    -- MAR-002. This used to return ReplicatedStorage with the unrecognised
+    -- segment demoted to a folder name, so a typo or a root this plugin has not
+    -- heard of landed silently in the container that replicates to every
+    -- client. A destination that cannot be named is not a destination.
+    return nil, nil
+end
+
+--[[
+    Which containers a script class may legitimately occupy.
+
+    A server Script only runs where the server can reach it, and putting one in
+    a replicated container does not merely make it dead code: the source
+    replicates to every client, so a placement mistake becomes a disclosure of
+    server logic. A LocalScript is the mirror image, inert anywhere the client
+    cannot see. ModuleScripts are fetched by whatever requires them, so they are
+    the one class with no placement constraint.
+]]
+local SCRIPT_CLASS_ROOTS = {
+    Script = {
+        ServerScriptService = true,
+        ServerStorage = true,
+        Workspace = true,
+    },
+    LocalScript = {
+        StarterGui = true,
+        StarterPlayer = true,
+        StarterPlayerScripts = true,
+        StarterCharacterScripts = true,
+    },
+}
+
+function ArtifactLoader:_assertPlacement(rootName, className)
+    local allowed = SCRIPT_CLASS_ROOTS[className]
+    if not allowed then return end
+    if not allowed[rootName] then
+        error(
+            "Refusing to place a " .. className .. " in " .. rootName
+                .. ": that container cannot run it safely"
+        )
+    end
 end
 
 function ArtifactLoader:_ensureFolder(parent, name)

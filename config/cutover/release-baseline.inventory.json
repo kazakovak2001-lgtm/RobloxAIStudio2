@@ -1,7 +1,19 @@
 {
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "roadmapId": "CUTOVER-1D",
   "status": "readiness-only",
+  "runtimePair": {
+    "id": "MAR-004-469cd207-53eddd8b",
+    "backend": {
+      "repository": "kazakovak2001-lgtm/RobloxAIStudio2",
+      "commit": "469cd207bf937e5a3bfbbc12f15f92a12bcf955a"
+    },
+    "frontend": {
+      "repository": "kazakovak2001-lgtm/Frontend",
+      "controlBranch": "fix/mar-004-generate-idempotency-key",
+      "runtimeCommit": "53eddd8b52ced75a6cd65328ab7e9eec146fd4a7"
+    }
+  },
   "canonicalBranches": {
     "integration": "feature/plugin-merge",
     "integrationBaseline": "309e897b6f56633e290c72f099729a603c2fd13e",
@@ -13,7 +25,7 @@
   },
   "frontendRelease": {
     "repository": "kazakovak2001-lgtm/Frontend",
-    "commit": "b91ebdba613ca0d8f01a5fb33de355ae97588601"
+    "commit": "6d7c5ce17d8c2e58d0cb7f4b67306eeea984e286"
   },
   "activeRelease": {
     "files": [

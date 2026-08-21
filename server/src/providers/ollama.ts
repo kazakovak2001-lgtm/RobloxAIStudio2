@@ -1,4 +1,9 @@
 import type { LLMProvider, LLMOptions, LLMResponse } from "../types/llm";
+import {
+  logProviderCall,
+  payloadLoggingEnabled,
+  previewForDebug,
+} from "./providerTelemetry";
 import { LLMError } from "../types/llm";
 import { fetchWithTimeout, withRetry } from "./llmUtils";
 
@@ -60,20 +65,36 @@ export class OllamaProvider implements LLMProvider {
           options?.responseSchema ??
           (options?.responseFormat === "json" ? "json" : undefined);
 
+        // Reasoning-capable models (e.g. qwen3.x) stream chain-of-thought
+        // into a separate `thinking` field, which this provider never reads.
+        // Left to the model's own default, that reasoning can consume the
+        // entire `num_predict` budget before a single `response` token is
+        // emitted — HTTP 200, nonzero eval_count, empty content. Structured
+        // output has no use for a reasoning trace anyway, so whenever a
+        // format constraint is requested, also ask the model to skip it.
+        // Free-form chat is untouched — `think` is omitted, preserving
+        // whatever the model's own default is.
+        const think: boolean | undefined =
+          format === undefined ? undefined : false;
+
         const requestBody = {
           model,
           prompt,
           stream: true,
           ...(format === undefined ? {} : { format }),
+          ...(think === undefined ? {} : { think }),
           options: {
             temperature: options?.temperature ?? 0.7,
             num_predict: options?.maxTokens ?? 2000,
           },
         };
 
-        console.log(`[ollama-debug] URL: ${url}`);
-        console.log(`[ollama-debug] Method: POST`);
-        console.log(`[ollama-debug] Body: ${JSON.stringify(requestBody)}`);
+        // LLM-LOG-DATA-001. The request body carries the user brief and the
+        // internal prompt, so it is never logged. Only a bounded preview is
+        // available, and only outside production with the flag set.
+        if (payloadLoggingEnabled()) {
+          console.log(`[ollama-debug] prompt: ${previewForDebug(prompt)}`);
+        }
 
         let response: Response;
         try {
@@ -87,15 +108,12 @@ export class OllamaProvider implements LLMProvider {
             timeout,
           );
         } catch (fetchErr) {
-          console.error(`[ollama-debug] fetch() threw:`, fetchErr);
           console.error(
-            `[ollama-debug] Stack:`,
-            fetchErr instanceof Error ? fetchErr.stack : "none",
+            `[llm] provider=ollama model=${model} request failed:`,
+            fetchErr instanceof Error ? fetchErr.message : fetchErr,
           );
           throw fetchErr;
         }
-
-        console.log(`[ollama-debug] HTTP status: ${response.status}`);
 
         if (!response.ok) {
           const errorText = await response.text().catch(() => "");
@@ -117,11 +135,14 @@ export class OllamaProvider implements LLMProvider {
         let content = "";
         let tokensUsed: number | undefined;
 
+        let doneReason: string | undefined;
+
         const consumeLine = (line: string): void => {
           if (!line.trim()) return;
           let chunk: {
             response?: string;
             done?: boolean;
+            done_reason?: string;
             eval_count?: number;
             error?: string;
           };
@@ -136,8 +157,9 @@ export class OllamaProvider implements LLMProvider {
             throw new LLMError(`Ollama API error: ${chunk.error}`, "ollama");
           }
           if (chunk.response) content += chunk.response;
-          if (chunk.done && chunk.eval_count !== undefined) {
-            tokensUsed = chunk.eval_count;
+          if (chunk.done) {
+            if (chunk.eval_count !== undefined) tokensUsed = chunk.eval_count;
+            if (chunk.done_reason !== undefined) doneReason = chunk.done_reason;
           }
         };
 
@@ -152,13 +174,28 @@ export class OllamaProvider implements LLMProvider {
         buffer += decoder.decode();
         consumeLine(buffer);
 
-        console.log(`[ollama-debug] response length: ${content.length}`);
+        // Ollama's own `done_reason` is the truth about how generation ended;
+        // "length" means num_predict was hit before the model was finished,
+        // which is exactly the truncation this provider needs to surface
+        // rather than silently reporting as a normal completion.
+        const finishReason: "complete" | "length" | "error" =
+          doneReason === "length" ? "length" : "complete";
+
+        logProviderCall({
+          provider: "ollama",
+          model,
+          status: response.status,
+          durationMs: Date.now() - start,
+          responseChars: content.length,
+          tokensUsed,
+          finishReason,
+        });
 
         return {
           content,
           model,
           tokensUsed,
-          finishReason: "complete" as const,
+          finishReason,
           durationMs: Date.now() - start,
         };
       },
