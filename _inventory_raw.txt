@@ -1192,6 +1192,7 @@ server/src/projects/types/blueprint.ts
 server/src/projects/validation/project.validation.ts
 server/src/providers/__tests__/groq.test.ts
 server/src/providers/__tests__/ollamaStructuredOutput.test.ts
+server/src/providers/__tests__/ollamaThinkingBudget.test.ts
 server/src/providers/__tests__/ollamaTimeout.test.ts
 server/src/providers/__tests__/providerFactory.test.ts
 server/src/providers/__tests__/providers.test.ts
