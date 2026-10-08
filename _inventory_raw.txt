@@ -979,6 +979,7 @@ server/src/knowledge/index.ts
 server/src/lifecycle/bridge/LifecycleFeedbackBridge.ts
 server/src/lifecycle/core/GameLifecycleController.ts
 server/src/lifecycle/evolution/ContinuousEvolutionEngine.ts
+server/src/lifecycle/live/LiveUpdateEngine.test.ts
 server/src/lifecycle/live/LiveUpdateEngine.ts
 server/src/lifecycle/monitor/GameHealthMonitor.ts
 server/src/lifecycle/patch/AutoPatchGenerator.ts
