@@ -2,7 +2,7 @@
 
 # Master audit remediation plan
 
-Generated from `config/audit/master-audit-register.json` (79 findings). Severity is the register's; ordering is by the worst severity in each group, except that re-verification comes first and verified controls come last.
+Generated from `config/audit/master-audit-register.json` (80 findings). Severity is the register's; ordering is by the worst severity in each group, except that re-verification comes first and verified controls come last.
 
 Findings are grouped by shared architectural root rather than by symptom. Several of these are the same defect seen from different places, and repairing them one at a time would mean repairing the root several times.
 
@@ -10,7 +10,7 @@ Findings are grouped by shared architectural root rather than by symptom. Severa
 
 | Disposition        | Findings |
 | ------------------ | -------- |
-| FIXED-UNMERGED     | 45       |
+| FIXED-UNMERGED     | 46       |
 | NOT-STARTED        | 25       |
 | NO-ACTION-REQUIRED | 6        |
 | SCOPED-OUT         | 2        |
@@ -33,7 +33,7 @@ Every finding names the deduplicated root cause it belongs to. A finding the tax
 | **MAR-013** — Spatial and multiplayer invariants are not runtime-proven                            | P1              | 1        | 0     | 1         |
 | **MAR-014** — World ownership still has an unfinished canonical transition                         | P1              | 1        | 0     | 1         |
 | **MAR-016** — Chaos and recovery are not tested on real failure boundaries                         | P1              | 4        | 2     | 2         |
-| **MAR-018** — Execution-level and tenant-level FinOps control plane is missing                     | P1              | 1        | 0     | 1         |
+| **MAR-018** — Execution-level and tenant-level FinOps control plane is missing                     | P1              | 2        | 1     | 1         |
 | **MAR-020** — Raw user content can enter logs without central redaction                            | P1/P2           | 1        | 1     | 0         |
 | **MAR-023** — Frontend main governance does not protect CI authority                               | P1              | 2        | 0     | 2         |
 | **MAR-024** — Supply-chain release authority is not immutable end-to-end                           | P1/P2           | 3        | 1     | 2         |
@@ -92,7 +92,22 @@ One defect shape: the identifier the caller was authorized for is not the thing 
 | **SEC-JOB-DISCLOSURE-001** — Refusing another tenant's execution job disclosed that the job existed                                                                       | P2       | CONFIRMED | FIXED-UNMERGED (fix/mar-001-job-ownership @ 68e11109d5c2e28ff8a79d27754ce1905d6f1b6f)                 |
 | **SEC-JOB-DOUBLE-RESPONSE-001** — The job status route answered a second time after the access check had already refused                                                  | P2       | CONFIRMED | FIXED-UNMERGED (fix/mar-001-job-ownership @ 68e11109d5c2e28ff8a79d27754ce1905d6f1b6f)                 |
 
-## 3. generation-fidelity — worst severity P1
+## 3. generation-start-admission — worst severity P1
+
+Everything that decides whether a generation may begin and under whose identity. Two of these are already fixed on branches and the rest share their entry point.
+
+| Finding                                                                                                                             | Severity | Status    | Disposition                                                                              |
+| ----------------------------------------------------------------------------------------------------------------------------------- | -------- | --------- | ---------------------------------------------------------------------------------------- |
+| **AUDIT-START-ATOMICITY-001** — Generation start wrote project, execution and history as three independent durable writes           | P1       | CONFIRMED | FIXED-UNMERGED (integration/wave-0 @ 3696a1f31b86cff8ce97e09f5a5da581d2a3ba01)           |
+| **AUDIT-ID-EXEC-001** — Execution identity derived from Date.now collided within a millisecond                                      | P1       | CONFIRMED | FIXED-UNMERGED (integration/wave-0 @ 2d5d2d7da28c7edd230acc2e5b93a41b7fe8066a)           |
+| **AUDIT-DUP-GENERATION-001** — No suppression of a second concurrent generation for the same project                                | P1       | CONFIRMED | FIXED-UNMERGED (integration/wave-0 @ e0d800d273b3c618d4af07d9ffbbe2873da49937)           |
+| **AUDIT-OUTCOME-LAST-WRITER-001** — An older overlapping run can overwrite a newer run's terminal project state                     | P1       | CONFIRMED | FIXED-UNMERGED (integration/wave-0 @ e0d800d273b3c618d4af07d9ffbbe2873da49937)           |
+| **QUOTA-ENFORCEMENT-001** — Generation does not enforce tier limits before starting                                                 | P1       | CONFIRMED | NOT-STARTED                                                                              |
+| **SEC-PLAN-RETRY-CEILING-001** — Plan execution retried each node as many times as the request body asked                           | P1       | CONFIRMED | FIXED-UNMERGED (fix/plan-retry-ceiling-1 @ 222f6e60bdcce928980ebe7534c9285be91ce4f1)     |
+| **GEN-START-IDEMPOTENCY-001** — A start request whose response was lost could not be retried safely                                 | P1       | CONFIRMED | FIXED-UNMERGED (fix/mar-004-idempotent-start @ 7761c2665c31273c49214ec7b96f4858a8f61e93) |
+| **GEN-START-IDEMPOTENCY-KEY-SCOPE-001** — An idempotency key partitioned per project could not detect its own reuse across projects | P2       | CONFIRMED | FIXED-UNMERGED (fix/mar-004-idempotent-start @ f8a5d8dbdd093fca5b3bc3286aeb337b106b2903) |
+
+## 4. generation-fidelity — worst severity P1
 
 The generated artifact does not reliably match the stated requirement, in transport, in intent and in world content.
 
@@ -106,20 +121,6 @@ The generated artifact does not reliably match the stated requirement, in transp
 | **SERIALIZATION-001** — Structures reached generation prompts as the literal text [object Object]                                                                  | P1       | CONFIRMED | FIXED-UNMERGED (integration/wave-0 @ 0abaf874a487506a72d16d2b22e3f25977ac331f)                       |
 | **GEN-LUA-POLICY-GATE-001** — GameValidationEngine duplicated a weaker ad hoc Lua policy scanner instead of the canonical compile/type/policy validator            | P1       | CONFIRMED | FIXED-UNMERGED (fix/mar-009-010-authoritative-luau-gates @ 1fe8d53ee2086c757f75d85ed4dd8f28f531ea07) |
 | **GEN-LUA-SECURITY-ADVISORY-001** — Generated Lua security evidence is reused and now visible in the validation report, but remains a non-blocking advisory signal | P1       | CONFIRMED | SCOPED-OUT (fix/mar-009-010-authoritative-luau-gates @ 1fe8d53ee2086c757f75d85ed4dd8f28f531ea07)     |
-
-## 4. generation-start-admission — worst severity P1
-
-Everything that decides whether a generation may begin and under whose identity. Two of these are already fixed on branches and the rest share their entry point.
-
-| Finding                                                                                                                             | Severity | Status    | Disposition                                                                              |
-| ----------------------------------------------------------------------------------------------------------------------------------- | -------- | --------- | ---------------------------------------------------------------------------------------- |
-| **AUDIT-START-ATOMICITY-001** — Generation start wrote project, execution and history as three independent durable writes           | P1       | CONFIRMED | FIXED-UNMERGED (integration/wave-0 @ 3696a1f31b86cff8ce97e09f5a5da581d2a3ba01)           |
-| **AUDIT-ID-EXEC-001** — Execution identity derived from Date.now collided within a millisecond                                      | P1       | CONFIRMED | FIXED-UNMERGED (integration/wave-0 @ 2d5d2d7da28c7edd230acc2e5b93a41b7fe8066a)           |
-| **AUDIT-DUP-GENERATION-001** — No suppression of a second concurrent generation for the same project                                | P1       | CONFIRMED | FIXED-UNMERGED (integration/wave-0 @ e0d800d273b3c618d4af07d9ffbbe2873da49937)           |
-| **AUDIT-OUTCOME-LAST-WRITER-001** — An older overlapping run can overwrite a newer run's terminal project state                     | P1       | CONFIRMED | FIXED-UNMERGED (integration/wave-0 @ e0d800d273b3c618d4af07d9ffbbe2873da49937)           |
-| **QUOTA-ENFORCEMENT-001** — Generation does not enforce tier limits before starting                                                 | P1       | CONFIRMED | NOT-STARTED                                                                              |
-| **GEN-START-IDEMPOTENCY-001** — A start request whose response was lost could not be retried safely                                 | P1       | CONFIRMED | FIXED-UNMERGED (fix/mar-004-idempotent-start @ 7761c2665c31273c49214ec7b96f4858a8f61e93) |
-| **GEN-START-IDEMPOTENCY-KEY-SCOPE-001** — An idempotency key partitioned per project could not detect its own reuse across projects | P2       | CONFIRMED | FIXED-UNMERGED (fix/mar-004-idempotent-start @ f8a5d8dbdd093fca5b3bc3286aeb337b106b2903) |
 
 ## 5. pipeline-outcome-truth — worst severity P1
 
