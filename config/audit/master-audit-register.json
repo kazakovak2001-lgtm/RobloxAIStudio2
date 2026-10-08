@@ -740,6 +740,24 @@
       "notes": "Combined with duplicate generation, long provider calls and a single serial queue, this allows resource amplification and denial of wallet."
     },
     {
+      "id": "SEC-PLAN-RETRY-CEILING-001",
+      "title": "Plan execution retried each node as many times as the request body asked",
+      "severity": "P1",
+      "status": "CONFIRMED",
+      "disposition": "FIXED-UNMERGED",
+      "area": "abuse",
+      "remediationGroup": "generation-start-admission",
+      "mar": "MAR-018",
+      "owningBranch": "fix/plan-retry-ceiling-1",
+      "owningSha": "222f6e60bdcce928980ebe7534c9285be91ce4f1",
+      "evidence": [
+        "server/src/planning/execution/PlanExecutor.ts",
+        "server/src/api/v1/index.ts",
+        "server/src/routes/planning.ts"
+      ],
+      "notes": "options.maxRetries reached PlanExecutor from the request body unbounded, and every attempt calls an agent and its provider again. Reproduced against the previous executor: a \"1000000\" request kept one node calling its agent for about fifty seconds. Bounded server-side to three attempts, the highest maxAttempts AGENT-CONTRACT-1 declares; callers may only narrow it."
+    },
+    {
       "id": "AUTH-EMAIL-IDENTITY-001",
       "title": "Profile email can diverge from the password credential key",
       "severity": "P1",
