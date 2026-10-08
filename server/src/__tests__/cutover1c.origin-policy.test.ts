@@ -61,6 +61,21 @@ describe("CUTOVER-1C shared frontend origin policy", () => {
     expect(rejected.nextCalled).toBe(false);
   });
 
+  it("lets a cross-origin preflight carry the generation Idempotency-Key", () => {
+    // MAR-004. The Frontend sends Idempotency-Key on every generate request;
+    // a preflight that does not list it blocks generation for split-origin
+    // deployments before the request ever reaches the route.
+    process.env.NODE_ENV = "production";
+    process.env.FRONTEND_URL = "https://localhost:8443";
+
+    const preflight = runCors("https://localhost:8443", "OPTIONS");
+    const allowed = preflight.headers["Access-Control-Allow-Headers"]
+      .split(",")
+      .map((header) => header.trim());
+    expect(allowed).toContain("Idempotency-Key");
+    expect(allowed).toContain("Content-Type");
+  });
+
   it("preserves permissive development origins", () => {
     process.env.NODE_ENV = "development";
     delete process.env.FRONTEND_URL;
