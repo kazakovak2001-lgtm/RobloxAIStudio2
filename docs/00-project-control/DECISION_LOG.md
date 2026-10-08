@@ -4,6 +4,33 @@ All significant architectural and product decisions are recorded here.
 
 ---
 
+## 2026-10-08 — SEC-LIFECYCLE-PROTO-001 Live Patch Targets Cannot Reach Prototypes
+
+**Decision**: `LiveUpdateEngine` follows only the blueprint's own properties
+when resolving a patch `target`, and refuses the segments `__proto__`,
+`constructor` and `prototype` as an error.
+
+**Reason**: `POST /api/lifecycle/patch` passes a caller-supplied `target`
+path to `LiveUpdateEngine.applyPatch`. A target of `__proto__.x` or
+`constructor.prototype.x` walked off the cloned blueprint onto
+`Object.prototype` and assigned to it, so any authenticated user who owns one
+project could add properties to every object in the server process. This was
+reproduced against the unpatched engine during the 2026-10-08 forensic audit
+and was not recorded in the master audit register.
+
+**Affected systems**: `server/src/lifecycle/live/LiveUpdateEngine.ts` and its
+new regression test. Legitimate patches on existing own paths behave as
+before; a patch through a missing or primitive intermediate is skipped rather
+than silently reported as applied. No route, schema or Frontend change.
+
+**Boundary**: This closes the prototype write only. The route still
+authorizes against `blueprint.id` from the request body and applies patches to
+a caller-supplied blueprint; that remains `AUDIT-BODY-SUPPLIED-BLUEPRINT-001`.
+
+**Status**: IMPLEMENTED (unit-tested; no runtime deployment evidence)
+
+---
+
 ## 2026-08-15 — WORLD-1B Changed-Design Acceptance Closes the Evidence Gap
 
 **Decision**: Accept `WORLD-1B` as complete and remove its acceptance blocker
