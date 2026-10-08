@@ -145,7 +145,7 @@ export function corsMiddleware(
   );
   res.header(
     "Access-Control-Allow-Headers",
-    "Origin, X-Requested-With, Content-Type, Accept, Authorization, X-API-Key, X-Studio-Session",
+    "Origin, X-Requested-With, Content-Type, Accept, Authorization, X-API-Key, X-Studio-Session, Idempotency-Key",
   );
   res.header("Access-Control-Allow-Credentials", "true");
 
