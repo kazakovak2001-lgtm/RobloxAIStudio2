@@ -67,7 +67,39 @@ export function createGenerationV2Router(
       // 5. Validate
       const validation = validator.validate(blueprint, lua, assets);
 
-      // 6. Export
+      // 6. Export — only when validation passed. A package built from
+      // content the validator rejected is not a deliverable; publishing it
+      // anyway is exactly the "structurally valid but not Roblox-valid"
+      // failure this pipeline exists to close.
+      if (!validation.passed) {
+        res.status(422).json({
+          success: false,
+          error: "Generated game failed validation and was not exported",
+          data: {
+            blueprint: {
+              id: blueprint.id,
+              title: blueprint.title,
+              genre: blueprint.genre,
+              mechanics: blueprint.mechanics,
+            },
+            lua: { scripts: lua.totalScripts, lines: lua.totalLines },
+            assets: { objects: assets.totalObjects },
+            validation: {
+              passed: validation.passed,
+              score: validation.score,
+              issues: validation.issues,
+              errors: validation.errors,
+              warnings: validation.warnings,
+            },
+            plan: {
+              tasks: execResult.graph.getStats(),
+              duration: execResult.totalDurationMs,
+            },
+          },
+        });
+        return;
+      }
+
       const exportResult = exporter.build(blueprint, lua, assets);
 
       res.json({
@@ -155,6 +187,29 @@ export function createGenerationV2Router(
         return;
       }
       if (!(await access.requireProjectAccess(req, res, blueprint.id))) return;
+
+      // Fail closed: this endpoint receives blueprint/lua/assets straight
+      // from the caller, so they may never have passed the validator at all.
+      // Reuse the same GameValidationEngine the /game path uses rather than
+      // trusting caller-supplied content directly.
+      const validation = validator.validate(blueprint, lua, assets);
+      if (!validation.passed) {
+        res.status(422).json({
+          success: false,
+          error: "Generated game failed validation and was not exported",
+          data: {
+            validation: {
+              passed: validation.passed,
+              score: validation.score,
+              issues: validation.issues,
+              errors: validation.errors,
+              warnings: validation.warnings,
+            },
+          },
+        });
+        return;
+      }
+
       const result = exporter.build(blueprint, lua, assets);
       res.json({ success: true, data: result });
     } catch (error) {

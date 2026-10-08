@@ -2,7 +2,7 @@
 
 # Master audit remediation plan
 
-Generated from `config/audit/master-audit-register.json` (77 findings). Severity is the register's; ordering is by the worst severity in each group, except that re-verification comes first and verified controls come last.
+Generated from `config/audit/master-audit-register.json` (79 findings). Severity is the register's; ordering is by the worst severity in each group, except that re-verification comes first and verified controls come last.
 
 Findings are grouped by shared architectural root rather than by symptom. Several of these are the same defect seen from different places, and repairing them one at a time would mean repairing the root several times.
 
@@ -10,10 +10,10 @@ Findings are grouped by shared architectural root rather than by symptom. Severa
 
 | Disposition        | Findings |
 | ------------------ | -------- |
-| FIXED-UNMERGED     | 44       |
+| FIXED-UNMERGED     | 45       |
 | NOT-STARTED        | 25       |
 | NO-ACTION-REQUIRED | 6        |
-| SCOPED-OUT         | 1        |
+| SCOPED-OUT         | 2        |
 | ACCEPTED-RISK      | 1        |
 
 ## Root-cause coverage
@@ -27,7 +27,8 @@ Every finding names the deduplicated root cause it belongs to. A finding the tax
 | **MAR-003** — No single clean canonical product acceptance run exists                              | P0-release-gate | 3        | 0     | 3         |
 | **MAR-004** — Generation has no durable project-scoped single-flight and idempotent start identity | P1              | 5        | 5     | 0         |
 | **MAR-005** — State transitions have no unified durable CAS/version authority                      | P1              | 3        | 3     | 0         |
-| **MAR-010** — No authoritative Luau compile/type and generated-code policy gate                    | P1              | 2        | 1     | 1         |
+| **MAR-009** — Generated Lua security evidence is not a blocking production gate                    | P1              | 1        | 0     | 1         |
+| **MAR-010** — No authoritative Luau compile/type and generated-code policy gate                    | P1              | 3        | 2     | 1         |
 | **MAR-012** — Runtime gameplay acceptance is missing as a machine-measured capability              | P1              | 9        | 6     | 3         |
 | **MAR-013** — Spatial and multiplayer invariants are not runtime-proven                            | P1              | 1        | 0     | 1         |
 | **MAR-014** — World ownership still has an unfinished canonical transition                         | P1              | 1        | 0     | 1         |
@@ -40,7 +41,7 @@ Every finding names the deduplicated root cause it belongs to. A finding the tax
 | **MAR-033** — Fuzz and property testing are systematically missing                                 | P2              | 1        | 0     | 1         |
 | **MAR-036** — Dead and legacy code, and naming drift                                               | P3              | 1        | 0     | 1         |
 
-20 of 37 root causes have no finding recorded against them yet: MAR-006, MAR-007, MAR-008, MAR-009, MAR-011, MAR-015, MAR-017, MAR-019, MAR-021, MAR-022, MAR-025, MAR-026, MAR-027, MAR-028, MAR-029, MAR-030, MAR-031, MAR-034, MAR-035, MAR-037. The register under-covers the audit by that much.
+19 of 37 root causes have no finding recorded against them yet: MAR-006, MAR-007, MAR-008, MAR-011, MAR-015, MAR-017, MAR-019, MAR-021, MAR-022, MAR-025, MAR-026, MAR-027, MAR-028, MAR-029, MAR-030, MAR-031, MAR-034, MAR-035, MAR-037. The register under-covers the audit by that much.
 
 ### 7 findings the taxonomy does not cover
 
@@ -91,7 +92,22 @@ One defect shape: the identifier the caller was authorized for is not the thing 
 | **SEC-JOB-DISCLOSURE-001** — Refusing another tenant's execution job disclosed that the job existed                                                                       | P2       | CONFIRMED | FIXED-UNMERGED (fix/mar-001-job-ownership @ 68e11109d5c2e28ff8a79d27754ce1905d6f1b6f)                 |
 | **SEC-JOB-DOUBLE-RESPONSE-001** — The job status route answered a second time after the access check had already refused                                                  | P2       | CONFIRMED | FIXED-UNMERGED (fix/mar-001-job-ownership @ 68e11109d5c2e28ff8a79d27754ce1905d6f1b6f)                 |
 
-## 3. generation-start-admission — worst severity P1
+## 3. generation-fidelity — worst severity P1
+
+The generated artifact does not reliably match the stated requirement, in transport, in intent and in world content.
+
+| Finding                                                                                                                                                            | Severity | Status    | Disposition                                                                                          |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------------------ | -------- | --------- | ---------------------------------------------------------------------------------------------------- |
+| **FP-E2E-LLM-JSON** — Structured Lua generation output is not reliably parseable                                                                                   | P1       | CONFIRMED | NOT-STARTED                                                                                          |
+| **FP-E2E-INTENT-001** — Explicit user intent is not authoritative across agents                                                                                    | P1       | CONFIRMED | NOT-STARTED                                                                                          |
+| **FP-E2E-SPATIAL-COVERAGE** — No cardinality gate between a stated requirement and the generated world                                                             | P1       | CONFIRMED | NOT-STARTED                                                                                          |
+| **INTENT-FIDELITY-001** — Requirements carried no identity, so no run could show which ones it satisfied                                                           | P1       | CONFIRMED | FIXED-UNMERGED (integration/wave-0 @ 2edb5d687e0e079c72cef5d515561c4e4fd782a8)                       |
+| **LLM-PARSER-001** — Valid JSON was discarded when a model added prose after it                                                                                    | P1       | CONFIRMED | FIXED-UNMERGED (integration/wave-0 @ fb0a213f6c2321c283f1616784311cc0fe031b0b)                       |
+| **SERIALIZATION-001** — Structures reached generation prompts as the literal text [object Object]                                                                  | P1       | CONFIRMED | FIXED-UNMERGED (integration/wave-0 @ 0abaf874a487506a72d16d2b22e3f25977ac331f)                       |
+| **GEN-LUA-POLICY-GATE-001** — GameValidationEngine duplicated a weaker ad hoc Lua policy scanner instead of the canonical compile/type/policy validator            | P1       | CONFIRMED | FIXED-UNMERGED (fix/mar-009-010-authoritative-luau-gates @ 1fe8d53ee2086c757f75d85ed4dd8f28f531ea07) |
+| **GEN-LUA-SECURITY-ADVISORY-001** — Generated Lua security evidence is reused and now visible in the validation report, but remains a non-blocking advisory signal | P1       | CONFIRMED | SCOPED-OUT (fix/mar-009-010-authoritative-luau-gates @ 1fe8d53ee2086c757f75d85ed4dd8f28f531ea07)     |
+
+## 4. generation-start-admission — worst severity P1
 
 Everything that decides whether a generation may begin and under whose identity. Two of these are already fixed on branches and the rest share their entry point.
 
@@ -105,7 +121,7 @@ Everything that decides whether a generation may begin and under whose identity.
 | **GEN-START-IDEMPOTENCY-001** — A start request whose response was lost could not be retried safely                                 | P1       | CONFIRMED | FIXED-UNMERGED (fix/mar-004-idempotent-start @ 7761c2665c31273c49214ec7b96f4858a8f61e93) |
 | **GEN-START-IDEMPOTENCY-KEY-SCOPE-001** — An idempotency key partitioned per project could not detect its own reuse across projects | P2       | CONFIRMED | FIXED-UNMERGED (fix/mar-004-idempotent-start @ f8a5d8dbdd093fca5b3bc3286aeb337b106b2903) |
 
-## 4. pipeline-outcome-truth — worst severity P1
+## 5. pipeline-outcome-truth — worst severity P1
 
 What the system reports about a run does not always match what happened. This is where green signals hide red states.
 
@@ -117,19 +133,6 @@ What the system reports about a run does not always match what happened. This is
 | **CI-PROD-CONTRACT-FIDELITY-001** — The production contract runs against in-memory storage                            | P2       | CONFIRMED | NOT-STARTED                                                                    |
 | **AUDIT-FLAKY-AUTH-TEST-001** — The user-self authorization test fails intermittently under parallel load             | P2       | CONFIRMED | FIXED-UNMERGED (integration/wave-0 @ f5b9772bfa99ebcfb70b853b6e4c90d67c0dd503) |
 | **AUDIT-SCRIPTS-UNTYPED-001** — Validator and generator scripts are outside the typecheck boundary                    | P3       | CONFIRMED | NOT-STARTED                                                                    |
-
-## 5. generation-fidelity — worst severity P1
-
-The generated artifact does not reliably match the stated requirement, in transport, in intent and in world content.
-
-| Finding                                                                                                  | Severity | Status    | Disposition                                                                    |
-| -------------------------------------------------------------------------------------------------------- | -------- | --------- | ------------------------------------------------------------------------------ |
-| **FP-E2E-LLM-JSON** — Structured Lua generation output is not reliably parseable                         | P1       | CONFIRMED | NOT-STARTED                                                                    |
-| **FP-E2E-INTENT-001** — Explicit user intent is not authoritative across agents                          | P1       | CONFIRMED | NOT-STARTED                                                                    |
-| **FP-E2E-SPATIAL-COVERAGE** — No cardinality gate between a stated requirement and the generated world   | P1       | CONFIRMED | NOT-STARTED                                                                    |
-| **INTENT-FIDELITY-001** — Requirements carried no identity, so no run could show which ones it satisfied | P1       | CONFIRMED | FIXED-UNMERGED (integration/wave-0 @ 2edb5d687e0e079c72cef5d515561c4e4fd782a8) |
-| **LLM-PARSER-001** — Valid JSON was discarded when a model added prose after it                          | P1       | CONFIRMED | FIXED-UNMERGED (integration/wave-0 @ fb0a213f6c2321c283f1616784311cc0fe031b0b) |
-| **SERIALIZATION-001** — Structures reached generation prompts as the literal text [object Object]        | P1       | CONFIRMED | FIXED-UNMERGED (integration/wave-0 @ 0abaf874a487506a72d16d2b22e3f25977ac331f) |
 
 ## 6. canonical-generation-recovery — worst severity P1
 
