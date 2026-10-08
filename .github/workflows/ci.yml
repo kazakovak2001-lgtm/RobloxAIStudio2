@@ -498,6 +498,11 @@ jobs:
           cache: "npm"
       - run: npm ci
       - run: npm run validate
+      # The architecture and boundary gates only ran inside `npm run build`,
+      # which neither CI nor the backend image invokes, so a cycle could merge
+      # unseen.
+      - run: npm run validate:arch
+      - run: npm run validate:boundaries
 
   commit-lint:
     name: Commit Message Lint
