@@ -480,17 +480,23 @@
       "title": "Eight operations authorize against an identifier inside a caller-supplied body object",
       "severity": "P2",
       "status": "CONFIRMED",
-      "disposition": "NOT-STARTED",
+      "disposition": "FIXED-UNMERGED",
       "area": "security",
       "remediationGroup": "authorization-object-binding",
       "mar": "MAR-001",
+      "owningBranch": "fix/mar-001-authorization-object-binding",
+      "owningSha": "a90318b19324bd176e183908732c4d7d31d1d80d",
       "evidence": [
+        "server/src/routes/resourceAuthorization.ts",
         "server/src/routes/economy.ts",
         "server/src/routes/world.ts",
         "server/src/routes/simulation.ts",
+        "server/src/routes/lifecycle.ts",
+        "server/src/routes/generation-v2.ts",
+        "server/src/__tests__/marbatch1.blueprint-project-access.test.ts",
         "config/security/authorization-matrix.json"
       ],
-      "notes": "economy, world, simulation, lifecycle and generation-v2 take the whole blueprint from req.body and pass blueprint.id to requireProjectAccess, using a field named like a blueprint identifier as a project identifier. There is no cross-tenant escape today because the identifier must resolve to a reachable project, but nothing binds the payload to stored state, and the naming confusion becomes a real hole if the two identifier spaces ever overlap. lifecycle POST /tick is the one variant that first asserts blueprint.id equals gameId."
+      "notes": "economy, world, simulation, lifecycle and generation-v2 each wrote their own copy of \"pull blueprint.id out of the body, pass it to requireProjectAccess\" across eight call sites. There is still no stored resource behind these routes for a project to be derived from the way requireOwned does, so blueprint.id remains the project identity that gets authorized and the matrix's body-supplied-object binding classification is unchanged by design. What changed is that all eight call sites now go through one exported, documented helper (requireProjectAccessForBlueprint in resourceAuthorization.ts) instead of eight independently editable copies, closing the drift risk the finding described (\"a real hole if the two identifier spaces ever overlap\") without changing any route's response shape. lifecycle POST /tick still separately asserts blueprint.id equals gameId, which the helper does not replace."
     },
     {
       "id": "AUDIT-REVIEW-ATTRIBUTION-001",
@@ -1148,15 +1154,21 @@
       "title": "MAR-001 has fifteen operations left where nothing canonical protects the resource",
       "severity": "P1",
       "status": "CONFIRMED",
-      "disposition": "NOT-STARTED",
+      "disposition": "FIXED-UNMERGED",
       "area": "security",
       "remediationGroup": "authorization-object-binding",
       "mar": "MAR-001",
+      "owningBranch": "fix/mar-001-authorization-object-binding",
+      "owningSha": "a90318b19324bd176e183908732c4d7d31d1d80d",
       "evidence": [
+        "server/src/routes/concept.ts",
+        "server/src/api/v1/index.ts",
+        "server/src/__tests__/marbatch1.concept-session-ownership.test.ts",
+        "server/src/__tests__/marbatch1.api-v1-plan-cross-tenant.test.ts",
         "config/security/authorization-matrix.json",
         "scripts/generate-authorization-matrix.ts"
       ],
-      "notes": "Four families, none of which the canonical helper covers as it stands. (1) concept.ts session-owned-concept, 3 operations: ownership is a Map from concept id to user id, so the parent is a user rather than a project and requireOwned, which is project-derived, does not apply. (2) body-blueprint-project, 8 operations across economy, generation-v2, lifecycle, simulation and world: a blueprint identifier taken from the body is passed to requireProjectAccess as though it were a project identifier, which is AUDIT-BODY-SUPPLIED-BLUEPRINT-001. (3) socket project:join and project:leave, which is AUDIT-REALTIME-ROOM-001. (4) api/v1 plan routes, 2 operations: a second plan surface beside routes/planning.ts, unexercised, and duplication is the reason it was missed. Memory operations are deliberately not here: they classify as direct-project, and isolating what memory holds belongs to MAR-008 rather than to resource binding."
+      "notes": "Of the four families, three are now closed. (1) concept.ts session-owned-concept, 3 operations: concealProjectAccess and the /experience/history filter now check the in-memory conceptOwners map (keyed by user) before falling back to project-derived access, instead of asking a project-repository check that could never match a conceptId; proven with a real cross-user request against pause/resume/cancel/retry/artifacts/review/history. (2) body-blueprint-project, 8 operations, closed via AUDIT-BODY-SUPPLIED-BLUEPRINT-001. (4) api/v1 plan routes, 2 operations: the authorization was already correct (project derived from the loaded plan, mirroring requireOwned) but unexercised, which is why the matrix missed it; a real cross-tenant request now exercises it and, in doing so, found and fixed an unrelated bug where the route wrote a second response after the helper had already sent the refusal, crashing every denial with ERR_HTTP_HEADERS_SENT. (3) socket project:join and project:leave remain open, tracked under their own finding, AUDIT-REALTIME-ROOM-001 — a different service boundary (socket.io connection handling, not HTTP routes/storage) and out of scope for this slice. Memory operations are deliberately not here: they classify as direct-project, and isolating what memory holds belongs to MAR-008 rather than to resource binding."
     },
     {
       "id": "AUDIT-AUTONOMOUS-BINDING-VERIFIED-001",
