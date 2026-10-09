@@ -1286,6 +1286,7 @@ server/src/simulation/core/GameSimulationEngine.ts
 server/src/simulation/feedback/SimulationFeedbackEngine.ts
 server/src/simulation/metrics/GameplayMetricsEngine.ts
 server/src/socket/index.ts
+server/src/socket/pipelineEventBridge.scope.test.ts
 server/src/socket/pipelineEventBridge.ts
 server/src/socket/streaming.ts
 server/src/studio/SceneGraphTranslator.ts
