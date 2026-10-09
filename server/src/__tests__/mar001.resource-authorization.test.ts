@@ -21,7 +21,7 @@ import express from "express";
 import type { Response } from "express";
 import type { Server } from "node:http";
 import { afterEach, describe, expect, it } from "vitest";
-import { rateLimiter } from "../common/middleware/security";
+import { createRateLimiter } from "../common/middleware/security";
 import { InMemoryStorageProvider } from "../platform/storage/StorageProvider";
 import { createProjectRuntime } from "../routes/projects";
 import {
@@ -72,8 +72,9 @@ async function startTenants() {
   app.use(express.json());
   // The production entrypoint mounts the same limiter globally in front of
   // every route; the harness mirrors that wiring rather than presenting an
-  // authorization route with no rate limit at all.
-  app.use(rateLimiter);
+  // authorization route with no rate limit at all. A fresh limiter per
+  // harness keeps one test's requests out of the next test's budget.
+  app.use(createRateLimiter());
   // A route that does nothing but exercise the control under test, so the
   // assertions are about authorization rather than about any one feature.
   app.get("/probe/:projectId", async (req, res) => {
