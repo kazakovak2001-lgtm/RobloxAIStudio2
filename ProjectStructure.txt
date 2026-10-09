@@ -1175,14 +1175,16 @@
 │   │   │   ├── lua
 │   │   │   │   ├── __tests__
 │   │   │   │   │   ├── LuaGenerator.genFidelity1.test.ts
-│   │   │   │   │   └── LuaGenerator.genFidelity2.test.ts
+│   │   │   │   │   ├── LuaGenerator.genFidelity2.test.ts
+│   │   │   │   │   └── LuaGenerator.genFidelity3.test.ts
 │   │   │   │   ├── index.ts
 │   │   │   │   ├── LuaArtifactBuilder.ts
 │   │   │   │   ├── LuaCodeValidator.ts
 │   │   │   │   ├── LuaGenerationEngine.ts
 │   │   │   │   ├── LuaGenerationTypes.ts
 │   │   │   │   ├── LuaGenerator.ts
-│   │   │   │   └── LuaTemplateRegistry.ts
+│   │   │   │   ├── LuaTemplateRegistry.ts
+│   │   │   │   └── WorldScenePlanner.ts
 │   │   │   └── validation
 │   │   │       ├── __tests__
 │   │   │       │   └── GameValidationEngine.gates.test.ts
