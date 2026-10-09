@@ -71,6 +71,39 @@ describe("AST import inventory fixtures", () => {
     expect(inventory.specificationsAnalyzed).toBe(4);
   });
 
+  it("counts a type-only import as a dependency edge", () => {
+    // fee5b8c3 introduced fifteen domain cycles through two `import type`
+    // statements alone. An inventory that skipped type-only imports would let
+    // that layering violation through, so pin that they are edges.
+    const root = createFixture();
+    writeFileSync(
+      join(root, "server", "src", "game", "typed.ts"),
+      [
+        'import type { Shape } from "../routes/shape";',
+        "export type Uses = Shape;",
+      ].join("\n"),
+    );
+    writeFileSync(
+      join(root, "server", "src", "routes", "shape.ts"),
+      "export interface Shape { id: string }",
+    );
+
+    const inventory = buildAstImportInventory(root, {
+      resolveDomain(filePath: string): string {
+        if (filePath.includes("server/src/game")) return "game";
+        if (filePath.includes("server/src/routes")) return "routes";
+        return "unknown";
+      },
+    });
+
+    expect(inventory.unresolvedInternalImports).toEqual([]);
+    expect(
+      inventory.edges.filter((edge) =>
+        JSON.stringify(edge).includes("routes/shape"),
+      ),
+    ).toHaveLength(1);
+  });
+
   it("reports an unresolved internal target as fail-closed evidence", () => {
     const root = createFixture();
     mkdirSync(join(root, "server", "src", "unresolved"), { recursive: true });
