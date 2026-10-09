@@ -10,8 +10,8 @@ Findings are grouped by shared architectural root rather than by symptom. Severa
 
 | Disposition        | Findings |
 | ------------------ | -------- |
-| FIXED-UNMERGED     | 45       |
-| NOT-STARTED        | 25       |
+| FIXED-UNMERGED     | 47       |
+| NOT-STARTED        | 23       |
 | NO-ACTION-REQUIRED | 6        |
 | SCOPED-OUT         | 2        |
 | ACCEPTED-RISK      | 1        |
@@ -22,7 +22,7 @@ Every finding names the deduplicated root cause it belongs to. A finding the tax
 
 | Root cause                                                                                         | Priority        | Findings | Fixed | Remaining |
 | -------------------------------------------------------------------------------------------------- | --------------- | -------- | ----- | --------- |
-| **MAR-001** — Cross-tenant resource authorization is not parent-bound everywhere                   | P0              | 23       | 16    | 7         |
+| **MAR-001** — Cross-tenant resource authorization is not parent-bound everywhere                   | P0              | 23       | 18    | 5         |
 | **MAR-002** — Studio materializer has no universal creator-ownership safety boundary               | P0              | 8        | 8     | 0         |
 | **MAR-003** — No single clean canonical product acceptance run exists                              | P0-release-gate | 3        | 0     | 3         |
 | **MAR-004** — Generation has no durable project-scoped single-flight and idempotent start identity | P1              | 5        | 5     | 0         |
@@ -75,7 +75,7 @@ One defect shape: the identifier the caller was authorized for is not the thing 
 | **SEC-STUDIO-PROTOCOL-BINDING-001** — Studio protocol messages were authorized against a project the caller chose, not the client they acted on                           | P1       | CONFIRMED | FIXED-UNMERGED (fix/mar-001-studio-protocol-binding @ 74b987129b549eca3fdde294e3e3cf603af81c7d)       |
 | **SEC-RESOURCE-AUTHORIZATION-HELPER-001** — Route-level authorization had no canonical mechanism, so each route decided separately what to authorize and what to disclose | P1       | CONFIRMED | FIXED-UNMERGED (fix/mar-001-resource-authorization-helper @ 81ad71e35ed11284f7a6292f0b56963969750fb5) |
 | **SEC-MATRIX-EVIDENCE-VOLATILE-001** — Regenerating the authorization matrix discarded every recorded cross-tenant verdict                                                | P1       | CONFIRMED | FIXED-UNMERGED (fix/mar-001-closure @ 437da697e1c8a026e23a9bbdfce9b0b4034859f0)                       |
-| **SEC-MAR001-REMAINING-GAPS-001** — MAR-001 has fifteen operations left where nothing canonical protects the resource                                                     | P1       | CONFIRMED | NOT-STARTED                                                                                           |
+| **SEC-MAR001-REMAINING-GAPS-001** — MAR-001 has fifteen operations left where nothing canonical protects the resource                                                     | P1       | CONFIRMED | FIXED-UNMERGED (fix/mar-001-authorization-object-binding @ a90318b19324bd176e183908732c4d7d31d1d80d)  |
 | **SEC-STUDIO-SCRIPT-OVERWRITE-001** — The plugin destroyed and overwrote creator-authored scripts without checking ownership                                              | P1       | CONFIRMED | FIXED-UNMERGED (fix/mar-002-script-ownership @ b99bb1a4c83642f8259902cd8f4bccd749962808)              |
 | **SEC-STUDIO-SCRIPT-PLACEMENT-001** — An unrecognised script root fell back to the container that replicates to every client                                              | P1       | CONFIRMED | FIXED-UNMERGED (fix/mar-002-script-ownership @ b99bb1a4c83642f8259902cd8f4bccd749962808)              |
 | **SEC-STUDIO-SWEEP-PROVENANCE-001** — The materializer sweep removes any managed instance, including another project's                                                    | P1       | CONFIRMED | FIXED-UNMERGED (fix/mar-002-script-ownership @ ddf7169c0164d1b729083ee13f186fd3536b467f)              |
@@ -83,7 +83,7 @@ One defect shape: the identifier the caller was authorized for is not the thing 
 | **SEC-STUDIO-LOADER-PROVENANCE-001** — Scripts and metadata values were owned by AI Studio but not by any project                                                         | P1       | CONFIRMED | FIXED-UNMERGED (fix/mar-002-script-ownership @ cd6cdff0162b0a80959074f115b60bb8270af541)              |
 | **SEC-STUDIO-PROVENANCE-UNWIRED-001** — Provenance was enforced but never set, and would have been plugin-global if it had been                                           | P1       | CONFIRMED | FIXED-UNMERGED (fix/mar-002-script-ownership @ e73296e2ec3e7c20ccb5ade0a7878a2f9ffbab39)              |
 | **AUDIT-STUDIO-OWNERSHIP-CLOSURE-001** — Studio creator-ownership boundary closed locally across every path that writes                                                   | P1       | CONFIRMED | FIXED-UNMERGED (fix/mar-002-script-ownership @ d0a727d9b555609876b80d2a622393630c62b732)              |
-| **AUDIT-BODY-SUPPLIED-BLUEPRINT-001** — Eight operations authorize against an identifier inside a caller-supplied body object                                             | P2       | CONFIRMED | NOT-STARTED                                                                                           |
+| **AUDIT-BODY-SUPPLIED-BLUEPRINT-001** — Eight operations authorize against an identifier inside a caller-supplied body object                                             | P2       | CONFIRMED | FIXED-UNMERGED (fix/mar-001-authorization-object-binding @ a90318b19324bd176e183908732c4d7d31d1d80d)  |
 | **SEC-STUDIO-PROTOCOL-DISCLOSURE-001** — The command disclosure closed on the REST path was still reachable over the protocol transport                                   | P2       | CONFIRMED | FIXED-UNMERGED (fix/mar-001-studio-protocol-binding @ 74b987129b549eca3fdde294e3e3cf603af81c7d)       |
 | **SEC-STUDIO-STATUS-COUNT-001** — GET /status reported a platform-wide Studio session count                                                                               | P2       | CONFIRMED | FIXED-UNMERGED (fix/mar-001-studio-protocol-binding @ 74b987129b549eca3fdde294e3e3cf603af81c7d)       |
 | **SEC-PROJECT-ACCESS-DISCLOSURE-001** — The shared project access control distinguishes another tenant's project from one that does not exist                             | P2       | CONFIRMED | FIXED-UNMERGED (fix/mar-001-resource-authorization-helper @ 81ad71e35ed11284f7a6292f0b56963969750fb5) |

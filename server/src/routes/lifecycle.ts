@@ -19,6 +19,7 @@ import {
 import { LifecycleFeedbackBridge } from "../lifecycle/bridge/LifecycleFeedbackBridge";
 import type { RobloxGameBlueprint } from "../generation/blueprint/GameBlueprintEngine";
 import type { ProjectAccessControl } from "./projects";
+import { requireProjectAccessForBlueprint } from "./resourceAuthorization";
 
 export function createLifecycleRouter(access: ProjectAccessControl): Router {
   const router = Router();
@@ -204,7 +205,11 @@ export function createLifecycleRouter(access: ProjectAccessControl): Router {
           .json({ success: false, error: "blueprint.id required" });
         return;
       }
-      if (!(await access.requireProjectAccess(req, res, blueprint.id))) return;
+      if (
+        !(await requireProjectAccessForBlueprint(access, req, res, blueprint))
+      ) {
+        return;
+      }
       const result = liveUpdate.applyPatches(blueprint, patches);
       res.json({ success: true, data: result });
     } catch (error) {
