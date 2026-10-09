@@ -1159,6 +1159,24 @@
       "notes": "Four families, none of which the canonical helper covers as it stands. (1) concept.ts session-owned-concept, 3 operations: ownership is a Map from concept id to user id, so the parent is a user rather than a project and requireOwned, which is project-derived, does not apply. (2) body-blueprint-project, 8 operations across economy, generation-v2, lifecycle, simulation and world: a blueprint identifier taken from the body is passed to requireProjectAccess as though it were a project identifier, which is AUDIT-BODY-SUPPLIED-BLUEPRINT-001. (3) socket project:join and project:leave, which is AUDIT-REALTIME-ROOM-001. (4) api/v1 plan routes, 2 operations: a second plan surface beside routes/planning.ts, unexercised, and duplication is the reason it was missed. Memory operations are deliberately not here: they classify as direct-project, and isolating what memory holds belongs to MAR-008 rather than to resource binding."
     },
     {
+      "id": "SEC-BRIDGE-HISTORY-SCOPE-001",
+      "title": "Pipeline bridge rewrote generation history found by pipelineId without checking its project",
+      "severity": "P2",
+      "status": "CONFIRMED",
+      "disposition": "FIXED-UNMERGED",
+      "area": "security",
+      "remediationGroup": "realtime-tenancy",
+      "mar": "MAR-001",
+      "owningBranch": "fix/bridge-history-tenant-scope-1",
+      "owningSha": "8486ae9f0470751c5b59bc0e8d65a5f8111bd997",
+      "evidence": [
+        "server/src/socket/pipelineEventBridge.ts",
+        "server/src/projects/repository/generationHistory.repository.ts",
+        "server/src/pipeline/v2/PipelineStage.ts"
+      ],
+      "notes": "getByPipeline is keyed by the bare pipelineId, and PipelineStage ids carry 40 random bits, so a colliding id would let one project's failure event mark another project's record failed. The bridge now writes only a record whose projectId equals the event's. Remaining: the history store still uses a bare pipelineId key; a composite projectId:pipelineId key needs a durable-data migration and is not done."
+    },
+    {
       "id": "AUDIT-AUTONOMOUS-BINDING-VERIFIED-001",
       "title": "Autonomous session control was correct and unexercised",
       "severity": "P3",
