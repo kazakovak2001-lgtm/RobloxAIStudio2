@@ -22,6 +22,15 @@
 
 import type { RobloxGameBlueprint } from "../blueprint/GameBlueprintEngine";
 
+/** Gap between a tower's base and the objective placed beside it, in studs. */
+const TOWER_INTERACTABLE_CLEARANCE = 4;
+/** Obby rise per platform: within reach of the default 7.2-stud jump. */
+const OBBY_STEP_UP = 3;
+/** Obby platform spacing: 10-stud platforms leave a 4-stud gap. */
+const OBBY_STEP_FORWARD = 14;
+/** Island camps stay within ±80 studs of the 200-stud baseplate's centre. */
+const ISLAND_CAMP_HALF_SPAN = 80;
+
 export type SceneConceptCategory = "fortress" | "obby" | "island" | "generic";
 
 export interface ScenePosition {
@@ -463,11 +472,18 @@ function fortressInteractables(
     if (mechanicMatchesTower(mechanic)) {
       const tower = towers[index % towers.length];
       const base = tower.parts[0];
+      // Beside the tower on the courtyard side, not inside its solid base: a
+      // point within the base's footprint could never be reached or touched.
+      const clearance = base.size.x / 2 + TOWER_INTERACTABLE_CLEARANCE;
       return {
         id: `interactable-${index + 1}`,
         linkedMechanic: mechanic,
         name: `${mechanic}_Interactable`,
-        position: { x: base.position.x, y: 4, z: base.position.z },
+        position: {
+          x: base.position.x - Math.sign(base.position.x) * clearance,
+          y: 3,
+          z: base.position.z - Math.sign(base.position.z) * clearance,
+        },
         linkedStructureId: tower.id,
       };
     }
@@ -518,8 +534,11 @@ function mechanicMatchesGate(mechanic: string): boolean {
  */
 function buildObbyScene(bp: RobloxGameBlueprint): WorldSceneSpec {
   const mechanics = bp.mechanics.length > 0 ? bp.mechanics : ["objective"];
-  const stepForward = 20;
-  const stepUp = 8;
+  // Each platform must be reachable with the default character: JumpHeight
+  // 7.2 studs, gravity 196.2 and WalkSpeed 16 carry a jump about 7.6 studs
+  // forward while rising 3. With 10-stud platforms 14 apart the gap is 4.
+  const stepForward = OBBY_STEP_FORWARD;
+  const stepUp = OBBY_STEP_UP;
   const platformSize: SceneSize = { x: 10, y: 1, z: 10 };
 
   const structures: SceneStructure[] = mechanics.map((mechanic, index) => {
@@ -589,10 +608,20 @@ function buildObbyScene(bp: RobloxGameBlueprint): WorldSceneSpec {
 function buildIslandScene(bp: RobloxGameBlueprint): WorldSceneSpec {
   const zones = biomeZones(bp);
   const mechanics = bp.mechanics.length > 0 ? bp.mechanics : ["objective"];
-  const campSpacing = 90;
+  // Camps stay on the 200-stud baseplate: spread across at most ±80 and never
+  // farther apart than the original 90, so every camp is on walkable ground.
+  const campSpacing =
+    mechanics.length > 1
+      ? Math.min(90, (2 * ISLAND_CAMP_HALF_SPAN) / (mechanics.length - 1))
+      : 0;
+  const campStart = -((mechanics.length - 1) * campSpacing) / 2;
 
   const structures: SceneStructure[] = mechanics.map((mechanic, index) => {
-    const position: ScenePosition = { x: index * campSpacing, y: 1, z: 60 };
+    const position: ScenePosition = {
+      x: campStart + index * campSpacing,
+      y: 1,
+      z: 60,
+    };
     return {
       id: `structure-camp-${index + 1}`,
       type: "camp",
@@ -620,7 +649,7 @@ function buildIslandScene(bp: RobloxGameBlueprint): WorldSceneSpec {
       id: `interactable-${index + 1}`,
       linkedMechanic: mechanic,
       name: `${mechanic}_Interactable`,
-      position: { x: index * campSpacing, y: 3, z: 60 },
+      position: { x: campStart + index * campSpacing, y: 3, z: 60 },
       linkedStructureId: structures[index]?.id,
     }),
   );

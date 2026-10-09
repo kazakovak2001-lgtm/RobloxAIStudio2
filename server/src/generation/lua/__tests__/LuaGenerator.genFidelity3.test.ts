@@ -310,3 +310,84 @@ describe("GEN-FIDELITY-3 — fallback", () => {
     expect(result.passed).toBe(true);
   });
 });
+
+/**
+ * Reachability. A planned objective the default character cannot reach is a
+ * world that looks right and cannot be played. These are geometric checks of
+ * the plan against Roblox's default character (JumpHeight 7.2 studs) and the
+ * 200-stud baseplate the generator always builds; they are not runtime
+ * evidence and nothing here ran in Roblox Studio.
+ */
+describe("GEN-FIDELITY-3 — reachable scene geometry", () => {
+  const DEFAULT_JUMP_HEIGHT = 7.2;
+  const BASEPLATE_HALF = 100;
+
+  it("places tower objectives outside every tower's solid base", () => {
+    const scene = planWorldScene(fortressBlueprint());
+    const bases = scene.structures
+      .filter((s) => s.type === "tower")
+      .map((s) => s.parts[0]);
+    const towerObjectives = scene.interactables.filter((i) =>
+      i.linkedStructureId?.startsWith("structure-tower-"),
+    );
+    expect(towerObjectives.length).toBeGreaterThan(0);
+    for (const objective of towerObjectives) {
+      for (const base of bases) {
+        const insideX =
+          Math.abs(objective.position.x - base.position.x) < base.size.x / 2;
+        const insideZ =
+          Math.abs(objective.position.z - base.position.z) < base.size.z / 2;
+        expect(insideX && insideZ).toBe(false);
+      }
+      expect(Math.abs(objective.position.x)).toBeLessThan(BASEPLATE_HALF);
+      expect(Math.abs(objective.position.z)).toBeLessThan(BASEPLATE_HALF);
+    }
+  });
+
+  it("keeps every obby rise within the default jump height", () => {
+    const bp = obbyBlueprint();
+    const scene = planWorldScene({
+      ...bp,
+      mechanics: ["a", "b", "c", "d", "e", "f"],
+    });
+    const tops = scene.structures
+      .filter((s) => s.type === "platform")
+      .map((s) => s.parts[0])
+      .map((p) => ({
+        top: p.position.y + p.size.y / 2,
+        z: p.position.z,
+        d: p.size.z,
+      }));
+    for (let i = 1; i < tops.length; i++) {
+      expect(tops[i].top - tops[i - 1].top).toBeLessThan(DEFAULT_JUMP_HEIGHT);
+      const gap = tops[i].z - tops[i - 1].z - (tops[i].d + tops[i - 1].d) / 2;
+      expect(gap).toBeLessThanOrEqual(4);
+    }
+  });
+
+  it.each([1, 2, 3, 5, 8])(
+    "keeps every island camp on the baseplate with %i mechanics",
+    (count) => {
+      const scene = planWorldScene({
+        ...islandBlueprint(),
+        mechanics: Array.from({ length: count }, (_, i) => `trial-${i}`),
+      });
+      const camps = scene.structures.filter((s) => s.type === "camp");
+      expect(camps).toHaveLength(count);
+      for (const camp of camps) {
+        const platform = camp.parts[0];
+        expect(
+          Math.abs(platform.position.x) + platform.size.x / 2,
+        ).toBeLessThanOrEqual(BASEPLATE_HALF);
+        expect(
+          Math.abs(platform.position.z) + platform.size.z / 2,
+        ).toBeLessThanOrEqual(BASEPLATE_HALF);
+      }
+      for (const objective of scene.interactables) {
+        expect(Math.abs(objective.position.x)).toBeLessThanOrEqual(
+          BASEPLATE_HALF,
+        );
+      }
+    },
+  );
+});
