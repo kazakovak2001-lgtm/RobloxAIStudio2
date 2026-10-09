@@ -57,6 +57,18 @@ export function createV1Router(
       res.status(404).json(formatter.notFound("Plan", planId));
       return undefined;
     }
+    // SEC-V1-PLAN-EXISTENCE-001. Another tenant's plan used to fall through
+    // to requireProjectAccess, which answered "Project not found" while an
+    // unknown plan answered "Plan '<id>' not found" — so the body told a
+    // caller which plan ids were real. The concealing check lets both refuse
+    // with the same v1 not-found envelope, as routes/planning.ts already does.
+    if (access.hasProjectAccess) {
+      if (await access.hasProjectAccess(req, projectId)) return plan;
+      if (!res.headersSent) {
+        res.status(404).json(formatter.notFound("Plan", planId));
+      }
+      return undefined;
+    }
     if (!(await access.requireProjectAccess(req, res, projectId)))
       return undefined;
     return plan;
