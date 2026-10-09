@@ -1553,6 +1553,8 @@ const MAR_CONVERSATION =
 const MAR_JOB = "server/src/__tests__/mar001.job-ownership.test.ts";
 const MAR_AUTONOMOUS =
   "server/src/__tests__/mar001.autonomous-session-ownership.test.ts";
+const MAR_CONCEPT_PLAN =
+  "server/src/__tests__/mar001.concept-plan-ownership.test.ts";
 
 /**
  * Recorded verdicts, keyed most specific first.
@@ -1611,6 +1613,21 @@ const bindingRules: ReadonlyArray<{
     ],
     binding: "indirect-verified",
     crossTenantEvidence: MAR_CONVERSATION,
+  },
+  // Concepts resolve their stored owner before any read or pipeline run.
+  {
+    source: "server/src/routes/concept.ts",
+    operations: ["GET /:id", "POST /experience/generate"],
+    binding: "indirect-verified",
+    crossTenantEvidence: MAR_CONCEPT_PLAN,
+  },
+  // v1 plans derive their project from the stored plan; another tenant's plan
+  // is refused like an unknown one (SEC-V1-PLAN-EXISTENCE-001).
+  {
+    source: "server/src/api/v1/index.ts",
+    operations: ["GET /plan/:id", "POST /plan/execute"],
+    binding: "indirect-verified",
+    crossTenantEvidence: MAR_CONCEPT_PLAN,
   },
   // SEC-JOB-DISCLOSURE-001 and SEC-JOB-DOUBLE-RESPONSE-001.
   {
