@@ -66,10 +66,30 @@ export function payloadLoggingEnabled(): boolean {
  * Never returns the full text even when enabled: a debugging aid does not need
  * the whole completion, and an unbounded preview is the same exposure with a
  * longer name.
+ *
+ * Line and control characters are escaped before truncation. The source text
+ * is a user brief or model output, so it can contain newlines that would
+ * otherwise let it forge extra log lines or spoof the fields around it in
+ * whatever sink reads this output.
  */
 export function previewForDebug(text: string, limit = 400): string {
   if (!payloadLoggingEnabled()) {
     return `[redacted ${text.length} chars]`;
   }
-  return text.length <= limit ? text : `${text.slice(0, limit)}…[truncated]`;
+  // eslint-disable-next-line no-control-regex -- escaping control chars is the point
+  const escaped = text.replace(/[\x00-\x1f\x7f]/g, (char) => {
+    switch (char) {
+      case "\n":
+        return "\\n";
+      case "\r":
+        return "\\r";
+      case "\t":
+        return "\\t";
+      default:
+        return `\\x${char.charCodeAt(0).toString(16).padStart(2, "0")}`;
+    }
+  });
+  return escaped.length <= limit
+    ? escaped
+    : `${escaped.slice(0, limit)}…[truncated]`;
 }

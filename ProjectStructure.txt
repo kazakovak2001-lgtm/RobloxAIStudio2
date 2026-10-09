@@ -186,6 +186,7 @@
 │   │   ├── STUDIO-1G_DESKTOP_ACCEPTANCE_RESULT.md
 │   │   ├── STUDIO-2F-A_SCOPE.md
 │   │   ├── STUDIO-ACCEPT-1_DESKTOP_ACCEPTANCE_RESULT.md
+│   │   ├── STUDIO-ACCEPTANCE-PREP-1_RUNBOOK.md
 │   │   ├── STUDIO-DEFERRED-ACCEPTANCE_RESULT.md
 │   │   ├── WORLD-1B_SCOPE.md
 │   │   └── WORLD-1C_SCOPE.md
@@ -624,6 +625,8 @@
 │   ├── pre-check.ts
 │   ├── scan-imports.ts
 │   ├── studio-acceptance
+│   │   ├── generated-game-smoke.template.luau
+│   │   ├── run-generation-acceptance.ts
 │   │   ├── run-studio-acceptance.ts
 │   │   └── studio-smoke.template.luau
 │   ├── studio-desktop-mcp
@@ -638,6 +641,7 @@
 │   ├── validate-artifact-contract.ts
 │   ├── validate-audit-register.ts
 │   ├── validate-boundaries.ts
+│   ├── validate-ci-job-timeout-guard.ts
 │   ├── validate-controller.ts
 │   ├── validate-documentation-authority.ts
 │   ├── validate-durable-writes.ts
@@ -724,9 +728,11 @@
 │   │   │   ├── playtesttruth1.evidence.test.ts
 │   │   │   ├── playtesttruth1.review.test.ts
 │   │   │   ├── pluginProtocol.test.ts
+│   │   │   ├── postgrescoherence1.generation-lifecycle.test.ts
 │   │   │   ├── preservationProperty.test.ts
 │   │   │   ├── productionQuality.test.ts
 │   │   │   ├── productLayer.test.ts
+│   │   │   ├── realtime-room-isolation.test.ts
 │   │   │   ├── repair-delivery.test.ts
 │   │   │   ├── saasFoundation.test.ts
 │   │   │   ├── secauthz1.cross-tenant-harness.test.ts
@@ -808,6 +814,7 @@
 │   │   │   ├── world1a.cross-artifact-validation.test.ts
 │   │   │   ├── world1b.receipt-verification.test.ts
 │   │   │   ├── world1b.scene-contract.test.ts
+│   │   │   ├── world1c.mode-aware-validation.test.ts
 │   │   │   └── world1c.package-commit.test.ts
 │   │   ├── agents
 │   │   │   ├── collaboration
@@ -1086,6 +1093,8 @@
 │   │   │       ├── ExportManager.ts
 │   │   │       └── index.ts
 │   │   ├── generation
+│   │   │   ├── __tests__
+│   │   │   │   └── genviability1.minimal-package.test.ts
 │   │   │   ├── assets
 │   │   │   │   ├── AssetGenerationEngine.ts
 │   │   │   │   ├── AssetGenerator.ts
@@ -1164,6 +1173,9 @@
 │   │   │   ├── GenerationReport.ts
 │   │   │   ├── GenerationTypes.ts
 │   │   │   ├── lua
+│   │   │   │   ├── __tests__
+│   │   │   │   │   ├── LuaGenerator.genFidelity1.test.ts
+│   │   │   │   │   └── LuaGenerator.genFidelity2.test.ts
 │   │   │   │   ├── index.ts
 │   │   │   │   ├── LuaArtifactBuilder.ts
 │   │   │   │   ├── LuaCodeValidator.ts
@@ -1172,6 +1184,8 @@
 │   │   │   │   ├── LuaGenerator.ts
 │   │   │   │   └── LuaTemplateRegistry.ts
 │   │   │   └── validation
+│   │   │       ├── __tests__
+│   │   │       │   └── GameValidationEngine.gates.test.ts
 │   │   │       └── GameValidationEngine.ts
 │   │   ├── governance
 │   │   │   ├── aiGovernance.ts
@@ -1248,6 +1262,8 @@
 │   │   │   ├── agents
 │   │   │   │   └── AgentMemoryBridge.ts
 │   │   │   ├── core
+│   │   │   │   ├── __tests__
+│   │   │   │   │   └── MemoryEngine.test.ts
 │   │   │   │   └── MemoryEngine.ts
 │   │   │   ├── indexing
 │   │   │   │   └── MemoryIndex.ts
@@ -1269,6 +1285,8 @@
 │   │   │   ├── ProjectContext.ts
 │   │   │   ├── ProjectMemory.ts
 │   │   │   ├── semantic
+│   │   │   │   ├── __tests__
+│   │   │   │   │   └── SemanticRetriever.test.ts
 │   │   │   │   └── SemanticRetriever.ts
 │   │   │   └── store
 │   │   │       └── MemoryStore.ts
@@ -1344,6 +1362,7 @@
 │   │   │   ├── projects
 │   │   │   │   ├── GenerationRecovery.ts
 │   │   │   │   ├── index.ts
+│   │   │   │   ├── ProjectDeletionCoordinator.ts
 │   │   │   │   ├── ProjectLifecycleCoordinator.test.ts
 │   │   │   │   ├── ProjectLifecycleCoordinator.ts
 │   │   │   │   └── SaaSProjectRepository.ts
@@ -1427,6 +1446,7 @@
 │   │   │   ├── __tests__
 │   │   │   │   ├── groq.test.ts
 │   │   │   │   ├── ollamaStructuredOutput.test.ts
+│   │   │   │   ├── ollamaThinkingBudget.test.ts
 │   │   │   │   ├── ollamaTimeout.test.ts
 │   │   │   │   ├── providerFactory.test.ts
 │   │   │   │   └── providers.test.ts
@@ -1473,6 +1493,8 @@
 │   │   │   │   ├── game-generation-blueprint.test.ts
 │   │   │   │   ├── platform.durability.test.ts
 │   │   │   │   ├── platform.registration.durability.test.ts
+│   │   │   │   ├── projectErasure1.test.ts
+│   │   │   │   ├── projectErasure2.test.ts
 │   │   │   │   ├── projects.durability.test.ts
 │   │   │   │   ├── projects.runtime.test.ts
 │   │   │   │   ├── studioApiKeyAccess.test.ts
@@ -1544,7 +1566,13 @@
 │   │   │   └── streaming.ts
 │   │   ├── studio
 │   │   │   ├── artifacts
+│   │   │   │   ├── __tests__
+│   │   │   │   │   └── GenerationArtifactRecorder.provenance.test.ts
 │   │   │   │   └── GenerationArtifactRecorder.ts
+│   │   │   ├── import
+│   │   │   │   ├── __tests__
+│   │   │   │   │   └── genviability2.studio-import-acceptance.test.ts
+│   │   │   │   └── RobloxExportArtifactAdapter.ts
 │   │   │   ├── integration
 │   │   │   │   ├── __tests__
 │   │   │   │   │   └── StudioIntegration.test.ts
