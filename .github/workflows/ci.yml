@@ -515,6 +515,9 @@ jobs:
           node-version: "22"
           cache: "npm"
       - run: npm ci
+      # The release-pair resolver gates the production contract; its fixture
+      # suite (local git fixtures, no network) must run, not only exist.
+      - run: bash scripts/ci/__tests__/resolve-frontend-control-pair.test.sh
       - run: npm run validate
 
   commit-lint:
