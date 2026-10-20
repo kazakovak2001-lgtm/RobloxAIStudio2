@@ -119,6 +119,14 @@ describe("F7 release compose requires an LLM provider", () => {
     expect(block).toMatch(
       /^ {6}GEMINI_API_KEY: \$\{GEMINI_API_KEY:-\$\{GOOGLE_API_KEY:-\}\}\r?$/m,
     );
+    // The factory reads OLLAMA_URL ?? OLLAMA_BASE_URL, so an empty forwarded
+    // OLLAMA_URL would shadow OLLAMA_BASE_URL; compose must fall back to it.
+    expect(factorySource).toContain(
+      "process.env.OLLAMA_URL ?? process.env.OLLAMA_BASE_URL",
+    );
+    expect(block).toMatch(
+      /^ {6}OLLAMA_URL: \$\{OLLAMA_URL:-\$\{OLLAMA_BASE_URL:-\}\}\r?$/m,
+    );
   });
 
   it("release compose defaults REQUIRE_LLM_PROVIDER to true", () => {
