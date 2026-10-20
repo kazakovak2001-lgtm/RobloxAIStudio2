@@ -4,6 +4,49 @@ All significant architectural and product decisions are recorded here.
 
 ---
 
+## 2026-10-20 — HARDEN-3A: Fail-Closed Storage, LLM Provider and Socket Auth Configuration
+
+**Decision**: Treat missing or unrecognized runtime configuration as a startup
+error rather than a silent downgrade:
+
+- An unrecognized `STORAGE_PROVIDER` throws. `NODE_ENV=production` refuses
+  inmemory storage unless `ALLOW_INMEMORY_STORAGE_IN_PRODUCTION=true`.
+- The release and backend compose files require an LLM provider
+  (`REQUIRE_LLM_PROVIDER`; release compose defaults it to `true`).
+- Socket.IO authentication is required in every environment. The
+  unauthenticated bypass needs `SOCKET_AUTH_DEV_BYPASS=true` and is refused
+  with `NODE_ENV=production`. `project:join` without a session `userId` is
+  denied outside the bypass.
+
+**Reason**: Forensic audit findings F6–F8 (2026-10-20). Each of these silent
+downgrades produced a degraded but healthy-looking system:
+
+- a typo'd storage provider gave non-durable storage,
+- a keyless release served deterministic fallback content,
+- a non-production socket accepted anonymous room joins.
+
+**Affected systems**: `StorageFactory`, `server/src/index.ts`, new
+`server/src/socket/socketAuthPolicy.ts`, both deploy compose files, CI jobs
+`backend-image`, `int-201` and `composed-release`, the rollback rehearsal
+script, and the authorization matrix. This supersedes the production
+implication of the 2026-07-13 InMemory Storage default; that entry is
+unchanged.
+
+**Boundary**: Configuration and startup behavior only; no API or contract
+shape change. CI still runs ephemeral inmemory storage and no LLM provider,
+through explicit opt-ins. No API-key socket principal exists; such clients
+cannot join project rooms. The Frontend repo `int-201` job needs the same
+storage opt-in before the paired backend SHA moves past this change.
+
+**Evidence**: `server/src/__tests__/harden3a.fail-closed-config.test.ts`
+(two distinct projects for room joins). Targeted vitest and `tsc --noEmit`
+pass. The CI jobs have not yet been run on GitHub Actions; they were only
+checked locally (YAML parse and `bash -n`).
+
+**Status**: Implemented, not yet released.
+
+---
+
 ## 2026-10-08 — SEC-LIFECYCLE-PROTO-001 Live Patch Targets Cannot Reach Prototypes
 
 **Decision**: `LiveUpdateEngine` follows only the blueprint's own properties

@@ -678,6 +678,7 @@
 │   │   │   ├── firstplayable1.spatialWiring.test.ts
 │   │   │   ├── generation-provenance.test.ts
 │   │   │   ├── harden2a.auth-contract.test.ts
+│   │   │   ├── harden3a.fail-closed-config.test.ts
 │   │   │   ├── identityAccess.test.ts
 │   │   │   ├── integration.test.ts
 │   │   │   ├── novelty1.gameDna.test.ts
@@ -1493,6 +1494,7 @@
 │   │   │       └── GameplayMetricsEngine.ts
 │   │   ├── socket
 │   │   │   ├── index.ts
+│   │   │   ├── socketAuthPolicy.ts
 │   │   │   └── streaming.ts
 │   │   ├── studio
 │   │   │   ├── artifacts

@@ -46,6 +46,7 @@ docker run --detach \
   --env NODE_ENV=production \
   --env PORT=5000 \
   --env STORAGE_PROVIDER=inmemory \
+  --env ALLOW_INMEMORY_STORAGE_IN_PRODUCTION=true \
   --env "FRONTEND_URL=$FRONTEND_ORIGIN" \
   "$BACKEND_IMAGE"
 
