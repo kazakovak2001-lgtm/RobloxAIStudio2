@@ -2,7 +2,9 @@
  * StorageFactory — Creates the appropriate StorageProvider based on configuration.
  *
  * Set STORAGE_PROVIDER=postgres to use PostgreSQL.
- * Default: inmemory
+ * Default (unset): inmemory. An unrecognized value is a configuration error,
+ * and NODE_ENV=production refuses inmemory storage unless the operator opts in
+ * explicitly with ALLOW_INMEMORY_STORAGE_IN_PRODUCTION=true.
  */
 
 import type { StorageProvider } from "./StorageProvider";
@@ -17,9 +19,44 @@ export type StoragePostInitializeHook = () => Promise<void>;
 let configuredStorageProvider: StorageProvider | null = null;
 const postInitializeHooks = new Set<StoragePostInitializeHook>();
 
+const STORAGE_PROVIDER_TYPES: readonly StorageProviderType[] = [
+  "inmemory",
+  "postgres",
+];
+
+function isStorageProviderType(value: string): value is StorageProviderType {
+  return (STORAGE_PROVIDER_TYPES as readonly string[]).includes(value);
+}
+
+/**
+ * Resolves STORAGE_PROVIDER fail-closed. Absence means the historical
+ * inmemory default; an unrecognized value throws rather than degrading to
+ * non-durable storage. Production inmemory storage would lose every record on
+ * restart, so it is refused unless explicitly allowed.
+ */
+export function resolveStorageProviderType(
+  env: NodeJS.ProcessEnv = process.env,
+): StorageProviderType {
+  const providerType = env.STORAGE_PROVIDER ?? "inmemory";
+  if (!isStorageProviderType(providerType)) {
+    throw new Error(
+      `Unrecognized STORAGE_PROVIDER "${providerType}"; expected one of: ${STORAGE_PROVIDER_TYPES.join(", ")}.`,
+    );
+  }
+  if (
+    providerType === "inmemory" &&
+    env.NODE_ENV === "production" &&
+    env.ALLOW_INMEMORY_STORAGE_IN_PRODUCTION !== "true"
+  ) {
+    throw new Error(
+      "NODE_ENV=production resolved to inmemory storage, which is not durable; set STORAGE_PROVIDER=postgres, or ALLOW_INMEMORY_STORAGE_IN_PRODUCTION=true for an ephemeral smoke run.",
+    );
+  }
+  return providerType;
+}
+
 export function createStorageProvider(): StorageProvider {
-  const providerType = (process.env.STORAGE_PROVIDER ??
-    "inmemory") as StorageProviderType;
+  const providerType = resolveStorageProviderType();
 
   switch (providerType) {
     case "postgres":
@@ -32,7 +69,6 @@ export function createStorageProvider(): StorageProvider {
       configuredStorageProvider = new PostgresStorageProvider({ strict: true });
       break;
     case "inmemory":
-    default:
       console.log("[Storage] Using InMemory provider");
       configuredStorageProvider = new InMemoryStorageProvider();
       break;
@@ -80,5 +116,5 @@ export async function closeStorageProvider(
 }
 
 export function getStorageType(): StorageProviderType {
-  return (process.env.STORAGE_PROVIDER ?? "inmemory") as StorageProviderType;
+  return resolveStorageProviderType();
 }
