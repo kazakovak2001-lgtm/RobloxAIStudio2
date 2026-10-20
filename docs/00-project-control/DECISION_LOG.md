@@ -19,6 +19,11 @@ GitHub Actions and the status "Implemented, not yet released". Both are no longe
   `4a3961f0`. All 21 check runs on `4a3961f0` succeeded, including `Merge Gate`,
   `Composed HTTPS Release`, `Backend Release Image` and `Frontend Production Contract`
   (INT-201).
+- Post-merge `push` CI on the merge commit `fa868eac` itself also completed green: CI Pipeline
+  run 39498804702, Security SAST and Credential Scan 39498804713, Security Image and SBOM Scan
+  39498804684, SECURITY-2G Consolidated Gate 39498804737. 19 check runs succeeded, including
+  `Merge Gate`, `Composed HTTPS Release` and `Frontend Production Contract`; only
+  `Commit Message Lint` was skipped, as it is on every `push` event.
 - Follow-up fixes inside #295 after review: compose forwards every credential
   `LLMProviderFactory` reads (`68dedc03`) and `OLLAMA_URL` falls back to `OLLAMA_BASE_URL`
   (`22211ecc`).
