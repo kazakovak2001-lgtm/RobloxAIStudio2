@@ -155,16 +155,40 @@ It does not move ownership, and no path in the repository produces
 
 ### What did not land, and is still required
 
-- No mode-aware playability contract. `getPlayableLuaIssues` is unchanged, and
-  the three world-ownership rules in [The playability contract](#1-the-playability-contract)
-  are untouched. This is the prerequisite for anything to legitimately be
-  `materialized-world`.
+- **August 19, 2026 — second vertical slice.** `getPlayableLuaIssues` and
+  `crossValidateWorld` are now mode-aware. Both default to `lua-owned` when a
+  caller passes no mode, so `LuaGeneratorAgent`'s four post-validation sites,
+  `PipelineExecutor`, and `RepairExecutor`/`RepairEngine` — none of which were
+  touched — keep evaluating exactly the `lua-owned` contract they always did.
+  `GenerationArtifactRecorder` now threads its resolved `worldRuntimeMode`
+  through both calls plus `normalizeLuaArtifactContent`'s internal
+  `assertPlayableLuaScripts`, so a determination made under one mode cannot be
+  re-checked against the other mode's rules inside the same recording.
+  - The three rules in [The playability contract](#1-the-playability-contract)
+    that assumed Lua builds the world now branch: the "world instances" rule
+    is a binding rule under `materialized-world` (a `workspace` lookup call,
+    not `Instance.new`) and additionally refuses a script that constructs a
+    new instance directly under `Workspace`, which is Lua rebuilding the
+    canonical world. The "one script owns everything" rule drops its world-
+    creation clause under `materialized-world`; the interaction, `RemoteEvent`
+    and fire-call clauses are unchanged. The gameplay-interaction rule and
+    every HUD rule are byte-identical in both modes, per this doc's own table.
+  - `crossValidateWorld` gained a `deterministic-binding-pattern` evidence
+    class alongside `deterministic-pattern`, recorded on every result. Only
+    the `player-entry` role's evidence changed (a `workspace` lookup paired
+    with `:PivotTo`, chosen because it overlaps none of `lua-owned`'s
+    evidence patterns); every other role reuses the exact `lua-owned`
+    evidence object, for the reasons this doc already gives for the HUD and
+    gameplay-interaction playability rules.
+  - Both functions throw on a mode outside `lua-owned`/`materialized-world`
+    rather than silently choosing an evidence class.
+  - Tests: `server/src/__tests__/world1c.mode-aware-validation.test.ts`.
 - Nothing sets `materialized-world`. The value exists in the type and is refused
-  or withheld everywhere it could reach delivery.
+  or withheld everywhere it could reach delivery. No producer was changed by
+  this slice, and `RepairExecutor`'s acceptance gate still resolves to
+  `lua-owned` because it never passes a mode.
 - No mode-aware sweeping on delivery, so the rollback hazard in
   [Studio delivery and rollback](#7-studio-delivery-and-rollback) is unaddressed.
-- `crossValidateWorld` still asks only whether Lua *constructs* what a role
-  requires.
 - `LuaGeneratorAgent`, its prompt and its `playableFallback` still build the
   world.
 - **No runtime evidence.** Nothing in this slice was observed in a Roblox Studio

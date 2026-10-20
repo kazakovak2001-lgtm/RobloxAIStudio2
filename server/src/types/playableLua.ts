@@ -1,3 +1,5 @@
+import type { WorldRuntimeMode } from "./worldRuntimeMode";
+
 export interface PlayableLuaScript {
   path: string;
   content: string;
@@ -92,10 +94,22 @@ function ensureLuaSuffix(name: string, kind: LuaScriptKind): string {
  * Fail-closed contract for code that is advertised as a playable Studio import.
  * Runtime evidence is inspected after comments are removed, preventing
  * comment-only examples from being accepted as executable behavior.
+ *
+ * WORLD-1C. `mode` defaults to `lua-owned` so every existing caller — which
+ * passes no second argument — is byte-for-byte unaffected. Three rules assume
+ * Lua builds the world (see `docs/00-project-control/WORLD-1C_SCOPE.md`,
+ * "The playability contract"); under `materialized-world` those three are
+ * replaced by binding rules instead of being relaxed away. An unrecognized
+ * mode fails closed rather than silently falling back to either contract.
  */
 export function getPlayableLuaIssues(
   scripts: readonly PlayableLuaScript[],
+  mode: WorldRuntimeMode = "lua-owned",
 ): string[] {
+  if (mode !== "lua-owned" && mode !== "materialized-world") {
+    throw new Error(`Unknown world runtime mode: ${String(mode)}`);
+  }
+  const materialized = mode === "materialized-world";
   const issues: string[] = [];
   const server = scripts.filter((script) =>
     script.path.startsWith("ServerScriptService/"),
@@ -220,11 +234,38 @@ export function getPlayableLuaIssues(
     issues.push("server Scripts must not return ModuleScript tables");
   }
 
-  if (
-    !/Instance\.new\s*\(/.test(serverSource) ||
-    !/\b(?:workspace|Workspace)\b/.test(serverSource)
-  ) {
-    issues.push("server code must create playable world instances");
+  // WORLD-1C. This rule assumes Lua builds the world. Under `lua-owned` that
+  // assumption is exactly what the platform still relies on and stays
+  // unchanged. Under `materialized-world` the canonical world already exists,
+  // so the required evidence flips: Lua must *bind* to it (a lookup call
+  // against `workspace`), and constructing a new instance parented directly
+  // under `workspace` is now the violation — that would be Lua rebuilding the
+  // world the materializer already owns, the exact two-owner state WORLD-1C
+  // forbids.
+  if (!materialized) {
+    if (
+      !/Instance\.new\s*\(/.test(serverSource) ||
+      !/\b(?:workspace|Workspace)\b/.test(serverSource)
+    ) {
+      issues.push("server code must create playable world instances");
+    }
+  } else {
+    if (
+      !/\b(?:workspace|Workspace)\b/.test(serverSource) ||
+      !/\b(?:WaitForChild|FindFirstChild)\s*\(/.test(serverSource)
+    ) {
+      issues.push(
+        "server code must bind to the materialized world instead of constructing it",
+      );
+    }
+    if (
+      /Instance\.new\s*\(/.test(serverSource) &&
+      /\.Parent\s*=\s*(?:workspace|Workspace)\b/.test(serverSource)
+    ) {
+      issues.push(
+        "server code must not construct new instances directly under Workspace when the world is materialized",
+      );
+    }
   }
   if (
     !/(?:Touched|Activated|Triggered|MouseClick|OnServerEvent)\s*:\s*Connect\s*\(/i.test(
@@ -255,10 +296,17 @@ export function getPlayableLuaIssues(
     );
   }
 
+  // WORLD-1C. World creation drops out of this rule under `materialized-world`
+  // — the rest (owning the interaction, the objective's RemoteEvent, and the
+  // fire call in one script) stays exactly as it was, per
+  // `docs/00-project-control/WORLD-1C_SCOPE.md`.
   const hasSelfContainedServerObjective = serverSources.some(
     (source) =>
-      /Instance\.new\s*\(/.test(source) &&
-      /\b(?:workspace|Workspace)\b/.test(source) &&
+      (materialized
+        ? /\b(?:workspace|Workspace)\b/.test(source) &&
+          /\b(?:WaitForChild|FindFirstChild)\s*\(/.test(source)
+        : /Instance\.new\s*\(/.test(source) &&
+          /\b(?:workspace|Workspace)\b/.test(source)) &&
       /(?:Touched|Activated|Triggered|MouseClick)\s*:\s*Connect\s*\(/i.test(
         source,
       ) &&
@@ -267,7 +315,9 @@ export function getPlayableLuaIssues(
   );
   if (!hasSelfContainedServerObjective) {
     issues.push(
-      "one server Script must own the complete world, objective, and progress event",
+      materialized
+        ? "one server Script must bind to the materialized world and own the complete objective and progress event"
+        : "one server Script must own the complete world, objective, and progress event",
     );
   }
 
@@ -327,8 +377,9 @@ export function getPlayableLuaIssues(
 
 export function assertPlayableLuaScripts(
   scripts: readonly PlayableLuaScript[],
+  mode: WorldRuntimeMode = "lua-owned",
 ): void {
-  const issues = getPlayableLuaIssues(scripts);
+  const issues = getPlayableLuaIssues(scripts, mode);
   if (issues.length > 0) {
     throw new Error(`Lua generation is not playable: ${issues.join("; ")}`);
   }
