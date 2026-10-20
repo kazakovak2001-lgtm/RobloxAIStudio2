@@ -25,6 +25,15 @@ services:
       STORAGE_PROVIDER: postgres
       DATABASE_URL: postgresql://${POSTGRES_USER:-studio}:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-roblox_ai_studio_release}
       FRONTEND_URL: ${RELEASE_ORIGIN:?Set RELEASE_ORIGIN}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      GOOGLE_API_KEY: ${GOOGLE_API_KEY:-}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-${GOOGLE_API_KEY:-}}
+      OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:-}
+      GROQ_API_KEY: ${GROQ_API_KEY:-}
+      OLLAMA_URL: ${OLLAMA_URL:-${OLLAMA_BASE_URL:-}}
+      OLLAMA_BASE_URL: ${OLLAMA_BASE_URL:-}
+      REQUIRE_LLM_PROVIDER: ${REQUIRE_LLM_PROVIDER:-true}
     depends_on:
       postgres:
         condition: service_healthy
