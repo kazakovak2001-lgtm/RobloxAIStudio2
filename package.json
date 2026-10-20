@@ -28,8 +28,8 @@
         "rationale": "A public Git commit boundary was misclassified as a generic API key.",
         "compensatingControl": "The exception is exact-fingerprint scoped and all reports remain fully redacted.",
         "approvalReference": "issue #244",
-        "createdAt": "2026-08-18",
-        "expiresAt": "2026-08-31"
+        "createdAt": "2026-10-20",
+        "expiresAt": "2026-11-19"
       },
       {
         "controlId": "SECURITY-2G-C",
@@ -40,8 +40,8 @@
         "rationale": "A public Git commit boundary in a deterministic fixture was misclassified as a generic API key.",
         "compensatingControl": "The exception is exact-fingerprint scoped and all reports remain fully redacted.",
         "approvalReference": "issue #244",
-        "createdAt": "2026-08-18",
-        "expiresAt": "2026-08-31"
+        "createdAt": "2026-10-20",
+        "expiresAt": "2026-11-19"
       }
     ],
     "exceptions": []
