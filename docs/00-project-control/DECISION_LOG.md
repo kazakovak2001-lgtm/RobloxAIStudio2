@@ -4,6 +4,38 @@ All significant architectural and product decisions are recorded here.
 
 ---
 
+## 2026-10-20 — HARDEN-3A Merged; CI Green on the Merged Head
+
+**Decision**: Record that HARDEN-3A is merged and that its CI has run. The 2026-10-20
+HARDEN-3A entry below stays unchanged; this entry supersedes its **Evidence** and **Status**
+lines.
+
+**Reason**: That entry was written before CI ran and states the CI jobs had not been run on
+GitHub Actions and the status "Implemented, not yet released". Both are no longer accurate.
+
+**Evidence**:
+
+- PR #295 merged into `release/cutover-1e-candidate` as `fa868eac` (merge commit) from head
+  `4a3961f0`. All 21 check runs on `4a3961f0` succeeded, including `Merge Gate`,
+  `Composed HTTPS Release`, `Backend Release Image` and `Frontend Production Contract`
+  (INT-201).
+- Follow-up fixes inside #295 after review: compose forwards every credential
+  `LLMProviderFactory` reads (`68dedc03`) and `OLLAMA_URL` falls back to `OLLAMA_BASE_URL`
+  (`22211ecc`).
+- Unrelated blockers fixed first: production dependency upgrades (PR #296, merged as
+  `e1405a9a`) and renewal of the two SECURITY-2G-C gitleaks exceptions until 2026-11-19
+  (PR #297, merged through #296; approval in issue #244).
+- Frontend#55 merged into Frontend `main` as `8e36a678`: the INT-201 job sets
+  `ALLOW_INMEMORY_STORAGE_IN_PRODUCTION=true`.
+
+**Boundary**: Merged to the release-candidate branch, not deployed. The Frontend
+`config/integration/paired-release.json` still pins backend `63221e79`; moving it to
+`fa868eac` is a separate change.
+
+**Status**: Implemented and merged (`fa868eac`); not deployed.
+
+---
+
 ## 2026-10-20 — HARDEN-3A: Fail-Closed Storage, LLM Provider and Socket Auth Configuration
 
 **Decision**: Treat missing or unrecognized runtime configuration as a startup
