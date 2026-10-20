@@ -4,6 +4,46 @@ All significant architectural and product decisions are recorded here.
 
 ---
 
+## 2026-10-21 — SECURITY-2G-C: Move the Gitleaks History Boundary Past the Registered False Positives
+
+**Decision**: Move the gitleaks history boundary from `8dd23f88` (merge of PR #151) to
+`76f4e7a7be1684ac7984533d6c8d698ba6c99e7e` (merge of PR #153, SECURITY-2G-C) and remove both
+time-boxed `scannerExceptions`. Approved by the security owner.
+
+**Reason**: Both exceptions cover findings in immutable history, not current content. The field
+that triggered `generic-api-key` (`secretHistoryBoundary`) was already renamed to
+`historyBoundaryCommit` in `97f7ddb8`; renaming again cannot remove findings in `18ec4c50` and
+`703ea442`. Renewing every 30 days only maintains a known false positive.
+
+**Evidence** (machine-verified 2026-10-21 with the official gitleaks 8.30.1 Windows x64 release,
+SHA-256 `d29144de…afc4e` matching the release checksums file and the GitHub asset digest; clean
+detached checkout of `fa868eac`; CI's flags `--redact=100 --report-format json`; **no** ignore
+file):
+
+- `--log-opts=8dd23f88..fa868eac` (227 commits scanned): exactly 2 findings, fingerprints
+  `18ec4c504b30459b42ad37b643a32803ce0629c5:package.json:generic-api-key:16` and
+  `703ea442fd52c1f20734170877dd309e8f9f25d2:package.json:generic-api-key:34` — the two registered
+  exceptions, values redacted.
+- `--log-opts=76f4e7a7..fa868eac` (204 commits scanned): 0 findings, with no ignore file and with
+  an empty one.
+- `18ec4c50` and `703ea442` are ancestors of `76f4e7a7`; `76f4e7a7` is an ancestor of `fa868eac`.
+  Commits leaving the history scan: `git rev-list --count 8dd23f88..76f4e7a7` = 29 (the
+  SECURITY-2G-C delivery itself).
+
+**Affected systems**: `package.json` `securityPolicy.historyBoundaryCommit`,
+`securityPolicy.scannerExceptions` (now empty) and the `validate:security-scanners` fixture
+(expected boundary, exception count 0); `.github/workflows/security-sast-credential-scan.yml`
+`SECURITY_HISTORY_BOUNDARY` and the push-event `SECURITY_BASE_SHA` fallback. Supersedes the
+2026-10-20 renewal approved in issue #244; that renewal is no longer needed.
+
+**Boundary**: Scan coverage only: the 29 commits above leave the history scan; current content
+and every later commit stay scanned. No allowlist, no permanent exception, no change to the
+30-day exception policy.
+
+**Status**: Implemented, pending CI and merge.
+
+---
+
 ## 2026-10-20 — HARDEN-3A Merged; CI Green on the Merged Head
 
 **Decision**: Record that HARDEN-3A is merged and that its CI has run. The 2026-10-20
