@@ -91,6 +91,36 @@ describe("F7 release compose requires an LLM provider", () => {
     );
   });
 
+  // Every credential LLMProviderFactory resolves from; a key the compose file
+  // does not forward can never satisfy REQUIRE_LLM_PROVIDER.
+  const factoryCredentials = [
+    "OPENAI_API_KEY",
+    "ANTHROPIC_API_KEY",
+    "GEMINI_API_KEY",
+    "OPENROUTER_API_KEY",
+    "GROQ_API_KEY",
+    "OLLAMA_URL",
+    "OLLAMA_BASE_URL",
+  ];
+
+  it.each([
+    "deploy/docker-compose.backend.yml",
+    "deploy/docker-compose.release.yml",
+  ])("%s forwards every credential the provider factory reads", (file) => {
+    const factorySource = readFileSync(
+      resolve(root, "server/src/providers/providerFactory.ts"),
+      "utf8",
+    );
+    const block = backendBlock(file);
+    for (const name of factoryCredentials) {
+      expect(factorySource).toContain(`process.env.${name}`);
+      expect(block).toMatch(new RegExp(`^ {6}${name}: `, "m"));
+    }
+    expect(block).toMatch(
+      /^ {6}GEMINI_API_KEY: \$\{GEMINI_API_KEY:-\$\{GOOGLE_API_KEY:-\}\}\r?$/m,
+    );
+  });
+
   it("release compose defaults REQUIRE_LLM_PROVIDER to true", () => {
     expect(backendBlock("deploy/docker-compose.release.yml")).toMatch(
       /^ {6}REQUIRE_LLM_PROVIDER: \$\{REQUIRE_LLM_PROVIDER:-true\}\r?$/m,
