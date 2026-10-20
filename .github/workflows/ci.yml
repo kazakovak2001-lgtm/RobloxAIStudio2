@@ -105,6 +105,7 @@ jobs:
             --env NODE_ENV=production \
             --env PORT=5000 \
             --env STORAGE_PROVIDER=inmemory \
+            --env ALLOW_INMEMORY_STORAGE_IN_PRODUCTION=true \
             --env FRONTEND_URL=http://127.0.0.1:8080 \
             roblox-ai-studio-backend:cutover
       - name: Verify backend health
@@ -205,6 +206,7 @@ jobs:
             --env NODE_ENV=production \
             --env PORT=5000 \
             --env STORAGE_PROVIDER=inmemory \
+            --env ALLOW_INMEMORY_STORAGE_IN_PRODUCTION=true \
             --env FRONTEND_URL="$INT201_FRONTEND_ORIGIN" \
             roblox-ai-studio-backend:int-201
       - name: Wait for production backend
@@ -286,6 +288,8 @@ jobs:
           echo "RELEASE_PORT=8443" >> "$GITHUB_ENV"
           echo "RELEASE_CERT_DIR=${GITHUB_WORKSPACE}/.cutover-certs" >> "$GITHUB_ENV"
           echo "NODE_EXTRA_CA_CERTS=${GITHUB_WORKSPACE}/.cutover-certs/release.crt" >> "$GITHUB_ENV"
+          # CI has no LLM provider; opt out of the release fail-closed default.
+          echo "REQUIRE_LLM_PROVIDER=false" >> "$GITHUB_ENV"
       - name: Generate CI-only TLS certificate
         run: |
           mkdir -p .cutover-certs
