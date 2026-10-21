@@ -57,6 +57,18 @@ export function createV1Router(
       res.status(404).json(formatter.notFound("Plan", planId));
       return undefined;
     }
+    // SEC-V1-PLAN-EXISTENCE-001. Another tenant's plan used to fall through
+    // to requireProjectAccess, which answered "Project not found" while an
+    // unknown plan answered "Plan '<id>' not found" — so the body told a
+    // caller which plan ids were real. The concealing check lets both refuse
+    // with the same v1 not-found envelope, as routes/planning.ts already does.
+    if (access.hasProjectAccess) {
+      if (await access.hasProjectAccess(req, projectId)) return plan;
+      if (!res.headersSent) {
+        res.status(404).json(formatter.notFound("Plan", planId));
+      }
+      return undefined;
+    }
     if (!(await access.requireProjectAccess(req, res, projectId)))
       return undefined;
     return plan;
@@ -297,11 +309,13 @@ export function createV1Router(
 
     try {
       const { planId, options } = req.body;
+      // SEC-MAR001-REMAINING-GAPS-001. `requirePlanProjectAccess` already
+      // wrote the refusal (missing plan, or one belonging to another
+      // project) before returning undefined — writing a second response
+      // here crashed the request with ERR_HTTP_HEADERS_SENT, caught only
+      // once this route was actually exercised end to end.
       const plan = await requirePlanProjectAccess(req, res, planId);
-      if (!plan) {
-        res.status(404).json(formatter.notFound("Plan", planId, { traceId }));
-        return;
-      }
+      if (!plan) return;
 
       const executor = new PlanExecutor();
       const result = await executor.executePlan(
@@ -345,13 +359,10 @@ export function createV1Router(
   // ─── GET /plan/:id ─────────────────────────────────────────────────────
   router.get("/plan/:id", async (req, res) => {
     const traceId = (req as unknown as RequestWithTrace).traceId;
+    // SEC-MAR001-REMAINING-GAPS-001. See the matching note in POST
+    // /plan/execute: `requirePlanProjectAccess` already sent the refusal.
     const plan = await requirePlanProjectAccess(req, res, req.params.id);
-    if (!plan) {
-      res
-        .status(404)
-        .json(formatter.notFound("Plan", req.params.id, { traceId }));
-      return;
-    }
+    if (!plan) return;
 
     res.json(
       formatter.success(

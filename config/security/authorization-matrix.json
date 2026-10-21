@@ -26,9 +26,9 @@
       "resourceScope": "resolved-plan-project",
       "positiveEvidence": "server/src/__tests__/security2gE.api-v1-scope.test.ts",
       "negativeEvidence": "server/src/__tests__/security2gE.api-v1-scope.test.ts",
-      "resourceBinding": "indirect-unreviewed",
-      "crossTenantEvidence": "none-recorded",
-      "mar001Category": "mechanism-gap"
+      "resourceBinding": "indirect-verified",
+      "crossTenantEvidence": "server/src/__tests__/mar001.concept-plan-ownership.test.ts",
+      "mar001Category": "verified-correct"
     },
     {
       "transport": "rest",
@@ -82,9 +82,9 @@
       "resourceScope": "resolved-plan-project",
       "positiveEvidence": "server/src/__tests__/security2gE.api-v1-scope.test.ts",
       "negativeEvidence": "server/src/__tests__/security2gE.api-v1-scope.test.ts",
-      "resourceBinding": "indirect-unreviewed",
-      "crossTenantEvidence": "none-recorded",
-      "mar001Category": "mechanism-gap"
+      "resourceBinding": "indirect-verified",
+      "crossTenantEvidence": "server/src/__tests__/mar001.concept-plan-ownership.test.ts",
+      "mar001Category": "verified-correct"
     },
     {
       "transport": "rest",
@@ -600,9 +600,9 @@
       "resourceScope": "session-owned-concept",
       "positiveEvidence": "server/src/__tests__/security2gE.concept-entry-scope.test.ts",
       "negativeEvidence": "server/src/__tests__/security2gE.concept-entry-scope.test.ts",
-      "resourceBinding": "indirect-unreviewed",
-      "crossTenantEvidence": "none-recorded",
-      "mar001Category": "mechanism-gap"
+      "resourceBinding": "indirect-verified",
+      "crossTenantEvidence": "server/src/__tests__/mar001.concept-plan-ownership.test.ts",
+      "mar001Category": "verified-correct"
     },
     {
       "transport": "rest",
@@ -838,9 +838,9 @@
       "resourceScope": "session-owned-concept",
       "positiveEvidence": "server/src/__tests__/security2gE.concept-entry-scope.test.ts",
       "negativeEvidence": "server/src/__tests__/security2gE.concept-entry-scope.test.ts",
-      "resourceBinding": "indirect-unreviewed",
-      "crossTenantEvidence": "none-recorded",
-      "mar001Category": "mechanism-gap"
+      "resourceBinding": "indirect-verified",
+      "crossTenantEvidence": "server/src/__tests__/mar001.concept-plan-ownership.test.ts",
+      "mar001Category": "verified-correct"
     },
     {
       "transport": "rest",

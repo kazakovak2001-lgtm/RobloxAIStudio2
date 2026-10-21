@@ -74,11 +74,12 @@ export class PlannerAgent extends BaseAgent {
 
     if (!this.llm) return fallback;
 
-    const registryPrompt = this.buildPrompt({
+    const promptVars = {
       name,
       requirements_summary: reqSummary,
       core_loop: coreLoop,
-    });
+    };
+    const registryPrompt = this.buildPrompt(promptVars);
 
     const inlinePrompt =
       "You are a Roblox game project planner. " +
@@ -91,6 +92,7 @@ export class PlannerAgent extends BaseAgent {
     return this.generateWithRetry(prompt, ["plan"], fallback, {
       temperature: 0.3,
       maxTokens: 1000,
+      system: this.systemPromptFor(promptVars) ?? undefined,
     });
   }
 }

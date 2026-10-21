@@ -76,12 +76,13 @@ export class UIGeneratorAgent extends BaseAgent {
 
     if (!this.llm) return fallback;
 
-    const registryPrompt = this.buildPrompt({
+    const promptVars = {
       name,
       game_type: gameType,
       key_features: keyFeatures,
       theme,
-    });
+    };
+    const registryPrompt = this.buildPrompt(promptVars);
 
     const inlinePrompt =
       "You are a Roblox UI/UX designer. " +
@@ -96,6 +97,7 @@ export class UIGeneratorAgent extends BaseAgent {
     return this.generateWithRetry(prompt, ["uiDesign"], fallback, {
       temperature: 0.4,
       maxTokens: 1500,
+      system: this.systemPromptFor(promptVars) ?? undefined,
     });
   }
 }

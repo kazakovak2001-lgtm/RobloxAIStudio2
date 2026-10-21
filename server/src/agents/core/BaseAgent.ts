@@ -47,6 +47,12 @@ export interface LLMOptions {
    * capability ignore it.
    */
   responseSchema?: Record<string, unknown>;
+  /**
+   * Server-authored instruction text, sent through the provider's own
+   * system-role channel instead of folded into the user prompt string. See
+   * `systemPromptFor`.
+   */
+  system?: string;
 }
 
 /** Shared registry instance — one per process, lazily initialised. */
@@ -157,6 +163,28 @@ export abstract class BaseAgent {
     return part === "system"
       ? registry.renderSystem(agentType, vars)
       : registry.render(agentType, vars);
+  }
+
+  /**
+   * The server-authored instruction text for this agent's rendered prompt,
+   * for callers that want to send it through the provider's own system-role
+   * channel (`LLMOptions.system`) rather than folded into the user prompt.
+   *
+   * Mirrors buildPrompt()'s own template lookup (PromptEngine → legacy
+   * registry) so the two never disagree about which template is active.
+   * Vars are still interpolated here only because PromptEngine's registered
+   * system templates carry no `{{variable}}` placeholders — no untrusted
+   * value can enter this string. Returns null when no template is
+   * registered for this agent type.
+   */
+  protected systemPromptFor(vars: Record<string, string>): string | null {
+    const agentType = this.agentTypeKey();
+    if (agentType) {
+      const engine = getSharedEngine();
+      const result = engine.render(agentType, vars);
+      if (result.success) return result.system || null;
+    }
+    return this.renderPrompt(vars, "system");
   }
 
   /**
