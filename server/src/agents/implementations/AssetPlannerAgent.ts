@@ -107,12 +107,13 @@ export class AssetPlannerAgent extends BaseAgent {
 
     if (!this.llm) return fallback;
 
-    const registryPrompt = this.buildPrompt({
+    const promptVars = {
       name,
       theme,
       locations: "main world area, player spawn",
       systems_summary: systemsSummary,
-    });
+    };
+    const registryPrompt = this.buildPrompt(promptVars);
 
     const inlinePrompt =
       "You are a Roblox asset planner. " +
@@ -130,6 +131,7 @@ export class AssetPlannerAgent extends BaseAgent {
     return this.generateWithRetry(prompt, ["assetPlan"], fallback, {
       temperature: 0.4,
       maxTokens: 1500,
+      system: this.systemPromptFor(promptVars) ?? undefined,
     });
   }
 }

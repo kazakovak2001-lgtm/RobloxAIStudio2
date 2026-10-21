@@ -8,6 +8,9 @@ export class MockProvider implements LLMProvider {
   private delay: number;
   private responses: Map<string, string> = new Map();
 
+  /** Every call this instance has received, for test assertions. */
+  readonly calls: Array<{ prompt: string; options?: LLMOptions }> = [];
+
   constructor(config?: { delay?: number }) {
     this.delay = config?.delay ?? 10;
   }
@@ -28,6 +31,7 @@ export class MockProvider implements LLMProvider {
     prompt: string,
     _options?: LLMOptions,
   ): Promise<LLMResponse> {
+    this.calls.push({ prompt, options: _options });
     await new Promise((r) => setTimeout(r, this.delay));
 
     // Check for pre-programmed responses
