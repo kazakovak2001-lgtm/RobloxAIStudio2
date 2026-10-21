@@ -60,20 +60,39 @@ export class LiveUpdateEngine {
   }
 
   private applyPatch(obj: any, patch: LivePatch): boolean {
+    // SEC-LIFECYCLE-PROTO-001. `target` is caller-supplied. A segment such as
+    // `__proto__` or `constructor.prototype` used to walk off the cloned
+    // blueprint onto Object.prototype and write to every object in the
+    // process. Navigation now only follows the blueprint's own properties and
+    // refuses prototype-reaching names outright, so the refusal is reported
+    // as an error rather than a silent skip.
+    if (typeof patch.target !== "string" || patch.target.length === 0) {
+      throw new Error("patch target must be a non-empty string");
+    }
     const parts = patch.target.split(".");
     let current = obj;
 
     // Navigate to parent
     for (let i = 0; i < parts.length - 1; i++) {
       const key = this.parseKey(parts[i]);
-      if (current[key.name] === undefined) return false;
-      current =
-        key.index !== null ? current[key.name][key.index] : current[key.name];
-      if (current === undefined) return false;
+      if (!hasOwn(current, key.name)) return false;
+      current = current[key.name];
+      if (key.index !== null) {
+        if (!Array.isArray(current) || !hasOwn(current, key.index)) {
+          return false;
+        }
+        current = current[key.index];
+      }
+      if (!isContainer(current)) return false;
     }
 
     const lastKey = this.parseKey(parts[parts.length - 1]);
-    const target = lastKey.index !== null ? current[lastKey.name] : current;
+    let target = current;
+    if (lastKey.index !== null) {
+      if (!hasOwn(current, lastKey.name)) return false;
+      target = current[lastKey.name];
+      if (!Array.isArray(target)) return false;
+    }
     const field = lastKey.index !== null ? lastKey.index : lastKey.name;
 
     switch (patch.action) {
@@ -105,7 +124,22 @@ export class LiveUpdateEngine {
 
   private parseKey(part: string): { name: string; index: number | null } {
     const match = part.match(/^(\w+)\[(\d+)]$/);
-    if (match) return { name: match[1], index: Number(match[2]) };
-    return { name: part, index: null };
+    const key = match
+      ? { name: match[1], index: Number(match[2]) }
+      : { name: part, index: null };
+    if (FORBIDDEN_SEGMENTS.has(key.name)) {
+      throw new Error(`patch target segment "${key.name}" is not allowed`);
+    }
+    return key;
   }
+}
+
+const FORBIDDEN_SEGMENTS = new Set(["__proto__", "constructor", "prototype"]);
+
+function isContainer(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
+}
+
+function hasOwn(value: unknown, key: string | number): boolean {
+  return isContainer(value) && Object.prototype.hasOwnProperty.call(value, key);
 }
