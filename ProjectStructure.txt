@@ -41,6 +41,7 @@
 │   ├── copilot-instructions.md
 │   └── workflows
 │       ├── ci.yml
+│       ├── codeql.yml
 │       ├── release-pair-freshness.yml
 │       ├── security-consolidated-gate.yml
 │       ├── security-image-sbom.yml
