@@ -1171,6 +1171,23 @@
       "notes": "Of the four families, three are now closed. (1) concept.ts session-owned-concept, 3 operations: concealProjectAccess and the /experience/history filter now check the in-memory conceptOwners map (keyed by user) before falling back to project-derived access, instead of asking a project-repository check that could never match a conceptId; proven with a real cross-user request against pause/resume/cancel/retry/artifacts/review/history. (2) body-blueprint-project, 8 operations, closed via AUDIT-BODY-SUPPLIED-BLUEPRINT-001. (4) api/v1 plan routes, 2 operations: the authorization was already correct (project derived from the loaded plan, mirroring requireOwned) but unexercised, which is why the matrix missed it; a real cross-tenant request now exercises it and, in doing so, found and fixed an unrelated bug where the route wrote a second response after the helper had already sent the refusal, crashing every denial with ERR_HTTP_HEADERS_SENT. (3) socket project:join and project:leave remain open, tracked under their own finding, AUDIT-REALTIME-ROOM-001 — a different service boundary (socket.io connection handling, not HTTP routes/storage) and out of scope for this slice. Memory operations are deliberately not here: they classify as direct-project, and isolating what memory holds belongs to MAR-008 rather than to resource binding."
     },
     {
+      "id": "SEC-V1-PLAN-EXISTENCE-001",
+      "title": "v1 plan routes told a caller which plan ids existed in other tenants",
+      "severity": "P2",
+      "status": "CONFIRMED",
+      "disposition": "FIXED-UNMERGED",
+      "area": "security",
+      "remediationGroup": "authorization-object-binding",
+      "mar": "MAR-001",
+      "owningBranch": "fix/mar-001-concept-plan-evidence-1",
+      "owningSha": "288990d46fb72500c18b8e9eb4678c17d029e3d4",
+      "evidence": [
+        "server/src/api/v1/index.ts",
+        "server/src/__tests__/mar001.concept-plan-ownership.test.ts"
+      ],
+      "notes": "An unknown plan answered the v1 Plan not found envelope while another tenant's plan answered Project not found. Reproduced by cross-tenant request; no plan data was returned and no agent ran. Now refused with the same envelope through the concealing hasProjectAccess check, matching routes/planning.ts."
+    },
+    {
       "id": "AUDIT-AUTONOMOUS-BINDING-VERIFIED-001",
       "title": "Autonomous session control was correct and unexercised",
       "severity": "P3",

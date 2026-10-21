@@ -2,7 +2,7 @@
 
 # Master audit remediation plan
 
-Generated from `config/audit/master-audit-register.json` (79 findings). Severity is the register's; ordering is by the worst severity in each group, except that re-verification comes first and verified controls come last.
+Generated from `config/audit/master-audit-register.json` (80 findings). Severity is the register's; ordering is by the worst severity in each group, except that re-verification comes first and verified controls come last.
 
 Findings are grouped by shared architectural root rather than by symptom. Several of these are the same defect seen from different places, and repairing them one at a time would mean repairing the root several times.
 
@@ -10,7 +10,7 @@ Findings are grouped by shared architectural root rather than by symptom. Severa
 
 | Disposition        | Findings |
 | ------------------ | -------- |
-| FIXED-UNMERGED     | 47       |
+| FIXED-UNMERGED     | 48       |
 | NOT-STARTED        | 23       |
 | NO-ACTION-REQUIRED | 6        |
 | SCOPED-OUT         | 2        |
@@ -22,7 +22,7 @@ Every finding names the deduplicated root cause it belongs to. A finding the tax
 
 | Root cause                                                                                         | Priority        | Findings | Fixed | Remaining |
 | -------------------------------------------------------------------------------------------------- | --------------- | -------- | ----- | --------- |
-| **MAR-001** — Cross-tenant resource authorization is not parent-bound everywhere                   | P0              | 23       | 18    | 5         |
+| **MAR-001** — Cross-tenant resource authorization is not parent-bound everywhere                   | P0              | 24       | 19    | 5         |
 | **MAR-002** — Studio materializer has no universal creator-ownership safety boundary               | P0              | 8        | 8     | 0         |
 | **MAR-003** — No single clean canonical product acceptance run exists                              | P0-release-gate | 3        | 0     | 3         |
 | **MAR-004** — Generation has no durable project-scoped single-flight and idempotent start identity | P1              | 5        | 5     | 0         |
@@ -91,6 +91,7 @@ One defect shape: the identifier the caller was authorized for is not the thing 
 | **SEC-CONCEALING-CHECK-OPTIONAL-001** — The canonical helper depended on an access-control method the interface marked optional                                           | P2       | CONFIRMED | FIXED-UNMERGED (fix/mar-001-conversation-ownership @ b1eee9f0c43fa9926f5a195b66401da1558e9ced)        |
 | **SEC-JOB-DISCLOSURE-001** — Refusing another tenant's execution job disclosed that the job existed                                                                       | P2       | CONFIRMED | FIXED-UNMERGED (fix/mar-001-job-ownership @ 68e11109d5c2e28ff8a79d27754ce1905d6f1b6f)                 |
 | **SEC-JOB-DOUBLE-RESPONSE-001** — The job status route answered a second time after the access check had already refused                                                  | P2       | CONFIRMED | FIXED-UNMERGED (fix/mar-001-job-ownership @ 68e11109d5c2e28ff8a79d27754ce1905d6f1b6f)                 |
+| **SEC-V1-PLAN-EXISTENCE-001** — v1 plan routes told a caller which plan ids existed in other tenants                                                                      | P2       | CONFIRMED | FIXED-UNMERGED (fix/mar-001-concept-plan-evidence-1 @ 288990d46fb72500c18b8e9eb4678c17d029e3d4)       |
 
 ## 3. generation-fidelity — worst severity P1
 
