@@ -516,6 +516,9 @@ scripts/architecture/ast-import-inventory.ts
 scripts/architecture/boundary-gate-core.ts
 scripts/architecture/layer-debt-evidence.ts
 scripts/backup-database.sh
+scripts/ci/__tests__/resolve-frontend-control-pair.test.sh
+scripts/ci/resolve-frontend-control-head.sh
+scripts/ci/verify-frontend-control-pair.sh
 scripts/cleanup/audit-legacy-frontend-decommission.mjs
 scripts/cleanup/generate-tracked-inventories.mjs
 scripts/cutover/rehearse-independent-rollback.sh
