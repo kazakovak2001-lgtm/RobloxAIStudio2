@@ -639,7 +639,6 @@ server/src/__tests__/pluginProtocol.test.ts
 server/src/__tests__/postgrescoherence1.generation-lifecycle.test.ts
 server/src/__tests__/preservationProperty.test.ts
 server/src/__tests__/productLayer.test.ts
-server/src/__tests__/productionQuality.test.ts
 server/src/__tests__/realtime-room-isolation.test.ts
 server/src/__tests__/repair-delivery.test.ts
 server/src/__tests__/saasFoundation.test.ts
@@ -787,11 +786,6 @@ server/src/ai/runtime/AgentValidator.ts
 server/src/ai/runtime/ExecutionPolicy.ts
 server/src/ai/runtime/__tests__/AgentRuntime.test.ts
 server/src/ai/runtime/index.ts
-server/src/analytics/GameQualityScorer.ts
-server/src/analytics/GenerationVersionManager.ts
-server/src/analytics/MultiplayerValidator.ts
-server/src/analytics/QualityDashboard.ts
-server/src/analytics/index.ts
 server/src/api/contracts/index.ts
 server/src/api/gateway/ApiGateway.ts
 server/src/api/gateway/ApiSchemaValidator.ts
@@ -831,13 +825,6 @@ server/src/cloud/NetworkDispatcher.ts
 server/src/cloud/NetworkJobRouter.ts
 server/src/cloud/RemoteWorkerClient.ts
 server/src/cloud/secrets/GCPSecretProvider.ts
-server/src/collaboration/AIAgentRegistry.ts
-server/src/collaboration/AgentEventBridge.ts
-server/src/collaboration/AgentMemoryManager.ts
-server/src/collaboration/AgentOrchestrator.ts
-server/src/collaboration/AgentTaskEngine.ts
-server/src/collaboration/CollaborationGraphEngine.ts
-server/src/collaboration/CollaborationTypes.ts
 server/src/common/middleware/cookies.ts
 server/src/common/middleware/errorHandler.ts
 server/src/common/middleware/security.ts
@@ -1168,11 +1155,6 @@ server/src/playtest/PlaytestEngine.ts
 server/src/playtest/PlaytestRuleEngine.ts
 server/src/playtest/PlaytestTypes.ts
 server/src/playtest/index.ts
-server/src/plugins/ExtensionPointManager.ts
-server/src/plugins/PluginLifecycleManager.ts
-server/src/plugins/PluginRegistry.ts
-server/src/plugins/PluginSDK.ts
-server/src/plugins/PluginSandbox.ts
 server/src/projects/cache/blueprint.cache.ts
 server/src/projects/controllers/project.controller.ts
 server/src/projects/dto/blueprint.dto.ts
