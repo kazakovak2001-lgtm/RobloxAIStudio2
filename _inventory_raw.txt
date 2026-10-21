@@ -85,9 +85,13 @@ E2E_PIPELINE_VALIDATION_REPORT.md
 FINAL_V1_RELEASE_SIGN_OFF.md
 MODULE_STATUS.md
 ProjectStructure.txt
+ProjectStructure.txt
+ProjectStructure.txt
 README.md
 RELEASE_HARDENING_REPORT.md
 V1_RELEASE_NOTES.md
+_inventory_raw.txt
+_inventory_raw.txt
 _inventory_raw.txt
 architecture.layer-debt.json
 architecture.manifest.json
@@ -449,6 +453,10 @@ docs/workspace-ux-redesign-v2/workflows/.gitkeep
 docs/workspace-ux-redesign-v2/zones/.gitkeep
 eslint.config.js
 package-lock.json
+package-lock.json
+package-lock.json
+package.json
+package.json
 package.json
 project_structure.txt
 release/BETA_CHECKLIST.md
@@ -594,6 +602,7 @@ server/src/__tests__/generation-provenance.test.ts
 server/src/__tests__/genrecovery1.restart-reconciliation.test.ts
 server/src/__tests__/gensingleflight1.active-claim.test.ts
 server/src/__tests__/harden2a.auth-contract.test.ts
+server/src/__tests__/harden3a.fail-closed-config.test.ts
 server/src/__tests__/identityAccess.test.ts
 server/src/__tests__/integration.test.ts
 server/src/__tests__/intent1.default-contamination.test.ts
@@ -1012,6 +1021,8 @@ server/src/governance/GovernanceValidator.ts
 server/src/governance/PolicyRegistry.ts
 server/src/governance/aiGovernance.ts
 server/src/index.ts
+server/src/index.ts
+server/src/index.ts
 server/src/integration/EndToEndValidator.ts
 server/src/integration/PlatformIntegrationManager.ts
 server/src/integration/ProductionAuditService.ts
@@ -1293,6 +1304,7 @@ server/src/simulation/feedback/SimulationFeedbackEngine.ts
 server/src/simulation/metrics/GameplayMetricsEngine.ts
 server/src/socket/index.ts
 server/src/socket/pipelineEventBridge.ts
+server/src/socket/socketAuthPolicy.ts
 server/src/socket/streaming.ts
 server/src/studio/SceneGraphTranslator.ts
 server/src/studio/StudioAssetMapper.ts

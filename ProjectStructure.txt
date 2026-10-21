@@ -696,6 +696,7 @@
 │   │   │   ├── genrecovery1.restart-reconciliation.test.ts
 │   │   │   ├── gensingleflight1.active-claim.test.ts
 │   │   │   ├── harden2a.auth-contract.test.ts
+│   │   │   ├── harden3a.fail-closed-config.test.ts
 │   │   │   ├── identityAccess.test.ts
 │   │   │   ├── integration.test.ts
 │   │   │   ├── intent1.default-contamination.test.ts
@@ -1570,6 +1571,7 @@
 │   │   ├── socket
 │   │   │   ├── index.ts
 │   │   │   ├── pipelineEventBridge.ts
+│   │   │   ├── socketAuthPolicy.ts
 │   │   │   └── streaming.ts
 │   │   ├── studio
 │   │   │   ├── artifacts
