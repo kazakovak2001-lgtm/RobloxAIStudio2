@@ -742,7 +742,6 @@
 │   │   │   ├── pluginProtocol.test.ts
 │   │   │   ├── postgrescoherence1.generation-lifecycle.test.ts
 │   │   │   ├── preservationProperty.test.ts
-│   │   │   ├── productionQuality.test.ts
 │   │   │   ├── productLayer.test.ts
 │   │   │   ├── realtime-room-isolation.test.ts
 │   │   │   ├── repair-delivery.test.ts
@@ -911,12 +910,6 @@
 │   │   │       ├── AgentValidator.ts
 │   │   │       ├── ExecutionPolicy.ts
 │   │   │       └── index.ts
-│   │   ├── analytics
-│   │   │   ├── GameQualityScorer.ts
-│   │   │   ├── GenerationVersionManager.ts
-│   │   │   ├── index.ts
-│   │   │   ├── MultiplayerValidator.ts
-│   │   │   └── QualityDashboard.ts
 │   │   ├── api
 │   │   │   ├── contracts
 │   │   │   │   └── index.ts
@@ -967,14 +960,6 @@
 │   │   │   ├── RemoteWorkerClient.ts
 │   │   │   └── secrets
 │   │   │       └── GCPSecretProvider.ts
-│   │   ├── collaboration
-│   │   │   ├── AgentEventBridge.ts
-│   │   │   ├── AgentMemoryManager.ts
-│   │   │   ├── AgentOrchestrator.ts
-│   │   │   ├── AgentTaskEngine.ts
-│   │   │   ├── AIAgentRegistry.ts
-│   │   │   ├── CollaborationGraphEngine.ts
-│   │   │   └── CollaborationTypes.ts
 │   │   ├── common
 │   │   │   └── middleware
 │   │   │       ├── cookies.ts
@@ -1412,12 +1397,6 @@
 │   │   │   ├── PlaytestEngine.ts
 │   │   │   ├── PlaytestRuleEngine.ts
 │   │   │   └── PlaytestTypes.ts
-│   │   ├── plugins
-│   │   │   ├── ExtensionPointManager.ts
-│   │   │   ├── PluginLifecycleManager.ts
-│   │   │   ├── PluginRegistry.ts
-│   │   │   ├── PluginSandbox.ts
-│   │   │   └── PluginSDK.ts
 │   │   ├── projects
 │   │   │   ├── cache
 │   │   │   │   └── blueprint.cache.ts

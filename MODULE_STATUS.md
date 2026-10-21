@@ -34,12 +34,10 @@
 | `economy/`       | 5     | v1.2  | Economy modeling — functional but uses simple heuristics               |
 | `world/`         | 6     | v1.3  | NPC behavior + emergence — rule-based, needs real-world validation     |
 | `lifecycle/`     | 6     | v1.4  | Self-evolution system — powerful but untested at scale                 |
-| `collaboration/` | 7     | v1.7  | Multi-agent coordination — structural, not yet exercised in production |
 | `studio/`        | 7     | v1.6  | Roblox Studio sync — structural, requires real Studio plugin to test   |
 | `eventsource/`   | 4     | v1.4  | Event store — structural, file-based, needs load testing               |
 | `cloud/`         | 5     | v1.3  | Remote node routing — structural, requires network to test             |
 | `distributed/`   | 5     | v1.2  | Job queue + workers — structural, single-process tested only           |
-| `plugins/`       | 5     | v1.5  | Plugin SDK — structural, no third-party plugins exist yet              |
 
 ## Deprecated (Marked for removal)
 

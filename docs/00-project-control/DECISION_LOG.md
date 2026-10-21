@@ -4,6 +4,35 @@ All significant architectural and product decisions are recorded here.
 
 ---
 
+## 2026-10-21 — CLEANUP-2B: Remove the Unwired Collaboration, Analytics and Plugin Scaffolds
+
+**Decision**: Delete `server/src/collaboration/` (v1.7 collaboration layer),
+`server/src/analytics/` (phase-8 quality scorer, dashboard, version manager and multiplayer
+validator) and `server/src/plugins/` (v1.5 compiler plugin SDK), with
+`__tests__/productionQuality.test.ts`, their `architecture.manifest.json` domains and their
+`MODULE_STATUS.md` rows.
+
+**Reason**: No production file, route, dynamic import or frontend reference reaches any of them.
+`collaboration/` is a third parallel agent coordinator next to the live
+`agents/collaboration/AgentCoordinator` and the canonical `PlannerEngine`. `analytics/` scores
+quality with additive heuristics (a 50-point base plus points for a config file), the kind of
+fabricated measurement `PLAYTEST-TRUTH-1` removed. `plugins/` isolates plugin code only with
+`Object.freeze` and a timeout, which is not a security boundary for untrusted code.
+
+**Boundary**: Code removal only, no behavior change. `server/src/agents/collaboration/`,
+`server/src/core/analytics/`, `server/src/evaluation/analytics/`, `routes/analytics.ts` and the
+Studio plugin (`studio-plugin/`) are live and untouched.
+
+**Not decided**: This does not reject the product capabilities. Evidence-based diagnostic
+analytics stays planned as `ANALYTICS-2`. A plugin SDK, if it returns, needs its own scope with a
+real isolation model; the removed sandbox must not be reused as a security boundary.
+
+**Recovery**: The deleted files are recoverable from release commit `78b722d1834bc079817258b96f23164b44b1612d`.
+
+**Status**: Implemented
+
+---
+
 ## 2026-10-21 — CLEANUP-2A: Remove the Unwired Second Agent System and Provider Stack
 
 **Decision**: Delete `server/src/agents/orchestrator/` (BaseAgentV2, CapabilityRegistry and its
