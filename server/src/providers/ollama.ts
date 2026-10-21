@@ -5,7 +5,7 @@ import {
   previewForDebug,
 } from "./providerTelemetry";
 import { LLMError } from "../types/llm";
-import { fetchWithTimeout, withRetry } from "./llmUtils";
+import { fetchWithTimeout, withRetry, requestBudgetFor } from "./llmUtils";
 
 export class OllamaProvider implements LLMProvider {
   readonly name = "ollama";
@@ -24,6 +24,20 @@ export class OllamaProvider implements LLMProvider {
     this.defaultModel = config?.model ?? process.env.OLLAMA_MODEL ?? "llama3";
     this.maxRetries = config?.maxRetries ?? 1;
     this.defaultTimeout = config?.timeout ?? 120000;
+  }
+
+  /**
+   * AGENT-TIMEOUT-1. The longest one `generate` call can legitimately take:
+   * every attempt `withRetry` may make, each bounded by the request timeout,
+   * plus the backoff between them. BaseAgent derives its per-call deadline
+   * from this, so the deadline can never be shorter than a call the provider
+   * itself still considers live.
+   */
+  requestBudgetMs(options?: LLMOptions): number {
+    return requestBudgetFor(
+      options?.timeout ?? this.defaultTimeout,
+      this.maxRetries,
+    );
   }
 
   async generate(prompt: string, options?: LLMOptions): Promise<string> {
