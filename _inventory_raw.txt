@@ -601,6 +601,7 @@ server/src/__tests__/intent2.requirement-traceability.test.ts
 server/src/__tests__/llmlog1.payload-redaction.test.ts
 server/src/__tests__/llmparser1.balanced-extraction.test.ts
 server/src/__tests__/mar001.autonomous-session-ownership.test.ts
+server/src/__tests__/mar001.concept-plan-ownership.test.ts
 server/src/__tests__/mar001.conversation-ownership.test.ts
 server/src/__tests__/mar001.job-ownership.test.ts
 server/src/__tests__/mar001.resource-authorization.test.ts
@@ -615,6 +616,9 @@ server/src/__tests__/mar002.world-and-idempotence.test.ts
 server/src/__tests__/mar004.cors-idempotency-key.test.ts
 server/src/__tests__/mar004.generate-route-idempotency.test.ts
 server/src/__tests__/mar004.idempotent-start.test.ts
+server/src/__tests__/marbatch1.api-v1-plan-cross-tenant.test.ts
+server/src/__tests__/marbatch1.blueprint-project-access.test.ts
+server/src/__tests__/marbatch1.concept-session-ownership.test.ts
 server/src/__tests__/novelty1.gameDna.test.ts
 server/src/__tests__/novelty2.verdict.test.ts
 server/src/__tests__/performance.test.ts

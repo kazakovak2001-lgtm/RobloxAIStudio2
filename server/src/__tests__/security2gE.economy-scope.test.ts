@@ -14,12 +14,14 @@ const indexSource = fs.readFileSync(
 describe("SECURITY-2G-E economy scope", () => {
   it("guards blueprint-backed analysis and simulation before economy execution", () => {
     expect(routeSource).toContain("access: ProjectAccessControl");
+    // AUDIT-BODY-SUPPLIED-BLUEPRINT-001: the body-supplied blueprint.id is
+    // authorized through the one canonical helper, not an inline call.
     expect(routeSource).toContain(
-      "await access.requireProjectAccess(req, res, blueprint.id)",
+      "await requireProjectAccessForBlueprint(access, req, res, blueprint",
     );
     expect(
       routeSource.indexOf(
-        "await access.requireProjectAccess(req, res, blueprint.id)",
+        "requireProjectAccessForBlueprint(access, req, res, blueprint",
       ),
     ).toBeLessThan(routeSource.indexOf("modelEngine.parse(blueprint)"));
   });
