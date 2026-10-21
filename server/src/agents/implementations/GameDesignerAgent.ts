@@ -111,14 +111,15 @@ export class GameDesignerAgent extends BaseAgent {
 
     if (!this.llm) return fallback;
 
-    const registryPrompt = this.buildPrompt({
+    const promptVars = {
       name,
       genre,
       core_loop: coreLoop,
       theme,
       mechanics,
       innovation_modifiers: innovations,
-    });
+    };
+    const registryPrompt = this.buildPrompt(promptVars);
 
     const inlinePrompt =
       "You are a Roblox game designer. Design detailed gameplay systems.\n" +
@@ -141,6 +142,7 @@ export class GameDesignerAgent extends BaseAgent {
     return this.generateWithRetry(prompt, ["gameplay"], fallback, {
       temperature: 0.5,
       maxTokens: 1800,
+      system: this.systemPromptFor(promptVars) ?? undefined,
     });
   }
 }
