@@ -41,10 +41,6 @@
       "pattern": "(?:ExecutionJobQueue|ExecutionCoordinator)\\.ts$"
     },
     {
-      "root": "server/src/providers/ai",
-      "pattern": "ProviderHealthService\\.ts$"
-    },
-    {
       "root": "server/src/lifecycle/monitor",
       "pattern": "GameHealthMonitor\\.ts$"
     },
@@ -294,18 +290,6 @@
           "name": "workers/health timer",
           "classification": "restart-reconstructible",
           "source": "worker registration and startup composition"
-        }
-      ]
-    },
-    {
-      "path": "server/src/providers/ai/ProviderHealthService.ts",
-      "owner": "providers",
-      "productionStatus": "scaffold",
-      "states": [
-        {
-          "name": "health",
-          "classification": "restart-reconstructible",
-          "source": "provider probes"
         }
       ]
     },

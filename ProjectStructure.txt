@@ -842,37 +842,25 @@
 │   │   │   │   │   └── promptTrustBoundary.test.ts
 │   │   │   │   ├── AgentRegistry.ts
 │   │   │   │   └── BaseAgent.ts
-│   │   │   ├── implementations
-│   │   │   │   ├── ArchitectureControllerAgent.ts
-│   │   │   │   ├── AssetPlannerAgent.ts
-│   │   │   │   ├── CodeReviewControllerAgent.ts
-│   │   │   │   ├── DatabaseAgent.ts
-│   │   │   │   ├── DebugAgent.ts
-│   │   │   │   ├── DocumentationAgent.ts
-│   │   │   │   ├── DuplicationDetectionAgent.ts
-│   │   │   │   ├── GameDesignerAgent.test.ts
-│   │   │   │   ├── GameDesignerAgent.ts
-│   │   │   │   ├── LuaGeneratorAgent.test.ts
-│   │   │   │   ├── LuaGeneratorAgent.ts
-│   │   │   │   ├── OrchestratorAgent.ts
-│   │   │   │   ├── PerformanceAgent.ts
-│   │   │   │   ├── PlannerAgent.ts
-│   │   │   │   ├── RequirementsAgent.ts
-│   │   │   │   ├── RobloxArchitectAgent.ts
-│   │   │   │   ├── TesterAgent.ts
-│   │   │   │   └── UIGeneratorAgent.ts
-│   │   │   └── orchestrator
-│   │   │       ├── __tests__
-│   │   │       │   └── Orchestration.test.ts
-│   │   │       ├── AgentDependencyPlanner.ts
-│   │   │       ├── AgentExecutionValidator.ts
-│   │   │       ├── AgentMessageBus.ts
-│   │   │       ├── AgentOrchestrator.ts
-│   │   │       ├── BaseAgentV2.ts
-│   │   │       ├── CapabilityRegistry.ts
-│   │   │       ├── index.ts
-│   │   │       ├── SharedAgentContext.ts
-│   │   │       └── types.ts
+│   │   │   └── implementations
+│   │   │       ├── ArchitectureControllerAgent.ts
+│   │   │       ├── AssetPlannerAgent.ts
+│   │   │       ├── CodeReviewControllerAgent.ts
+│   │   │       ├── DatabaseAgent.ts
+│   │   │       ├── DebugAgent.ts
+│   │   │       ├── DocumentationAgent.ts
+│   │   │       ├── DuplicationDetectionAgent.ts
+│   │   │       ├── GameDesignerAgent.test.ts
+│   │   │       ├── GameDesignerAgent.ts
+│   │   │       ├── LuaGeneratorAgent.test.ts
+│   │   │       ├── LuaGeneratorAgent.ts
+│   │   │       ├── OrchestratorAgent.ts
+│   │   │       ├── PerformanceAgent.ts
+│   │   │       ├── PlannerAgent.ts
+│   │   │       ├── RequirementsAgent.ts
+│   │   │       ├── RobloxArchitectAgent.ts
+│   │   │       ├── TesterAgent.ts
+│   │   │       └── UIGeneratorAgent.ts
 │   │   ├── ai
 │   │   │   ├── __tests__
 │   │   │   │   └── outputParserProvenance.test.ts
@@ -916,7 +904,6 @@
 │   │   │   ├── promptTemplates.ts
 │   │   │   ├── promptValues.ts
 │   │   │   ├── provider.ts
-│   │   │   ├── router.ts
 │   │   │   └── runtime
 │   │   │       ├── __tests__
 │   │   │       │   └── AgentRuntime.test.ts
@@ -1213,10 +1200,8 @@
 │   │   ├── index.ts
 │   │   ├── integration
 │   │   │   ├── __tests__
-│   │   │   │   └── PlatformIntegration.test.ts
-│   │   │   ├── EndToEndValidator.ts
+│   │   │   │   └── ProductionAuditService.test.ts
 │   │   │   ├── index.ts
-│   │   │   ├── PlatformIntegrationManager.ts
 │   │   │   └── ProductionAuditService.ts
 │   │   ├── jobs
 │   │   │   ├── __tests__
@@ -1468,23 +1453,6 @@
 │   │   │   │   ├── providerFactory.test.ts
 │   │   │   │   ├── providers.test.ts
 │   │   │   │   └── systemRoleSeparation.test.ts
-│   │   │   ├── ai
-│   │   │   │   ├── __tests__
-│   │   │   │   │   └── ProviderIntegration.test.ts
-│   │   │   │   ├── adapters
-│   │   │   │   │   ├── AnthropicProvider.ts
-│   │   │   │   │   ├── GoogleProvider.ts
-│   │   │   │   │   ├── LocalProvider.ts
-│   │   │   │   │   └── OpenAIProvider.ts
-│   │   │   │   ├── BaseProvider.ts
-│   │   │   │   ├── index.ts
-│   │   │   │   ├── PromptBuilder.ts
-│   │   │   │   ├── ProviderFactory.ts
-│   │   │   │   ├── ProviderHealthService.ts
-│   │   │   │   ├── ProviderRegistry.ts
-│   │   │   │   ├── ResponseNormalizer.ts
-│   │   │   │   ├── RetryPolicy.ts
-│   │   │   │   └── types.ts
 │   │   │   ├── anthropic.ts
 │   │   │   ├── gemini.ts
 │   │   │   ├── groq.ts

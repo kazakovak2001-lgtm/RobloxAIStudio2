@@ -4,6 +4,39 @@ All significant architectural and product decisions are recorded here.
 
 ---
 
+## 2026-10-21 — CLEANUP-2A: Remove the Unwired Second Agent System and Provider Stack
+
+**Decision**: Delete `server/src/agents/orchestrator/` (BaseAgentV2, CapabilityRegistry and its
+orchestrator), `server/src/providers/ai/` (secondary provider factory, registry, health and
+fallback with stub adapters), `server/src/ai/router.ts` (AIRouter) and the preview composition
+stack `server/src/integration/PlatformIntegrationManager.ts` with
+`EndToEndValidator.ts`, together with their tests and runtime-ownership records.
+
+**Reason**: None of them is reachable from the production server. `AGENT_ARCHITECTURE_DECISION.md`
+(2026-07-17) rejected BaseAgentV2, which has no implementations; the `providers/ai` adapters
+return canned responses instead of calling any API, and `providers/providerFactory.ts` is the
+canonical provider path; AIRouter has had no importer since ADR-0003; the only consumer of all of
+them was the preview `PlatformIntegrationManager`, which `index.ts` never starts. Keeping them
+leaves parallel agent and provider systems that read as production infrastructure.
+
+**Boundary**: Code removal only, no behavior change. `server/src/agents/collaboration/` is live
+(`routes/agentCollaboration.ts`, `AutonomousPhaseRegistry`) and untouched.
+`ProductionAuditService` stays, minus its two directory-existence checks for the deleted
+paths; whether it is kept is a separate decision. `collaboration/`, `analytics/` and
+`plugins/` are out of scope for this slice.
+
+**Not decided**: Removing this code does not reject the ideas. Cross-provider fallback and
+per-agent provider/model routing remain possible future capabilities; `AGENT-CONTRACT-1` lists
+per-agent provider/model as unsupported until runtime can enforce it. Either needs its own scope
+over the canonical provider path.
+
+**Recovery**: The deleted files are recoverable from release commit
+`669cc1a361241146f22ef3d7ad343aebe29c3034`.
+
+**Status**: Implemented
+
+---
+
 ## 2026-10-21 — SECURITY-2G-C: Move the Gitleaks History Boundary Past the Registered False Positives
 
 **Decision**: Move the gitleaks history boundary from `8dd23f88` (merge of PR #151) to
