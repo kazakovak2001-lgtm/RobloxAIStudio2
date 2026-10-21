@@ -2,7 +2,7 @@
 
 # Master audit remediation plan
 
-Generated from `config/audit/master-audit-register.json` (79 findings). Severity is the register's; ordering is by the worst severity in each group, except that re-verification comes first and verified controls come last.
+Generated from `config/audit/master-audit-register.json` (81 findings). Severity is the register's; ordering is by the worst severity in each group, except that re-verification comes first and verified controls come last.
 
 Findings are grouped by shared architectural root rather than by symptom. Several of these are the same defect seen from different places, and repairing them one at a time would mean repairing the root several times.
 
@@ -10,8 +10,8 @@ Findings are grouped by shared architectural root rather than by symptom. Severa
 
 | Disposition        | Findings |
 | ------------------ | -------- |
-| FIXED-UNMERGED     | 45       |
-| NOT-STARTED        | 25       |
+| FIXED-UNMERGED     | 49       |
+| NOT-STARTED        | 23       |
 | NO-ACTION-REQUIRED | 6        |
 | SCOPED-OUT         | 2        |
 | ACCEPTED-RISK      | 1        |
@@ -22,7 +22,7 @@ Every finding names the deduplicated root cause it belongs to. A finding the tax
 
 | Root cause                                                                                         | Priority        | Findings | Fixed | Remaining |
 | -------------------------------------------------------------------------------------------------- | --------------- | -------- | ----- | --------- |
-| **MAR-001** — Cross-tenant resource authorization is not parent-bound everywhere                   | P0              | 23       | 16    | 7         |
+| **MAR-001** — Cross-tenant resource authorization is not parent-bound everywhere                   | P0              | 25       | 20    | 5         |
 | **MAR-002** — Studio materializer has no universal creator-ownership safety boundary               | P0              | 8        | 8     | 0         |
 | **MAR-003** — No single clean canonical product acceptance run exists                              | P0-release-gate | 3        | 0     | 3         |
 | **MAR-004** — Generation has no durable project-scoped single-flight and idempotent start identity | P1              | 5        | 5     | 0         |
@@ -33,7 +33,7 @@ Every finding names the deduplicated root cause it belongs to. A finding the tax
 | **MAR-013** — Spatial and multiplayer invariants are not runtime-proven                            | P1              | 1        | 0     | 1         |
 | **MAR-014** — World ownership still has an unfinished canonical transition                         | P1              | 1        | 0     | 1         |
 | **MAR-016** — Chaos and recovery are not tested on real failure boundaries                         | P1              | 4        | 2     | 2         |
-| **MAR-018** — Execution-level and tenant-level FinOps control plane is missing                     | P1              | 1        | 0     | 1         |
+| **MAR-018** — Execution-level and tenant-level FinOps control plane is missing                     | P1              | 2        | 1     | 1         |
 | **MAR-020** — Raw user content can enter logs without central redaction                            | P1/P2           | 1        | 1     | 0         |
 | **MAR-023** — Frontend main governance does not protect CI authority                               | P1              | 2        | 0     | 2         |
 | **MAR-024** — Supply-chain release authority is not immutable end-to-end                           | P1/P2           | 3        | 1     | 2         |
@@ -75,7 +75,7 @@ One defect shape: the identifier the caller was authorized for is not the thing 
 | **SEC-STUDIO-PROTOCOL-BINDING-001** — Studio protocol messages were authorized against a project the caller chose, not the client they acted on                           | P1       | CONFIRMED | FIXED-UNMERGED (fix/mar-001-studio-protocol-binding @ 74b987129b549eca3fdde294e3e3cf603af81c7d)       |
 | **SEC-RESOURCE-AUTHORIZATION-HELPER-001** — Route-level authorization had no canonical mechanism, so each route decided separately what to authorize and what to disclose | P1       | CONFIRMED | FIXED-UNMERGED (fix/mar-001-resource-authorization-helper @ 81ad71e35ed11284f7a6292f0b56963969750fb5) |
 | **SEC-MATRIX-EVIDENCE-VOLATILE-001** — Regenerating the authorization matrix discarded every recorded cross-tenant verdict                                                | P1       | CONFIRMED | FIXED-UNMERGED (fix/mar-001-closure @ 437da697e1c8a026e23a9bbdfce9b0b4034859f0)                       |
-| **SEC-MAR001-REMAINING-GAPS-001** — MAR-001 has fifteen operations left where nothing canonical protects the resource                                                     | P1       | CONFIRMED | NOT-STARTED                                                                                           |
+| **SEC-MAR001-REMAINING-GAPS-001** — MAR-001 has fifteen operations left where nothing canonical protects the resource                                                     | P1       | CONFIRMED | FIXED-UNMERGED (fix/mar-001-authorization-object-binding @ a90318b19324bd176e183908732c4d7d31d1d80d)  |
 | **SEC-STUDIO-SCRIPT-OVERWRITE-001** — The plugin destroyed and overwrote creator-authored scripts without checking ownership                                              | P1       | CONFIRMED | FIXED-UNMERGED (fix/mar-002-script-ownership @ b99bb1a4c83642f8259902cd8f4bccd749962808)              |
 | **SEC-STUDIO-SCRIPT-PLACEMENT-001** — An unrecognised script root fell back to the container that replicates to every client                                              | P1       | CONFIRMED | FIXED-UNMERGED (fix/mar-002-script-ownership @ b99bb1a4c83642f8259902cd8f4bccd749962808)              |
 | **SEC-STUDIO-SWEEP-PROVENANCE-001** — The materializer sweep removes any managed instance, including another project's                                                    | P1       | CONFIRMED | FIXED-UNMERGED (fix/mar-002-script-ownership @ ddf7169c0164d1b729083ee13f186fd3536b467f)              |
@@ -83,7 +83,7 @@ One defect shape: the identifier the caller was authorized for is not the thing 
 | **SEC-STUDIO-LOADER-PROVENANCE-001** — Scripts and metadata values were owned by AI Studio but not by any project                                                         | P1       | CONFIRMED | FIXED-UNMERGED (fix/mar-002-script-ownership @ cd6cdff0162b0a80959074f115b60bb8270af541)              |
 | **SEC-STUDIO-PROVENANCE-UNWIRED-001** — Provenance was enforced but never set, and would have been plugin-global if it had been                                           | P1       | CONFIRMED | FIXED-UNMERGED (fix/mar-002-script-ownership @ e73296e2ec3e7c20ccb5ade0a7878a2f9ffbab39)              |
 | **AUDIT-STUDIO-OWNERSHIP-CLOSURE-001** — Studio creator-ownership boundary closed locally across every path that writes                                                   | P1       | CONFIRMED | FIXED-UNMERGED (fix/mar-002-script-ownership @ d0a727d9b555609876b80d2a622393630c62b732)              |
-| **AUDIT-BODY-SUPPLIED-BLUEPRINT-001** — Eight operations authorize against an identifier inside a caller-supplied body object                                             | P2       | CONFIRMED | NOT-STARTED                                                                                           |
+| **AUDIT-BODY-SUPPLIED-BLUEPRINT-001** — Eight operations authorize against an identifier inside a caller-supplied body object                                             | P2       | CONFIRMED | FIXED-UNMERGED (fix/mar-001-authorization-object-binding @ a90318b19324bd176e183908732c4d7d31d1d80d)  |
 | **SEC-STUDIO-PROTOCOL-DISCLOSURE-001** — The command disclosure closed on the REST path was still reachable over the protocol transport                                   | P2       | CONFIRMED | FIXED-UNMERGED (fix/mar-001-studio-protocol-binding @ 74b987129b549eca3fdde294e3e3cf603af81c7d)       |
 | **SEC-STUDIO-STATUS-COUNT-001** — GET /status reported a platform-wide Studio session count                                                                               | P2       | CONFIRMED | FIXED-UNMERGED (fix/mar-001-studio-protocol-binding @ 74b987129b549eca3fdde294e3e3cf603af81c7d)       |
 | **SEC-PROJECT-ACCESS-DISCLOSURE-001** — The shared project access control distinguishes another tenant's project from one that does not exist                             | P2       | CONFIRMED | FIXED-UNMERGED (fix/mar-001-resource-authorization-helper @ 81ad71e35ed11284f7a6292f0b56963969750fb5) |
@@ -91,8 +91,24 @@ One defect shape: the identifier the caller was authorized for is not the thing 
 | **SEC-CONCEALING-CHECK-OPTIONAL-001** — The canonical helper depended on an access-control method the interface marked optional                                           | P2       | CONFIRMED | FIXED-UNMERGED (fix/mar-001-conversation-ownership @ b1eee9f0c43fa9926f5a195b66401da1558e9ced)        |
 | **SEC-JOB-DISCLOSURE-001** — Refusing another tenant's execution job disclosed that the job existed                                                                       | P2       | CONFIRMED | FIXED-UNMERGED (fix/mar-001-job-ownership @ 68e11109d5c2e28ff8a79d27754ce1905d6f1b6f)                 |
 | **SEC-JOB-DOUBLE-RESPONSE-001** — The job status route answered a second time after the access check had already refused                                                  | P2       | CONFIRMED | FIXED-UNMERGED (fix/mar-001-job-ownership @ 68e11109d5c2e28ff8a79d27754ce1905d6f1b6f)                 |
+| **SEC-V1-PLAN-EXISTENCE-001** — v1 plan routes told a caller which plan ids existed in other tenants                                                                      | P2       | CONFIRMED | FIXED-UNMERGED (fix/mar-001-concept-plan-evidence-1 @ 288990d46fb72500c18b8e9eb4678c17d029e3d4)       |
 
-## 3. generation-fidelity — worst severity P1
+## 3. generation-start-admission — worst severity P1
+
+Everything that decides whether a generation may begin and under whose identity. Two of these are already fixed on branches and the rest share their entry point.
+
+| Finding                                                                                                                             | Severity | Status    | Disposition                                                                              |
+| ----------------------------------------------------------------------------------------------------------------------------------- | -------- | --------- | ---------------------------------------------------------------------------------------- |
+| **AUDIT-START-ATOMICITY-001** — Generation start wrote project, execution and history as three independent durable writes           | P1       | CONFIRMED | FIXED-UNMERGED (integration/wave-0 @ 3696a1f31b86cff8ce97e09f5a5da581d2a3ba01)           |
+| **AUDIT-ID-EXEC-001** — Execution identity derived from Date.now collided within a millisecond                                      | P1       | CONFIRMED | FIXED-UNMERGED (integration/wave-0 @ 2d5d2d7da28c7edd230acc2e5b93a41b7fe8066a)           |
+| **AUDIT-DUP-GENERATION-001** — No suppression of a second concurrent generation for the same project                                | P1       | CONFIRMED | FIXED-UNMERGED (integration/wave-0 @ e0d800d273b3c618d4af07d9ffbbe2873da49937)           |
+| **AUDIT-OUTCOME-LAST-WRITER-001** — An older overlapping run can overwrite a newer run's terminal project state                     | P1       | CONFIRMED | FIXED-UNMERGED (integration/wave-0 @ e0d800d273b3c618d4af07d9ffbbe2873da49937)           |
+| **QUOTA-ENFORCEMENT-001** — Generation does not enforce tier limits before starting                                                 | P1       | CONFIRMED | NOT-STARTED                                                                              |
+| **SEC-PLAN-RETRY-CEILING-001** — Plan execution retried each node as many times as the request body asked                           | P1       | CONFIRMED | FIXED-UNMERGED (fix/plan-retry-ceiling-1 @ 222f6e60bdcce928980ebe7534c9285be91ce4f1)     |
+| **GEN-START-IDEMPOTENCY-001** — A start request whose response was lost could not be retried safely                                 | P1       | CONFIRMED | FIXED-UNMERGED (fix/mar-004-idempotent-start @ 7761c2665c31273c49214ec7b96f4858a8f61e93) |
+| **GEN-START-IDEMPOTENCY-KEY-SCOPE-001** — An idempotency key partitioned per project could not detect its own reuse across projects | P2       | CONFIRMED | FIXED-UNMERGED (fix/mar-004-idempotent-start @ f8a5d8dbdd093fca5b3bc3286aeb337b106b2903) |
+
+## 4. generation-fidelity — worst severity P1
 
 The generated artifact does not reliably match the stated requirement, in transport, in intent and in world content.
 
@@ -107,20 +123,6 @@ The generated artifact does not reliably match the stated requirement, in transp
 | **GEN-LUA-POLICY-GATE-001** — GameValidationEngine duplicated a weaker ad hoc Lua policy scanner instead of the canonical compile/type/policy validator            | P1       | CONFIRMED | FIXED-UNMERGED (fix/mar-009-010-authoritative-luau-gates @ 1fe8d53ee2086c757f75d85ed4dd8f28f531ea07) |
 | **GEN-LUA-SECURITY-ADVISORY-001** — Generated Lua security evidence is reused and now visible in the validation report, but remains a non-blocking advisory signal | P1       | CONFIRMED | SCOPED-OUT (fix/mar-009-010-authoritative-luau-gates @ 1fe8d53ee2086c757f75d85ed4dd8f28f531ea07)     |
 
-## 4. generation-start-admission — worst severity P1
-
-Everything that decides whether a generation may begin and under whose identity. Two of these are already fixed on branches and the rest share their entry point.
-
-| Finding                                                                                                                             | Severity | Status    | Disposition                                                                              |
-| ----------------------------------------------------------------------------------------------------------------------------------- | -------- | --------- | ---------------------------------------------------------------------------------------- |
-| **AUDIT-START-ATOMICITY-001** — Generation start wrote project, execution and history as three independent durable writes           | P1       | CONFIRMED | FIXED-UNMERGED (integration/wave-0 @ 3696a1f31b86cff8ce97e09f5a5da581d2a3ba01)           |
-| **AUDIT-ID-EXEC-001** — Execution identity derived from Date.now collided within a millisecond                                      | P1       | CONFIRMED | FIXED-UNMERGED (integration/wave-0 @ 2d5d2d7da28c7edd230acc2e5b93a41b7fe8066a)           |
-| **AUDIT-DUP-GENERATION-001** — No suppression of a second concurrent generation for the same project                                | P1       | CONFIRMED | FIXED-UNMERGED (integration/wave-0 @ e0d800d273b3c618d4af07d9ffbbe2873da49937)           |
-| **AUDIT-OUTCOME-LAST-WRITER-001** — An older overlapping run can overwrite a newer run's terminal project state                     | P1       | CONFIRMED | FIXED-UNMERGED (integration/wave-0 @ e0d800d273b3c618d4af07d9ffbbe2873da49937)           |
-| **QUOTA-ENFORCEMENT-001** — Generation does not enforce tier limits before starting                                                 | P1       | CONFIRMED | NOT-STARTED                                                                              |
-| **GEN-START-IDEMPOTENCY-001** — A start request whose response was lost could not be retried safely                                 | P1       | CONFIRMED | FIXED-UNMERGED (fix/mar-004-idempotent-start @ 7761c2665c31273c49214ec7b96f4858a8f61e93) |
-| **GEN-START-IDEMPOTENCY-KEY-SCOPE-001** — An idempotency key partitioned per project could not detect its own reuse across projects | P2       | CONFIRMED | FIXED-UNMERGED (fix/mar-004-idempotent-start @ f8a5d8dbdd093fca5b3bc3286aeb337b106b2903) |
-
 ## 5. pipeline-outcome-truth — worst severity P1
 
 What the system reports about a run does not always match what happened. This is where green signals hide red states.
@@ -134,7 +136,19 @@ What the system reports about a run does not always match what happened. This is
 | **AUDIT-FLAKY-AUTH-TEST-001** — The user-self authorization test fails intermittently under parallel load             | P2       | CONFIRMED | FIXED-UNMERGED (integration/wave-0 @ f5b9772bfa99ebcfb70b853b6e4c90d67c0dd503) |
 | **AUDIT-SCRIPTS-UNTYPED-001** — Validator and generator scripts are outside the typecheck boundary                    | P3       | CONFIRMED | NOT-STARTED                                                                    |
 
-## 6. canonical-generation-recovery — worst severity P1
+## 6. realtime-tenancy — worst severity P1
+
+Outbound emissions ignore the project boundary that the inbound side enforces. Two distinct repairs sit inside this group, one cheap and one needing context plumbed through.
+
+| Finding                                                                                                                        | Severity | Status    | Disposition                                                                                   |
+| ------------------------------------------------------------------------------------------------------------------------------ | -------- | --------- | --------------------------------------------------------------------------------------------- |
+| **SEC-REALTIME-GLOBAL-001** — Evaluation, memory and planning events broadcast to every connected socket                       | P1       | CONFIRMED | FIXED-UNMERGED (integration/wave-0 @ fee5b8c3655cfb9a68722cc9ce34358caf071556)                |
+| **SEC-REALTIME-TRACE-001** — Execution traces broadcast globally from a listener with no project context                       | P1       | CONFIRMED | FIXED-UNMERGED (integration/wave-0 @ 71e011f7024ba36a646bb79546b98ab236816d02)                |
+| **SEC-REALTIME-PIPELINE-FALLBACK-001** — Pipeline events fall back to a global broadcast when no project is known              | P2       | CONFIRMED | FIXED-UNMERGED (integration/wave-0 @ fee5b8c3655cfb9a68722cc9ce34358caf071556)                |
+| **AUDIT-REALTIME-ROOM-001** — Room membership on project switch is not proven to be exclusive                                  | P2       | CONFIRMED | FIXED-UNMERGED (fix/realtime-room-isolation-1 @ 8a4a6b78627b96f2885421dff40e49b191774b3d)     |
+| **SEC-BRIDGE-HISTORY-SCOPE-001** — Pipeline bridge rewrote generation history found by pipelineId without checking its project | P2       | CONFIRMED | FIXED-UNMERGED (fix/bridge-history-tenant-scope-1 @ 8486ae9f0470751c5b59bc0e8d65a5f8111bd997) |
+
+## 7. canonical-generation-recovery — worst severity P1
 
 Canonical generation survives as a durable record but not as running work. The queue choice, the shutdown path and the weak restart test are the same gap seen three ways.
 
@@ -144,17 +158,6 @@ Canonical generation survives as a durable record but not as running work. The q
 | **AUDIT-GRACEFUL-SHUTDOWN-001** — Shutdown does not drain the canonical generation queue         | P1       | CONFIRMED | FIXED-UNMERGED (integration/wave-0 @ 186d1a08a76d3261d9aecd2183c4286b676b29ec) |
 | **AUDIT-RESTART-TEST-WEAK-001** — The restart test proves durability, not recovery               | P1       | CONFIRMED | NOT-STARTED                                                                    |
 | **AUDIT-QUEUE-DISCONNECTED-001** — The mature generation queue has no production consumer at all | P2       | CONFIRMED | NOT-STARTED                                                                    |
-
-## 7. realtime-tenancy — worst severity P1
-
-Outbound emissions ignore the project boundary that the inbound side enforces. Two distinct repairs sit inside this group, one cheap and one needing context plumbed through.
-
-| Finding                                                                                                           | Severity | Status    | Disposition                                                                               |
-| ----------------------------------------------------------------------------------------------------------------- | -------- | --------- | ----------------------------------------------------------------------------------------- |
-| **SEC-REALTIME-GLOBAL-001** — Evaluation, memory and planning events broadcast to every connected socket          | P1       | CONFIRMED | FIXED-UNMERGED (integration/wave-0 @ fee5b8c3655cfb9a68722cc9ce34358caf071556)            |
-| **SEC-REALTIME-TRACE-001** — Execution traces broadcast globally from a listener with no project context          | P1       | CONFIRMED | FIXED-UNMERGED (integration/wave-0 @ 71e011f7024ba36a646bb79546b98ab236816d02)            |
-| **SEC-REALTIME-PIPELINE-FALLBACK-001** — Pipeline events fall back to a global broadcast when no project is known | P2       | CONFIRMED | FIXED-UNMERGED (integration/wave-0 @ fee5b8c3655cfb9a68722cc9ce34358caf071556)            |
-| **AUDIT-REALTIME-ROOM-001** — Room membership on project switch is not proven to be exclusive                     | P2       | CONFIRMED | FIXED-UNMERGED (fix/realtime-room-isolation-1 @ 8a4a6b78627b96f2885421dff40e49b191774b3d) |
 
 ## 8. blueprint-provenance — worst severity P1
 
