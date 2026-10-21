@@ -25,6 +25,13 @@ import {
 import { ProjectDeletionCoordinator } from "../platform/projects/ProjectDeletionCoordinator";
 import { generationClaimProjectDeletion } from "../platform/projects/ProjectLifecycleCoordinator";
 
+const PROJECT_ACCESS_CACHE_TTL_MS = 60_000;
+
+type ProjectAccessCacheEntry = {
+  allowed: boolean;
+  expiresAt: number;
+};
+
 export interface ProjectAccessControl {
   getRequestUserId(req: Request): Promise<string | null>;
   requireAuthenticatedUser(req: Request, res: Response): Promise<string | null>;
@@ -39,6 +46,7 @@ export interface ProjectAccessControl {
     projectId: string,
     apiKeyCapability?: string,
   ): Promise<boolean>;
+  clearAccessCache?(projectId?: string): void;
 }
 
 /**
@@ -89,6 +97,52 @@ export function createProjectRuntime(
     generationHistory,
     generationClaimProjectDeletion(storage),
   ]);
+  const accessCache = new Map<string, Map<string, ProjectAccessCacheEntry>>();
+
+  const getAccessCacheKey = (projectId: string, userId: string): string =>
+    `${projectId}:${userId}`;
+
+  const getCachedProjectAccess = (
+    projectId: string,
+    userId: string,
+  ): boolean | undefined => {
+    const projectEntries = accessCache.get(projectId);
+    if (!projectEntries) return undefined;
+
+    const entry = projectEntries.get(userId);
+    if (!entry) return undefined;
+
+    if (Date.now() > entry.expiresAt) {
+      projectEntries.delete(userId);
+      if (projectEntries.size === 0) {
+        accessCache.delete(projectId);
+      }
+      return undefined;
+    }
+
+    return entry.allowed;
+  };
+
+  const setCachedProjectAccess = (
+    projectId: string,
+    userId: string,
+    allowed: boolean,
+  ): void => {
+    const projectEntries = accessCache.get(projectId) ?? new Map();
+    projectEntries.set(userId, {
+      allowed,
+      expiresAt: Date.now() + PROJECT_ACCESS_CACHE_TTL_MS,
+    });
+    accessCache.set(projectId, projectEntries);
+  };
+
+  const clearAccessCache = (projectId?: string): void => {
+    if (projectId) {
+      accessCache.delete(projectId);
+      return;
+    }
+    accessCache.clear();
+  };
 
   const getRequestUserId = async (req: Request): Promise<string | null> => {
     const attachedUserId = (req as RequestWithSession).user?.userId;
@@ -119,9 +173,6 @@ export function createProjectRuntime(
   ): Promise<boolean> => {
     const principal = getRequestApiKeyPrincipal(req);
     if (principal) {
-      // Whether the credential may be used for this kind of operation at all is
-      // a fact about the credential, not about any project, so it stays a plain
-      // 403. It tells the caller nothing about what exists.
       if (
         !apiKeyCapability ||
         !principal.capabilities.includes(apiKeyCapability)
@@ -135,17 +186,12 @@ export function createProjectRuntime(
     } else {
       const userId = await requireAuthenticatedUser(req, res);
       if (!userId) return false;
+      const cached = getCachedProjectAccess(projectId, userId);
+      if (cached !== undefined) {
+        return cached;
+      }
     }
 
-    // SEC-PROJECT-ACCESS-DISCLOSURE-001. This used to answer 404 for a project
-    // that did not exist and 403 for one that existed and belonged to someone
-    // else, so any authenticated caller could enumerate real project ids
-    // through the control every project-scoped route depends on. Routed through
-    // the canonical helper, both answer alike.
-    //
-    // The project is its own authoritative project, which is the degenerate
-    // case of the helper's rule. The rule still holds: what gets authorized is
-    // what the loader returned, not the string the caller sent.
     const project = await requireOwned(req, res, {
       resource: "Project",
       id: projectId,
@@ -153,6 +199,17 @@ export function createProjectRuntime(
       projectOf: (loaded) => loaded.id,
       capability: apiKeyCapability,
     });
+
+    if (principal) {
+      return project !== null;
+    }
+
+    const userId = (req as RequestWithSession).user?.userId ??
+      (await getRequestUserId(req));
+    if (userId) {
+      setCachedProjectAccess(projectId, userId, project !== null);
+    }
+
     return project !== null;
   };
 
@@ -170,17 +227,23 @@ export function createProjectRuntime(
         apiKeyPrincipal.resourceScopes.includes(projectId),
       );
     }
+
     const userId = await getRequestUserId(req);
-    return Boolean(
-      userId &&
+    if (!userId) return false;
+
+    const cached = getCachedProjectAccess(projectId, userId);
+    if (cached !== undefined) {
+      return cached;
+    }
+
+    const allowed = Boolean(
       projectRepository.get(projectId) &&
       projectRepository.verifyOwnership(projectId, userId),
     );
+    setCachedProjectAccess(projectId, userId, allowed);
+    return allowed;
   };
 
-  // Built on the concealing check above, and referenced by requireProjectAccess
-  // which is declared earlier: both are only ever invoked per request, long
-  // after this module has finished initialising.
   const requireOwned = createResourceAuthorizer(hasProjectAccess);
 
   return {
@@ -194,6 +257,7 @@ export function createProjectRuntime(
       requireAuthenticatedUser,
       requireProjectAccess,
       hasProjectAccess,
+      clearAccessCache,
     },
   };
 }
@@ -251,6 +315,7 @@ export function createProjectsRouter(runtime: ProjectRuntime): Router {
         input.description,
         input.patch,
       );
+      access.clearAccessCache?.(project.id);
       res.json({ success: true, data: toProjectResponse(project) });
     } catch (error) {
       handleProjectInputError(error, res);
@@ -272,6 +337,7 @@ export function createProjectsRouter(runtime: ProjectRuntime): Router {
         res.status(404).json({ success: false, error: "Project not found" });
         return;
       }
+      access.clearAccessCache?.(req.params.id);
       res.json({ success: true, data: toProjectResponse(updated) });
     } catch (error) {
       handleProjectInputError(error, res);
@@ -283,6 +349,7 @@ export function createProjectsRouter(runtime: ProjectRuntime): Router {
 
     try {
       const deleted = await deletion.deleteProject(req.params.id);
+      access.clearAccessCache?.(req.params.id);
       res.json({ success: true, data: { deleted } });
     } catch (error) {
       handleProjectInputError(error, res);
