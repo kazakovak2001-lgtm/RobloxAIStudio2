@@ -33,6 +33,41 @@ real isolation model; the removed sandbox must not be reused as a security bound
 
 ---
 
+## 2026-10-21 — PAIR-CONTROL-1: Move the Frontend Control Branch Off the Merged MAR-004 Branch
+
+**Decision**: Repin the runtime pair in `config/cutover/release-baseline.inventory.json`. The
+Frontend control branch becomes `pair/release-control`, a dedicated branch that is only moved
+deliberately, instead of `fix/mar-004-generate-idempotency-key`. `runtimePair.backend.commit`
+moves from `469cd207` to `669cc1a3`, `frontendRelease.commit` from `86d392cc` to `fcb119c8`
+(Frontend#78 merge commit), and `runtimePair.id` follows the backend commit.
+`runtimePair.frontend.runtimeCommit` stays `53eddd8b`.
+
+**Reason**: Frontend PR #50 was merged on 2026-10-21, so the MAR-004 branch stopped moving at
+`86d392cc` while Frontend `main` kept advancing. `Frontend Production Contract` resolves the
+control head from this branch, so it kept testing a Frontend that no longer matched `main`.
+Frontend#56 had repinned the Frontend manifest to `fa868eac`, but the conflict resolution in
+`86d392c` ("Merge main into fix/mar-004…") restored `469cd207` and #50 carried that to `main`;
+`git log -- <file>` hides this because merge commits are simplified away. Frontend#78 corrected
+the manifest to `669cc1a3`. Pointing the control at `main` itself was rejected: the exact
+`frontendRelease.commit == control head` check would break on every Frontend merge, including
+dependency updates.
+
+**Procedure** (order matters because the Frontend manifest is checked reciprocally):
+
+1. Frontend PR updates `config/integration/paired-release.json` to the new backend SHA.
+2. After it merges, move `pair/release-control` to the merge commit.
+3. Backend PR updates `runtimePair.backend.commit`, `runtimePair.id` and
+   `frontendRelease.commit` (the new control head).
+
+**Boundary**: Configuration only; no workflow, script or runtime change. Neither repository has
+branch protection, so nothing blocks a manual move of `pair/release-control`; the repin
+procedure above is the control. A check that refuses a backwards move of the Frontend manifest
+pin is not part of this change.
+
+**Status**: Implemented in this change; the CI result on the pull request is the evidence.
+
+---
+
 ## 2026-10-21 — CLEANUP-2A: Remove the Unwired Second Agent System and Provider Stack
 
 **Decision**: Delete `server/src/agents/orchestrator/` (BaseAgentV2, CapabilityRegistry and its
