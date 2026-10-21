@@ -30,6 +30,10 @@ import {
 } from "./socket/streaming";
 import { RealtimeServer } from "./socket/index";
 import { registerPipelineEventBridge } from "./socket/pipelineEventBridge";
+import {
+  createProjectJoinAuthorizer,
+  resolveSocketAuthMode,
+} from "./socket/socketAuthPolicy";
 import { errorHandler } from "./common/middleware/errorHandler";
 import { AgentRegistry } from "./agents/core/AgentRegistry";
 import {
@@ -84,10 +88,19 @@ function readSocketCookie(cookieHeader: string | undefined, name: string) {
   return undefined;
 }
 
+// Resolved once at startup; throws (refusing to start) on an unrecognized
+// value or on SOCKET_AUTH_DEV_BYPASS=true with NODE_ENV=production.
+const socketAuthMode = resolveSocketAuthMode();
+if (socketAuthMode === "dev-bypass") {
+  console.warn(
+    "[Socket] SOCKET_AUTH_DEV_BYPASS=true — accepting unauthenticated socket connections (development only).",
+  );
+}
+
 // Socket.IO authentication middleware
 io.use(async (socket, next) => {
-  // In development, allow all connections (preserve dev bypass)
-  if (process.env.NODE_ENV !== "production") {
+  // Unauthenticated connections only under the explicit dev opt-in.
+  if (socketAuthMode === "dev-bypass") {
     next();
     return;
   }
@@ -247,11 +260,14 @@ const gameService = new GameGenerationService(
 // Connect event emitter to streaming handler
 events.setStreamingHandler(streaming);
 
-// Real-time socket namespace and project room support. Authenticated browser
-// sessions may only join projects they own; development and trusted API-key
-// clients do not carry a userId and keep the compatibility path.
-new RealtimeServer(io, (projectId, userId) =>
-  userId ? projectRepository.verifyOwnership(projectId, userId) : true,
+// Real-time socket namespace and project room support. Authenticated sessions
+// may only join projects they own. A socket without a userId exists only under
+// the explicit dev bypass; outside it, such joins are denied.
+new RealtimeServer(
+  io,
+  createProjectJoinAuthorizer(socketAuthMode, (projectId, userId) =>
+    projectRepository.verifyOwnership(projectId, userId),
+  ),
 );
 
 // Bridge pipeline lifecycle events to Socket.io so the existing Workspace UI (Socket.io-based) receives them.

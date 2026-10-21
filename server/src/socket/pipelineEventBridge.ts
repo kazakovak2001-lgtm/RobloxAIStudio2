@@ -10,15 +10,42 @@
  */
 
 import type { Server as SocketServer } from "socket.io";
-import type { SaaSProjectRepository } from "../platform/projects";
-import type { GenerationHistoryRepository } from "../projects/repository/generationHistory.repository";
 import type { PipelineEventEmitter } from "./streaming";
 
-export function registerPipelineEventBridge(
+/**
+ * The bridge is infrastructure and must not depend on the project/API layer,
+ * so it names only the two writes it performs on a failed run. The
+ * entrypoint passes the real repositories, which satisfy these structurally.
+ */
+export interface PipelineBridgeProjectStore {
+  updateDurable(
+    projectId: string,
+    updates: { status: "draft" },
+  ): Promise<unknown>;
+}
+
+export interface PipelineBridgeRunRecord {
+  pipelineId: string;
+  projectId: string;
+  status: string;
+  startedAt: number;
+  finishedAt?: number;
+  duration?: number;
+  stagesCompleted: number;
+  stagesTotal: number;
+  failures: number;
+}
+
+export interface PipelineBridgeRunHistory<R extends PipelineBridgeRunRecord> {
+  getByPipeline(pipelineId: string): R | null;
+  record(entry: R): Promise<void>;
+}
+
+export function registerPipelineEventBridge<R extends PipelineBridgeRunRecord>(
   io: SocketServer,
   events: PipelineEventEmitter,
-  projectRepository: SaaSProjectRepository,
-  generationHistory: GenerationHistoryRepository,
+  projectRepository: PipelineBridgeProjectStore,
+  generationHistory: PipelineBridgeRunHistory<R>,
 ): void {
   events.onEvent(async (evt) => {
     // Minimal bridge logging for E2E verification.
@@ -152,8 +179,12 @@ export function registerPipelineEventBridge(
           await projectRepository.updateDurable(evt.projectId, {
             status: "draft",
           });
+          // SEC-BRIDGE-HISTORY-SCOPE-001. History is looked up by pipelineId
+          // alone, and a pipelineId is a routing key, not proof of ownership
+          // (PipelineStage ids carry only 40 random bits). Only a record that
+          // belongs to the event's own project may be marked failed.
           const record = generationHistory.getByPipeline(evt.pipelineId);
-          if (record) {
+          if (record && record.projectId === evt.projectId) {
             const finishedAt = evt.timestamp.getTime();
             const completed = Number(
               evt.data?.completedSteps ?? record.stagesCompleted,

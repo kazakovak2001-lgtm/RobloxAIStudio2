@@ -7,6 +7,13 @@
  */
 
 import type { RobloxGameBlueprint } from "../blueprint/GameBlueprintEngine";
+import {
+  planWorldScene,
+  ROUTE_COLOR,
+  type SceneStructure,
+  type ScenePath,
+  type SceneSpawn,
+} from "./WorldScenePlanner";
 
 export interface LuaScript {
   name: string;
@@ -57,6 +64,14 @@ const BIOME_COLORS: ReadonlyArray<readonly [number, number, number]> = [
 
 function color3(rgb: readonly [number, number, number]): string {
   return `Color3.fromRGB(${rgb[0]}, ${rgb[1]}, ${rgb[2]})`;
+}
+
+function vector3(v: {
+  readonly x: number;
+  readonly y: number;
+  readonly z: number;
+}): string {
+  return `Vector3.new(${v.x}, ${v.y}, ${v.z})`;
 }
 
 export class LuaGenerator {
@@ -121,6 +136,18 @@ export class LuaGenerator {
    * reads/advances state through `_G.PlayerService`, and pays through
    * `_G.EconomyService`, which is what actually mutates the authoritative
    * balance `_G.PlayerService` stores.
+   *
+   * GEN-FIDELITY-3. World construction is no longer this method's own
+   * baseplate-and-a-row-of-cubes logic. `WorldScenePlanner.planWorldScene`
+   * plans a typed `WorldSceneSpec` from the blueprint — detecting a
+   * fortress/obby/island/generic concept from blueprint text and laying out
+   * zones, grouped multi-part structures (walls, towers, a gate, a
+   * courtyard, platforms, camps), routes and semantically-placed
+   * interactables — and this method only materializes that plan into
+   * Instance.new(...) calls. A blueprint that names no recognizable concept
+   * still plans into the "generic" category, whose plan is numerically
+   * identical to the original row-of-cubes layout, so GEN-FIDELITY-1/2's
+   * acceptance fixtures are unaffected.
    */
   private generateGameManager(bp: RobloxGameBlueprint): LuaScript {
     const title = luaString(bp.title);
@@ -128,8 +155,8 @@ export class LuaGenerator {
     const coreLoop = bp.coreLoop.length > 0 ? bp.coreLoop : ["loop"];
     const stages =
       bp.progression.stages.length > 0 ? bp.progression.stages : ["stage"];
-    const biomes = bp.world.biomes;
-    const landmarks = bp.world.landmarks;
+
+    const scene = planWorldScene(bp);
 
     const objectiveEntries = mechanics.map((mechanic, index) => {
       const loopStage = luaString(coreLoop[index % coreLoop.length]);
@@ -142,14 +169,14 @@ export class LuaGenerator {
       .join(", ");
 
     const biomeZones: string[] = [];
-    biomes.forEach((biome, index) => {
+    scene.zones.forEach((zone, index) => {
       const varName = `biomeZone${index + 1}`;
       biomeZones.push(
         `local ${varName} = Instance.new("Part")`,
-        `${varName}.Name = "${luaString(biome)}_Zone"`,
-        `${varName}.Size = Vector3.new(80, 1, 80)`,
-        `${varName}.Position = Vector3.new(${index * 100}, 0, -60)`,
-        `${varName}.Color = ${color3(BIOME_COLORS[index % BIOME_COLORS.length])}`,
+        `${varName}.Name = "${luaString(zone.name)}"`,
+        `${varName}.Size = ${vector3(zone.size)}`,
+        `${varName}.Position = ${vector3(zone.position)}`,
+        `${varName}.Color = ${color3(BIOME_COLORS[zone.colorIndex % BIOME_COLORS.length])}`,
         `${varName}.Anchored = true`,
         `${varName}.Parent = workspace`,
         ``,
@@ -157,13 +184,13 @@ export class LuaGenerator {
     });
 
     const landmarkParts: string[] = [];
-    landmarks.forEach((landmark, index) => {
+    scene.landmarks.forEach((landmark, index) => {
       const varName = `landmark${index + 1}`;
       landmarkParts.push(
         `local ${varName} = Instance.new("Part")`,
-        `${varName}.Name = "${luaString(landmark)}_Landmark"`,
-        `${varName}.Size = Vector3.new(6, 20, 6)`,
-        `${varName}.Position = Vector3.new(${250 + index * 50}, 10, -50)`,
+        `${varName}.Name = "${luaString(landmark.name)}"`,
+        `${varName}.Size = ${vector3(landmark.size)}`,
+        `${varName}.Position = ${vector3(landmark.position)}`,
         `${varName}.Color = Color3.fromRGB(200, 200, 200)`,
         `${varName}.Anchored = true`,
         `${varName}.Parent = workspace`,
@@ -172,13 +199,13 @@ export class LuaGenerator {
     });
 
     const objectiveParts: string[] = [];
-    mechanics.forEach((mechanic, index) => {
+    scene.interactables.forEach((interactable, index) => {
       const varName = `objectivePart${index + 1}`;
       objectiveParts.push(
         `local ${varName} = Instance.new("Part")`,
-        `${varName}.Name = "${luaString(mechanic)}_Interactable"`,
+        `${varName}.Name = "${luaString(interactable.name)}"`,
         `${varName}.Size = Vector3.new(4, 4, 4)`,
-        `${varName}.Position = Vector3.new(${index * 15}, 2, 30)`,
+        `${varName}.Position = ${vector3(interactable.position)}`,
         `${varName}.Color = ${color3(OBJECTIVE_COLORS[index % OBJECTIVE_COLORS.length])}`,
         `${varName}.Anchored = true`,
         `${varName}.Parent = workspace`,
@@ -192,6 +219,9 @@ export class LuaGenerator {
         ``,
       );
     });
+
+    const playerSpawn =
+      scene.spawns.find((spawn) => spawn.type === "player") ?? scene.spawns[0];
 
     const lines: string[] = [
       `-- GameManager: ${bp.title}`,
@@ -208,7 +238,7 @@ export class LuaGenerator {
       `local spawnPoint = Instance.new("SpawnLocation")`,
       `spawnPoint.Name = "MainSpawn"`,
       `spawnPoint.Size = Vector3.new(6, 1, 6)`,
-      `spawnPoint.Position = Vector3.new(0, 1, 0)`,
+      `spawnPoint.Position = ${vector3(playerSpawn.position)}`,
       `spawnPoint.Anchored = true`,
       `spawnPoint.Parent = workspace`,
       ``,
@@ -218,6 +248,30 @@ export class LuaGenerator {
 
     if (landmarkParts.length > 0) {
       lines.push(`-- Landmarks named by the blueprint`, ...landmarkParts);
+    }
+
+    if (scene.structures.length > 0) {
+      lines.push(
+        `-- Semantic structures: ${scene.category} concept detected from the blueprint`,
+        ...this.renderStructures(scene.structures),
+      );
+    }
+
+    const nonPlayerSpawns = scene.spawns.filter(
+      (spawn) => spawn !== playerSpawn,
+    );
+    if (nonPlayerSpawns.length > 0) {
+      lines.push(
+        `-- Additional spawn points planned by the scene`,
+        ...this.renderSpawns(nonPlayerSpawns),
+      );
+    }
+
+    if (scene.paths.length > 0) {
+      lines.push(
+        `-- Routes planned by the scene`,
+        ...this.renderPaths(scene.paths),
+      );
     }
 
     lines.push(
@@ -276,6 +330,78 @@ export class LuaGenerator {
       path: "ServerScriptService/GameManager",
       code: lines.join("\n"),
     };
+  }
+
+  /**
+   * Materialize every structure's construction parts. A structure with
+   * multiple parts (a tower's base + roof, a gate's door + arch) renders as
+   * multiple grouped `Instance.new("Part")` calls sharing the structure's
+   * name prefix — primitive Parts used as construction components, per
+   * GEN-FIDELITY-3's constraint, rather than one placeholder cube standing
+   * in for the whole structure.
+   */
+  private renderStructures(structures: readonly SceneStructure[]): string[] {
+    const lines: string[] = [];
+    let partIndex = 0;
+    for (const structure of structures) {
+      for (const part of structure.parts) {
+        partIndex += 1;
+        const varName = `structurePart${partIndex}`;
+        lines.push(
+          `local ${varName} = Instance.new("Part")`,
+          `${varName}.Name = "${luaString(part.name)}"`,
+          `${varName}.Size = ${vector3(part.size)}`,
+          `${varName}.Position = ${vector3(part.position)}`,
+          `${varName}.Color = ${color3(part.colorRgb)}`,
+          `${varName}.Anchored = true`,
+          `${varName}.Parent = workspace`,
+          ``,
+        );
+      }
+    }
+    return lines;
+  }
+
+  /** Non-player spawns (enemy/NPC) planned by the scene, as plain markers — never a second SpawnLocation, which would let players spawn there. */
+  private renderSpawns(spawns: readonly SceneSpawn[]): string[] {
+    const lines: string[] = [];
+    spawns.forEach((spawn, index) => {
+      const varName = `scenSpawn${index + 1}`;
+      lines.push(
+        `local ${varName} = Instance.new("Part")`,
+        `${varName}.Name = "${luaString(spawn.name)}"`,
+        `${varName}.Size = Vector3.new(6, 1, 6)`,
+        `${varName}.Position = ${vector3(spawn.position)}`,
+        `${varName}.Transparency = 0.5`,
+        `${varName}.CanCollide = false`,
+        `${varName}.Anchored = true`,
+        `${varName}.Parent = workspace`,
+        ``,
+      );
+    });
+    return lines;
+  }
+
+  /** Route waypoints (e.g. the enemy approach toward the gate) as a visible sequence of markers, not an implicit straight line. */
+  private renderPaths(paths: readonly ScenePath[]): string[] {
+    const lines: string[] = [];
+    paths.forEach((path, pathIndex) => {
+      path.points.forEach((point, pointIndex) => {
+        const varName = `routeWaypoint${pathIndex + 1}_${pointIndex + 1}`;
+        lines.push(
+          `local ${varName} = Instance.new("Part")`,
+          `${varName}.Name = "${luaString(path.role)}_Waypoint${pointIndex + 1}"`,
+          `${varName}.Size = Vector3.new(4, 1, 4)`,
+          `${varName}.Position = ${vector3(point)}`,
+          `${varName}.Color = ${color3(ROUTE_COLOR)}`,
+          `${varName}.CanCollide = false`,
+          `${varName}.Anchored = true`,
+          `${varName}.Parent = workspace`,
+          ``,
+        );
+      });
+    });
+    return lines;
   }
 
   /**

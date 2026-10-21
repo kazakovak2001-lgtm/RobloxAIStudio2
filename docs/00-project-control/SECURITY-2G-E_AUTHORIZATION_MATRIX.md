@@ -21,7 +21,7 @@ The initial table records only behavior verified from the current source. It is 
 | Browser/user session | Bearer token or `roblox_ai_token` httpOnly cookie | Durable session `userId` | Implemented authentication; role model not yet authoritative |
 | Studio/CLI API key | `X-API-Key` | No user, role or resource-scope principal attached to the request | Authentication implemented; authorization scope missing |
 | Socket.IO browser/user session | Auth token, query token or shared httpOnly cookie | Durable session `userId` in `socket.data.user` | Implemented authentication |
-| Development compatibility client | Authentication bypass outside production | Query `userId` or socket ID compatibility identity | Non-production only; must not be treated as production authorization evidence |
+| Development compatibility client | Socket authentication bypass only with explicit `SOCKET_AUTH_DEV_BYPASS=true`; startup refuses it with `NODE_ENV=production` | Query `userId` or socket ID compatibility identity; `project:join` without a session `userId` is denied unless the bypass is on | Opt-in development only; must not be treated as production authorization evidence |
 
 ## Verified current operations
 

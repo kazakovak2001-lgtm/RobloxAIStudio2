@@ -67,7 +67,7 @@ describe("SECURITY-2G-E final API-key route enforcement", () => {
     );
 
     expect(source).toContain(
-      "access.requireProjectAccess(req, res, blueprint.id)",
+      "requireProjectAccessForBlueprint(access, req, res, blueprint",
     );
   });
 });

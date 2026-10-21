@@ -610,6 +610,11 @@
 │   │   ├── boundary-gate-core.ts
 │   │   └── layer-debt-evidence.ts
 │   ├── backup-database.sh
+│   ├── ci
+│   │   ├── __tests__
+│   │   │   └── resolve-frontend-control-pair.test.sh
+│   │   ├── resolve-frontend-control-head.sh
+│   │   └── verify-frontend-control-pair.sh
 │   ├── cleanup
 │   │   ├── audit-legacy-frontend-decommission.mjs
 │   │   └── generate-tracked-inventories.mjs
@@ -696,6 +701,7 @@
 │   │   │   ├── genrecovery1.restart-reconciliation.test.ts
 │   │   │   ├── gensingleflight1.active-claim.test.ts
 │   │   │   ├── harden2a.auth-contract.test.ts
+│   │   │   ├── harden3a.fail-closed-config.test.ts
 │   │   │   ├── identityAccess.test.ts
 │   │   │   ├── integration.test.ts
 │   │   │   ├── intent1.default-contamination.test.ts
@@ -703,6 +709,7 @@
 │   │   │   ├── llmlog1.payload-redaction.test.ts
 │   │   │   ├── llmparser1.balanced-extraction.test.ts
 │   │   │   ├── mar001.autonomous-session-ownership.test.ts
+│   │   │   ├── mar001.concept-plan-ownership.test.ts
 │   │   │   ├── mar001.conversation-ownership.test.ts
 │   │   │   ├── mar001.job-ownership.test.ts
 │   │   │   ├── mar001.resource-authorization.test.ts
@@ -717,6 +724,9 @@
 │   │   │   ├── mar004.cors-idempotency-key.test.ts
 │   │   │   ├── mar004.generate-route-idempotency.test.ts
 │   │   │   ├── mar004.idempotent-start.test.ts
+│   │   │   ├── marbatch1.api-v1-plan-cross-tenant.test.ts
+│   │   │   ├── marbatch1.blueprint-project-access.test.ts
+│   │   │   ├── marbatch1.concept-session-ownership.test.ts
 │   │   │   ├── novelty1.gameDna.test.ts
 │   │   │   ├── novelty2.verdict.test.ts
 │   │   │   ├── performance.test.ts
@@ -826,6 +836,8 @@
 │   │   │   ├── contract
 │   │   │   │   └── agentContract.ts
 │   │   │   ├── core
+│   │   │   │   ├── __tests__
+│   │   │   │   │   └── promptTrustBoundary.test.ts
 │   │   │   │   ├── AgentRegistry.ts
 │   │   │   │   └── BaseAgent.ts
 │   │   │   ├── implementations
@@ -1175,14 +1187,16 @@
 │   │   │   ├── lua
 │   │   │   │   ├── __tests__
 │   │   │   │   │   ├── LuaGenerator.genFidelity1.test.ts
-│   │   │   │   │   └── LuaGenerator.genFidelity2.test.ts
+│   │   │   │   │   ├── LuaGenerator.genFidelity2.test.ts
+│   │   │   │   │   └── LuaGenerator.genFidelity3.test.ts
 │   │   │   │   ├── index.ts
 │   │   │   │   ├── LuaArtifactBuilder.ts
 │   │   │   │   ├── LuaCodeValidator.ts
 │   │   │   │   ├── LuaGenerationEngine.ts
 │   │   │   │   ├── LuaGenerationTypes.ts
 │   │   │   │   ├── LuaGenerator.ts
-│   │   │   │   └── LuaTemplateRegistry.ts
+│   │   │   │   ├── LuaTemplateRegistry.ts
+│   │   │   │   └── WorldScenePlanner.ts
 │   │   │   └── validation
 │   │   │       ├── __tests__
 │   │   │       │   └── GameValidationEngine.gates.test.ts
@@ -1449,7 +1463,8 @@
 │   │   │   │   ├── ollamaThinkingBudget.test.ts
 │   │   │   │   ├── ollamaTimeout.test.ts
 │   │   │   │   ├── providerFactory.test.ts
-│   │   │   │   └── providers.test.ts
+│   │   │   │   ├── providers.test.ts
+│   │   │   │   └── systemRoleSeparation.test.ts
 │   │   │   ├── ai
 │   │   │   │   ├── __tests__
 │   │   │   │   │   └── ProviderIntegration.test.ts
@@ -1562,7 +1577,9 @@
 │   │   │       └── GameplayMetricsEngine.ts
 │   │   ├── socket
 │   │   │   ├── index.ts
+│   │   │   ├── pipelineEventBridge.scope.test.ts
 │   │   │   ├── pipelineEventBridge.ts
+│   │   │   ├── socketAuthPolicy.ts
 │   │   │   └── streaming.ts
 │   │   ├── studio
 │   │   │   ├── artifacts
