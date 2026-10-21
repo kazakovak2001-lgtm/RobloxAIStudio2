@@ -27,8 +27,10 @@ describe("SECURITY-2G-E simulation authorization scope", () => {
     expect(route).toContain(
       "export function createSimulationRouter(access: ProjectAccessControl)",
     );
+    // AUDIT-BODY-SUPPLIED-BLUEPRINT-001: the body-supplied blueprint.id is
+    // authorized through the one canonical helper, not an inline call.
     expect(route).toContain(
-      "await access.requireProjectAccess(req, res, blueprint.id)",
+      "await requireProjectAccessForBlueprint(access, req, res, blueprint)",
     );
     expect(route).toContain("await access.hasProjectAccess(req, gameId)");
     expect(route).toContain('error: "No simulation data"');

@@ -14,6 +14,7 @@ import { WorldSimulationBridge } from "../world/bridge/WorldSimulationBridge";
 import type { RobloxGameBlueprint } from "../generation/blueprint/GameBlueprintEngine";
 import type { ProjectAccessControl } from "./projects";
 import { requireApiKeyCapability } from "../common/middleware/security";
+import { requireProjectAccessForBlueprint } from "./resourceAuthorization";
 
 export function createWorldRouter(access: ProjectAccessControl): Router {
   const router = Router();
@@ -28,12 +29,13 @@ export function createWorldRouter(access: ProjectAccessControl): Router {
     try {
       const blueprint = req.body.blueprint as RobloxGameBlueprint;
       const ticks = req.body.ticks ?? 50;
-      if (!blueprint?.id) {
-        res.status(400).json({ success: false, error: "Blueprint required" });
+      if (
+        !(await requireProjectAccessForBlueprint(access, req, res, blueprint, {
+          missingBlueprintMessage: "Blueprint required",
+        }))
+      ) {
         return;
       }
-
-      if (!(await access.requireProjectAccess(req, res, blueprint.id))) return;
 
       const world = new WorldStateEngine();
       world.initialize(blueprint.npcs, blueprint.world.biomes);
