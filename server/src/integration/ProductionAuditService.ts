@@ -53,10 +53,6 @@ export class ProductionAuditService {
     checks.push(this.checkDir("server/src/lua", "Lua engine"));
     checks.push(this.checkDir("server/src/assets", "Asset engine"));
     checks.push(this.checkDir("server/src/ui-gen", "UI engine"));
-    checks.push(
-      this.checkDir("server/src/agents/orchestrator", "Agent orchestrator"),
-    );
-    checks.push(this.checkDir("server/src/providers/ai", "Provider layer"));
     checks.push(this.checkDir("server/src/memory/knowledge", "Memory system"));
     checks.push(
       this.checkDir("server/src/studio/integration", "Studio integration"),

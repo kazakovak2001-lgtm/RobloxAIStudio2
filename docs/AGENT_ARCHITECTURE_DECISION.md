@@ -1,7 +1,7 @@
 # Agent Architecture Decision
 
 **Date**: July 17, 2026  
-**Status**: DECISION MADE
+**Status**: DECISION MADE — System B (`agents/orchestrator/`, BaseAgentV2) removed on 2026-10-21 (CLEANUP-2A, see `00-project-control/DECISION_LOG.md`). System C (`agents/collaboration/`) remains live.
 
 ---
 

@@ -1,6 +1,6 @@
 # ADR-0003: AI Router & Provider Abstraction
 
-**Status:** Accepted
+**Status:** Superseded in its production scope (2026-10-21, CLEANUP-2A). `AIRouter` was never wired and is removed; provider construction is owned by `providers/providerFactory.ts`. Per-agent routing stays a possible future capability, not a rejected one — see `DECISION_LOG.md`.
 **Date:** 2026-07-05
 **Deciders:** Engineering Team
 
