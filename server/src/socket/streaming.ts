@@ -4,51 +4,74 @@ import type {
   PipelineEventPublisher,
 } from "../types/pipeline-events";
 
+type ClientConnection = {
+  response: Response;
+  projectId: string;
+  lastSeenAt: number;
+  bufferedBytes: number;
+};
+
 /**
  * Server-Sent Events (SSE) Handler
  * Streams pipeline execution updates to clients in real-time
  */
 export class StreamingUpdateHandler {
-  private clients = new Map<
-    string,
-    { response: Response; projectId: string }
-  >();
+  private clients = new Map<string, ClientConnection>();
+  private projectClients = new Map<string, Set<string>>();
   private eventBuffer = new Map<string, PipelineEvent[]>();
   private maxBufferSize = 100;
+  private maxBufferedBytes = 256 * 1024;
+  private heartbeatIntervalMs = 30_000;
+  private idleTimeoutMs = 60_000;
 
   /**
    * Register a client connection
    */
   registerClient(clientId: string, projectId: string, res: Response): void {
-    // Set SSE headers
     res.setHeader("Content-Type", "text/event-stream");
     res.setHeader("Cache-Control", "no-cache");
     res.setHeader("Connection", "keep-alive");
     res.setHeader("Access-Control-Allow-Origin", "*");
 
-    this.clients.set(clientId, { response: res, projectId });
+    const connection: ClientConnection = {
+      response: res,
+      projectId,
+      lastSeenAt: Date.now(),
+      bufferedBytes: 0,
+    };
 
-    // Send heartbeat to keep connection alive
+    this.clients.set(clientId, connection);
+
+    const members = this.projectClients.get(projectId) ?? new Set<string>();
+    members.add(clientId);
+    this.projectClients.set(projectId, members);
+
     const heartbeatInterval = setInterval(() => {
-      if (!this.clients.has(clientId)) {
+      const client = this.clients.get(clientId);
+      if (!client) {
         clearInterval(heartbeatInterval);
         return;
       }
-      this.sendHeartbeat(clientId);
-    }, 30000); // Every 30 seconds
 
-    // Send buffered events
-    const buffered = this.eventBuffer.get(clientId) || [];
+      if (Date.now() - client.lastSeenAt > this.idleTimeoutMs) {
+        this.cleanupClient(clientId);
+        clearInterval(heartbeatInterval);
+        return;
+      }
+
+      this.sendHeartbeat(clientId);
+    }, this.heartbeatIntervalMs);
+
+    const buffered = this.eventBuffer.get(clientId) ?? [];
     for (const event of buffered) {
       this.sendEvent(clientId, event);
     }
     if (buffered.length > 0) {
-      this.eventBuffer.set(clientId, []);
+      this.eventBuffer.delete(clientId);
     }
 
-    // Cleanup on disconnect
     res.on("close", () => {
-      this.clients.delete(clientId);
+      this.cleanupClient(clientId);
       clearInterval(heartbeatInterval);
     });
   }
@@ -57,9 +80,9 @@ export class StreamingUpdateHandler {
    * Send an event to a specific client
    */
   sendEvent(clientId: string, event: PipelineEvent): void {
-    const client = this.clients.get(clientId)?.response;
+    const client = this.clients.get(clientId);
 
-    if (client && !client.writableEnded) {
+    if (client && !client.response.writableEnded) {
       try {
         const eventData = JSON.stringify({
           type: event.type,
@@ -69,29 +92,63 @@ export class StreamingUpdateHandler {
           timestamp: event.timestamp.toISOString(),
         });
 
-        client.write(`data: ${eventData}\n\n`);
+        client.response.write(`data: ${eventData}\n\n`);
+        client.lastSeenAt = Date.now();
       } catch (error) {
         console.error(`Failed to send event to client ${clientId}:`, error);
-        this.clients.delete(clientId);
+        this.cleanupClient(clientId);
       }
-    } else {
-      // Buffer event if client is not connected
-      const buffer = this.eventBuffer.get(clientId) || [];
-      if (buffer.length < this.maxBufferSize) {
-        buffer.push(event);
-        this.eventBuffer.set(clientId, buffer);
-      }
+      return;
     }
+
+    this.bufferEvent(clientId, event);
   }
 
   /**
-   * Send event to multiple clients (broadcast)
+   * Buffer event if client is not connected
+   */
+  private bufferEvent(clientId: string, event: PipelineEvent): void {
+    const current = this.eventBuffer.get(clientId) ?? [];
+    const next = [...current, event];
+
+    if (next.length > this.maxBufferSize) {
+      next.splice(0, next.length - this.maxBufferSize);
+    }
+
+    const bufferedBytes = next.reduce((sum, item) => {
+      try {
+        return sum + JSON.stringify(item).length;
+      } catch {
+        return sum + 512;
+      }
+    }, 0);
+
+    if (bufferedBytes > this.maxBufferedBytes) {
+      let trimmed = next;
+      let totalBytes = bufferedBytes;
+      while (trimmed.length > 1 && totalBytes > this.maxBufferedBytes) {
+        const removed = trimmed.shift()!;
+        totalBytes -= JSON.stringify(removed).length;
+      }
+      this.eventBuffer.set(clientId, trimmed);
+      return;
+    }
+
+    this.eventBuffer.set(clientId, next);
+  }
+
+  /**
+   * Send an event to all clients in the project room
    */
   broadcastEvent(event: PipelineEvent, filterProjectId?: string): void {
     const projectId = filterProjectId ?? event.projectId;
     if (!projectId) return;
-    for (const [clientId, client] of this.clients.entries()) {
-      if (client.projectId === projectId) this.sendEvent(clientId, event);
+
+    const members = this.projectClients.get(projectId);
+    if (!members) return;
+
+    for (const clientId of [...members]) {
+      this.sendEvent(clientId, event);
     }
   }
 
@@ -99,13 +156,14 @@ export class StreamingUpdateHandler {
    * Send a heartbeat/ping to keep connection alive
    */
   private sendHeartbeat(clientId: string): void {
-    const client = this.clients.get(clientId)?.response;
-    if (client && !client.writableEnded) {
+    const client = this.clients.get(clientId);
+    if (client && !client.response.writableEnded) {
       try {
-        client.write(": heartbeat\n\n");
+        client.response.write(": heartbeat\n\n");
+        client.lastSeenAt = Date.now();
       } catch (error) {
         console.error(`Failed to send heartbeat to client ${clientId}:`, error);
-        this.clients.delete(clientId);
+        this.cleanupClient(clientId);
       }
     }
   }
@@ -114,8 +172,8 @@ export class StreamingUpdateHandler {
    * Check if a client is connected
    */
   isClientConnected(clientId: string): boolean {
-    const client = this.clients.get(clientId)?.response;
-    return client !== undefined && !client.writableEnded;
+    const client = this.clients.get(clientId);
+    return client !== undefined && !client.response.writableEnded;
   }
 
   /**
@@ -129,11 +187,11 @@ export class StreamingUpdateHandler {
    * Close a specific client connection
    */
   closeClient(clientId: string): void {
-    const client = this.clients.get(clientId)?.response;
-    if (client && !client.writableEnded) {
-      client.end();
+    const client = this.clients.get(clientId);
+    if (client && !client.response.writableEnded) {
+      client.response.end();
     }
-    this.clients.delete(clientId);
+    this.cleanupClient(clientId);
   }
 
   /**
@@ -146,6 +204,7 @@ export class StreamingUpdateHandler {
       }
     }
     this.clients.clear();
+    this.projectClients.clear();
     this.eventBuffer.clear();
   }
 
@@ -161,6 +220,25 @@ export class StreamingUpdateHandler {
         0,
       ),
     };
+  }
+
+  private cleanupClient(clientId: string): void {
+    const client = this.clients.get(clientId);
+    if (!client) {
+      this.eventBuffer.delete(clientId);
+      return;
+    }
+
+    this.clients.delete(clientId);
+    this.eventBuffer.delete(clientId);
+
+    const room = this.projectClients.get(client.projectId);
+    if (room) {
+      room.delete(clientId);
+      if (room.size === 0) {
+        this.projectClients.delete(client.projectId);
+      }
+    }
   }
 }
 
@@ -181,7 +259,6 @@ export class PipelineEventEmitter implements PipelineEventPublisher {
   }
 
   async emit(event: PipelineEvent): Promise<void> {
-    // Call all handlers
     for (const handler of this.handlers) {
       try {
         await handler(event);
@@ -190,7 +267,6 @@ export class PipelineEventEmitter implements PipelineEventPublisher {
       }
     }
 
-    // Stream to clients
     if (this.streamHandler) {
       this.streamHandler.broadcastEvent(event);
     }
