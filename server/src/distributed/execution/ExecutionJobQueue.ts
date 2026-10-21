@@ -14,7 +14,12 @@
 import { randomUUID } from "crypto";
 
 export type ExecutionJobStatus =
-  "queued" | "assigned" | "running" | "completed" | "failed" | "dead-letter";
+  | "queued"
+  | "assigned"
+  | "running"
+  | "completed"
+  | "failed"
+  | "dead-letter";
 
 export interface ExecutionJob {
   jobId: string;
@@ -54,11 +59,104 @@ export interface QueueMetrics {
   averageExecutionMs: number;
 }
 
+type HeapEntry = {
+  priority: number;
+  sequence: number;
+  job: ExecutionJob;
+};
+
+class PriorityQueue {
+  private heap: HeapEntry[] = [];
+  private sequence = 0;
+
+  push(job: ExecutionJob): void {
+    this.heap.push({
+      priority: job.priority,
+      sequence: this.sequence++,
+      job,
+    });
+    this.heapifyUp(this.heap.length - 1);
+  }
+
+  pop(): ExecutionJob | null {
+    if (this.heap.length === 0) return null;
+
+    const root = this.heap[0];
+    const last = this.heap.pop()!;
+
+    if (this.heap.length > 0) {
+      this.heap[0] = last;
+      this.heapifyDown(0);
+    }
+
+    return root.job;
+  }
+
+  get size(): number {
+    return this.heap.length;
+  }
+
+  private heapifyUp(index: number): void {
+    while (index > 0) {
+      const parentIndex = (index - 1) >> 1;
+      if (!this.shouldSwap(this.heap[index], this.heap[parentIndex])) {
+        break;
+      }
+      [this.heap[parentIndex], this.heap[index]] = [
+        this.heap[index],
+        this.heap[parentIndex],
+      ];
+      index = parentIndex;
+    }
+  }
+
+  private heapifyDown(index: number): void {
+    let current = index;
+
+    while (true) {
+      const left = current * 2 + 1;
+      const right = current * 2 + 2;
+      let best = current;
+
+      if (
+        left < this.heap.length &&
+        this.shouldSwap(this.heap[left], this.heap[best])
+      ) {
+        best = left;
+      }
+
+      if (
+        right < this.heap.length &&
+        this.shouldSwap(this.heap[right], this.heap[best])
+      ) {
+        best = right;
+      }
+
+      if (best === current) break;
+
+      [this.heap[current], this.heap[best]] = [
+        this.heap[best],
+        this.heap[current],
+      ];
+      current = best;
+    }
+  }
+
+  private shouldSwap(a: HeapEntry, b: HeapEntry): boolean {
+    if (a.priority !== b.priority) {
+      return a.priority < b.priority;
+    }
+    return a.sequence < b.sequence;
+  }
+}
+
 export class ExecutionJobQueue {
-  private queue: ExecutionJob[] = [];
+  private queue = new PriorityQueue();
+  private queuedJobs: Map<string, ExecutionJob> = new Map();
   private active: Map<string, ExecutionJob> = new Map();
   private completed: Map<string, ExecutionJob> = new Map();
   private deadLetter: DeadLetterEntry[] = [];
+  private deadLetterMap: Map<string, DeadLetterEntry> = new Map();
   private totalEnqueued = 0;
   private totalWaitMs = 0;
   private totalExecMs = 0;
@@ -87,17 +185,12 @@ export class ExecutionJobQueue {
       createdAt: Date.now(),
       attempts: 0,
       maxAttempts: params.maxAttempts ?? 3,
-      timeoutMs: params.timeoutMs ?? 300_000, // 5 min default
+      timeoutMs: params.timeoutMs ?? 300_000,
       metadata: params.metadata,
     };
 
-    // Insert sorted by priority (lower = higher priority)
-    const idx = this.queue.findIndex((j) => j.priority > job.priority);
-    if (idx === -1) {
-      this.queue.push(job);
-    } else {
-      this.queue.splice(idx, 0, job);
-    }
+    this.queue.push(job);
+    this.queuedJobs.set(job.jobId, job);
 
     this.totalEnqueued++;
     return job;
@@ -107,9 +200,11 @@ export class ExecutionJobQueue {
    * Dequeue next available job for a worker.
    */
   dequeue(workerId: string): ExecutionJob | null {
-    if (this.queue.length === 0) return null;
+    const job = this.queue.pop();
+    if (!job) return null;
 
-    const job = this.queue.shift()!;
+    this.queuedJobs.delete(job.jobId);
+
     job.status = "assigned";
     job.assignedAt = Date.now();
     job.assignedWorker = workerId;
@@ -161,26 +256,27 @@ export class ExecutionJobQueue {
     this.active.delete(jobId);
 
     if (job.attempts < job.maxAttempts) {
-      // Requeue for retry (back of same priority level)
       job.status = "queued";
       job.error = reason;
       job.assignedWorker = undefined;
       job.assignedAt = undefined;
       job.startedAt = undefined;
 
-      const idx = this.queue.findIndex((j) => j.priority > job.priority);
-      if (idx === -1) {
-        this.queue.push(job);
-      } else {
-        this.queue.splice(idx, 0, job);
-      }
+      this.queue.push(job);
+      this.queuedJobs.set(job.jobId, job);
     } else {
-      // Dead-letter: exhausted all retries
       job.status = "dead-letter";
       job.completedAt = Date.now();
       job.error = reason;
 
-      this.deadLetter.push({ job, reason, deadAt: Date.now() });
+      const entry: DeadLetterEntry = {
+        job,
+        reason,
+        deadAt: Date.now(),
+      };
+
+      this.deadLetter.push(entry);
+      this.deadLetterMap.set(job.jobId, entry);
     }
   }
 
@@ -191,8 +287,8 @@ export class ExecutionJobQueue {
     return (
       this.active.get(jobId) ??
       this.completed.get(jobId) ??
-      this.queue.find((j) => j.jobId === jobId) ??
-      this.deadLetter.find((e) => e.job.jobId === jobId)?.job ??
+      this.queuedJobs.get(jobId) ??
+      this.deadLetterMap.get(jobId)?.job ??
       null
     );
   }
@@ -208,19 +304,23 @@ export class ExecutionJobQueue {
    * Retry a dead-letter job (resets attempts, re-enqueues).
    */
   retryDeadLetter(jobId: string): boolean {
-    const idx = this.deadLetter.findIndex((e) => e.job.jobId === jobId);
-    if (idx === -1) return false;
+    const entry = this.deadLetterMap.get(jobId);
+    if (!entry) return false;
 
-    const entry = this.deadLetter.splice(idx, 1)[0];
-    entry.job.attempts = 0;
-    entry.job.status = "queued";
-    entry.job.error = undefined;
-    entry.job.assignedWorker = undefined;
-    entry.job.assignedAt = undefined;
-    entry.job.startedAt = undefined;
-    entry.job.completedAt = undefined;
+    this.deadLetter = this.deadLetter.filter((item) => item.job.jobId !== jobId);
+    this.deadLetterMap.delete(jobId);
 
-    this.queue.push(entry.job);
+    const job = entry.job;
+    job.attempts = 0;
+    job.status = "queued";
+    job.error = undefined;
+    job.assignedWorker = undefined;
+    job.assignedAt = undefined;
+    job.startedAt = undefined;
+    job.completedAt = undefined;
+
+    this.queue.push(job);
+    this.queuedJobs.set(job.jobId, job);
     return true;
   }
 
@@ -229,7 +329,7 @@ export class ExecutionJobQueue {
    */
   getMetrics(): QueueMetrics {
     return {
-      queueDepth: this.queue.length,
+      queueDepth: this.queue.size,
       activeJobs: this.active.size,
       completedJobs: this.completed.size,
       failedJobs: this.deadLetter.length,
@@ -243,7 +343,7 @@ export class ExecutionJobQueue {
   }
 
   get depth(): number {
-    return this.queue.length;
+    return this.queue.size;
   }
 
   get activeCount(): number {
