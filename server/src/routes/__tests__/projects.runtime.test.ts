@@ -53,7 +53,21 @@ describe("project runtime access control", async () => {
         project.id,
       ),
     ).toBe(false);
-    expect(foreign.status).toHaveBeenCalledWith(403);
+    // SEC-PROJECT-ACCESS-DISCLOSURE-001. This asserted 403, which is how a
+    // caller could tell a project that exists and is not theirs from one that
+    // does not exist at all. Both are now answered as absent.
+    expect(foreign.status).toHaveBeenCalledWith(404);
+
+    const missing = response();
+    expect(
+      await runtime.access.requireProjectAccess(
+        request(otherToken),
+        missing.response,
+        "project-that-does-not-exist",
+      ),
+    ).toBe(false);
+    expect(missing.status).toHaveBeenCalledWith(404);
+    expect(missing.json).toHaveBeenCalledWith(foreign.json.mock.calls[0][0]);
 
     const owner = response();
     expect(

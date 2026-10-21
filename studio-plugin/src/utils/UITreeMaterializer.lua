@@ -41,6 +41,11 @@ UITreeMaterializer.MAX_DEPTH = 8
 UITreeMaterializer.MAX_NODES = 250
 
 local MANAGED_ATTRIBUTE = "AIStudioManaged"
+-- MAR-002. Managed says AI Studio made the instance. These say which project it
+-- was made for and which delivery produced it, which is what every destructive
+-- decision below actually needs.
+local PROJECT_ATTRIBUTE = "AIStudioProject"
+local DELIVERY_ATTRIBUTE = "AIStudioDelivery"
 local DELIVERY_MODE_ATTRIBUTE = "AIStudioDeliveryMode"
 local DELIVERY_MODE = "design-time"
 
@@ -435,6 +440,21 @@ local function isManaged(instance)
 end
 
 --[[
+  Whether this project may replace or sweep the instance.
+
+  Managed alone is not enough: a place file that has hosted two projects holds
+  managed instances from both. An instance carrying the mark but no project is
+  from a build before provenance existed, and counts as foreign — inferring that
+  an unattributed instance is probably ours is the permissive guess this rule
+  exists to prevent.
+]]
+local function isOwnedBy(instance, projectId)
+    if not isManaged(instance) then return false end
+    local owner = instance:GetAttribute(PROJECT_ATTRIBUTE)
+    return type(owner) == "string" and owner == projectId
+end
+
+--[[
   Collect the topmost creator-authored instances inside a managed subtree.
 
   Walking only direct children is not enough. A creator who adds an instance
@@ -483,7 +503,7 @@ local function preserveUnmanagedContent(existingScreen, destination)
 end
 
 --[[ Build one node and its descendants, detached from the DataModel. ]]
-local function buildNode(node)
+local function buildNode(node, provenance)
     local instance = Instance.new(node.className)
     instance.Name = node.name
 
@@ -494,10 +514,12 @@ local function buildNode(node)
     end
 
     instance:SetAttribute(MANAGED_ATTRIBUTE, true)
+    instance:SetAttribute(PROJECT_ATTRIBUTE, provenance.projectId)
+    instance:SetAttribute(DELIVERY_ATTRIBUTE, provenance.deliveryId)
 
     if node.children then
         for _, child in ipairs(node.children) do
-            buildNode(child).Parent = instance
+            buildNode(child, provenance).Parent = instance
         end
     end
 
@@ -511,9 +533,21 @@ end
   a message. Nothing is attached to the DataModel unless every screen built
   successfully.
 ]]
-function UITreeMaterializer.materialize(content, stageFolder)
+function UITreeMaterializer.materialize(content, stageFolder, provenance)
     local ok, err = UITreeMaterializer.validate(content)
     if not ok then return nil, err end
+
+    -- MAR-002. Without a project there is nothing to compare an existing
+    -- instance against, and every ownership decision below would fall back to
+    -- "managed is enough", which is the defect. Refuse rather than proceed.
+    if type(provenance) ~= "table"
+        or type(provenance.projectId) ~= "string"
+        or provenance.projectId == ""
+        or type(provenance.deliveryId) ~= "string"
+        or provenance.deliveryId == ""
+    then
+        return nil, "Refusing to materialize without a project and delivery identity"
+    end
 
     -- Ownership precheck, before anything is constructed. A generated name
     -- that collides with a hand-built instance must fail the export rather
@@ -521,7 +555,7 @@ function UITreeMaterializer.materialize(content, stageFolder)
     -- same-named sibling either.
     for _, screen in ipairs(content.screens) do
         local existing = stageFolder:FindFirstChild(screen.screenName)
-        if existing and not isManaged(existing) then
+        if existing and not isOwnedBy(existing, provenance.projectId) then
             return nil, string.format(
                 "Refusing to replace %s: an instance with that name exists and is not managed by AI Studio",
                 existing:GetFullName()
@@ -534,7 +568,7 @@ function UITreeMaterializer.materialize(content, stageFolder)
     local built = {}
     local buildOk, buildErr = pcall(function()
         for _, screen in ipairs(content.screens) do
-            local root = buildNode(screen.root)
+            local root = buildNode(screen.root, provenance)
             root:SetAttribute(DELIVERY_MODE_ATTRIBUTE, DELIVERY_MODE)
             table.insert(built, { screenName = screen.screenName, root = root })
         end
@@ -574,7 +608,12 @@ function UITreeMaterializer.materialize(content, stageFolder)
             deliveredNames[entry.screenName] = true
         end
         for _, child in ipairs(stageFolder:GetChildren()) do
-            if isManaged(child) and not deliveredNames[child.Name] then
+            -- Only this project's orphans. A managed screen belonging to
+            -- another project, or to no recorded project, is not this
+            -- delivery's to remove.
+            if isOwnedBy(child, provenance.projectId)
+                and not deliveredNames[child.Name]
+            then
                 preserveUnmanagedContent(child, stageFolder)
                 child:Destroy()
             end

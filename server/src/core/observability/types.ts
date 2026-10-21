@@ -4,6 +4,13 @@
 
 export interface ExecutionTraceEvent {
   executionId: string;
+  /**
+   * SEC-REALTIME-TRACE-001. The project this execution belongs to, so a trace
+   * consumer can be restricted to the tenant entitled to it. Optional because
+   * an execution started without a project genuinely has none; consumers must
+   * treat its absence as "do not deliver" rather than "deliver to everyone".
+   */
+  projectId?: string;
   nodeId: string;
   agentId: string;
   eventType:
@@ -28,6 +35,8 @@ export interface ExecutionTraceEvent {
 
 export interface ExecutionTrace {
   executionId: string;
+  /** Project this execution belongs to, when it was started with one. */
+  projectId?: string;
   planId: string;
   goal: string;
   startedAt: number;

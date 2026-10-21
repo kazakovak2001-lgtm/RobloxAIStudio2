@@ -42,7 +42,12 @@ export class OpenAIProvider implements LLMProvider {
         const start = Date.now();
         const body: Record<string, unknown> = {
           model,
-          messages: [{ role: "user", content: prompt }],
+          messages: options?.system
+            ? [
+                { role: "system", content: options.system },
+                { role: "user", content: prompt },
+              ]
+            : [{ role: "user", content: prompt }],
           temperature: options?.temperature ?? 0.7,
           max_tokens: options?.maxTokens ?? 4096,
         };

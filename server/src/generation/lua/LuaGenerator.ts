@@ -7,6 +7,13 @@
  */
 
 import type { RobloxGameBlueprint } from "../blueprint/GameBlueprintEngine";
+import {
+  planWorldScene,
+  ROUTE_COLOR,
+  type SceneStructure,
+  type ScenePath,
+  type SceneSpawn,
+} from "./WorldScenePlanner";
 
 export interface LuaScript {
   name: string;
@@ -20,6 +27,51 @@ export interface LuaGenerationResult {
   scripts: LuaScript[];
   totalScripts: number;
   totalLines: number;
+}
+
+/**
+ * Escape a value for embedding inside a double-quoted Luau string literal.
+ * Blueprint fields (title, genre, currency, mechanic/biome names, ...) are
+ * plan/AI output, not code the generator controls — an unescaped `"` or `\`
+ * in one of them currently produces a Lua file that fails to parse.
+ */
+function luaString(value: string): string {
+  return value
+    .replace(/\\/g, "\\\\")
+    .replace(/"/g, '\\"')
+    .replace(/\n/g, "\\n");
+}
+
+/**
+ * Deterministic colour cycles for objectives and biome zones, so a
+ * multi-mechanic, multi-biome world is visually distinguishable in Studio
+ * rather than every generated Part looking the same.
+ */
+const OBJECTIVE_COLORS: ReadonlyArray<readonly [number, number, number]> = [
+  [230, 126, 34],
+  [231, 76, 60],
+  [26, 188, 156],
+  [241, 196, 15],
+  [155, 89, 182],
+];
+
+const BIOME_COLORS: ReadonlyArray<readonly [number, number, number]> = [
+  [87, 161, 74],
+  [219, 190, 86],
+  [97, 151, 206],
+  [150, 111, 214],
+];
+
+function color3(rgb: readonly [number, number, number]): string {
+  return `Color3.fromRGB(${rgb[0]}, ${rgb[1]}, ${rgb[2]})`;
+}
+
+function vector3(v: {
+  readonly x: number;
+  readonly y: number;
+  readonly z: number;
+}): string {
+  return `Vector3.new(${v.x}, ${v.y}, ${v.z})`;
 }
 
 export class LuaGenerator {
@@ -59,40 +111,482 @@ export class LuaGenerator {
     };
   }
 
+  /**
+   * GEN-FIDELITY-1. The one server Script the playable-Lua contract
+   * (types/playableLua.ts, already the gate for the other generation
+   * pipeline's Studio delivery) requires to own the complete world, the
+   * gameplay interaction, and the progress event in one place.
+   *
+   * Materializes the blueprint rather than a single touched cube: one
+   * interactable objective per blueprint mechanic (GEN-VIABILITY-2 wired
+   * only the first), completed in order — mirroring coreLoop as a repeating
+   * discover→engage→reward cycle — with reward paid in the blueprint's
+   * economy currency and progression tracked against progression.stages.
+   * One zone per blueprint biome, plus a landmark Part per blueprint
+   * landmark when the blueprint names any, gives the world visible
+   * differentiation instead of one undifferentiated baseplate. Nothing here
+   * is a placeholder — every line is instructions the server actually
+   * executes when the place runs.
+   *
+   * GEN-FIDELITY-2. GameManager keeps no per-player state of its own.
+   * `playerProgress`/`playerCoins` here and `PlayerService.PlayerData`
+   * separately were two owners of the same facts, and `EconomyService`'s
+   * `Award`/`Spend` only printed — the "reward" was fake. GameManager now
+   * only decides *when* an objective completes (the ordering gate) and
+   * reads/advances state through `_G.PlayerService`, and pays through
+   * `_G.EconomyService`, which is what actually mutates the authoritative
+   * balance `_G.PlayerService` stores.
+   *
+   * GEN-FIDELITY-3. World construction is no longer this method's own
+   * baseplate-and-a-row-of-cubes logic. `WorldScenePlanner.planWorldScene`
+   * plans a typed `WorldSceneSpec` from the blueprint — detecting a
+   * fortress/obby/island/generic concept from blueprint text and laying out
+   * zones, grouped multi-part structures (walls, towers, a gate, a
+   * courtyard, platforms, camps), routes and semantically-placed
+   * interactables — and this method only materializes that plan into
+   * Instance.new(...) calls. A blueprint that names no recognizable concept
+   * still plans into the "generic" category, whose plan is numerically
+   * identical to the original row-of-cubes layout, so GEN-FIDELITY-1/2's
+   * acceptance fixtures are unaffected.
+   */
   private generateGameManager(bp: RobloxGameBlueprint): LuaScript {
-    const mechanics = bp.mechanics.map((m) => `\t["${m}"] = true,`).join("\n");
+    const title = luaString(bp.title);
+    const mechanics = bp.mechanics.length > 0 ? bp.mechanics : ["objective"];
+    const coreLoop = bp.coreLoop.length > 0 ? bp.coreLoop : ["loop"];
+    const stages =
+      bp.progression.stages.length > 0 ? bp.progression.stages : ["stage"];
+
+    const scene = planWorldScene(bp);
+
+    const objectiveEntries = mechanics.map((mechanic, index) => {
+      const loopStage = luaString(coreLoop[index % coreLoop.length]);
+      const reward = (index + 1) * 25;
+      return `\t{ name = "${luaString(mechanic)}", loopStage = "${loopStage}", reward = ${reward} },`;
+    });
+
+    const stageEntries = stages
+      .map((stage) => `"${luaString(stage)}"`)
+      .join(", ");
+
+    const biomeZones: string[] = [];
+    scene.zones.forEach((zone, index) => {
+      const varName = `biomeZone${index + 1}`;
+      biomeZones.push(
+        `local ${varName} = Instance.new("Part")`,
+        `${varName}.Name = "${luaString(zone.name)}"`,
+        `${varName}.Size = ${vector3(zone.size)}`,
+        `${varName}.Position = ${vector3(zone.position)}`,
+        `${varName}.Color = ${color3(BIOME_COLORS[zone.colorIndex % BIOME_COLORS.length])}`,
+        `${varName}.Anchored = true`,
+        `${varName}.Parent = workspace`,
+        ``,
+      );
+    });
+
+    const landmarkParts: string[] = [];
+    scene.landmarks.forEach((landmark, index) => {
+      const varName = `landmark${index + 1}`;
+      landmarkParts.push(
+        `local ${varName} = Instance.new("Part")`,
+        `${varName}.Name = "${luaString(landmark.name)}"`,
+        `${varName}.Size = ${vector3(landmark.size)}`,
+        `${varName}.Position = ${vector3(landmark.position)}`,
+        `${varName}.Color = Color3.fromRGB(200, 200, 200)`,
+        `${varName}.Anchored = true`,
+        `${varName}.Parent = workspace`,
+        ``,
+      );
+    });
+
+    const objectiveParts: string[] = [];
+    scene.interactables.forEach((interactable, index) => {
+      const varName = `objectivePart${index + 1}`;
+      objectiveParts.push(
+        `local ${varName} = Instance.new("Part")`,
+        `${varName}.Name = "${luaString(interactable.name)}"`,
+        `${varName}.Size = Vector3.new(4, 4, 4)`,
+        `${varName}.Position = ${vector3(interactable.position)}`,
+        `${varName}.Color = ${color3(OBJECTIVE_COLORS[index % OBJECTIVE_COLORS.length])}`,
+        `${varName}.Anchored = true`,
+        `${varName}.Parent = workspace`,
+        `${varName}.Touched:Connect(function(hit)`,
+        `\tlocal player = Players:GetPlayerFromCharacter(hit.Parent)`,
+        `\tif not player then`,
+        `\t\treturn`,
+        `\tend`,
+        `\tonObjectiveTouched(player, ${index + 1})`,
+        `end)`,
+        ``,
+      );
+    });
+
+    const playerSpawn =
+      scene.spawns.find((spawn) => spawn.type === "player") ?? scene.spawns[0];
+
+    const lines: string[] = [
+      `-- GameManager: ${bp.title}`,
+      `local ReplicatedStorage = game:GetService("ReplicatedStorage")`,
+      `local Players = game:GetService("Players")`,
+      ``,
+      `local baseplate = Instance.new("Part")`,
+      `baseplate.Name = "Baseplate"`,
+      `baseplate.Size = Vector3.new(200, 4, 200)`,
+      `baseplate.Position = Vector3.new(0, -2, 0)`,
+      `baseplate.Anchored = true`,
+      `baseplate.Parent = workspace`,
+      ``,
+      `local spawnPoint = Instance.new("SpawnLocation")`,
+      `spawnPoint.Name = "MainSpawn"`,
+      `spawnPoint.Size = Vector3.new(6, 1, 6)`,
+      `spawnPoint.Position = ${vector3(playerSpawn.position)}`,
+      `spawnPoint.Anchored = true`,
+      `spawnPoint.Parent = workspace`,
+      ``,
+      `-- World differentiation: one zone per blueprint biome`,
+      ...biomeZones,
+    ];
+
+    if (landmarkParts.length > 0) {
+      lines.push(`-- Landmarks named by the blueprint`, ...landmarkParts);
+    }
+
+    if (scene.structures.length > 0) {
+      lines.push(
+        `-- Semantic structures: ${scene.category} concept detected from the blueprint`,
+        ...this.renderStructures(scene.structures),
+      );
+    }
+
+    const nonPlayerSpawns = scene.spawns.filter(
+      (spawn) => spawn !== playerSpawn,
+    );
+    if (nonPlayerSpawns.length > 0) {
+      lines.push(
+        `-- Additional spawn points planned by the scene`,
+        ...this.renderSpawns(nonPlayerSpawns),
+      );
+    }
+
+    if (scene.paths.length > 0) {
+      lines.push(
+        `-- Routes planned by the scene`,
+        ...this.renderPaths(scene.paths),
+      );
+    }
+
+    lines.push(
+      `local progressEvent = Instance.new("RemoteEvent")`,
+      `progressEvent.Name = "ProgressUpdated"`,
+      `progressEvent.Parent = ReplicatedStorage`,
+      ``,
+      `-- Objectives: one per blueprint mechanic, completed in coreLoop order`,
+      `local OBJECTIVES = {`,
+      ...objectiveEntries,
+      `}`,
+      `local PROGRESSION_STAGES = {${stageEntries}}`,
+      `local TOTAL_OBJECTIVES = #OBJECTIVES`,
+      ``,
+      `local function stageForProgress(completedCount)`,
+      `\tlocal ratio = completedCount / TOTAL_OBJECTIVES`,
+      `\tlocal index = math.max(1, math.min(#PROGRESSION_STAGES, math.ceil(ratio * #PROGRESSION_STAGES)))`,
+      `\treturn PROGRESSION_STAGES[index]`,
+      `end`,
+      ``,
+      `-- Server-authoritative: the client only touches a Part. Progress and`,
+      `-- currency are not kept here — PlayerService is the single owner of`,
+      `-- that state; GameManager only reads and advances it through the`,
+      `-- service, and EconomyService is what actually mutates the balance.`,
+      `local function onObjectiveTouched(player, objectiveIndex)`,
+      `\tif not _G.PlayerService or not _G.EconomyService then`,
+      `\t\treturn`,
+      `\tend`,
+      `\tlocal progress = _G.PlayerService:GetProgress(player.UserId)`,
+      `\tif objectiveIndex ~= progress then`,
+      `\t\treturn`,
+      `\tend`,
+      `\tlocal objective = OBJECTIVES[objectiveIndex]`,
+      `\tlocal newProgress = _G.PlayerService:AdvanceProgress(player.UserId)`,
+      `\t_G.EconomyService.Award(player.UserId, objective.reward, objective.name)`,
+      `\tlocal balance = _G.PlayerService:GetCurrency(player.UserId)`,
+      `\tlocal nextObjective = OBJECTIVES[newProgress]`,
+      `\tprogressEvent:FireClient(player, {`,
+      `\t\tcompleted = objective.name,`,
+      `\t\tloopStage = objective.loopStage,`,
+      `\t\tcompletedCount = objectiveIndex,`,
+      `\t\ttotalObjectives = TOTAL_OBJECTIVES,`,
+      `\t\tnextObjective = nextObjective and nextObjective.name or "complete",`,
+      `\t\tcoins = balance,`,
+      `\t\tstage = stageForProgress(objectiveIndex),`,
+      `\t})`,
+      `end`,
+      ``,
+      ...objectiveParts,
+      `print("[GameManager] ${title} world ready with " .. TOTAL_OBJECTIVES .. " objectives")`,
+    );
+
     return {
       name: "GameManager",
       type: "server",
       path: "ServerScriptService/GameManager",
-      code: `-- GameManager: ${bp.title}\nlocal GameManager = {}\n\nGameManager.MECHANICS = {\n${mechanics}\n}\n\nfunction GameManager:Init()\n\tprint("[GameManager] ${bp.title} initialized")\nend\n\nfunction GameManager:GetCoreLoop()\n\treturn {${bp.coreLoop.map((s) => `"${s}"`).join(", ")}}\nend\n\nreturn GameManager`,
+      code: lines.join("\n"),
     };
   }
 
+  /**
+   * Materialize every structure's construction parts. A structure with
+   * multiple parts (a tower's base + roof, a gate's door + arch) renders as
+   * multiple grouped `Instance.new("Part")` calls sharing the structure's
+   * name prefix — primitive Parts used as construction components, per
+   * GEN-FIDELITY-3's constraint, rather than one placeholder cube standing
+   * in for the whole structure.
+   */
+  private renderStructures(structures: readonly SceneStructure[]): string[] {
+    const lines: string[] = [];
+    let partIndex = 0;
+    for (const structure of structures) {
+      for (const part of structure.parts) {
+        partIndex += 1;
+        const varName = `structurePart${partIndex}`;
+        lines.push(
+          `local ${varName} = Instance.new("Part")`,
+          `${varName}.Name = "${luaString(part.name)}"`,
+          `${varName}.Size = ${vector3(part.size)}`,
+          `${varName}.Position = ${vector3(part.position)}`,
+          `${varName}.Color = ${color3(part.colorRgb)}`,
+          `${varName}.Anchored = true`,
+          `${varName}.Parent = workspace`,
+          ``,
+        );
+      }
+    }
+    return lines;
+  }
+
+  /** Non-player spawns (enemy/NPC) planned by the scene, as plain markers — never a second SpawnLocation, which would let players spawn there. */
+  private renderSpawns(spawns: readonly SceneSpawn[]): string[] {
+    const lines: string[] = [];
+    spawns.forEach((spawn, index) => {
+      const varName = `scenSpawn${index + 1}`;
+      lines.push(
+        `local ${varName} = Instance.new("Part")`,
+        `${varName}.Name = "${luaString(spawn.name)}"`,
+        `${varName}.Size = Vector3.new(6, 1, 6)`,
+        `${varName}.Position = ${vector3(spawn.position)}`,
+        `${varName}.Transparency = 0.5`,
+        `${varName}.CanCollide = false`,
+        `${varName}.Anchored = true`,
+        `${varName}.Parent = workspace`,
+        ``,
+      );
+    });
+    return lines;
+  }
+
+  /** Route waypoints (e.g. the enemy approach toward the gate) as a visible sequence of markers, not an implicit straight line. */
+  private renderPaths(paths: readonly ScenePath[]): string[] {
+    const lines: string[] = [];
+    paths.forEach((path, pathIndex) => {
+      path.points.forEach((point, pointIndex) => {
+        const varName = `routeWaypoint${pathIndex + 1}_${pointIndex + 1}`;
+        lines.push(
+          `local ${varName} = Instance.new("Part")`,
+          `${varName}.Name = "${luaString(path.role)}_Waypoint${pointIndex + 1}"`,
+          `${varName}.Size = Vector3.new(4, 1, 4)`,
+          `${varName}.Position = ${vector3(point)}`,
+          `${varName}.Color = ${color3(ROUTE_COLOR)}`,
+          `${varName}.CanCollide = false`,
+          `${varName}.Anchored = true`,
+          `${varName}.Parent = workspace`,
+          ``,
+        );
+      });
+    });
+    return lines;
+  }
+
+  /**
+   * GEN-FIDELITY-2. The single authoritative owner of per-player
+   * progression and currency. `GameManager` no longer keeps a competing
+   * `playerProgress`/`playerCoins` pair, and `EconomyService` no longer
+   * fakes its ledger by only printing — both read and mutate this table
+   * through the methods below, exposed at `_G.PlayerService` the same way
+   * `EconomyService` already published itself.
+   */
   private generatePlayerService(bp: RobloxGameBlueprint): LuaScript {
     return {
       name: "PlayerService",
       type: "server",
       path: "ServerScriptService/PlayerService",
-      code: `-- PlayerService: manages player state\nlocal Players = game:GetService("Players")\nlocal PlayerService = {}\n\nPlayerService.PlayerData = {}\n\nfunction PlayerService:OnPlayerJoin(player)\n\tself.PlayerData[player.UserId] = {\n\t\tlevel = 1,\n\t\t${bp.economy.currency} = 0,\n\t\tstage = "${bp.progression.stages[0]}"\n\t}\n\tprint("[PlayerService] " .. player.Name .. " joined")\nend\n\nPlayers.PlayerAdded:Connect(function(p) PlayerService:OnPlayerJoin(p) end)\n\nreturn PlayerService`,
+      code: [
+        `-- PlayerService: single authoritative store of per-player state for ${luaString(bp.title)}`,
+        `local Players = game:GetService("Players")`,
+        `local PlayerService = {}`,
+        ``,
+        `-- Authoritative: GameManager and EconomyService read and mutate`,
+        `-- through the methods below only. Neither keeps its own copy.`,
+        `PlayerService.PlayerData = {}`,
+        ``,
+        `local function ensureData(userId)`,
+        `\tlocal data = PlayerService.PlayerData[userId]`,
+        `\tif not data then`,
+        `\t\tdata = { progress = 1, currency = 0 }`,
+        `\t\tPlayerService.PlayerData[userId] = data`,
+        `\tend`,
+        `\treturn data`,
+        `end`,
+        ``,
+        `function PlayerService:Init(player)`,
+        `\tself.PlayerData[player.UserId] = { progress = 1, currency = 0 }`,
+        `\tprint("[PlayerService] " .. player.Name .. " joined")`,
+        `end`,
+        ``,
+        `function PlayerService:Remove(player)`,
+        `\tself.PlayerData[player.UserId] = nil`,
+        `\tprint("[PlayerService] " .. player.Name .. " left")`,
+        `end`,
+        ``,
+        `function PlayerService:GetProgress(userId)`,
+        `\treturn ensureData(userId).progress`,
+        `end`,
+        ``,
+        `function PlayerService:AdvanceProgress(userId)`,
+        `\tlocal data = ensureData(userId)`,
+        `\tdata.progress = data.progress + 1`,
+        `\treturn data.progress`,
+        `end`,
+        ``,
+        `function PlayerService:GetCurrency(userId)`,
+        `\treturn ensureData(userId).currency`,
+        `end`,
+        ``,
+        `function PlayerService:AddCurrency(userId, amount)`,
+        `\tlocal data = ensureData(userId)`,
+        `\tdata.currency = data.currency + amount`,
+        `\treturn data.currency`,
+        `end`,
+        ``,
+        `-- Refuses to overdraw: the balance is left unchanged and the caller`,
+        `-- is told the spend was denied, rather than going negative.`,
+        `function PlayerService:SpendCurrency(userId, amount)`,
+        `\tlocal data = ensureData(userId)`,
+        `\tif data.currency < amount then`,
+        `\t\treturn false, data.currency`,
+        `\tend`,
+        `\tdata.currency = data.currency - amount`,
+        `\treturn true, data.currency`,
+        `end`,
+        ``,
+        `Players.PlayerAdded:Connect(function(player) PlayerService:Init(player) end)`,
+        `Players.PlayerRemoving:Connect(function(player) PlayerService:Remove(player) end)`,
+        ``,
+        `_G.PlayerService = PlayerService`,
+      ].join("\n"),
     };
   }
 
+  /**
+   * GEN-FIDELITY-2. `Award`/`Spend` used to only `print` — the reward was
+   * fake and nothing tracked a real balance. Both now mutate the
+   * authoritative balance `_G.PlayerService` owns; `Spend` reports whether
+   * the spend was actually applied so a caller cannot assume success.
+   */
   private generateEconomyService(bp: RobloxGameBlueprint): LuaScript {
     return {
       name: "EconomyService",
       type: "server",
       path: "ServerScriptService/EconomyService",
-      code: `-- EconomyService: ${bp.economy.balanceStrategy}\nlocal EconomyService = {}\n\nEconomyService.CURRENCY = "${bp.economy.currency}"\nEconomyService.SOURCES = {${bp.economy.sources.map((s) => `"${s}"`).join(", ")}}\nEconomyService.SINKS = {${bp.economy.sinks.map((s) => `"${s}"`).join(", ")}}\n\nfunction EconomyService:Award(playerId, amount, source)\n\t-- Award currency to player\n\tprint("[Economy] +" .. amount .. " " .. self.CURRENCY .. " from " .. source)\nend\n\nfunction EconomyService:Spend(playerId, amount, sink)\n\t-- Deduct currency\n\tprint("[Economy] -" .. amount .. " " .. self.CURRENCY .. " on " .. sink)\nend\n\nreturn EconomyService`,
+      code: [
+        `-- EconomyService: ${bp.economy.balanceStrategy}`,
+        `local EconomyService = {}`,
+        ``,
+        `EconomyService.CURRENCY = "${luaString(bp.economy.currency)}"`,
+        `EconomyService.SOURCES = {${bp.economy.sources.map((s) => `"${luaString(s)}"`).join(", ")}}`,
+        `EconomyService.SINKS = {${bp.economy.sinks.map((s) => `"${luaString(s)}"`).join(", ")}}`,
+        ``,
+        `function EconomyService.Award(playerId, amount, source)`,
+        `\tif not _G.PlayerService then`,
+        `\t\treturn nil`,
+        `\tend`,
+        `\tlocal balance = _G.PlayerService:AddCurrency(playerId, amount)`,
+        `\tprint("[Economy] +" .. amount .. " " .. EconomyService.CURRENCY .. " from " .. source .. " (balance " .. tostring(balance) .. ")")`,
+        `\treturn balance`,
+        `end`,
+        ``,
+        `function EconomyService.Spend(playerId, amount, sink)`,
+        `\tif not _G.PlayerService then`,
+        `\t\treturn false, 0`,
+        `\tend`,
+        `\tlocal ok, balance = _G.PlayerService:SpendCurrency(playerId, amount)`,
+        `\tif ok then`,
+        `\t\tprint("[Economy] -" .. amount .. " " .. EconomyService.CURRENCY .. " on " .. sink .. " (balance " .. tostring(balance) .. ")")`,
+        `\telse`,
+        `\t\tprint("[Economy] DENIED " .. amount .. " " .. EconomyService.CURRENCY .. " on " .. sink .. " -- balance " .. tostring(balance) .. " is insufficient")`,
+        `\tend`,
+        `\treturn ok, balance`,
+        `end`,
+        ``,
+        `_G.EconomyService = EconomyService`,
+      ].join("\n"),
     };
   }
 
+  /**
+   * The one client LocalScript the playable-Lua contract requires: it must
+   * build the HUD before it wires up progress, use LocalPlayer, and parent
+   * the ScreenGui under PlayerGui.
+   *
+   * GEN-FIDELITY-1. Renders every field GameManager's `ProgressUpdated`
+   * event carries — which objective completed, how many of the blueprint's
+   * objectives remain, the next one, the progression stage, and the reward
+   * paid in the blueprint's economy currency — instead of echoing back a
+   * single mechanic name.
+   */
   private generateClientController(bp: RobloxGameBlueprint): LuaScript {
+    const title = luaString(bp.title);
+    const mechanics = bp.mechanics.length > 0 ? bp.mechanics : ["objective"];
+    const stages =
+      bp.progression.stages.length > 0 ? bp.progression.stages : ["stage"];
+    const currency = luaString(bp.economy.currency || "coins");
+
     return {
       name: "ClientController",
       type: "client",
       path: "StarterPlayerScripts/ClientController",
-      code: `-- ClientController: ${bp.title}\nlocal ReplicatedStorage = game:GetService("ReplicatedStorage")\nlocal ClientController = {}\n\nfunction ClientController:Init()\n\tprint("[Client] ${bp.title} client ready")\nend\n\nClientController:Init()\n\nreturn ClientController`,
+      code: [
+        `-- ClientController: ${bp.title}`,
+        `local Players = game:GetService("Players")`,
+        `local ReplicatedStorage = game:GetService("ReplicatedStorage")`,
+        `local player = Players.LocalPlayer`,
+        ``,
+        `local screenGui = Instance.new("ScreenGui")`,
+        `screenGui.Name = "HUD"`,
+        ``,
+        `local statusLabel = Instance.new("TextLabel")`,
+        `statusLabel.Size = UDim2.new(0, 360, 0, 60)`,
+        `statusLabel.Position = UDim2.new(0, 16, 0, 16)`,
+        `statusLabel.Text = "${title} — 0/${mechanics.length} objectives — Stage: ${luaString(stages[0])}"`,
+        `statusLabel.Parent = screenGui`,
+        ``,
+        `screenGui.Parent = player:WaitForChild("PlayerGui")`,
+        ``,
+        `local progressEvent = ReplicatedStorage:WaitForChild("ProgressUpdated")`,
+        `progressEvent.OnClientEvent:Connect(function(data)`,
+        `\tif typeof(data) ~= "table" then`,
+        `\t\treturn`,
+        `\tend`,
+        `\tstatusLabel.Text = string.format(`,
+        `\t\t"%s complete (%d/%d) | Next: %s | Stage: %s | ${currency}: %d",`,
+        `\t\ttostring(data.completed),`,
+        `\t\ttonumber(data.completedCount) or 0,`,
+        `\t\ttonumber(data.totalObjectives) or 0,`,
+        `\t\ttostring(data.nextObjective),`,
+        `\t\ttostring(data.stage),`,
+        `\t\ttonumber(data.coins) or 0`,
+        `\t)`,
+        `end)`,
+        ``,
+        `print("[Client] ${title} client ready")`,
+      ].join("\n"),
     };
   }
 
@@ -101,7 +595,17 @@ export class LuaGenerator {
       name: "UIController",
       type: "client",
       path: "StarterPlayerScripts/UIController",
-      code: `-- UIController: HUD management\nlocal UIController = {}\n\nfunction UIController:ShowHUD()\n\t-- Display ${bp.economy.currency} counter, health, minimap\n\tprint("[UI] HUD displayed")\nend\n\nfunction UIController:ShowMenu()\n\tprint("[UI] Menu opened")\nend\n\nreturn UIController`,
+      code: [
+        `-- UIController: supplementary client diagnostics for ${bp.title}`,
+        `local RunService = game:GetService("RunService")`,
+        ``,
+        `local frameCount = 0`,
+        `RunService.Heartbeat:Connect(function()`,
+        `\tframeCount += 1`,
+        `end)`,
+        ``,
+        `print("[UI] Supplementary controller ready")`,
+      ].join("\n"),
     };
   }
 
@@ -110,7 +614,7 @@ export class LuaGenerator {
       name: "GameConfig",
       type: "shared",
       path: "ReplicatedStorage/Shared/GameConfig",
-      code: `-- GameConfig: ${bp.title}\nlocal GameConfig = {\n\tTITLE = "${bp.title}",\n\tGENRE = "${bp.genre}",\n\tVERSION = "1.0.0",\n\tMAP_SIZE = "${bp.world.size}",\n\tMAX_NPCS = ${bp.npcs.length},\n}\n\nreturn GameConfig`,
+      code: `-- GameConfig: ${bp.title}\nlocal GameConfig = {\n\tTITLE = "${luaString(bp.title)}",\n\tGENRE = "${luaString(bp.genre)}",\n\tVERSION = "1.0.0",\n\tMAP_SIZE = "${luaString(bp.world.size)}",\n\tMAX_NPCS = ${bp.npcs.length},\n}\n\nreturn GameConfig`,
     };
   }
 
@@ -119,7 +623,7 @@ export class LuaGenerator {
       name: "Constants",
       type: "shared",
       path: "ReplicatedStorage/Shared/Constants",
-      code: `-- Constants: game-wide enums and values\nlocal Constants = {\n\tSTAGES = {${bp.progression.stages.map((s) => `"${s}"`).join(", ")}},\n\tBIOMES = {${bp.world.biomes.map((b) => `"${b}"`).join(", ")}},\n\tCURRENCY = "${bp.economy.currency}",\n}\n\nreturn Constants`,
+      code: `-- Constants: game-wide enums and values\nlocal Constants = {\n\tSTAGES = {${bp.progression.stages.map((s) => `"${luaString(s)}"`).join(", ")}},\n\tBIOMES = {${bp.world.biomes.map((b) => `"${luaString(b)}"`).join(", ")}},\n\tCURRENCY = "${luaString(bp.economy.currency)}",\n}\n\nreturn Constants`,
     };
   }
 }

@@ -129,6 +129,17 @@ export interface GameBlueprint {
   status: BlueprintStatus;
   version: number;
 
+  /**
+   * INTENT-DEFAULT-CONTAMINATION-001. Fields the system filled in because the
+   * user did not state them, listed by blueprint field name.
+   *
+   * A project created without a genre used to arrive downstream indistinguishable
+   * from one where the user chose that genre deliberately, so an assumption was
+   * consumed as a requirement. Anything naming these fields as user intent must
+   * consult this first; an empty or absent list means every value was stated.
+   */
+  assumed_fields?: string[];
+
   // Core Design
   name: string;
   description: string;
@@ -187,8 +198,75 @@ export interface BlueprintVersion {
   created_at: Date;
   created_by: string;
   snapshot: Partial<GameBlueprint>;
+  /**
+   * BLUEPRINT-STALE-001. Content hash of `snapshot`, using the same canonical
+   * JSON algorithm as artifact envelopes. It depends on the design content and
+   * nothing else, so an execution can state exactly which design it ran and a
+   * later edit to the mutable blueprint cannot rewrite that claim.
+   *
+   * Optional only for versions recorded before this field existed; a version
+   * without one has an unknown hash rather than a matching one.
+   */
+  snapshot_hash?: string;
   change_description?: string;
   is_active: boolean;
+}
+
+/**
+ * INTENT-FIDELITY-001. One requirement, with an identity that survives the run.
+ *
+ * Requirements were plain strings passed downstream as an opaque object, so
+ * nothing could ask whether a particular one had been satisfied. An identifier
+ * makes that question answerable, and `source` keeps the answer honest: a
+ * requirement derived from a system default is not something the user asked
+ * for, and must not be reported as though it were.
+ */
+export interface RequirementSpec {
+  /** Stable within a run, of the form R-001. */
+  id: string;
+  text: string;
+  kind: "functional" | "non_functional" | "constraint" | "success_criterion";
+  source: "user-stated" | "derived";
+}
+
+/**
+ * What a run can show about the requirements it was given.
+ *
+ * `uncovered` is the point of this record. A run that cannot show evidence for
+ * a requirement has not satisfied it, whatever its prose says, and naming those
+ * is more useful than a percentage.
+ */
+export interface RequirementCoverage {
+  total: number;
+  covered: number;
+  uncoveredIds: string[];
+}
+
+/**
+ * CHAT-BLUEPRINT-DISCONNECT-001. A proposed change to a blueprint's design.
+ *
+ * The Define conversation persisted messages and nothing else, so an assistant
+ * could state that it had changed the design while the next generation still
+ * consumed the old blueprint. A proposal makes the claim into a thing: it is
+ * visible, it names exactly which fields would change, and until someone
+ * accepts it, it has no effect on any generation.
+ */
+export interface BlueprintChangeProposal {
+  id: string;
+  project_id: string;
+  blueprint_id: string;
+  /** Who or what proposed it — a user id, or an assistant identifier. */
+  proposed_by: string;
+  created_at: Date;
+  /** Only the fields this proposal would change. */
+  changes: Partial<GameBlueprint>;
+  /** Why, in the proposer's words. Shown alongside the diff. */
+  rationale?: string;
+  status: "pending" | "accepted" | "rejected";
+  decided_at?: Date;
+  decided_by?: string;
+  /** The version acceptance created, so the effect is traceable. */
+  applied_version_id?: string;
 }
 
 export interface GenerationExecution {
@@ -223,6 +301,30 @@ export interface GenerationExecution {
   }>;
   total_duration_ms?: number;
   error_message?: string;
+  /**
+   * AUDIT-RECOVERY-001. Set when startup reconciliation closed this execution
+   * because a restart left it `running` with no worker. The status is `failed`
+   * so existing consumers behave correctly, and this distinguishes "the process
+   * died" from "the generation failed on its merits".
+   */
+  restart_interrupted_at?: number;
+  /**
+   * BLUEPRINT-STALE-001. The immutable blueprint version this run consumed, and
+   * the content hash of that snapshot. Generation used to reference the mutable
+   * blueprint, so editing the design after a run silently changed what that run
+   * appeared to have been generated from. These record what it actually ran.
+   *
+   * Absent on executions recorded before the binding existed, where the design
+   * that produced them is genuinely unknown rather than assumed to be current.
+   */
+  blueprint_version_id?: string;
+  blueprint_snapshot_hash?: string;
+  /**
+   * INTENT-FIDELITY-001. What this run could show about the requirements it
+   * was given. Absent when no requirements were produced, which is different
+   * from having produced some and traced none.
+   */
+  requirement_coverage?: RequirementCoverage;
   retry_count: number;
   /**
    * How this execution's content was produced.

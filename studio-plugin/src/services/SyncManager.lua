@@ -176,7 +176,15 @@ function SyncManager:_processExport(command)
             return false
         end
 
-        local loaded = self._loader:loadArtifact(artifact)
+        -- MAR-002. Identity for everything this import writes, taken from the
+        -- command the backend authorized and queued, not from any field the
+        -- plugin could set for itself. Passed per artifact rather than stored
+        -- on the loader, which one plugin session shares across every project
+        -- it ever imports.
+        local loaded = self._loader:loadArtifact(artifact, {
+            projectId = payload.projectId,
+            deliveryId = payload.executionId,
+        })
         if not loaded.success then
             self._processing[command.id] = nil
             self:_reportFailedCommand(

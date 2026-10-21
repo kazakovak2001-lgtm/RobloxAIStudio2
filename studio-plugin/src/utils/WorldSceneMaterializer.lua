@@ -42,6 +42,10 @@ WorldSceneMaterializer.MAX_DEPTH = 6
 WorldSceneMaterializer.MAX_NODES = 400
 
 local MANAGED_ATTRIBUTE = "AIStudioManaged"
+-- MAR-002. See UITreeMaterializer: managed says AI Studio made it, these say
+-- which project it was made for and which delivery produced it.
+local PROJECT_ATTRIBUTE = "AIStudioProject"
+local DELIVERY_ATTRIBUTE = "AIStudioDelivery"
 local DELIVERY_MODE_ATTRIBUTE = "AIStudioDeliveryMode"
 local DELIVERY_MODE = "design-time"
 local PRESERVED_FOLDER = "AIStudioPreserved"
@@ -367,6 +371,17 @@ local function isManaged(instance)
 end
 
 --[[
+  Whether this project may replace or sweep the instance. An instance carrying
+  the mark but no project predates provenance and counts as foreign, because
+  claiming an unattributed instance is the permissive guess this rule prevents.
+]]
+local function isOwnedBy(instance, projectId)
+    if not isManaged(instance) then return false end
+    local owner = instance:GetAttribute(PROJECT_ATTRIBUTE)
+    return type(owner) == "string" and owner == projectId
+end
+
+--[[
   Collect the topmost creator-authored instances inside a managed subtree.
   Recursion stops at each unmanaged instance, since everything below it is the
   creator's own structure and must move as one piece.
@@ -404,7 +419,7 @@ local function preserveUnmanagedContent(existing, destination)
 end
 
 --[[ Build one node and its descendants, detached from the DataModel. ]]
-local function buildNode(node)
+local function buildNode(node, provenance)
     local instance = Instance.new(node.className)
     instance.Name = node.name
 
@@ -421,10 +436,12 @@ local function buildNode(node)
     end
 
     instance:SetAttribute(MANAGED_ATTRIBUTE, true)
+    instance:SetAttribute(PROJECT_ATTRIBUTE, provenance.projectId)
+    instance:SetAttribute(DELIVERY_ATTRIBUTE, provenance.deliveryId)
 
     if node.children then
         for _, child in ipairs(node.children) do
-            buildNode(child).Parent = instance
+            buildNode(child, provenance).Parent = instance
         end
     end
 
@@ -437,16 +454,28 @@ end
   Returns a list of { entityId, instancePath } pairs on success, or nil plus a
   message. Nothing is attached unless every zone built successfully.
 ]]
-function WorldSceneMaterializer.materialize(scene, stageFolder)
+function WorldSceneMaterializer.materialize(scene, stageFolder, provenance)
     local ok, err = WorldSceneMaterializer.validate(scene)
     if not ok then return nil, err end
+
+    -- MAR-002. Without a project there is nothing to compare an existing
+    -- instance against, and every decision below would fall back to "managed is
+    -- enough", which is the defect.
+    if type(provenance) ~= "table"
+        or type(provenance.projectId) ~= "string"
+        or provenance.projectId == ""
+        or type(provenance.deliveryId) ~= "string"
+        or provenance.deliveryId == ""
+    then
+        return nil, "Refusing to materialize without a project and delivery identity"
+    end
 
     -- Ownership precheck, before anything is constructed. A generated name
     -- colliding with a hand-built instance must fail the export rather than
     -- destroy the creator's work.
     for _, zone in ipairs(scene.zones) do
         local existingZone = stageFolder:FindFirstChild(zone.zoneName)
-        if existingZone and not isManaged(existingZone) then
+        if existingZone and not isOwnedBy(existingZone, provenance.projectId) then
             return nil, string.format(
                 "Refusing to replace %s: an instance with that name exists and is not managed by AI Studio",
                 existingZone:GetFullName()
@@ -455,7 +484,9 @@ function WorldSceneMaterializer.materialize(scene, stageFolder)
         if existingZone then
             for _, entity in ipairs(zone.entities) do
                 local existingEntity = existingZone:FindFirstChild(entity.node.name)
-                if existingEntity and not isManaged(existingEntity) then
+                if existingEntity
+                    and not isOwnedBy(existingEntity, provenance.projectId)
+                then
                     return nil, string.format(
                         "Refusing to replace %s: an instance with that name exists and is not managed by AI Studio",
                         existingEntity:GetFullName()
@@ -473,11 +504,13 @@ function WorldSceneMaterializer.materialize(scene, stageFolder)
             local zoneRoot = Instance.new("Folder")
             zoneRoot.Name = zone.zoneName
             zoneRoot:SetAttribute(MANAGED_ATTRIBUTE, true)
+            zoneRoot:SetAttribute(PROJECT_ATTRIBUTE, provenance.projectId)
+            zoneRoot:SetAttribute(DELIVERY_ATTRIBUTE, provenance.deliveryId)
             zoneRoot:SetAttribute(DELIVERY_MODE_ATTRIBUTE, DELIVERY_MODE)
 
             local entities = {}
             for _, entity in ipairs(zone.entities) do
-                local node = buildNode(entity.node)
+                local node = buildNode(entity.node, provenance)
                 node.Parent = zoneRoot
                 table.insert(entities, { entityId = entity.entityId, name = entity.node.name })
             end
@@ -526,7 +559,11 @@ function WorldSceneMaterializer.materialize(scene, stageFolder)
             deliveredZones[entry.zoneName] = true
         end
         for _, child in ipairs(stageFolder:GetChildren()) do
-            if child:IsA("Folder") and isManaged(child) and not deliveredZones[child.Name] then
+            -- Only this project's orphans, never another project's zones.
+            if child:IsA("Folder")
+                and isOwnedBy(child, provenance.projectId)
+                and not deliveredZones[child.Name]
+            then
                 preserveUnmanagedContent(child, stageFolder)
                 child:Destroy()
             end

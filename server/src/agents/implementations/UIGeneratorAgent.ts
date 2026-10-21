@@ -1,4 +1,5 @@
 import { BaseAgent, type AgentConfig } from "../core/BaseAgent";
+import { summariseForPrompt } from "../../ai/promptValues";
 import type { AgentInput, GameDesignSeed } from "../../types";
 
 export class UIGeneratorAgent extends BaseAgent {
@@ -35,11 +36,10 @@ export class UIGeneratorAgent extends BaseAgent {
     const theme = seed?.theme ?? "fantasy";
 
     const mechanicsArr = (gameplay as any)?.mechanics;
+    // SERIALIZATION-001. The features the UI is built around must not reduce
+    // to a placeholder.
     const keyFeatures = Array.isArray(mechanicsArr)
-      ? mechanicsArr
-          .slice(0, 4)
-          .map((m: any) => String(m?.name ?? m))
-          .join(", ")
+      ? summariseForPrompt(mechanicsArr.slice(0, 4), "core gameplay")
       : "core gameplay";
 
     const fallback: Record<string, unknown> = {
@@ -76,12 +76,13 @@ export class UIGeneratorAgent extends BaseAgent {
 
     if (!this.llm) return fallback;
 
-    const registryPrompt = this.buildPrompt({
+    const promptVars = {
       name,
       game_type: gameType,
       key_features: keyFeatures,
       theme,
-    });
+    };
+    const registryPrompt = this.buildPrompt(promptVars);
 
     const inlinePrompt =
       "You are a Roblox UI/UX designer. " +
@@ -96,6 +97,7 @@ export class UIGeneratorAgent extends BaseAgent {
     return this.generateWithRetry(prompt, ["uiDesign"], fallback, {
       temperature: 0.4,
       maxTokens: 1500,
+      system: this.systemPromptFor(promptVars) ?? undefined,
     });
   }
 }

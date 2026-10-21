@@ -1,4 +1,5 @@
 import { BaseAgent, type AgentConfig } from "../core/BaseAgent";
+import { summariseForPrompt } from "../../ai/promptValues";
 import type { AgentInput } from "../../types";
 
 export class RobloxArchitectAgent extends BaseAgent {
@@ -50,11 +51,10 @@ export class RobloxArchitectAgent extends BaseAgent {
     const estimatedPlayers = String(bp?.estimated_players ?? "small-group");
 
     const mechanicsArr = (gameplay as any)?.mechanics;
+    // SERIALIZATION-001. Same fallback, same loss: an unnamed mechanic became
+    // `[object Object]` in the prompt that designs the architecture.
     const systemsSummary = Array.isArray(mechanicsArr)
-      ? mechanicsArr
-          .slice(0, 5)
-          .map((m: any) => String(m?.name ?? m))
-          .join(", ")
+      ? summariseForPrompt(mechanicsArr.slice(0, 5), "core gameplay systems")
       : "core gameplay systems";
 
     const fallback: Record<string, unknown> = {
@@ -103,13 +103,14 @@ export class RobloxArchitectAgent extends BaseAgent {
 
     if (!this.llm) return fallback;
 
-    const registryPrompt = this.buildPrompt({
+    const promptVars = {
       name,
       description,
       game_type: gameType,
       estimated_players: estimatedPlayers,
       systems_summary: systemsSummary,
-    });
+    };
+    const registryPrompt = this.buildPrompt(promptVars);
 
     const inlinePrompt =
       "You are a Roblox Studio technical architect. " +
@@ -130,7 +131,11 @@ export class RobloxArchitectAgent extends BaseAgent {
       prompt,
       ["architecture", "roblox_architect"],
       fallback,
-      { temperature: 0.3, maxTokens: 1800 },
+      {
+        temperature: 0.3,
+        maxTokens: 1800,
+        system: this.systemPromptFor(promptVars) ?? undefined,
+      },
     );
   }
 }

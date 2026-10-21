@@ -214,12 +214,49 @@ export function parseImportReport(
   };
 }
 
+/**
+ * Failures that must not distinguish "not yours" from "does not exist".
+ *
+ * MAR-001. A caller authorized for one Studio client could name a command
+ * belonging to a client in another project and learn two things from the
+ * refusal: that the command existed, and what lifecycle status it was in.
+ * Neither is the caller's information. These reasons are therefore answered
+ * identically, so the denial says only that there is nothing here for you.
+ */
+const CONCEALED_COMMAND_FAILURES = new Set([
+  "command_not_found",
+  "client_mismatch",
+]);
+
+const CONCEALED_COMMAND_MESSAGE = "Studio command was not found.";
+
+/**
+ * The protocol transport's version of the same concealment.
+ *
+ * MAR-001. The REST path and the `COMMAND_ACK` / `COMMAND_RESULT` handlers reach
+ * the same runtime, so concealing only the REST refusal would have left the
+ * identical disclosure reachable over the other transport. That is the reason
+ * this lives beside the REST rule rather than inside one handler.
+ */
+function concealedProtocolMessage(reason: string, message: string): string {
+  return CONCEALED_COMMAND_FAILURES.has(reason)
+    ? CONCEALED_COMMAND_MESSAGE
+    : message;
+}
+
+function concealedProtocolFailure(
+  reason: string,
+  commandStatus: string | undefined,
+): Record<string, unknown> {
+  if (CONCEALED_COMMAND_FAILURES.has(reason)) {
+    return { reason: "command_not_found" };
+  }
+  return { reason, commandStatus };
+}
+
 function commandFailureStatus(reason: string): number {
+  if (CONCEALED_COMMAND_FAILURES.has(reason)) return 404;
   switch (reason) {
-    case "command_not_found":
-      return 404;
-    case "client_mismatch":
-      return 403;
     case "invalid_command":
       return 400;
     case "invalid_status":
@@ -236,6 +273,18 @@ function sendCommandAction(
   result: StudioCommandActionResult,
 ): void {
   if (!result.success) {
+    // An ownership failure answers with nothing about the resource, and answers
+    // the same way whether or not it exists. A lifecycle failure is about the
+    // caller's own command, so its status stays in the response where it is
+    // useful for diagnosis.
+    if (CONCEALED_COMMAND_FAILURES.has(result.reason)) {
+      res.status(404).json({
+        success: false,
+        error: CONCEALED_COMMAND_MESSAGE,
+        reason: "command_not_found",
+      });
+      return;
+    }
     res.status(commandFailureStatus(result.reason)).json({
       success: false,
       error: result.message,
@@ -355,18 +404,45 @@ export function createStudioRouter(
     return checks.filter(({ allowed }) => allowed).map(({ client }) => client);
   };
 
+  /**
+   * The project a protocol message must be authorized against.
+   *
+   * MAR-001. This used to prefer the caller's own `payload.projectId` and only
+   * fall back to the client's project. Handlers such as `COMMAND_ACK` act on
+   * `payload.clientId`, so a caller could be authorized against a project they
+   * legitimately own while the handler operated on a client belonging to
+   * someone else: the identifier checked was not the thing acted upon, and the
+   * runtime's own client-to-command check passed because both values named the
+   * same foreign client.
+   *
+   * The client's project therefore wins whenever a clientId is present, because
+   * that is what the handler will act on. A projectId supplied alongside it is
+   * not ignored — if the two disagree the message is refused rather than
+   * silently resolved in either direction, since a caller has no legitimate
+   * reason to name a project their client does not belong to.
+   */
   const resolveProtocolProjectId = (
     message: Record<string, unknown>,
-  ): string | undefined => {
+  ): { projectId?: string; conceal?: boolean } => {
     const payload =
       message.payload && typeof message.payload === "object"
         ? (message.payload as Record<string, unknown>)
         : undefined;
-    if (typeof payload?.projectId === "string") return payload.projectId;
+    const statedProjectId =
+      typeof payload?.projectId === "string" ? payload.projectId : undefined;
+
     if (typeof payload?.clientId === "string") {
-      return bridge.getClient(payload.clientId)?.projectId;
+      const clientProjectId = bridge.getClient(payload.clientId)?.projectId;
+      // An unknown client and a client in a project the caller did not name
+      // answer the same way, so neither the refusal nor its status code says
+      // whether the named client exists.
+      if (!clientProjectId) return { conceal: true };
+      if (statedProjectId && statedProjectId !== clientProjectId) {
+        return { conceal: true };
+      }
+      return { projectId: clientProjectId };
     }
-    return undefined;
+    return { projectId: statedProjectId };
   };
 
   const filterAuthorizedEvents = async (
@@ -508,11 +584,10 @@ export function createStudioRouter(
             status: result.command.status,
             verified: result.verified,
           }
-        : {
-            reason: result.reason,
-            commandStatus: result.command?.status,
-          },
-      result.success ? undefined : result.message,
+        : concealedProtocolFailure(result.reason, result.command?.status),
+      result.success
+        ? undefined
+        : concealedProtocolMessage(result.reason, result.message),
     );
   });
 
@@ -545,11 +620,10 @@ export function createStudioRouter(
             verified: result.verified,
             result: result.command.result,
           }
-        : {
-            reason: result.reason,
-            commandStatus: result.command?.status,
-          },
-      result.success ? undefined : result.message,
+        : concealedProtocolFailure(result.reason, result.command?.status),
+      result.success
+        ? undefined
+        : concealedProtocolMessage(result.reason, result.message),
     );
   });
 
@@ -559,7 +633,16 @@ export function createStudioRouter(
       req,
       bridge.getConnectedClients(),
     );
-    const sessions = sessionManager.getActiveSessions();
+    // MAR-001. `getActiveSessions` is platform-wide. Every other field in this
+    // response is filtered to the caller, so an unfiltered count sitting beside
+    // them reported how many Studio sessions were live across all tenants. The
+    // same filtering the session listing already does applies here.
+    const authorizedClientIds = new Set(
+      clients.map((client) => client.clientId),
+    );
+    const sessions = sessionManager
+      .getActiveSessions()
+      .filter((session) => authorizedClientIds.has(session.clientId));
 
     res.json({
       success: true,
@@ -735,15 +818,11 @@ export function createStudioRouter(
       sendStudioMutationError(res, error);
       return;
     }
-    if (!command) {
+    // MAR-001. These two cases answer identically on purpose: a command that
+    // belongs to another client is, to this caller, a command that does not
+    // exist. Answering 403 here would confirm it exists.
+    if (!command || command.clientId !== clientId) {
       res.status(404).json({ success: false, error: "Command not found" });
-      return;
-    }
-    if (command.clientId !== clientId) {
-      res.status(403).json({
-        success: false,
-        error: "Command belongs to a different client",
-      });
       return;
     }
     res.json({ success: true, data: command });
@@ -809,7 +888,14 @@ export function createStudioRouter(
   // POST /api/studio/protocol/message — dispatch a protocol message
   router.post("/protocol/message", async (req, res) => {
     const message = req.body as Record<string, unknown>;
-    const projectId = resolveProtocolProjectId(message);
+    const resolved = resolveProtocolProjectId(message);
+    if (resolved.conceal) {
+      // Answered as a missing client rather than as a conflict, so the refusal
+      // does not confirm that the named client exists in some other project.
+      res.status(404).json({ success: false, error: "Client not found" });
+      return;
+    }
+    const projectId = resolved.projectId;
     if (!projectId) {
       res
         .status(400)

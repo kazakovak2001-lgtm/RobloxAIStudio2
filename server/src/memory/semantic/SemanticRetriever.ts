@@ -18,6 +18,7 @@ export interface SemanticMatch {
 
 interface IndexedDocument {
   agentId: string;
+  projectId?: string;
   text: string;
   tokens: string[];
   data: Record<string, unknown>;
@@ -34,10 +35,24 @@ export class SemanticRetriever {
 
   /**
    * Index a text document for future retrieval.
+   * projectId scopes the document; omit only for genuinely projectless data —
+   * it will then only ever match a projectless search (see `search`).
    */
-  index(agentId: string, text: string, data: Record<string, unknown>): void {
+  index(
+    agentId: string,
+    text: string,
+    data: Record<string, unknown>,
+    projectId?: string,
+  ): void {
     const tokens = this.tokenize(text);
-    this.documents.push({ agentId, text, tokens, data, indexedAt: new Date() });
+    this.documents.push({
+      agentId,
+      projectId,
+      text,
+      tokens,
+      data,
+      indexedAt: new Date(),
+    });
 
     if (this.documents.length > this.maxDocuments) {
       this.documents.shift();
@@ -46,13 +61,25 @@ export class SemanticRetriever {
 
   /**
    * Search for documents similar to a query string.
-   * Filters by agentId, returns top N matches sorted by similarity.
+   * Filters by agentId AND projectId — agentId alone is not tenant-unique
+   * (e.g. "world-intelligence" is reused across every project), so an
+   * agentId-only filter would return another project's indexed content.
+   * A projectId must match exactly, including the projectless (undefined)
+   * case, so a projectless search never resolves a project-owned document
+   * or vice versa.
    */
-  search(agentId: string, query: string, limit = 5): SemanticMatch[] {
+  search(
+    agentId: string,
+    query: string,
+    limit = 5,
+    projectId?: string,
+  ): SemanticMatch[] {
     const queryTokens = this.tokenize(query);
     if (queryTokens.length === 0) return [];
 
-    const agentDocs = this.documents.filter((d) => d.agentId === agentId);
+    const agentDocs = this.documents.filter(
+      (d) => d.agentId === agentId && d.projectId === projectId,
+    );
 
     const scored: SemanticMatch[] = agentDocs.map((doc) => ({
       agentId: doc.agentId,

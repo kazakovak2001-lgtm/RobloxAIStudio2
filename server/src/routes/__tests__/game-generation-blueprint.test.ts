@@ -55,11 +55,27 @@ describe("game generation project blueprint", () => {
       updatedAt: 1,
     } as SaaSProject;
 
+    // INTENT-DEFAULT-CONTAMINATION-001 changed one assertion here on purpose.
+    // This used to expect the description "Create a complete playable obby
+    // Roblox experience", which the builder invented for a project with no
+    // brief. Downstream agents could not tell that sentence from something the
+    // user wrote, so an empty brief was designed against as if it were one.
+    // The gap-filling for the fields the contract requires is unchanged; what
+    // changed is that the fills are now named rather than presented as intent.
     expect(buildProjectBlueprintInput(project)).toMatchObject({
       game_type: "obby",
-      description: "Create a complete playable obby Roblox experience.",
+      description: "",
       difficulty: "medium",
       estimated_players: "small-group",
     });
+    expect(buildProjectBlueprintInput(project).assumed_fields).toEqual(
+      expect.arrayContaining([
+        "game_type",
+        "difficulty",
+        "estimated_players",
+        "description",
+        "target_audience",
+      ]),
+    );
   });
 });

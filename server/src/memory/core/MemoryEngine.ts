@@ -58,7 +58,12 @@ export class MemoryEngine {
       // Index for semantic retrieval
       const text = this.extractText(context.output);
       if (text.length > 10) {
-        this.semantic.index(context.agentId, text, context.output);
+        this.semantic.index(
+          context.agentId,
+          text,
+          context.output,
+          context.projectId,
+        );
       }
 
       console.log(
@@ -84,7 +89,12 @@ export class MemoryEngine {
       const entries = this.store.getByAgent(agentId, projectId, limit);
 
       // Semantic: similarity search
-      const semanticMatches = this.semantic.search(agentId, query, limit);
+      const semanticMatches = this.semantic.search(
+        agentId,
+        query,
+        limit,
+        projectId,
+      );
 
       // Merge into context-ready format
       const merged = this.mergeMemory(entries, semanticMatches);

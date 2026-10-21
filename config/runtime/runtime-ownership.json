@@ -20,7 +20,13 @@
   },
   "canonicalByCapability": {
     "execution-engine": "planning-plan-executor",
-    "provider-construction": "providers-llm-provider-factory"
+    "provider-construction": "providers-llm-provider-factory",
+    "generation-orchestration": "projects-game-generation-service",
+    "generation-queueing": "execution-execution-queue",
+    "blueprint-simulation": "simulation-game-simulation-engine",
+    "repair-loop": "repair-engine",
+    "game-lifecycle": "lifecycle-game-controller",
+    "world-runtime": "world-state-engine"
   },
   "inventoryRules": [
     {
@@ -70,6 +76,38 @@
     {
       "root": "server/src/memory/knowledge",
       "pattern": "MemoryManager\\.ts$"
+    },
+    {
+      "root": "server/src/projects/services",
+      "pattern": "game-generation\\.service\\.ts$"
+    },
+    {
+      "root": "server/src/generation",
+      "pattern": "GenerationPipeline\\.ts$"
+    },
+    {
+      "root": "server/src/execution",
+      "pattern": "executionQueue\\.ts$"
+    },
+    {
+      "root": "server/src/platform/queue",
+      "pattern": "GenerationQueue\\.ts$"
+    },
+    {
+      "root": "server/src/simulation",
+      "pattern": "(?:GameSimulationEngine|PlaytestAgent)\\.ts$"
+    },
+    {
+      "root": "server/src/repair",
+      "pattern": "(?:RepairEngine|RepairExecutor|RepairPlanner|RepairSessionStore)\\.ts$"
+    },
+    {
+      "root": "server/src/lifecycle",
+      "pattern": "(?:GameLifecycleController|LiveUpdateEngine)\\.ts$"
+    },
+    {
+      "root": "server/src/world",
+      "pattern": "(?:WorldStateEngine|NPCBehaviorEngine|InteractionGraphEngine|EmergentBehaviorEngine|WorldMutationEngine|WorldSimulationBridge)\\.ts$"
     }
   ],
   "entries": [
@@ -265,6 +303,181 @@
         "server/src/memory/knowledge/MemoryMetrics.ts",
         "server/src/memory/knowledge/index.ts"
       ]
+    },
+    {
+      "id": "projects-game-generation-service",
+      "capability": "generation-orchestration",
+      "path": "server/src/projects/services/game-generation.service.ts",
+      "classification": "canonical",
+      "owner": "projects",
+      "productionUse": "allowed",
+      "responsibility": "Canonical generation orchestration entrypoint reached from the generation routes. Resolves the blueprint, records the execution and drives planner plus plan executor.",
+      "lifecycle": "process",
+      "durability": "execution record is durable; the in-flight run is process-local and is not resumed after restart"
+    },
+    {
+      "id": "generation-legacy-pipeline",
+      "capability": "generation-orchestration",
+      "path": "server/src/generation/GenerationPipeline.ts",
+      "classification": "deprecated",
+      "owner": "generation",
+      "productionUse": "forbidden",
+      "responsibility": "Unreferenced legacy generation pipeline. No production file imports it, and GenerationRegistry.ts, GenerationManifest.ts and GenerationReport.ts are imported only by this file, so the cluster is reachable from nothing. GenerationBlueprint.ts in the same directory is a shared contract with 13 importers and is not part of the island.",
+      "replacement": "projects-game-generation-service",
+      "allowedImporters": []
+    },
+    {
+      "id": "execution-execution-queue",
+      "capability": "generation-queueing",
+      "path": "server/src/execution/executionQueue.ts",
+      "classification": "canonical",
+      "owner": "execution",
+      "productionUse": "allowed",
+      "responsibility": "Queue actually used by canonical generation. Serial in-memory array with an effective concurrency of one, no priority, no retry and no cancellation.",
+      "lifecycle": "process",
+      "durability": "restart-volatile",
+      "bounds": "Unbounded queue length. One long-running task blocks every queued generation behind it."
+    },
+    {
+      "id": "platform-generation-queue",
+      "capability": "generation-queueing",
+      "path": "server/src/platform/queue/GenerationQueue.ts",
+      "classification": "preview",
+      "owner": "platform",
+      "productionUse": "preview-internal",
+      "responsibility": "Richer generation job queue with status tracking, priority and retry counters. Its only importer is its own barrel, and nothing imports that barrel, so it has no production consumer at all; the only other reference is server/src/__tests__/saasFoundation.test.ts. Canonical generation uses execution-execution-queue instead.",
+      "lifecycle": "process",
+      "durability": "restart-volatile",
+      "allowedImporters": ["server/src/platform/queue/index.ts"]
+    },
+    {
+      "id": "simulation-game-simulation-engine",
+      "capability": "blueprint-simulation",
+      "path": "server/src/simulation/core/GameSimulationEngine.ts",
+      "classification": "canonical",
+      "owner": "simulation",
+      "productionUse": "allowed",
+      "responsibility": "Deterministic tick-based simulation over a GameBlueprint. This is not a Roblox runtime: no Luau execution, no Roblox Studio Play, no real player input. It is canonical only for blueprint simulation, not for runtime playtest truth.",
+      "lifecycle": "request",
+      "durability": "restart-volatile"
+    },
+    {
+      "id": "simulation-playtest-agent",
+      "capability": "blueprint-simulation",
+      "path": "server/src/simulation/agents/PlaytestAgent.ts",
+      "classification": "bounded-adapter",
+      "owner": "simulation",
+      "productionUse": "allowed",
+      "responsibility": "Advisory playtest reporting layered on the blueprint simulator. Explicitly records when no real Roblox runtime test occurred rather than presenting simulated output as runtime evidence."
+    },
+    {
+      "id": "repair-engine",
+      "capability": "repair-loop",
+      "path": "server/src/repair/RepairEngine.ts",
+      "classification": "canonical",
+      "owner": "repair",
+      "productionUse": "allowed",
+      "responsibility": "Canonical repair entrypoint. Reaches production only through routes/repair.ts; it is not invoked by the canonical generation path."
+    },
+    {
+      "id": "repair-executor",
+      "capability": "repair-loop",
+      "path": "server/src/repair/RepairExecutor.ts",
+      "classification": "bounded-adapter",
+      "owner": "repair",
+      "productionUse": "allowed",
+      "responsibility": "Applies a planned repair. Consumed by RepairEngine and the repair barrel."
+    },
+    {
+      "id": "repair-planner",
+      "capability": "repair-loop",
+      "path": "server/src/repair/RepairPlanner.ts",
+      "classification": "bounded-adapter",
+      "owner": "repair",
+      "productionUse": "allowed",
+      "responsibility": "Plans repair actions for the repair engine. Consumed by RepairEngine and the repair barrel."
+    },
+    {
+      "id": "repair-session-store",
+      "capability": "repair-loop",
+      "path": "server/src/repair/RepairSessionStore.ts",
+      "classification": "bounded-adapter",
+      "owner": "repair",
+      "productionUse": "allowed",
+      "responsibility": "Repair session state, composed into the operational store composition alongside the repair engine and barrel."
+    },
+    {
+      "id": "lifecycle-game-controller",
+      "capability": "game-lifecycle",
+      "path": "server/src/lifecycle/core/GameLifecycleController.ts",
+      "classification": "canonical",
+      "owner": "lifecycle",
+      "productionUse": "allowed",
+      "responsibility": "Autonomous game lifecycle state machine reached through routes/lifecycle.ts. Stays fail-closed in CREATED without server-owned simulation evidence, so the lifecycle is not yet a proven end-to-end capability."
+    },
+    {
+      "id": "lifecycle-live-update-engine",
+      "capability": "game-lifecycle",
+      "path": "server/src/lifecycle/live/LiveUpdateEngine.ts",
+      "classification": "bounded-adapter",
+      "owner": "lifecycle",
+      "productionUse": "allowed",
+      "responsibility": "Live update application for the lifecycle route, also consumed by ContinuousEvolutionEngine and AutoPatchGenerator."
+    },
+    {
+      "id": "world-state-engine",
+      "capability": "world-runtime",
+      "path": "server/src/world/core/WorldStateEngine.ts",
+      "classification": "canonical",
+      "owner": "world",
+      "productionUse": "allowed",
+      "responsibility": "State owner of the world runtime subsystem: consumed by routes/world.ts and by the NPC, mutation and emergence engines. Disconnected from canonical generation, which keeps runtime world ownership in generated Lua.",
+      "durability": "restart-volatile"
+    },
+    {
+      "id": "world-npc-behavior-engine",
+      "capability": "world-runtime",
+      "path": "server/src/world/npc/NPCBehaviorEngine.ts",
+      "classification": "bounded-adapter",
+      "owner": "world",
+      "productionUse": "allowed",
+      "responsibility": "NPC behaviour over the world state. Reached only through routes/world.ts."
+    },
+    {
+      "id": "world-interaction-graph-engine",
+      "capability": "world-runtime",
+      "path": "server/src/world/interaction/InteractionGraphEngine.ts",
+      "classification": "bounded-adapter",
+      "owner": "world",
+      "productionUse": "allowed",
+      "responsibility": "Interaction graph over the world state. Reached through routes/world.ts and the emergence engine."
+    },
+    {
+      "id": "world-emergent-behavior-engine",
+      "capability": "world-runtime",
+      "path": "server/src/world/emergence/EmergentBehaviorEngine.ts",
+      "classification": "bounded-adapter",
+      "owner": "world",
+      "productionUse": "allowed",
+      "responsibility": "Emergent behaviour reporting. Reached through routes/world.ts, the mutation engine, the simulation bridge and the game artifact builders."
+    },
+    {
+      "id": "world-mutation-engine",
+      "capability": "world-runtime",
+      "path": "server/src/world/mutation/WorldMutationEngine.ts",
+      "classification": "bounded-adapter",
+      "owner": "world",
+      "productionUse": "allowed",
+      "responsibility": "World mutation over the world state. Reached through routes/world.ts and the simulation bridge."
+    },
+    {
+      "id": "world-simulation-bridge",
+      "capability": "world-runtime",
+      "path": "server/src/world/bridge/WorldSimulationBridge.ts",
+      "classification": "bounded-adapter",
+      "owner": "world",
+      "productionUse": "allowed",
+      "responsibility": "Bridges the world runtime to simulation. Reached only through routes/world.ts."
     }
   ]
 }

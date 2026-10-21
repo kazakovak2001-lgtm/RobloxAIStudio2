@@ -85,9 +85,20 @@ export function validateEvidence(evidence: ImageEvidence): string[] {
   return errors;
 }
 
+/**
+ * Validate one image exception against an explicit calendar date.
+ *
+ * `today` is required rather than defaulted. A frozen default here would mean
+ * expiry was checked against a date that stopped advancing, so an exception
+ * could outlive its own `expiresAt` and still validate. Callers pass either the
+ * real UTC date (production) or a fixed date (fixtures).
+ *
+ * Boundary semantics, unchanged: `expiresAt < today` is expired, so an
+ * exception remains valid through the whole of its expiry date.
+ */
 export function validateException(
   exception: ImageException,
-  today = "2026-08-01",
+  today: string,
 ): string[] {
   const errors: string[] = [];
   if (exception.controlId !== "SECURITY-2G-D") errors.push("controlId");
@@ -243,7 +254,9 @@ function runFixtures(): void {
     createdAt: "2026-08-01",
     expiresAt: "2026-08-15",
   };
-  assert.deepEqual(validateException(validException), []);
+  // Fixed clock: these fixtures assert validation logic, not today's date.
+  const FIXTURE_TODAY = "2026-08-01";
+  assert.deepEqual(validateException(validException, FIXTURE_TODAY), []);
 
   const invalidExceptions: ImageException[] = [
     { ...validException, imageDigest: "*" },
@@ -253,7 +266,51 @@ function runFixtures(): void {
     { ...validException, expiresAt: "2026-12-31" },
   ];
   for (const fixture of invalidExceptions)
-    assert.notDeepEqual(validateException(fixture), []);
+    assert.notDeepEqual(validateException(fixture, FIXTURE_TODAY), []);
+
+  // SEC-SCANNER-EXCEPTION-CLOCK-001 regressions.
+  //
+  // Expiry is relative to the date supplied, so the same exception must pass
+  // before its expiry and fail after it. A frozen clock made the second case
+  // impossible to observe.
+  assert.deepEqual(
+    validateException(
+      { ...validException, createdAt: "2026-08-01", expiresAt: "2026-08-15" },
+      "2026-08-14",
+    ),
+    [],
+    "an exception must be valid the day before it expires",
+  );
+  assert.ok(
+    validateException(
+      { ...validException, createdAt: "2026-08-01", expiresAt: "2026-08-15" },
+      "2026-08-16",
+    ).includes("expired"),
+    "an exception must be expired the day after its expiresAt",
+  );
+  // Boundary: valid through the whole of the expiry date (expiresAt < today).
+  assert.deepEqual(
+    validateException(
+      { ...validException, createdAt: "2026-08-01", expiresAt: "2026-08-15" },
+      "2026-08-15",
+    ),
+    [],
+    "an exception must remain valid on its expiry date",
+  );
+  // The production path: the real UTC date, not a fixture constant.
+  const productionToday = new Date().toISOString().slice(0, 10);
+  assert.deepEqual(
+    validateException(
+      {
+        ...validException,
+        createdAt: productionToday,
+        expiresAt: productionToday,
+      },
+      productionToday,
+    ),
+    [],
+    "an exception created and expiring today must pass against the real clock",
+  );
 }
 
 runFixtures();

@@ -1,0 +1,169 @@
+name: Release Pair Freshness
+
+on:
+  pull_request:
+  push:
+    branches: [release/cutover-1e-candidate, feature/plugin-merge]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-pair-freshness-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify-pair:
+    name: Exact Runtime Pair Authority
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout backend control head
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Resolve canonical pair
+        id: pair
+        shell: bash
+        run: |
+          set -euo pipefail
+          manifest=config/cutover/release-baseline.inventory.json
+          backend_runtime="$(jq -r '.runtimePair.backend.commit' "$manifest")"
+          frontend_repo="$(jq -r '.runtimePair.frontend.repository' "$manifest")"
+          frontend_control_branch="$(jq -r '.runtimePair.frontend.controlBranch' "$manifest")"
+          frontend_runtime="$(jq -r '.runtimePair.frontend.runtimeCommit' "$manifest")"
+          pair_id="$(jq -r '.runtimePair.id' "$manifest")"
+
+          for sha in "$backend_runtime" "$frontend_runtime"; do
+            [[ "$sha" =~ ^[0-9a-f]{40}$ ]] || { echo "Invalid pair SHA: $sha"; exit 1; }
+          done
+
+          [[ -n "$frontend_repo" && "$frontend_repo" != "null" ]] || {
+            echo "RELEASE PAIR DRIFT: missing Frontend control repository"
+            exit 1
+          }
+          [[ -n "$frontend_control_branch" && "$frontend_control_branch" != "null" ]] || {
+            echo "RELEASE PAIR DRIFT: missing Frontend control branch"
+            exit 1
+          }
+
+          git merge-base --is-ancestor "$backend_runtime" HEAD || {
+            echo "RELEASE PAIR DRIFT: backend runtime $backend_runtime is not an ancestor of control head $(git rev-parse HEAD)"
+            exit 1
+          }
+
+          echo "backend_runtime=$backend_runtime" >> "$GITHUB_OUTPUT"
+          echo "frontend_repo=$frontend_repo" >> "$GITHUB_OUTPUT"
+          echo "frontend_control_branch=$frontend_control_branch" >> "$GITHUB_OUTPUT"
+          echo "frontend_runtime=$frontend_runtime" >> "$GITHUB_OUTPUT"
+          echo "pair_id=$pair_id" >> "$GITHUB_OUTPUT"
+
+      - name: Resolve Frontend control branch head
+        id: control
+        shell: bash
+        env:
+          FRONTEND_REPO: ${{ steps.pair.outputs.frontend_repo }}
+          FRONTEND_BRANCH: ${{ steps.pair.outputs.frontend_control_branch }}
+        run: |
+          set -euo pipefail
+          resolved="$(git ls-remote "https://github.com/${FRONTEND_REPO}.git" "refs/heads/${FRONTEND_BRANCH}" | awk '{print $1}')"
+          [[ "$resolved" =~ ^[0-9a-f]{40}$ ]] || {
+            echo "RELEASE PAIR DRIFT: could not resolve Frontend control branch '${FRONTEND_BRANCH}' in ${FRONTEND_REPO}"
+            exit 1
+          }
+          echo "resolved_control=$resolved" >> "$GITHUB_OUTPUT"
+
+      - name: Checkout resolved Frontend control head
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ steps.pair.outputs.frontend_repo }}
+          ref: ${{ steps.control.outputs.resolved_control }}
+          path: paired-frontend
+          persist-credentials: false
+          fetch-depth: 0
+
+      - name: Verify reciprocal Frontend manifest
+        shell: bash
+        env:
+          EXPECTED_BACKEND_RUNTIME: ${{ steps.pair.outputs.backend_runtime }}
+          EXPECTED_FRONTEND_RUNTIME: ${{ steps.pair.outputs.frontend_runtime }}
+          EXPECTED_FRONTEND_CONTROL: ${{ steps.control.outputs.resolved_control }}
+          PAIR_ID: ${{ steps.pair.outputs.pair_id }}
+        run: |
+          set -euo pipefail
+          manifest=paired-frontend/config/integration/paired-release.json
+
+          actual_control="$(git -C paired-frontend rev-parse HEAD)"
+          test "$actual_control" = "$EXPECTED_FRONTEND_CONTROL" || {
+            echo "RELEASE PAIR DRIFT: checked-out Frontend control head does not match resolved branch head"
+            exit 1
+          }
+
+          [[ -f "$manifest" ]] || {
+            echo "RELEASE PAIR DRIFT: missing Frontend paired-release manifest at $manifest"
+            exit 1
+          }
+
+          frontend_runtime="$(jq -r '.frontend.runtimeSha' "$manifest")"
+          backend_runtime="$(jq -r '.backend.runtimeSha' "$manifest")"
+          backend_candidate="$(jq -r '.backend.candidateSha' "$manifest")"
+
+          for sha in "$frontend_runtime" "$backend_runtime" "$backend_candidate"; do
+            [[ "$sha" =~ ^[0-9a-f]{40}$ ]] || {
+              echo "RELEASE PAIR DRIFT: invalid SHA in Frontend paired-release manifest: $sha"
+              exit 1
+            }
+          done
+
+          test "$frontend_runtime" = "$EXPECTED_FRONTEND_RUNTIME" || {
+            echo "RELEASE PAIR DRIFT: Frontend runtime mismatch"
+            exit 1
+          }
+          test "$backend_runtime" = "$EXPECTED_BACKEND_RUNTIME" || {
+            echo "RELEASE PAIR DRIFT: backend runtime mismatch"
+            exit 1
+          }
+          test "$backend_candidate" = "$EXPECTED_BACKEND_RUNTIME" || {
+            echo "RELEASE PAIR DRIFT: Frontend backend candidate does not equal canonical backend runtime"
+            exit 1
+          }
+
+          git -C paired-frontend merge-base --is-ancestor "$EXPECTED_FRONTEND_RUNTIME" HEAD || {
+            echo "RELEASE PAIR DRIFT: Frontend runtime is not an ancestor of resolved Frontend control head"
+            exit 1
+          }
+
+          printf '%s\n' \
+            "pair=$PAIR_ID" \
+            "backendRuntime=$EXPECTED_BACKEND_RUNTIME" \
+            "backendControl=$(git rev-parse HEAD)" \
+            "frontendRuntime=$EXPECTED_FRONTEND_RUNTIME" \
+            "frontendControl=$EXPECTED_FRONTEND_CONTROL" \
+            "status=PASS"
+
+      # FRONTEND-RELEASE-PIN-RECONCILIATION-1. `frontendRelease.commit` is the
+      # separate, manually-pinned field `Frontend Production Contract` actually
+      # checks out (config/cutover/release-baseline.inventory.json), distinct
+      # from `runtimePair.frontend.runtimeCommit` verified above. Nothing
+      # previously checked it against the live control branch, so it drifted
+      # silently behind three merged Frontend fixes until production-contract
+      # started failing on a header the pinned commit predates. This closes
+      # that gap using the same resolved control head already proven above,
+      # rather than adding a second resolution mechanism.
+      - name: Verify frontendRelease pin matches resolved control head
+        shell: bash
+        env:
+          EXPECTED_FRONTEND_CONTROL: ${{ steps.control.outputs.resolved_control }}
+        run: |
+          set -euo pipefail
+          manifest=config/cutover/release-baseline.inventory.json
+          pinned="$(jq -r '.frontendRelease.commit' "$manifest")"
+          [[ "$pinned" =~ ^[0-9a-f]{40}$ ]] || {
+            echo "RELEASE PAIR DRIFT: invalid frontendRelease.commit in $manifest: $pinned"
+            exit 1
+          }
+          test "$pinned" = "$EXPECTED_FRONTEND_CONTROL" || {
+            echo "RELEASE PAIR DRIFT: frontendRelease.commit ($pinned) does not match the resolved Frontend control head ($EXPECTED_FRONTEND_CONTROL) — Frontend Production Contract will check out a stale build"
+            exit 1
+          }

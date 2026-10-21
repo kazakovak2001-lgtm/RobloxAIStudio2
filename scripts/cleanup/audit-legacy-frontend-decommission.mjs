@@ -487,7 +487,7 @@ for (const marker of inventory.toolingContract.ciForbiddenMarkers) {
   );
 }
 const gateJobMatch = ciWorkflow.match(
-  /\n  gate:\n([\s\S]*?)(?=\n  [A-Za-z0-9_-]+:\n|$)/,
+  /\r?\n  gate:\r?\n([\s\S]*?)(?=\r?\n  [A-Za-z0-9_-]+:\r?\n|$)/,
 );
 assert.ok(gateJobMatch, "Unable to locate the Merge Gate job");
 assert.match(

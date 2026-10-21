@@ -14,11 +14,16 @@ import {
   StorageGenerationHistoryRepository,
   type GenerationHistoryRepository,
 } from "../projects/repository/generationHistory.repository";
+import { StorageBlueprintRepository } from "../projects/repository/storageBlueprint.repository";
+import type { IBlueprintRepository } from "../projects/repository/blueprint.repository";
 import { getTokenFromCookies } from "../common/middleware/cookies";
+import { getRequestApiKeyPrincipal } from "../common/middleware/security";
 import {
-  getRequestApiKeyPrincipal,
-  requireApiKeyCapability,
-} from "../common/middleware/security";
+  createResourceAuthorizer,
+  type ProjectAccessCheck,
+} from "./resourceAuthorization";
+import { ProjectDeletionCoordinator } from "../platform/projects/ProjectDeletionCoordinator";
+import { generationClaimProjectDeletion } from "../platform/projects/ProjectLifecycleCoordinator";
 
 export interface ProjectAccessControl {
   getRequestUserId(req: Request): Promise<string | null>;
@@ -36,10 +41,38 @@ export interface ProjectAccessControl {
   ): Promise<boolean>;
 }
 
+/**
+ * A project access control that provides the concealing check.
+ *
+ * `hasProjectAccess` is optional on the interface because older callers only
+ * ever needed `requireProjectAccess`. Anything built by `createProjectRuntime`
+ * always provides it, and routes that conceal resource existence depend on it,
+ * so the runtime states that rather than leaving each route to hope.
+ */
+export type ConcealingProjectAccess = ProjectAccessControl & {
+  hasProjectAccess: ProjectAccessCheck;
+};
+
 export interface ProjectRuntime {
   projectRepository: SaaSProjectRepository;
   generationHistory: GenerationHistoryRepository;
-  access: ProjectAccessControl;
+  blueprintRepository: IBlueprintRepository;
+  /**
+   * PROJECT-ERASURE-1 / PROJECT-ERASURE-2. Deletes a project and every
+   * directly project-owned durable record (blueprint, blueprint versions,
+   * generation executions, blueprint change proposals, generation history,
+   * generation active claim, generation start requests) as one atomic
+   * transaction. Routes must go through this rather than deleting the
+   * project record on its own.
+   */
+  deletion: ProjectDeletionCoordinator;
+  access: ConcealingProjectAccess;
+  /**
+   * The provider both repositories above are built on. Exposed so a caller that
+   * must commit several collections in one transaction can reach
+   * `applyDurableBatch` instead of issuing independent writes.
+   */
+  storage: StorageProvider;
 }
 
 type RequestWithSession = Request & { user?: { userId?: string } };
@@ -50,6 +83,12 @@ export function createProjectRuntime(
 ): ProjectRuntime {
   const projectRepository = new SaaSProjectRepository(storage);
   const generationHistory = new StorageGenerationHistoryRepository(storage);
+  const blueprintRepository = new StorageBlueprintRepository(storage);
+  const deletion = new ProjectDeletionCoordinator(storage, [
+    blueprintRepository,
+    generationHistory,
+    generationClaimProjectDeletion(storage),
+  ]);
 
   const getRequestUserId = async (req: Request): Promise<string | null> => {
     const attachedUserId = (req as RequestWithSession).user?.userId;
@@ -78,37 +117,43 @@ export function createProjectRuntime(
     projectId: string,
     apiKeyCapability?: string,
   ): Promise<boolean> => {
-    if (getRequestApiKeyPrincipal(req)) {
-      if (!apiKeyCapability) {
+    const principal = getRequestApiKeyPrincipal(req);
+    if (principal) {
+      // Whether the credential may be used for this kind of operation at all is
+      // a fact about the credential, not about any project, so it stays a plain
+      // 403. It tells the caller nothing about what exists.
+      if (
+        !apiKeyCapability ||
+        !principal.capabilities.includes(apiKeyCapability)
+      ) {
         res.status(403).json({
           success: false,
           error: "API key is not permitted for this route",
         });
         return false;
       }
-      if (!requireApiKeyCapability(req, res, apiKeyCapability, projectId)) {
-        return false;
-      }
-      if (!projectRepository.get(projectId)) {
-        res.status(404).json({ success: false, error: "Project not found" });
-        return false;
-      }
-      return true;
+    } else {
+      const userId = await requireAuthenticatedUser(req, res);
+      if (!userId) return false;
     }
 
-    const userId = await requireAuthenticatedUser(req, res);
-    if (!userId) return false;
-
-    const project = projectRepository.get(projectId);
-    if (!project) {
-      res.status(404).json({ success: false, error: "Project not found" });
-      return false;
-    }
-    if (!projectRepository.verifyOwnership(projectId, userId)) {
-      res.status(403).json({ success: false, error: "Access denied" });
-      return false;
-    }
-    return true;
+    // SEC-PROJECT-ACCESS-DISCLOSURE-001. This used to answer 404 for a project
+    // that did not exist and 403 for one that existed and belonged to someone
+    // else, so any authenticated caller could enumerate real project ids
+    // through the control every project-scoped route depends on. Routed through
+    // the canonical helper, both answer alike.
+    //
+    // The project is its own authoritative project, which is the degenerate
+    // case of the helper's rule. The rule still holds: what gets authorized is
+    // what the loader returned, not the string the caller sent.
+    const project = await requireOwned(req, res, {
+      resource: "Project",
+      id: projectId,
+      load: (id: string) => projectRepository.get(id),
+      projectOf: (loaded) => loaded.id,
+      capability: apiKeyCapability,
+    });
+    return project !== null;
   };
 
   const hasProjectAccess = async (
@@ -133,9 +178,17 @@ export function createProjectRuntime(
     );
   };
 
+  // Built on the concealing check above, and referenced by requireProjectAccess
+  // which is declared earlier: both are only ever invoked per request, long
+  // after this module has finished initialising.
+  const requireOwned = createResourceAuthorizer(hasProjectAccess);
+
   return {
     projectRepository,
     generationHistory,
+    blueprintRepository,
+    deletion,
+    storage,
     access: {
       getRequestUserId,
       requireAuthenticatedUser,
@@ -152,7 +205,12 @@ export function createProjectRuntime(
  */
 export function createProjectsRouter(runtime: ProjectRuntime): Router {
   const router = Router();
-  const { projectRepository: projects, generationHistory, access } = runtime;
+  const {
+    projectRepository: projects,
+    generationHistory,
+    deletion,
+    access,
+  } = runtime;
 
   router.get("/", async (req, res) => {
     const userId = await access.requireAuthenticatedUser(req, res);
@@ -224,7 +282,7 @@ export function createProjectsRouter(runtime: ProjectRuntime): Router {
     if (!(await access.requireProjectAccess(req, res, req.params.id))) return;
 
     try {
-      const deleted = await projects.deleteDurable(req.params.id);
+      const deleted = await deletion.deleteProject(req.params.id);
       res.json({ success: true, data: { deleted } });
     } catch (error) {
       handleProjectInputError(error, res);

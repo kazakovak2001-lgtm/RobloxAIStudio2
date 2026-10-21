@@ -5,8 +5,11 @@ import { describe, expect, it } from "vitest";
 import { SaaSProjectRepository } from "../../platform/projects";
 import {
   DurableStorageError,
+  type DurableMutation,
+  type DurableMutationResult,
   InMemoryStorageProvider,
 } from "../../platform/storage/StorageProvider";
+import { ProjectDeletionCoordinator } from "../../platform/projects/ProjectDeletionCoordinator";
 import type { GenerationHistoryRepository } from "../../projects/repository/generationHistory.repository";
 import { StorageBlueprintRepository } from "../../projects/repository/storageBlueprint.repository";
 import type { CreateBlueprintInput } from "../../projects/types/blueprint";
@@ -36,19 +39,37 @@ class ControlledMutationStorage extends InMemoryStorageProvider {
     }
     return super.deleteDurable(collection, id);
   }
+
+  override async applyDurableBatch(
+    mutations: readonly DurableMutation[],
+  ): Promise<readonly DurableMutationResult[]> {
+    if (this.rejectDelete) {
+      throw new DurableStorageError("injected delete rejection", "delete");
+    }
+    return super.applyDurableBatch(mutations);
+  }
 }
 
-const emptyHistory: GenerationHistoryRepository = {
+const emptyHistory: GenerationHistoryRepository & {
+  prepareProjectDeletion: () => DurableMutation[];
+} = {
   record() {},
   getByProject: () => [],
   getByPipeline: () => null,
   getAll: () => [],
+  prepareProjectDeletion: () => [],
 };
 
 function runtime(storage: ControlledMutationStorage): ProjectRuntime {
+  const blueprintRepository = new StorageBlueprintRepository(storage);
   return {
     projectRepository: new SaaSProjectRepository(storage),
     generationHistory: emptyHistory,
+    blueprintRepository,
+    deletion: new ProjectDeletionCoordinator(storage, [
+      blueprintRepository,
+      emptyHistory,
+    ]),
     access: {
       getRequestUserId: () => "owner",
       requireAuthenticatedUser: () => "owner",

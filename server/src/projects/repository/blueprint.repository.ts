@@ -1,9 +1,14 @@
-import type { StorageProvider } from "../../platform/storage/StorageProvider";
+import type {
+  DurableMutation,
+  StorageProvider,
+} from "../../platform/storage/StorageProvider";
+import type { ProjectDeletionChild } from "../../platform/projects/ProjectDeletionCoordinator";
 import { InMemoryStorageProvider } from "../../platform/storage/StorageProvider";
 import { getConfiguredStorageProvider } from "../../platform/storage/StorageFactory";
 import type {
   GameBlueprint,
   BlueprintVersion,
+  BlueprintChangeProposal,
   GenerationExecution,
   CreateBlueprintInput,
   UpdateBlueprintInput,
@@ -11,7 +16,7 @@ import type {
 } from "../types/blueprint";
 import { StorageBlueprintRepository } from "./storageBlueprint.repository";
 
-export interface IBlueprintRepository {
+export interface IBlueprintRepository extends ProjectDeletionChild {
   createBlueprint(
     userId: string,
     input: CreateBlueprintInput,
@@ -31,6 +36,22 @@ export interface IBlueprintRepository {
     userId: string,
     description?: string,
   ): Promise<BlueprintVersion>;
+  /**
+   * BLUEPRINT-STALE-001. Build an immutable version snapshot and the durable
+   * mutations that record it, without writing anything.
+   *
+   * `saveVersion` above writes on its own, which is right for an explicit
+   * "save a version" action but wrong for generation start, where the snapshot
+   * has to commit in the same transaction as the execution that references it.
+   * A snapshot without its execution, or an execution referencing a snapshot
+   * that never committed, are both states nothing could repair.
+   */
+  prepareVersion(
+    blueprintId: string,
+    userId: string,
+    description?: string,
+    snapshotOverride?: GameBlueprint,
+  ): Promise<{ version: BlueprintVersion; mutations: DurableMutation[] }>;
   getVersion(
     blueprintId: string,
     versionNumber: number,
@@ -40,6 +61,24 @@ export interface IBlueprintRepository {
     blueprintId: string,
     versionNumber: number,
   ): Promise<GameBlueprint | null>;
+  /**
+   * CHAT-BLUEPRINT-DISCONNECT-001. Proposal storage is durable blueprint
+   * state, and accepting one has to write the blueprint, its version and the
+   * decision together, so it lives beside the version machinery it needs.
+   */
+  saveProposal(
+    proposal: BlueprintChangeProposal,
+  ): Promise<BlueprintChangeProposal>;
+  getProposal(proposalId: string): BlueprintChangeProposal | null;
+  listProposals(
+    projectId: string,
+    status?: BlueprintChangeProposal["status"],
+  ): BlueprintChangeProposal[];
+  commitProposalAcceptance(
+    blueprint: GameBlueprint,
+    versionMutations: DurableMutation[],
+    proposal: BlueprintChangeProposal,
+  ): Promise<void>;
   recordExecution(execution: GenerationExecution): Promise<GenerationExecution>;
   getExecution(id: string): Promise<GenerationExecution | null>;
   listExecutions(blueprintId: string): Promise<GenerationExecution[]>;

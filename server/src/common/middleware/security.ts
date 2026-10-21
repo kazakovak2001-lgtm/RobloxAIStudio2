@@ -64,16 +64,25 @@ export function getApiKeyStore(): ApiKeyStore {
 
 // ─── Rate Limiting ──────────────────────────────────────────────────────────
 
-export const rateLimiter = rateLimit({
-  windowMs: 60 * 1000, // 1 minute
-  max: 100, // 100 requests per minute per IP
-  standardHeaders: true, // Return rate limit info in headers
-  legacyHeaders: false,
-  message: {
-    success: false,
-    error: "Too many requests. Please try again later.",
-  },
-});
+/**
+ * Build the global API limiter. Each call returns an independent limiter with
+ * its own in-memory store, so a test harness can mount the production policy
+ * without sharing one request budget with every other harness in the file.
+ */
+export function createRateLimiter() {
+  return rateLimit({
+    windowMs: 60 * 1000, // 1 minute
+    max: 100, // 100 requests per minute per IP
+    standardHeaders: true, // Return rate limit info in headers
+    legacyHeaders: false,
+    message: {
+      success: false,
+      error: "Too many requests. Please try again later.",
+    },
+  });
+}
+
+export const rateLimiter = createRateLimiter();
 
 /** Brute-force protection for the public login endpoint. */
 export const loginRateLimiter = rateLimit({
@@ -145,7 +154,7 @@ export function corsMiddleware(
   );
   res.header(
     "Access-Control-Allow-Headers",
-    "Origin, X-Requested-With, Content-Type, Accept, Authorization, X-API-Key, X-Studio-Session",
+    "Origin, X-Requested-With, Content-Type, Accept, Authorization, X-API-Key, X-Studio-Session, Idempotency-Key",
   );
   res.header("Access-Control-Allow-Credentials", "true");
 

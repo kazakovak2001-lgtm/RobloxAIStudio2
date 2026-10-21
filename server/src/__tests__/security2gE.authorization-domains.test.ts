@@ -30,13 +30,25 @@ async function listen(app: express.Express): Promise<string> {
   return `http://127.0.0.1:${address.port}`;
 }
 
+/**
+ * Registers a user and returns its session token.
+ *
+ * TEST-EVIDENCE-1. This used to register and then log in, which paid for two
+ * cost-12 bcrypt operations per identity, and with two identities that was four
+ * before a single request was made. `prepareRegistration` already returns the
+ * session for the registration it prepares, so one hash is enough. It is also
+ * the same path the production register route uses, so the fixture is closer to
+ * real behaviour than the register-then-login pair was.
+ */
 async function tokenFor(
   auth: AuthService,
+  storage: InMemoryStorageProvider,
   email: string,
   userId: string,
 ): Promise<string> {
-  await auth.registerDurable(email, "password123", userId);
-  return (await auth.loginDurable(email, "password123", userId)).token!;
+  const prepared = await auth.prepareRegistration(email, "password123", userId);
+  await storage.applyDurableBatch(prepared.mutations);
+  return prepared.loginResult.token!;
 }
 
 describe("SECURITY-2G-E initial authorization domains", () => {
@@ -115,8 +127,18 @@ describe("SECURITY-2G-E initial authorization domains", () => {
     const storage = new InMemoryStorageProvider();
     const auth = new AuthService(storage);
     const runtime = createProjectRuntime(storage, auth);
-    const ownerToken = await tokenFor(auth, "owner@example.com", "owner");
-    const otherToken = await tokenFor(auth, "other@example.com", "other");
+    const ownerToken = await tokenFor(
+      auth,
+      storage,
+      "owner@example.com",
+      "owner",
+    );
+    const otherToken = await tokenFor(
+      auth,
+      storage,
+      "other@example.com",
+      "other",
+    );
     const app = express();
     app.use(express.json());
     app.use(

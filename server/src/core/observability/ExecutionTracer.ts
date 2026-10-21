@@ -45,9 +45,11 @@ export class ExecutionTracer {
     planId: string,
     goal: string,
     nodeCount: number,
+    projectId?: string,
   ): void {
     const trace: ExecutionTrace = {
       executionId,
+      projectId,
       planId,
       goal,
       startedAt: Date.now(),
@@ -216,11 +218,23 @@ export class ExecutionTracer {
 
   // ─── Internal ─────────────────────────────────────────────────────────
 
+  /**
+   * SEC-REALTIME-TRACE-001. Every emitted event carries the project of its own
+   * execution, resolved here rather than threaded through each trace method, so
+   * a trace method added later cannot forget to carry it. Consumers use it to
+   * deliver only to the tenant the execution belongs to; a payload here names
+   * the execution, the node, the agent, its evaluation score and its errors.
+   */
   private emit(event: ExecutionTraceEvent): void {
-    this.store.appendEvent(event.executionId, event);
+    const scoped: ExecutionTraceEvent = {
+      ...event,
+      projectId:
+        event.projectId ?? this.store.getTrace(event.executionId)?.projectId,
+    };
+    this.store.appendEvent(scoped.executionId, scoped);
     for (const listener of this.listeners) {
       try {
-        listener(event);
+        listener(scoped);
       } catch {
         /* Listener errors must never break execution */
       }

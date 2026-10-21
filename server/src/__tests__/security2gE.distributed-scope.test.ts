@@ -9,11 +9,15 @@ const source = fs.readFileSync(
 
 describe("SECURITY-2G-E distributed authorization scope", () => {
   it("requires project access before project-bound job operations", () => {
-    expect(source).toContain("ProjectAccessControl");
+    // MAR-001 narrowed this to the control that provides the concealing check,
+    // which is a stronger requirement than the interface it replaced: a router
+    // typed this way cannot be wired to an access control that would answer
+    // differently for an absent job and someone else's.
+    expect(source).toContain("ConcealingProjectAccess");
     expect(source).toContain(
       "access.requireProjectAccess(req, res, projectId)",
     );
-    expect(source).toContain("job.projectId");
+    expect(source).toContain("projectOf: (job) => job.projectId");
     expect(source).toContain("filterAuthorizedDeadLetters");
   });
 

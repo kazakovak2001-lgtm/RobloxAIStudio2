@@ -389,7 +389,7 @@ describePostgres("CORE-1b PostgreSQL restart acceptance", () => {
         project.id,
       ),
     ).toBe(false);
-    expect(foreignResponse.status).toHaveBeenCalledWith(403);
+    expect(foreignResponse.status).toHaveBeenCalledWith(404);
   });
 
   it("allows one PostgreSQL winner for autonomous recovery and execution claims", async () => {
