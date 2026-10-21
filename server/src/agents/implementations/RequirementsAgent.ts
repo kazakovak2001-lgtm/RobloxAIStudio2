@@ -69,14 +69,15 @@ export class RequirementsAgent extends BaseAgent {
     if (!this.llm) return this.withRequirementIdentity(fallback, assumed, bp);
 
     // PromptTemplateRegistry is the single source of truth; inline is the fallback.
-    const registryPrompt = this.buildPrompt({
+    const promptVars = {
       name,
       genre,
       game_type: gameType,
       description,
       target_audience: targetAudience,
       difficulty,
-    });
+    };
+    const registryPrompt = this.buildPrompt(promptVars);
 
     // INTENT-DEFAULT-CONTAMINATION-001. Saying which values are defaults keeps
     // the model from hardening an assumption into a requirement.
@@ -107,6 +108,7 @@ export class RequirementsAgent extends BaseAgent {
       {
         temperature: 0.3,
         maxTokens: 1200,
+        system: this.systemPromptFor(promptVars) ?? undefined,
       },
     );
 
