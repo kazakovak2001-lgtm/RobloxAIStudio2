@@ -20,6 +20,20 @@ export interface ExecutionOptions {
   maxRetries?: number;
 }
 
+/**
+ * SEC-PLAN-RETRY-CEILING-001. `maxRetries` reaches here straight from the
+ * request body of POST /api/v1/plan/execute and POST /api/plan/execute, and
+ * every attempt calls an agent — and so a provider — again. A caller may
+ * narrow the attempts, never widen them past this server-owned ceiling, which
+ * matches the highest `maxAttempts` any agent declares in AGENT-CONTRACT-1.
+ */
+export const PLAN_NODE_MAX_ATTEMPTS = 3;
+
+export function boundPlanNodeAttempts(requested: unknown): number {
+  if (typeof requested !== "number" || !Number.isFinite(requested)) return 1;
+  return Math.min(Math.max(Math.floor(requested), 1), PLAN_NODE_MAX_ATTEMPTS);
+}
+
 export interface PlanExecutionResult {
   planId: string;
   graph: TaskGraph;
@@ -101,7 +115,8 @@ export class PlanExecutor {
     options: ExecutionOptions = {},
   ): Promise<PlanExecutionResult> {
     const totalStart = Date.now();
-    const { projectId, stopOnFailure = true, maxRetries = 1 } = options;
+    const { projectId, stopOnFailure = true } = options;
+    const maxRetries = boundPlanNodeAttempts(options.maxRetries ?? 1);
 
     console.log(
       `[PLAN-EXEC] Starting | Plan: ${planId} | Tasks: ${graph.size} | Goal: ${graph.goal.slice(0, 60)}`,
