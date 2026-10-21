@@ -612,6 +612,7 @@
 │   │   ├── boundary-gate-core.ts
 │   │   └── layer-debt-evidence.ts
 │   ├── backup-database.sh
+│   ├── build-server-bundle.mjs
 │   ├── ci
 │   │   ├── __tests__
 │   │   │   └── resolve-frontend-control-pair.test.sh
@@ -685,6 +686,7 @@
 │   │   │   ├── blueprint1.immutable-snapshot.test.ts
 │   │   │   ├── blueprint2.intent-sync.test.ts
 │   │   │   ├── bugConditionExploration.test.ts
+│   │   │   ├── build1.production-bundle.test.ts
 │   │   │   ├── core1b.persistence.test.ts
 │   │   │   ├── core1b.postgres.integration.test.ts
 │   │   │   ├── cutover1c.origin-policy.test.ts

@@ -12,7 +12,9 @@ COPY package.json package-lock.json ./
 RUN npm ci
 
 COPY server/ server/
-RUN npx tsc --project server/tsconfig.json
+COPY scripts/build-server-bundle.mjs scripts/build-server-bundle.mjs
+RUN npx tsc --noEmit --project server/tsconfig.json
+RUN node scripts/build-server-bundle.mjs
 RUN npm prune --omit=dev && npm cache clean --force
 
 FROM node:22-alpine AS production
@@ -25,7 +27,7 @@ ENV PORT=5000
 COPY package.json package-lock.json ./
 COPY architecture.manifest.json ./architecture.manifest.json
 COPY --from=builder /app/node_modules ./node_modules
-COPY --from=builder /app/dist/server ./dist/server
+COPY --from=builder /app/dist/server-bundle ./dist/server-bundle
 
 # npm and npx are build-time tooling only. Removing the global npm distribution
 # from the runtime stage reduces the shipped attack surface while preserving the
@@ -43,6 +45,6 @@ EXPOSE 5000
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
   CMD wget --no-verbose --tries=1 --spider http://localhost:5000/health || exit 1
 
-# The tsx loader preserves the current extensionless ESM import contract in the
-# compiled server output while the source tree is incrementally modernized.
-CMD ["node", "--import", "tsx", "dist/server/index.js"]
+# BUILD-1. esbuild resolves the source tree's extensionless ESM imports at build
+# time, so the runtime is plain Node.js with no tsx loader.
+CMD ["node", "--enable-source-maps", "dist/server-bundle/index.js"]

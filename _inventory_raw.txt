@@ -518,6 +518,7 @@ scripts/architecture/ast-import-inventory.ts
 scripts/architecture/boundary-gate-core.ts
 scripts/architecture/layer-debt-evidence.ts
 scripts/backup-database.sh
+scripts/build-server-bundle.mjs
 scripts/ci/__tests__/resolve-frontend-control-pair.test.sh
 scripts/ci/resolve-frontend-control-head.sh
 scripts/ci/verify-frontend-control-pair.sh
@@ -581,6 +582,7 @@ server/src/__tests__/autonomousPipelinePreservation.test.ts
 server/src/__tests__/blueprint1.immutable-snapshot.test.ts
 server/src/__tests__/blueprint2.intent-sync.test.ts
 server/src/__tests__/bugConditionExploration.test.ts
+server/src/__tests__/build1.production-bundle.test.ts
 server/src/__tests__/core1b.persistence.test.ts
 server/src/__tests__/core1b.postgres.integration.test.ts
 server/src/__tests__/cutover1c.origin-policy.test.ts
