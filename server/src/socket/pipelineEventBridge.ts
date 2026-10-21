@@ -26,6 +26,7 @@ export interface PipelineBridgeProjectStore {
 
 export interface PipelineBridgeRunRecord {
   pipelineId: string;
+  projectId: string;
   status: string;
   startedAt: number;
   finishedAt?: number;
@@ -178,8 +179,12 @@ export function registerPipelineEventBridge<R extends PipelineBridgeRunRecord>(
           await projectRepository.updateDurable(evt.projectId, {
             status: "draft",
           });
+          // SEC-BRIDGE-HISTORY-SCOPE-001. History is looked up by pipelineId
+          // alone, and a pipelineId is a routing key, not proof of ownership
+          // (PipelineStage ids carry only 40 random bits). Only a record that
+          // belongs to the event's own project may be marked failed.
           const record = generationHistory.getByPipeline(evt.pipelineId);
-          if (record) {
+          if (record && record.projectId === evt.projectId) {
             const finishedAt = evt.timestamp.getTime();
             const completed = Number(
               evt.data?.completedSteps ?? record.stagesCompleted,

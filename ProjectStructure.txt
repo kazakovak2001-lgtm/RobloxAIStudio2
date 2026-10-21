@@ -1562,6 +1562,7 @@
 │   │   │       └── GameplayMetricsEngine.ts
 │   │   ├── socket
 │   │   │   ├── index.ts
+│   │   │   ├── pipelineEventBridge.scope.test.ts
 │   │   │   ├── pipelineEventBridge.ts
 │   │   │   └── streaming.ts
 │   │   ├── studio

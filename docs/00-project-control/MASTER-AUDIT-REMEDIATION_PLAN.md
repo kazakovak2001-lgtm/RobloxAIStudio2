@@ -2,7 +2,7 @@
 
 # Master audit remediation plan
 
-Generated from `config/audit/master-audit-register.json` (79 findings). Severity is the register's; ordering is by the worst severity in each group, except that re-verification comes first and verified controls come last.
+Generated from `config/audit/master-audit-register.json` (80 findings). Severity is the register's; ordering is by the worst severity in each group, except that re-verification comes first and verified controls come last.
 
 Findings are grouped by shared architectural root rather than by symptom. Several of these are the same defect seen from different places, and repairing them one at a time would mean repairing the root several times.
 
@@ -10,7 +10,7 @@ Findings are grouped by shared architectural root rather than by symptom. Severa
 
 | Disposition        | Findings |
 | ------------------ | -------- |
-| FIXED-UNMERGED     | 45       |
+| FIXED-UNMERGED     | 46       |
 | NOT-STARTED        | 25       |
 | NO-ACTION-REQUIRED | 6        |
 | SCOPED-OUT         | 2        |
@@ -22,7 +22,7 @@ Every finding names the deduplicated root cause it belongs to. A finding the tax
 
 | Root cause                                                                                         | Priority        | Findings | Fixed | Remaining |
 | -------------------------------------------------------------------------------------------------- | --------------- | -------- | ----- | --------- |
-| **MAR-001** — Cross-tenant resource authorization is not parent-bound everywhere                   | P0              | 23       | 16    | 7         |
+| **MAR-001** — Cross-tenant resource authorization is not parent-bound everywhere                   | P0              | 24       | 17    | 7         |
 | **MAR-002** — Studio materializer has no universal creator-ownership safety boundary               | P0              | 8        | 8     | 0         |
 | **MAR-003** — No single clean canonical product acceptance run exists                              | P0-release-gate | 3        | 0     | 3         |
 | **MAR-004** — Generation has no durable project-scoped single-flight and idempotent start identity | P1              | 5        | 5     | 0         |
@@ -134,7 +134,19 @@ What the system reports about a run does not always match what happened. This is
 | **AUDIT-FLAKY-AUTH-TEST-001** — The user-self authorization test fails intermittently under parallel load             | P2       | CONFIRMED | FIXED-UNMERGED (integration/wave-0 @ f5b9772bfa99ebcfb70b853b6e4c90d67c0dd503) |
 | **AUDIT-SCRIPTS-UNTYPED-001** — Validator and generator scripts are outside the typecheck boundary                    | P3       | CONFIRMED | NOT-STARTED                                                                    |
 
-## 6. canonical-generation-recovery — worst severity P1
+## 6. realtime-tenancy — worst severity P1
+
+Outbound emissions ignore the project boundary that the inbound side enforces. Two distinct repairs sit inside this group, one cheap and one needing context plumbed through.
+
+| Finding                                                                                                                        | Severity | Status    | Disposition                                                                                   |
+| ------------------------------------------------------------------------------------------------------------------------------ | -------- | --------- | --------------------------------------------------------------------------------------------- |
+| **SEC-REALTIME-GLOBAL-001** — Evaluation, memory and planning events broadcast to every connected socket                       | P1       | CONFIRMED | FIXED-UNMERGED (integration/wave-0 @ fee5b8c3655cfb9a68722cc9ce34358caf071556)                |
+| **SEC-REALTIME-TRACE-001** — Execution traces broadcast globally from a listener with no project context                       | P1       | CONFIRMED | FIXED-UNMERGED (integration/wave-0 @ 71e011f7024ba36a646bb79546b98ab236816d02)                |
+| **SEC-REALTIME-PIPELINE-FALLBACK-001** — Pipeline events fall back to a global broadcast when no project is known              | P2       | CONFIRMED | FIXED-UNMERGED (integration/wave-0 @ fee5b8c3655cfb9a68722cc9ce34358caf071556)                |
+| **AUDIT-REALTIME-ROOM-001** — Room membership on project switch is not proven to be exclusive                                  | P2       | CONFIRMED | FIXED-UNMERGED (fix/realtime-room-isolation-1 @ 8a4a6b78627b96f2885421dff40e49b191774b3d)     |
+| **SEC-BRIDGE-HISTORY-SCOPE-001** — Pipeline bridge rewrote generation history found by pipelineId without checking its project | P2       | CONFIRMED | FIXED-UNMERGED (fix/bridge-history-tenant-scope-1 @ 8486ae9f0470751c5b59bc0e8d65a5f8111bd997) |
+
+## 7. canonical-generation-recovery — worst severity P1
 
 Canonical generation survives as a durable record but not as running work. The queue choice, the shutdown path and the weak restart test are the same gap seen three ways.
 
@@ -144,17 +156,6 @@ Canonical generation survives as a durable record but not as running work. The q
 | **AUDIT-GRACEFUL-SHUTDOWN-001** — Shutdown does not drain the canonical generation queue         | P1       | CONFIRMED | FIXED-UNMERGED (integration/wave-0 @ 186d1a08a76d3261d9aecd2183c4286b676b29ec) |
 | **AUDIT-RESTART-TEST-WEAK-001** — The restart test proves durability, not recovery               | P1       | CONFIRMED | NOT-STARTED                                                                    |
 | **AUDIT-QUEUE-DISCONNECTED-001** — The mature generation queue has no production consumer at all | P2       | CONFIRMED | NOT-STARTED                                                                    |
-
-## 7. realtime-tenancy — worst severity P1
-
-Outbound emissions ignore the project boundary that the inbound side enforces. Two distinct repairs sit inside this group, one cheap and one needing context plumbed through.
-
-| Finding                                                                                                           | Severity | Status    | Disposition                                                                               |
-| ----------------------------------------------------------------------------------------------------------------- | -------- | --------- | ----------------------------------------------------------------------------------------- |
-| **SEC-REALTIME-GLOBAL-001** — Evaluation, memory and planning events broadcast to every connected socket          | P1       | CONFIRMED | FIXED-UNMERGED (integration/wave-0 @ fee5b8c3655cfb9a68722cc9ce34358caf071556)            |
-| **SEC-REALTIME-TRACE-001** — Execution traces broadcast globally from a listener with no project context          | P1       | CONFIRMED | FIXED-UNMERGED (integration/wave-0 @ 71e011f7024ba36a646bb79546b98ab236816d02)            |
-| **SEC-REALTIME-PIPELINE-FALLBACK-001** — Pipeline events fall back to a global broadcast when no project is known | P2       | CONFIRMED | FIXED-UNMERGED (integration/wave-0 @ fee5b8c3655cfb9a68722cc9ce34358caf071556)            |
-| **AUDIT-REALTIME-ROOM-001** — Room membership on project switch is not proven to be exclusive                     | P2       | CONFIRMED | FIXED-UNMERGED (fix/realtime-room-isolation-1 @ 8a4a6b78627b96f2885421dff40e49b191774b3d) |
 
 ## 8. blueprint-provenance — worst severity P1
 
