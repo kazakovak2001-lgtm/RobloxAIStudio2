@@ -14,7 +14,6 @@
         "ai",
         "artifacts",
         "assembly",
-        "assets",
         "compiler",
         "domain",
         "economy",
@@ -83,10 +82,6 @@
     },
     "assembly": {
       "path": "server/src/assembly",
-      "layer": "domains"
-    },
-    "assets": {
-      "path": "server/src/assets",
       "layer": "domains"
     },
     "cloud": {

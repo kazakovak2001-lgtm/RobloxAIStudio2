@@ -4,6 +4,28 @@ All significant architectural and product decisions are recorded here.
 
 ---
 
+## 2026-10-21 — CLEANUP-2C: Remove the Unreachable Duplicate Asset Engine
+
+**Decision**: Delete `server/src/assets/` (a second `AssetGenerationEngine`, `AssetRegistry`,
+`AssetManifestBuilder`, `AssetReferenceResolver` and `AssetValidationService`, with its own test)
+and its `architecture.manifest.json` domain.
+
+**Reason**: The forensic audit (2026-10-20) recorded two `AssetGenerationEngine` implementations.
+Resolving every relative import in `server/src` shows no file outside the directory imports
+`server/src/assets/`. Every consumer, including the routes, `GameArtifactBuilder`,
+`RobloxExportBuilder` and `GameValidationEngine`, resolves to `server/src/generation/assets/`,
+which is the live implementation and stays.
+
+**Boundary**: Code removal only, no behavior change. Nothing was merged between the two copies,
+because nothing reached the removed one.
+
+**Recovery**: The deleted files are recoverable from release commit
+`a77494a368737a377d2e4ac83832ceab190845d5`.
+
+**Status**: Implemented, not yet released.
+
+---
+
 ## 2026-10-21 — CLEANUP-2B: Remove the Unwired Collaboration, Analytics and Plugin Scaffolds
 
 **Decision**: Delete `server/src/collaboration/` (v1.7 collaboration layer),
