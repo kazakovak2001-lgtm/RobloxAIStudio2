@@ -85,13 +85,9 @@ E2E_PIPELINE_VALIDATION_REPORT.md
 FINAL_V1_RELEASE_SIGN_OFF.md
 MODULE_STATUS.md
 ProjectStructure.txt
-ProjectStructure.txt
-ProjectStructure.txt
 README.md
 RELEASE_HARDENING_REPORT.md
 V1_RELEASE_NOTES.md
-_inventory_raw.txt
-_inventory_raw.txt
 _inventory_raw.txt
 architecture.layer-debt.json
 architecture.manifest.json
@@ -453,10 +449,6 @@ docs/workspace-ux-redesign-v2/workflows/.gitkeep
 docs/workspace-ux-redesign-v2/zones/.gitkeep
 eslint.config.js
 package-lock.json
-package-lock.json
-package-lock.json
-package.json
-package.json
 package.json
 project_structure.txt
 release/BETA_CHECKLIST.md
@@ -1023,8 +1015,6 @@ server/src/governance/GovernancePolicyEngine.ts
 server/src/governance/GovernanceValidator.ts
 server/src/governance/PolicyRegistry.ts
 server/src/governance/aiGovernance.ts
-server/src/index.ts
-server/src/index.ts
 server/src/index.ts
 server/src/integration/EndToEndValidator.ts
 server/src/integration/PlatformIntegrationManager.ts
