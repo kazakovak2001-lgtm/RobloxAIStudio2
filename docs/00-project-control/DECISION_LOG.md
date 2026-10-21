@@ -26,6 +26,40 @@ because nothing reached the removed one.
 
 ---
 
+## 2026-10-21 — AGENT-TIMEOUT-1: Bound Every Agent LLM Call by the Provider's Request Budget
+
+**Decision**: `BaseAgent.setLLM` wraps the provider so every `generate` call has a deadline:
+the provider's request budget plus `AGENT_CALL_DEADLINE_MARGIN_MS` (5000 ms). Each of the six
+providers reports its budget through `requestBudgetMs(options)`, computed by
+`requestBudgetFor(timeout, maxRetries)`: every `withRetry` attempt bounded by the request timeout,
+plus the backoff between attempts. A missed deadline raises `AgentCallDeadlineError`, which ends the
+step without the agent-level retry loop.
+
+**Reason**: `fetchWithTimeout` only bounds waiting for response headers. It clears its timer as
+soon as `fetch` resolves, so a stalled response body or Ollama stream had no deadline at all and
+could hang one step, and with it the serialized generation queue, indefinitely.
+`BaseAgent.timeout` (30 s) was assigned and never read. Enforcing that fixed value instead would
+have cut legitimate slow generations, since Ollama's budget is 241 s by default and longer with
+`OLLAMA_TIMEOUT_MS`.
+
+**Boundary**: The deadline frees the step; it does not cancel the request, because agents have no
+`AbortSignal`. A provider without `requestBudgetMs` (test mocks) is left unwrapped and behaves as
+before. An invalid budget (not finite or not positive) fails the call rather than running without
+a deadline. `BaseAgent.timeout` is still unused. No contract field, route, schema or Frontend
+change.
+
+**Not decided**: A per-agent or per-execution wall-clock ceiling, and a monetary cost budget,
+remain unsupported. AGENT-CONTRACT-1 records them as gaps.
+
+**Evidence**: `server/src/agents/core/__tests__/agentCallDeadline.test.ts` asserts the literal
+budgets (OpenAI 93000 ms, Ollama 241000 ms, Groq 67000 ms), that a hung provider fails once after
+6000 ms for a 1000 ms budget, that a call inside its budget succeeds, that an unbudgeted provider
+is unwrapped, and that an invalid budget is refused.
+
+**Status**: Implemented, not yet released.
+
+---
+
 ## 2026-10-21 — CLEANUP-2B: Remove the Unwired Collaboration, Analytics and Plugin Scaffolds
 
 **Decision**: Delete `server/src/collaboration/` (v1.7 collaboration layer),

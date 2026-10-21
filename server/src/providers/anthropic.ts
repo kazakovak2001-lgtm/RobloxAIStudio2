@@ -1,6 +1,11 @@
 import type { LLMProvider, LLMOptions, LLMResponse } from "../types/llm";
 import { LLMError } from "../types/llm";
-import { fetchWithTimeout, withRetry, parseProviderError } from "./llmUtils";
+import {
+  fetchWithTimeout,
+  withRetry,
+  parseProviderError,
+  requestBudgetFor,
+} from "./llmUtils";
 
 export class AnthropicProvider implements LLMProvider {
   readonly name = "anthropic";
@@ -23,6 +28,20 @@ export class AnthropicProvider implements LLMProvider {
       config.model ?? process.env.ANTHROPIC_MODEL ?? "claude-sonnet-4-20250514";
     this.maxRetries = config.maxRetries ?? 2;
     this.defaultTimeout = config.timeout ?? 60000;
+  }
+
+  /**
+   * AGENT-TIMEOUT-1. The longest one `generate` call can legitimately take:
+   * every attempt `withRetry` may make, each bounded by the request timeout,
+   * plus the backoff between them. BaseAgent derives its per-call deadline
+   * from this, so the deadline can never be shorter than a call the provider
+   * itself still considers live.
+   */
+  requestBudgetMs(options?: LLMOptions): number {
+    return requestBudgetFor(
+      options?.timeout ?? this.defaultTimeout,
+      this.maxRetries,
+    );
   }
 
   async generate(prompt: string, options?: LLMOptions): Promise<string> {
