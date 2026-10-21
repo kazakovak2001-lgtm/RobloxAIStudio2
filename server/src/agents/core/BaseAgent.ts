@@ -55,6 +55,79 @@ export interface LLMOptions {
   system?: string;
 }
 
+/** The provider surface an agent uses. `requestBudgetMs` is optional. */
+export interface DeadlineAwareLLM {
+  generate(prompt: string, options?: LLMOptions): Promise<string>;
+  requestBudgetMs?(options?: LLMOptions): number;
+}
+
+/**
+ * AGENT-TIMEOUT-1. Slack added on top of the provider's own budget, so the
+ * agent deadline only fires once the provider has had every attempt it is
+ * entitled to and the call is still unresolved.
+ */
+export const AGENT_CALL_DEADLINE_MARGIN_MS = 5000;
+
+/**
+ * An LLM call outlived its deadline. Terminal for the step: the provider has
+ * already spent its own retries, so retrying the whole step would multiply
+ * the wait rather than recover.
+ */
+export class AgentCallDeadlineError extends Error {
+  constructor(
+    public readonly agent: string,
+    public readonly deadlineMs: number,
+    public readonly providerBudgetMs: number,
+  ) {
+    super(
+      `${agent} LLM call exceeded its ${deadlineMs}ms deadline (provider budget ${providerBudgetMs}ms)`,
+    );
+    this.name = "AgentCallDeadlineError";
+  }
+}
+
+/**
+ * Bound every `generate` call by the provider's budget plus a margin.
+ *
+ * Needed because `fetchWithTimeout` only covers waiting for response headers:
+ * once they arrive the timer is cleared, so a stalled response body or stream
+ * could hang a step, and with it the serialized generation queue, forever.
+ *
+ * This frees the step; it does not cancel the request, which agents cannot
+ * abort. A provider without `requestBudgetMs` is returned unchanged.
+ */
+function withCallDeadline(
+  llm: DeadlineAwareLLM,
+  agent: string,
+): DeadlineAwareLLM {
+  const budgetOf = llm.requestBudgetMs?.bind(llm);
+  if (!budgetOf) return llm;
+  return {
+    requestBudgetMs: budgetOf,
+    generate(prompt, options) {
+      const budget = budgetOf(options);
+      if (!Number.isFinite(budget) || budget <= 0) {
+        return Promise.reject(
+          new Error(
+            `${agent} provider reported an invalid request budget: ${budget}`,
+          ),
+        );
+      }
+      const deadline = budget + AGENT_CALL_DEADLINE_MARGIN_MS;
+      let timer: ReturnType<typeof setTimeout> | undefined;
+      const expired = new Promise<never>((_, reject) => {
+        timer = setTimeout(
+          () => reject(new AgentCallDeadlineError(agent, deadline, budget)),
+          deadline,
+        );
+      });
+      return Promise.race([llm.generate(prompt, options), expired]).finally(
+        () => clearTimeout(timer),
+      );
+    },
+  };
+}
+
 /** Shared registry instance — one per process, lazily initialised. */
 let _sharedRegistry: PromptTemplateRegistry | null = null;
 function getSharedRegistry(): PromptTemplateRegistry {
@@ -81,9 +154,7 @@ export abstract class BaseAgent {
 
   protected maxRetries = 3;
   protected timeout = 30000;
-  protected llm?: {
-    generate(prompt: string, options?: LLMOptions): Promise<string>;
-  };
+  protected llm?: DeadlineAwareLLM;
 
   /** Per-agent override; falls back to shared default registry. */
   private _templateRegistry?: PromptTemplateRegistry;
@@ -109,10 +180,8 @@ export abstract class BaseAgent {
    * Wire an LLM provider into this agent.
    * Called by AgentRegistry after all agents are instantiated.
    */
-  setLLM(llm: {
-    generate(prompt: string, options?: LLMOptions): Promise<string>;
-  }): void {
-    this.llm = llm;
+  setLLM(llm: DeadlineAwareLLM): void {
+    this.llm = withCallDeadline(llm, this.name);
   }
 
   /**
@@ -253,6 +322,8 @@ export abstract class BaseAgent {
         };
       } catch (error) {
         lastError = error instanceof Error ? error : new Error(String(error));
+        // AGENT-TIMEOUT-1. The provider already spent its own retries.
+        if (lastError instanceof AgentCallDeadlineError) break;
         if (attempts < this.maxRetries) {
           await this.delay(1000 * attempts);
         }

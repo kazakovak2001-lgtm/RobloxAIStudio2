@@ -730,6 +730,7 @@ server/src/agents/collaboration/index.ts
 server/src/agents/contract/agentContract.ts
 server/src/agents/core/AgentRegistry.ts
 server/src/agents/core/BaseAgent.ts
+server/src/agents/core/__tests__/agentCallDeadline.test.ts
 server/src/agents/core/__tests__/promptTrustBoundary.test.ts
 server/src/agents/implementations/ArchitectureControllerAgent.ts
 server/src/agents/implementations/AssetPlannerAgent.ts

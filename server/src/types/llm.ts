@@ -53,6 +53,12 @@ export interface LLMProvider {
     options?: LLMOptions,
   ): Promise<void>;
   healthCheck?(): Promise<boolean>;
+  /**
+   * AGENT-TIMEOUT-1. The longest one `generate` call with these options may
+   * legitimately take, in milliseconds, including the provider's own retries.
+   * Optional: a provider without it gets no agent-level deadline.
+   */
+  requestBudgetMs?(options?: LLMOptions): number;
 }
 
 export class LLMError extends Error {

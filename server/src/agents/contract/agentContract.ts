@@ -15,10 +15,12 @@
  *
  * **A field that nothing consults is not a contract.** Every policy below is
  * read at execution or validation time. Dimensions the platform cannot
- * currently enforce — per-agent provider selection, wall-clock timeout,
- * monetary cost — are recorded as unsupported in the scope record rather than
- * given decorative fields that would imply guarantees the runtime does not
- * make.
+ * currently enforce — per-agent provider selection, a per-agent wall-clock
+ * timeout, monetary cost — are recorded as unsupported in the scope record
+ * rather than given decorative fields that would imply guarantees the runtime
+ * does not make. AGENT-TIMEOUT-1 bounds each LLM call by the provider's own
+ * request budget in BaseAgent; that is a runtime guard derived from the
+ * provider, not a per-agent policy, so it has no field here.
  *
  * **Capabilities describe production, not marketing.** They stay general and
  * composable. A `TycoonAgent` or `ObbyAgent` primitive would make the platform

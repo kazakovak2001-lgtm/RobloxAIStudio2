@@ -49,7 +49,7 @@ export async function withRetry<T>(
       const isRetryable =
         err instanceof LLMError ? err.retryable : isTransientError(lastError);
       if (!isRetryable || attempt >= maxRetries) break;
-      const delay = Math.min(1000 * Math.pow(2, attempt), 10000);
+      const delay = retryBackoffMs(attempt);
       await new Promise((r) => setTimeout(r, delay));
     }
   }
@@ -60,6 +60,29 @@ export async function withRetry<T>(
     undefined,
     false,
   );
+}
+
+/** How long `withRetry` waits before retrying after attempt `attempt` (0-based). */
+export function retryBackoffMs(attempt: number): number {
+  return Math.min(1000 * Math.pow(2, attempt), 10000);
+}
+
+/**
+ * AGENT-TIMEOUT-1. Upper bound on one `withRetry` call: `maxRetries + 1`
+ * attempts, each bounded by `timeoutMs`, plus every backoff between them.
+ *
+ * This is the longest a provider may legitimately spend on one request. It is
+ * not a prediction of how long a request takes.
+ */
+export function requestBudgetFor(
+  timeoutMs: number,
+  maxRetries: number,
+): number {
+  let total = (maxRetries + 1) * timeoutMs;
+  for (let attempt = 0; attempt < maxRetries; attempt++) {
+    total += retryBackoffMs(attempt);
+  }
+  return total;
 }
 
 function isTransientError(err: Error): boolean {
