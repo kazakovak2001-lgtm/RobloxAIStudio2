@@ -242,6 +242,27 @@ if (!llmResult.provider) {
 const agentRegistry = new AgentRegistry(llmResult.provider ?? undefined);
 const studioManager = new StudioIntegrationManager();
 
+let executionCoordinatorInstance: ExecutionCoordinator | null = null;
+let autonomousOrchestratorInstance: AutonomousOrchestrator | null = null;
+
+function getExecutionCoordinator(): ExecutionCoordinator {
+  if (!executionCoordinatorInstance) {
+    executionCoordinatorInstance = new ExecutionCoordinator(agentRegistry);
+    executionCoordinatorInstance.initialize();
+    console.log("[startup] lazy-init ExecutionCoordinator");
+  }
+  return executionCoordinatorInstance;
+}
+
+function getAutonomousOrchestrator(): AutonomousOrchestrator {
+  if (!autonomousOrchestratorInstance) {
+    autonomousOrchestratorInstance = new AutonomousOrchestrator(events);
+    registerStoragePostInitializeHook(() => autonomousOrchestratorInstance!.ready());
+    console.log("[startup] lazy-init AutonomousOrchestrator");
+  }
+  return autonomousOrchestratorInstance;
+}
+
 const gameService = new GameGenerationService(
   blueprintRepo,
   blueprintCache,
@@ -298,11 +319,9 @@ app.use("/api/v1", createV1Router(agentRegistry, gateway, access));
 app.use("/api/v2", createV2Router(agentRegistry, gateway, access));
 
 // ─── Distributed Execution Layer ────────────────────────────────────────────
-const executionCoordinator = new ExecutionCoordinator(agentRegistry);
-executionCoordinator.initialize();
 app.use(
   "/api/distributed",
-  createDistributedRouter(executionCoordinator, access),
+  createDistributedRouter(getExecutionCoordinator(), access),
 );
 app.use("/api/analytics", createAnalyticsRouter());
 
@@ -355,19 +374,9 @@ app.use("/api/domain", createDomainRouter());
 // Autonomous Orchestrator API
 import { createAutonomousRouter } from "./routes/autonomous";
 import { AutonomousOrchestrator } from "./orchestrator";
-const autonomousOrchestrator = new AutonomousOrchestrator(events);
-registerStoragePostInitializeHook(() => autonomousOrchestrator.ready());
-
-// AUDIT-RECOVERY-001. Canonical generation gets the same treatment on boot:
-// executions left `running` by a previous process are closed truthfully and
-// their projects released, so nothing stays generating forever and the next
-// generation can be admitted.
-registerStoragePostInitializeHook(async () => {
-  await reconcileInterruptedGenerations(storageProvider);
-});
 app.use(
   "/api/autonomous",
-  createAutonomousRouter(events, access, autonomousOrchestrator),
+  createAutonomousRouter(events, access, getAutonomousOrchestrator()),
 );
 
 // AI Project Controller API
@@ -544,7 +553,7 @@ async function shutdown(signal: "SIGTERM" | "SIGINT"): Promise<void> {
   if (shuttingDown) return;
   shuttingDown = true;
   console.log(`\n📴 ${signal} received, shutting down gracefully...`);
-  executionCoordinator.shutdown();
+  executionCoordinatorInstance?.shutdown();
   await new Promise<void>((resolve) => {
     httpServer.close(() => resolve());
   });
