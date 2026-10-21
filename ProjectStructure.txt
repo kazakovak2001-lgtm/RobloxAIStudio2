@@ -610,6 +610,11 @@
 │   │   ├── boundary-gate-core.ts
 │   │   └── layer-debt-evidence.ts
 │   ├── backup-database.sh
+│   ├── ci
+│   │   ├── __tests__
+│   │   │   └── resolve-frontend-control-pair.test.sh
+│   │   ├── resolve-frontend-control-head.sh
+│   │   └── verify-frontend-control-pair.sh
 │   ├── cleanup
 │   │   ├── audit-legacy-frontend-decommission.mjs
 │   │   └── generate-tracked-inventories.mjs
@@ -1570,6 +1575,7 @@
 │   │   │       └── GameplayMetricsEngine.ts
 │   │   ├── socket
 │   │   │   ├── index.ts
+│   │   │   ├── pipelineEventBridge.scope.test.ts
 │   │   │   ├── pipelineEventBridge.ts
 │   │   │   ├── socketAuthPolicy.ts
 │   │   │   └── streaming.ts

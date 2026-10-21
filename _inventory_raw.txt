@@ -524,6 +524,9 @@ scripts/architecture/ast-import-inventory.ts
 scripts/architecture/boundary-gate-core.ts
 scripts/architecture/layer-debt-evidence.ts
 scripts/backup-database.sh
+scripts/ci/__tests__/resolve-frontend-control-pair.test.sh
+scripts/ci/resolve-frontend-control-head.sh
+scripts/ci/verify-frontend-control-pair.sh
 scripts/cleanup/audit-legacy-frontend-decommission.mjs
 scripts/cleanup/generate-tracked-inventories.mjs
 scripts/cutover/rehearse-independent-rollback.sh
@@ -1303,6 +1306,7 @@ server/src/simulation/core/GameSimulationEngine.ts
 server/src/simulation/feedback/SimulationFeedbackEngine.ts
 server/src/simulation/metrics/GameplayMetricsEngine.ts
 server/src/socket/index.ts
+server/src/socket/pipelineEventBridge.scope.test.ts
 server/src/socket/pipelineEventBridge.ts
 server/src/socket/socketAuthPolicy.ts
 server/src/socket/streaming.ts
