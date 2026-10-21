@@ -943,16 +943,6 @@
 │   │   │   ├── FolderMapper.ts
 │   │   │   ├── ScriptAssembler.ts
 │   │   │   └── WorkspaceBuilder.ts
-│   │   ├── assets
-│   │   │   ├── __tests__
-│   │   │   │   └── AssetGeneration.test.ts
-│   │   │   ├── AssetGenerationEngine.ts
-│   │   │   ├── AssetManifestBuilder.ts
-│   │   │   ├── AssetReferenceResolver.ts
-│   │   │   ├── AssetRegistry.ts
-│   │   │   ├── AssetValidationService.ts
-│   │   │   ├── index.ts
-│   │   │   └── types.ts
 │   │   ├── cloud
 │   │   │   ├── CloudNodeRegistry.ts
 │   │   │   ├── ClusterTopologyManager.ts

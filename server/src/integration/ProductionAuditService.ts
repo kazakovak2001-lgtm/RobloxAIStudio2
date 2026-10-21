@@ -51,7 +51,7 @@ export class ProductionAuditService {
       ),
     );
     checks.push(this.checkDir("server/src/lua", "Lua engine"));
-    checks.push(this.checkDir("server/src/assets", "Asset engine"));
+    checks.push(this.checkDir("server/src/generation/assets", "Asset engine"));
     checks.push(this.checkDir("server/src/ui-gen", "UI engine"));
     checks.push(this.checkDir("server/src/memory/knowledge", "Memory system"));
     checks.push(

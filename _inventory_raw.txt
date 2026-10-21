@@ -812,14 +812,6 @@ server/src/assembly/DependencyResolver.ts
 server/src/assembly/FolderMapper.ts
 server/src/assembly/ScriptAssembler.ts
 server/src/assembly/WorkspaceBuilder.ts
-server/src/assets/AssetGenerationEngine.ts
-server/src/assets/AssetManifestBuilder.ts
-server/src/assets/AssetReferenceResolver.ts
-server/src/assets/AssetRegistry.ts
-server/src/assets/AssetValidationService.ts
-server/src/assets/__tests__/AssetGeneration.test.ts
-server/src/assets/index.ts
-server/src/assets/types.ts
 server/src/cloud/CloudNodeRegistry.ts
 server/src/cloud/ClusterTopologyManager.ts
 server/src/cloud/NetworkDispatcher.ts
