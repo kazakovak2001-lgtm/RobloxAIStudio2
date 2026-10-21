@@ -22,12 +22,33 @@ export function createConceptRouter(
 ): Router {
   const router = Router();
   const pipelineEngine = new PipelineEngine();
+  // In-memory concept store (production would use DB)
+  const concepts = new Map<string, Record<string, unknown>>();
+  const conceptOwners = new Map<string, string>();
+
   const concealProjectAccess = async (
     req: Request,
     res: Response,
     projectId: string,
     resourceName: "Pipeline" | "Artifact",
   ): Promise<boolean> => {
+    // SEC-MAR001-REMAINING-GAPS-001 (session-owned-concept). A pipeline
+    // started from `/experience/generate` is run with a conceptId in the
+    // slot this engine calls `projectId` — its authoritative parent is the
+    // user recorded in `conceptOwners`, not a SaaS project, so the
+    // project-derived access control below does not apply to it and must
+    // not be asked.
+    if (conceptOwners.has(projectId)) {
+      const userId = await access.getRequestUserId(req);
+      if (userId && conceptOwners.get(projectId) === userId) return true;
+      if (!res.headersSent) {
+        res
+          .status(404)
+          .json({ success: false, error: `${resourceName} not found` });
+      }
+      return false;
+    }
+
     if (access.hasProjectAccess) {
       if (await access.hasProjectAccess(req, projectId)) return true;
     } else if (await access.requireProjectAccess(req, res, projectId)) {
@@ -68,10 +89,6 @@ export function createConceptRouter(
     }
     next();
   });
-
-  // In-memory concept store (production would use DB)
-  const concepts = new Map<string, Record<string, unknown>>();
-  const conceptOwners = new Map<string, string>();
 
   // POST /api/concept/generate
   router.post("/generate", async (req, res) => {
@@ -398,10 +415,16 @@ export function createConceptRouter(
 
     history.sort((a, b) => b.startedAt - a.startedAt);
     const visibleHistory: typeof history = [];
+    const requestUserId = await access.getRequestUserId(req);
     for (const state of history) {
-      const allowed = access.hasProjectAccess
-        ? await access.hasProjectAccess(req, state.projectId)
-        : await access.requireProjectAccess(req, res, state.projectId);
+      // SEC-MAR001-REMAINING-GAPS-001 (session-owned-concept). Same split as
+      // `concealProjectAccess`: a concept-run's `projectId` is a conceptId,
+      // whose owner lives in `conceptOwners`, not in the project repository.
+      const allowed = conceptOwners.has(state.projectId)
+        ? conceptOwners.get(state.projectId) === requestUserId
+        : access.hasProjectAccess
+          ? await access.hasProjectAccess(req, state.projectId)
+          : await access.requireProjectAccess(req, res, state.projectId);
       if (allowed) visibleHistory.push(state);
       if (res.headersSent) return;
     }

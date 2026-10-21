@@ -32,7 +32,7 @@ describe("SECURITY-2G-E API-key enforcement for small routes", () => {
       report.indexOf('"system.economy.report.metadata.read"'),
     ).toBeLessThan(report.indexOf('"Economy reports stored in Memory v0.6'));
     expect(source).toContain(
-      "access.requireProjectAccess(req, res, blueprint.id)",
+      "requireProjectAccessForBlueprint(access, req, res, blueprint",
     );
   });
 
@@ -52,7 +52,7 @@ describe("SECURITY-2G-E API-key enforcement for small routes", () => {
       feedback.indexOf('"system.simulation.feedback.analyze"'),
     ).toBeLessThan(engineCall);
     expect(source).toContain(
-      "access.requireProjectAccess(req, res, blueprint.id)",
+      "requireProjectAccessForBlueprint(access, req, res, blueprint",
     );
   });
 
@@ -73,7 +73,7 @@ describe("SECURITY-2G-E API-key enforcement for small routes", () => {
       "access.requireProjectAccess(req, res, projectId)",
     );
     expect(source).toContain(
-      "access.requireProjectAccess(req, res, blueprint.id)",
+      "requireProjectAccessForBlueprint(access, req, res, blueprint",
     );
   });
 });
