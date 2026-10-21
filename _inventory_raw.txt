@@ -31,6 +31,7 @@
 .github/workflows/security-consolidated-gate.yml
 .github/workflows/security-image-sbom.yml
 .github/workflows/security-sast-credential-scan.yml
+.github/workflows/stale.yml
 .github/workflows/studio-plugin-package.yml
 .gitignore
 .husky/commit-msg

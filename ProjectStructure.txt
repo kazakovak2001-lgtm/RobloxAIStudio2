@@ -46,6 +46,7 @@
 │       ├── security-consolidated-gate.yml
 │       ├── security-image-sbom.yml
 │       ├── security-sast-credential-scan.yml
+│       ├── stale.yml
 │       └── studio-plugin-package.yml
 ├── .gitignore
 ├── .husky
