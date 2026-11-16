@@ -7,7 +7,11 @@ import { describeDesignInputs } from "../../types/projectDesignInputs";
 import { InMemoryStorageProvider } from "../../platform/storage/StorageProvider";
 import { ProjectDeletionCoordinator } from "../../platform/projects/ProjectDeletionCoordinator";
 import { StorageBlueprintRepository } from "../../projects/repository/storageBlueprint.repository";
-import { createProjectsRouter, type ProjectRuntime } from "../projects";
+import {
+  createProjectRuntime,
+  createProjectsRouter,
+  type ProjectRuntime,
+} from "../projects";
 import {
   buildProjectBlueprintInput,
   projectStatedIntent,
@@ -15,7 +19,7 @@ import {
 } from "../game-generation";
 
 const emptyHistory = {
-  record() {},
+  async record() {},
   getByProject: () => [],
   getByPipeline: () => null,
   getAll: () => [],
@@ -34,14 +38,17 @@ function makeRuntime(storage: InMemoryStorageProvider): ProjectRuntime {
       blueprintRepository,
       emptyHistory,
     ]),
+    storage,
     access: {
-      getRequestUserId: (req: Request) => userOf(req),
-      requireAuthenticatedUser: (req: Request) => userOf(req),
-      requireProjectAccess: (req: Request, res: Response, id: string) => {
+      getRequestUserId: async (req: Request) => userOf(req),
+      requireAuthenticatedUser: async (req: Request) => userOf(req),
+      requireProjectAccess: async (req: Request, res: Response, id: string) => {
         if (projectRepository.verifyOwnership(id, userOf(req))) return true;
         res.status(404).json({ success: false, error: "Project not found" });
         return false;
       },
+      hasProjectAccess: async (req: Request, id: string) =>
+        projectRepository.verifyOwnership(id, userOf(req)),
     },
   };
 }
@@ -59,7 +66,11 @@ async function withServer<T>(
   const call: Call = async (method, path, body, user = "owner") => {
     const r = await fetch(`http://127.0.0.1:${port}/projects${path}`, {
       method,
-      headers: { "content-type": "application/json", "x-user": user },
+      headers: {
+        "content-type": "application/json",
+        "x-user": user,
+        authorization: `Bearer ${user}`,
+      },
       body: body ? JSON.stringify(body) : undefined,
     });
     return {
@@ -176,6 +187,120 @@ describe("project Game Concept / Map & Environment inputs", () => {
       expect(rt.projectRepository.get(legacy.id)?.gameConcept).toBeUndefined();
     });
   });
+
+  // The token is the user id, so the real runtime resolves the same caller the
+  // fixture reads from `x-user`.
+  const tokenAsUser = {
+    validateToken: async (token: string) => ({ userId: token }),
+  };
+  it.each([
+    ["test fixture access", () => makeRuntime(new InMemoryStorageProvider())],
+    [
+      "createProjectRuntime access",
+      () =>
+        createProjectRuntime(
+          new InMemoryStorageProvider(),
+          tokenAsUser as never,
+        ),
+    ],
+  ])(
+    "isolates design sections between two projects of different users (%s)",
+    async (_name, build) => {
+      const rt = build();
+      await withServer(rt, async (call) => {
+        const aliceSections = {
+          gameConcept: { vision: "alice-vision", coreMechanics: ["glide"] },
+          mapEnvironment: { worldTheme: "alice-sky", mainLocations: ["Hub"] },
+        };
+        const bobSections = {
+          gameConcept: { vision: "bob-vision", coreMechanics: ["dig"] },
+          mapEnvironment: { worldTheme: "bob-caves", mainLocations: ["Mine"] },
+        };
+        const aliceId = (
+          await call("POST", "", { name: "A", ...aliceSections }, "alice")
+        ).body.data.id;
+        const bobId = (
+          await call("POST", "", { name: "B", ...bobSections }, "bob")
+        ).body.data.id;
+        expect(aliceId).not.toBe(bobId);
+
+        // Each owner reads and updates only their own project.
+        const ownA = await call("GET", `/${aliceId}`, undefined, "alice");
+        expect(ownA.status).toBe(200);
+        expect(ownA.body.data.gameConcept).toEqual(aliceSections.gameConcept);
+        expect(ownA.body.data.mapEnvironment).toEqual(
+          aliceSections.mapEnvironment,
+        );
+        const ownB = await call("GET", `/${bobId}`, undefined, "bob");
+        expect(ownB.status).toBe(200);
+        expect(ownB.body.data.gameConcept).toEqual(bobSections.gameConcept);
+        expect(ownB.body.data.mapEnvironment).toEqual(
+          bobSections.mapEnvironment,
+        );
+        const okUpdate = await call(
+          "PUT",
+          `/${aliceId}`,
+          { gameConcept: { vision: "alice-v2" } },
+          "alice",
+        );
+        expect(okUpdate.status).toBe(200);
+
+        // Cross-project reads are refused in both directions and reveal nothing.
+        for (const [id, user] of [
+          [bobId, "alice"],
+          [aliceId, "bob"],
+        ] as const) {
+          const read = await call("GET", `/${id}`, undefined, user);
+          expect(read.status).toBe(404);
+          expect(JSON.stringify(read.body)).not.toMatch(
+            /alice-|bob-|glide|dig|Hub|Mine/,
+          );
+        }
+
+        // Cross-project writes are refused in both directions.
+        const aliceIntoBob = await call(
+          "PUT",
+          `/${bobId}`,
+          {
+            gameConcept: { vision: "alice-hijack" },
+            mapEnvironment: { worldTheme: "alice-hijack" },
+          },
+          "alice",
+        );
+        const bobIntoAlice = await call(
+          "PUT",
+          `/${aliceId}`,
+          {
+            gameConcept: { vision: "bob-hijack" },
+            mapEnvironment: { worldTheme: "bob-hijack" },
+          },
+          "bob",
+        );
+        expect(aliceIntoBob.status).toBe(404);
+        expect(bobIntoAlice.status).toBe(404);
+
+        // Both projects still hold exactly their own data.
+        const finalA = (await call("GET", `/${aliceId}`, undefined, "alice"))
+          .body.data;
+        const finalB = (await call("GET", `/${bobId}`, undefined, "bob")).body
+          .data;
+        expect(finalA.gameConcept).toEqual({
+          vision: "alice-v2",
+          coreMechanics: ["glide"],
+        });
+        expect(finalA.mapEnvironment).toEqual(aliceSections.mapEnvironment);
+        expect(finalB.gameConcept).toEqual(bobSections.gameConcept);
+        expect(finalB.mapEnvironment).toEqual(bobSections.mapEnvironment);
+        // The stored records agree with what the API reports.
+        expect(rt.projectRepository.get(bobId)?.gameConcept).toEqual(
+          bobSections.gameConcept,
+        );
+        expect(rt.projectRepository.get(aliceId)?.mapEnvironment).toEqual(
+          aliceSections.mapEnvironment,
+        );
+      });
+    },
+  );
 
   it("maps saved sections into the generation blueprint input and prompts", async () => {
     const rt = makeRuntime(new InMemoryStorageProvider());
