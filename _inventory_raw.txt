@@ -1117,6 +1117,7 @@ server/src/platform/projects/ProjectLifecycleCoordinator.test.ts
 server/src/platform/projects/ProjectLifecycleCoordinator.ts
 server/src/platform/projects/SaaSProjectRepository.ts
 server/src/platform/projects/index.ts
+server/src/platform/projects/projectDesignInputs.ts
 server/src/platform/queue/GenerationQueue.ts
 server/src/platform/queue/index.ts
 server/src/platform/registry/AgentRegistryService.ts
@@ -1199,6 +1200,7 @@ server/src/routes/__tests__/platform.durability.test.ts
 server/src/routes/__tests__/platform.registration.durability.test.ts
 server/src/routes/__tests__/projectErasure1.test.ts
 server/src/routes/__tests__/projectErasure2.test.ts
+server/src/routes/__tests__/projects.designInputs.test.ts
 server/src/routes/__tests__/projects.durability.test.ts
 server/src/routes/__tests__/projects.runtime.test.ts
 server/src/routes/__tests__/studioApiKeyAccess.test.ts

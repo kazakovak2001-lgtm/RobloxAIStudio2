@@ -1343,6 +1343,7 @@
 │   │   │   │   ├── GenerationRecovery.ts
 │   │   │   │   ├── index.ts
 │   │   │   │   ├── ProjectDeletionCoordinator.ts
+│   │   │   │   ├── projectDesignInputs.ts
 │   │   │   │   ├── ProjectLifecycleCoordinator.test.ts
 │   │   │   │   ├── ProjectLifecycleCoordinator.ts
 │   │   │   │   └── SaaSProjectRepository.ts
@@ -1453,6 +1454,7 @@
 │   │   │   │   ├── platform.registration.durability.test.ts
 │   │   │   │   ├── projectErasure1.test.ts
 │   │   │   │   ├── projectErasure2.test.ts
+│   │   │   │   ├── projects.designInputs.test.ts
 │   │   │   │   ├── projects.durability.test.ts
 │   │   │   │   ├── projects.runtime.test.ts
 │   │   │   │   ├── studioApiKeyAccess.test.ts

@@ -4,6 +4,10 @@
 
 import { randomUUID } from "crypto";
 import type { StorageProvider } from "../storage/StorageProvider";
+import type {
+  GameConceptConfig,
+  MapEnvironmentConfig,
+} from "./projectDesignInputs";
 
 export interface SaaSProject {
   id: string;
@@ -16,6 +20,9 @@ export interface SaaSProject {
   players?: string;
   targetAudience?: string;
   coverUrl?: string;
+  /** Absent = not stated (legacy projects). */
+  gameConcept?: GameConceptConfig;
+  mapEnvironment?: MapEnvironmentConfig;
   status:
     "draft" | "generating" | "testing" | "ready" | "published" | "archived";
   qualityScore: number;

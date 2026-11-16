@@ -22,6 +22,16 @@ import {
   createResourceAuthorizer,
   type ProjectAccessCheck,
 } from "./resourceAuthorization";
+import {
+  DesignInputError,
+  hasContent,
+  mergeGameConcept,
+  mergeMapEnvironment,
+  parseGameConceptPatch,
+  parseMapEnvironmentPatch,
+  type GameConceptConfig,
+  type MapEnvironmentConfig,
+} from "../platform/projects/projectDesignInputs";
 import { ProjectDeletionCoordinator } from "../platform/projects/ProjectDeletionCoordinator";
 import { generationClaimProjectDeletion } from "../platform/projects/ProjectLifecycleCoordinator";
 
@@ -262,12 +272,47 @@ export function createProjectsRouter(runtime: ProjectRuntime): Router {
 
     try {
       const patch = readProjectPatch(req.body);
-      if (Object.keys(patch).length === 0) {
+      const design = readDesignPatch(req.body);
+      if (
+        Object.keys(patch).length === 0 &&
+        design.gameConcept === undefined &&
+        design.mapEnvironment === undefined
+      ) {
         throw new ProjectInputError(
           "At least one editable project field is required",
         );
       }
-      const updated = await projects.updateDurable(req.params.id, patch);
+      // Sections are partial: merge into the stored section so editing one
+      // field (or one window) never drops the others.
+      const existing = projects.get(req.params.id);
+      if (!existing) {
+        res.status(404).json({ success: false, error: "Project not found" });
+        return;
+      }
+      const finalPatch: SaaSProjectUpdate = { ...patch };
+      // Three states per section: absent = never stated, `{}` = explicitly
+      // cleared (so the clearing can reach an existing blueprint), non-empty =
+      // stated. A section that was never stated stays absent when cleared.
+      if (design.gameConcept !== undefined) {
+        const merged = mergeGameConcept(
+          existing.gameConcept,
+          design.gameConcept,
+        );
+        if (merged) finalPatch.gameConcept = merged;
+        else if (existing.gameConcept !== undefined)
+          finalPatch.gameConcept = {};
+      }
+      if (design.mapEnvironment !== undefined) {
+        const merged = mergeMapEnvironment(
+          existing.mapEnvironment,
+          design.mapEnvironment,
+        );
+        if (merged) finalPatch.mapEnvironment = merged;
+        else if (existing.mapEnvironment !== undefined) {
+          finalPatch.mapEnvironment = {};
+        }
+      }
+      const updated = await projects.updateDurable(req.params.id, finalPatch);
       if (!updated) {
         res.status(404).json({ success: false, error: "Project not found" });
         return;
@@ -305,7 +350,20 @@ function readCreateInput(body: unknown): {
     optionalText(input, "type", 80) ??
     "adventure";
   const description = optionalText(input, "description", 10000, true) ?? "";
-  return { name, genre, description, patch: readProjectPatch(input) };
+  const patch = readProjectPatch(input);
+  const design = readDesignPatch(input);
+  if (design.gameConcept !== undefined) {
+    const gameConcept = mergeGameConcept(undefined, design.gameConcept);
+    if (gameConcept) patch.gameConcept = gameConcept;
+  }
+  if (design.mapEnvironment !== undefined) {
+    const mapEnvironment = mergeMapEnvironment(
+      undefined,
+      design.mapEnvironment,
+    );
+    if (mapEnvironment) patch.mapEnvironment = mapEnvironment;
+  }
+  return { name, genre, description, patch };
 }
 
 function readProjectPatch(body: unknown): SaaSProjectUpdate {
@@ -345,6 +403,31 @@ function readProjectPatch(body: unknown): SaaSProjectUpdate {
   if (targetAudience !== undefined) patch.targetAudience = targetAudience;
   if (coverUrl !== undefined) patch.coverUrl = coverUrl || undefined;
   return patch;
+}
+
+function readDesignPatch(body: unknown): {
+  gameConcept?: Partial<GameConceptConfig>;
+  mapEnvironment?: Partial<MapEnvironmentConfig>;
+} {
+  const input = asRecord(body);
+  const out: {
+    gameConcept?: Partial<GameConceptConfig>;
+    mapEnvironment?: Partial<MapEnvironmentConfig>;
+  } = {};
+  try {
+    if (Object.prototype.hasOwnProperty.call(input, "gameConcept")) {
+      out.gameConcept = parseGameConceptPatch(input.gameConcept);
+    }
+    if (Object.prototype.hasOwnProperty.call(input, "mapEnvironment")) {
+      out.mapEnvironment = parseMapEnvironmentPatch(input.mapEnvironment);
+    }
+  } catch (error) {
+    if (error instanceof DesignInputError) {
+      throw new ProjectInputError(error.message);
+    }
+    throw error;
+  }
+  return out;
 }
 
 function asRecord(value: unknown): Record<string, unknown> {
@@ -397,6 +480,12 @@ function toProjectResponse(project: SaaSProject) {
     players: project.players,
     targetAudience: project.targetAudience,
     coverUrl: project.coverUrl,
+    // An explicitly cleared (empty) section is internal state, not contract:
+    // it is reported the same as one that was never stated.
+    gameConcept: hasContent(project.gameConcept) ? project.gameConcept : null,
+    mapEnvironment: hasContent(project.mapEnvironment)
+      ? project.mapEnvironment
+      : null,
     status: project.status,
     progress: project.qualityScore,
     qualityScore: project.qualityScore,

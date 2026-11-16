@@ -149,6 +149,13 @@ export interface GameBlueprint {
   difficulty: "easy" | "medium" | "hard" | "extreme";
   estimated_players: "solo" | "small-group" | "large-group" | "mmo";
 
+  /**
+   * Structured user inputs copied from the project (Game Concept window and
+   * Map & Environment window). Absent means the user stated nothing.
+   */
+  game_concept?: import("../platform/projects/projectDesignInputs").GameConceptConfig;
+  map_environment?: import("../platform/projects/projectDesignInputs").MapEnvironmentConfig;
+
   // Requirements Analysis
   requirements?: {
     functional: string[];
