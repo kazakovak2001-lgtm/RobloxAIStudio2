@@ -30,6 +30,64 @@ export function readBlueprintMechanicNames(
     .filter((name): name is string => name !== undefined);
 }
 
+/**
+ * Optional design sections requested from the model in addition to the
+ * original contract. Additive: absent from the deterministic fallback, because
+ * inventing NPCs or quests the user never asked for would present canned
+ * content as design.
+ */
+export const DESIGN_EXTENSION_INSTRUCTION =
+  "\n\nAlso include these OPTIONAL top-level keys in the same JSON object, " +
+  "only where they fit the game and never contradicting the user's brief:\n" +
+  '- "overview": string (2-4 sentences describing the game)\n' +
+  '- "npcs": [{ "name": string, "role": string, "description": string }] (omit when the game has no NPCs)\n' +
+  '- "quests": [{ "name": string, "objective": string, "reward": string }] (omit when the game has no quests)\n';
+
+function cleanText(value: unknown, max: number): string | undefined {
+  if (typeof value !== "string") return undefined;
+  const text = value.trim();
+  return text.length > 0 ? text.slice(0, max) : undefined;
+}
+
+function cleanEntries(
+  value: unknown,
+  keys: readonly string[],
+  limit = 20,
+): Array<Record<string, string>> | undefined {
+  if (!Array.isArray(value)) return undefined;
+  const entries: Array<Record<string, string>> = [];
+  for (const raw of value.slice(0, limit)) {
+    const record = asRecord(raw);
+    const name = cleanText(record?.name, 120);
+    if (!record || !name) continue;
+    const entry: Record<string, string> = { name };
+    for (const key of keys) {
+      const text = cleanText(record[key], 600);
+      if (text) entry[key] = text;
+    }
+    entries.push(entry);
+  }
+  return entries.length > 0 ? entries : undefined;
+}
+
+/**
+ * Keep only well-formed optional design sections from model output. Malformed
+ * or empty ones are dropped, never replaced with invented content.
+ */
+export function normalizeDesignExtensions(
+  data: Record<string, unknown>,
+): Record<string, unknown> {
+  const { overview, npcs, quests, ...rest } = data;
+  const result: Record<string, unknown> = { ...rest };
+  const cleanOverview = cleanText(overview, 1500);
+  if (cleanOverview) result.overview = cleanOverview;
+  const cleanNpcs = cleanEntries(npcs, ["role", "description"]);
+  if (cleanNpcs) result.npcs = cleanNpcs;
+  const cleanQuests = cleanEntries(quests, ["objective", "reward"]);
+  if (cleanQuests) result.quests = cleanQuests;
+  return result;
+}
+
 export class GameDesignerAgent extends BaseAgent {
   public readonly name = "GameDesigner";
   public readonly description =
@@ -55,6 +113,9 @@ export class GameDesignerAgent extends BaseAgent {
       progressionModel: { type: "string" },
       interactionSystems: { type: "array" },
       economyOrScoring: { type: "string" },
+      overview: { type: "string" },
+      npcs: { type: "array" },
+      quests: { type: "array" },
     },
     required: ["gameplay"],
   };
@@ -138,12 +199,21 @@ export class GameDesignerAgent extends BaseAgent {
       (innovations ? `Innovation modifiers: ${innovations}\n` : "") +
       "\nReturn only valid JSON.";
 
-    const prompt = (registryPrompt ?? inlinePrompt) + describeDesignInputs(bp);
+    const prompt =
+      (registryPrompt ?? inlinePrompt) +
+      describeDesignInputs(bp) +
+      DESIGN_EXTENSION_INSTRUCTION;
 
-    return this.generateWithRetry(prompt, ["gameplay"], fallback, {
-      temperature: 0.5,
-      maxTokens: 1800,
-      system: this.systemPromptFor(promptVars) ?? undefined,
-    });
+    const generated = await this.generateWithRetry(
+      prompt,
+      ["gameplay"],
+      fallback,
+      {
+        temperature: 0.5,
+        maxTokens: 1800,
+        system: this.systemPromptFor(promptVars) ?? undefined,
+      },
+    );
+    return normalizeDesignExtensions(generated);
   }
 }
