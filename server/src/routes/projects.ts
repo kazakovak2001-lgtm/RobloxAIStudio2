@@ -31,7 +31,7 @@ import {
   parseMapEnvironmentPatch,
   type GameConceptConfig,
   type MapEnvironmentConfig,
-} from "../platform/projects/projectDesignInputs";
+} from "../types/projectDesignInputs";
 import { ProjectDeletionCoordinator } from "../platform/projects/ProjectDeletionCoordinator";
 import { generationClaimProjectDeletion } from "../platform/projects/ProjectLifecycleCoordinator";
 

@@ -1343,7 +1343,6 @@
 │   │   │   │   ├── GenerationRecovery.ts
 │   │   │   │   ├── index.ts
 │   │   │   │   ├── ProjectDeletionCoordinator.ts
-│   │   │   │   ├── projectDesignInputs.ts
 │   │   │   │   ├── ProjectLifecycleCoordinator.test.ts
 │   │   │   │   ├── ProjectLifecycleCoordinator.ts
 │   │   │   │   └── SaaSProjectRepository.ts
@@ -1597,6 +1596,7 @@
 │   │   │   ├── novelty.ts
 │   │   │   ├── pipeline-events.ts
 │   │   │   ├── playableLua.ts
+│   │   │   ├── projectDesignInputs.ts
 │   │   │   └── worldRuntimeMode.ts
 │   │   ├── ui-gen
 │   │   │   ├── __tests__

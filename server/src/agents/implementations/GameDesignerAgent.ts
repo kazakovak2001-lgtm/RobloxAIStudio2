@@ -1,5 +1,5 @@
 import { BaseAgent, type AgentConfig } from "../core/BaseAgent";
-import { describeDesignInputs } from "../../platform/projects/projectDesignInputs";
+import { describeDesignInputs } from "../../types/projectDesignInputs";
 import type { AgentInput, GameDesignSeed } from "../../types";
 
 function asRecord(value: unknown): Record<string, unknown> | undefined {

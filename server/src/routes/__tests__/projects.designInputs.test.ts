@@ -3,7 +3,7 @@ import type { AddressInfo } from "node:net";
 import express, { type Request, type Response } from "express";
 import { describe, expect, it } from "vitest";
 import { SaaSProjectRepository } from "../../platform/projects";
-import { describeDesignInputs } from "../../platform/projects/projectDesignInputs";
+import { describeDesignInputs } from "../../types/projectDesignInputs";
 import { InMemoryStorageProvider } from "../../platform/storage/StorageProvider";
 import { ProjectDeletionCoordinator } from "../../platform/projects/ProjectDeletionCoordinator";
 import { StorageBlueprintRepository } from "../../projects/repository/storageBlueprint.repository";

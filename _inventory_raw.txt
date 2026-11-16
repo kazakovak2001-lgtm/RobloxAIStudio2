@@ -1117,7 +1117,6 @@ server/src/platform/projects/ProjectLifecycleCoordinator.test.ts
 server/src/platform/projects/ProjectLifecycleCoordinator.ts
 server/src/platform/projects/SaaSProjectRepository.ts
 server/src/platform/projects/index.ts
-server/src/platform/projects/projectDesignInputs.ts
 server/src/platform/queue/GenerationQueue.ts
 server/src/platform/queue/index.ts
 server/src/platform/registry/AgentRegistryService.ts
@@ -1313,6 +1312,7 @@ server/src/types/llm.ts
 server/src/types/novelty.ts
 server/src/types/pipeline-events.ts
 server/src/types/playableLua.ts
+server/src/types/projectDesignInputs.ts
 server/src/types/worldRuntimeMode.ts
 server/src/ui-gen/UIGenerationEngine.ts
 server/src/ui-gen/UIHierarchyBuilder.ts

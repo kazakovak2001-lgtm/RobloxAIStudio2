@@ -20,7 +20,7 @@ import type {
   GameBlueprint,
 } from "../projects/types/blueprint";
 import type { SaaSProject } from "../platform/projects/SaaSProjectRepository";
-import { hasContent } from "../platform/projects/projectDesignInputs";
+import { hasContent } from "../types/projectDesignInputs";
 
 type StudioConnectionStatus =
   "connected" | "disconnected" | "syncing" | "error";

@@ -7,7 +7,7 @@ import type { StorageProvider } from "../storage/StorageProvider";
 import type {
   GameConceptConfig,
   MapEnvironmentConfig,
-} from "./projectDesignInputs";
+} from "../../types/projectDesignInputs";
 
 export interface SaaSProject {
   id: string;

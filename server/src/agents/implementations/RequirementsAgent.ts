@@ -1,5 +1,5 @@
 import { BaseAgent, type AgentConfig } from "../core/BaseAgent";
-import { describeDesignInputs } from "../../platform/projects/projectDesignInputs";
+import { describeDesignInputs } from "../../types/projectDesignInputs";
 import { identifyRequirements } from "../../validation/requirementTraceability";
 import type { AgentInput } from "../../types";
 

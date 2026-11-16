@@ -153,8 +153,8 @@ export interface GameBlueprint {
    * Structured user inputs copied from the project (Game Concept window and
    * Map & Environment window). Absent means the user stated nothing.
    */
-  game_concept?: import("../platform/projects/projectDesignInputs").GameConceptConfig;
-  map_environment?: import("../platform/projects/projectDesignInputs").MapEnvironmentConfig;
+  game_concept?: import("./projectDesignInputs").GameConceptConfig;
+  map_environment?: import("./projectDesignInputs").MapEnvironmentConfig;
 
   // Requirements Analysis
   requirements?: {

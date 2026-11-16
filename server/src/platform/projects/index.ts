@@ -3,4 +3,4 @@ export {
   type SaaSProject,
   type SaaSProjectUpdate,
 } from "./SaaSProjectRepository";
-export * from "./projectDesignInputs";
+export * from "../../types/projectDesignInputs";
