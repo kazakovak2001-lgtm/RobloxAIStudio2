@@ -1,4 +1,5 @@
 import { BaseAgent, type AgentConfig } from "../core/BaseAgent";
+import { describeDesignInputs } from "../../types/projectDesignInputs";
 import type { AgentInput, GameDesignSeed } from "../../types";
 
 function asRecord(value: unknown): Record<string, unknown> | undefined {
@@ -137,7 +138,7 @@ export class GameDesignerAgent extends BaseAgent {
       (innovations ? `Innovation modifiers: ${innovations}\n` : "") +
       "\nReturn only valid JSON.";
 
-    const prompt = registryPrompt ?? inlinePrompt;
+    const prompt = (registryPrompt ?? inlinePrompt) + describeDesignInputs(bp);
 
     return this.generateWithRetry(prompt, ["gameplay"], fallback, {
       temperature: 0.5,

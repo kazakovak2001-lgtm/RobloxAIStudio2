@@ -15,8 +15,12 @@ import {
   ProjectGenerationStartCoordinator,
 } from "../platform/projects/ProjectLifecycleCoordinator";
 import { DurableStorageError } from "../platform/storage/StorageProvider";
-import type { CreateBlueprintInput } from "../projects/types/blueprint";
+import type {
+  CreateBlueprintInput,
+  GameBlueprint,
+} from "../projects/types/blueprint";
 import type { SaaSProject } from "../platform/projects/SaaSProjectRepository";
+import { hasContent } from "../types/projectDesignInputs";
 
 type StudioConnectionStatus =
   "connected" | "disconnected" | "syncing" | "error";
@@ -98,7 +102,53 @@ export function projectStatedIntent(project: SaaSProject): {
 
   if (project.name) stated.name = project.name;
 
+  // Design inputs have no default to assume. Per section: absent = never
+  // stated (blueprint untouched); empty `{}` = explicitly cleared, carried as
+  // `undefined` so drift detection removes the stale section from an existing
+  // blueprint; non-empty = stated.
+  if (project.gameConcept !== undefined) {
+    stated.game_concept = hasContent(project.gameConcept)
+      ? project.gameConcept
+      : undefined;
+  }
+  if (project.mapEnvironment !== undefined) {
+    stated.map_environment = hasContent(project.mapEnvironment)
+      ? project.mapEnvironment
+      : undefined;
+  }
+
   return { stated, assumedFields };
+}
+
+/**
+ * Carry the project's stated intent into an existing blueprint (see
+ * BLUEPRINT-STALE-001 at the call site). A field whose stated value is
+ * `undefined` is an explicit clearing and removes the stale value; fields the
+ * project does not mention are never touched.
+ */
+export async function syncBlueprintWithProjectIntent(
+  blueprints: {
+    updateBlueprint(
+      id: string,
+      updates: Partial<GameBlueprint>,
+    ): Promise<unknown>;
+  },
+  existingBlueprint: GameBlueprint,
+  project: SaaSProject,
+): Promise<void> {
+  const { stated, assumedFields } = projectStatedIntent(project);
+  const drifted = Object.entries(stated).filter(([field, value]) => {
+    const current = (existingBlueprint as unknown as Record<string, unknown>)[
+      field
+    ];
+    return JSON.stringify(current) !== JSON.stringify(value);
+  });
+  if (drifted.length > 0) {
+    await blueprints.updateBlueprint(existingBlueprint.id, {
+      ...Object.fromEntries(drifted),
+      assumed_fields: assumedFields,
+    });
+  }
 }
 
 /**
@@ -168,6 +218,12 @@ export function buildProjectBlueprintInput(
       progression: {},
       balance: {},
     },
+    ...(hasContent(project.gameConcept)
+      ? { game_concept: project.gameConcept }
+      : {}),
+    ...(hasContent(project.mapEnvironment)
+      ? { map_environment: project.mapEnvironment }
+      : {}),
     ui_layouts: [],
     architecture: {
       client_architecture: {},
@@ -406,19 +462,11 @@ export function createGameGenerationRouter(
         // other way.
         const project = projectRepository.get(projectId);
         if (project) {
-          const { stated, assumedFields } = projectStatedIntent(project);
-          const drifted = Object.entries(stated).filter(([field, value]) => {
-            const current = (
-              existingBlueprint as unknown as Record<string, unknown>
-            )[field];
-            return JSON.stringify(current) !== JSON.stringify(value);
-          });
-          if (drifted.length > 0) {
-            await gameService.updateBlueprint(existingBlueprint.id, {
-              ...Object.fromEntries(drifted),
-              assumed_fields: assumedFields,
-            });
-          }
+          await syncBlueprintWithProjectIntent(
+            gameService,
+            existingBlueprint,
+            project,
+          );
         }
       }
 

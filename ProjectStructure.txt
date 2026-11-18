@@ -1453,6 +1453,7 @@
 │   │   │   │   ├── platform.registration.durability.test.ts
 │   │   │   │   ├── projectErasure1.test.ts
 │   │   │   │   ├── projectErasure2.test.ts
+│   │   │   │   ├── projects.designInputs.test.ts
 │   │   │   │   ├── projects.durability.test.ts
 │   │   │   │   ├── projects.runtime.test.ts
 │   │   │   │   ├── studioApiKeyAccess.test.ts
@@ -1595,6 +1596,7 @@
 │   │   │   ├── novelty.ts
 │   │   │   ├── pipeline-events.ts
 │   │   │   ├── playableLua.ts
+│   │   │   ├── projectDesignInputs.ts
 │   │   │   └── worldRuntimeMode.ts
 │   │   ├── ui-gen
 │   │   │   ├── __tests__

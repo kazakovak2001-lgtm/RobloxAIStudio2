@@ -3,7 +3,14 @@
  */
 
 import { randomUUID } from "crypto";
-import type { StorageProvider } from "../storage/StorageProvider";
+import {
+  DurableStorageConflictError,
+  type StorageProvider,
+} from "../storage/StorageProvider";
+import type {
+  GameConceptConfig,
+  MapEnvironmentConfig,
+} from "../../types/projectDesignInputs";
 
 export interface SaaSProject {
   id: string;
@@ -16,6 +23,9 @@ export interface SaaSProject {
   players?: string;
   targetAudience?: string;
   coverUrl?: string;
+  /** Absent = not stated (legacy projects). */
+  gameConcept?: GameConceptConfig;
+  mapEnvironment?: MapEnvironmentConfig;
   status:
     "draft" | "generating" | "testing" | "ready" | "published" | "archived";
   qualityScore: number;
@@ -78,6 +88,44 @@ export class SaaSProjectRepository {
     const updated = { ...existing, ...updates, updatedAt: Date.now() };
     await this.storage.setDurable(this.collection, projectId, updated);
     return updated;
+  }
+
+  /** Rebuilds the patch from a fresh snapshot and commits with cross-process CAS. */
+  async updateDurableWith(
+    projectId: string,
+    buildUpdates: (existing: SaaSProject) => SaaSProjectUpdate,
+    maxAttempts = 5,
+  ): Promise<SaaSProject | null> {
+    for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
+      const existing = this.get(projectId);
+      if (!existing) return null;
+      const updated = {
+        ...existing,
+        ...buildUpdates(existing),
+        updatedAt: Date.now(),
+      };
+      try {
+        await this.storage.applyDurableBatch([
+          {
+            operation: "set",
+            collection: this.collection,
+            id: projectId,
+            data: updated,
+            requireMatch: true,
+            expectedData: existing,
+          },
+        ]);
+        return updated;
+      } catch (error) {
+        if (!(error instanceof DurableStorageConflictError)) throw error;
+        await this.storage.refresh?.([this.collection]);
+      }
+    }
+    throw new DurableStorageConflictError(
+      `Project was modified concurrently: ${projectId}`,
+      this.collection,
+      projectId,
+    );
   }
 
   /** Request-safe delete that preserves cache state on rejection. */

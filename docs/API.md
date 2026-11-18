@@ -1,7 +1,7 @@
 # Roblox AI Studio - Game Generation Engine API
 
 **Version**: 1.3.3
-**Last Updated**: 2026-07-13
+**Last Updated**: 2026-11-16
 
 ## Overview
 
@@ -268,6 +268,84 @@ Get all generation executions for a blueprint.
   ]
 }
 ```
+
+### 9. Project Design Inputs (Game Concept / Map & Environment)
+
+**POST** `/api/projects` and **PUT** `/api/projects/:id`, **GET** `/api/projects/:id`
+
+Two optional, structured sections are stored on the project record itself:
+`gameConcept` (Game Concept window) and `mapEnvironment` (Map & Environment
+window). Genre, target audience and the core game idea are not duplicated: they
+stay in the existing `genre`, `targetAudience` and `description` project fields.
+
+`gameConcept` fields (all optional):
+
+| Field               | Type       | Limit                    |
+| ------------------- | ---------- | ------------------------ |
+| `vision`            | `string`   | 2000 characters          |
+| `gameplayLoop`      | `string`   | 1500 characters          |
+| `coreMechanics`     | `string[]` | 20 items, 120 chars each |
+| `playerExperience`  | `string`   | 1000 characters          |
+| `designConstraints` | `string[]` | 20 items, 200 chars each |
+
+`mapEnvironment` fields (all optional):
+
+| Field             | Type       | Limit                    |
+| ----------------- | ---------- | ------------------------ |
+| `worldTheme`      | `string`   | 200 characters           |
+| `environmentType` | `string`   | 100 characters           |
+| `mapStructure`    | `string`   | 1000 characters          |
+| `mainLocations`   | `string[]` | 20 items, 120 chars each |
+| `atmosphere`      | `string`   | 1000 characters          |
+| `constraints`     | `string[]` | 20 items, 200 chars each |
+
+**Request (PUT, partial):**
+
+```json
+{
+  "gameConcept": { "vision": "Cooperative sky-island exploration" },
+  "mapEnvironment": { "mainLocations": ["Hub", "Cloud Market"] }
+}
+```
+
+**Response:** the project, including `gameConcept` and `mapEnvironment`. Each is
+an object, or `null` when the section has no stated fields (see below).
+
+Behavior:
+
+- **Partial update.** A section in the request is merged field by field into the
+  stored section; fields not named in the request are kept, and the other
+  section is never touched. `POST` accepts the same sections when creating a
+  project. `PUT` still requires at least one editable field.
+- **Normalization.** Strings are trimmed; list items are trimmed and blank
+  items are dropped.
+- **Clearing.** A blank string or an empty list for a field removes that field.
+- **Validation.** A section that is not an object, an unknown key, a wrong type
+  or a value over its limit returns `400` with
+  `{ "success": false, "error": "<field> ..." }`, and nothing is stored.
+- **Access.** `PUT` and `GET` require access to the project. A project that does
+  not exist or is not owned by the caller returns `404` and nothing is changed.
+- **Never stated vs. explicitly cleared.** Internally a section has three
+  states: absent (never stated; legacy projects have no sections), `{}`
+  (explicitly cleared after having content) and non-empty. Clearing every field
+  of a section that already had content stores `{}`. Clearing a section that
+  was never stated leaves it absent. The API reports both absent and cleared as
+  `null`; the distinction only matters when the blueprint is synchronized.
+- **Legacy projects.** Projects created before these fields return `null` for
+  both sections and behave exactly as before.
+
+Hand-off to generation (`POST /api/projects/:projectId/generate`):
+
+- When the first blueprint is created from the project, non-empty sections are
+  copied into the blueprint as `game_concept` and `map_environment`.
+- When the project already has a blueprint, its stated intent is synchronized
+  before the run: a non-empty section replaces the blueprint's section, an
+  explicitly cleared section (`{}`) removes `game_concept` / `map_environment`
+  from the blueprint, and a section that was never stated leaves the blueprint
+  unchanged. Other blueprint fields and the other section are not modified.
+- The agents that currently read the sections are `RequirementsAgent` and
+  `GameDesignerAgent` (appended to their prompts). Other agents and modules do
+  not consume them yet.
 
 ## Usage Example
 

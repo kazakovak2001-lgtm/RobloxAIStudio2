@@ -1,4 +1,5 @@
 import { BaseAgent, type AgentConfig } from "../core/BaseAgent";
+import { describeDesignInputs } from "../../types/projectDesignInputs";
 import { identifyRequirements } from "../../validation/requirementTraceability";
 import type { AgentInput } from "../../types";
 
@@ -96,9 +97,11 @@ export class RequirementsAgent extends BaseAgent {
       '"non_functional": object, "constraints": string[], "success_criteria": string[] } }\n\n' +
       `Name: ${name}\nGenre: ${genre}\nGame Type: ${gameType}\n` +
       `Description: ${description}\nTarget Audience: ${targetAudience}\n` +
-      `Difficulty: ${difficulty}${assumptionNote}\n\nReturn only valid JSON.`;
+      `Difficulty: ${difficulty}${assumptionNote}${describeDesignInputs(bp)}\n\nReturn only valid JSON.`;
 
-    const prompt = registryPrompt ?? inlinePrompt;
+    const prompt = registryPrompt
+      ? registryPrompt + describeDesignInputs(bp)
+      : inlinePrompt;
 
     // generateWithRetry: try → retry with strict prompt → throw on second failure
     const result = await this.generateWithRetry(

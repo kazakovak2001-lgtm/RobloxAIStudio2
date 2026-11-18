@@ -1199,6 +1199,7 @@ server/src/routes/__tests__/platform.durability.test.ts
 server/src/routes/__tests__/platform.registration.durability.test.ts
 server/src/routes/__tests__/projectErasure1.test.ts
 server/src/routes/__tests__/projectErasure2.test.ts
+server/src/routes/__tests__/projects.designInputs.test.ts
 server/src/routes/__tests__/projects.durability.test.ts
 server/src/routes/__tests__/projects.runtime.test.ts
 server/src/routes/__tests__/studioApiKeyAccess.test.ts
@@ -1311,6 +1312,7 @@ server/src/types/llm.ts
 server/src/types/novelty.ts
 server/src/types/pipeline-events.ts
 server/src/types/playableLua.ts
+server/src/types/projectDesignInputs.ts
 server/src/types/worldRuntimeMode.ts
 server/src/ui-gen/UIGenerationEngine.ts
 server/src/ui-gen/UIHierarchyBuilder.ts
