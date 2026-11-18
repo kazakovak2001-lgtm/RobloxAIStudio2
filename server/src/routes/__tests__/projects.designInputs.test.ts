@@ -101,6 +101,11 @@ describe("project Game Concept / Map & Environment inputs", () => {
         name: "Sky",
         gameConcept: { vision: " Float ", coreMechanics: ["glide", " "] },
         mapEnvironment: { worldTheme: "Sky islands", mainLocations: ["Hub"] },
+        gameplayConfiguration: {
+          loop: "Explore, collect, upgrade",
+          winCondition: "Complete the final challenge",
+          interactionSystems: ["Trading", "Crafting"],
+        },
       });
       expect(created.status).toBe(200);
       const id = created.body.data.id;
@@ -112,6 +117,11 @@ describe("project Game Concept / Map & Environment inputs", () => {
       expect(got.body.data.mapEnvironment).toEqual({
         worldTheme: "Sky islands",
         mainLocations: ["Hub"],
+      });
+      expect(got.body.data.gameplayConfiguration).toEqual({
+        loop: "Explore, collect, upgrade",
+        winCondition: "Complete the final challenge",
+        interactionSystems: ["Trading", "Crafting"],
       });
     });
   });
@@ -181,6 +191,14 @@ describe("project Game Concept / Map & Environment inputs", () => {
         { gameConcept: { unknown: "x" } },
         { mapEnvironment: [] },
         { mapEnvironment: { mainLocations: new Array(21).fill("a") } },
+        { gameplayConfiguration: { winCondition: 5 } },
+        { gameplayConfiguration: { loop: "x".repeat(1501) } },
+        {
+          gameplayConfiguration: {
+            interactionSystems: new Array(21).fill("x"),
+          },
+        },
+        { gameplayConfiguration: { unknownRule: "x" } },
       ]) {
         const r = await call("PUT", `/${id}`, bad);
         expect(r.status).toBe(400);
@@ -337,17 +355,32 @@ describe("project Game Concept / Map & Environment inputs", () => {
       {
         gameConcept: { vision: "v" },
         mapEnvironment: { worldTheme: "Desert" },
+        gameplayConfiguration: {
+          loop: "Explore and build",
+          winCondition: "Reach the summit",
+          progressionModel: "Unlock zones",
+          difficultyScaling: "Increase enemy health per zone",
+          interactionSystems: ["Crafting", "Trading"],
+          economyOrScoring: "Earn coins for discoveries",
+        },
       },
     );
     const input = buildProjectBlueprintInput(project);
     expect(input.game_concept).toEqual({ vision: "v" });
     expect(input.map_environment).toEqual({ worldTheme: "Desert" });
-    expect(projectStatedIntent(project).stated.map_environment).toEqual({
-      worldTheme: "Desert",
-    });
-    expect(describeDesignInputs(input as any)).toContain("World theme: Desert");
+    expect(input.gameplay_configuration).toEqual(project.gameplayConfiguration);
+    expect(projectStatedIntent(project).stated.gameplay_configuration).toEqual(
+      project.gameplayConfiguration,
+    );
+    const promptInputs = describeDesignInputs(input as any);
+    expect(promptInputs).toContain("World theme: Desert");
+    expect(promptInputs).toContain("Win condition: Reach the summit");
+    expect(promptInputs).toContain("Interaction systems: Crafting; Trading");
     const bare = await rt.projectRepository.createDurable("owner", "B", "rpg");
     expect(buildProjectBlueprintInput(bare)).not.toHaveProperty("game_concept");
+    expect(buildProjectBlueprintInput(bare)).not.toHaveProperty(
+      "gameplay_configuration",
+    );
     expect(describeDesignInputs({})).toBe("");
   });
 });
@@ -431,12 +464,28 @@ describe("clearing a design section reaches an existing blueprint", () => {
     expect(reread).not.toHaveProperty("map_environment");
   });
 
+  it("removes fully cleared Gameplay Configuration from an existing blueprint", async () => {
+    const { rt, project, regenerate } = await setup({
+      gameplayConfiguration: {
+        loop: "Explore and build",
+        winCondition: "Reach the summit",
+      },
+    });
+    await withServer(rt, async (call) => {
+      await call("PUT", `/${project.id}`, {
+        gameplayConfiguration: { loop: "", winCondition: "" },
+      });
+    });
+    const bp = await regenerate();
+    expect(bp.gameplay_configuration).toBeUndefined();
+  });
   it("leaves the blueprint unchanged when a section was never stated", async () => {
     const { project, blueprint, regenerate } = await setup();
     expect(project.gameConcept).toBeUndefined();
     const bp = await regenerate();
     expect(bp).not.toHaveProperty("game_concept");
     expect(bp).not.toHaveProperty("map_environment");
+    expect(bp).not.toHaveProperty("gameplay_configuration");
     expect(bp.updated_at).toEqual(blueprint.updated_at);
   });
 
@@ -484,5 +533,41 @@ describe("clearing a design section reaches an existing blueprint", () => {
     });
     const bp = await regenerate();
     expect(bp.game_concept).toEqual({ vision: "New" });
+  });
+});
+
+it("merges and clears gameplay configuration independently", async () => {
+  const rt = makeRuntime(new InMemoryStorageProvider());
+  await withServer(rt, async (call) => {
+    const id = (
+      await call("POST", "", {
+        name: "Rules",
+        gameplayConfiguration: {
+          loop: "Explore",
+          winCondition: "Reach goal",
+          interactionSystems: ["Crafting"],
+        },
+      })
+    ).body.data.id;
+    const update = await call("PUT", `/${id}`, {
+      gameplayConfiguration: { loseCondition: "Lives reach zero" },
+    });
+    expect(update.status).toBe(200);
+    expect(update.body.data.gameplayConfiguration).toEqual({
+      loop: "Explore",
+      winCondition: "Reach goal",
+      loseCondition: "Lives reach zero",
+      interactionSystems: ["Crafting"],
+    });
+    await call("PUT", `/${id}`, {
+      gameplayConfiguration: { winCondition: "" },
+    });
+    expect(
+      (await call("GET", `/${id}`)).body.data.gameplayConfiguration,
+    ).toEqual({
+      loop: "Explore",
+      loseCondition: "Lives reach zero",
+      interactionSystems: ["Crafting"],
+    });
   });
 });

@@ -10,6 +10,7 @@ import {
 import type {
   GameConceptConfig,
   MapEnvironmentConfig,
+  GameplayConfigurationConfig,
 } from "../../types/projectDesignInputs";
 
 export interface SaaSProject {
@@ -26,6 +27,8 @@ export interface SaaSProject {
   /** Absent = not stated (legacy projects). */
   gameConcept?: GameConceptConfig;
   mapEnvironment?: MapEnvironmentConfig;
+  /** Absent = no gameplay rules explicitly stated by the user. */
+  gameplayConfiguration?: GameplayConfigurationConfig;
   status:
     "draft" | "generating" | "testing" | "ready" | "published" | "archived";
   qualityScore: number;

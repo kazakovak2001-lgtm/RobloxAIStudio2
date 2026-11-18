@@ -30,8 +30,11 @@ import {
   mergeMapEnvironment,
   parseGameConceptPatch,
   parseMapEnvironmentPatch,
+  mergeGameplayConfiguration,
+  parseGameplayConfigurationPatch,
   type GameConceptConfig,
   type MapEnvironmentConfig,
+  type GameplayConfigurationConfig,
 } from "../types/projectDesignInputs";
 import { ProjectDeletionCoordinator } from "../platform/projects/ProjectDeletionCoordinator";
 import { generationClaimProjectDeletion } from "../platform/projects/ProjectLifecycleCoordinator";
@@ -277,7 +280,8 @@ export function createProjectsRouter(runtime: ProjectRuntime): Router {
       if (
         Object.keys(patch).length === 0 &&
         design.gameConcept === undefined &&
-        design.mapEnvironment === undefined
+        design.mapEnvironment === undefined &&
+        design.gameplayConfiguration === undefined
       ) {
         throw new ProjectInputError(
           "At least one editable project field is required",
@@ -310,6 +314,16 @@ export function createProjectsRouter(runtime: ProjectRuntime): Router {
             if (merged) finalPatch.mapEnvironment = merged;
             else if (existing.mapEnvironment !== undefined) {
               finalPatch.mapEnvironment = {};
+            }
+          }
+          if (design.gameplayConfiguration !== undefined) {
+            const merged = mergeGameplayConfiguration(
+              existing.gameplayConfiguration,
+              design.gameplayConfiguration,
+            );
+            if (merged) finalPatch.gameplayConfiguration = merged;
+            else if (existing.gameplayConfiguration !== undefined) {
+              finalPatch.gameplayConfiguration = {};
             }
           }
           return finalPatch;
@@ -365,6 +379,15 @@ function readCreateInput(body: unknown): {
     );
     if (mapEnvironment) patch.mapEnvironment = mapEnvironment;
   }
+  if (design.gameplayConfiguration !== undefined) {
+    const gameplayConfiguration = mergeGameplayConfiguration(
+      undefined,
+      design.gameplayConfiguration,
+    );
+    if (gameplayConfiguration) {
+      patch.gameplayConfiguration = gameplayConfiguration;
+    }
+  }
   return { name, genre, description, patch };
 }
 
@@ -410,11 +433,13 @@ function readProjectPatch(body: unknown): SaaSProjectUpdate {
 function readDesignPatch(body: unknown): {
   gameConcept?: Partial<GameConceptConfig>;
   mapEnvironment?: Partial<MapEnvironmentConfig>;
+  gameplayConfiguration?: Partial<GameplayConfigurationConfig>;
 } {
   const input = asRecord(body);
   const out: {
     gameConcept?: Partial<GameConceptConfig>;
     mapEnvironment?: Partial<MapEnvironmentConfig>;
+    gameplayConfiguration?: Partial<GameplayConfigurationConfig>;
   } = {};
   try {
     if (Object.prototype.hasOwnProperty.call(input, "gameConcept")) {
@@ -422,6 +447,11 @@ function readDesignPatch(body: unknown): {
     }
     if (Object.prototype.hasOwnProperty.call(input, "mapEnvironment")) {
       out.mapEnvironment = parseMapEnvironmentPatch(input.mapEnvironment);
+    }
+    if (Object.prototype.hasOwnProperty.call(input, "gameplayConfiguration")) {
+      out.gameplayConfiguration = parseGameplayConfigurationPatch(
+        input.gameplayConfiguration,
+      );
     }
   } catch (error) {
     if (error instanceof DesignInputError) {
@@ -487,6 +517,9 @@ function toProjectResponse(project: SaaSProject) {
     gameConcept: hasContent(project.gameConcept) ? project.gameConcept : null,
     mapEnvironment: hasContent(project.mapEnvironment)
       ? project.mapEnvironment
+      : null,
+    gameplayConfiguration: hasContent(project.gameplayConfiguration)
+      ? project.gameplayConfiguration
       : null,
     status: project.status,
     progress: project.qualityScore,
