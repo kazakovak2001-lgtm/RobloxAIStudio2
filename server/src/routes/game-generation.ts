@@ -116,6 +116,11 @@ export function projectStatedIntent(project: SaaSProject): {
       ? project.mapEnvironment
       : undefined;
   }
+  if (project.gameplayConfiguration !== undefined) {
+    stated.gameplay_configuration = hasContent(project.gameplayConfiguration)
+      ? project.gameplayConfiguration
+      : undefined;
+  }
 
   return { stated, assumedFields };
 }
@@ -223,6 +228,9 @@ export function buildProjectBlueprintInput(
       : {}),
     ...(hasContent(project.mapEnvironment)
       ? { map_environment: project.mapEnvironment }
+      : {}),
+    ...(hasContent(project.gameplayConfiguration)
+      ? { gameplay_configuration: project.gameplayConfiguration }
       : {}),
     ui_layouts: [],
     architecture: {

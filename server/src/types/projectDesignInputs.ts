@@ -1,8 +1,9 @@
 /**
- * Project design inputs — the Game Concept and Map & Environment sections.
+ * Project design inputs — Game Concept, Map & Environment, and Gameplay
+ * Configuration.
  *
- * Both sections are stored on the project record itself (no second source of
- * truth). Genre, target audience and the core idea reuse the existing
+ * All three sections are stored on the project record itself (no second source
+ * of truth). Genre, target audience and the core idea reuse the existing
  * `genre`, `targetAudience` and `description` project fields; this module only
  * holds the additional structured inputs.
  *
@@ -26,6 +27,20 @@ export interface MapEnvironmentConfig {
   mainLocations?: string[];
   atmosphere?: string;
   constraints?: string[];
+}
+
+/**
+ * Explicit gameplay rules supplied by the user in the Gameplay Configuration
+ * window.
+ */
+export interface GameplayConfigurationConfig {
+  loop?: string;
+  winCondition?: string;
+  loseCondition?: string;
+  progressionModel?: string;
+  difficultyScaling?: string;
+  interactionSystems?: string[];
+  economyOrScoring?: string;
 }
 
 export class DesignInputError extends Error {
@@ -54,6 +69,19 @@ const MAP_ENVIRONMENT_FIELDS: Record<keyof MapEnvironmentConfig, FieldSpec> = {
   mainLocations: { kind: "list", maxItems: 20, maxItemLength: 120 },
   atmosphere: { kind: "text", max: 1000 },
   constraints: { kind: "list", maxItems: 20, maxItemLength: 200 },
+};
+
+const GAMEPLAY_CONFIGURATION_FIELDS: Record<
+  keyof GameplayConfigurationConfig,
+  FieldSpec
+> = {
+  loop: { kind: "text", max: 1500 },
+  winCondition: { kind: "text", max: 500 },
+  loseCondition: { kind: "text", max: 500 },
+  progressionModel: { kind: "text", max: 1000 },
+  difficultyScaling: { kind: "text", max: 500 },
+  interactionSystems: { kind: "list", maxItems: 20, maxItemLength: 120 },
+  economyOrScoring: { kind: "text", max: 500 },
 };
 
 /** True when a stored section carries at least one stated field. */
@@ -148,6 +176,16 @@ export function parseMapEnvironmentPatch(
   ) as Partial<MapEnvironmentConfig>;
 }
 
+export function parseGameplayConfigurationPatch(
+  value: unknown,
+): Partial<GameplayConfigurationConfig> {
+  return parseSection(
+    "gameplayConfiguration",
+    value,
+    GAMEPLAY_CONFIGURATION_FIELDS,
+  ) as Partial<GameplayConfigurationConfig>;
+}
+
 /**
  * Merge a parsed patch into the stored section in canonical key order.
  * Blank text / empty lists remove the field. Returns undefined when nothing
@@ -188,6 +226,17 @@ export function mergeMapEnvironment(
   return mergeSection(existing, patch, Object.keys(MAP_ENVIRONMENT_FIELDS));
 }
 
+export function mergeGameplayConfiguration(
+  existing: GameplayConfigurationConfig | undefined,
+  patch: Partial<GameplayConfigurationConfig>,
+): GameplayConfigurationConfig | undefined {
+  return mergeSection(
+    existing,
+    patch,
+    Object.keys(GAMEPLAY_CONFIGURATION_FIELDS),
+  );
+}
+
 /** Prompt-ready text for the stated design inputs; empty when none stated. */
 export function describeDesignInputs(
   bp: Record<string, unknown> | undefined,
@@ -195,6 +244,10 @@ export function describeDesignInputs(
   const lines: string[] = [];
   const gc = bp && has(bp, "game_concept") ? bp.game_concept : undefined;
   const me = bp && has(bp, "map_environment") ? bp.map_environment : undefined;
+  const gp =
+    bp && has(bp, "gameplay_configuration")
+      ? bp.gameplay_configuration
+      : undefined;
   const add = (label: string, v: unknown): void => {
     if (typeof v === "string" && v) lines.push(`${label}: ${v}`);
     else if (Array.isArray(v) && v.length > 0) {
@@ -219,6 +272,16 @@ export function describeDesignInputs(
     add("Main locations", m.mainLocations);
     add("Atmosphere and visual direction", m.atmosphere);
     add("Map and environment constraints", m.constraints);
+  }
+  if (gp && typeof gp === "object") {
+    const g = gp as Record<string, unknown>;
+    add("Gameplay loop", g.loop);
+    add("Win condition", g.winCondition);
+    add("Lose condition", g.loseCondition);
+    add("Player progression model", g.progressionModel);
+    add("Difficulty scaling", g.difficultyScaling);
+    add("Interaction systems", g.interactionSystems);
+    add("Economy or scoring rules", g.economyOrScoring);
   }
   return lines.length
     ? `\n\nUser-stated design inputs (treat as requirements):\n${lines.join("\n")}`

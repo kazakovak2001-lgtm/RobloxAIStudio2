@@ -150,11 +150,13 @@ export interface GameBlueprint {
   estimated_players: "solo" | "small-group" | "large-group" | "mmo";
 
   /**
-   * Structured user inputs copied from the project (Game Concept window and
-   * Map & Environment window). Absent means the user stated nothing.
+   * Structured user inputs copied from the project (Game Concept, Map & Environment,
+   * and Gameplay Configuration windows). Absent means the user stated nothing.
    */
   game_concept?: import("./projectDesignInputs").GameConceptConfig;
   map_environment?: import("./projectDesignInputs").MapEnvironmentConfig;
+  /** Explicit gameplay rules supplied by the user; distinct from generated mechanics. */
+  gameplay_configuration?: import("./projectDesignInputs").GameplayConfigurationConfig;
 
   // Requirements Analysis
   requirements?: {
