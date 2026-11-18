@@ -43,7 +43,16 @@ class ControlledMutationStorage extends InMemoryStorageProvider {
   override async applyDurableBatch(
     mutations: readonly DurableMutation[],
   ): Promise<readonly DurableMutationResult[]> {
-    if (this.rejectDelete) {
+    if (
+      this.rejectSet &&
+      mutations.some((mutation) => mutation.operation === "set")
+    ) {
+      throw new DurableStorageError("injected set rejection", "set");
+    }
+    if (
+      this.rejectDelete &&
+      mutations.some((mutation) => mutation.operation === "delete")
+    ) {
       throw new DurableStorageError("injected delete rejection", "delete");
     }
     return super.applyDurableBatch(mutations);

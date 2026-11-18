@@ -143,6 +143,31 @@ describe("project Game Concept / Map & Environment inputs", () => {
     });
   });
 
+  it("preserves concurrent partial edits to the same design section", async () => {
+    const rt = makeRuntime(new InMemoryStorageProvider());
+    await withServer(rt, async (call) => {
+      const id = (
+        await call("POST", "", {
+          name: "Concurrent",
+          gameConcept: { vision: "Initial", gameplayLoop: "Loop" },
+        })
+      ).body.data.id;
+      const [vision, loop] = await Promise.all([
+        call("PUT", `/${id}`, {
+          gameConcept: { vision: "Updated vision" },
+        }),
+        call("PUT", `/${id}`, {
+          gameConcept: { gameplayLoop: "Updated loop" },
+        }),
+      ]);
+      expect([vision.status, loop.status]).toEqual([200, 200]);
+      expect((await call("GET", `/${id}`)).body.data.gameConcept).toEqual({
+        vision: "Updated vision",
+        gameplayLoop: "Updated loop",
+      });
+    });
+  });
+
   it("rejects invalid input with 400 and leaves stored state unchanged", async () => {
     const rt = makeRuntime(new InMemoryStorageProvider());
     await withServer(rt, async (call) => {

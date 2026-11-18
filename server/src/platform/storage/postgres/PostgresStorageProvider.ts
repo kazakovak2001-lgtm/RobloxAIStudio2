@@ -176,18 +176,33 @@ export class PostgresStorageProvider implements StorageProvider {
           await client.query("BEGIN");
           for (const mutation of mutations) {
             if (mutation.operation === "set") {
-              const result = await client.query(
-                mutation.requireAbsent
-                  ? `INSERT INTO ${KV_TABLE} (collection, id, data) VALUES ($1, $2, $3)
-                     ON CONFLICT (collection, id) DO NOTHING RETURNING id`
-                  : `INSERT INTO ${KV_TABLE} (collection, id, data) VALUES ($1, $2, $3)
-                     ON CONFLICT (collection, id) DO UPDATE SET data = $3, updated_at = NOW()`,
-                [
+              let statement: string;
+              if (mutation.requireMatch) {
+                statement = `UPDATE ${KV_TABLE} SET data = $3, updated_at = NOW()
+                  WHERE collection = $1 AND id = $2 AND data = $4::jsonb RETURNING id`;
+              } else if (mutation.requireAbsent) {
+                statement = `INSERT INTO ${KV_TABLE} (collection, id, data) VALUES ($1, $2, $3)
+                  ON CONFLICT (collection, id) DO NOTHING RETURNING id`;
+              } else {
+                statement = `INSERT INTO ${KV_TABLE} (collection, id, data) VALUES ($1, $2, $3)
+                  ON CONFLICT (collection, id) DO UPDATE SET data = $3, updated_at = NOW()`;
+              }
+              const parameters: unknown[] = [
+                mutation.collection,
+                mutation.id,
+                JSON.stringify(mutation.data),
+              ];
+              if (mutation.requireMatch) {
+                parameters.push(JSON.stringify(mutation.expectedData));
+              }
+              const result = await client.query(statement, parameters);
+              if (mutation.requireMatch && result.rows.length === 0) {
+                throw new DurableStorageConflictError(
+                  `Durable record changed before update: ${mutation.collection}/${mutation.id}`,
                   mutation.collection,
                   mutation.id,
-                  JSON.stringify(mutation.data),
-                ],
-              );
+                );
+              }
               if (mutation.requireAbsent && result.rows.length === 0) {
                 throw new DurableStorageConflictError(
                   `Required durable record already exists: ${mutation.collection}/${mutation.id}`,
