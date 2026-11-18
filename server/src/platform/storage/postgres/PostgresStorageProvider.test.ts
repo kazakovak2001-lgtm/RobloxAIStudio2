@@ -105,6 +105,27 @@ function createFakePool(options: FakePoolOptions = {}): FakePoolControl {
           }
           if (!transaction) throw new Error("transaction is not active");
 
+          if (
+            text.includes("UPDATE kv_store SET data = $3") &&
+            text.includes("data = $4::jsonb")
+          ) {
+            batchMutationIndex += 1;
+            if (batchMutationIndex === options.rejectBatchAt) {
+              throw new Error("injected batch mutation rejection");
+            }
+            const [collection, id, serialized, expectedSerialized] = params;
+            const key = recordKey(String(collection), String(id));
+            const current = transaction.get(key);
+            const expected = JSON.parse(String(expectedSerialized));
+            if (
+              current === undefined ||
+              JSON.stringify(current) !== JSON.stringify(expected)
+            ) {
+              return { rows: [] };
+            }
+            transaction.set(key, JSON.parse(String(serialized)));
+            return { rows: [{ id }] };
+          }
           if (text.includes("INSERT INTO")) {
             batchMutationIndex += 1;
             if (batchMutationIndex === options.rejectBatchAt) {
@@ -465,6 +486,55 @@ describe("PostgresStorageProvider durable batches", () => {
       availability: "available",
       durability: "durable",
       lastFailureAt: expect.any(String),
+    });
+  });
+
+  it("rejects a stale JSONB compare-and-set without changing the cache", async () => {
+    const current = { name: "Current", version: 2 };
+    const { storage } = provider({
+      rows: [{ collection: "projects", id: "project-1", data: current }],
+    });
+    await storage.ready();
+
+    await expect(
+      storage.applyDurableBatch([
+        {
+          operation: "set",
+          collection: "projects",
+          id: "project-1",
+          data: { name: "Stale", version: 1 },
+          requireMatch: true,
+          expectedData: { name: "Before", version: 1 },
+        },
+      ]),
+    ).rejects.toMatchObject({ code: "DURABLE_STORAGE_CONFLICT" });
+
+    expect(storage.get("projects", "project-1")).toEqual(current);
+  });
+
+  it("accepts a matching JSONB compare-and-set", async () => {
+    const previous = { name: "Before", version: 1 };
+    const { storage } = provider({
+      rows: [{ collection: "projects", id: "project-1", data: previous }],
+    });
+    await storage.ready();
+
+    await expect(
+      storage.applyDurableBatch([
+        {
+          operation: "set",
+          collection: "projects",
+          id: "project-1",
+          data: { name: "After", version: 2 },
+          requireMatch: true,
+          expectedData: previous,
+        },
+      ]),
+    ).resolves.toHaveLength(1);
+
+    expect(storage.get("projects", "project-1")).toEqual({
+      name: "After",
+      version: 2,
     });
   });
 

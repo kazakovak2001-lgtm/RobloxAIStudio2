@@ -5,6 +5,7 @@ import {
   type SaaSProjectUpdate,
 } from "../platform/projects";
 import {
+  DurableStorageConflictError,
   DurableStorageError,
   type StorageProvider,
 } from "../platform/storage/StorageProvider";
@@ -282,37 +283,38 @@ export function createProjectsRouter(runtime: ProjectRuntime): Router {
           "At least one editable project field is required",
         );
       }
-      // Sections are partial: merge into the stored section so editing one
-      // field (or one window) never drops the others.
-      const existing = projects.get(req.params.id);
-      if (!existing) {
-        res.status(404).json({ success: false, error: "Project not found" });
-        return;
-      }
-      const finalPatch: SaaSProjectUpdate = { ...patch };
-      // Three states per section: absent = never stated, `{}` = explicitly
-      // cleared (so the clearing can reach an existing blueprint), non-empty =
-      // stated. A section that was never stated stays absent when cleared.
-      if (design.gameConcept !== undefined) {
-        const merged = mergeGameConcept(
-          existing.gameConcept,
-          design.gameConcept,
-        );
-        if (merged) finalPatch.gameConcept = merged;
-        else if (existing.gameConcept !== undefined)
-          finalPatch.gameConcept = {};
-      }
-      if (design.mapEnvironment !== undefined) {
-        const merged = mergeMapEnvironment(
-          existing.mapEnvironment,
-          design.mapEnvironment,
-        );
-        if (merged) finalPatch.mapEnvironment = merged;
-        else if (existing.mapEnvironment !== undefined) {
-          finalPatch.mapEnvironment = {};
-        }
-      }
-      const updated = await projects.updateDurable(req.params.id, finalPatch);
+      // Rebuild partial section merges from the latest snapshot on each CAS
+      // attempt, preserving concurrent edits across server instances.
+      const updated = await projects.updateDurableWith(
+        req.params.id,
+        (existing) => {
+          const finalPatch: SaaSProjectUpdate = { ...patch };
+          // Three states per section: absent = never stated, `{}` = explicitly
+          // cleared (so the clearing can reach an existing blueprint), non-empty =
+          // stated. A section that was never stated stays absent when cleared.
+          if (design.gameConcept !== undefined) {
+            const merged = mergeGameConcept(
+              existing.gameConcept,
+              design.gameConcept,
+            );
+            if (merged) finalPatch.gameConcept = merged;
+            else if (existing.gameConcept !== undefined) {
+              finalPatch.gameConcept = {};
+            }
+          }
+          if (design.mapEnvironment !== undefined) {
+            const merged = mergeMapEnvironment(
+              existing.mapEnvironment,
+              design.mapEnvironment,
+            );
+            if (merged) finalPatch.mapEnvironment = merged;
+            else if (existing.mapEnvironment !== undefined) {
+              finalPatch.mapEnvironment = {};
+            }
+          }
+          return finalPatch;
+        },
+      );
       if (!updated) {
         res.status(404).json({ success: false, error: "Project not found" });
         return;
@@ -502,6 +504,13 @@ class ProjectInputError extends Error {
 }
 
 function handleProjectInputError(error: unknown, res: Response): void {
+  if (error instanceof DurableStorageConflictError) {
+    res.status(409).json({
+      success: false,
+      error: "Project was modified concurrently; reload and retry",
+    });
+    return;
+  }
   if (error instanceof ProjectInputError) {
     res.status(400).json({ success: false, error: error.message });
     return;

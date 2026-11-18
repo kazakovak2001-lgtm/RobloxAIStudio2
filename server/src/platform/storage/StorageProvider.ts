@@ -1,3 +1,5 @@
+import { isDeepStrictEqual } from "node:util";
+
 /**
  * StorageProvider — Abstract persistence layer for SaaS foundation.
  *
@@ -47,6 +49,9 @@ export type DurableMutation =
       data: unknown;
       /** Fail the complete batch when the durable record already exists. */
       requireAbsent?: boolean;
+      /** Atomic compare-and-set guard for cross-process updates. */
+      requireMatch?: boolean;
+      expectedData?: unknown;
     }
   | {
       operation: "delete";
@@ -155,6 +160,20 @@ export class InMemoryStorageProvider implements StorageProvider {
 
         const collection = getStagedCollection(mutation.collection);
         if (mutation.operation === "set") {
+          if (
+            mutation.requireMatch &&
+            (!collection.has(mutation.id) ||
+              !isDeepStrictEqual(
+                collection.get(mutation.id),
+                mutation.expectedData,
+              ))
+          ) {
+            throw new DurableStorageConflictError(
+              `Durable record changed before update: ${mutation.collection}/${mutation.id}`,
+              mutation.collection,
+              mutation.id,
+            );
+          }
           if (mutation.requireAbsent && collection.has(mutation.id)) {
             throw new DurableStorageConflictError(
               `Required durable record already exists: ${mutation.collection}/${mutation.id}`,
